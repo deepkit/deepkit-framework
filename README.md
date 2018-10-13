@@ -91,9 +91,8 @@ work with it using the string type.
 
 ### UUID
 
-`@UUID()` allows you to define an unique index to your entity. In MongoDB we
-store it automatically using Mongo's `UUID`. In JSON and JavaScript you
-work with it using the string type.
+`@UUID()` stores a UUID. In TypeScript and JSON it's string, and in MongoDB we
+store it automatically using Mongo's `UUID`.
 
 Data types:
 
