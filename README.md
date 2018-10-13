@@ -65,7 +65,6 @@ class SimpleModel {
 }
 
 const instance = plainToClass(SimpleModel, {
-    id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038',
     name: 'myName',
     created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
     children: [{label: 'foo'}],
@@ -74,7 +73,7 @@ const instance = plainToClass(SimpleModel, {
 console.log(instance);
 /*
     SimpleModel {
-      id: 'my-super-id',
+      id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038',
       name: 'myName',
       type: 0,
       plan: 0,
@@ -210,7 +209,7 @@ await connection.db('testing').dropDatabase();
 const database = new Database(connection, 'testing');
 
 const instance: SimpleModel = plainToClass(SimpleModel, {
-    id: 'my-super-id',
+    id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038',
     name: 'myName',
 });
 
@@ -219,7 +218,7 @@ await database.save(SimpleModel, instance);
 const list: SimpleModel[] = await database.find(SimpleModel);
 const oneItem: SimpleModel = await database.get(
     SimpleModel,
-    {id: 'my-super-id'}
+    {id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}
     );
 ```
 
