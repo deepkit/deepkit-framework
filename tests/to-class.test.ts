@@ -39,7 +39,6 @@ test('test simple model all fields', () => {
     expect(getIdField(SubModel)).toBe(null);
 
     const instance = plainToClass(SimpleModel, {
-        id: 'my-super-id',
         name: 'myName',
         type: 5,
         plan: 'PRO',
@@ -59,7 +58,7 @@ test('test simple model all fields', () => {
     });
 
     expect(instance).toBeInstanceOf(SimpleModel);
-    expect(instance.id).toBe('my-super-id');
+    expect(instance.id).toBeString();
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
     expect(instance.plan).toBe(Plan.PRO);
@@ -81,5 +80,5 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo.label).toBe('bar');
     expect(instance.childrenMap.foo2.label).toBe('bar2');
 
-    expect(getIdFieldValue(SimpleModel, instance)).toBe('my-super-id');
+    expect(getIdFieldValue(SimpleModel, instance)).toBeString();
 });

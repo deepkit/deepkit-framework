@@ -1,4 +1,4 @@
-import {DateType, Entity, EnumType, ID, NumberType, StringType, ClassArray, ClassMap} from "../";
+import {DateType, Entity, EnumType, ID, NumberType, StringType, ClassArray, ClassMap, UUIDType, uuid} from "../";
 
 @Entity('sub')
 export class SubModel {
@@ -21,8 +21,8 @@ export const now = new Date();
 @Entity('SimpleModel')
 export class SimpleModel {
     @ID()
-    @StringType()
-    id: string;
+    @UUIDType()
+    id: string = uuid();
 
     @StringType()
     name: string;
@@ -42,8 +42,7 @@ export class SimpleModel {
     @ClassMap(SubModel)
     childrenMap: {[key: string]: SubModel} = {};
 
-    constructor(id: string, name: string) {
-        this.id = id;
+    constructor(name: string) {
         this.name = name;
     }
 }

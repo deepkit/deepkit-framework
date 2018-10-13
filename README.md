@@ -59,27 +59,29 @@ class SimpleModel {
     @ClassMap(SubModel)
     childrenMap: {[key: string]: SubModel} = {};
 
-    constructor(id: string, name: string) {
-        this.id = id;
+    constructor(name: string) {
         this.name = name;
     }
 }
 
 const instance = plainToClass(SimpleModel, {
-    id: 'my-super-id',
+    id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038',
     name: 'myName',
     created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
+    children: [{label: 'foo'}],
+    childrenMap: {'foo': {label: 'foo'}},
 });
 console.log(instance);
 /*
     SimpleModel {
+      id: 'my-super-id',
+      name: 'myName',
       type: 0,
       plan: 0,
       created: 2018-10-13T17:02:34.456Z,
-      children: [],
-      childrenMap: {},
-      id: 'my-super-id',
-      name: 'myName' }
+      children: [ SubModel { label: 'foo' } ],
+      childrenMap: { foo: SubModel { label: 'bar' } }
+    }
 */
 ```
 
