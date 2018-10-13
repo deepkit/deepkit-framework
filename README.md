@@ -108,7 +108,7 @@ Data types:
 
 Data types:
 
-| Plain  | Class  | Mongo  |
+| JSON   | Class  | Mongo  |
 |:-------|:-------|:-------|
 | string | string | string |
 
@@ -119,7 +119,7 @@ Data types:
 
 Data types:
 
-| Plain  | Class  | Mongo  |
+| JSON   | Class  | Mongo  |
 |:-------|:-------|:-------|
 | number | number | number |
 
@@ -130,7 +130,7 @@ Data types:
 
 Data types:
 
-| Plain  | Class | Mongo |
+| JSON    | Class | Mongo |
 |:-------|:------|:------|
 | string | Date  | Date  |
 
@@ -142,7 +142,7 @@ Data types:
 
 Data types:
 
-| Plain  | Class | Mongo  |
+| JSON   | Class | Mongo  |
 |:-------|:------|:-------|
 | String | Enum  | String |
 
@@ -154,7 +154,7 @@ always an instance of `ClassDefinition`. In JSON and MongoDB it is stored as pla
 
 Data types:
 
-| Plain  | Class | Mongo  |
+| JSON   | Class | Mongo  |
 |:-------|:------|:-------|
 | object | class | object |
 
@@ -167,9 +167,9 @@ In JSON and MongoDB it is stored as plain array.
 
 Data types:
 
-| Plain  | Class | Mongo  |
-|:-------|:------|:-------|
-| object | class | object |
+| JSON  | Class | Mongo |
+|:------|:------|:------|
+| array | array | array |
 
 
 ### ClassMap
@@ -180,9 +180,9 @@ In JSON and MongoDB it is stored as plain object.
 
 Data types:
 
-| Plain  | Class | Mongo  |
-|:-------|:------|:-------|
-| object | class | object |
+| JSON   | Class  | Mongo  |
+|:-------|:-------|:-------|
+| object | object | object |
 
 
 ## Database
