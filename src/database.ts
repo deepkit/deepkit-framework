@@ -73,7 +73,7 @@ export class Database {
 
     }
 
-    public async update<T, K extends keyof T>(classType: ClassType<T>, update: K) {
+    public async update<T, K extends keyof T>(classType: ClassType<T>, update: T) {
         const collection = this.getCollection(classType);
 
         const entityName = getEntityName(classType);
@@ -110,6 +110,7 @@ export class Database {
         const collection = this.getCollection(classType);
 
         const update = {$set: plainToMongo(classType, data)};
+        update.$set['version'] = 1;
 
         const response = await collection.findOneAndUpdate(this.buildFindCriteria(classType, data), update, {
             upsert: true,
@@ -121,7 +122,7 @@ export class Database {
 
         const doc = response.value;
 
-        return doc.version;
+        return doc['version'];
     }
 
     public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number> {
@@ -149,6 +150,6 @@ export class Database {
             throw new NotFoundError(`Entity ${entityName} not found for id ${id}`);
         }
 
-        return doc.version;
+        return doc['version'];
     }
 }

@@ -4,16 +4,16 @@ import {classToPlain, getEntityName, getIdField, plainToClass,} from "../";
 import {Plan, SimpleModel, SubModel} from "./entities";
 
 test('test simple model', () => {
-    const instance = new SimpleModel('my-super-id', 'myName');
+    const instance = new SimpleModel('myName');
     const json = classToPlain(SimpleModel, instance);
 
-    expect(json['id']).toBe('my-super-id');
+    expect(json['id']).toBeString();
     expect(json['name']).toBe('myName');
 
 });
 
 test('test simple model all fields', () => {
-    const instance = new SimpleModel('my-super-id', 'myName');
+    const instance = new SimpleModel('myName');
     instance.plan = Plan.PRO;
     instance.type = 5;
     instance.created = new Date('Sat Oct 13 2018 14:17:35 GMT+0200');
@@ -25,7 +25,7 @@ test('test simple model all fields', () => {
 
     const json = classToPlain(SimpleModel, instance);
 
-    expect(json['id']).toBe('my-super-id');
+    expect(json['id']).toBeString();
     expect(json['name']).toBe('myName');
     expect(json['type']).toBe(5);
     expect(json['plan']).toBe('PRO');

@@ -48,7 +48,11 @@ export function propertyPlainToMongo<T>(classType: ClassType<T>, propertyName, p
     }
 
     if ('uuid' === type && 'string' === typeof propertyValue) {
-        return uuid4Binary(propertyValue);
+        try {
+            return uuid4Binary(propertyValue);
+        } catch (e) {
+            throw new Error(`Invalid UUID given in proeprty ${propertyName}: '${propertyValue}'`);
+        }
     }
 
     if ('date' === type && !(propertyValue instanceof Date)) {
@@ -86,13 +90,21 @@ export function propertyClassToMongo<T>(classType: ClassType<T>, propertyName: s
     if (propertyValue && 'uuid' === type && 'string' === typeof propertyValue) {
         try {
             return uuid4Binary(propertyValue);
-        } catch (error) {
-            throw new Error(`Could not parse uuid of '${propertyValue}'.`);
+        } catch (e) {
+            throw new Error(`Invalid UUID given in proeprty ${propertyName}: '${propertyValue}'`);
         }
     }
 
     if (type === 'classArray' && isArray(propertyValue)) {
         return propertyValue.map(v => classToMongo(typeValue, v));
+    }
+
+    if ('enum' === type) {
+        if (undefined === typeValue) {
+            throw new Error(`Enum ${propertyName} has no type defined`);
+        }
+
+        return typeValue[propertyValue];
     }
 
     if (type === 'classMap' && isObject(propertyValue)) {
