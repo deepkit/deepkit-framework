@@ -26,6 +26,7 @@ import {
     ID,
     UUIDType,
     NumberType,
+    EnumType,
     plainToClass,
     StringType,
     uuid,
@@ -36,6 +37,12 @@ import {
 class SubModel {
     @StringType()
     label: string;
+}
+
+export enum Plan {
+    DEFAULT,
+    PRO,
+    ENTERPRISE,
 }
 
 @Entity('SimpleModel')
@@ -49,6 +56,9 @@ class SimpleModel {
 
     @NumberType()
     type: number = 0;
+
+    @EnumType(Plan)
+    plan: Plan = Plan.DEFAULT;
 
     @DateType()
     created: Date = new Date;
@@ -66,6 +76,7 @@ class SimpleModel {
 
 const instance = plainToClass(SimpleModel, {
     name: 'myName',
+    plan: 'PRO',
     created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
     children: [{label: 'foo'}],
     childrenMap: {'foo': {label: 'foo'}},
@@ -76,7 +87,7 @@ console.log(instance);
       id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038',
       name: 'myName',
       type: 0,
-      plan: 0,
+      plan: 1,
       created: 2018-10-13T17:02:34.456Z,
       children: [ SubModel { label: 'foo' } ],
       childrenMap: { foo: SubModel { label: 'bar' } }
@@ -140,7 +151,7 @@ Data types:
 
 ### Enum
 
-`@Enum()` makes sure the property has always a valid enum value. In JSON transport
+`@Enum(enum)` makes sure the property has always a valid enum value. In JSON transport
 (using classToPlain, or mongoToPlain) we use strings.
 
 Data types:
