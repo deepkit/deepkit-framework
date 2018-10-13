@@ -1,0 +1,44 @@
+{
+  "name": "marshaller",
+  "version": "0.1.0",
+  "description": "",
+  "main": "./index.ts",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "peerDependencies": {},
+  "dependencies": {
+    "clone": "^2.1.2",
+    "get-parameter-names": "^0.3.0",
+    "mongo-uuid": "^1.0.0",
+    "mongodb": "^3.1.8",
+    "reflect-metadata": "^0.1.12",
+    "uuid": "^3.2.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^22.2.3",
+    "@types/mongodb": "^3.1.12",
+    "@types/node": "^10.11.7",
+    "jest": "^22.4.4",
+    "jest-extended": "^0.11.0",
+    "ts-jest": "^22.4.6",
+    "typescript": "^2.8.3"
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  }
+}
