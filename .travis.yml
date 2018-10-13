@@ -1,0 +1,24 @@
+language: node_js
+
+node_js:
+- '10'
+
+services:
+- mongodb
+
+sudo: false
+
+before_install:
+- curl -o- -L https://yarnpkg.com/install.sh | bash
+- export PATH="$HOME/.yarn/bin:$PATH"
+
+cache:
+  directories:
+  - 'node_modules'
+
+before_script:
+- npm install
+- sleep 5 # thanks mongo
+
+script:
+- ./node_modules/.bin/jest test.ts
