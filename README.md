@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.com/marcj/marshaller.svg?branch=master)](https://travis-ci.com/marcj/marshaller)
 [![npm version](https://badge.fury.io/js/marshaller.svg)](https://badge.fury.io/js/marshaller)
+[![Coverage Status](https://coveralls.io/repos/github/marcj/marshaller/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshaller?branch=master)
 
 Marshaller is a JSON/HTTP-Request serialiser and MongoDB entity manager
 for TypeScript and has been built to make data transportation
