@@ -297,13 +297,13 @@ class MyEntity {
     @ObjectID()
     id: string;
     
-    //in *toMono and *toPlain is children the value of ChildrenCollection::items
+    //in *toMongo and *toPlain is children the value of ChildrenCollection::items
     @Class(ChildrenCollection)
     children: ChildrenCollection = new ChildrenCollection([]);
 }
 ```
 
-`ChildrenCollection` is now always use in *toClass calls. The
+`ChildrenCollection` is now always used in *toClass calls. The
 constructor of ChildrenCollection receives the actual value as
 first argument.
 
