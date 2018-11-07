@@ -4,7 +4,7 @@ import {
     Database, getCollectionName,
     plainToClass, uuid4Stringify,
 } from "../";
-import {SimpleModel, SubModel} from "./entities";
+import {SimpleModel, SuperSimple} from "./entities";
 import {Binary, MongoClient} from "mongodb";
 
 test('test save model', async () => {
@@ -16,7 +16,7 @@ test('test save model', async () => {
         name: 'myName',
     });
 
-    await database.save(SimpleModel, instance);
+    await database.add(SimpleModel, instance);
 
     const collection = connection.db('testing').collection(getCollectionName(SimpleModel));
     const mongoItem = await collection.find().toArray();
@@ -47,4 +47,22 @@ test('test save model', async () => {
         expect(found).toBeInstanceOf(SimpleModel);
         expect(found.name).toBe('myName2');
     }
+});
+
+test('test super simple model', async () => {
+    const connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    await connection.db('testing').dropDatabase();
+    const database = new Database(connection, 'testing');
+
+    const instance = plainToClass(SuperSimple, {
+        name: 'myName',
+    });
+
+    expect(instance._id).toBeUndefined();
+    await database.add(SuperSimple, instance);
+    expect(instance._id).not.toBeUndefined();
+
+    const items = await database.find(SuperSimple);
+    expect(items[0]._id).toBe(instance._id);
+    expect(items[0].name).toBe(instance.name);
 });

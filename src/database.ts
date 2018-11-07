@@ -6,7 +6,7 @@ import {
     getEntityName, getIdField,
     getIdFieldValue,
     mongoToClass,
-    mongoToPlain, plainToMongo,
+    mongoToPlain, partialObjectToMongo, plainToMongo,
     propertyMongoToPlain, propertyPlainToMongo
 } from "./mapper";
 import {MongoClient, Collection} from 'mongodb';
@@ -29,16 +29,14 @@ export class Database {
 
     public async get<T>(
         classType: ClassType<T>,
-        filter: { [field: string]: any },
-        asClass = true
+        filter: { [field: string]: any }
     ): Promise<T | null> {
         const collection = this.getCollection(classType);
 
-        const item = await collection.findOne(classToMongo(classType, filter));
+        const item = await collection.findOne(partialObjectToMongo(classType, filter));
 
         if (item) {
-            const transformer = asClass ? mongoToClass : mongoToPlain;
-            return transformer(classType, item);
+            return mongoToClass(classType, item);
         }
 
         return null;
@@ -46,34 +44,61 @@ export class Database {
 
     public async find<T>(
         classType: ClassType<T>,
-        filter?: { [field: string]: any },
-        asClass = true
+        filter?: { [field: string]: any }
     ): Promise<T[]> {
         const collection = this.getCollection(classType);
 
-        const items = await collection.find(filter ? classToMongo(classType, filter) : null).toArray();
+        const items = await collection.find(filter ? partialObjectToMongo(classType, filter) : null).toArray();
 
-        const transformer = asClass ? mongoToClass : mongoToPlain;
         return items.map(v => {
-            return transformer(classType, v);
+            return mongoToClass(classType, v);
         });
     }
 
     public async remove<T>(classType: ClassType<T>, id: string) {
         const collection = this.getCollection(classType);
+        const idName = getIdField(classType);
+        const filter = {};
+        filter[idName] = id;
 
-        await collection.deleteOne({id: uuid4Binary(id)});
+        await collection.deleteOne(partialObjectToMongo(classType, filter));
     }
 
-    public async add<T>(classType: ClassType<T>, values: object) {
+    public async deleteOne<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
+        const collection = this.getCollection(classType);
+        await collection.deleteOne(partialObjectToMongo(classType, filter));
+    }
+
+    public async deleteMany<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
+        const collection = this.getCollection(classType);
+        await collection.deleteMany(partialObjectToMongo(classType, filter));
+    }
+
+    public async add<T>(classType: ClassType<T>, item: T) {
         const collection = this.getCollection(classType);
 
-        values['version'] = 1;
-        await collection.insertOne(plainToMongo(classType, values));
+        item['version'] = 1;
 
+        const id = getIdField(classType);
+
+        const result = await collection.insertOne(classToMongo(classType, item));
+        if (id === '_id' && result.insertedId) {
+            item['_id'] = result.insertedId.toHexString();
+        }
     }
 
-    public async update<T, K extends keyof T>(classType: ClassType<T>, update: T) {
+    public async count<T>(classType: ClassType<T>, filter: { [field: string]: any }): Promise<number> {
+        const collection = this.getCollection(classType);
+        const response = await collection.estimatedDocumentCount(partialObjectToMongo(classType, filter), {});
+
+        return response;
+    }
+
+    public async has<T>(classType: ClassType<T>, filter: { [field: string]: any }): Promise<boolean> {
+        return (await this.count(classType, filter)) > 0;
+    }
+
+    public async update<T>(classType: ClassType<T>, update: T) {
         const collection = this.getCollection(classType);
 
         const entityName = getEntityName(classType);
@@ -83,7 +108,7 @@ export class Database {
             $inc: {version: +1},
         };
 
-        updateStatement['$set'] = plainToMongo(classType, update);
+        updateStatement['$set'] = classToMongo(classType, update);
 
         const response = await collection.findOneAndUpdate({id: uuid4Binary(id)}, updateStatement, {
             projection: {version: 1},
@@ -95,6 +120,8 @@ export class Database {
         if (!doc) {
             throw new NotFoundError(`Entity ${entityName} not found for id ${id}`);
         }
+
+        update['version'] = doc['version'];
     }
 
     private buildFindCriteria<T>(classType: ClassType<T>, data: T) {
@@ -104,25 +131,6 @@ export class Database {
         criteria[id] = propertyPlainToMongo(classType, id, data[id]);
 
         return criteria;
-    }
-
-    public async save<T>(classType: ClassType<T>, data: T): Promise<number> {
-        const collection = this.getCollection(classType);
-
-        const update = {$set: plainToMongo(classType, data)};
-        update.$set['version'] = 1;
-
-        const response = await collection.findOneAndUpdate(this.buildFindCriteria(classType, data), update, {
-            upsert: true,
-            projection: {
-                version: 1
-            },
-            returnOriginal: false
-        });
-
-        const doc = response.value;
-
-        return doc['version'];
     }
 
     public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number> {
@@ -137,9 +145,9 @@ export class Database {
         delete patch['_id'];
         delete patch['version'];
 
-        patchStatement['$set'] = classToMongo(classType, patch);
+        patchStatement['$set'] = partialObjectToMongo(classType, patch);
 
-        const response = await collection.findOneAndUpdate(this.buildFindCriteria(classType, filter), patchStatement, {
+        const response = await collection.findOneAndUpdate(partialObjectToMongo(classType, filter), patchStatement, {
             projection: {version: 1},
             returnOriginal: false
         });
@@ -147,7 +155,7 @@ export class Database {
         const doc = response.value;
 
         if (!doc) {
-            throw new NotFoundError(`Entity ${entityName} not found for id ${id}`);
+            throw new NotFoundError(`Entity ${entityName} not found for ${JSON.stringify(filter)}`);
         }
 
         return doc['version'];

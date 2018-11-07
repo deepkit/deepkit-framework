@@ -1,12 +1,14 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
+    classToPlain,
     getEntityName,
     getIdField,
-    getIdFieldValue,
-    plainToClass,
+    getIdFieldValue, isExcluded,
+    plainToClass, plainToMongo, uuid,
 } from "../";
 import {now, SimpleModel, Plan, SubModel} from "./entities";
+import {Binary} from "bson";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
@@ -81,4 +83,59 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo2.label).toBe('bar2');
 
     expect(getIdFieldValue(SimpleModel, instance)).toBeString();
+});
+
+test('test simple model with not mapped fields', () => {
+    expect(isExcluded(SimpleModel, 'excluded', 'class')).toBeTrue();
+    expect(isExcluded(SimpleModel, 'excluded', 'mongo')).toBeTrue();
+    expect(isExcluded(SimpleModel, 'excluded', 'plain')).toBeTrue();
+
+    expect(isExcluded(SimpleModel, 'excludedForPlain', 'class')).toBeFalse();
+    expect(isExcluded(SimpleModel, 'excludedForPlain', 'mongo')).toBeFalse();
+    expect(isExcluded(SimpleModel, 'excludedForPlain', 'plain')).toBeTrue();
+
+    expect(isExcluded(SimpleModel, 'excludedForMongo', 'class')).toBeFalse();
+    expect(isExcluded(SimpleModel, 'excludedForMongo', 'mongo')).toBeTrue();
+    expect(isExcluded(SimpleModel, 'excludedForMongo', 'plain')).toBeFalse();
+
+    const instance = plainToClass(SimpleModel, {
+        name: 'myName',
+        type: 5,
+        notMapped: {a: 'foo'}
+    });
+
+    expect(instance).toBeInstanceOf(SimpleModel);
+    expect(instance.id).toBeString();
+    expect(instance.name).toBe('myName');
+    expect(instance.type).toBe(5);
+    expect(instance.notMapped).toEqual({a: 'foo'});
+    expect(instance.excluded).toBeUndefined();
+    expect(instance.excludedForPlain).toBe('excludedForPlain');
+    expect(instance.excludedForMongo).toBe('excludedForMongo');
+
+
+    const mongoEntry = plainToMongo(SimpleModel, {
+        id: uuid(),
+        name: 'myName',
+        type: 5,
+        notMapped: {a: 'foo'}
+    });
+
+    expect(mongoEntry.id).toBeInstanceOf(Binary);
+    expect(mongoEntry.name).toBe('myName');
+    expect(mongoEntry.type).toBe(5);
+    expect(mongoEntry.notMapped).toEqual({a: 'foo'});
+    expect(mongoEntry.excluded).toBeUndefined();
+    expect(mongoEntry.excludedForPlain).toBe('excludedForPlain');
+    expect(mongoEntry.excludedForMongo).toBeUndefined();
+
+    const plainObject = classToPlain(SimpleModel, instance);
+
+    expect(plainObject.id).toBeString();
+    expect(plainObject.name).toBe('myName');
+    expect(plainObject.type).toBe(5);
+    expect(plainObject.notMapped).toEqual({a: 'foo'});
+    expect(plainObject.excluded).toBeUndefined();
+    expect(plainObject.excludedForPlain).toBeUndefined();
+    expect(plainObject.excludedForMongo).toBe('excludedForMongo');
 });

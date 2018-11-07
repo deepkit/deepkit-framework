@@ -1,4 +1,17 @@
-import {DateType, Entity, EnumType, ID, NumberType, StringType, ClassArray, ClassMap, UUIDType, uuid} from "../";
+import {
+    DateType,
+    Entity,
+    EnumType,
+    ID,
+    NumberType,
+    StringType,
+    ClassArray,
+    ClassMap,
+    UUIDType,
+    uuid,
+    Exclude,
+    ObjectIdType
+} from "../";
 
 @Entity('sub')
 export class SubModel {
@@ -42,8 +55,28 @@ export class SimpleModel {
     @ClassMap(SubModel)
     childrenMap: {[key: string]: SubModel} = {};
 
+    notMapped: {[key: string]: any} = {};
+
+    @Exclude()
+    excluded: string = 'default';
+
+    @Exclude('mongo')
+    excludedForMongo: string = 'excludedForMongo';
+
+    @Exclude('plain')
+    excludedForPlain: string = 'excludedForPlain';
+
     constructor(name: string) {
         this.name = name;
     }
 }
 
+@Entity('SuperSimple')
+export class SuperSimple {
+    @ID()
+    @ObjectIdType()
+    _id: string;
+
+    @StringType()
+    name: string;
+}
