@@ -54,8 +54,11 @@ class SimpleModel {
     id: string = uuid();
 
     @StringType()
-    @ArrayType()
     name: string;
+
+    @StringType()
+    @ArrayType()
+    tags: string[];
 
     @NumberType()
     type: number = 0;
