@@ -1,40 +1,23 @@
 import 'reflect-metadata';
-import {ClassType, isArray, isObject, uuid4Binary, uuid4Stringify, eachPair, isUndefined} from './utils';
+import {
+    ClassType,
+    isArray,
+    isObject,
+    uuid4Binary,
+    uuid4Stringify,
+    isUndefined,
+    getEnumKeys,
+    isValidEnumValue, getValidEnumValue
+} from './utils';
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
-import {isBuffer, isDate} from 'util';
 import {ObjectID} from "bson";
 
-export type Types = 'objectId' | 'uuid' | 'class' | 'classArray' | 'classMap' | 'date' | 'string' | 'number' | 'enum' | 'any';
+export type Types = 'objectId' | 'uuid' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
 
-export function Class<T>(classType: ClassType<T>) {
-    return (target, property) => {
-        Reflect.defineMetadata('marshaller:dataType', 'class', target, property);
-        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
-    };
-}
-
-export function ClassMap<T>(classType: ClassType<T>) {
-    return (target, property) => {
-        Reflect.defineMetadata('marshaller:dataType', 'classMap', target, property);
-        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
-    };
-}
-
-export function ClassArray<T>(classType: ClassType<T>) {
-    return (target, property) => {
-        Reflect.defineMetadata('marshaller:dataType', 'classArray', target, property);
-        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
-    };
-}
-
-function isPlainObject(value) {
-    return isObject(value) && !isDate(value) && !isBuffer(value) && !isArray(value);
-}
-
-export function getReflectionType<T>(classType: ClassType<T>, propertyName: string): { type: Types, typeValue: any } {
-    const type = Reflect.getMetadata('marshaller:dataType', classType.prototype, propertyName);
-    const value = Reflect.getMetadata('marshaller:dataTypeValue', classType.prototype, propertyName);
+export function getReflectionType<T>(classType: ClassType<T>, propertyName: string): { type: Types | null, typeValue: any | null } {
+    const type = Reflect.getMetadata('marshaller:dataType', classType.prototype, propertyName) || null;
+    const value = Reflect.getMetadata('marshaller:dataTypeValue', classType.prototype, propertyName) || null;
 
     return {
         type: type,
@@ -42,304 +25,242 @@ export function getReflectionType<T>(classType: ClassType<T>, propertyName: stri
     }
 }
 
-export function propertyPlainToMongo<T>(classType: ClassType<T>, propertyName, propertyValue) {
-    const {type, typeValue} = getReflectionType(classType, propertyName);
-    if (isUndefined(propertyValue)) {
-        return undefined;
-    }
-
-    if ('objectId' === type && 'string' === typeof propertyValue) {
-        try {
-            return new ObjectID(propertyValue);
-        } catch (e) {
-            throw new Error(`Invalid ObjectID given in property ${propertyName}: '${propertyValue}'`);
-        }
-    }
-
-    if ('uuid' === type && 'string' === typeof propertyValue) {
-        try {
-            return uuid4Binary(propertyValue);
-        } catch (e) {
-            throw new Error(`Invalid UUID given in property ${propertyName}: '${propertyValue}'`);
-        }
-    }
-
-    if ('date' === type && !(propertyValue instanceof Date)) {
-        return new Date(propertyValue);
-    }
-
-    if ('string' === type && 'string' !== typeof propertyValue) {
-        return String(propertyValue);
-    }
-
-    if ('number' === type && 'number' !== typeof propertyValue) {
-        return +propertyValue;
-    }
-
-    if (type === 'classArray' && isArray(propertyValue)) {
-        return propertyValue.map(v => plainToMongo(typeValue, v));
-    }
-
-    if (type === 'classMap' && isObject(propertyValue)) {
-        for (const [k, v] of eachPair(propertyValue as { [k: string]: any })) {
-            propertyValue[k] = plainToMongo(typeValue, v);
-        }
-    }
-
-    if (type === 'class' && isObject(propertyValue)) {
-        return plainToMongo(typeValue, propertyValue);
-    }
-
-    return propertyValue;
-}
-
 export function propertyClassToMongo<T>(classType: ClassType<T>, propertyName: string, propertyValue) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
-    if (propertyValue && 'objectId' === type && 'string' === typeof propertyValue) {
-        try {
-            return new ObjectID(propertyValue);
-        } catch (e) {
-            throw new Error(`Invalid ObjectID given in property ${propertyName}: '${propertyValue}'`);
-        }
-    }
-    
-    if (propertyValue && 'uuid' === type && 'string' === typeof propertyValue) {
-        try {
-            return uuid4Binary(propertyValue);
-        } catch (e) {
-            throw new Error(`Invalid UUID given in property ${propertyName}: '${propertyValue}'`);
-        }
-    }
-
-    if (type === 'classArray' && isArray(propertyValue)) {
-        return propertyValue.map(v => classToMongo(typeValue, v));
-    }
-
-    if ('enum' === type) {
-        if (undefined === typeValue) {
-            throw new Error(`Enum ${propertyName} has no type defined`);
+    function convert(value) {
+        if (value && 'objectId' === type && 'string' === typeof value) {
+            try {
+                return new ObjectID(value);
+            } catch (e) {
+                throw new Error(`Invalid ObjectID given in property ${propertyName}: '${value}'`);
+            }
         }
 
-        return typeValue[propertyValue];
-    }
-
-    if (type === 'classMap' && isObject(propertyValue)) {
-        for (const [k, v] of eachPair(propertyValue as { [k: string]: any })) {
-            propertyValue[k] = classToMongo(typeValue, v);
+        if (value && 'uuid' === type && 'string' === typeof value) {
+            try {
+                return uuid4Binary(value);
+            } catch (e) {
+                throw new Error(`Invalid UUID given in property ${propertyName}: '${value}'`);
+            }
         }
+
+        if ('enum' === type) {
+            if (undefined !== value && !isValidEnumValue(typeValue, value)) {
+                throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+            }
+
+            return getValidEnumValue(typeValue, value);
+        }
+
+        if (type === 'class') {
+            return classToMongo(typeValue, value);
+        }
+
+        return value;
     }
 
-    if (type === 'class' && isObject(propertyValue)) {
-        return classToMongo(typeValue, propertyValue);
+    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+        return propertyValue.map(v => convert(v));
     }
 
-    return propertyValue;
+    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+        const result = {};
+        for (const i in propertyValue) {
+            result[i] = convert(propertyValue[i]);
+        }
+        return result;
+    }
+
+    return convert(propertyValue);
 }
 
-export function propertyPlainToClass<T>(classType: ClassType<T>, propertyValue, propertyName) {
+export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, propertyValue) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
+
     if (isUndefined(propertyValue)) {
+        //todo, check if optional
         return undefined;
     }
 
-    if ('date' === type && !(propertyValue instanceof Date)) {
-        return new Date(propertyValue);
-    }
-
-    if ('string' === type && 'string' !== typeof propertyValue) {
-        return String(propertyValue);
-    }
-
-    if ('number' === type && 'number' !== typeof propertyValue) {
-        return +propertyValue;
-    }
-
-    if ('enum' === type) {
-        if (undefined === typeValue) {
-            throw new Error(`Enum ${propertyName} has no type defined`);
+    function convert(value) {
+        if ('date' === type && !(value instanceof Date)) {
+            return new Date(value);
         }
 
-        return typeValue[propertyValue];
-    }
-
-    if (type === 'classArray' && isArray(propertyValue)) {
-        return propertyValue.map(v => plainToClass(typeValue, v));
-    }
-
-    if (type === 'classMap' && isObject(propertyValue)) {
-        for (const [k, v] of eachPair(propertyValue as { [k: string]: any })) {
-            propertyValue[k] = plainToClass(typeValue, v);
+        if ('string' === type && 'string' !== typeof value) {
+            return String(value);
         }
-    }
 
-    if (type === 'class' && isObject(propertyValue)) {
-        try {
-            return plainToClass(typeValue, propertyValue);
-        } catch (e) {
-            console.error(e);
-            console.error('propertyValue', propertyValue);
-            console.error('typeValue', typeValue);
-            throw new Error(`Could not parse property ${propertyName}`);
+        if ('number' === type && 'number' !== typeof value) {
+            return +value;
         }
+
+        if ('boolean' === type && 'boolean' !== typeof value) {
+            return !!value;
+        }
+
+        if ('enum' === type) {
+            if (undefined !== value && !isValidEnumValue(typeValue, value)) {
+                throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+            }
+
+            return getValidEnumValue(typeValue, value);
+        }
+
+        if (type === 'class') {
+            try {
+                return plainToClass(typeValue, value);
+            } catch (e) {
+                throw new Error(`Could not parse property ${propertyName}`);
+            }
+        }
+
+        return value;
     }
 
-    return propertyValue;
+    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+        return propertyValue.map(v => convert(v));
+    }
+
+    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+        const result = {};
+        for (const i in propertyValue) {
+            result[i] = convert(propertyValue[i]);
+        }
+        return result;
+    }
+
+    return convert(propertyValue);
 }
 
-export function propertyMongoToPlain<T>(classType: ClassType<T>, target, propertyName) {
+export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName, propertyValue) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
-    const value = target[propertyName];
-    if (isUndefined(value)) {
-        return undefined;
-    }
 
-    if ('uuid' === type && 'string' !== typeof value) {
-        return uuid4Stringify(value);
-    }
-
-    if ('objectId' === type && 'string' !== typeof value && value.toHexString()) {
-        return (<ObjectID>value).toHexString();
-    }
-
-    if ('date' === type && value instanceof Date) {
-        return value.toJSON();
-    }
-
-    if (type === 'classArray' && isArray(value)) {
-        return value.map(v => mongoToPlain(typeValue, v));
-    }
-
-    if (type === 'classMap' && isObject(value)) {
-        for (const [k, v] of eachPair(value as { [k: string]: any })) {
-            value[k] = mongoToPlain(typeValue, v);
+    function convert(value) {
+        if ('date' === type && value instanceof Date) {
+            return value.toJSON();
         }
+
+        if (type === 'enum') {
+            return typeValue[value];
+        }
+
+        if (type === 'class') {
+            return classToPlain(typeValue, clone(value, false));
+        }
+
+        return value;
     }
 
-    if (type === 'class' && isObject(value)) {
-        return mongoToPlain(typeValue, value);
+    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+        return propertyValue.map(v => convert(v));
     }
 
-    return value;
+    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+        const result = {};
+        for (const i in propertyValue) {
+            result[i] = convert(propertyValue[i]);
+        }
+        return result;
+    }
+
+    return convert(propertyValue);
 }
 
-export function propertyClassToPlain<T>(classType: ClassType<T>, target, propertyName) {
+export function propertyMongoToClass<T>(classType: ClassType<T>, propertyValue, propertyName) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
-    const value = target[propertyName];
 
-    if ('date' === type && value instanceof Date) {
-        return value.toJSON();
-    }
-
-    if (type === 'classArray' && isArray(value)) {
-        return value.map(v => classToPlain(typeValue, v));
-    }
-
-    if (type === 'enum') {
-        return typeValue[value];
-    }
-
-    if (type === 'classMap' && isObject(value)) {
-        for (const [k, v] of eachPair(value as { [k: string]: any })) {
-            value[k] = classToPlain(typeValue, v);
+    function convert(value) {
+        if (value && 'uuid' === type && 'string' !== typeof value) {
+            return uuid4Stringify(value);
         }
-    }
 
-    if (type === 'class' && isObject(value)) {
-        return classToPlain(typeValue, clone(value, false));
-    }
-
-    return value;
-}
-
-export function propertyMongoToClass<T>(classType: ClassType<T>, target, propertyName) {
-    const {type, typeValue} = getReflectionType(classType, propertyName);
-    const value = target[propertyName];
-
-    if (value && 'uuid' === type && 'string' !== typeof value) {
-        return uuid4Stringify(value);
-    }
-
-    if ('objectId' === type && 'string' !== typeof value && value.toHexString()) {
-        return (<ObjectID>value).toHexString();
-    }
-
-    if (type === 'classArray' && isArray(value)) {
-        return value.map(v => mongoToClass(typeValue, v));
-    }
-
-    if (type === 'classMap' && isObject(value)) {
-        for (const [k, v] of eachPair(value as { [k: string]: any })) {
-            value[k] = mongoToClass(typeValue, v);
+        if ('objectId' === type && 'string' !== typeof value && value.toHexString()) {
+            return (<ObjectID>value).toHexString();
         }
+
+        if (type === 'class') {
+            return mongoToClass(typeValue, clone(value, false));
+        }
+
+        return value;
     }
 
-    if (type === 'class' && isObject(value)) {
-        return mongoToClass(typeValue, clone(value, false));
+    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+        return propertyValue.map(v => convert(v));
     }
 
-    return value;
+    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+        const result = {};
+        for (const i in propertyValue) {
+            result[i] = convert(propertyValue[i]);
+        }
+        return result;
+    }
+
+    return convert(propertyValue);
 }
 
 export function mongoToPlain<T>(classType: ClassType<T>, target) {
-    const cloned = clone(target, false);
-    const result = new classType; //important to have default values
+    return classToPlain(classType, mongoToClass(classType, target));
+}
 
-    for (const propertyName in cloned) {
-        if (!cloned.hasOwnProperty(propertyName)) continue;
+export function classToPlain<T>(classType: ClassType<T>, target: T): any {
+    const result = {};
 
-        result[propertyName] = propertyMongoToPlain(classType, target, propertyName);
+    const decoratorName = getDecorator(classType);
+    if (decoratorName) {
+        return propertyClassToPlain(classType, decoratorName, target[decoratorName]);
+    }
+
+    for (const propertyName of getRegisteredProperties(classType)) {
+        result[propertyName] = propertyClassToPlain(classType, propertyName, target[propertyName]);
     }
 
     deleteExcludedPropertiesFor(classType, result, 'plain');
-    return toObject(result);
+    return result;
 }
 
-export function classToPlain<T>(classType: ClassType<T>, target: T) {
-    const cloned = clone(target, false);
-
-    for (const propertyName in cloned) {
-        if (!cloned.hasOwnProperty(propertyName)) continue;
-
-        cloned[propertyName] = propertyClassToPlain(classType, cloned, propertyName);
-    }
-
-    deleteExcludedPropertiesFor(classType, cloned, 'plain');
-    return toObject(cloned);
-}
-
-export function plainToMongo<T>(classType: ClassType<T>, target) {
-    const cloned = clone(target, false);
-    const result = new classType; //important to have default values
-
-    for (const propertyName in cloned) {
-        if (!cloned.hasOwnProperty(propertyName)) continue;
-
-        result[propertyName] = propertyPlainToMongo(classType, propertyName, target[propertyName]);
-    }
-
-    deleteExcludedPropertiesFor(classType, result, 'mongo');
-    return toObject(result);
+export function plainToMongo<T>(classType: ClassType<T>, target): any {
+    return classToMongo(classType, plainToClass(classType, target));
 }
 
 export function classToMongo<T>(classType: ClassType<T>, target: T): any {
-    const cloned = clone(target, false);
-    const result = new classType; //important to have default values
+    const result = {};
 
-    for (const propertyName in cloned) {
-        if (!cloned.hasOwnProperty(propertyName)) continue;
+    const decoratorName = getDecorator(classType);
+    if (decoratorName) {
+        return propertyClassToMongo(classType, decoratorName, target[decoratorName]);
+    }
+
+    for (const propertyName of getRegisteredProperties(classType)) {
         result[propertyName] = propertyClassToMongo(classType, propertyName, target[propertyName]);
     }
 
     deleteExcludedPropertiesFor(classType, result, 'mongo');
-    return toObject(result);
+    return result;
 }
 
-export function partialObjectToMongo<T>(classType: ClassType<T>, target: object): any {
+export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: object = {}): {} {
     const cloned = clone(target, false);
 
-    for (const propertyName in cloned) {
+    for (const propertyName of getRegisteredProperties(classType)) {
         if (!cloned.hasOwnProperty(propertyName)) continue;
+
+        if (target[propertyName] instanceof RegExp) {
+            continue;
+        }
+
+        if ('$set' === propertyName) {
+            cloned[propertyName] = partialFilterObjectToMongo(classType, target[propertyName]);
+            continue;
+        }
+
+        if (propertyName.startsWith('$')) {
+            continue;
+        }
+
         cloned[propertyName] = propertyClassToMongo(classType, propertyName, target[propertyName]);
     }
 
@@ -353,10 +274,15 @@ export function mongoToClass<T>(classType: ClassType<T>, target: any): T {
         delete cloned['_id'];
     }
 
-    for (const propertyName in cloned) {
+    const decoratorName = getDecorator(classType);
+    if (decoratorName) {
+        return new classType(propertyMongoToClass(classType, target, decoratorName));
+    }
+
+    for (const propertyName of getRegisteredProperties(classType)) {
         if (!cloned.hasOwnProperty(propertyName)) continue;
 
-        cloned[propertyName] = propertyMongoToClass(classType, cloned, propertyName);
+        cloned[propertyName] = propertyMongoToClass(classType, cloned[propertyName], propertyName);
     }
 
     const parameterNames = getParameterNames(classType.prototype.constructor);
@@ -377,17 +303,20 @@ export function mongoToClass<T>(classType: ClassType<T>, target: any): T {
         }
     } as T;
 
-    deleteExcludedPropertiesFor(classType, item, 'class');
     return item;
 }
 
 export function plainToClass<T>(classType: ClassType<T>, target: object): T {
     const cloned = clone(target, false);
 
-    for (const propertyName in cloned) {
-        if (!cloned.hasOwnProperty(propertyName)) continue;
+    const decoratorName = getDecorator(classType);
+    if (decoratorName) {
+        return new classType(propertyPlainToClass(classType, decoratorName, cloned));
+    }
 
-        cloned[propertyName] = propertyPlainToClass(classType, cloned[propertyName], propertyName);
+    const propertyNames = getRegisteredProperties(classType);
+    for (const propertyName of propertyNames) {
+        cloned[propertyName] = propertyPlainToClass(classType, propertyName, cloned[propertyName]);
     }
 
     const parameterNames = getParameterNames(classType.prototype.constructor);
@@ -402,7 +331,6 @@ export function plainToClass<T>(classType: ClassType<T>, target: object): T {
             super(...args);
 
             for (const i in cloned) {
-                if (!cloned.hasOwnProperty(i)) continue;
                 if (undefined === cloned[i]) {
                     continue;
                 }
@@ -412,13 +340,6 @@ export function plainToClass<T>(classType: ClassType<T>, target: object): T {
         }
     } as T;
 
-    for (const propertyName in item) {
-        if (isExcluded(classType, propertyName, 'class')) {
-            delete item[propertyName];
-        }
-    }
-
-    deleteExcludedPropertiesFor(classType, item, 'class');
     return item;
 }
 
@@ -432,7 +353,7 @@ export function toObject<T>(item: T): object {
     return result;
 }
 
-export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item, target: 'class' | 'mongo' | 'plain') {
+export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item, target: 'mongo' | 'plain') {
     for (const propertyName in item) {
         if (isExcluded(classType, propertyName, target)) {
             delete item[propertyName];
@@ -449,38 +370,54 @@ export function getIdFieldValue<T>(classType: ClassType<T>, target): any {
 }
 
 export function getEntityName<T>(classType: ClassType<T>): string {
-    return Reflect.getMetadata('marshaller:entityName', classType.prototype);
+    const name = Reflect.getMetadata('marshaller:entityName', classType);
+
+    if (!name) {
+        throw new Error('No @Entity() defined for class ' + classType);
+    }
+
+    return name;
 }
 
-export function isExcluded<T>(classType: ClassType<T>, property, wantedTarget: 'class' | 'mongo' | 'plain'): boolean {
-    const targets = Reflect.getMetadata('marshaller:exclude', classType.prototype, property);
+export function getDecorator<T>(classType: ClassType<T>): string | null {
+    return Reflect.getMetadata('marshaller:dataDecorator', classType.prototype) || null;
+}
 
-    if (targets && targets.length > 0) {
-        for (const definedTarget of targets) {
-            if ('all' === definedTarget) {
-                return true;
-            }
+export function getRegisteredProperties<T>(classType: ClassType<T>): string[] {
+    return Reflect.getMetadata('marshaller:properties', classType.prototype) || [];
+}
 
-            if (definedTarget === wantedTarget) {
-                return true;
-            }
-        }
+export function isArrayType<T>(classType: ClassType<T>, property): boolean {
+    return Reflect.getMetadata('marshaller:isArray', classType.prototype, property) || false;
+}
+
+export function isMapType<T>(classType: ClassType<T>, property): boolean {
+    return Reflect.getMetadata('marshaller:isMap', classType.prototype, property) || false;
+}
+
+export function isExcluded<T>(classType: ClassType<T>, property, wantedTarget: 'mongo' | 'plain'): boolean {
+    const mode = Reflect.getMetadata('marshaller:exclude', classType.prototype, property);
+
+    if ('all' === mode) {
+        return true;
+    }
+
+    if (mode === wantedTarget) {
+        return true;
     }
 
     return false;
 }
 
 export function getDatabaseName<T>(classType: ClassType<T>): string | null {
-    const name = Reflect.getMetadata('marshaller:databaseName', classType.prototype);
-
-    return name || null;
+    return Reflect.getMetadata('marshaller:databaseName', classType) || null;
 }
 
 export function getCollectionName<T>(classType: ClassType<T>): string {
-    const name = Reflect.getMetadata('marshaller:collectionName', classType.prototype);
+    const name = Reflect.getMetadata('marshaller:collectionName', classType);
 
     if (!name) {
-        throw new Error('No name defined for class ' + classType);
+        throw new Error('No @Entity() defined for class ' + classType);
     }
 
     return name;

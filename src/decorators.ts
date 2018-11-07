@@ -1,9 +1,10 @@
 import {Types} from "./mapper";
+import {ClassType} from "./utils";
 
 export function Entity(name: string, collectionName?: string) {
     return (target) => {
-        Reflect.defineMetadata('marshaller:entityName', name, target.prototype);
-        Reflect.defineMetadata('marshaller:collectionName', collectionName || (name + 's'), target.prototype);
+        Reflect.defineMetadata('marshaller:entityName', name, target);
+        Reflect.defineMetadata('marshaller:collectionName', collectionName || (name + 's'), target);
     };
 }
 
@@ -13,27 +14,89 @@ export function DatabaseName(name: string) {
     };
 }
 
+export function Decorator() {
+    return (target, property) => {
+        Reflect.defineMetadata('marshaller:dataDecorator', property, target);
+    };
+}
+
 export function ID() {
     return (target, property) => {
+        registerProperty(target, property);
         Reflect.defineMetadata('marshaller:idField', property, target);
     };
 }
 
-export type ExcludeTarget = 'all' | 'class' | 'mongo' | 'plain';
-
-export function Exclude(targets: ExcludeTarget[] | ExcludeTarget = 'all') {
+/**
+ * Exclude in *toMongo and *toPlain.
+ */
+export function Exclude() {
     return (target, property) => {
-        if (!Array.isArray(targets)) {
-            targets = [targets];
-        }
-
-        Reflect.defineMetadata('marshaller:exclude', targets, target, property);
+        Reflect.defineMetadata('marshaller:exclude', 'all', target, property);
     };
 }
+
+export function ExcludeToMongo() {
+    return (target, property) => {
+        Reflect.defineMetadata('marshaller:exclude', 'mongo', target, property);
+    };
+}
+
+export function ExcludeToPlain() {
+    return (target, property) => {
+        Reflect.defineMetadata('marshaller:exclude', 'plain', target, property);
+    };
+}
+
+export function registerProperty(target, property) {
+    const properties = Reflect.getMetadata('marshaller:properties', target) || [];
+    if (-1 === properties.indexOf(property)) {
+        properties.push(property);
+    }
+
+    Reflect.defineMetadata('marshaller:properties', properties, target);
+}
+
 
 export function Type(type: Types) {
     return (target, property) => {
         Reflect.defineMetadata('marshaller:dataType', type, target, property);
+        registerProperty(target, property);
+    };
+}
+
+export function ArrayType() {
+    return (target, property) => {
+        Reflect.defineMetadata('marshaller:isArray', true, target, property);
+    };
+}
+
+export function MapType() {
+    return (target, property) => {
+        Reflect.defineMetadata('marshaller:isMap', true, target, property);
+    };
+}
+
+export function Class<T>(classType: ClassType<T>) {
+    return (target, property) => {
+        Type('class')(target, property);
+        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
+    };
+}
+
+export function ClassMap<T>(classType: ClassType<T>) {
+    return (target, property) => {
+        Class(classType)(target, property);
+        MapType()(target, property);
+        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
+    };
+}
+
+export function ClassArray<T>(classType: ClassType<T>) {
+    return (target, property) => {
+        Class(classType)(target, property);
+        ArrayType()(target, property);
+        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
     };
 }
 
@@ -59,6 +122,10 @@ export function AnyType() {
 
 export function NumberType() {
     return Type('number');
+}
+
+export function BooleanType() {
+    return Type('boolean');
 }
 
 export function EnumType(type) {

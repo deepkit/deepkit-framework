@@ -17,4 +17,5 @@ before_script:
 - sleep 5 # thanks mongo
 
 script:
-- ./node_modules/.bin/jest test.ts
+- ./node_modules/.bin/jest --coverage
+- cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
