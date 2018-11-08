@@ -155,9 +155,10 @@ export function BooleanType() {
     return Type('boolean');
 }
 
-export function EnumType(type) {
+export function EnumType(type, allowLabelsAsValue = false) {
     return (target, property) => {
         Type('enum')(target, property);
         Reflect.defineMetadata('marshaller:dataTypeValue', type, target, property);
+        Reflect.defineMetadata('marshaller:enum:allowLabelsAsValue', allowLabelsAsValue, target, property);
     }
 }

@@ -45,18 +45,32 @@ export function getEnumKeys(enumDefinition: any): any[] {
         .filter(v => -1 === labels.indexOf(v as string));
 }
 
-export function isValidEnumValue(enumDefinition: any, value: any) {
+export function isValidEnumValue(enumDefinition: any, value: any, allowLabelsAsValue = false) {
+    if (allowLabelsAsValue) {
+        const labels = getEnumLabels(enumDefinition);
+        if (-1 !== labels.indexOf(String(value))) {
+            return true;
+        }
+    }
+
     const keys = getEnumKeys(enumDefinition);
     return -1 !== keys.indexOf(+value) || -1 !== keys.indexOf(value) || -1 !== keys.indexOf(String(value));
 }
 
-export function getValidEnumValue(enumDefinition: any, value: any) {
-    const keys = getEnumKeys(enumDefinition);
-    if (-1 !== keys.indexOf(+value)) {
-        return +value;
+export function getValidEnumValue(enumDefinition: any, value: any, allowLabelsAsValue = false) {
+    if (allowLabelsAsValue) {
+        const labels = getEnumLabels(enumDefinition);
+        if (-1 !== labels.indexOf(String(value))) {
+            return enumDefinition[String(value)];
+        }
     }
+
+    const keys = getEnumKeys(enumDefinition);
     if (-1 !== keys.indexOf(value)) {
         return value;
+    }
+    if (-1 !== keys.indexOf(+value)) {
+        return +value;
     }
     if (-1 !== keys.indexOf(String(value))) {
         return String(value);

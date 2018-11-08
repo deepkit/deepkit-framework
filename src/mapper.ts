@@ -46,11 +46,12 @@ export function propertyClassToMongo<T>(classType: ClassType<T>, propertyName: s
         }
 
         if ('enum' === type) {
-            if (undefined !== value && !isValidEnumValue(typeValue, value)) {
+            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
+            if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
                 throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
             }
 
-            return getValidEnumValue(typeValue, value);
+            return getValidEnumValue(typeValue, value, allowLabelsAsValue);
         }
 
         if (type === 'class') {
@@ -101,11 +102,12 @@ export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, p
         }
 
         if ('enum' === type) {
-            if (undefined !== value && !isValidEnumValue(typeValue, value)) {
+            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
+            if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
                 throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
             }
 
-            return getValidEnumValue(typeValue, value);
+            return getValidEnumValue(typeValue, value, allowLabelsAsValue);
         }
 
         if (type === 'class') {
@@ -384,6 +386,10 @@ export function isArrayType<T>(classType: ClassType<T>, property): boolean {
 
 export function isMapType<T>(classType: ClassType<T>, property): boolean {
     return Reflect.getMetadata('marshaller:isMap', classType.prototype, property) || false;
+}
+
+export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property): boolean {
+    return Reflect.getMetadata('marshaller:enum:allowLabelsAsValue', classType.prototype, property) || false;
 }
 
 export function isExcluded<T>(classType: ClassType<T>, property, wantedTarget: 'mongo' | 'plain'): boolean {

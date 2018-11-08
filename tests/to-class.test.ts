@@ -357,6 +357,9 @@ test('enums', () => {
 
         @EnumType(Enum4)
         enum4: Enum4;
+
+        @EnumType(Enum4, true)
+        enumLabels: Enum4;
     }
 
     expect(getEnumLabels(Enum1)).toEqual(['first', 'second']);
@@ -404,23 +407,30 @@ test('enums', () => {
     expect(isValidEnumValue(Enum4, 200)).toBeTrue();
     expect(isValidEnumValue(Enum4, 'x')).toBeTrue();
 
+    expect(isValidEnumValue(Enum4, 'first', true)).toBeTrue();
+    expect(isValidEnumValue(Enum4, 'second', true)).toBeTrue();
+
     expect(getValidEnumValue(Enum4, 1)).toBeUndefined();
     expect(getValidEnumValue(Enum4, 200)).toBe('200');
     expect(getValidEnumValue(Enum4, '200')).toBe('200');
     expect(getValidEnumValue(Enum4, '2')).toBeUndefined();
+    expect(getValidEnumValue(Enum4, 'first', true)).toBe('200');
+    expect(getValidEnumValue(Enum4, 'second', true)).toBe('x');
 
     {
         const instance = plainToClass(Model, {
             enum1: 1,
             enum2: 'x',
             enum3: 100,
-            enum4: 'x'
+            enum4: 'x',
+            enumLabels: 'x'
         });
 
         expect(instance.enum1).toBe(Enum1.second);
         expect(instance.enum2).toBe(Enum2.second);
         expect(instance.enum3).toBe(Enum3.second);
         expect(instance.enum4).toBe(Enum4.second);
+        expect(instance.enumLabels).toBe(Enum4.second);
     }
 
     {
@@ -428,13 +438,15 @@ test('enums', () => {
             enum1: '1',
             enum2: 'x',
             enum3: '100',
-            enum4: 'x'
+            enum4: 'x',
+            enumLabels: 'second',
         });
 
         expect(instance.enum1).toBe(Enum1.second);
         expect(instance.enum2).toBe(Enum2.second);
         expect(instance.enum3).toBe(Enum3.second);
         expect(instance.enum4).toBe(Enum4.second);
+        expect(instance.enumLabels).toBe(Enum4.second);
     }
 
     expect(() => {
