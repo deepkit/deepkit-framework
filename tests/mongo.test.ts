@@ -1,11 +1,12 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
-    Database, DatabaseName, Entity, getCollectionName, getDatabaseName, ID, ObjectIdType,
+    DatabaseName, Entity, getCollectionName, getDatabaseName, ID, ObjectIdType,
     plainToClass, StringType, uuid4Stringify,
 } from "../";
 import {SimpleModel, SuperSimple} from "./entities";
-import {Binary, MongoClient, ObjectID} from "mongodb";
+import {Binary, MongoClient} from "mongodb";
+import {Database} from "../src/database";
 
 let connection: MongoClient;
 

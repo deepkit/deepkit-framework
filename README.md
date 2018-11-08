@@ -346,7 +346,8 @@ Example:
 
 ```typescript
 import {MongoClient} from "mongodb";
-import {Database, plainToClass} from "marshaller";
+import {plainToClass} from "marshaller";
+import {Database} from "marshaller/database";
 
 const connection = await MongoClient.connect(
     'mongodb://localhost:27017', 

@@ -1,9 +1,10 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
+    AnyType,
     ClassArray,
     classToMongo,
-    classToPlain, EnumType, Exclude,
+    classToPlain, cloneClass, EnumType, Exclude,
     getEntityName, getEnumKeys, getEnumLabels,
     getIdField,
     getIdFieldValue, getValidEnumValue, isExcluded, isValidEnumValue, mongoToClass, NumberType, ObjectIdType,
@@ -287,6 +288,40 @@ test('simple string + number', () => {
 
     expect(instance.name).toBe('1');
     expect(instance.age).toBe(2);
+});
+
+
+test('cloneClass', () => {
+    class SubModel {
+        @StringType()
+        name: string;
+    }
+
+    class Model {
+       @AnyType()
+       data: any;
+
+       @ClassArray(SubModel)
+       subs: SubModel[];
+    }
+
+    const data = {
+        a: 'true'
+    };
+
+    const instance = plainToClass(Model, {
+        data: data,
+        subs: [{name: 'foo'}]
+    });
+
+    expect(instance.data).toEqual({a: 'true'});
+    expect(instance.data).not.toBe(data);
+
+    const cloned = cloneClass(instance);
+    expect(cloned.data).toEqual({a: 'true'});
+    expect(cloned.data).not.toBe(data);
+
+    expect(cloned.subs[0]).not.toBe(instance.subs[0]);
 });
 
 test('enums', () => {

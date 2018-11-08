@@ -202,6 +202,10 @@ export function propertyMongoToClass<T>(classType: ClassType<T>, propertyValue, 
     return convert(propertyValue);
 }
 
+export function cloneClass<T>(target: T): T {
+    return plainToClass(target.constructor as ClassType<T>, classToPlain(target.constructor as ClassType<T>, target));
+}
+
 export function mongoToPlain<T>(classType: ClassType<T>, target) {
     return classToPlain(classType, mongoToClass(classType, target));
 }

@@ -1,6 +1,6 @@
 import {v4} from 'uuid';
 import * as mongoUuid from 'mongo-uuid';
-import {Binary} from 'mongodb';
+import {Binary} from 'bson';
 
 export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);

@@ -17,8 +17,6 @@ import {
     isArrayType, isMapType,
     plainToClass
 } from "../src/mapper";
-import {types} from "util";
-import isMap = module
 
 test('test entity database', async () => {
     @Entity('DifferentDataBase', 'differentCollection')

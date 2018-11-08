@@ -5,7 +5,8 @@ import {
     getDatabaseName,
     getIdField,
     mongoToClass,
-    partialFilterObjectToMongo, propertyClassToMongo
+    partialFilterObjectToMongo,
+    propertyClassToMongo
 } from "./mapper";
 import {MongoClient, Collection} from 'mongodb';
 
