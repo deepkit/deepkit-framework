@@ -10,7 +10,7 @@ import {
     UUIDType,
     uuid,
     Exclude,
-    ObjectIdType,
+    MongoIdType,
     Decorator,
     Class, ExcludeToMongo, ExcludeToPlain, ArrayType
 } from "../";
@@ -117,7 +117,7 @@ export class SimpleModel {
 @Entity('SuperSimple')
 export class SuperSimple {
     @ID()
-    @ObjectIdType()
+    @MongoIdType()
     _id: string;
 
     @StringType()
@@ -127,7 +127,7 @@ export class SuperSimple {
 @Entity('BaseClass')
 export class BaseClass {
     @ID()
-    @ObjectIdType()
+    @MongoIdType()
     _id: string;
 }
 

@@ -109,11 +109,7 @@ export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, p
         }
 
         if (type === 'class') {
-            try {
-                return plainToClass(typeValue, value);
-            } catch (e) {
-                throw new Error(`Could not parse property ${propertyName}`);
-            }
+            return plainToClass(typeValue, value);
         }
 
         return value;
@@ -253,15 +249,6 @@ export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: o
         if (!cloned.hasOwnProperty(propertyName)) continue;
 
         if (target[propertyName] instanceof RegExp) {
-            continue;
-        }
-
-        if ('$set' === propertyName) {
-            cloned[propertyName] = partialFilterObjectToMongo(classType, target[propertyName]);
-            continue;
-        }
-
-        if (propertyName.startsWith('$')) {
             continue;
         }
 

@@ -11,12 +11,13 @@
   "license": "MIT",
   "peerDependencies": {
     "reflect-metadata": "^0.1.12",
-    "mongodb": "^3.1.8"
+    "mongodb": "^3.1.8",
+    "@nestjs/common": "^5.0.1"
   },
   "dependencies": {
-    "mongo-uuid": "^1.0.0",
     "clone": "^2.1.2",
     "get-parameter-names": "^0.3.0",
+    "mongo-uuid": "^1.0.0",
     "uuid": "^3.2.1"
   },
   "devDependencies": {

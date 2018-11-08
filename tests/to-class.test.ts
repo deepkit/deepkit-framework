@@ -7,7 +7,7 @@ import {
     classToPlain, cloneClass, EnumType, Exclude,
     getEntityName, getEnumKeys, getEnumLabels,
     getIdField,
-    getIdFieldValue, getValidEnumValue, isExcluded, isValidEnumValue, mongoToClass, NumberType, ObjectIdType,
+    getIdFieldValue, getValidEnumValue, isExcluded, isValidEnumValue, mongoToClass, NumberType, MongoIdType,
     plainToClass, plainToMongo, StringType, uuid, UUIDType,
 } from "../";
 import {now, SimpleModel, Plan, SubModel, CollectionWrapper, StringCollectionWrapper} from "./entities";

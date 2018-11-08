@@ -6,7 +6,7 @@ import {
     DatabaseName,
     Entity,
     ID, MapType,
-    ObjectIdType,
+    MongoIdType,
     StringType
 } from "../src/decorators";
 import {
@@ -23,7 +23,7 @@ test('test entity database', async () => {
     @DatabaseName('testing1')
     class DifferentDataBase {
         @ID()
-        @ObjectIdType()
+        @MongoIdType()
         _id: string;
 
         @StringType()
@@ -70,7 +70,7 @@ test('test properties', () => {
     @Entity('Model')
     class Model {
         @ID()
-        @ObjectIdType()
+        @MongoIdType()
         _id: string;
 
         @StringType()

@@ -1,5 +1,6 @@
 import {Types} from "./mapper";
 import {ClassType} from "./utils";
+import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validation";
 
 export function Entity(name: string, collectionName?: string) {
     return (target) => {
@@ -100,7 +101,15 @@ export function ClassArray<T>(classType: ClassType<T>) {
     };
 }
 
-export function ObjectIdType() {
+function concat(...decorators: ((target, property) => void)[]) {
+    return (target, property) => {
+        for (const decorator of decorators) {
+            decorator(target, property);
+        }
+    }
+}
+
+export function MongoIdType() {
     return Type('objectId');
 }
 
@@ -113,7 +122,15 @@ export function DateType() {
 }
 
 export function StringType() {
-    return Type('string');
+    class Validator implements PropertyValidator {
+        async validate<T>(value, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+            if ('string' !== typeof value) {
+                return new PropertyValidatorError('No String given');
+            }
+        }
+    }
+
+    return concat(AddValidator(Validator), Type('string'));
 }
 
 export function AnyType() {
@@ -121,7 +138,17 @@ export function AnyType() {
 }
 
 export function NumberType() {
-    return Type('number');
+    class Validator implements PropertyValidator {
+        async validate<T>(value, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+            value = parseFloat(value);
+
+            if (!Number.isFinite(value)) {
+                return new PropertyValidatorError('No Number given');
+            }
+        }
+    }
+
+    return concat(AddValidator(Validator), Type('number'));
 }
 
 export function BooleanType() {

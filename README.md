@@ -4,9 +4,11 @@
 [![npm version](https://badge.fury.io/js/marshaller.svg)](https://badge.fury.io/js/marshaller)
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshaller/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshaller?branch=master)
 
-Marshaller is a JSON/HTTP-Request serialiser and MongoDB entity manager
-for TypeScript and has been built to make data transportation
-between HTTP, Node and MongoDB super easy.
+Marshaller is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
+JSON-representable data from JSON to class instance to Mongo and vice versa.
+
+If you have data models in your frontend, Node backend and MongoDB collections,
+then Marshaller helps you to convert between all those parties correctly.
 
 ![Diagram](https://raw.github.com/marcj/marshaller/master/docs/assets/diagram.png)
 
@@ -14,6 +16,22 @@ between HTTP, Node and MongoDB super easy.
 
 ```
 npm install marshaller
+```
+
+Make sure your `tsconfig.json` includes compilation of marshaller:
+
+```
+  "include": [
+    "node_modules/marshaller/**/*.ts",
+  ]
+```
+
+If you use it in browser (Angular etc) environments as well, make sure to exclude database.ts:
+
+```
+  "exclude": [
+    "node_modules/marshaller/database.ts",
+  ]
 ```
 
 ## Example Entity
@@ -111,14 +129,14 @@ console.log(instance);
 `@ID()` allows you to define the id of the entity. There can be only one
 ID. Properties marked as ID on `_id` will receive its value after
 inserting the instance in MongoDB using `Database.add()`. You need to
-define either `@ObjectIdType()` or `@UUIDType` together with `@ID()`.
+define either `@MongoIdType()` or `@UUIDType` together with `@ID()`.
 
 
-### ObjectIdType
+### MongoIdType
 
-`@UUIDType()` stores a ObjectID. In TypeScript and JSON it's string, and in
+`@MongoIdType()` stores an ObjectID. In TypeScript and JSON it's string, and in
 MongoDB we store it automatically using Mongo's `ObjectID`.
-You can have multiple properties using `@ObjectIdType()`.
+You can have multiple properties using `@MongoIdType()`.
 
 Data types:
 

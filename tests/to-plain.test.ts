@@ -1,6 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {classToPlain, DateType, ID, mongoToPlain, ObjectIdType,} from "../";
+import {classToPlain, DateType, ID, mongoToPlain, MongoIdType,} from "../";
 import {Plan, SimpleModel, SubModel} from "./entities";
 import {ObjectID} from "bson";
 
@@ -47,7 +47,7 @@ test('test simple model all fields', () => {
 test('mongo to plain', () => {
     class Model {
         @ID()
-        @ObjectIdType()
+        @MongoIdType()
         _id: string;
 
         @DateType()

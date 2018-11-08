@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
-    DatabaseName, Entity, getCollectionName, getDatabaseName, ID, ObjectIdType,
+    DatabaseName, Entity, getCollectionName, getDatabaseName, ID, MongoIdType,
     plainToClass, StringType, uuid4Stringify,
 } from "../";
 import {SimpleModel, SuperSimple} from "./entities";
@@ -160,7 +160,7 @@ test('test databaseName', async () => {
     @DatabaseName('testing2')
     class DifferentDataBase {
         @ID()
-        @ObjectIdType()
+        @MongoIdType()
         _id: string;
 
         @StringType()
