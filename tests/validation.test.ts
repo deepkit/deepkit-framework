@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import {Class, ClassArray, NumberType, StringType, ClassMap} from "../src/decorators";
+import {Class, ClassArray, NumberType, StringType, ClassMap, ArrayType, MapType} from "../src/decorators";
 import {Optional, validate} from "../src/validation";
 import {ValidationPipe} from '../nest';
 import {BadRequestException} from '@nestjs/common';
@@ -15,11 +15,22 @@ test('test required', async () => {
 
         @Optional()
         optional: string;
+
+        @Optional()
+        @MapType()
+        map: {[name: string]: string};
+
+        @Optional()
+        @ArrayType()
+        array: string[];
     }
 
     const instance = new Model;
     expect(await validate(Model, instance)).toBeArrayOfSize(1);
     expect(await validate(Model, instance)).toEqual([{message: "No value given", path: 'name'}]);
+
+    expect(await validate(Model, {name: 'foo', map: true})).toEqual([{message: "No Map given", path: 'map'}]);
+    expect(await validate(Model, {name: 'foo', array: 233})).toEqual([{message: "No Array given", path: 'array'}]);
 
     {
         const pipe = new ValidationPipe();
@@ -110,8 +121,8 @@ test('test string', async () => {
     expect(await validate(Model, {id: '2'})).toEqual([]);
     expect(await validate(Model, {id: 2})).toEqual([{message: "No String given", path: 'id'}]);
     expect(await validate(Model, {id: null})).toEqual([{message: "No String given", path: 'id'}]);
-    expect(await validate(Model, {id: undefined})).toEqual([{message: "No value given", path: 'id'}]);
-    expect(await validate(Model, {})).toEqual([{message: "No value given", path: 'id'}]);
+    expect(await validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
+    expect(await validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
         @StringType()
@@ -136,8 +147,8 @@ test('test number', async () => {
     expect(await validate(Model, {id: '3'})).toEqual([]);
     expect(await validate(Model, {id: 'a'})).toEqual([{message: "No Number given", path: 'id'}]);
     expect(await validate(Model, {id: null})).toEqual([{message: "No Number given", path: 'id'}]);
-    expect(await validate(Model, {id: undefined})).toEqual([{message: "No value given", path: 'id'}]);
-    expect(await validate(Model, {})).toEqual([{message: "No value given", path: 'id'}]);
+    expect(await validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
+    expect(await validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
         @NumberType()

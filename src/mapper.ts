@@ -98,7 +98,10 @@ export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, p
         }
 
         if ('boolean' === type && 'boolean' !== typeof value) {
-            return !!value;
+            if ('true' === value || '1' === value  || 1 === value) return true;
+            if ('false' === value || '0' === value || 0 === value) return false;
+
+            return true === value;
         }
 
         if ('enum' === type) {
@@ -418,4 +421,17 @@ export function getCollectionName<T>(classType: ClassType<T>): string {
     }
 
     return name;
+}
+
+export function applyDefaultValues<T>(classType: ClassType<T>, value: object): object {
+    const valueWithDefaults = clone(value, false);
+    const instance = plainToClass(classType, value);
+
+    for (const i of getRegisteredProperties(classType)) {
+        if (undefined === value[i]) {
+            valueWithDefaults[i] = instance[i];
+        }
+    }
+
+    return valueWithDefaults;
 }

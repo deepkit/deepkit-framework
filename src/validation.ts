@@ -1,5 +1,5 @@
 import {ClassType} from "./utils";
-import {getReflectionType, getRegisteredProperties, isArrayType, isMapType} from "./mapper";
+import {applyDefaultValues, getReflectionType, getRegisteredProperties, isArrayType, isMapType} from "./mapper";
 
 export function addValidator<T>(target, property, validator: ClassType<T>) {
     const validators = Reflect.getMetadata('marshaller:validators', target, property) || [];
@@ -60,9 +60,13 @@ export class ValidationError {
     }
 }
 
-export async function validate<T>(classType: ClassType<T>, item: object, path?: string): Promise<ValidationError[]> {
+export async function validate<T>(classType: ClassType<T>, item: T | object, path?: string): Promise<ValidationError[]> {
     const properties = getRegisteredProperties(classType);
     const errors: ValidationError[] = [];
+
+    if (!(item instanceof classType)) {
+        item = applyDefaultValues(classType, item as object);
+    }
 
     async function handleValidator(
         validatorType: ClassType<PropertyValidator>,

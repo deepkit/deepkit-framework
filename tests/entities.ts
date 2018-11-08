@@ -12,7 +12,7 @@ import {
     Exclude,
     MongoIdType,
     Decorator,
-    Class, ExcludeToMongo, ExcludeToPlain, ArrayType
+    Class, ExcludeToMongo, ExcludeToPlain, ArrayType, BooleanType
 } from "../";
 
 @Entity('sub')
@@ -76,6 +76,9 @@ export class SimpleModel {
 
     @NumberType()
     type: number = 0;
+
+    @BooleanType()
+    yesNo: boolean = false;
 
     @EnumType(Plan)
     plan: Plan = Plan.DEFAULT;

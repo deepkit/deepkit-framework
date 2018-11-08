@@ -46,6 +46,7 @@ test('test simple model all fields', () => {
         name: 'myName',
         type: 5,
         plan: 1,
+        yesNo: '1',
         created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
         children: [
             {label: 'fooo'},
@@ -65,6 +66,7 @@ test('test simple model all fields', () => {
     expect(instance.id).toBeString();
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
+    expect(instance.yesNo).toBe(true);
     expect(instance.plan).toBe(Plan.PRO);
     expect(instance.created).toBeDate();
     expect(instance.created).toEqual(new Date('Sat Oct 13 2018 14:17:35 GMT+0200'));
@@ -100,6 +102,7 @@ test('test simple model with not mapped fields', () => {
     const instance = plainToClass(SimpleModel, {
         name: 'myName',
         type: 5,
+        yesNo: '1',
         notMapped: {a: 'foo'}
     });
 
@@ -107,6 +110,7 @@ test('test simple model with not mapped fields', () => {
     expect(instance.id).toBeString();
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
+    expect(instance.yesNo).toBe(true);
     expect(instance.notMapped).toEqual({a: 'foo'});
     expect(instance.excluded).toBe('default');
     expect(instance.excludedForPlain).toBe('excludedForPlain');
@@ -117,12 +121,14 @@ test('test simple model with not mapped fields', () => {
         id: uuid(),
         name: 'myName',
         type: 5,
+        yesNo: 'eads',
         notMapped: {a: 'foo'}
     });
 
     expect(mongoEntry.id).toBeInstanceOf(Binary);
     expect(mongoEntry.name).toBe('myName');
     expect(mongoEntry.type).toBe(5);
+    expect(mongoEntry.yesNo).toBe(false);
     expect(mongoEntry.notMapped).toBeUndefined();
     expect(mongoEntry.excluded).toBeUndefined();
     expect(mongoEntry.excludedForPlain).toBe('excludedForPlain');

@@ -68,12 +68,35 @@ export function Type(type: Types) {
 
 export function ArrayType() {
     return (target, property) => {
+        class Validator implements PropertyValidator {
+            async validate<T>(value, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+                if (!Array.isArray(value)) {
+                    return new PropertyValidatorError('No Array given');
+                }
+            }
+        }
+
+        AddValidator(Validator)(target, property);
+        registerProperty(target, property);
         Reflect.defineMetadata('marshaller:isArray', true, target, property);
     };
 }
 
 export function MapType() {
     return (target, property) => {
+
+        class Validator implements PropertyValidator {
+            async validate<T>(value, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+                console.log('map', property, typeof value);
+                if ('object' !== typeof value) {
+                    return new PropertyValidatorError('No Map given');
+                }
+            }
+        }
+
+
+        AddValidator(Validator)(target, property);
+        registerProperty(target, property);
         Reflect.defineMetadata('marshaller:isMap', true, target, property);
     };
 }

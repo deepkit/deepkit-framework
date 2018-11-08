@@ -130,13 +130,57 @@ test('more decorator', () => {
         whatever: any;
     }
 
-    const instance = plainToClass(Model, {
-        bool: 'wow',
-        whatever: {'any': false}
-    });
+    {
+        const instance = plainToClass(Model, {
+            bool: 'wow',
+            whatever: {'any': false}
+        });
 
-    expect(instance.bool).toBeTrue();
-    expect(instance.whatever).toEqual({any: false});
+        expect(instance.bool).toBeFalse();
+        expect(instance.whatever).toEqual({any: false});
+    }
+
+    {
+        const instance = plainToClass(Model, {
+            bool: 'true',
+        });
+        expect(instance.bool).toBeTrue();
+    }
+
+    {
+        const instance = plainToClass(Model, {
+            bool: '1',
+        });
+        expect(instance.bool).toBeTrue();
+    }
+
+    {
+        const instance = plainToClass(Model, {
+            bool: 1,
+        });
+        expect(instance.bool).toBeTrue();
+    }
+
+    {
+        const instance = plainToClass(Model, {
+            bool: 'false',
+        });
+        expect(instance.bool).toBeFalse();
+    }
+
+    {
+        const instance = plainToClass(Model, {
+            bool: '0',
+        });
+        expect(instance.bool).toBeFalse();
+    }
+
+    {
+        const instance = plainToClass(Model, {
+            bool: 0,
+        });
+        expect(instance.bool).toBeFalse();
+    }
 });
 
 test('more array/map', () => {
