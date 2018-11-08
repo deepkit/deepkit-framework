@@ -14,6 +14,7 @@ cache:
 
 before_script:
 - npm install
+- npm install reflect-metadata mongodb
 - sleep 5 # thanks mongo
 
 script:
