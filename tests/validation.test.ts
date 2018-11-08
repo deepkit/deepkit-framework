@@ -1,12 +1,17 @@
 import 'reflect-metadata';
 import {Class, ClassArray, NumberType, StringType, ClassMap} from "../src/decorators";
 import {Optional, validate} from "../src/validation";
+import {ValidationPipe} from '../nest';
+import {BadRequestException} from '@nestjs/common';
 
 test('test required', async () => {
 
     class Model {
         @StringType()
-        id: string;
+        id: string = '1';
+
+        @StringType()
+        name: string;
 
         @Optional()
         optional: string;
@@ -14,10 +19,45 @@ test('test required', async () => {
 
     const instance = new Model;
     expect(await validate(Model, instance)).toBeArrayOfSize(1);
-    expect(await validate(Model, instance)).toEqual([{message: "No value given", path: 'id'}]);
+    expect(await validate(Model, instance)).toEqual([{message: "No value given", path: 'name'}]);
 
-    instance.id = '2';
-    expect(await validate(Model, instance)).toBeArrayOfSize(0);
+    {
+        const pipe = new ValidationPipe();
+        const result = await pipe.transform({name: 'Foo', optional: 'two'}, {type: 'body', metatype: Model});
+        expect(result).not.toBeInstanceOf(Model);
+        expect(result.id).toBe('1'); //because ValidationPipe is reading default values
+    }
+
+    {
+        const pipe = new ValidationPipe({transform: true});
+        const result = await pipe.transform({name: 'Foo', optional: 'two'}, {type: 'body', metatype: Model});
+        expect(result).toBeInstanceOf(Model);
+    }
+
+    {
+        const pipe = new ValidationPipe({transform: true});
+        try {
+            const result = await pipe.transform({optional: 'two'}, {type: 'body', metatype: Model});
+            fail('no exception thrown')
+        } catch (error) {
+            expect(error).toBeInstanceOf(BadRequestException);
+            expect(error.message).toEqual({"error": "Bad Request", "message": [{"message": "No value given", "path": "name"}], "statusCode": 400});
+        }
+    }
+
+    {
+        const pipe = new ValidationPipe({transform: true, disableErrorMessages: true});
+        try {
+            const result = await pipe.transform({optional: 'two'}, {type: 'body', metatype: Model});
+            fail('no exception thrown')
+        } catch (error) {
+            expect(error).toBeInstanceOf(BadRequestException);
+            expect(error.message).toEqual({"error": "Bad Request", "statusCode": 400});
+        }
+    }
+
+    instance.name = 'Pete';
+    expect(await validate(Model, instance)).toEqual([]);
 });
 
 

@@ -12,7 +12,8 @@
   "peerDependencies": {
     "reflect-metadata": "^0.1.12",
     "mongodb": "^3.1.8",
-    "@nestjs/common": "^5.0.1"
+    "@nestjs/common": "^5.0.1",
+    "@nestjs/core": "^5.0.1"
   },
   "dependencies": {
     "clone": "^2.1.2",
