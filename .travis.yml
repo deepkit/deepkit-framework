@@ -16,7 +16,7 @@ cache:
 before_script:
 - npm install
 - npm install -g coveralls lerna
-- lerna bootstrap --no-package-lock --no-ci
+- lerna bootstrap --hoist --no-ci
 - sleep 2 # thanks mongo
 
 script:
