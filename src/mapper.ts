@@ -16,8 +16,8 @@ import {ObjectID} from "bson";
 export type Types = 'objectId' | 'uuid' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
 
 export function getReflectionType<T>(classType: ClassType<T>, propertyName: string): { type: Types | null, typeValue: any | null } {
-    const type = Reflect.getMetadata('marshaller:dataType', classType.prototype, propertyName) || null;
-    const value = Reflect.getMetadata('marshaller:dataTypeValue', classType.prototype, propertyName) || null;
+    const type = Reflect.getMetadata('marshal:dataType', classType.prototype, propertyName) || null;
+    const value = Reflect.getMetadata('marshal:dataTypeValue', classType.prototype, propertyName) || null;
 
     return {
         type: type,
@@ -358,7 +358,7 @@ export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: an
 }
 
 export function getIdField<T>(classType: ClassType<T>): string | null {
-    return Reflect.getMetadata('marshaller:idField', classType.prototype) || null;
+    return Reflect.getMetadata('marshal:idField', classType.prototype) || null;
 }
 
 export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
@@ -367,7 +367,7 @@ export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
 }
 
 export function getEntityName<T>(classType: ClassType<T>): string {
-    const name = Reflect.getMetadata('marshaller:entityName', classType);
+    const name = Reflect.getMetadata('marshal:entityName', classType);
 
     if (!name) {
         throw new Error('No @Entity() defined for class ' + classType);
@@ -377,27 +377,27 @@ export function getEntityName<T>(classType: ClassType<T>): string {
 }
 
 export function getDecorator<T>(classType: ClassType<T>): string | null {
-    return Reflect.getMetadata('marshaller:dataDecorator', classType.prototype) || null;
+    return Reflect.getMetadata('marshal:dataDecorator', classType.prototype) || null;
 }
 
 export function getRegisteredProperties<T>(classType: ClassType<T>): string[] {
-    return Reflect.getMetadata('marshaller:properties', classType.prototype) || [];
+    return Reflect.getMetadata('marshal:properties', classType.prototype) || [];
 }
 
 export function isArrayType<T>(classType: ClassType<T>, property: string): boolean {
-    return Reflect.getMetadata('marshaller:isArray', classType.prototype, property) || false;
+    return Reflect.getMetadata('marshal:isArray', classType.prototype, property) || false;
 }
 
 export function isMapType<T>(classType: ClassType<T>, property: string): boolean {
-    return Reflect.getMetadata('marshaller:isMap', classType.prototype, property) || false;
+    return Reflect.getMetadata('marshal:isMap', classType.prototype, property) || false;
 }
 
 export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property: string): boolean {
-    return Reflect.getMetadata('marshaller:enum:allowLabelsAsValue', classType.prototype, property) || false;
+    return Reflect.getMetadata('marshal:enum:allowLabelsAsValue', classType.prototype, property) || false;
 }
 
 export function isExcluded<T>(classType: ClassType<T>, property: string, wantedTarget: 'mongo' | 'plain'): boolean {
-    const mode = Reflect.getMetadata('marshaller:exclude', classType.prototype, property);
+    const mode = Reflect.getMetadata('marshal:exclude', classType.prototype, property);
 
     if ('all' === mode) {
         return true;
@@ -411,11 +411,11 @@ export function isExcluded<T>(classType: ClassType<T>, property: string, wantedT
 }
 
 export function getDatabaseName<T>(classType: ClassType<T>): string | null {
-    return Reflect.getMetadata('marshaller:databaseName', classType) || null;
+    return Reflect.getMetadata('marshal:databaseName', classType) || null;
 }
 
 export function getCollectionName<T>(classType: ClassType<T>): string {
-    const name = Reflect.getMetadata('marshaller:collectionName', classType);
+    const name = Reflect.getMetadata('marshal:collectionName', classType);
 
     if (!name) {
         throw new Error('No @Entity() defined for class ' + classType);

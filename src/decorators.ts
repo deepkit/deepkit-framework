@@ -6,27 +6,27 @@ import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validat
 
 export function Entity(name: string, collectionName?: string) {
     return (target: Object) => {
-        Reflect.defineMetadata('marshaller:entityName', name, target);
-        Reflect.defineMetadata('marshaller:collectionName', collectionName || (name + 's'), target);
+        Reflect.defineMetadata('marshal:entityName', name, target);
+        Reflect.defineMetadata('marshal:collectionName', collectionName || (name + 's'), target);
     };
 }
 
 export function DatabaseName(name: string) {
     return (target: Object) => {
-        Reflect.defineMetadata('marshaller:databaseName', name, target);
+        Reflect.defineMetadata('marshal:databaseName', name, target);
     };
 }
 
 export function Decorator() {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshaller:dataDecorator', property, target);
+        Reflect.defineMetadata('marshal:dataDecorator', property, target);
     };
 }
 
 export function ID() {
     return (target: Object, property: string) => {
         registerProperty(target, property);
-        Reflect.defineMetadata('marshaller:idField', property, target);
+        Reflect.defineMetadata('marshal:idField', property, target);
     };
 }
 
@@ -35,35 +35,35 @@ export function ID() {
  */
 export function Exclude() {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshaller:exclude', 'all', target, property);
+        Reflect.defineMetadata('marshal:exclude', 'all', target, property);
     };
 }
 
 export function ExcludeToMongo() {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshaller:exclude', 'mongo', target, property);
+        Reflect.defineMetadata('marshal:exclude', 'mongo', target, property);
     };
 }
 
 export function ExcludeToPlain() {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshaller:exclude', 'plain', target, property);
+        Reflect.defineMetadata('marshal:exclude', 'plain', target, property);
     };
 }
 
 export function registerProperty(target: Object, property: string) {
-    const properties = Reflect.getMetadata('marshaller:properties', target) || [];
+    const properties = Reflect.getMetadata('marshal:properties', target) || [];
     if (-1 === properties.indexOf(property)) {
         properties.push(property);
     }
 
-    Reflect.defineMetadata('marshaller:properties', properties, target);
+    Reflect.defineMetadata('marshal:properties', properties, target);
 }
 
 
 export function Type(type: Types) {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshaller:dataType', type, target, property);
+        Reflect.defineMetadata('marshal:dataType', type, target, property);
         registerProperty(target, property);
     };
 }
@@ -80,7 +80,7 @@ export function ArrayType() {
 
         AddValidator(Validator)(target, property);
         registerProperty(target, property);
-        Reflect.defineMetadata('marshaller:isArray', true, target, property);
+        Reflect.defineMetadata('marshal:isArray', true, target, property);
     };
 }
 
@@ -98,14 +98,14 @@ export function MapType() {
 
         AddValidator(Validator)(target, property);
         registerProperty(target, property);
-        Reflect.defineMetadata('marshaller:isMap', true, target, property);
+        Reflect.defineMetadata('marshal:isMap', true, target, property);
     };
 }
 
 export function Class<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
         Type('class')(target, property);
-        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
+        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
     };
 }
 
@@ -113,7 +113,7 @@ export function ClassMap<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
         Class(classType)(target, property);
         MapType()(target, property);
-        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
+        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
     };
 }
 
@@ -121,7 +121,7 @@ export function ClassArray<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
         Class(classType)(target, property);
         ArrayType()(target, property);
-        Reflect.defineMetadata('marshaller:dataTypeValue', classType, target, property);
+        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
     };
 }
 
@@ -182,7 +182,7 @@ export function BooleanType() {
 export function EnumType(type: any, allowLabelsAsValue = false) {
     return (target: Object, property: string) => {
         Type('enum')(target, property);
-        Reflect.defineMetadata('marshaller:dataTypeValue', type, target, property);
-        Reflect.defineMetadata('marshaller:enum:allowLabelsAsValue', allowLabelsAsValue, target, property);
+        Reflect.defineMetadata('marshal:dataTypeValue', type, target, property);
+        Reflect.defineMetadata('marshal:enum:allowLabelsAsValue', allowLabelsAsValue, target, property);
     }
 }
