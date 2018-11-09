@@ -1,5 +1,4 @@
 {
-  "root": false,
   "name": "@marcj/marshal",
   "version": "0.2.0",
   "description": "Marshal is a library to marshal JSON-representable data from JSON to class instance to Mongo and vice versa.",
@@ -45,5 +44,8 @@
       "**/*.spec.ts"
     ],
     "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
