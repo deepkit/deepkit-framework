@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 import {Types} from "./mapper";
 import {ClassType} from "./utils";
 import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validation";
