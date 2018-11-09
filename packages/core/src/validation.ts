@@ -2,12 +2,12 @@ import {ClassType} from "./utils";
 import {applyDefaultValues, getReflectionType, getRegisteredProperties, isArrayType, isMapType} from "./mapper";
 
 export function addValidator<T>(target: Object, property: string, validator: ClassType<T>) {
-    const validators = Reflect.getMetadata('marshaller:validators', target, property) || [];
+    const validators = Reflect.getMetadata('marshal:validators', target, property) || [];
     if (-1 === validators.indexOf(validator)) {
         validators.push(validator);
     }
 
-    Reflect.defineMetadata('marshaller:validators', validators, target, property);
+    Reflect.defineMetadata('marshal:validators', validators, target, property);
 }
 
 export class PropertyValidatorError {
@@ -23,7 +23,7 @@ export interface PropertyValidator {
 }
 
 export function getValidators<T>(classType: ClassType<T>, propertyName: string): ClassType<PropertyValidator>[] {
-    return Reflect.getMetadata('marshaller:validators', classType.prototype, propertyName) || [];
+    return Reflect.getMetadata('marshal:validators', classType.prototype, propertyName) || [];
 }
 
 export function AddValidator<T>(validator: ClassType<T>) {
@@ -42,12 +42,12 @@ export class RequiredValidator implements PropertyValidator {
 
 export function Optional() {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshaller:isOptional', true, target, property);
+        Reflect.defineMetadata('marshal:isOptional', true, target, property);
     };
 }
 
 export function isOptional<T>(classType: ClassType<T>, property: string): boolean {
-    return Reflect.getMetadata('marshaller:isOptional', classType.prototype, property) || false;
+    return Reflect.getMetadata('marshal:isOptional', classType.prototype, property) || false;
 }
 
 export class ValidationError {

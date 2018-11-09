@@ -1,16 +1,16 @@
 # Marshal
 
-[![Build Status](https://travis-ci.com/marcj/marshaller.svg?branch=master)](https://travis-ci.com/marcj/marshaller)
-[![npm version](https://badge.fury.io/js/marshaller.svg)](https://badge.fury.io/js/marshaller)
-[![Coverage Status](https://coveralls.io/repos/github/marcj/marshaller/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshaller?branch=master)
+[![Build Status](https://travis-ci.com/marcj/marshal.svg?branch=master)](https://travis-ci.com/marcj/marshal)
+[![npm version](https://badge.fury.io/js/marshal.svg)](https://badge.fury.io/js/marshal)
+[![Coverage Status](https://coveralls.io/repos/github/marcj/marshal/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal?branch=master)
 
-Marshaller is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
+Marshal is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
 JSON-representable data from JSON to class instance to Mongo and vice versa.
 
 If you have data models in your frontend, Node backend and MongoDB collections,
-then Marshaller helps you to convert between all those parties correctly.
+then Marshal helps you to convert between all those parties correctly.
 
-![Diagram](https://raw.github.com/marcj/marshaller/master/docs/assets/diagram.png)
+![Diagram](https://raw.github.com/marcj/marshal/master/docs/assets/diagram.png)
 
 ## Install
 
@@ -339,7 +339,7 @@ entity.children.add('Bar2');
 
 ## Database
 
-Marshaller's MongoDB database abstraction makes it super easy to
+Marshal's MongoDB database abstraction makes it super easy to
 retrieve and store data from and into your MongoDB. We make sure the
 data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
@@ -380,7 +380,7 @@ const oneItem: SimpleModel = await database.get(
 
 It's super common to accept data from a frontend via HTTP, transform the
 body into your class instance, work with it, and then store that data in
-your MongoDB or somewhere else. With Marshaller this scenario is super
+your MongoDB or somewhere else. With Marshal this scenario is super
 simple and you do not need any manual transformations.
 
 

@@ -13,7 +13,6 @@ cache:
   - 'node_modules'
 
 before_script:
-- npm install
 - npm install -g coveralls lerna
 - sleep 2 # thanks mongo
 
