@@ -1,6 +1,5 @@
 {
   "name": "root",
-  "private": true,
   "scripts": {},
   "repository": "https://github.com/marcj/marshal",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
