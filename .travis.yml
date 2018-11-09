@@ -1,6 +1,7 @@
 language: node_js
 
 node_js:
+- '8'
 - '10'
 
 services:
@@ -15,7 +16,7 @@ cache:
 before_script:
 - npm install
 - npm install -g coveralls lerna
-- lerna bootstrap --hoist --no-package-lock
+- lerna bootstrap --no-package-lock --no-ci
 - sleep 2 # thanks mongo
 
 script:
