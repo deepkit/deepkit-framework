@@ -1,6 +1,6 @@
 {
   "name": "@marcj/marshal-mongo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Marshal's Mongo database management.",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
     "mongodb": "^3.1.8"
   },
   "devDependencies": {
-    "@marcj/marshal": "^0.1.0",
+    "@marcj/marshal": "^0.2.0",
     "@types/mongodb": "^3.1.12",
     "mongodb": "^3.1.8",
     "reflect-metadata": "^0.1.12"
