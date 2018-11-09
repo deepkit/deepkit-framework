@@ -11,9 +11,6 @@
   "repository": "https://github.com/marcj/marshal",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "peerDependencies": {
-    "bson": "^3.0.2"
-  },
   "dependencies": {
     "clone": "^2.1.2",
     "get-parameter-names": "^0.3.0",
@@ -21,7 +18,6 @@
     "uuid": "^3.2.1"
   },
   "devDependencies": {
-    "@types/bson": "^1.0.11",
     "bson": "^3.0.2"
   },
   "jest": {
