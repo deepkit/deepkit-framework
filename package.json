@@ -1,6 +1,6 @@
 {
   "name": "@marcj/marshal-mongo",
-  "version": "0.1.2",
+  "version": "0.1.0",
   "description": "Marshal's Mongo database management.",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,14 +12,14 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "mongodb": "^3.1.8",
-    "@marcj/marshal": "^0.1.0"
+    "@marcj/marshal": "^0.1.0",
+    "mongodb": "^3.1.8"
   },
   "devDependencies": {
-    "mongodb": "^3.1.8",
     "@marcj/marshal": "^0.1.0",
-    "reflect-metadata": "^0.1.12",
-    "@types/mongodb": "^3.1.12"
+    "@types/mongodb": "^3.1.12",
+    "mongodb": "^3.1.8",
+    "reflect-metadata": "^0.1.12"
   },
   "jest": {
     "testURL": "http://localhost/",
