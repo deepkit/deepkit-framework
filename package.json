@@ -1,9 +1,12 @@
 {
   "name": "root",
-  "scripts": {},
   "repository": "https://github.com/marcj/marshal",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "scripts": {
+    "test": "jest --coverage",
+    "bootstrap": "lerna bootstrap --hoist --no-ci"
+  },
   "peerDependencies": {
     "reflect-metadata": "^0.1.12"
   },

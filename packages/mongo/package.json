@@ -12,11 +12,10 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@marcj/marshal": "^0.1.0",
+    "@marcj/marshal": "^0.2.1",
     "mongodb": "^3.1.8"
   },
   "devDependencies": {
-    "@marcj/marshal": "^0.2.1",
     "@types/mongodb": "^3.1.12",
     "mongodb": "^3.1.8"
   },

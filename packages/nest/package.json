@@ -9,12 +9,11 @@
     "tsc": "tsc"
   },
   "peerDependencies": {
-    "@marcj/marshal": "^0.1.0",
+    "@marcj/marshal": "^0.2.1",
     "@nestjs/common": "^5.0.0",
     "rxjs": "^6.0.0"
   },
   "devDependencies": {
-    "@marcj/marshal": "^0.2.1",
     "@nestjs/common": "^5.0.0",
     "rxjs": "^6.0.0"
   },
