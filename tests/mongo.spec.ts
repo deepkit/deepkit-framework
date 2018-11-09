@@ -3,10 +3,10 @@ import 'reflect-metadata';
 import {
     DatabaseName, Entity, getCollectionName, getDatabaseName, ID, MongoIdType,
     plainToClass, StringType, uuid4Stringify,
-} from "@marshal/core";
-import {SimpleModel, SuperSimple} from "@marshal/core/tests/entities";
+} from "@marcj/marshal";
+import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {Binary, MongoClient} from "mongodb";
-import {Database} from "../src/database";
+import {Database} from "../";
 
 let connection: MongoClient;
 
@@ -24,7 +24,7 @@ test('test save model', async () => {
     });
 
     await database.add(SimpleModel, instance);
-    expect(instance['version']).toBe(1);
+    expect((<any>instance)['version']).toBe(1);
 
     expect(await database.count(SimpleModel)).toBe(1);
     expect(await database.count(SimpleModel, {name: 'myName'})).toBe(1);
@@ -46,8 +46,8 @@ test('test save model', async () => {
 
     const found = await database.get(SimpleModel, {id: instance.id});
     expect(found).toBeInstanceOf(SimpleModel);
-    expect(found.name).toBe('myName');
-    expect(found.id).toBe(instance.id);
+    expect(found!.name).toBe('myName');
+    expect(found!.id).toBe(instance.id);
 
     const list = await database.find(SimpleModel, {id: instance.id});
     expect(list[0]).toBeInstanceOf(SimpleModel);
@@ -64,12 +64,12 @@ test('test save model', async () => {
     const notExisting = new SimpleModel('Hi');
     expect(await database.update(SimpleModel, notExisting)).toBeNull();
 
-    expect(await database.patch(SimpleModel, {id: instance.id}, {name: 'myName2'})).toBe(instance['version']+1);
+    expect(await database.patch(SimpleModel, {id: instance.id}, {name: 'myName2'})).toBe((<any>instance)['version'] + 1);
 
     {
         const found = await database.get(SimpleModel, {id: instance.id});
         expect(found).toBeInstanceOf(SimpleModel);
-        expect(found.name).toBe('myName2');
+        expect(found!.name).toBe('myName2');
     }
 
     instance.name = 'New Name';
@@ -144,9 +144,19 @@ test('test super simple model', async () => {
     await database.add(SuperSimple, instance);
     expect(instance._id).not.toBeUndefined();
 
-    const items = await database.find(SuperSimple);
-    expect(items[0]._id).toBe(instance._id);
-    expect(items[0].name).toBe(instance.name);
+    {
+        const items = await database.find(SuperSimple);
+        expect(items[0]).toBeInstanceOf(SuperSimple);
+        expect(items[0]._id).toBe(instance._id);
+        expect(items[0].name).toBe(instance.name);
+    }
+
+    {
+        const items = await database.cursor(SuperSimple).toArray();
+        expect(items[0]).toBeInstanceOf(SuperSimple);
+        expect(items[0]._id).toBe(instance._id);
+        expect(items[0].name).toBe(instance.name);
+    }
 });
 
 test('test databaseName', async () => {
@@ -161,10 +171,10 @@ test('test databaseName', async () => {
     class DifferentDataBase {
         @ID()
         @MongoIdType()
-        _id: string;
+        _id?: string;
 
         @StringType()
-        name: string;
+        name?: string;
     }
 
     const instance = plainToClass(DifferentDataBase, {

@@ -7,7 +7,7 @@ import {
     mongoToClass,
     partialFilterObjectToMongo,
     propertyClassToMongo
-} from '@marshal/core';
+} from '@marcj/marshal';
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
 
