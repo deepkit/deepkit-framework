@@ -8,8 +8,10 @@
     "test": "jest --coverage",
     "tsc": "tsc"
   },
+  "dependencies": {
+    "@marcj/marshal": "^0.2.1"
+  },
   "peerDependencies": {
-    "@marcj/marshal": "^0.2.1",
     "@nestjs/common": "^5.0.0",
     "rxjs": "^6.0.0"
   },
