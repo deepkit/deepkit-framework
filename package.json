@@ -1,8 +1,7 @@
 {
   "name": "root",
   "private": true,
-  "scripts": {
-  },
+  "scripts": {},
   "repository": "https://github.com/marcj/marshal",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
@@ -11,6 +10,7 @@
   },
   "devDependencies": {
     "@types/node": "^10.11.7",
+    "reflect-metadata": "^0.1.12",
     "@types/jest": "^22.2.3",
     "jest-extended": "^0.11.0",
     "ts-jest": "^22.4.6",
