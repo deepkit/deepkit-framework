@@ -2,8 +2,8 @@
   "name": "@marcj/marshal-mongo",
   "version": "0.2.3",
   "description": "Marshal's Mongo database management.",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest --coverage",
     "tsc": "tsc"
