@@ -1,20 +1,22 @@
 {
-  "name": "@marshal/nest",
+  "name": "@marcj/marshal-nest",
   "description": "A plugin for NestJS to convert HTTP Body to your class instance with validation using Marshal",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "jest",
+    "test": "jest --coverage",
     "tsc": "tsc"
   },
-  "repository": "https://github.com/marcj/marshaller",
-  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
-  "license": "MIT",
-  "dependencies": {
+  "peerDependencies": {
     "@nestjs/common": "^5.0.0",
-    "@marshal/core": "^0.1.0"
+    "rxjs": "^6.0.0",
+    "@marcj/marshal": "^0.1.0"
   },
   "devDependencies": {
+    "@nestjs/common": "^5.0.0",
+    "rxjs": "^6.0.0",
+    "reflect-metadata": "^0.1.12",
+    "@marcj/marshal": "^0.1.0"
   },
   "jest": {
     "testURL": "http://localhost/",
@@ -26,13 +28,14 @@
     "collectCoverageFrom": [
       "**/*.{ts}",
       "!**/node_modules/**",
-      "!**/vendor/**"
+      "!**/lib/**",
+      "!**/*.d.ts"
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testMatch": [
-      "**/tests/**.test.ts"
+      "**/*.spec.ts"
     ],
     "setupTestFrameworkScriptFile": "jest-extended"
   }
