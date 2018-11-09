@@ -1,7 +1,7 @@
 {
   "root": false,
   "name": "@marcj/marshal",
-  "version": "0.1.2",
+  "version": "0.1.0",
   "description": "Marshaller is a library to marshal JSON-representable data from JSON to class instance to Mongo and vice versa.",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,9 +22,9 @@
     "uuid": "^3.2.1"
   },
   "devDependencies": {
+    "@types/bson": "^1.0.11",
     "bson": "^3.0.2",
-    "reflect-metadata": "^0.1.12",
-    "@types/bson": "^1.0.11"
+    "reflect-metadata": "^0.1.12"
   },
   "jest": {
     "testURL": "http://localhost/",
