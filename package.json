@@ -16,7 +16,6 @@
   "devDependencies": {
     "@marcj/marshal": "^0.2.0",
     "@nestjs/common": "^5.0.0",
-    "reflect-metadata": "^0.1.12",
     "rxjs": "^6.0.0"
   },
   "jest": {
