@@ -1,7 +1,7 @@
 # Marshal
 
 [![Build Status](https://travis-ci.com/marcj/marshal.svg?branch=master)](https://travis-ci.com/marcj/marshal)
-[![npm version](https://badge.fury.io/js/marshal.svg)](https://badge.fury.io/js/marshal)
+[![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshal/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal?branch=master)
 
 Marshal is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
