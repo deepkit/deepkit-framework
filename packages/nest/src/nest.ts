@@ -1,5 +1,5 @@
 import {PipeTransform, ArgumentMetadata, BadRequestException} from '@nestjs/common';
-import {validate, plainToClass, applyDefaultValues} from "@marshal/core";
+import {validate, plainToClass, applyDefaultValues} from "@marcj/marshal";
 
 export class ValidationPipe implements PipeTransform<any> {
     constructor(private options?: { transform?: boolean, disableErrorMessages?: boolean }) {

@@ -246,7 +246,6 @@ test('test decorator complex', async () => {
         expect(instance.childrenCollection.items[1]).toBeInstanceOf(SubModel);
         expect(instance.childrenCollection.items[0].label).toBe('Foo');
         expect(instance.childrenCollection.items[1].label).toBe('Bar');
-        console.log(instance.childrenCollection.items[1]);
         expect(instance.childrenCollection.items[1].constructorUsed).toBeTrue();
 
         instance.childrenCollection.add(new SubModel('Bar2'));

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import 'jest-extended'
-import {Optional, validate, Class, ClassArray, NumberType, StringType, ClassMap, ArrayType, MapType} from "@marshal/core";
+import {Optional, validate, StringType, ArrayType, MapType} from "@marcj/marshal";
 import {ValidationPipe} from '../';
 import {BadRequestException} from '@nestjs/common';
 
@@ -11,18 +11,18 @@ test('test required', async () => {
         id: string = '1';
 
         @StringType()
-        name: string;
+        name?: string;
 
         @Optional()
-        optional: string;
+        optional?: string;
 
         @Optional()
         @MapType()
-        map: {[name: string]: string};
+        map?: {[name: string]: string};
 
         @Optional()
         @ArrayType()
-        array: string[];
+        array?: string[];
     }
 
     const instance = new Model;
@@ -31,6 +31,12 @@ test('test required', async () => {
 
     expect(await validate(Model, {name: 'foo', map: true})).toEqual([{message: "No Map given", path: 'map'}]);
     expect(await validate(Model, {name: 'foo', array: 233})).toEqual([{message: "No Array given", path: 'array'}]);
+
+    {
+        const pipe = new ValidationPipe();
+        const result = await pipe.transform({name: 'Foo', optional: 'two'}, {type: 'body'});
+        expect(result).toBeUndefined();
+    }
 
     {
         const pipe = new ValidationPipe();

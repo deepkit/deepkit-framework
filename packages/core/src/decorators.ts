@@ -89,7 +89,6 @@ export function MapType() {
 
         class Validator implements PropertyValidator {
             async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
-                console.log('map', property, typeof value);
                 if ('object' !== typeof value) {
                     return new PropertyValidatorError('No Map given');
                 }

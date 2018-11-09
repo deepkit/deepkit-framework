@@ -14,10 +14,10 @@ cache:
 
 before_script:
 - npm install
-- npm install coveralls
-- npm install --peer reflect-metadata mongodb @nestjs/common@5.0.1 @nestjs/core@5.0.1 rxjs
-- sleep 5 # thanks mongo
+- npm install -g coveralls lerna
+- sleep 2 # thanks mongo
 
 script:
+- lerna bootstrap
 - ./node_modules/.bin/jest --coverage
 - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js

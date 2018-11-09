@@ -1,4 +1,4 @@
-# Marshaller
+# Marshal
 
 [![Build Status](https://travis-ci.com/marcj/marshaller.svg?branch=master)](https://travis-ci.com/marcj/marshaller)
 [![npm version](https://badge.fury.io/js/marshaller.svg)](https://badge.fury.io/js/marshaller)
@@ -15,7 +15,7 @@ then Marshaller helps you to convert between all those parties correctly.
 ## Install
 
 ```
-npm install marshaller
+npm install @marcj/marshal
 ```
 
 ## Example Entity
@@ -34,7 +34,7 @@ import {
     StringType,
     uuid,
     ArrayType,
-} from 'marshaller';
+} from '@marcj/marshal';
 
 
 @Entity('sub')
@@ -344,12 +344,14 @@ retrieve and store data from and into your MongoDB. We make sure the
 data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
 
-Example:
+```
+npm install @marcj/marshal-mongo
+```
 
 ```typescript
 import {MongoClient} from "mongodb";
-import {plainToClass} from "marshaller";
-import {Database} from "marshaller/database";
+import {plainToClass} from "@marcj/marshal";
+import {Database} from "@marcj/marshal-mongo";
 
 const connection = await MongoClient.connect(
     'mongodb://localhost:27017', 
@@ -369,7 +371,7 @@ const list: SimpleModel[] = await database.find(SimpleModel);
 const oneItem: SimpleModel = await database.get(
     SimpleModel,
     {id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}
-    );
+);
 ```
 
 
@@ -382,13 +384,18 @@ your MongoDB or somewhere else. With Marshaller this scenario is super
 simple and you do not need any manual transformations.
 
 
+```
+npm install @marcj/marshal-nest
+```
+
 ```typescript
 import {
     Controller, Get, Param, Post, Body
 } from '@nestjs/common';
 
-import {SimpleModel} from "./packages/marshaller/tests/entities";
-import {plainToClass, Database, classToPlain} from "marshaller";
+import {SimpleModel} from "@marcj/marshal/tests/entities";
+import {plainToClass, Database, classToPlain} from "@marcj/marshal";
+import {ValidationPipe} from "@marcj/marshal-nest";
 import {MongoClient} from "mongodb";
 
 @Controller()
@@ -411,17 +418,17 @@ class MyController {
     
     @Post('/save')
     async save(
-        @Body() body,
+        @Body(ValidationPipe({transform: true})) body: SimpleModel,
     ) {
-        const instance: SimpleModel = plainToClass(SimpleModel, body);
-        const versionNumber = await this.database.save(SimpleModel, instance);
+        body instanceof SimpleModel; // true;
+        const versionNumber = await this.database.save(SimpleModel, body);
         
-        return instance.id;
+        return body.id;
     }
     
     @Get('/get/:id')
     async get(@Param('id') id: string) {
-        const instance = await this.database.get(SimpleModel, {id: id});
+        const instance = await this.database.get(SimpleModel, {_id: id});
         
         return classToPlain(SimpleModel, instance);
     }

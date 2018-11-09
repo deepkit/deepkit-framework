@@ -1,6 +1,11 @@
 {
   "name": "root",
   "private": true,
+  "scripts": {
+  },
+  "repository": "https://github.com/marcj/marshal",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
   "peerDependencies": {
     "reflect-metadata": "^0.1.12"
   },
@@ -10,7 +15,32 @@
     "jest-extended": "^0.11.0",
     "ts-jest": "^22.4.6",
     "typescript": "^2.8.3",
+    "ts-node": "^6.0.0",
     "jest": "^22.4.4",
     "lerna": "^3.4.3"
+  },
+  "engines": {
+    "node": ">= 8.9.0"
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "collectCoverageFrom": [
+      "**/*.{ts}",
+      "!**/node_modules/**",
+      "!**/lib/**",
+      "!**/*.d.ts"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/*.spec.ts"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
   }
 }
