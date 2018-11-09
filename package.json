@@ -11,16 +11,16 @@
     "reflect-metadata": "^0.1.12"
   },
   "devDependencies": {
-    "@types/node": "^10.11.7",
-    "reflect-metadata": "^0.1.12",
     "@types/jest": "^22.2.3",
-    "jest-extended": "^0.11.0",
-    "ts-jest": "^22.4.6",
-    "typescript": "^2.8.3",
-    "ts-node": "^6.0.0",
-    "jest": "^22.4.4",
+    "@types/node": "^10.12.5",
     "coveralls": "^3.0.2",
-    "lerna": "^3.4.3"
+    "jest": "^22.4.4",
+    "jest-extended": "^0.11.0",
+    "lerna": "^3.4.3",
+    "reflect-metadata": "^0.1.12",
+    "ts-jest": "^22.4.6",
+    "ts-node": "^6.0.0",
+    "typescript": "^2.9.2"
   },
   "engines": {
     "node": ">= 8.9.0"

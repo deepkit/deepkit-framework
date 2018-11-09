@@ -27,7 +27,7 @@
       "js"
     ],
     "collectCoverageFrom": [
-      "**/*.{ts}",
+      "**/*.ts",
       "!**/node_modules/**",
       "!**/lib/**",
       "!**/*.d.ts"
