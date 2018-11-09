@@ -1,3 +1,4 @@
+import 'jest-extended'
 import {
     AnyType,
     ArrayType,
@@ -7,27 +8,26 @@ import {
     Entity,
     ID, MapType,
     MongoIdType,
-    StringType
-} from "../src/decorators";
-import {
+    StringType,
     getCollectionName,
     getDatabaseName,
     getEntityName,
     getReflectionType,
     isArrayType, isMapType,
     plainToClass
-} from "../src/mapper";
+} from "../";
 
 test('test entity database', async () => {
+
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
         @ID()
         @MongoIdType()
-        _id: string;
+        _id?: string;
 
         @StringType()
-        name: string;
+        name?: string;
     }
 
     class Child extends DifferentDataBase {}
@@ -71,19 +71,19 @@ test('test properties', () => {
     class Model {
         @ID()
         @MongoIdType()
-        _id: string;
+        _id?: string;
 
         @StringType()
-        name: string;
+        name?: string;
 
         @Class(DataValue)
-        data: DataValue;
+        data?: DataValue;
     }
 
     @Entity('SubModel')
     class SubModel extends Model {
         @Class(DataValue2)
-        data2: DataValue2;
+        data2?: DataValue2;
     }
 
     {
@@ -187,11 +187,11 @@ test('more array/map', () => {
     class Model {
         @BooleanType()
         @ArrayType()
-        bools: boolean[];
+        bools?: boolean[];
 
         @AnyType()
         @MapType()
-        whatever: any[];
+        whatever?: any[];
     }
 
     expect(isArrayType(Model, 'bools')).toBeTrue();

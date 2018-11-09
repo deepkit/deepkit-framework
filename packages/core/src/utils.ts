@@ -15,23 +15,23 @@ export function uuid(): string {
 }
 
 export interface ClassType<T> {
-    new(...args): T;
+    new(...args: any[]): T;
 }
 
-export function typeOf(obj) {
+export function typeOf(obj: any) {
     return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
 }
 
-export function isObject(obj): obj is object {
+export function isObject(obj: any): obj is object {
     return 'object' === typeOf(obj);
 }
 
-export function isArray(obj): obj is any[] {
+export function isArray(obj: any): obj is any[] {
     return 'array' === typeOf(obj);
 }
 
 
-export function isUndefined(obj): obj is undefined {
+export function isUndefined(obj: any): obj is undefined {
     return 'undefined' === typeOf(obj);
 }
 

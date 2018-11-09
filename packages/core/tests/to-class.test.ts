@@ -11,8 +11,7 @@ import {
     plainToClass, plainToMongo, StringType, uuid, UUIDType,
 } from "../";
 import {now, SimpleModel, Plan, SubModel, CollectionWrapper, StringCollectionWrapper} from "./entities";
-import {Binary, ObjectID} from "bson";
-import {isNumber} from "util";
+import {Binary} from "bson";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
@@ -196,12 +195,12 @@ test('test childrenMap', async () => {
 
 test('test setter/getter', async () => {
     class Font {
-        name: string;
+        name?: string;
     }
 
     class Model {
         @Exclude()
-        private _fonts: Font[];
+        private _fonts?: Font[];
 
         get test() {
             return true;
@@ -222,7 +221,7 @@ test('test setter/getter', async () => {
     });
 
     expect(instance.test).toBeTrue();
-    expect(instance.fonts.length).toBe(2);
+    expect(instance.fonts!.length).toBe(2);
 
     const plain = classToPlain(Model, instance);
     expect(plain._fonts).toBeUndefined();
@@ -281,10 +280,10 @@ test('simple string + number', () => {
 
     class Model {
         @StringType()
-        name: string;
+        name?: string;
 
         @NumberType()
-        age: string;
+        age?: string;
     }
 
     const instance = plainToClass(Model, {
@@ -300,7 +299,7 @@ test('simple string + number', () => {
 test('cloneClass', () => {
     class SubModel {
         @StringType()
-        name: string;
+        name?: string;
     }
 
     class Model {
@@ -308,7 +307,7 @@ test('cloneClass', () => {
        data: any;
 
        @ClassArray(SubModel)
-       subs: SubModel[];
+       subs?: SubModel[];
     }
 
     const data = {
@@ -327,7 +326,7 @@ test('cloneClass', () => {
     expect(cloned.data).toEqual({a: 'true'});
     expect(cloned.data).not.toBe(data);
 
-    expect(cloned.subs[0]).not.toBe(instance.subs[0]);
+    expect(cloned.subs![0]).not.toBe(instance.subs![0]);
 });
 
 test('enums', () => {
@@ -353,19 +352,19 @@ test('enums', () => {
 
     class Model {
         @EnumType(Enum1)
-        enum1: Enum1;
+        enum1?: Enum1;
 
         @EnumType(Enum2)
-        enum2: Enum2;
+        enum2?: Enum2;
 
         @EnumType(Enum3)
-        enum3: Enum3;
+        enum3?: Enum3;
 
         @EnumType(Enum4)
-        enum4: Enum4;
+        enum4?: Enum4;
 
         @EnumType(Enum4, true)
-        enumLabels: Enum4;
+        enumLabels?: Enum4;
     }
 
     expect(getEnumLabels(Enum1)).toEqual(['first', 'second']);

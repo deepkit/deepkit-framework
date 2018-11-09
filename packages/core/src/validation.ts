@@ -1,7 +1,7 @@
 import {ClassType} from "./utils";
 import {applyDefaultValues, getReflectionType, getRegisteredProperties, isArrayType, isMapType} from "./mapper";
 
-export function addValidator<T>(target, property, validator: ClassType<T>) {
+export function addValidator<T>(target: Object, property: string, validator: ClassType<T>) {
     const validators = Reflect.getMetadata('marshaller:validators', target, property) || [];
     if (-1 === validators.indexOf(validator)) {
         validators.push(validator);
@@ -19,7 +19,7 @@ export class PropertyValidatorError {
 }
 
 export interface PropertyValidator {
-    validate<T>(value, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void>;
+    validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void>;
 }
 
 export function getValidators<T>(classType: ClassType<T>, propertyName: string): ClassType<PropertyValidator>[] {
@@ -27,13 +27,13 @@ export function getValidators<T>(classType: ClassType<T>, propertyName: string):
 }
 
 export function AddValidator<T>(validator: ClassType<T>) {
-    return (target, property) => {
+    return (target: Object, property: string) => {
         addValidator(target, property, validator);
     };
 }
 
 export class RequiredValidator implements PropertyValidator {
-    async validate<T>(value, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+    async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
         if (undefined === value) {
             return new PropertyValidatorError('No value given');
         }
@@ -41,12 +41,12 @@ export class RequiredValidator implements PropertyValidator {
 }
 
 export function Optional() {
-    return (target, property) => {
+    return (target: Object, property: string) => {
         Reflect.defineMetadata('marshaller:isOptional', true, target, property);
     };
 }
 
-export function isOptional<T>(classType: ClassType<T>, property): boolean {
+export function isOptional<T>(classType: ClassType<T>, property: string): boolean {
     return Reflect.getMetadata('marshaller:isOptional', classType.prototype, property) || false;
 }
 
@@ -60,7 +60,7 @@ export class ValidationError {
     }
 }
 
-export async function validate<T>(classType: ClassType<T>, item: T | object, path?: string): Promise<ValidationError[]> {
+export async function validate<T>(classType: ClassType<T>, item: {[name: string]: any}, path?: string): Promise<ValidationError[]> {
     const properties = getRegisteredProperties(classType);
     const errors: ValidationError[] = [];
 
@@ -75,7 +75,7 @@ export async function validate<T>(classType: ClassType<T>, item: T | object, pat
         propertyPath: string
     ): Promise<boolean> {
         const instance = new validatorType;
-        const result = await instance.validate(item[propertyName], classType, propertyName);
+        const result = await instance.validate(value, classType, propertyName);
         if (result instanceof PropertyValidatorError) {
             errors.push(new ValidationError(propertyPath, result.message));
             return true;
@@ -88,29 +88,30 @@ export async function validate<T>(classType: ClassType<T>, item: T | object, pat
         const {type, typeValue} = getReflectionType(classType, propertyName);
         const propertyPath = path ? path + '.' + propertyName : propertyName;
         const validators = getValidators(classType, propertyName);
+        const propertyValue: any = item[propertyName];
 
         if (!isOptional(classType, propertyName)) {
-            await handleValidator(RequiredValidator, item[propertyName], propertyName,  propertyPath);
+            await handleValidator(RequiredValidator, propertyValue, propertyName,  propertyPath);
         }
 
-        if (undefined === item[propertyName]) {
+        if (undefined === propertyValue) {
             //there's no need to continue validation without a value.
             continue;
         }
 
         if (type === 'class') {
             if (isMapType(classType, propertyName) || isArrayType(classType, propertyName)) {
-                for (const i in item[propertyName]) {
+                for (const i in propertyValue) {
                     const deepPropertyPath = propertyPath + '.' + i;
-                    errors.push(...await validate(typeValue, item[propertyName][i], deepPropertyPath));
+                    errors.push(...await validate(typeValue, propertyValue[i], deepPropertyPath));
                 }
             } else {
                 //deep validation
-                errors.push(...await validate(typeValue, item[propertyName], propertyPath));
+                errors.push(...await validate(typeValue, propertyValue, propertyPath));
             }
         } else {
             for (const validatorType of validators) {
-                await handleValidator(validatorType, item[propertyName], propertyName, propertyPath);
+                await handleValidator(validatorType, propertyValue, propertyName, propertyPath);
             }
         }
     }

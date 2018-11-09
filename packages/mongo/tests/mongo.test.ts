@@ -3,8 +3,8 @@ import 'reflect-metadata';
 import {
     DatabaseName, Entity, getCollectionName, getDatabaseName, ID, MongoIdType,
     plainToClass, StringType, uuid4Stringify,
-} from "../";
-import {SimpleModel, SuperSimple} from "./entities";
+} from "@marshal/core";
+import {SimpleModel, SuperSimple} from "@marshal/core/tests/entities";
 import {Binary, MongoClient} from "mongodb";
 import {Database} from "../src/database";
 

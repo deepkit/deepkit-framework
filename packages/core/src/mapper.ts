@@ -25,10 +25,10 @@ export function getReflectionType<T>(classType: ClassType<T>, propertyName: stri
     }
 }
 
-export function propertyClassToMongo<T>(classType: ClassType<T>, propertyName: string, propertyValue) {
+export function propertyClassToMongo<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
-    function convert(value) {
+    function convert(value: any) {
         if (value && 'objectId' === type && 'string' === typeof value) {
             try {
                 return new ObjectID(value);
@@ -66,9 +66,9 @@ export function propertyClassToMongo<T>(classType: ClassType<T>, propertyName: s
     }
 
     if (isMapType(classType, propertyName) && isObject(propertyValue)) {
-        const result = {};
+        const result: {[name: string]: any} = {};
         for (const i in propertyValue) {
-            result[i] = convert(propertyValue[i]);
+            result[i] = convert((<any>propertyValue)[i]);
         }
         return result;
     }
@@ -76,7 +76,7 @@ export function propertyClassToMongo<T>(classType: ClassType<T>, propertyName: s
     return convert(propertyValue);
 }
 
-export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, propertyValue) {
+export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
     if (isUndefined(propertyValue)) {
@@ -84,7 +84,7 @@ export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, p
         return undefined;
     }
 
-    function convert(value) {
+    function convert(value: any) {
         if ('date' === type && !(value instanceof Date)) {
             return new Date(value);
         }
@@ -125,9 +125,9 @@ export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, p
     }
 
     if (isMapType(classType, propertyName) && isObject(propertyValue)) {
-        const result = {};
+        const result: {[name: string]: any} = {};
         for (const i in propertyValue) {
-            result[i] = convert(propertyValue[i]);
+            result[i] = convert((<any>propertyValue)[i]);
         }
         return result;
     }
@@ -135,10 +135,10 @@ export function propertyPlainToClass<T>(classType: ClassType<T>, propertyName, p
     return convert(propertyValue);
 }
 
-export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName, propertyValue) {
+export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
-    function convert(value) {
+    function convert(value: any) {
         if ('date' === type && value instanceof Date) {
             return value.toJSON();
         }
@@ -159,9 +159,9 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName, p
     }
 
     if (isMapType(classType, propertyName) && isObject(propertyValue)) {
-        const result = {};
+        const result: any = {};
         for (const i in propertyValue) {
-            result[i] = convert(propertyValue[i]);
+            result[i] = convert((<any>propertyValue)[i]);
         }
         return result;
     }
@@ -169,10 +169,10 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName, p
     return convert(propertyValue);
 }
 
-export function propertyMongoToClass<T>(classType: ClassType<T>, propertyValue, propertyName) {
+export function propertyMongoToClass<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
-    function convert(value) {
+    function convert(value: any) {
         if (value && 'uuid' === type && 'string' !== typeof value) {
             return uuid4Stringify(value);
         }
@@ -193,9 +193,9 @@ export function propertyMongoToClass<T>(classType: ClassType<T>, propertyValue, 
     }
 
     if (isMapType(classType, propertyName) && isObject(propertyValue)) {
-        const result = {};
+        const result: any = {};
         for (const i in propertyValue) {
-            result[i] = convert(propertyValue[i]);
+            result[i] = convert((propertyValue as any)[i]);
         }
         return result;
     }
@@ -207,47 +207,47 @@ export function cloneClass<T>(target: T): T {
     return plainToClass(target.constructor as ClassType<T>, classToPlain(target.constructor as ClassType<T>, target));
 }
 
-export function mongoToPlain<T>(classType: ClassType<T>, target) {
+export function mongoToPlain<T>(classType: ClassType<T>, target: any) {
     return classToPlain(classType, mongoToClass(classType, target));
 }
 
 export function classToPlain<T>(classType: ClassType<T>, target: T): any {
-    const result = {};
+    const result: any = {};
 
     const decoratorName = getDecorator(classType);
     if (decoratorName) {
-        return propertyClassToPlain(classType, decoratorName, target[decoratorName]);
+        return propertyClassToPlain(classType, decoratorName, (target as any)[decoratorName]);
     }
 
     for (const propertyName of getRegisteredProperties(classType)) {
-        result[propertyName] = propertyClassToPlain(classType, propertyName, target[propertyName]);
+        result[propertyName] = propertyClassToPlain(classType, propertyName, (target as any)[propertyName]);
     }
 
     deleteExcludedPropertiesFor(classType, result, 'plain');
     return result;
 }
 
-export function plainToMongo<T>(classType: ClassType<T>, target): any {
+export function plainToMongo<T>(classType: ClassType<T>, target: any): any {
     return classToMongo(classType, plainToClass(classType, target));
 }
 
 export function classToMongo<T>(classType: ClassType<T>, target: T): any {
-    const result = {};
+    const result: any = {};
 
     const decoratorName = getDecorator(classType);
     if (decoratorName) {
-        return propertyClassToMongo(classType, decoratorName, target[decoratorName]);
+        return propertyClassToMongo(classType, decoratorName, (target as any)[decoratorName]);
     }
 
     for (const propertyName of getRegisteredProperties(classType)) {
-        result[propertyName] = propertyClassToMongo(classType, propertyName, target[propertyName]);
+        result[propertyName] = propertyClassToMongo(classType, propertyName, (target as any)[propertyName]);
     }
 
     deleteExcludedPropertiesFor(classType, result, 'mongo');
     return result;
 }
 
-export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: object = {}): {} {
+export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: any = {}): {[name: string]: any} {
     const cloned = clone(target, false);
 
     for (const propertyName of getRegisteredProperties(classType)) {
@@ -272,17 +272,17 @@ export function mongoToClass<T>(classType: ClassType<T>, target: any): T {
 
     const decoratorName = getDecorator(classType);
     if (decoratorName) {
-        return new classType(propertyMongoToClass(classType, target, decoratorName));
+        return new classType(propertyMongoToClass(classType, decoratorName, target));
     }
 
     for (const propertyName of getRegisteredProperties(classType)) {
         if (!cloned.hasOwnProperty(propertyName)) continue;
 
-        cloned[propertyName] = propertyMongoToClass(classType, cloned[propertyName], propertyName);
+        cloned[propertyName] = propertyMongoToClass(classType, propertyName, cloned[propertyName], );
     }
 
     const parameterNames = getParameterNames(classType.prototype.constructor);
-    const args = [];
+    const args: any[] = [];
 
     for (const name of parameterNames) {
         args.push(cloned[name]);
@@ -294,7 +294,7 @@ export function mongoToClass<T>(classType: ClassType<T>, target: any): T {
 
             for (const i in cloned) {
                 if (!cloned.hasOwnProperty(i)) continue;
-                this[i] = cloned[i];
+                (this as any)[i] = cloned[i];
             }
         }
     } as T;
@@ -316,7 +316,7 @@ export function plainToClass<T>(classType: ClassType<T>, target: object): T {
     }
 
     const parameterNames = getParameterNames(classType.prototype.constructor);
-    const args = [];
+    const args: any[] = [];
 
     for (const name of parameterNames) {
         args.push(cloned[name]);
@@ -331,7 +331,7 @@ export function plainToClass<T>(classType: ClassType<T>, target: object): T {
                     continue;
                 }
 
-                this[i] = cloned[i];
+                (this as any)[i] = cloned[i];
             }
         }
     } as T;
@@ -349,7 +349,7 @@ export function toObject<T>(item: T): object {
     return result;
 }
 
-export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item, target: 'mongo' | 'plain') {
+export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: any, target: 'mongo' | 'plain') {
     for (const propertyName in item) {
         if (isExcluded(classType, propertyName, target)) {
             delete item[propertyName];
@@ -361,8 +361,9 @@ export function getIdField<T>(classType: ClassType<T>): string | null {
     return Reflect.getMetadata('marshaller:idField', classType.prototype) || null;
 }
 
-export function getIdFieldValue<T>(classType: ClassType<T>, target): any {
-    return target[getIdField(classType)];
+export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
+    const id = getIdField(classType);
+    return id ? target[id] : null;
 }
 
 export function getEntityName<T>(classType: ClassType<T>): string {
@@ -383,19 +384,19 @@ export function getRegisteredProperties<T>(classType: ClassType<T>): string[] {
     return Reflect.getMetadata('marshaller:properties', classType.prototype) || [];
 }
 
-export function isArrayType<T>(classType: ClassType<T>, property): boolean {
+export function isArrayType<T>(classType: ClassType<T>, property: string): boolean {
     return Reflect.getMetadata('marshaller:isArray', classType.prototype, property) || false;
 }
 
-export function isMapType<T>(classType: ClassType<T>, property): boolean {
+export function isMapType<T>(classType: ClassType<T>, property: string): boolean {
     return Reflect.getMetadata('marshaller:isMap', classType.prototype, property) || false;
 }
 
-export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property): boolean {
+export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property: string): boolean {
     return Reflect.getMetadata('marshaller:enum:allowLabelsAsValue', classType.prototype, property) || false;
 }
 
-export function isExcluded<T>(classType: ClassType<T>, property, wantedTarget: 'mongo' | 'plain'): boolean {
+export function isExcluded<T>(classType: ClassType<T>, property: string, wantedTarget: 'mongo' | 'plain'): boolean {
     const mode = Reflect.getMetadata('marshaller:exclude', classType.prototype, property);
 
     if ('all' === mode) {
@@ -423,13 +424,13 @@ export function getCollectionName<T>(classType: ClassType<T>): string {
     return name;
 }
 
-export function applyDefaultValues<T>(classType: ClassType<T>, value: object): object {
+export function applyDefaultValues<T>(classType: ClassType<T>, value: {[name: string]: any}): object {
     const valueWithDefaults = clone(value, false);
     const instance = plainToClass(classType, value);
 
     for (const i of getRegisteredProperties(classType)) {
         if (undefined === value[i]) {
-            valueWithDefaults[i] = instance[i];
+            valueWithDefaults[i] = (instance as any)[i];
         }
     }
 

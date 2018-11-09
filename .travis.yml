@@ -14,6 +14,7 @@ cache:
 
 before_script:
 - npm install
+- npm install coveralls
 - npm install --peer reflect-metadata mongodb @nestjs/common@5.0.1 @nestjs/core@5.0.1 rxjs
 - sleep 5 # thanks mongo
 

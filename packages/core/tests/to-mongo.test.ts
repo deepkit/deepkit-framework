@@ -1,6 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {classToMongo, classToPlain, EnumType, MongoIdType, UUIDType} from "../";
+import {classToMongo, EnumType, MongoIdType, UUIDType} from "../";
 import {Plan, SimpleModel, SubModel} from "./entities";
 import {Binary, ObjectID} from "bson";
 
@@ -43,20 +43,20 @@ test('test simple model all fields', () => {
 });
 
 test('convert IDs and invalid values', () => {
-    class Enum {
-        first;
-        second;
+    enum Enum {
+        first,
+        second,
     }
 
     class Model {
         @MongoIdType()
-        id2: string;
+        id2?: string;
 
         @UUIDType()
-        uuid: string;
+        uuid?: string;
 
         @EnumType(Enum)
-        enum: Enum;
+        enum?: Enum;
     }
 
     const instance = new Model();

@@ -18,22 +18,6 @@ then Marshaller helps you to convert between all those parties correctly.
 npm install marshaller
 ```
 
-Make sure your `tsconfig.json` includes compilation of marshaller:
-
-```
-  "include": [
-    "node_modules/marshaller/**/*.ts",
-  ]
-```
-
-If you use it in browser (Angular etc) environments as well, make sure to exclude database.ts:
-
-```
-  "exclude": [
-    "node_modules/marshaller/database.ts",
-  ]
-```
-
 ## Example Entity
 
 ```typescript
@@ -403,7 +387,7 @@ import {
     Controller, Get, Param, Post, Body
 } from '@nestjs/common';
 
-import {SimpleModel} from "./tests/entities";
+import {SimpleModel} from "./packages/marshaller/tests/entities";
 import {plainToClass, Database, classToPlain} from "marshaller";
 import {MongoClient} from "mongodb";
 

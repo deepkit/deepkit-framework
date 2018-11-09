@@ -48,10 +48,10 @@ test('mongo to plain', () => {
     class Model {
         @ID()
         @MongoIdType()
-        _id: string;
+        _id?: string;
 
         @DateType()
-        date: Date;
+        date?: Date;
     }
 
     const plain = mongoToPlain(Model, {

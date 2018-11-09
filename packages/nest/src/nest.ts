@@ -1,13 +1,15 @@
-import {PipeTransform, ValidationPipeOptions, ArgumentMetadata, BadRequestException} from '@nestjs/common';
-import {plainToClass, applyDefaultValues} from "./src/mapper";
-import {validate} from "./src/validation";
-import * as clone from 'clone';
+import {PipeTransform, ArgumentMetadata, BadRequestException} from '@nestjs/common';
+import {validate, plainToClass, applyDefaultValues} from "@marshal/core";
 
 export class ValidationPipe implements PipeTransform<any> {
-    constructor(private options?: {transform?: boolean, disableErrorMessages?: boolean}) {
+    constructor(private options?: { transform?: boolean, disableErrorMessages?: boolean }) {
     }
 
     async transform(value: any, metadata: ArgumentMetadata): Promise<any> {
+        if (!metadata.metatype) {
+            return;
+        }
+
         const valueWithDefaults = applyDefaultValues(metadata.metatype, value);
         const errors = await validate(metadata.metatype, valueWithDefaults);
 

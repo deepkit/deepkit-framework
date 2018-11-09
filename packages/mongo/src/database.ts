@@ -1,5 +1,5 @@
-import {ClassType} from "./utils";
 import {
+    ClassType,
     classToMongo,
     getCollectionName,
     getDatabaseName,
@@ -7,8 +7,9 @@ import {
     mongoToClass,
     partialFilterObjectToMongo,
     propertyClassToMongo
-} from "./mapper";
-import {MongoClient, Collection} from 'mongodb';
+} from '@marshal/core';
+
+import {MongoClient, Collection, Cursor} from 'mongodb';
 
 export class Database {
     constructor(private mongoClient: MongoClient, private defaultDatabaseName = 'app') {
@@ -41,20 +42,36 @@ export class Database {
     ): Promise<T[]> {
         const collection = this.getCollection(classType);
 
-        const items = await collection.find(filter ? partialFilterObjectToMongo(classType, filter) : null).toArray();
+        const items = await collection.find(filter ? partialFilterObjectToMongo(classType, filter) : undefined).toArray();
 
         return items.map(v => {
             return mongoToClass(classType, v);
         });
     }
 
-    public async remove<T>(classType: ClassType<T>, id: string) {
+    public cursor<T>(
+        classType: ClassType<T>,
+        filter?: { [field: string]: any }
+    ): Cursor<T> {
+        const collection = this.getCollection(classType);
+
+        const cursor = collection.find(filter ? partialFilterObjectToMongo(classType, filter) : undefined);
+        cursor.map(v => mongoToClass(classType, v));
+
+        return cursor;
+    }
+
+    public async remove<T>(classType: ClassType<T>, id: string): Promise<boolean> {
         const collection = this.getCollection(classType);
         const idName = getIdField(classType);
-        const filter = {};
+        if (!idName) return false;
+
+        const filter: {[name: string]: any} = {};
         filter[idName] = id;
 
-        await collection.deleteOne(partialFilterObjectToMongo(classType, filter));
+        const result = await collection.deleteOne(partialFilterObjectToMongo(classType, filter));
+
+        return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
     public async deleteOne<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
@@ -67,11 +84,11 @@ export class Database {
         await collection.deleteMany(partialFilterObjectToMongo(classType, filter));
     }
 
-    public async add<T>(classType: ClassType<T>, item: T) {
+    public async add<T>(classType: ClassType<T>, item: T): Promise<boolean> {
         const collection = this.getCollection(classType);
 
         const id = getIdField(classType);
-        item['version'] = 1;
+        (<any>item)['version'] = 1;
 
         const obj = classToMongo(classType, item);
         obj['version'] = 1;
@@ -79,8 +96,10 @@ export class Database {
         const result = await collection.insertOne(obj);
 
         if (id === '_id' && result.insertedId) {
-            item['_id'] = result.insertedId.toHexString();
+            (<any>item)['_id'] = result.insertedId.toHexString();
         }
+
+        return true;
     }
 
     public async count<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<number> {
@@ -98,7 +117,7 @@ export class Database {
     public async update<T>(classType: ClassType<T>, update: T): Promise<number | null> {
         const collection = this.getCollection(classType);
 
-        const updateStatement = {
+        const updateStatement: {[name :string]: any} = {
             $inc: {version: +1},
         };
 
@@ -116,14 +135,17 @@ export class Database {
             return null;
         }
 
-        update['version'] = doc['version'];
+        (<any>update)['version'] = (<any>doc)['version'];
+
+        return (<any>update)['version'];
     }
 
-    private buildFindCriteria<T>(classType: ClassType<T>, data: T) {
-        const criteria = {};
+    private buildFindCriteria<T>(classType: ClassType<T>, data: T): {[name: string]: any} {
+        const criteria: {[name: string]: any} = {};
         const id = getIdField(classType);
+        if (!id) return {};
 
-        criteria[id] = propertyClassToMongo(classType, id, data[id]);
+        criteria[id] = propertyClassToMongo(classType, id, (<any>data)[id]);
 
         return criteria;
     }
@@ -134,13 +156,13 @@ export class Database {
     public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number | null> {
         const collection = this.getCollection(classType);
 
-        const patchStatement = {
+        const patchStatement: {[name: string]: any} = {
             $inc: {version: +1}
         };
 
-        delete patch['id'];
-        delete patch['_id'];
-        delete patch['version'];
+        delete (<any>patch)['id'];
+        delete (<any>patch)['_id'];
+        delete (<any>patch)['version'];
 
         patchStatement['$set'] = partialFilterObjectToMongo(classType, patch);
 
@@ -155,6 +177,6 @@ export class Database {
             return null;
         }
 
-        return doc['version'];
+        return (<any>doc)['version'];
     }
 }

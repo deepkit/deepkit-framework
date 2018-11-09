@@ -39,7 +39,7 @@ export const now = new Date();
 export class CollectionWrapper {
     @ClassArray(SubModel)
     @Decorator()
-    public items;
+    public items: SubModel[];
 
     constructor(items: SubModel[]) {
         this.items = items;
@@ -54,7 +54,7 @@ export class StringCollectionWrapper {
     @Decorator()
     @StringType()
     @ArrayType()
-    public items;
+    public items: string[];
 
     constructor(items: string[]) {
         this.items = items;
@@ -121,23 +121,23 @@ export class SimpleModel {
 export class SuperSimple {
     @ID()
     @MongoIdType()
-    _id: string;
+    _id?: string;
 
     @StringType()
-    name: string;
+    name?: string;
 }
 
 @Entity('BaseClass')
 export class BaseClass {
     @ID()
     @MongoIdType()
-    _id: string;
+    _id?: string;
 }
 
 
 @Entity('ChildClass')
 export class ChildClass extends BaseClass {
     @StringType()
-    name: string;
+    name?: string;
 }
 
