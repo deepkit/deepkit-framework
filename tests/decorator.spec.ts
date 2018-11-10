@@ -6,15 +6,24 @@ import {
     Class,
     DatabaseName,
     Entity,
-    ID, MapType,
+    ID,
+    MapType,
     MongoIdType,
     StringType,
     getCollectionName,
     getDatabaseName,
     getEntityName,
     getReflectionType,
-    isArrayType, isMapType,
-    plainToClass
+    isArrayType,
+    isMapType,
+    plainToClass,
+    ClassMap,
+    ClassArray,
+    ClassCircular,
+    ClassArrayCircular,
+    ClassMapCircular,
+    AssignParent,
+    getAssignParentClass
 } from "../";
 
 test('test entity database', async () => {
@@ -60,10 +69,78 @@ test('test no entity throw error', () => {
         class Model {}
         getCollectionName(Model);
     }).toThrowError('No @Entity() defined for class class Model');
-
 });
-test('test properties', () => {
 
+test('test decorator errors', () => {
+    class Sub {}
+
+    expect(() => {
+        class Model {
+            @Class(<any>undefined)
+            sub?: Sub;
+        }
+    }).toThrowError('Model::sub has @Class but argument is empty.');
+
+    expect(() => {
+        class Model {
+            @ClassMap(<any>undefined)
+            sub?: Sub;
+        }
+    }).toThrowError('Model::sub has @ClassMap but argument is empty.');
+
+    expect(() => {
+        class Model {
+            @ClassArray(<any>undefined)
+            sub?: Sub;
+        }
+    }).toThrowError('Model::sub has @ClassArray but argument is empty.');
+});
+
+test('test decorator AssignParent without class', () => {
+    class Sub {}
+
+    expect(() => {
+        class Model {
+            @AssignParent()
+            sub?: Sub;
+        }
+        getAssignParentClass(Model, 'sub');
+    }).toThrowError('Model::sub has @AssignParent but no @Class defined.');
+});
+
+test('test decorator circular', () => {
+    class Sub {}
+
+    {
+        class Model {
+            @ClassCircular(() => Sub)
+            sub?: Sub;
+        }
+        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+    }
+
+    {
+        class Model {
+            @ClassMapCircular(() => Sub)
+            sub?: Sub;
+        }
+        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        expect(isMapType(Model, 'sub')).toBeTrue();
+    }
+
+    {
+        class Model {
+            @ClassArrayCircular(() => Sub)
+            sub?: Sub;
+        }
+        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        expect(isArrayType(Model, 'sub')).toBeTrue();
+    }
+});
+
+
+
+test('test properties', () => {
     class DataValue { }
     class DataValue2 { }
 

@@ -7,11 +7,21 @@ import {
     classToPlain, cloneClass, EnumType, Exclude,
     getEntityName, getEnumKeys, getEnumLabels,
     getIdField,
-    getIdFieldValue, getValidEnumValue, isExcluded, isValidEnumValue, mongoToClass, NumberType, MongoIdType,
-    plainToClass, plainToMongo, StringType, uuid, UUIDType,
+    getIdFieldValue, getValidEnumValue, isExcluded, isValidEnumValue, mongoToClass, NumberType,
+    plainToClass, plainToMongo, StringType, uuid, getReflectionType, getAssignParentClass,
 } from "../";
-import {now, SimpleModel, Plan, SubModel, CollectionWrapper, StringCollectionWrapper} from "./entities";
+import {
+    now,
+    SimpleModel,
+    Plan,
+    SubModel,
+    CollectionWrapper,
+    StringCollectionWrapper,
+} from "./entities";
 import {Binary} from "bson";
+import {DocumentClass} from "./document-scenario/DocumentClass";
+import {PageCollection} from "./document-scenario/PageCollection";
+import {PageClass} from "./document-scenario/PageClass";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
@@ -144,7 +154,7 @@ test('test simple model with not mapped fields', () => {
     expect(plainObject.excludedForMongo).toBe('excludedForMongo');
 });
 
-test('test decorator', async () => {
+test('test @decorator', async () => {
     {
         const instance = mongoToClass(SimpleModel, {
             name: 'myName',
@@ -274,6 +284,112 @@ test('test decorator complex', async () => {
         expect(mongo.childrenCollection).toEqual([{label: 'Foo'}, {label: 'Bar'}]);
     }
 });
+
+test('test @decorator with parent', async () => {
+    expect(getReflectionType(DocumentClass, 'pages')).toEqual({type: 'class', typeValue: PageCollection});
+    expect(getReflectionType(PageCollection, 'pages')).toEqual({type: 'class', typeValue: PageClass});
+    expect(getReflectionType(PageClass, 'parent')).toEqual({type: 'class', typeValue: PageClass});
+    expect(getReflectionType(PageClass, 'document')).toEqual({type: 'class', typeValue: DocumentClass});
+    expect(getReflectionType(PageClass, 'children')).toEqual({type: 'class', typeValue: PageCollection});
+
+    expect(getAssignParentClass(PageClass, 'parent')).toBe(PageClass);
+
+    {
+        const instance = mongoToClass(DocumentClass, {
+            name: 'myName',
+            page: {
+                name: 'RootPage',
+                children: [
+                    {name: 'RootPage.1'},
+                    {name: 'RootPage.2'},
+                    {name: 'RootPage.3'},
+                ]
+            },
+            pages: [
+                {
+                    name: 'Foo',
+                    children: [
+                        {
+                            name: 'Foo.1',
+                            children: [
+                                {name: 'Foo.1.1'},
+                                {name: 'Foo.1.2'},
+                                {name: 'Foo.1.3'},
+                            ]
+                        }
+                    ]
+                },
+                {name: 'Bar'}
+            ]
+        });
+
+        expect(instance.name).toBe('myName');
+        expect(instance.pages).toBeInstanceOf(PageCollection);
+        expect(instance.pages.count()).toBe(2);
+
+        expect(instance.page).toBeInstanceOf(PageClass);
+        expect(instance.page!.children.get(0)!.parent).toBe(instance.page);
+        expect(instance.page!.children.get(1)!.parent).toBe(instance.page);
+        expect(instance.page!.children.get(2)!.parent).toBe(instance.page);
+
+        expect(instance.pages.get(0)).toBeInstanceOf(PageClass);
+        expect(instance.pages.get(1)).toBeInstanceOf(PageClass);
+
+        expect(instance.pages.get(0)!.name).toBe('Foo');
+        expect(instance.pages.get(1)!.name).toBe('Bar');
+        expect(instance.pages.get(0)!.parent).toBeUndefined();
+        expect(instance.pages.get(1)!.parent).toBeUndefined();
+
+        expect(instance.pages.get(0)!.document).toBe(instance);
+        expect(instance.pages.get(1)!.document).toBe(instance);
+
+        expect(instance.pages.get(0)!.children).toBeInstanceOf(PageCollection);
+
+        const foo_1 = instance.pages.get(0)!.children.get(0);
+        expect(foo_1).toBeInstanceOf(PageClass);
+        expect(foo_1!.name).toBe('Foo.1');
+        expect(foo_1!.document).toBe(instance);
+
+        expect(foo_1!.parent).not.toBeUndefined();
+        expect(foo_1!.parent!.name).toBe('Foo');
+        expect(foo_1!.parent).toBe(instance.pages.get(0));
+
+        expect(foo_1!.children.count()).toBe(3);
+        const foo_1_1 = foo_1!.children.get(0);
+        const foo_1_2 = foo_1!.children.get(1);
+        const foo_1_3 = foo_1!.children.get(2);
+        expect(foo_1_1).toBeInstanceOf(PageClass);
+        expect(foo_1_2).toBeInstanceOf(PageClass);
+        expect(foo_1_3).toBeInstanceOf(PageClass);
+
+        expect(foo_1_1!.parent).toBeInstanceOf(PageClass);
+        expect(foo_1_2!.parent).toBeInstanceOf(PageClass);
+        expect(foo_1_3!.parent).toBeInstanceOf(PageClass);
+        expect(foo_1_1!.parent).toBe(foo_1);
+        expect(foo_1_2!.parent).toBe(foo_1);
+        expect(foo_1_3!.parent).toBe(foo_1);
+        expect(foo_1_1!.document).toBe(instance);
+        expect(foo_1_2!.document).toBe(instance);
+        expect(foo_1_3!.document).toBe(instance);
+
+        expect(foo_1_1!.parent!.name).toBe('Foo.1');
+        expect(foo_1_2!.parent!.name).toBe('Foo.1');
+        expect(foo_1_3!.parent!.name).toBe('Foo.1');
+
+        for (const toPlain of [classToPlain, classToMongo]) {
+            const plain = toPlain(DocumentClass, instance);
+
+            expect(plain.name).toBe('myName');
+            expect(plain.pages[0].name).toEqual('Foo');
+            expect(plain.pages[1].name).toEqual('Bar');
+            expect(plain.pages[0].children[0].name).toEqual('Foo.1');
+            expect(plain.pages[0].parent).toBeUndefined();
+
+            expect(plain.pages[0].parent).toBeUndefined();
+        }
+    }
+});
+
 
 test('simple string + number', () => {
 

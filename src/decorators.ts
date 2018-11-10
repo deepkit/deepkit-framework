@@ -1,5 +1,5 @@
 import {Types} from "./mapper";
-import {ClassType} from "./utils";
+import {ClassType, getClassName} from "./utils";
 import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validation";
 
 export function Entity(name: string, collectionName?: string) {
@@ -25,6 +25,12 @@ export function ID() {
     return (target: Object, property: string) => {
         registerProperty(target, property);
         Reflect.defineMetadata('marshal:idField', property, target);
+    };
+}
+
+export function AssignParent<T>() {
+    return (target: Object, property: string) => {
+        Reflect.defineMetadata('marshal:assignParent', true, target, property);
     };
 }
 
@@ -100,8 +106,20 @@ export function MapType() {
     };
 }
 
+export function ClassCircular<T>(classType: () => ClassType<T>) {
+    return (target: Object, property: string) => {
+        Type('class')(target, property);
+        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
+        Reflect.defineMetadata('marshal:dataTypeValueCircular', true, target, property);
+    };
+}
+
 export function Class<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
+        if (!classType) {
+            throw new Error(`${getClassName(target)}::${property} has @Class but argument is empty. Use @ClassCircular(() => YourClass) to work around circular dependencies.`);
+        }
+
         Type('class')(target, property);
         Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
     };
@@ -109,17 +127,37 @@ export function Class<T>(classType: ClassType<T>) {
 
 export function ClassMap<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
+        if (!classType) {
+            throw new Error(`${getClassName(target)}::${property} has @ClassMap but argument is empty. Use @ClassMap(() => YourClass) to work around circular dependencies.`);
+        }
+
         Class(classType)(target, property);
         MapType()(target, property);
-        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
+    };
+}
+
+export function ClassMapCircular<T>(classType: () => ClassType<T>) {
+    return (target: Object, property: string) => {
+        ClassCircular(classType)(target, property);
+        MapType()(target, property);
     };
 }
 
 export function ClassArray<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
+        if (!classType) {
+            throw new Error(`${getClassName(target)}::${property} has @ClassArray but argument is empty. Use @ClassArrayCircular(() => YourClass) to work around circular dependencies.`);
+        }
+
         Class(classType)(target, property);
         ArrayType()(target, property);
-        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
+    };
+}
+
+export function ClassArrayCircular<T>(classType: () => ClassType<T>) {
+    return (target: Object, property: string) => {
+        ClassCircular(classType)(target, property);
+        ArrayType()(target, property);
     };
 }
 

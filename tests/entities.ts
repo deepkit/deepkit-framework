@@ -13,7 +13,7 @@ import {
     MongoIdType,
     Decorator,
     Class, ExcludeToMongo, ExcludeToPlain, ArrayType, BooleanType
-} from "../";
+} from '..';
 
 @Entity('sub')
 export class SubModel {
