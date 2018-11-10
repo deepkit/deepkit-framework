@@ -4,9 +4,9 @@ import {
     DatabaseName, Entity, getCollectionName, getDatabaseName, ID, MongoIdType,
     plainToClass, StringType, uuid4Stringify,
 } from "@marcj/marshal";
-import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {Binary, MongoClient} from "mongodb";
 import {Database} from "../";
+import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 
 let connection: MongoClient;
 
