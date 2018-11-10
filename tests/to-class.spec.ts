@@ -532,6 +532,15 @@ test('test @decorator with parent', async () => {
         expect(foo_1_2!.parent!.name).toBe('Foo.1');
         expect(foo_1_3!.parent!.name).toBe('Foo.1');
 
+        expect(() => {
+            const clone = cloneClass(instance.page);
+        }).toThrow('PageClass::document is in constructor has');
+
+        const clone = cloneClass(instance.page, [instance]);
+        expect(clone).toBeInstanceOf(PageClass);
+        expect(clone!.document).toBe(instance);
+        expect(clone!.parent).toBeUndefined();
+
         for (const toPlain of [classToPlain, classToMongo]) {
             const plain = toPlain(DocumentClass, instance);
 
