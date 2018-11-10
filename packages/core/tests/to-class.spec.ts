@@ -22,6 +22,7 @@ import {Binary} from "bson";
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {PageClass} from "./document-scenario/PageClass";
+import {Optional} from "../src/validation";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
@@ -201,6 +202,22 @@ test('test childrenMap', async () => {
 
     expect(instance.childrenMap.foo.label).toBe('Foo');
     expect(instance.childrenMap.bar.label).toBe('Bar');
+});
+
+test('test allowNull', async () => {
+    class Model {
+        @StringType()
+        @Optional()
+        name: string | null = null;
+    }
+
+    expect(mongoToClass(Model, {}).name).toBe(null);
+    expect(mongoToClass(Model, {name: null}).name).toBe(null);
+    expect(mongoToClass(Model, {name: undefined}).name).toBe(null);
+
+    expect(plainToClass(Model, {}).name).toBe(null);
+    expect(plainToClass(Model, {name: null}).name).toBe(null);
+    expect(plainToClass(Model, {name: undefined}).name).toBe(null);
 });
 
 test('test setter/getter', async () => {
