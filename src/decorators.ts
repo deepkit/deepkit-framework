@@ -28,9 +28,9 @@ export function ID() {
     };
 }
 
-export function AssignParent<T>() {
+export function ParentReference<T>() {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:assignParent', true, target, property);
+        Reflect.defineMetadata('marshal:parentReference', true, target, property);
     };
 }
 

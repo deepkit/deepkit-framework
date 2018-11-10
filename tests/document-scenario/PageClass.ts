@@ -1,7 +1,8 @@
 import {PageCollection} from "./PageCollection";
 import {DocumentClass} from "./DocumentClass";
-import {Class, ClassCircular, AssignParent, StringType, UUIDType} from "../../src/decorators";
+import {Class, ClassCircular, ParentReference, StringType, UUIDType} from "../../src/decorators";
 import {uuid} from "../../src/utils";
+import {Optional} from "../../src/validation";
 
 export class PageClass {
     @UUIDType()
@@ -14,10 +15,15 @@ export class PageClass {
     children: PageCollection = new PageCollection;
 
     @Class(PageClass)
-    @AssignParent()
+    @ParentReference()
+    @Optional()
     parent?: PageClass;
 
     @ClassCircular(() => DocumentClass)
-    @AssignParent()
-    document?: DocumentClass;
+    @ParentReference()
+    document: DocumentClass;
+
+    constructor(document: DocumentClass) {
+        this.document = document;
+    }
 }
