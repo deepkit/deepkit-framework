@@ -6,11 +6,12 @@ import {
     uuid4Stringify,
     isUndefined,
     getEnumKeys,
-    isValidEnumValue, getValidEnumValue, getClassPropertyName
+    isValidEnumValue, getValidEnumValue, getClassPropertyName, getClassName
 } from './utils';
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {ObjectID} from "bson";
+import {isOptional} from "./validation";
 
 export type Types = 'objectId' | 'uuid' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
 
@@ -32,14 +33,14 @@ export function getReflectionType<T>(classType: ClassType<T>, propertyName: stri
     }
 }
 
-export function getAssignParentClass<T>(classType: ClassType<T>, propertyName: string): any {
-    const assignParent = Reflect.getMetadata('marshal:assignParent', classType.prototype, propertyName) || false;
+export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName: string): any {
+    const parentReference = Reflect.getMetadata('marshal:parentReference', classType.prototype, propertyName) || false;
 
-    if (assignParent) {
+    if (parentReference) {
         const {typeValue} = getReflectionType(classType, propertyName);
 
         if (!typeValue) {
-            throw new Error(`${getClassPropertyName(classType, propertyName)} has @AssignParent but no @Class defined.`);
+            throw new Error(`${getClassPropertyName(classType, propertyName)} has @ParentReference but no @Class defined.`);
         }
 
         return typeValue;
@@ -47,10 +48,10 @@ export function getAssignParentClass<T>(classType: ClassType<T>, propertyName: s
 }
 
 export function propertyClassToMongo<T>(
-        classType: ClassType<T>,
-        propertyName: string,
-        propertyValue: any
-    ) {
+    classType: ClassType<T>,
+    propertyName: string,
+    propertyValue: any
+) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
     function convert(value: any) {
@@ -141,7 +142,7 @@ export function propertyPlainToClass<T>(
     classType: ClassType<T>,
     propertyName: string,
     propertyValue: any,
-    assignParents: AssignParentsRef,
+    parents: any[],
     incomingLevel: number
 ) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
@@ -180,7 +181,7 @@ export function propertyPlainToClass<T>(
         }
 
         if (type === 'class') {
-            return toClass(typeValue, clone(value), propertyPlainToClass, assignParents, incomingLevel);
+            return toClass(typeValue, clone(value), propertyPlainToClass, parents, incomingLevel);
         }
 
         return value;
@@ -203,12 +204,12 @@ export function propertyPlainToClass<T>(
 }
 
 export function propertyMongoToClass<T>(
-        classType: ClassType<T>,
-        propertyName: string,
-        propertyValue: any,
-        assignParents: AssignParentsRef,
-        incomingLevel: number
-    ) {
+    classType: ClassType<T>,
+    propertyName: string,
+    propertyValue: any,
+    parents: any[],
+    incomingLevel: number
+) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
     if (isUndefined(propertyValue)) {
@@ -225,7 +226,7 @@ export function propertyMongoToClass<T>(
         }
 
         if (type === 'class') {
-            return toClass(typeValue, clone(value), propertyMongoToClass, assignParents, incomingLevel);
+            return toClass(typeValue, clone(value), propertyMongoToClass, parents, incomingLevel);
         }
 
         return value;
@@ -268,7 +269,7 @@ export function classToPlain<T>(classType: ClassType<T>, target: T): any {
             continue;
         }
 
-        if (getAssignParentClass(classType, propertyName)) {
+        if (getParentReferenceClass(classType, propertyName)) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
         }
@@ -297,7 +298,7 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
             continue;
         }
 
-        if (getAssignParentClass(classType, propertyName)) {
+        if (getParentReferenceClass(classType, propertyName)) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
         }
@@ -309,88 +310,90 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
     return result;
 }
 
-type AssignParentsRef = {item: any, property: string, level: number, parentClass: ClassType<any>}[];
+function toClass<T>(
+    classType: ClassType<T>,
+    cloned: object,
+    converter: (classType: ClassType<T>, propertyName: string, propertyValue: any, parents: any[], incomingLevel: number) => any,
+    parents: any[],
+    incomingLevel = 1
+): T {
 
-export function toClass<T>(
-        classType: ClassType<T>,
-        target: object,
-        converter: (classType: ClassType<T>, propertyName: string, propertyValue: any, assignParents: AssignParentsRef, incomingLevel: number) => any,
-        assignParents: AssignParentsRef,
-        incomingLevel = 1
-    ): T {
-
-    const cloned = clone(target);
-
-    const decoratorName = getDecorator(classType);
-    if (decoratorName) {
-        return new classType(converter(classType, decoratorName, cloned, assignParents, incomingLevel));
-    }
-
+    const parentReferences: { [propertyName: string]: any } = {};
+    const assignedViaConstructor: { [propertyName: string]: boolean } = {};
     const propertyNames = getRegisteredProperties(classType);
-    for (const propertyName of propertyNames) {
-        if (getAssignParentClass(classType, propertyName)) {
-            //we don't populate it when its a parent ref
-            continue;
-        }
 
-        cloned[propertyName] = converter(classType, propertyName, cloned[propertyName], assignParents, incomingLevel + 1);
+    for (const propertyName of propertyNames) {
+        parentReferences[propertyName] = getParentReferenceClass(classType, propertyName);
     }
 
     const parameterNames = getParameterNames(classType.prototype.constructor);
-    const args: any[] = [];
 
-    for (const name of parameterNames) {
-        args.push(cloned[name]);
-    }
-
-    const item = new class extends (classType as ClassType<{}>) {
-        constructor() {
-            super(...args);
-
-            for (const i in cloned) {
-                if (!cloned.hasOwnProperty(i)) continue;
-
-                if (undefined === cloned[i]) {
-                    continue;
-                }
-
-                (this as any)[i] = cloned[i];
+    function findParent<T>(parentType: ClassType<T>): T | null {
+        for (let i = parents.length - 1; i >= 0; i--) {
+            if (parents[i] instanceof parentType) {
+                return parents[i];
             }
         }
-    } as T;
+
+        return null;
+    }
+
+    const decoratorName = getDecorator(classType);
+
+    const args: any[] = [];
+    for (const propertyName of parameterNames) {
+        if (decoratorName && propertyName === decoratorName) {
+            cloned[propertyName] = converter(classType, decoratorName, cloned, parents, incomingLevel);
+        } else if (parentReferences[propertyName]) {
+            const parent = findParent(parentReferences[propertyName]);
+            if (parent) {
+                cloned[propertyName] = parent;
+            } else if (!isOptional(classType, propertyName)) {
+                throw new Error(`${getClassPropertyName(classType, propertyName)} is in constructor ` +
+                    `has @ParentReference() and NOT @Optional(), but no parent found. In case of circular reference, ` +
+                    `remove '${propertyName}' from constructor.`);
+            }
+        } else {
+            cloned[propertyName] = converter(classType, propertyName, cloned[propertyName], parents, incomingLevel + 1);
+        }
+
+        assignedViaConstructor[propertyName] = true;
+        args.push(cloned[propertyName]);
+    }
+
+    const item = new classType(...args);
+
+    const parentsWithItem = parents.slice(0);
+    parentsWithItem.push(item);
 
     for (const propertyName of propertyNames) {
-        const assignParent = getAssignParentClass(classType, propertyName);
-        if (assignParent) {
-            assignParents.push({
-                item: item,
-                level: incomingLevel,
-                property: propertyName,
-                parentClass: assignParent
-            });
+        if (assignedViaConstructor[propertyName]) {
+            //already given via constructor
+            continue;
+        }
+
+        if (parentReferences[propertyName]) {
+            const parent = findParent(parentReferences[propertyName]);
+            if (parent) {
+                item[propertyName] = parent;
+            } else if (!isOptional(classType, propertyName)) {
+                throw new Error(`${getClassPropertyName(classType, propertyName)} is defined as @ParentReference() and `+
+                    `NOT @Optional(), but no parent found. Add @Optional() or provide ${propertyName} in parents to fix that.`);
+            }
+        } else if (!isUndefined(cloned[propertyName])) {
+            item[propertyName] = converter(classType, propertyName, cloned[propertyName], parentsWithItem, incomingLevel + 1);
         }
     }
-
-    const copy = assignParents.slice(0);
-    for (let i = copy.length - 1; i >= 0; i--) {
-        const assignParent = copy[i];
-        if (incomingLevel < assignParent.level && item instanceof assignParent.parentClass) {
-            assignParent.item[assignParent.property] = item;
-            assignParents.splice(i, 1);
-        }
-    }
-
-    item['level'] = incomingLevel;
 
     return item;
 }
 
-export function plainToClass<T>(classType: ClassType<T>, target: object, assignParents?: AssignParentsRef): T {
-    return toClass(classType, target, propertyPlainToClass, assignParents || []);
+export function plainToClass<T>(classType: ClassType<T>, target: object, parents?: any[]): T {
+    return toClass(classType, clone(target), propertyPlainToClass, parents || []);
 }
 
-export function mongoToClass<T>(classType: ClassType<T>, target: any, assignParents?: AssignParentsRef): T {
-    return toClass(classType, target, propertyMongoToClass, assignParents || []);
+export function mongoToClass<T>(classType: ClassType<T>, target: any, parents?: any[]): T {
+    return toClass(classType, clone(target), propertyMongoToClass, parents || []);
 
 }
 

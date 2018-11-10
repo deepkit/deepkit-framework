@@ -271,12 +271,12 @@ class MyEntity {
 }
 ```
 
-### AssignParent
+### ParentReference
 
 
-`@AssignParent` together with `@Class` is used for all `*ToClass` functions
+`@ParentReference` together with `@Class` is used for all `*ToClass` functions
 and allows you to have the parent from instance of class given in `@Class` assigned
-as reference. Properties that used `@AssignParent` are automatically excluded
+as reference. Properties that used `@ParentReference` are automatically excluded
 in `*ToPlain` and `*ToMongo` functions.
 
 ```typescript
@@ -288,7 +288,7 @@ class  Page {
     children: Page[] = [];
     
     @Class(Page)
-    @AssignParent()
+    @ParentReference()
     parent?: PageClass;
 }
 

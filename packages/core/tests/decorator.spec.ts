@@ -22,8 +22,8 @@ import {
     ClassCircular,
     ClassArrayCircular,
     ClassMapCircular,
-    AssignParent,
-    getAssignParentClass
+    ParentReference,
+    getParentReferenceClass
 } from "../";
 
 test('test entity database', async () => {
@@ -96,16 +96,16 @@ test('test decorator errors', () => {
     }).toThrowError('Model::sub has @ClassArray but argument is empty.');
 });
 
-test('test decorator AssignParent without class', () => {
+test('test decorator ParentReference without class', () => {
     class Sub {}
 
     expect(() => {
         class Model {
-            @AssignParent()
+            @ParentReference()
             sub?: Sub;
         }
-        getAssignParentClass(Model, 'sub');
-    }).toThrowError('Model::sub has @AssignParent but no @Class defined.');
+        getParentReferenceClass(Model, 'sub');
+    }).toThrowError('Model::sub has @ParentReference but no @Class defined.');
 });
 
 test('test decorator circular', () => {

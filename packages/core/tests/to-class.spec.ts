@@ -8,7 +8,7 @@ import {
     getEntityName, getEnumKeys, getEnumLabels,
     getIdField,
     getIdFieldValue, getValidEnumValue, isExcluded, isValidEnumValue, mongoToClass, NumberType,
-    plainToClass, plainToMongo, StringType, uuid, getReflectionType, getAssignParentClass,
+    plainToClass, plainToMongo, StringType, uuid, getReflectionType, getParentReferenceClass,
 } from "../";
 import {
     now,
@@ -19,7 +19,7 @@ import {
     StringCollectionWrapper,
 } from "./entities";
 import {Binary} from "bson";
-import {DocumentClass} from "./document-scenario/DocumentClass";
+import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {PageClass} from "./document-scenario/PageClass";
 
@@ -120,7 +120,7 @@ test('test simple model with not mapped fields', () => {
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
     expect(instance.yesNo).toBe(true);
-    expect(instance.notMapped).toEqual({a: 'foo'});
+    expect(instance.notMapped).toEqual({});
     expect(instance.excluded).toBe('default');
     expect(instance.excludedForPlain).toBe('excludedForPlain');
     expect(instance.excludedForMongo).toBe('excludedForMongo');
@@ -292,7 +292,45 @@ test('test @decorator with parent', async () => {
     expect(getReflectionType(PageClass, 'document')).toEqual({type: 'class', typeValue: DocumentClass});
     expect(getReflectionType(PageClass, 'children')).toEqual({type: 'class', typeValue: PageCollection});
 
-    expect(getAssignParentClass(PageClass, 'parent')).toBe(PageClass);
+    expect(getParentReferenceClass(PageClass, 'parent')).toBe(PageClass);
+
+    expect(() => {
+        const instance = mongoToClass(ClassWithUnmetParent, {
+        });
+    }).toThrow('ClassWithUnmetParent::parent is defined as');
+
+    expect(() => {
+        const instance = mongoToClass(PageClass, {
+            name: 'myName'
+        });
+    }).toThrow('PageClass::document is in constructor has');
+
+    {
+        const doc = new DocumentClass();
+
+        const instance = mongoToClass(PageClass, {
+            name: 'myName'
+        }, [doc]);
+
+        expect(instance.document).toBe(doc);
+    }
+
+    expect(() => {
+        const instance = mongoToClass(ImpossibleToMetDocumentClass, {
+            name: 'myName',
+            pages: [
+                {
+                    name: 'Foo',
+                    children: [
+                        {
+                            name: 'Foo.1'
+                        }
+                    ]
+                },
+                {name: 'Bar'}
+            ]
+        });
+    }).toThrow('PageClass::document is in constructor has');
 
     {
         const instance = mongoToClass(DocumentClass, {
@@ -324,14 +362,14 @@ test('test @decorator with parent', async () => {
         });
 
         expect(instance.name).toBe('myName');
-        expect(instance.pages).toBeInstanceOf(PageCollection);
-        expect(instance.pages.count()).toBe(2);
 
         expect(instance.page).toBeInstanceOf(PageClass);
         expect(instance.page!.children.get(0)!.parent).toBe(instance.page);
         expect(instance.page!.children.get(1)!.parent).toBe(instance.page);
         expect(instance.page!.children.get(2)!.parent).toBe(instance.page);
 
+        expect(instance.pages).toBeInstanceOf(PageCollection);
+        expect(instance.pages.count()).toBe(2);
         expect(instance.pages.get(0)).toBeInstanceOf(PageClass);
         expect(instance.pages.get(1)).toBeInstanceOf(PageClass);
 
@@ -358,6 +396,7 @@ test('test @decorator with parent', async () => {
         const foo_1_1 = foo_1!.children.get(0);
         const foo_1_2 = foo_1!.children.get(1);
         const foo_1_3 = foo_1!.children.get(2);
+
         expect(foo_1_1).toBeInstanceOf(PageClass);
         expect(foo_1_2).toBeInstanceOf(PageClass);
         expect(foo_1_3).toBeInstanceOf(PageClass);
@@ -365,9 +404,11 @@ test('test @decorator with parent', async () => {
         expect(foo_1_1!.parent).toBeInstanceOf(PageClass);
         expect(foo_1_2!.parent).toBeInstanceOf(PageClass);
         expect(foo_1_3!.parent).toBeInstanceOf(PageClass);
+
         expect(foo_1_1!.parent).toBe(foo_1);
         expect(foo_1_2!.parent).toBe(foo_1);
         expect(foo_1_3!.parent).toBe(foo_1);
+
         expect(foo_1_1!.document).toBe(instance);
         expect(foo_1_2!.document).toBe(instance);
         expect(foo_1_3!.document).toBe(instance);
