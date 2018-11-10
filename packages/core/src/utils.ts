@@ -2,6 +2,16 @@ import {v4} from 'uuid';
 import * as mongoUuid from 'mongo-uuid';
 import {Binary} from 'bson';
 
+export function getClassName<T>(classType: ClassType<T> | Object): string {
+    return classType['name'] || (classType.constructor ? classType.constructor.name : '');
+}
+
+export function getClassPropertyName<T>(classType: ClassType<T> | Object, propertyName: string): string {
+    const name = getClassName(classType);
+
+    return `${name}::${propertyName}`;
+}
+
 export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);
 }

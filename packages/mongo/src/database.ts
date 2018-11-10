@@ -5,11 +5,29 @@ import {
     getDatabaseName,
     getIdField,
     mongoToClass,
-    partialFilterObjectToMongo,
     propertyClassToMongo
 } from '@marcj/marshal';
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
+import * as clone from "clone";
+import {getRegisteredProperties, toObject} from "@marcj/marshal/src/mapper";
+
+export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: any = {}): { [name: string]: any } {
+    const cloned = clone(target, false);
+
+    for (const propertyName of getRegisteredProperties(classType)) {
+        if (!cloned.hasOwnProperty(propertyName)) continue;
+
+        if (target[propertyName] instanceof RegExp) {
+            continue;
+        }
+
+        cloned[propertyName] = propertyClassToMongo(classType, propertyName, target[propertyName]);
+    }
+
+    return toObject(cloned);
+}
+
 
 export class Database {
     constructor(private mongoClient: MongoClient, private defaultDatabaseName = 'app') {
