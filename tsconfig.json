@@ -16,6 +16,7 @@
       "reflect-metadata"
     ],
     "lib": [
+      "es2017",
       "es2016",
       "dom"
     ]
