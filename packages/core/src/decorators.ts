@@ -34,6 +34,27 @@ export function ParentReference<T>() {
     };
 }
 
+function addMetadataArray(metadataKey: string, target: Object, item: any) {
+    const array = Reflect.getMetadata(metadataKey, target) || [];
+    if (-1 === array.indexOf(item)) {
+        array.push(item);
+    }
+
+    Reflect.defineMetadata(metadataKey, array, target);
+}
+
+/**
+ * Executes the method when the current class is instantiated and populated.
+ */
+export function OnLoad(options: {fullLoad?: boolean} = {}) {
+    return (target: Object, property: string) => {
+        addMetadataArray('marshal:onLoad', target, {
+            property: property,
+            options: options
+        });
+    };
+}
+
 /**
  * Exclude in *toMongo and *toPlain.
  */
@@ -56,12 +77,7 @@ export function ExcludeToPlain() {
 }
 
 export function registerProperty(target: Object, property: string) {
-    const properties = Reflect.getMetadata('marshal:properties', target) || [];
-    if (-1 === properties.indexOf(property)) {
-        properties.push(property);
-    }
-
-    Reflect.defineMetadata('marshal:properties', properties, target);
+    addMetadataArray('marshal:properties', target, property)
 }
 
 

@@ -19,6 +19,10 @@ export function isCircularDataType<T>(classType: ClassType<T>, propertyName: str
     return Reflect.getMetadata('marshal:dataTypeValueCircular', classType.prototype, propertyName) || false;
 }
 
+export function getOnLoad<T>(classType: ClassType<T>): {property: string, options: {fullLoad?: false}}[] {
+    return Reflect.getMetadata('marshal:onLoad', classType.prototype) || [];
+}
+
 export function getReflectionType<T>(classType: ClassType<T>, propertyName: string): { type: Types | null, typeValue: any | null } {
     const type = Reflect.getMetadata('marshal:dataType', classType.prototype, propertyName) || null;
     let value = Reflect.getMetadata('marshal:dataTypeValue', classType.prototype, propertyName) || null;
@@ -143,7 +147,8 @@ export function propertyPlainToClass<T>(
     propertyName: string,
     propertyValue: any,
     parents: any[],
-    incomingLevel: number
+    incomingLevel: number,
+    state: ToClassState
 ) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
@@ -185,7 +190,7 @@ export function propertyPlainToClass<T>(
         }
 
         if (type === 'class') {
-            return toClass(typeValue, clone(value), propertyPlainToClass, parents, incomingLevel);
+            return toClass(typeValue, clone(value), propertyPlainToClass, parents, incomingLevel, state);
         }
 
         return value;
@@ -212,7 +217,8 @@ export function propertyMongoToClass<T>(
     propertyName: string,
     propertyValue: any,
     parents: any[],
-    incomingLevel: number
+    incomingLevel: number,
+    state: ToClassState
 ) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
@@ -233,8 +239,36 @@ export function propertyMongoToClass<T>(
             return (<ObjectID>value).toHexString();
         }
 
+        if ('date' === type && !(value instanceof Date)) {
+            return new Date(value);
+        }
+
+        if ('string' === type && 'string' !== typeof value) {
+            return String(value);
+        }
+
+        if ('number' === type && 'number' !== typeof value) {
+            return +value;
+        }
+
+        if ('boolean' === type && 'boolean' !== typeof value) {
+            if ('true' === value || '1' === value || 1 === value) return true;
+            if ('false' === value || '0' === value || 0 === value) return false;
+
+            return true === value;
+        }
+
+        if ('enum' === type) {
+            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
+            if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
+                throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+            }
+
+            return getValidEnumValue(typeValue, value, allowLabelsAsValue);
+        }
+
         if (type === 'class') {
-            return toClass(typeValue, clone(value), propertyMongoToClass, parents, incomingLevel);
+            return toClass(typeValue, clone(value), propertyMongoToClass, parents, incomingLevel, state);
         }
 
         return value;
@@ -318,12 +352,17 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
     return result;
 }
 
+class ToClassState {
+    onFullLoadCallbacks: (() => void)[] = [];
+}
+
 function toClass<T>(
     classType: ClassType<T>,
     cloned: object,
-    converter: (classType: ClassType<T>, propertyName: string, propertyValue: any, parents: any[], incomingLevel: number) => any,
+    converter: (classType: ClassType<T>, propertyName: string, propertyValue: any, parents: any[], incomingLevel: number, state: ToClassState) => any,
     parents: any[],
-    incomingLevel = 1
+    incomingLevel,
+    state: ToClassState
 ): T {
 
     const parentReferences: { [propertyName: string]: any } = {};
@@ -351,7 +390,7 @@ function toClass<T>(
     const args: any[] = [];
     for (const propertyName of parameterNames) {
         if (decoratorName && propertyName === decoratorName) {
-            cloned[propertyName] = converter(classType, decoratorName, cloned, parents, incomingLevel);
+            cloned[propertyName] = converter(classType, decoratorName, cloned, parents, incomingLevel, state);
         } else if (parentReferences[propertyName]) {
             const parent = findParent(parentReferences[propertyName]);
             if (parent) {
@@ -362,7 +401,7 @@ function toClass<T>(
                     `remove '${propertyName}' from constructor.`);
             }
         } else {
-            cloned[propertyName] = converter(classType, propertyName, cloned[propertyName], parents, incomingLevel + 1);
+            cloned[propertyName] = converter(classType, propertyName, cloned[propertyName], parents, incomingLevel + 1, state);
         }
 
         assignedViaConstructor[propertyName] = true;
@@ -389,7 +428,18 @@ function toClass<T>(
                     `NOT @Optional(), but no parent found. Add @Optional() or provide ${propertyName} in parents to fix that.`);
             }
         } else if (!isUndefined(cloned[propertyName])) {
-            item[propertyName] = converter(classType, propertyName, cloned[propertyName], parentsWithItem, incomingLevel + 1);
+            item[propertyName] = converter(classType, propertyName, cloned[propertyName], parentsWithItem, incomingLevel + 1, state);
+        }
+    }
+
+    const onLoads = getOnLoad(classType);
+    for (const onLoad of onLoads) {
+        if (onLoad.options.fullLoad) {
+            state.onFullLoadCallbacks.push(() => {
+                item[onLoad.property]();
+            });
+        } else {
+            item[onLoad.property]();
         }
     }
 
@@ -397,11 +447,25 @@ function toClass<T>(
 }
 
 export function plainToClass<T>(classType: ClassType<T>, target: object, parents?: any[]): T {
-    return toClass(classType, clone(target), propertyPlainToClass, parents || []);
+    const state = new ToClassState();
+    const item = toClass(classType, clone(target), propertyPlainToClass, parents || [], 1, state);
+
+    for (const callback of state.onFullLoadCallbacks) {
+        callback();
+    }
+
+    return item;
 }
 
 export function mongoToClass<T>(classType: ClassType<T>, target: any, parents?: any[]): T {
-    return toClass(classType, clone(target), propertyMongoToClass, parents || []);
+    const state = new ToClassState();
+    const item = toClass(classType, clone(target), propertyMongoToClass, parents || [], 1, state);
+
+    for (const callback of state.onFullLoadCallbacks) {
+        callback();
+    }
+
+    return item;
 
 }
 

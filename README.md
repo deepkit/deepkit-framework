@@ -303,6 +303,16 @@ const root = plainToClass(Page, {
 root.children[0].parent === root; //true
 ````
 
+### OnLoad(options?: {fullLoad?: boolean})
+
+With `@OnLoad` you can register one or multiple callbacks
+for the onLoad lifetime event. The registered method is called
+when the class has been instantiated with the `*ToClass` functions.
+
+If `fullLoad` is true, the callback is called when the whole chain
+of objects has been created, which means when all parents and siblings
+are fully initialised.
+
 ### Decorator
 
 `@Decorator` lets you transform the actual class into something
