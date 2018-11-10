@@ -6,7 +6,7 @@ import {
     uuid4Stringify,
     isUndefined,
     getEnumKeys,
-    isValidEnumValue, getValidEnumValue, getClassPropertyName, getClassName
+    isValidEnumValue, getValidEnumValue, getClassPropertyName
 } from './utils';
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
@@ -151,6 +151,10 @@ export function propertyPlainToClass<T>(
         return undefined;
     }
 
+    if (null === propertyValue) {
+        return null;
+    }
+
     function convert(value: any) {
         if ('date' === type && !(value instanceof Date)) {
             return new Date(value);
@@ -214,6 +218,10 @@ export function propertyMongoToClass<T>(
 
     if (isUndefined(propertyValue)) {
         return undefined;
+    }
+
+    if (null === propertyValue) {
+        return null;
     }
 
     function convert(value: any) {
