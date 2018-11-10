@@ -5,12 +5,13 @@ import {
     getDatabaseName,
     getIdField,
     mongoToClass,
-    propertyClassToMongo
+    propertyClassToMongo,
+    getRegisteredProperties,
+    toObject
 } from '@marcj/marshal';
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
 import * as clone from "clone";
-import {getRegisteredProperties, toObject} from "@marcj/marshal/src/mapper";
 
 export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: any = {}): { [name: string]: any } {
     const cloned = clone(target, false);

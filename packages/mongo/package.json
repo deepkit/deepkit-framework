@@ -31,7 +31,7 @@
     "collectCoverageFrom": [
       "**/*.{ts}",
       "!**/node_modules/**",
-      "!**/lib/**",
+      "!**/lib/**/*",
       "!**/*.d.ts"
     ],
     "transform": {
