@@ -119,6 +119,19 @@ test('test simple model all fields', () => {
 
         expect(getIdFieldValue(SimpleModel, instance)).toBeString();
 
+        const plain = classToPlain(SimpleModel, instance);
+        expect(plain.yesNo).toBeTrue();
+        expect(plain.plan).toBe(1);
+
+        const copy = cloneClass(instance);
+        expect(instance !== copy).toBeTrue();
+        expect(instance.children[0] !== copy.children[0]).toBeTrue();
+        expect(instance.children[1] !== copy.children[1]).toBeTrue();
+        expect(instance.childrenMap.foo !== copy.childrenMap.foo).toBeTrue();
+        expect(instance.childrenMap.foo2 !== copy.childrenMap.foo2).toBeTrue();
+        expect(instance.created !== copy.created).toBeTrue();
+
+        expect(plain).toEqual(classToPlain(SimpleModel, copy));
     }
 });
 
