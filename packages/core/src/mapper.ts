@@ -115,12 +115,17 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             return value.toJSON();
         }
 
-        if (type === 'enum') {
-            return typeValue[value];
+        if ('enum' === type) {
+            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
+            if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
+                throw new Error(`Invalid ENUM given in property ${getClassPropertyName(classType, propertyName)}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+            }
+
+            return getValidEnumValue(typeValue, value, allowLabelsAsValue);
         }
 
         if (type === 'class') {
-            return classToPlain(typeValue, clone(value));
+            return classToPlain(typeValue, clone(value, false, 1));
         }
 
         return value;
@@ -180,6 +185,10 @@ export function propertyPlainToClass<T>(
             return true === value;
         }
 
+        if ('any' === type) {
+            return clone(value, false, 1);
+        }
+
         if ('enum' === type) {
             const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
@@ -190,7 +199,7 @@ export function propertyPlainToClass<T>(
         }
 
         if (type === 'class') {
-            return toClass(typeValue, clone(value), propertyPlainToClass, parents, incomingLevel, state);
+            return toClass(typeValue, clone(value, false, 1), propertyPlainToClass, parents, incomingLevel, state);
         }
 
         return value;
@@ -243,6 +252,10 @@ export function propertyMongoToClass<T>(
             return new Date(value);
         }
 
+        if ('any' === type) {
+            return clone(value, false, 1);
+        }
+
         if ('string' === type && 'string' !== typeof value) {
             return String(value);
         }
@@ -268,7 +281,7 @@ export function propertyMongoToClass<T>(
         }
 
         if (type === 'class') {
-            return toClass(typeValue, clone(value), propertyMongoToClass, parents, incomingLevel, state);
+            return toClass(typeValue, clone(value, false, 1), propertyMongoToClass, parents, incomingLevel, state);
         }
 
         return value;
@@ -448,7 +461,7 @@ function toClass<T>(
 
 export function plainToClass<T>(classType: ClassType<T>, target: object, parents?: any[]): T {
     const state = new ToClassState();
-    const item = toClass(classType, clone(target), propertyPlainToClass, parents || [], 1, state);
+    const item = toClass(classType, clone(target, false, 1), propertyPlainToClass, parents || [], 1, state);
 
     for (const callback of state.onFullLoadCallbacks) {
         callback();
@@ -459,7 +472,7 @@ export function plainToClass<T>(classType: ClassType<T>, target: object, parents
 
 export function mongoToClass<T>(classType: ClassType<T>, target: any, parents?: any[]): T {
     const state = new ToClassState();
-    const item = toClass(classType, clone(target), propertyMongoToClass, parents || [], 1, state);
+    const item = toClass(classType, clone(target, false, 1), propertyMongoToClass, parents || [], 1, state);
 
     for (const callback of state.onFullLoadCallbacks) {
         callback();
@@ -553,7 +566,7 @@ export function getCollectionName<T>(classType: ClassType<T>): string {
 }
 
 export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: string]: any }): object {
-    const valueWithDefaults = clone(value);
+    const valueWithDefaults = clone(value, false, 1);
     const instance = plainToClass(classType, value);
 
     for (const i of getRegisteredProperties(classType)) {

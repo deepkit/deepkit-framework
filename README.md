@@ -478,3 +478,18 @@ class MyController {
 
 ````
 
+## Development of this package
+
+How to release:
+
+```
+# remove packages/*/lib folders
+# develop changes, run tests
+./node_modules/.bin/jest --coverage
+
+# build TS
+lerna run tsc
+
+# publish
+lerna publish patch
+```

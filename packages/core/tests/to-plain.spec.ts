@@ -31,7 +31,7 @@ test('test simple model all fields', () => {
     expect(json['id']).toBeString();
     expect(json['name']).toBe('myName');
     expect(json['type']).toBe(5);
-    expect(json['plan']).toBe('PRO');
+    expect(json['plan']).toBe(Plan.PRO);
     expect(json['created']).toBe('2018-10-13T12:17:35.000Z');
     expect(json['children']).toBeArrayOfSize(2);
     expect(json['children'][0]).toBeObject();
