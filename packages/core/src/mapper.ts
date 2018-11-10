@@ -6,7 +6,7 @@ import {
     uuid4Stringify,
     isUndefined,
     getEnumKeys,
-    isValidEnumValue, getValidEnumValue, getClassPropertyName
+    isValidEnumValue, getValidEnumValue, getClassPropertyName, getClassName
 } from './utils';
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
@@ -199,6 +199,11 @@ export function propertyPlainToClass<T>(
         }
 
         if (type === 'class') {
+            if (value instanceof typeValue) {
+                //already the target type, this is an error
+                throw new Error(`${getClassPropertyName(classType, propertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
+            }
+
             return toClass(typeValue, clone(value, false, 1), propertyPlainToClass, parents, incomingLevel, state);
         }
 
@@ -281,6 +286,11 @@ export function propertyMongoToClass<T>(
         }
 
         if (type === 'class') {
+            if (value instanceof typeValue) {
+                //already the target type, this is an error
+                throw new Error(`${getClassPropertyName(classType, propertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
+            }
+
             return toClass(typeValue, clone(value, false, 1), propertyMongoToClass, parents, incomingLevel, state);
         }
 
@@ -303,8 +313,8 @@ export function propertyMongoToClass<T>(
     return convert(propertyValue);
 }
 
-export function cloneClass<T>(target: T): T {
-    return plainToClass(target.constructor as ClassType<T>, classToPlain(target.constructor as ClassType<T>, target));
+export function cloneClass<T>(target: T, parents?: any[]): T {
+    return plainToClass(target.constructor as ClassType<T>, classToPlain(target.constructor as ClassType<T>, target), parents);
 }
 
 export function mongoToPlain<T>(classType: ClassType<T>, target: any) {
@@ -410,8 +420,9 @@ function toClass<T>(
                 cloned[propertyName] = parent;
             } else if (!isOptional(classType, propertyName)) {
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is in constructor ` +
-                    `has @ParentReference() and NOT @Optional(), but no parent found. In case of circular reference, ` +
-                    `remove '${propertyName}' from constructor.`);
+                    `has @ParentReference() and NOT @Optional(), but no parent of type ${getClassName(parentReferences[propertyName])} found. ` +
+                    `In case of circular reference, remove '${propertyName}' from constructor, or make sure you provided all parents`
+                );
             }
         } else {
             cloned[propertyName] = converter(classType, propertyName, cloned[propertyName], parents, incomingLevel + 1, state);
