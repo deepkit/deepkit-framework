@@ -6,7 +6,11 @@ import {
     uuid4Stringify,
     isUndefined,
     getEnumKeys,
-    isValidEnumValue, getValidEnumValue, getClassPropertyName, getClassName
+    isValidEnumValue,
+    getValidEnumValue,
+    getClassPropertyName,
+    getClassName,
+    getEnumLabels
 } from './utils';
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
@@ -118,7 +122,13 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         if ('enum' === type) {
             const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                throw new Error(`Invalid ENUM given in property ${getClassPropertyName(classType, propertyName)}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+                const valids = getEnumKeys(typeValue);
+                if (allowLabelsAsValue) {
+                    for (const label of getEnumLabels(classType)) {
+                        valids.push(label);
+                    }
+                }
+                throw new Error(`Invalid ENUM given in property ${getClassPropertyName(classType, propertyName)}: ${value}, valid: ${valids.join(',')}`);
             }
 
             return getValidEnumValue(typeValue, value, allowLabelsAsValue);
@@ -192,7 +202,13 @@ export function propertyPlainToClass<T>(
         if ('enum' === type) {
             const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+                const valids = getEnumKeys(typeValue);
+                if (allowLabelsAsValue) {
+                    for (const label of getEnumLabels(classType)) {
+                        valids.push(label);
+                    }
+                }
+                throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${valids.join(',')}`);
             }
 
             return getValidEnumValue(typeValue, value, allowLabelsAsValue);
