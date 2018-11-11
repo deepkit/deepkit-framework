@@ -5,7 +5,7 @@ import {
     plainToClass, StringType, uuid4Stringify,
 } from "@marcj/marshal";
 import {Binary, MongoClient} from "mongodb";
-import {Database} from "../";
+import {Database} from "../src/database";
 import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 
 let connection: MongoClient;
@@ -76,6 +76,17 @@ test('test save model', async () => {
     await database.update(SimpleModel, instance);
     expect(await database.has(SimpleModel, {name: 'MyName'})).toBeFalse();
     expect(await database.has(SimpleModel, {name: 'New Name'})).toBeTrue();
+
+    instance.name = 'New Name 2';
+    await database.update(SimpleModel, instance, {noResult: '2132'});
+    expect(await database.has(SimpleModel, {name: 'MyName'})).toBeFalse();
+    expect(await database.has(SimpleModel, {name: 'MyName 2'})).toBeFalse();
+    expect(await database.has(SimpleModel, {name: 'New Name'})).toBeTrue();
+
+    await database.update(SimpleModel, instance, {id: instance.id});
+    expect(await database.has(SimpleModel, {name: 'MyName'})).toBeFalse();
+    expect(await database.has(SimpleModel, {name: 'New Name'})).toBeFalse();
+    expect(await database.has(SimpleModel, {name: 'New Name 2'})).toBeTrue();
 });
 
 test('test delete', async () => {

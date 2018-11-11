@@ -7,7 +7,8 @@ import {
     mongoToClass,
     propertyClassToMongo,
     getRegisteredProperties,
-    toObject
+    toObject,
+    getClassName
 } from '@marcj/marshal';
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
@@ -29,6 +30,8 @@ export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: a
     return toObject(cloned);
 }
 
+
+export class NoIDDefinedError extends Error {}
 
 export class Database {
     constructor(private mongoClient: MongoClient, private defaultDatabaseName = 'app') {
@@ -127,13 +130,15 @@ export class Database {
     }
 
     public async has<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<boolean> {
-        return (await this.count(classType, filter)) > 0;
+        return (await this.count(classType, partialFilterObjectToMongo(classType, filter))) > 0;
     }
 
     /**
      * Updates an entity in the database and returns the new version number if successful, or null if not successful.
+     *
+     * If no filter is given, the ID of `update` is used.
      */
-    public async update<T>(classType: ClassType<T>, update: T): Promise<number | null> {
+    public async update<T>(classType: ClassType<T>, update: T, filter?: { [field: string]: any }): Promise<number | null> {
         const collection = this.getCollection(classType);
 
         const updateStatement: {[name :string]: any} = {
@@ -143,7 +148,9 @@ export class Database {
         updateStatement['$set'] = classToMongo(classType, update);
         delete updateStatement['$set']['version'];
 
-        const response = await collection.findOneAndUpdate(this.buildFindCriteria(classType, update), updateStatement, {
+        const filterQuery = filter ? partialFilterObjectToMongo(classType, filter) : this.buildFindCriteria(classType, update);
+
+        const response = await collection.findOneAndUpdate(filterQuery, updateStatement, {
             projection: {version: 1},
             returnOriginal: false
         });
@@ -162,7 +169,10 @@ export class Database {
     private buildFindCriteria<T>(classType: ClassType<T>, data: T): {[name: string]: any} {
         const criteria: {[name: string]: any} = {};
         const id = getIdField(classType);
-        if (!id) return {};
+
+        if (!id) {
+            throw new NoIDDefinedError(`Class ${getClassName(classType)} has no @ID defined.`);
+        }
 
         criteria[id] = propertyClassToMongo(classType, id, (<any>data)[id]);
 
