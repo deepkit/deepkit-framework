@@ -8,7 +8,8 @@ import {
     propertyClassToMongo,
     getRegisteredProperties,
     toObject,
-    getClassName
+    getClassName,
+    getReflectionType
 } from '@marcj/marshal';
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
@@ -118,7 +119,11 @@ export class Database {
         const result = await collection.insertOne(obj);
 
         if (id === '_id' && result.insertedId) {
-            (<any>item)['_id'] = result.insertedId.toHexString();
+            const {type} = getReflectionType(classType, id);
+
+            if (type === 'objectId' && result.insertedId && result.insertedId.toHexString) {
+                (<any>item)['_id'] = result.insertedId.toHexString();
+            }
         }
 
         return true;
