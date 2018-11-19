@@ -14,11 +14,11 @@
     "@types/jest": "^22.2.3",
     "@types/node": "^10.12.5",
     "coveralls": "^3.0.2",
-    "jest": "^22.4.4",
+    "jest": "^23.6.0",
     "jest-extended": "^0.11.0",
     "lerna": "^3.4.3",
     "reflect-metadata": "^0.1.12",
-    "ts-jest": "^22.4.6",
+    "ts-jest": "^23.10.4",
     "ts-node": "^6.0.0",
     "typescript": "^2.9.2"
   },
@@ -36,7 +36,8 @@
       "**/*.{ts}",
       "!**/node_modules/**",
       "!**/lib/**/*",
-      "!**/*.d.ts"
+      "!**/*.d.ts",
+      "!index.ts"
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

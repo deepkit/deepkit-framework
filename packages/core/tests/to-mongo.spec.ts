@@ -77,10 +77,4 @@ test('convert IDs and invalid values', () => {
         instance.uuid = 'notavalidId';
         const mongo = classToMongo(Model, instance);
     }).toThrow('Invalid UUID given in property');
-
-    expect(() => {
-        const instance = new Model();
-        instance.enum = 2 as any;
-        const mongo = classToMongo(Model, instance);
-    }).toThrow('Invalid ENUM given in property');
 });

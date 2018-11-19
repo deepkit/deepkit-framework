@@ -30,7 +30,8 @@
       "**/*.ts",
       "!**/node_modules/**",
       "!**/lib/**/*",
-      "!**/*.d.ts"
+      "!**/*.d.ts",
+      "!index.ts"
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

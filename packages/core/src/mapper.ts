@@ -80,12 +80,8 @@ export function propertyClassToMongo<T>(
         }
 
         if ('enum' === type) {
-            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
-            if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                throw new Error(`Invalid ENUM given in property ${getClassPropertyName(classType, propertyName)}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
-            }
-
-            return getValidEnumValue(typeValue, value, allowLabelsAsValue);
+            //the class instance itself can only have the actual value which can be used in plain as well
+            return value;
         }
 
         if (type === 'class') {
@@ -120,18 +116,8 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         }
 
         if ('enum' === type) {
-            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
-            if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                const valids = getEnumKeys(typeValue);
-                if (allowLabelsAsValue) {
-                    for (const label of getEnumLabels(classType)) {
-                        valids.push(label);
-                    }
-                }
-                throw new Error(`Invalid ENUM given in property ${getClassPropertyName(classType, propertyName)}: ${value}, valid: ${valids.join(',')}`);
-            }
-
-            return getValidEnumValue(typeValue, value, allowLabelsAsValue);
+            //the class instance itself can only have the actual value which can be used in plain as well
+            return value;
         }
 
         if (type === 'class') {
@@ -204,7 +190,7 @@ export function propertyPlainToClass<T>(
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
                 const valids = getEnumKeys(typeValue);
                 if (allowLabelsAsValue) {
-                    for (const label of getEnumLabels(classType)) {
+                    for (const label of getEnumLabels(typeValue)) {
                         valids.push(label);
                     }
                 }
@@ -340,6 +326,10 @@ export function mongoToPlain<T>(classType: ClassType<T>, target: any) {
 export function classToPlain<T>(classType: ClassType<T>, target: T): any {
     const result: any = {};
 
+    if (!(target instanceof classType)) {
+        throw new Error(`Could not classToPlain since target is not a class instance of ${getClassName(classType)}`);
+    }
+
     const decoratorName = getDecorator(classType);
     if (decoratorName) {
         return propertyClassToPlain(classType, decoratorName, (target as any)[decoratorName]);
@@ -368,6 +358,10 @@ export function plainToMongo<T>(classType: ClassType<T>, target: any): any {
 
 export function classToMongo<T>(classType: ClassType<T>, target: T): any {
     const result: any = {};
+
+    if (!(target instanceof classType)) {
+        throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
+    }
 
     const decoratorName = getDecorator(classType);
     if (decoratorName) {
@@ -437,7 +431,7 @@ function toClass<T>(
             } else if (!isOptional(classType, propertyName)) {
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is in constructor ` +
                     `has @ParentReference() and NOT @Optional(), but no parent of type ${getClassName(parentReferences[propertyName])} found. ` +
-                    `In case of circular reference, remove '${propertyName}' from constructor, or make sure you provided all parents`
+                    `In case of circular reference, remove '${propertyName}' from constructor, or make sure you provided all parents.`
                 );
             }
         } else {

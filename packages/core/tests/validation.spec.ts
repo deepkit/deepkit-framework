@@ -9,18 +9,18 @@ test('test required', async () => {
         id: string = '1';
 
         @StringType()
-        name: string;
+        name?: string;
 
         @Optional()
-        optional: string;
+        optional?: string;
 
         @Optional()
         @MapType()
-        map: {[name: string]: string};
+        map?: {[name: string]: string};
 
         @Optional()
         @ArrayType()
-        array: string[];
+        array?: string[];
     }
 
     const instance = new Model;
@@ -39,7 +39,7 @@ test('test deep', async () => {
 
     class Deep {
         @StringType()
-        name: string;
+        name?: string;
     }
 
     class Model {
@@ -47,7 +47,7 @@ test('test deep', async () => {
         id: string = '2';
 
         @Class(Deep)
-        deep: Deep;
+        deep?: Deep;
 
         @ClassArray(Deep)
         deepArray: Deep[] = [];
@@ -90,7 +90,7 @@ test('test string', async () => {
     class ModelOptional {
         @StringType()
         @Optional()
-        id: string;
+        id?: string;
     }
 
     expect(await validate(ModelOptional, {id: '2'})).toEqual([]);
@@ -116,7 +116,7 @@ test('test number', async () => {
     class ModelOptional {
         @NumberType()
         @Optional()
-        id: number;
+        id?: number;
     }
 
     expect(await validate(ModelOptional, {id: 3})).toEqual([]);
