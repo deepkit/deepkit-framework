@@ -34,12 +34,23 @@ export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: a
 
 export class NoIDDefinedError extends Error {}
 
+export type MongoClientFactory = () => Promise<MongoClient>;
+
 export class Database {
-    constructor(private mongoClient: MongoClient, private defaultDatabaseName = 'app') {
+    constructor(private mongoClient: MongoClient | MongoClientFactory, private defaultDatabaseName = 'app') {
     }
 
-    private getCollection<T>(classType: ClassType<T>): Collection<T> {
-        return this.mongoClient
+    private async getMongoClient(): Promise<MongoClient> {
+        if ('function' === typeof this.mongoClient) {
+            const f = (this.mongoClient as MongoClientFactory);
+            return await f();
+        }
+
+        return this.mongoClient;
+    }
+
+    private async getCollection<T>(classType: ClassType<T>): Promise<Collection<T>> {
+        return (await this.getMongoClient())
             .db(getDatabaseName(classType) || this.defaultDatabaseName)
             .collection(getCollectionName(classType));
     }
@@ -48,7 +59,7 @@ export class Database {
         classType: ClassType<T>,
         filter: { [field: string]: any }
     ): Promise<T | null> {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
 
         const item = await collection.findOne(partialFilterObjectToMongo(classType, filter));
 
@@ -63,7 +74,7 @@ export class Database {
         classType: ClassType<T>,
         filter?: { [field: string]: any }
     ): Promise<T[]> {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
 
         const items = await collection.find(filter ? partialFilterObjectToMongo(classType, filter) : undefined).toArray();
 
@@ -72,11 +83,11 @@ export class Database {
         });
     }
 
-    public cursor<T>(
+    public async cursor<T>(
         classType: ClassType<T>,
         filter?: { [field: string]: any }
-    ): Cursor<T> {
-        const collection = this.getCollection(classType);
+    ): Promise<Cursor<T>> {
+        const collection = await this.getCollection(classType);
 
         const cursor = collection.find(filter ? partialFilterObjectToMongo(classType, filter) : undefined);
         cursor.map(v => mongoToClass(classType, v));
@@ -85,7 +96,7 @@ export class Database {
     }
 
     public async remove<T>(classType: ClassType<T>, id: string): Promise<boolean> {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
         const idName = getIdField(classType);
         if (!idName) return false;
 
@@ -98,17 +109,17 @@ export class Database {
     }
 
     public async deleteOne<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
         await collection.deleteOne(partialFilterObjectToMongo(classType, filter));
     }
 
     public async deleteMany<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
         await collection.deleteMany(partialFilterObjectToMongo(classType, filter));
     }
 
     public async add<T>(classType: ClassType<T>, item: T): Promise<boolean> {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
 
         const id = getIdField(classType);
         (<any>item)['version'] = 1;
@@ -130,7 +141,7 @@ export class Database {
     }
 
     public async count<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<number> {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
         return await collection.countDocuments(partialFilterObjectToMongo(classType, filter));
     }
 
@@ -144,7 +155,7 @@ export class Database {
      * If no filter is given, the ID of `update` is used.
      */
     public async update<T>(classType: ClassType<T>, update: T, filter?: { [field: string]: any }): Promise<number | null> {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
 
         const updateStatement: {[name :string]: any} = {
             $inc: {version: +1},
@@ -188,7 +199,7 @@ export class Database {
      * Patches an entity in the database and returns the new version number if successful, or null if not successful.
      */
     public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number | null> {
-        const collection = this.getCollection(classType);
+        const collection = await this.getCollection(classType);
 
         const patchStatement: {[name: string]: any} = {
             $inc: {version: +1}

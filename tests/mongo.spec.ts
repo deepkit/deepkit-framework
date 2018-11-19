@@ -163,7 +163,7 @@ test('test super simple model', async () => {
     }
 
     {
-        const items = await database.cursor(SuperSimple).toArray();
+        const items = await (await database.cursor(SuperSimple)).toArray();
         expect(items[0]).toBeInstanceOf(SuperSimple);
         expect(items[0]._id).toBe(instance._id);
         expect(items[0].name).toBe(instance.name);
@@ -176,6 +176,74 @@ test('test databaseName', async () => {
     await connection.db('testing2').dropDatabase();
     await connection.db('testing').dropDatabase();
     const database = new Database(connection, 'testing');
+
+    @Entity('DifferentDataBase', 'differentCollection')
+    @DatabaseName('testing2')
+    class DifferentDataBase {
+        @ID()
+        @MongoIdType()
+        _id?: string;
+
+        @StringType()
+        name?: string;
+    }
+
+    const instance = plainToClass(DifferentDataBase, {
+        name: 'myName',
+    });
+
+    expect(getDatabaseName(DifferentDataBase)).toBe('testing2');
+    expect(getCollectionName(DifferentDataBase)).toBe('differentCollection');
+
+    expect(instance._id).toBeUndefined();
+    await database.add(DifferentDataBase, instance);
+    expect(instance._id).not.toBeUndefined();
+
+    const collection = connection.db('testing2').collection('differentCollection');
+    expect(await collection.countDocuments()).toBe(1);
+
+    const items = await database.find(DifferentDataBase);
+    expect(items[0]._id).toBe(instance._id);
+    expect(items[0].name).toBe(instance.name);
+});
+
+test('no id', async () => {
+    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    await connection.db('testing').dropDatabase();
+    const database = new Database(connection, 'testing');
+
+    @Entity('NoId')
+    class NoId {
+        @MongoIdType()
+        _id?: string;
+
+        @StringType()
+        name?: string;
+    }
+
+    const instance = plainToClass(NoId, {
+        name: 'myName',
+    });
+
+    await database.add(NoId, instance);
+    expect(instance._id).toBeUndefined();
+
+        const dbItem = await database.get(NoId, {name: 'myName'});
+        expect(dbItem!.name).toBe('myName');
+
+        dbItem!.name = 'Changed';
+
+    await expect(database.update(NoId, dbItem)).rejects.toThrow('Class NoId has no @ID defined')
+});
+
+test('test factory', async () => {
+    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    await connection.db('testing2').dropDatabase();
+    await connection.db('testing').dropDatabase();
+
+    const database = new Database(async () => {
+        return await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true})
+    }, 'testing');
 
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing2')
