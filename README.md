@@ -463,15 +463,15 @@ class MyController {
         @Body(ValidationPipe({transform: true})) body: SimpleModel,
     ) {
         body instanceof SimpleModel; // true;
-        const versionNumber = await this.database.save(SimpleModel, body);
+        const versionNumber = await (await this.getDatabase()).save(SimpleModel, body);
         
         return body.id;
     }
     
     @Get('/get/:id')
     async get(@Param('id') id: string) {
-        const instance = await this.database.get(SimpleModel, {_id: id});
-        
+        const instance = await (await this.getDatabase()).get(SimpleModel, {_id: id});
+
         return classToPlain(SimpleModel, instance);
     }
 }
