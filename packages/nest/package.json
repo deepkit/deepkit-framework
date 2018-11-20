@@ -4,6 +4,7 @@
   "description": "A plugin for NestJS to convert HTTP Body to your class instance with validation using Marshal",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "sideEffects": false,
   "scripts": {
     "test": "jest --coverage",
     "tsc": "tsc"

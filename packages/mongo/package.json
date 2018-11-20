@@ -4,6 +4,7 @@
   "description": "Marshal's Mongo database management.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "sideEffects": false,
   "scripts": {
     "test": "jest --coverage",
     "tsc": "tsc"
