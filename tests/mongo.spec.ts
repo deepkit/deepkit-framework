@@ -2,11 +2,12 @@ import 'jest-extended'
 import 'reflect-metadata';
 import {
     DatabaseName, Entity, getCollectionName, getDatabaseName, ID, MongoIdType,
-    plainToClass, StringType, uuid4Stringify,
+    plainToClass, StringType,
 } from "@marcj/marshal";
-import {Binary, MongoClient} from "mongodb";
+import {Binary, ObjectID, MongoClient} from "mongodb";
 import {Database} from "../src/database";
 import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
+import {uuid4Stringify} from "../src/mapping";
 
 let connection: MongoClient;
 
@@ -41,6 +42,7 @@ test('test save model', async () => {
     const mongoItem = await collection.find().toArray();
     expect(mongoItem).toBeArrayOfSize(1);
     expect(mongoItem[0].name).toBe('myName');
+    expect(mongoItem[0]._id).toBeInstanceOf(ObjectID);
     expect(mongoItem[0].id).toBeInstanceOf(Binary);
     expect(uuid4Stringify(mongoItem[0].id)).toBe(instance.id);
 
@@ -273,4 +275,49 @@ test('test factory', async () => {
     const items = await database.find(DifferentDataBase);
     expect(items[0]._id).toBe(instance._id);
     expect(items[0].name).toBe(instance.name);
+});
+
+
+test('second object id', async () => {
+    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    await connection.db('testing').dropDatabase();
+    const database = new Database(connection, 'testing');
+
+    @Entity('SecondObjectId')
+    class SecondObjectId {
+        @ID()
+        @MongoIdType()
+        _id?: string;
+
+        @StringType()
+        name?: string;
+
+        @MongoIdType()
+        secondId?: string;
+    }
+
+    const instance = plainToClass(SecondObjectId, {
+        name: 'myName',
+        secondId: '5bf4a1ccce060e0b38864c9e'
+    });
+
+    await database.add(SecondObjectId, instance);
+
+    const dbItem = await database.get(SecondObjectId, {name: 'myName'});
+    expect(dbItem!.name).toBe('myName');
+
+    const dbItemBySecondId = await database.get(SecondObjectId, {secondId: '5bf4a1ccce060e0b38864c9e'});
+    expect(dbItemBySecondId!.name).toBe('myName');
+
+    const collection = connection.db('testing').collection(getCollectionName(SecondObjectId));
+    const mongoItem = await collection.find().toArray();
+    expect(mongoItem).toBeArrayOfSize(1);
+    expect(mongoItem[0].name).toBe('myName');
+
+    console.log(mongoItem[0]);
+    expect(mongoItem[0]._id).toBeInstanceOf(ObjectID);
+    expect(mongoItem[0].secondId).toBeInstanceOf(ObjectID);
+    expect(mongoItem[0]._id.toHexString()).toBe(instance._id);
+    expect(mongoItem[0].secondId.toHexString()).toBe(instance.secondId);
+
 });
