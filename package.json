@@ -1,6 +1,6 @@
 {
   "name": "@marcj/marshal-nest",
-  "version": "0.2.16",
+  "version": "0.3.0",
   "description": "A plugin for NestJS to convert HTTP Body to your class instance with validation using Marshal",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -10,7 +10,7 @@
     "tsc": "tsc"
   },
   "dependencies": {
-    "@marcj/marshal": "^0.2.16"
+    "@marcj/marshal": "^0.3.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^5.0.0",
