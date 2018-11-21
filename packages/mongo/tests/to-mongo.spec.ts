@@ -1,8 +1,9 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {classToMongo, EnumType, MongoIdType, UUIDType} from "../";
-import {Plan, SimpleModel, SubModel} from "./entities";
-import {Binary, ObjectID} from "bson";
+import {EnumType, MongoIdType, UUIDType} from "@marcj/marshal";
+import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
+import {Binary, ObjectID} from "mongodb";
+import {classToMongo} from "../src/mapping";
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');

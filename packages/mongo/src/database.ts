@@ -1,11 +1,8 @@
 import {
     ClassType,
-    classToMongo,
     getCollectionName,
     getDatabaseName,
     getIdField,
-    mongoToClass,
-    propertyClassToMongo,
     getRegisteredProperties,
     toObject,
     getClassName,
@@ -14,6 +11,7 @@ import {
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
 import * as clone from "clone";
+import {classToMongo, mongoToClass, propertyClassToMongo} from "./mapping";
 
 export function partialFilterObjectToMongo<T>(classType: ClassType<T>, target: any = {}): { [name: string]: any } {
     const cloned = clone(target, false);

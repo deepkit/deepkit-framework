@@ -3,7 +3,6 @@ import 'reflect-metadata';
 import {
     AnyType,
     ClassArray,
-    classToMongo,
     classToPlain,
     cloneClass,
     EnumType,
@@ -16,17 +15,16 @@ import {
     getValidEnumValue,
     isExcluded,
     isValidEnumValue,
-    mongoToClass,
     NumberType,
     plainToClass,
-    plainToMongo,
     StringType,
     uuid,
     getReflectionType,
     getParentReferenceClass,
     ParentReference,
     ClassCircular, BooleanType,
-} from "../";
+    Optional,Class, OnLoad
+} from "@marcj/marshal";
 import {
     now,
     SimpleModel,
@@ -34,13 +32,12 @@ import {
     SubModel,
     CollectionWrapper,
     StringCollectionWrapper,
-} from "./entities";
-import {Binary} from "bson";
-import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
-import {PageCollection} from "./document-scenario/PageCollection";
-import {PageClass} from "./document-scenario/PageClass";
-import {Optional} from "../src/validation";
-import {Class, OnLoad} from "../src/decorators";
+} from "@marcj/marshal/tests/entities";
+import {Binary} from "mongodb";
+import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
+import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
+import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
+import {classToMongo, mongoToClass, plainToMongo} from "../src/mapping";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
