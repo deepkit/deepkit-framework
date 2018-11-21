@@ -15,11 +15,7 @@
   "dependencies": {
     "clone": "^2.1.2",
     "get-parameter-names": "^0.3.0",
-    "mongo-uuid": "^1.0.0",
     "uuid": "^3.2.1"
-  },
-  "devDependencies": {
-    "bson": "^3.0.2"
   },
   "jest": {
     "testURL": "http://localhost/",

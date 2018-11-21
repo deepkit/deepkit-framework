@@ -1,19 +1,19 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {SimpleModel} from "./entities";
-import {mongoToClass, plainToClass} from "../src/mapper";
+import {plainToClass} from "../src/mapper";
 import {EnumType} from "..";
 
 test('plain-to test simple model', () => {
-    for (const toClass of [plainToClass, mongoToClass]) {
-        const instance = toClass(SimpleModel, {
-            id: '21313',
-            name: 'Hi'
-        });
 
-        expect(instance.id).toBe('21313');
-        expect(instance.name).toBe('Hi');
-    }
+    const instance = plainToClass(SimpleModel, {
+        //todo, this should throw an error
+        id: '21313',
+        name: 'Hi'
+    });
+
+    expect(instance.id).toBe('21313');
+    expect(instance.name).toBe('Hi');
 });
 
 test('test enum labels', () => {
