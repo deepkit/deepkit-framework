@@ -39,6 +39,14 @@ export function propertyClassToMongo<T>(
 ) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
+    if (isUndefined(propertyValue)) {
+        return undefined;
+    }
+
+    if (null === propertyValue) {
+        return null;
+    }
+
     function convert(value: any) {
         if (value && 'objectId' === type && 'string' === typeof value) {
             try {
