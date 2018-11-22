@@ -55,6 +55,14 @@ export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName
 export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
+    if (isUndefined(propertyValue)) {
+        return undefined;
+    }
+
+    if (null === propertyValue) {
+        return null;
+    }
+
     function convert(value: any) {
         if ('date' === type && value instanceof Date) {
             return value.toJSON();
