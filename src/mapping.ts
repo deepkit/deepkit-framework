@@ -124,7 +124,7 @@ export function propertyMongoToClass<T>(
         }
 
         if ('any' === type) {
-            return clone(value, false, 1);
+            return clone(value, false);
         }
 
         if ('string' === type && 'string' !== typeof value) {

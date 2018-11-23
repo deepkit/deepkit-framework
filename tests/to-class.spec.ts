@@ -38,6 +38,7 @@ import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from 
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
 import {classToMongo, mongoToClass, plainToMongo} from "../src/mapping";
+import * as clone from "clone";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
@@ -597,9 +598,17 @@ test('cloneClass', () => {
         name?: string;
     }
 
+    class DataStruct {
+        @StringType()
+        name?: string;
+    }
+
     class Model {
        @AnyType()
        data: any;
+
+       @Class(DataStruct)
+       dataStruct?: DataStruct;
 
        @ClassArray(SubModel)
        subs?: SubModel[];
@@ -609,18 +618,29 @@ test('cloneClass', () => {
         a: 'true'
     };
 
+    const dataStruct = {
+        name: 'Foo'
+    };
+
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(Model, {
             data: data,
-            subs: [{name: 'foo'}]
+            dataStruct: dataStruct,
+            subs: [{name: 'foo'}],
         });
 
         expect(instance.data).toEqual({a: 'true'});
         expect(instance.data).not.toBe(data);
+        expect(instance.dataStruct!.name).toBe('Foo');
+        expect(instance.dataStruct).toEqual(dataStruct);
+        expect(instance.dataStruct).not.toBe(dataStruct);
 
         const cloned = cloneClass(instance);
         expect(cloned.data).toEqual({a: 'true'});
         expect(cloned.data).not.toBe(data);
+        expect(cloned.dataStruct!.name).toBe('Foo');
+        expect(cloned.dataStruct).toEqual(dataStruct);
+        expect(cloned.dataStruct).not.toBe(dataStruct);
 
         expect(cloned.subs![0]).not.toBe(instance.subs![0]);
     }
