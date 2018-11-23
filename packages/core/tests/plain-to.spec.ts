@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {SimpleModel} from "./entities";
-import {plainToClass} from "../src/mapper";
+import {SimpleModel, SubModel} from "./entities";
+import {partialPlainToClass, plainToClass} from "../src/mapper";
 import {EnumType} from "..";
 
 test('plain-to test simple model', () => {
@@ -14,6 +14,23 @@ test('plain-to test simple model', () => {
 
     expect(instance.id).toBe('21313');
     expect(instance.name).toBe('Hi');
+});
+
+
+test('partial', () => {
+    const instance = partialPlainToClass(SimpleModel, {
+        name: 'Hi',
+        children: [
+            {label: 'Foo'}
+        ]
+    });
+
+    expect(instance).not.toBeInstanceOf(SimpleModel);
+    expect(instance['id']).toBeUndefined();
+    expect(instance['type']).toBeUndefined();
+    expect(instance.name).toBe('Hi');
+    expect(instance.children[0]).toBeInstanceOf(SubModel);
+    expect(instance.children[0].label).toBe('Foo');
 });
 
 test('test enum labels', () => {
