@@ -17,6 +17,9 @@
     "get-parameter-names": "^0.3.0",
     "uuid": "^3.2.1"
   },
+  "devDependencies": {
+    "@types/clone": "^0.1.30"
+  },
   "jest": {
     "testURL": "http://localhost/",
     "moduleFileExtensions": [

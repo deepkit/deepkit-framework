@@ -10,9 +10,9 @@ import {
     getClassName,
     getEnumLabels
 } from './utils';
-import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {isOptional} from "./validation";
+import * as clone from 'clone';
 
 export type Types = 'objectId' | 'uuid' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
 
@@ -74,10 +74,10 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         }
 
         if (type === 'class') {
-            return classToPlain(typeValue, clone(value, false, 1));
+            return classToPlain(typeValue, value);
         }
 
-        return value;
+        return clone(value, false);
     }
 
     if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
@@ -135,7 +135,7 @@ export function propertyPlainToClass<T>(
         }
 
         if ('any' === type) {
-            return clone(value, false, 1);
+            return clone(value, false);
         }
 
         if ('enum' === type) {
@@ -159,7 +159,7 @@ export function propertyPlainToClass<T>(
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
             }
 
-            return toClass(typeValue, clone(value, false, 1), propertyPlainToClass, parents, incomingLevel, state);
+            return toClass(typeValue, value, propertyPlainToClass, parents, incomingLevel, state);
         }
 
         return value;
@@ -185,7 +185,6 @@ export function propertyPlainToClass<T>(
 export function cloneClass<T>(target: T, parents?: any[]): T {
     return plainToClass(target.constructor as ClassType<T>, classToPlain(target.constructor as ClassType<T>, target), parents);
 }
-
 
 export function classToPlain<T>(classType: ClassType<T>, target: T): any {
     const result: any = {};
@@ -311,25 +310,36 @@ export function toClass<T>(
     return item;
 }
 
+/**
+ * Takes a regular object with partial fields defined of classType and converts only them into the class variant.
+ *
+ * Returns a new regular object again.
+ */
+export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: Partial<{[F in K]}>, parents?: any[]): Partial<{[F in K]}> {
+    const result: Partial<{[F in K]}> = {};
+    const state = new ToClassState();
+
+    for (const i in target) {
+        if (!target.hasOwnProperty(i)) continue;
+        result[i] = propertyPlainToClass(classType, i, target[i], parents || [], 1, state)
+    }
+
+    return result;
+}
+
+/**
+ * Take a regular object with all fields default (missing default to class property default or undefined)
+ * and returns an instance of classType.
+ */
 export function plainToClass<T>(classType: ClassType<T>, target: object, parents?: any[]): T {
     const state = new ToClassState();
-    const item = toClass(classType, clone(target, false, 1), propertyPlainToClass, parents || [], 1, state);
+    const item = toClass(classType, target, propertyPlainToClass, parents || [], 1, state);
 
     for (const callback of state.onFullLoadCallbacks) {
         callback();
     }
 
     return item;
-}
-export function toObject<T>(item: T): object {
-    const result: any = {};
-
-    for (const i in item) {
-        if (!item.hasOwnProperty(i)) continue;
-        result[i] = item[i];
-    }
-
-    return result;
 }
 
 export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: any, target: 'mongo' | 'plain') {
@@ -405,7 +415,7 @@ export function getCollectionName<T>(classType: ClassType<T>): string {
 }
 
 export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: string]: any }): object {
-    const valueWithDefaults = clone(value, false, 1);
+    const valueWithDefaults = value;
     const instance = plainToClass(classType, value);
 
     for (const i of getRegisteredProperties(classType)) {
