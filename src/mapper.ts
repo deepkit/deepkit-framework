@@ -315,8 +315,8 @@ export function toClass<T>(
  *
  * Returns a new regular object again.
  */
-export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: Partial<{[F in K]}>, parents?: any[]): Partial<{[F in K]}> {
-    const result: Partial<{[F in K]}> = {};
+export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: Partial<{[F in K]: any}>, parents?: any[]): Partial<{[F in K]: any}> {
+    const result: Partial<{[F in K]: any}> = {};
     const state = new ToClassState();
 
     for (const i in target) {
