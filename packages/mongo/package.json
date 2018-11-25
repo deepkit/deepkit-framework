@@ -1,6 +1,6 @@
 {
   "name": "@marcj/marshal-mongo",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Marshal's Mongo database management.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
