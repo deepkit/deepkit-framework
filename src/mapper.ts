@@ -10,52 +10,115 @@ import {
     getClassName,
     getEnumLabels
 } from './utils';
-import * as getParameterNames from 'get-parameter-names';
 import {isOptional} from "./validation";
 import * as clone from 'clone';
+import * as getParameterNames from 'get-parameter-names';
 
 export type Types = 'objectId' | 'uuid' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
 
+const cache = new Map<Object, Map<string, any>>();
+
+function getCachedMetaData<T>(key: string, target: Object, propertyName?: string): any {
+    let valueMap = cache.get(target);
+    if (!valueMap) {
+        valueMap = new Map();
+        cache.set(target, valueMap);
+    }
+
+    const cacheKey = key + '::' + propertyName;
+    let value = valueMap.get(cacheKey);
+
+    if (undefined === value) {
+        if (propertyName) {
+            value = Reflect.getMetadata(key, target, propertyName)
+        } else {
+            value = Reflect.getMetadata(key, target);
+        }
+        valueMap.set(cacheKey, value || '');
+    }
+
+    return value || '';
+}
+
+export function getCachedParameterNames<T>(classType: ClassType<T>): string[] {
+    let valueMap = cache.get(classType.prototype);
+    if (!valueMap) {
+        valueMap = new Map();
+        cache.set(classType.prototype, valueMap);
+    }
+
+    let value = valueMap.get('parameter_names');
+    if (!value) {
+        value = getParameterNames(classType.prototype.constructor);
+        valueMap.set('parameter_names', value);
+    }
+
+    return value;
+}
+
 export function isCircularDataType<T>(classType: ClassType<T>, propertyName: string): boolean {
-    return Reflect.getMetadata('marshal:dataTypeValueCircular', classType.prototype, propertyName) || false;
+    return getCachedMetaData('marshal:dataTypeValueCircular', classType.prototype, propertyName) || false;
 }
 
 export function getOnLoad<T>(classType: ClassType<T>): {property: string, options: {fullLoad?: false}}[] {
-    return Reflect.getMetadata('marshal:onLoad', classType.prototype) || [];
+    return getCachedMetaData('marshal:onLoad', classType.prototype) || [];
 }
 
 export function getReflectionType<T>(classType: ClassType<T>, propertyName: string): { type: Types | null, typeValue: any | null } {
-    const type = Reflect.getMetadata('marshal:dataType', classType.prototype, propertyName) || null;
-    let value = Reflect.getMetadata('marshal:dataTypeValue', classType.prototype, propertyName) || null;
-
-    if (isCircularDataType(classType, propertyName)) {
-        value = value();
+    let valueMap = cache.get(classType.prototype);
+    if (!valueMap) {
+        valueMap = new Map();
+        cache.set(classType.prototype, valueMap);
     }
 
-    return {
-        type: type,
-        typeValue: value
+    let value = valueMap.get('getReflectionType::' + propertyName);
+
+    if (undefined === value) {
+        const type = Reflect.getMetadata('marshal:dataType', classType.prototype, propertyName) || null;
+        let typeValue = Reflect.getMetadata('marshal:dataTypeValue', classType.prototype, propertyName) || null;
+
+        if (isCircularDataType(classType, propertyName)) {
+            typeValue = typeValue();
+        }
+        value = {
+            type: type,
+                typeValue: typeValue
+        };
+
+        valueMap.set('getReflectionType::' + propertyName, value);
     }
+
+    return value;
 }
 
 export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName: string): any {
-    const parentReference = Reflect.getMetadata('marshal:parentReference', classType.prototype, propertyName) || false;
-
-    if (parentReference) {
-        const {typeValue} = getReflectionType(classType, propertyName);
-
-        if (!typeValue) {
-            throw new Error(`${getClassPropertyName(classType, propertyName)} has @ParentReference but no @Class defined.`);
-        }
-
-        return typeValue;
+    let valueMap = cache.get(classType.prototype);
+    if (!valueMap) {
+        valueMap = new Map();
+        cache.set(classType.prototype, valueMap);
     }
+
+    let value = valueMap.get('ParentReferenceClass::' + propertyName);
+    if (undefined === value) {
+        const parentReference = Reflect.getMetadata('marshal:parentReference', classType.prototype, propertyName) || false;
+
+        if (parentReference) {
+            const {typeValue} = getReflectionType(classType, propertyName);
+
+            if (!typeValue) {
+                throw new Error(`${getClassPropertyName(classType, propertyName)} has @ParentReference but no @Class defined.`);
+            }
+            value = typeValue;
+        }
+        valueMap.set('ParentReferenceClass::' + propertyName, value || '');
+    }
+    return value;
 }
 
 export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
     const {type, typeValue} = getReflectionType(classType, propertyName);
 
-    if (isUndefined(propertyValue)) {
+    if (undefined === propertyValue) {
         return undefined;
     }
 
@@ -73,11 +136,15 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             return value;
         }
 
+        if ('any' === type) {
+            return clone(value, false);
+        }
+
         if (type === 'class') {
             return classToPlain(typeValue, value);
         }
 
-        return clone(value, false);
+        return value;
     }
 
     if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
@@ -115,7 +182,7 @@ export function propertyPlainToClass<T>(
     }
 
     function convert(value: any) {
-        if ('date' === type && !(value instanceof Date)) {
+        if ('date' === type && ('string' === typeof value || 'number' === typeof value)) {
             return new Date(value);
         }
 
@@ -198,7 +265,9 @@ export function classToPlain<T>(classType: ClassType<T>, target: T): any {
         return propertyClassToPlain(classType, decoratorName, (target as any)[decoratorName]);
     }
 
-    for (const propertyName of getRegisteredProperties(classType)) {
+    const propertyNames = getRegisteredProperties(classType);
+
+    for (const propertyName of propertyNames) {
         if (undefined === (target as any)[propertyName]) {
             continue;
         }
@@ -208,15 +277,31 @@ export function classToPlain<T>(classType: ClassType<T>, target: T): any {
             continue;
         }
 
+        if (isExcluded(classType, propertyName, 'plain')) {
+            continue
+        }
+
         result[propertyName] = propertyClassToPlain(classType, propertyName, (target as any)[propertyName]);
     }
 
-    deleteExcludedPropertiesFor(classType, result, 'plain');
     return result;
 }
 
 export class ToClassState {
     onFullLoadCallbacks: (() => void)[] = [];
+}
+
+const propertyNamesCache = new Map<ClassType<any>, string[]>();
+const parentReferencesCache = new Map<ClassType<any>, {[propertyName: string]: any}>();
+
+function findParent<T>(parents: any[], parentType: ClassType<T>): T | null {
+    for (let i = parents.length - 1; i >= 0; i--) {
+        if (parents[i] instanceof parentType) {
+            return parents[i];
+        }
+    }
+
+    return null;
 }
 
 export function toClass<T>(
@@ -227,26 +312,24 @@ export function toClass<T>(
     incomingLevel,
     state: ToClassState
 ): T {
-
-    const parentReferences: { [propertyName: string]: any } = {};
     const assignedViaConstructor: { [propertyName: string]: boolean } = {};
-    const propertyNames = getRegisteredProperties(classType);
 
-    for (const propertyName of propertyNames) {
-        parentReferences[propertyName] = getParentReferenceClass(classType, propertyName);
+    let propertyNames = propertyNamesCache.get(classType);
+    if (!propertyNames) {
+        propertyNames = getRegisteredProperties(classType);
+        propertyNamesCache.set(classType, propertyNames);
     }
 
-    const parameterNames = getParameterNames(classType.prototype.constructor);
-
-    function findParent<T>(parentType: ClassType<T>): T | null {
-        for (let i = parents.length - 1; i >= 0; i--) {
-            if (parents[i] instanceof parentType) {
-                return parents[i];
-            }
+    let parentReferences = parentReferencesCache.get(classType);
+    if (!parentReferences) {
+        parentReferences = {};
+        for (const propertyName of propertyNames) {
+            parentReferences[propertyName] = getParentReferenceClass(classType, propertyName);
         }
-
-        return null;
+        parentReferencesCache.set(classType, parentReferences);
     }
+
+    const parameterNames = getCachedParameterNames(classType);
 
     const decoratorName = getDecorator(classType);
 
@@ -255,7 +338,7 @@ export function toClass<T>(
         if (decoratorName && propertyName === decoratorName) {
             cloned[propertyName] = converter(classType, decoratorName, cloned, parents, incomingLevel, state);
         } else if (parentReferences[propertyName]) {
-            const parent = findParent(parentReferences[propertyName]);
+            const parent = findParent(parents, parentReferences[propertyName]);
             if (parent) {
                 cloned[propertyName] = parent;
             } else if (!isOptional(classType, propertyName)) {
@@ -284,14 +367,14 @@ export function toClass<T>(
         }
 
         if (parentReferences[propertyName]) {
-            const parent = findParent(parentReferences[propertyName]);
+            const parent = findParent(parents, parentReferences[propertyName]);
             if (parent) {
                 item[propertyName] = parent;
             } else if (!isOptional(classType, propertyName)) {
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is defined as @ParentReference() and `+
                     `NOT @Optional(), but no parent found. Add @Optional() or provide ${propertyName} in parents to fix that.`);
             }
-        } else if (!isUndefined(cloned[propertyName])) {
+        } else if (undefined !== cloned[propertyName]) {
             item[propertyName] = converter(classType, propertyName, cloned[propertyName], parentsWithItem, incomingLevel + 1, state);
         }
     }
@@ -352,7 +435,7 @@ export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: an
 }
 
 export function getIdField<T>(classType: ClassType<T>): string | null {
-    return Reflect.getMetadata('marshal:idField', classType.prototype) || null;
+    return getCachedMetaData('marshal:idField', classType.prototype) || null;
 }
 
 export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
@@ -360,38 +443,28 @@ export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
     return id ? target[id] : null;
 }
 
-export function getEntityName<T>(classType: ClassType<T>): string {
-    const name = Reflect.getMetadata('marshal:entityName', classType);
-
-    if (!name) {
-        throw new Error('No @Entity() defined for class ' + classType);
-    }
-
-    return name;
-}
-
 export function getDecorator<T>(classType: ClassType<T>): string | null {
-    return Reflect.getMetadata('marshal:dataDecorator', classType.prototype) || null;
+    return getCachedMetaData('marshal:dataDecorator', classType.prototype) || null;
 }
 
 export function getRegisteredProperties<T>(classType: ClassType<T>): string[] {
-    return Reflect.getMetadata('marshal:properties', classType.prototype) || [];
+    return getCachedMetaData('marshal:properties', classType.prototype) || [];
 }
 
 export function isArrayType<T>(classType: ClassType<T>, property: string): boolean {
-    return Reflect.getMetadata('marshal:isArray', classType.prototype, property) || false;
+    return getCachedMetaData('marshal:isArray', classType.prototype, property) || false;
 }
 
 export function isMapType<T>(classType: ClassType<T>, property: string): boolean {
-    return Reflect.getMetadata('marshal:isMap', classType.prototype, property) || false;
+    return getCachedMetaData('marshal:isMap', classType.prototype, property) || false;
 }
 
 export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property: string): boolean {
-    return Reflect.getMetadata('marshal:enum:allowLabelsAsValue', classType.prototype, property) || false;
+    return getCachedMetaData('marshal:enum:allowLabelsAsValue', classType.prototype, property) || false;
 }
 
 export function isExcluded<T>(classType: ClassType<T>, property: string, wantedTarget: 'mongo' | 'plain'): boolean {
-    const mode = Reflect.getMetadata('marshal:exclude', classType.prototype, property);
+    const mode = getCachedMetaData('marshal:exclude', classType.prototype, property);
 
     if ('all' === mode) {
         return true;
@@ -400,12 +473,22 @@ export function isExcluded<T>(classType: ClassType<T>, property: string, wantedT
     return mode === wantedTarget;
 }
 
+export function getEntityName<T>(classType: ClassType<T>): string {
+    const name = getCachedMetaData('marshal:entityName', classType);
+
+    if (!name) {
+        throw new Error('No @Entity() defined for class ' + classType);
+    }
+
+    return name;
+}
+
 export function getDatabaseName<T>(classType: ClassType<T>): string | null {
-    return Reflect.getMetadata('marshal:databaseName', classType) || null;
+    return getCachedMetaData('marshal:databaseName', classType) || null;
 }
 
 export function getCollectionName<T>(classType: ClassType<T>): string {
-    const name = Reflect.getMetadata('marshal:collectionName', classType);
+    const name = getCachedMetaData('marshal:collectionName', classType);
 
     if (!name) {
         throw new Error('No @Entity() defined for class ' + classType);

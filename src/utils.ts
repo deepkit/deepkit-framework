@@ -30,19 +30,34 @@ export function isArray(obj: any): obj is any[] {
     return 'array' === typeOf(obj);
 }
 
-
 export function isUndefined(obj: any): obj is undefined {
-    return 'undefined' === typeOf(obj);
+    return undefined === obj;
 }
+
+const cacheEnumLabels = new Map<Object, string[]>();
 
 export function getEnumLabels(enumDefinition: any) {
-    return Object.keys(enumDefinition).filter(v => !Number.isFinite(parseInt(v)));
+    let value = cacheEnumLabels.get(enumDefinition);
+    if (!value) {
+        value = Object.keys(enumDefinition).filter(v => !Number.isFinite(parseInt(v)));
+        cacheEnumLabels.set(enumDefinition, value);
+    }
+
+    return value;
 }
 
+const cacheEnumKeys = new Map<Object, string[]>();
 export function getEnumKeys(enumDefinition: any): any[] {
-    const labels = getEnumLabels(enumDefinition);
-    return Object.values(enumDefinition)
-        .filter(v => -1 === labels.indexOf(v as string));
+    let value = cacheEnumKeys.get(enumDefinition);
+    if (!value) {
+        const labels = getEnumLabels(enumDefinition);
+        value = Object.values(enumDefinition)
+            .filter(v => -1 === labels.indexOf(v as string)) as any[];
+
+        cacheEnumKeys.set(enumDefinition, value);
+    }
+
+    return value;
 }
 
 export function isValidEnumValue(enumDefinition: any, value: any, allowLabelsAsValue = false) {
