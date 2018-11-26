@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
-    DatabaseName, Entity, getCollectionName, getDatabaseName, ID, MongoIdType,
+    DatabaseName, Entity, getCollectionName, getDatabaseName, getEntityName, ID, MongoIdType,
     plainToClass, StringType,
 } from "@marcj/marshal";
 import {Binary, ObjectID, MongoClient} from "mongodb";
@@ -19,6 +19,8 @@ test('test save model', async () => {
     connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
     await connection.db('testing').dropDatabase();
     const database = new Database(connection, 'testing');
+
+    expect(getEntityName(SimpleModel)).toBe('SimpleModel');
 
     const instance = plainToClass(SimpleModel, {
         name: 'myName',
