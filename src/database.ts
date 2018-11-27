@@ -69,27 +69,46 @@ export class Database {
         return null;
     }
 
+    /**
+     * Returns all available documents for given filter as instance classes.
+     *
+     * Use toClass=false to return the raw documents. Use find().map(v => mongoToPlain(classType, v)) so you can
+     * easily return that values back to the HTTP client very fast.
+     */
     public async find<T>(
         classType: ClassType<T>,
-        filter?: { [field: string]: any }
+        filter?: { [field: string]: any },
+        toClass: boolean = true,
     ): Promise<T[]> {
         const collection = await this.getCollection(classType);
 
         const items = await collection.find(filter ? partialClassToMongo(classType, filter) : undefined).toArray();
 
-        return items.map(v => {
-            return mongoToClass(classType, v);
-        });
+        if (toClass) {
+            return items.map(v => {
+                return mongoToClass(classType, v);
+            });
+        }
+
+        return items;
     }
 
+    /**
+     * Returns a mongodb cursor, which you can further modify and then call toArray() to retrieve the documents.
+     *
+     * Use toClass=false to return the raw documents.
+     */
     public async cursor<T>(
         classType: ClassType<T>,
-        filter?: { [field: string]: any }
+        filter?: { [field: string]: any },
+        toClass: boolean = true,
     ): Promise<Cursor<T>> {
         const collection = await this.getCollection(classType);
 
         const cursor = collection.find(filter ? partialClassToMongo(classType, filter) : undefined);
-        cursor.map(v => mongoToClass(classType, v));
+        if (toClass) {
+            cursor.map(v => mongoToClass(classType, v));
+        }
 
         return cursor;
     }
