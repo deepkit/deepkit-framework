@@ -8,27 +8,7 @@ import {
 } from '@marcj/marshal';
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
-import {classToMongo, mongoToClass, propertyClassToMongo} from "./mapping";
-
-export function partialClassToMongo<T, K extends keyof T>(
-    classType: ClassType<T>,
-    target?: { [path: string]: any },
-): { [path: string]: any } {
-    if (!target) return {};
-
-    const result = {};
-    for (const i in target) {
-        if (!target.hasOwnProperty(i)) continue;
-
-        if (target[i] as any instanceof RegExp) {
-            continue;
-        }
-
-        result[i] = propertyClassToMongo(classType, i, target[i]);
-    }
-
-    return result;
-}
+import {classToMongo, mongoToClass, partialClassToMongo, partialMongoToPlain, propertyClassToMongo} from "./mapping";
 
 export class NoIDDefinedError extends Error {
 }
@@ -79,18 +59,16 @@ export class Database {
         classType: ClassType<T>,
         filter?: { [field: string]: any },
         toClass: boolean = true,
-    ): Promise<T[]> {
+    ): Promise<T[] | { [field: string]: any }[]> {
         const collection = await this.getCollection(classType);
 
         const items = await collection.find(filter ? partialClassToMongo(classType, filter) : undefined).toArray();
 
-        if (toClass) {
-            return items.map(v => {
-                return mongoToClass(classType, v);
-            });
-        }
+        const converter = toClass ? mongoToClass : partialMongoToPlain;
 
-        return items;
+        return items.map(v => {
+            return converter(classType, v);
+        });
     }
 
     /**
@@ -102,13 +80,12 @@ export class Database {
         classType: ClassType<T>,
         filter?: { [field: string]: any },
         toClass: boolean = true,
-    ): Promise<Cursor<T>> {
+    ): Promise<Cursor<T | { [field: string]: any }>> {
         const collection = await this.getCollection(classType);
 
         const cursor = collection.find(filter ? partialClassToMongo(classType, filter) : undefined);
-        if (toClass) {
-            cursor.map(v => mongoToClass(classType, v));
-        }
+        const converter = toClass ? mongoToClass : partialMongoToPlain;
+        cursor.map(v => converter(classType, v));
 
         return cursor;
     }

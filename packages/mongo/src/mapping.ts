@@ -32,6 +32,80 @@ export function uuid4Stringify(u: Binary | string): string {
     return 'string' === typeof u ? u : mongoUuid.stringify(u);
 }
 
+export function partialClassToMongo<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target?: { [path: string]: any },
+): { [path: string]: any } {
+    if (!target) return {};
+
+    const result = {};
+    for (const i in target) {
+        if (!target.hasOwnProperty(i)) continue;
+
+        if (target[i] as any instanceof RegExp) {
+            continue;
+        }
+
+        result[i] = propertyClassToMongo(classType, i, target[i]);
+    }
+
+    return result;
+}
+
+export function partialMongoToPlain<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target?: { [path: string]: any },
+): { [path: string]: any } {
+    if (!target) return {};
+
+    const result = {};
+    for (const i in target) {
+        if (!target.hasOwnProperty(i)) continue;
+
+        if (target[i] as any instanceof RegExp) {
+            continue;
+        }
+
+        result[i] = propertyMongoToPlain(classType, i, target[i]);
+    }
+
+    return result;
+}
+
+export function propertyMongoToPlain<T>(
+    classType: ClassType<T>,
+    propertyName: string,
+    propertyValue: any
+) {
+    const {type, typeValue} = getReflectionType(classType, propertyName);
+
+    if (isUndefined(propertyValue)) {
+        return undefined;
+    }
+
+    if (null === propertyValue) {
+        return null;
+    }
+
+    function convert(value: any) {
+        if (value && 'uuid' === type && 'string' !== typeof value) {
+            return uuid4Stringify(value);
+        }
+
+        if ('objectId' === type && 'string' !== typeof value && value.toHexString()) {
+            return (<ObjectID>value).toHexString();
+        }
+
+        if ('date' === type && value instanceof Date) {
+            return value.toJSON();
+        }
+
+        return value;
+    }
+
+    return convert(propertyValue);
+}
+
 export function propertyClassToMongo<T>(
     classType: ClassType<T>,
     propertyName: string,
