@@ -392,7 +392,7 @@ entity.children instanceof ChildrenCollection; //true
 entity.children.add('Bar2'); 
 ```
 
-## Mongo Database
+## Database
 
 Marshal's MongoDB database abstraction makes it super easy to
 retrieve and store data from and into your MongoDB. We make sure the

@@ -143,6 +143,11 @@ export function propertyClassToMongo<T>(
             return value;
         }
 
+
+        if ('binary' === type) {
+            return new Binary(value);
+        }
+
         if (type === 'class') {
             return classToMongo(typeValue, value);
         }
@@ -195,6 +200,10 @@ export function propertyMongoToClass<T>(
 
         if ('date' === type && !(value instanceof Date)) {
             return new Date(value);
+        }
+
+        if ('binary' === type && value instanceof Binary) {
+            return value.buffer;
         }
 
         if ('any' === type) {

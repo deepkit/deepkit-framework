@@ -59,7 +59,7 @@ export class Database {
         classType: ClassType<T>,
         filter?: { [field: string]: any },
         toClass: boolean = true,
-    ): Promise<T[] | { [field: string]: any }[]> {
+    ): Promise<T[]> {
         const collection = await this.getCollection(classType);
 
         const items = await collection.find(filter ? partialClassToMongo(classType, filter) : undefined).toArray();
@@ -68,7 +68,7 @@ export class Database {
 
         return items.map(v => {
             return converter(classType, v);
-        });
+        }) as T[];
     }
 
     /**
@@ -80,7 +80,7 @@ export class Database {
         classType: ClassType<T>,
         filter?: { [field: string]: any },
         toClass: boolean = true,
-    ): Promise<Cursor<T | { [field: string]: any }>> {
+    ): Promise<Cursor<T>> {
         const collection = await this.getCollection(classType);
 
         const cursor = collection.find(filter ? partialClassToMongo(classType, filter) : undefined);

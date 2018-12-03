@@ -1,8 +1,9 @@
 import {PageCollection} from "./PageCollection";
 import {DocumentClass} from "./DocumentClass";
-import {Class, ClassCircular, ParentReference, StringType, UUIDType} from "../../src/decorators";
+import {BinaryType, Class, ClassCircular, ParentReference, StringType, UUIDType} from "../../src/decorators";
 import {uuid} from "../../src/utils";
 import {Optional} from "../../src/validation";
+import {Buffer} from 'buffer';
 
 export class PageClass {
     @UUIDType()
