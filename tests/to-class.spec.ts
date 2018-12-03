@@ -38,7 +38,6 @@ import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from 
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
 import {classToMongo, mongoToClass, plainToMongo} from "../src/mapping";
-import * as clone from "clone";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');

@@ -1,9 +1,18 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {EnumType, MongoIdType, UUIDType} from "@marcj/marshal";
+import {
+    BinaryType,
+    classToPlain,
+    EnumType,
+    getReflectionType,
+    MongoIdType,
+    plainToClass,
+    UUIDType
+} from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
-import {classToMongo} from "../src/mapping";
+import {classToMongo, mongoToClass, mongoToPlain} from "../src/mapping";
+import {Buffer} from "buffer";
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');
@@ -78,4 +87,34 @@ test('convert IDs and invalid values', () => {
         instance.uuid = 'notavalidId';
         const mongo = classToMongo(Model, instance);
     }).toThrow('Invalid UUID given in property');
+});
+
+
+test('binary', () => {
+    class Model {
+        @BinaryType()
+        preview: Buffer = new Buffer('FooBar', 'utf8');
+    }
+
+    const i = new Model();
+    expect(i.preview.toString('utf8')).toBe('FooBar');
+
+    const mongo = classToMongo(Model, i);
+    expect(mongo.preview).toBeInstanceOf(Binary);
+    expect((mongo.preview as Binary).length()).toBe(6);
+});
+
+
+test('binary from mongo', () => {
+    class Model {
+        @BinaryType()
+        preview: Buffer = new Buffer('FooBar', 'utf8');
+    }
+
+    const i = mongoToClass(Model, {
+        preview: new Binary(new Buffer('FooBar', 'utf8'))
+    });
+
+    expect(i.preview.length).toBe(6);
+    expect(i.preview.toString('utf8')).toBe('FooBar');
 });

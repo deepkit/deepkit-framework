@@ -1,6 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
+    BinaryType,
     DatabaseName, Entity, getCollectionName, getDatabaseName, getEntityName, ID, MongoIdType,
     plainToClass, StringType,
 } from "@marcj/marshal";
@@ -8,6 +9,7 @@ import {Binary, ObjectID, MongoClient} from "mongodb";
 import {Database} from "../src/database";
 import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {uuid4Stringify} from "../src/mapping";
+import {Buffer} from "buffer";
 
 let connection: MongoClient;
 
@@ -294,13 +296,17 @@ test('second object id', async () => {
         @StringType()
         name?: string;
 
+        @BinaryType()
+        preview: Buffer = new Buffer('FooBar', 'utf8');
+
         @MongoIdType()
         secondId?: string;
     }
 
     const instance = plainToClass(SecondObjectId, {
         name: 'myName',
-        secondId: '5bf4a1ccce060e0b38864c9e'
+        secondId: '5bf4a1ccce060e0b38864c9e',
+        preview: 'QmFhcg==', //Baar
     });
 
     await database.add(SecondObjectId, instance);
@@ -315,6 +321,8 @@ test('second object id', async () => {
     const mongoItem = await collection.find().toArray();
     expect(mongoItem).toBeArrayOfSize(1);
     expect(mongoItem[0].name).toBe('myName');
+    expect(mongoItem[0].preview).toBeInstanceOf(Binary);
+    expect(mongoItem[0].preview.buffer.toString('utf8')).toBe('Baar');
 
     console.log(mongoItem[0]);
     expect(mongoItem[0]._id).toBeInstanceOf(ObjectID);
