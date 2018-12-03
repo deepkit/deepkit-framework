@@ -197,6 +197,10 @@ export function DateType() {
     return Type('date');
 }
 
+export function BinaryType() {
+    return Type('binary');
+}
+
 export function StringType() {
     class Validator implements PropertyValidator {
         async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {

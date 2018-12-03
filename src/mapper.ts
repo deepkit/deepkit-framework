@@ -13,8 +13,9 @@ import {
 import {isOptional} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
+import {Buffer} from 'buffer';
 
-export type Types = 'objectId' | 'uuid' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
+export type Types = 'objectId' | 'uuid' | 'binary' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
 
 const cache = new Map<Object, Map<string, any>>();
 
@@ -136,6 +137,10 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             return value;
         }
 
+        if ('binary' === type && value.toString) {
+            return value.toString('base64');
+        }
+
         if ('any' === type) {
             return clone(value, false);
         }
@@ -192,6 +197,10 @@ export function propertyPlainToClass<T>(
 
         if ('number' === type && 'number' !== typeof value) {
             return +value;
+        }
+
+        if ('binary' === type && 'string' === typeof value) {
+            return new Buffer(value, 'base64');
         }
 
         if ('boolean' === type && 'boolean' !== typeof value) {

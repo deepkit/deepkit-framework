@@ -23,8 +23,9 @@ import {
     ClassArrayCircular,
     ClassMapCircular,
     ParentReference,
-    getParentReferenceClass
+    getParentReferenceClass, BinaryType, classToPlain
 } from "../";
+import {Buffer} from "buffer";
 
 test('test entity database', async () => {
 
@@ -273,4 +274,27 @@ test('more array/map', () => {
 
     expect(isArrayType(Model, 'bools')).toBeTrue();
     expect(isMapType(Model, 'whatever')).toBeTrue();
+});
+
+test('binary', () => {
+    class Model {
+        @BinaryType()
+        preview: Buffer = new Buffer('FooBar', 'utf8');
+    }
+
+    const {type, typeValue} = getReflectionType(Model, 'preview');
+    expect(type).toBe('binary');
+    expect(typeValue).toBeNull();
+
+    const i = new Model();
+    expect(i.preview.toString('utf8')).toBe('FooBar');
+
+    const plain = classToPlain(Model, i);
+    expect(plain.preview).toBe('Rm9vQmFy');
+    expect(plain.preview).toBe(new Buffer('FooBar', 'utf8').toString('base64'));
+
+    const back = plainToClass(Model, plain);
+    expect(back.preview).toBeInstanceOf(Buffer);
+    expect(back.preview.toString('utf8')).toBe('FooBar');
+    expect(back.preview.length).toBe(6);
 });
