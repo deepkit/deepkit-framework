@@ -65,7 +65,7 @@ test('test required', async () => {
             fail('no exception thrown')
         } catch (error) {
             expect(error).toBeInstanceOf(BadRequestException);
-            expect(error.message).toEqual({"error": "Bad Request", "message": [{"message": "No value given", "path": "name"}], "statusCode": 400});
+            expect(error.message).toEqual([{"message": "No value given", "path": "name"}]);
         }
     }
 
