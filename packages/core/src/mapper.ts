@@ -65,6 +65,87 @@ export function getOnLoad<T>(classType: ClassType<T>): {property: string, option
     return getCachedMetaData('marshal:onLoad', classType.prototype) || [];
 }
 
+
+export interface ResolvedReflectionFound {
+    resolvedClassType: ClassType<any>;
+    resolvedPropertyName: string;
+    type: Types;
+    typeValue: any;
+    array: boolean;
+    map: boolean;
+}
+
+export type ResolvedReflection = ResolvedReflectionFound | null;
+
+export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: string): ResolvedReflection {
+    const names = propertyPath.split('.');
+    let resolvedClassType: ClassType<any> = classType;
+    let resolvedClassTypeCandidate: ClassType<any> | undefined = undefined;
+    let resolvedPropertyName: string = '';
+    let inArrayOrMap = false;
+    let inClassField = false;
+    let isArray = false;
+    let isMap = false;
+
+    // console.log('for', propertyPath, names);
+    for (const name of names) {
+
+        if (inArrayOrMap) {
+            if (inClassField && resolvedClassTypeCandidate) {
+                const {type, typeValue} = getReflectionType(resolvedClassTypeCandidate, name);
+                if (!type) {
+                    return null;
+                }
+                inClassField = false;
+                inArrayOrMap = false;
+                resolvedClassType = resolvedClassTypeCandidate;
+            } else {
+                inClassField = true;
+                continue;
+            }
+        }
+
+        const {type, typeValue} = getReflectionType(resolvedClassType, name);
+        // console.log('check', getClassName(resolvedClassType), `resolvedPropertyName='${resolvedPropertyName}'`, `name='${name}'`, `type='${type}'`, inArrayOrMap);
+
+        if (!type) {
+            return null;
+        }
+
+        resolvedPropertyName = name;
+        isArray = isArrayType(resolvedClassType, resolvedPropertyName);
+        isMap = isMapType(resolvedClassType, resolvedPropertyName);
+        if (isArray || isMap) {
+            inArrayOrMap = true;
+        }
+
+        if (type === 'class') {
+            //todo, this should be set only in the next iteration when we have still valid names to come
+            resolvedClassTypeCandidate = typeValue;
+        }
+    }
+
+    if (inClassField) {
+        isArray = false;
+        isMap = false;
+    }
+
+    const {type, typeValue} = getReflectionType(resolvedClassType, resolvedPropertyName);
+    // console.log('end', getClassName(resolvedClassType), `resolvedPropertyName='${resolvedPropertyName}'`, `type='${type}'`);
+    if (type) {
+        return {
+            resolvedClassType: resolvedClassType,
+            resolvedPropertyName: resolvedPropertyName,
+            type: type,
+            typeValue: typeValue,
+            array: isArray,
+            map: isMap,
+        }
+    }
+
+    return null;
+}
+
 export function getReflectionType<T>(classType: ClassType<T>, propertyName: string): { type: Types | null, typeValue: any | null } {
     let valueMap = cache.get(classType.prototype);
     if (!valueMap) {
@@ -176,8 +257,6 @@ export function propertyPlainToClass<T>(
     incomingLevel: number,
     state: ToClassState
 ) {
-    const {type, typeValue} = getReflectionType(classType, propertyName);
-
     if (isUndefined(propertyValue)) {
         return undefined;
     }
@@ -187,6 +266,18 @@ export function propertyPlainToClass<T>(
     }
 
     function convert(value: any) {
+        //classType=Job()
+        //propertyName=tasks.main
+        //propertyName=JobTask()
+
+        //classType=Job()
+        //propertyName=tasks.main.status
+        //propertyName=2
+        const reflection = getResolvedReflection(classType, propertyName);
+        if (!reflection) return value;
+
+        const {resolvedClassType, resolvedPropertyName, type, typeValue} = reflection;
+        
         if ('date' === type && ('string' === typeof value || 'number' === typeof value)) {
             return new Date(value);
         }
@@ -215,7 +306,7 @@ export function propertyPlainToClass<T>(
         }
 
         if ('enum' === type) {
-            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
+            const allowLabelsAsValue = isEnumAllowLabelsAsValue(resolvedClassType, resolvedPropertyName);
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
                 const valids = getEnumKeys(typeValue);
                 if (allowLabelsAsValue) {
@@ -223,7 +314,7 @@ export function propertyPlainToClass<T>(
                         valids.push(label);
                     }
                 }
-                throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${valids.join(',')}`);
+                throw new Error(`Invalid ENUM given in property ${resolvedPropertyName}: ${value}, valid: ${valids.join(',')}`);
             }
 
             return getValidEnumValue(typeValue, value, allowLabelsAsValue);
@@ -232,7 +323,7 @@ export function propertyPlainToClass<T>(
         if (type === 'class') {
             if (value instanceof typeValue) {
                 //already the target type, this is an error
-                throw new Error(`${getClassPropertyName(classType, propertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
+                throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
             }
 
             return toClass(typeValue, value, propertyPlainToClass, parents, incomingLevel, state);

@@ -34,8 +34,15 @@ test('test required', async () => {
 
     {
         const pipe = new ValidationPipe();
-        const result = await pipe.transform({name: 'Foo', optional: 'two'}, {type: 'body'});
+        const result = await pipe.transform({name: 'Foo'}, {type: 'body'});
         expect(result).toBeUndefined();
+    }
+
+    {
+        const pipe = new ValidationPipe();
+        const result = await pipe.transform({name: 'Foo'}, {type: 'body', metatype: Model});
+        expect(result).not.toBeInstanceOf(Model);
+        expect(result.id).toBe('1'); //because ValidationPipe is reading default values
     }
 
     {
