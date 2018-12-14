@@ -1,8 +1,11 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {Plan, SimpleModel, SubModel} from "./entities";
-import {getResolvedReflection, partialPlainToClass, plainToClass} from "../src/mapper";
-import {EnumType} from "..";
+import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
+import {getReflectionType, getResolvedReflection, partialPlainToClass, plainToClass, Types} from "../src/mapper";
+import {ClassType, EnumType} from "..";
+import {DocumentClass} from "./document-scenario/DocumentClass";
+import {PageClass} from "./document-scenario/PageClass";
+import {PageCollection} from "./document-scenario/PageCollection";
 
 test('getResolvedReflection simple', () => {
     expect(getResolvedReflection(SimpleModel, 'id')!.resolvedClassType).toBe(SimpleModel);
@@ -60,6 +63,34 @@ test('getResolvedReflection deep', () => {
 });
 
 
+test('getResolvedReflection deep decorator', () => {
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.resolvedClassType).toBe(SubModel);
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.resolvedPropertyName).toBe('label');
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.type).toBe('string');
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.typeValue).toBeNull();
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.array).toBe(false);
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.map).toBe(false);
+});
+
+test('getResolvedReflection decorator string', () => {
+    expect(getReflectionType(SimpleModel, 'stringChildrenCollection')).toEqual({type: 'class', typeValue: StringCollectionWrapper});
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.resolvedClassType).toBe(SimpleModel);
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.resolvedPropertyName).toBe('stringChildrenCollection');
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.type).toBe('class');
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.typeValue).toBe(StringCollectionWrapper);
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.array).toBe(false);
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.map).toBe(false);
+});
+
+test('getResolvedReflection deep decorator string', () => {
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.resolvedClassType).toBe(SimpleModel);
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.resolvedPropertyName).toBe('stringChildrenCollection');
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.type).toBe('string');
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.typeValue).toBeNull();
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.array).toBe(false);
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.map).toBe(false);
+});
+
 test('plain-to test simple model', () => {
 
     const instance = plainToClass(SimpleModel, {
@@ -87,6 +118,109 @@ test('partial', () => {
     expect(instance.name).toBe('Hi');
     expect(instance.children[0]).toBeInstanceOf(SubModel);
     expect(instance.children[0].label).toBe('Foo');
+});
+
+
+test('partial 2', () => {
+    const instance = partialPlainToClass(SimpleModel, {
+        name: 'Hi',
+        'children.0.label': 'Foo'
+    });
+
+    expect(instance).not.toBeInstanceOf(SimpleModel);
+    expect(instance['id']).toBeUndefined();
+    expect(instance['type']).toBeUndefined();
+    expect(instance.name).toBe('Hi');
+    expect(instance['children.0.label']).toBe('Foo');
+
+    expect(partialPlainToClass(SimpleModel, {
+        'children.0.label': 2
+    })).toEqual({'children.0.label': '2'});
+
+    const i2 = partialPlainToClass(SimpleModel, {
+        'children.0': {'label': 3}
+    });
+    expect(i2['children.0']).toBeInstanceOf(SubModel);
+    expect(i2['children.0'].label).toBe('3');
+});
+
+
+test('partial 3', () => {
+    const i2 = partialPlainToClass(SimpleModel, {
+        'children': [{'label': 3}]
+    });
+    expect(i2['children'][0]).toBeInstanceOf(SubModel);
+    expect(i2['children'][0].label).toBe('3');
+});
+
+
+test('partial 4', () => {
+    const i2 = partialPlainToClass(SimpleModel, {
+        'stringChildrenCollection.0': 4
+    });
+    expect(i2['stringChildrenCollection.0']).toBe('4');
+});
+
+test('partial 5', () => {
+    const i2 = partialPlainToClass(SimpleModel, {
+        'childrenMap.foo.label': 5
+    });
+    expect(i2['childrenMap.foo.label']).toBe('5');
+});
+
+
+test('partial 6', () => {
+    const i = partialPlainToClass(SimpleModel, {
+        'types': [6, 7]
+    });
+    expect(i['types']).toEqual(['6', '7']);
+});
+
+test('partial 7', () => {
+    const i = partialPlainToClass(SimpleModel, {
+        'types.0': [7]
+    });
+    expect(i['types.0']).toEqual('7');
+});
+
+test('partial document', () => {
+    const docParent = new DocumentClass();
+    const document = partialPlainToClass(DocumentClass, {
+        'pages.0.name': 5,
+        'pages.0.children.0.name': 6,
+        'pages.0.children': [{name: 7}],
+    }, [docParent]);
+    expect(document['pages.0.name']).toBe('5');
+    expect(document['pages.0.children.0.name']).toBe('6');
+    expect(document['pages.0.children']).toBeInstanceOf(PageCollection);
+    expect(document['pages.0.children'].get(0).name).toBe('7');
+
+    expect(getResolvedReflection(DocumentClass, 'pages.0.name')).toEqual({
+        resolvedClassType: PageClass,
+        resolvedPropertyName: 'name',
+        type: 'string',
+        typeValue: null,
+        array: false,
+        map: false,
+    });
+
+    expect(getResolvedReflection(DocumentClass, 'pages.0.children')).toEqual({
+        resolvedClassType: PageClass,
+        resolvedPropertyName: 'children',
+        type: 'class',
+        typeValue: PageCollection,
+        array: false,
+        map: false,
+    });
+
+    expect(getResolvedReflection(DocumentClass, 'pages.0.children.0.name')).toEqual({
+        resolvedClassType: PageClass,
+        resolvedPropertyName: 'name',
+        type: 'string',
+        typeValue: null,
+        array: false,
+        map: false,
+    });
 });
 
 test('test enum labels', () => {

@@ -7,7 +7,6 @@ export class DocumentClass {
     @MongoIdType()
     _id?: string;
 
-
     @StringType()
     name?: string;
 

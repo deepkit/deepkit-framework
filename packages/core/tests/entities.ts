@@ -86,6 +86,10 @@ export class SimpleModel {
     @DateType()
     created: Date = now;
 
+    @ArrayType()
+    @StringType()
+    types: string[] = [];
+
     @ClassArray(SubModel)
     children: SubModel[] = [];
 
