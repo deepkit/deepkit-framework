@@ -87,12 +87,12 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
     let isArray = false;
     let isMap = false;
 
-    // console.log('for', propertyPath, names);
-    for (const name of names) {
+    for (let i = 0; i < names.length; i++) {
+        const name = names[i];
 
         if (inArrayOrMap) {
             if (inClassField && resolvedClassTypeCandidate) {
-                const {type, typeValue} = getReflectionType(resolvedClassTypeCandidate, name);
+                const {type} = getReflectionType(resolvedClassTypeCandidate, name);
                 if (!type) {
                     return null;
                 }
@@ -106,7 +106,6 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
         }
 
         const {type, typeValue} = getReflectionType(resolvedClassType, name);
-        // console.log('check', getClassName(resolvedClassType), `resolvedPropertyName='${resolvedPropertyName}'`, `name='${name}'`, `type='${type}'`, inArrayOrMap);
 
         if (!type) {
             return null;
@@ -120,8 +119,48 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
         }
 
         if (type === 'class') {
-            //todo, this should be set only in the next iteration when we have still valid names to come
             resolvedClassTypeCandidate = typeValue;
+            if (resolvedClassTypeCandidate) {
+                const decorator = getDecorator(resolvedClassTypeCandidate);
+                if (decorator) {
+                    const {type, typeValue} = getReflectionType(resolvedClassTypeCandidate, decorator);
+
+                    if (isArrayType(resolvedClassTypeCandidate, decorator) || isMapType(resolvedClassTypeCandidate, decorator)) {
+                        inArrayOrMap = true;
+                    }
+
+                    if (type === 'class') {
+                        if (!typeValue) {
+                           throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} has no class defined. Use Circular decorator if that class really exists.`);
+                        }
+                        resolvedClassTypeCandidate = typeValue;
+                    } else if (type){
+                        if (names[i+1]) {
+                            return {
+                                resolvedClassType: resolvedClassType,
+                                resolvedPropertyName: resolvedPropertyName,
+                                type: type,
+                                typeValue: typeValue,
+                                array: false,
+                                map: false,
+                            }
+                        } else {
+                            return {
+                                resolvedClassType: resolvedClassType,
+                                resolvedPropertyName: resolvedPropertyName,
+                                type: 'class',
+                                typeValue: resolvedClassTypeCandidate,
+                                array: isArray,
+                                map: isMap,
+                            }
+                        }
+                    } else {
+                        return null;
+                    }
+                }
+            } else {
+                throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} has no class defined. Use Circular decorator if that class really exists.`);
+            }
         }
     }
 
@@ -131,7 +170,6 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
     }
 
     const {type, typeValue} = getReflectionType(resolvedClassType, resolvedPropertyName);
-    // console.log('end', getClassName(resolvedClassType), `resolvedPropertyName='${resolvedPropertyName}'`, `type='${type}'`);
     if (type) {
         return {
             resolvedClassType: resolvedClassType,
@@ -265,19 +303,12 @@ export function propertyPlainToClass<T>(
         return null;
     }
 
+    const reflection = getResolvedReflection(classType, propertyName);
+    if (!reflection) return propertyValue;
+
+    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+
     function convert(value: any) {
-        //classType=Job()
-        //propertyName=tasks.main
-        //propertyName=JobTask()
-
-        //classType=Job()
-        //propertyName=tasks.main.status
-        //propertyName=2
-        const reflection = getResolvedReflection(classType, propertyName);
-        if (!reflection) return value;
-
-        const {resolvedClassType, resolvedPropertyName, type, typeValue} = reflection;
-        
         if ('date' === type && ('string' === typeof value || 'number' === typeof value)) {
             return new Date(value);
         }
@@ -332,11 +363,11 @@ export function propertyPlainToClass<T>(
         return value;
     }
 
-    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+    if (array && isArray(propertyValue)) {
         return propertyValue.map(v => convert(v));
     }
 
-    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+    if (map && isObject(propertyValue)) {
         const result: { [name: string]: any } = {};
         for (const i in propertyValue) {
             if (!propertyValue.hasOwnProperty(i)) continue;
@@ -498,7 +529,7 @@ export function toClass<T>(
  *
  * Returns a new regular object again.
  */
-export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: Partial<{[F in K]: any}>, parents?: any[]): Partial<{[F in K]: any}> {
+export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: {[path: string]: any}, parents?: any[]): Partial<{[F in K]: any}> {
     const result: Partial<{[F in K]: any}> = {};
     const state = new ToClassState();
 
