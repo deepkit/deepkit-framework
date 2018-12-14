@@ -46,3 +46,4 @@ test('mongo to plain partial', () => {
     expect(plain.date).toBe('2018-11-07T19:45:15.805Z');
     expect(plain.uuid).toBe('12345678-1234-5678-1234-567812345678');
 });
+

@@ -7,13 +7,10 @@ import {
     getClassPropertyName,
     getDecorator, getEnumKeys,
     getParentReferenceClass,
-    getReflectionType,
-    getRegisteredProperties,
+    getRegisteredProperties, getResolvedReflection,
     getValidEnumValue,
     isArray,
-    isArrayType,
     isEnumAllowLabelsAsValue,
-    isMapType,
     isObject,
     isUndefined,
     isValidEnumValue,
@@ -77,7 +74,10 @@ export function propertyMongoToPlain<T>(
     propertyName: string,
     propertyValue: any
 ) {
-    const {type, typeValue} = getReflectionType(classType, propertyName);
+    const reflection = getResolvedReflection(classType, propertyName);
+    if (!reflection) return propertyValue;
+
+    const {type} = reflection;
 
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -111,7 +111,10 @@ export function propertyClassToMongo<T>(
     propertyName: string,
     propertyValue: any
 ) {
-    const {type, typeValue} = getReflectionType(classType, propertyName);
+    const reflection = getResolvedReflection(classType, propertyName);
+    if (!reflection) return propertyValue;
+
+    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
 
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -126,7 +129,7 @@ export function propertyClassToMongo<T>(
             try {
                 return new ObjectID(value);
             } catch (e) {
-                throw new Error(`Invalid ObjectID given in property ${getClassPropertyName(classType, propertyName)}: '${value}'`);
+                throw new Error(`Invalid ObjectID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
             }
         }
 
@@ -134,15 +137,22 @@ export function propertyClassToMongo<T>(
             try {
                 return uuid4Binary(value);
             } catch (e) {
-                throw new Error(`Invalid UUID given in property ${getClassPropertyName(classType, propertyName)}: '${value}'`);
+                throw new Error(`Invalid UUID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
             }
+        }
+
+        if ('string' === type) {
+            return String(value);
+        }
+
+        if ('number' === type) {
+            return value+0;
         }
 
         if ('enum' === type) {
             //the class instance itself can only have the actual value which can be used in plain as well
             return value;
         }
-
 
         if ('binary' === type) {
             return new Binary(value);
@@ -155,11 +165,11 @@ export function propertyClassToMongo<T>(
         return value;
     }
 
-    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+    if (array && isArray(propertyValue)) {
         return propertyValue.map(v => convert(v));
     }
 
-    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+    if (map && isObject(propertyValue)) {
         const result: { [name: string]: any } = {};
         for (const i in propertyValue) {
             if (!propertyValue.hasOwnProperty(i)) continue;
@@ -179,8 +189,6 @@ export function propertyMongoToClass<T>(
     incomingLevel: number,
     state: ToClassState
 ) {
-    const {type, typeValue} = getReflectionType(classType, propertyName);
-
     if (isUndefined(propertyValue)) {
         return undefined;
     }
@@ -189,7 +197,13 @@ export function propertyMongoToClass<T>(
         return null;
     }
 
+    const reflection = getResolvedReflection(classType, propertyName);
+    if (!reflection) return propertyValue;
+
+    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+
     function convert(value: any) {
+
         if (value && 'uuid' === type && 'string' !== typeof value) {
             return uuid4Stringify(value);
         }
@@ -226,9 +240,9 @@ export function propertyMongoToClass<T>(
         }
 
         if ('enum' === type) {
-            const allowLabelsAsValue = isEnumAllowLabelsAsValue(classType, propertyName);
+            const allowLabelsAsValue = isEnumAllowLabelsAsValue(resolvedClassType, resolvedPropertyName);
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                throw new Error(`Invalid ENUM given in property ${propertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+                throw new Error(`Invalid ENUM given in property ${resolvedPropertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
             }
 
             return getValidEnumValue(typeValue, value, allowLabelsAsValue);
@@ -237,7 +251,7 @@ export function propertyMongoToClass<T>(
         if (type === 'class') {
             if (value instanceof typeValue) {
                 //already the target type, this is an error
-                throw new Error(`${getClassPropertyName(classType, propertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
+                throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
             }
 
             return toClass(typeValue, clone(value, false, 1), propertyMongoToClass, parents, incomingLevel, state);
@@ -246,11 +260,11 @@ export function propertyMongoToClass<T>(
         return value;
     }
 
-    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+    if (array && isArray(propertyValue)) {
         return propertyValue.map(v => convert(v));
     }
 
-    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+    if (map && isObject(propertyValue)) {
         const result: any = {};
         for (const i in propertyValue) {
             if (!propertyValue.hasOwnProperty(i)) continue;
