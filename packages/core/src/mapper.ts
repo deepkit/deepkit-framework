@@ -80,6 +80,7 @@ export type ResolvedReflection = ResolvedReflectionFound | null;
 export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: string): ResolvedReflection {
     const names = propertyPath.split('.');
     let resolvedClassType: ClassType<any> = classType;
+    let resolvedTypeCandidate: Types | undefined;
     let resolvedClassTypeCandidate: ClassType<any> | undefined = undefined;
     let resolvedPropertyName: string = '';
     let inArrayOrMap = false;
@@ -133,6 +134,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                         if (!typeValue) {
                            throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} has no class defined. Use Circular decorator if that class really exists.`);
                         }
+                        resolvedTypeCandidate = type;
                         resolvedClassTypeCandidate = typeValue;
                     } else if (type){
                         if (names[i+1]) {
@@ -167,6 +169,17 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
     if (inClassField) {
         isArray = false;
         isMap = false;
+
+        if (resolvedTypeCandidate) {
+            return {
+                resolvedClassType: resolvedClassType,
+                resolvedPropertyName: resolvedPropertyName,
+                type: resolvedTypeCandidate,
+                typeValue: resolvedClassTypeCandidate,
+                array: isArray,
+                map: isMap,
+            };
+        }
     }
 
     const {type, typeValue} = getReflectionType(resolvedClassType, resolvedPropertyName);
@@ -236,7 +249,6 @@ export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName
 }
 
 export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
-    const {type, typeValue} = getReflectionType(classType, propertyName);
 
     if (undefined === propertyValue) {
         return undefined;
@@ -245,10 +257,18 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     if (null === propertyValue) {
         return null;
     }
+    const reflection = getResolvedReflection(classType, propertyName);
+    if (!reflection) return propertyValue;
+
+    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
 
     function convert(value: any) {
         if ('date' === type && value instanceof Date) {
             return value.toJSON();
+        }
+
+        if ('string' === type) {
+            return String(value);
         }
 
         if ('enum' === type) {
@@ -265,17 +285,23 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         }
 
         if (type === 'class') {
+            if (!(value instanceof typeValue)) {
+                throw new Error(
+                    `Could not convert ${getClassPropertyName(classType, propertyName)} since target is not a `+
+                    `class instance of ${getClassName(typeValue)}. Got ${getClassName(value)}`);
+            }
+
             return classToPlain(typeValue, value);
         }
 
         return value;
     }
 
-    if (isArrayType(classType, propertyName) && isArray(propertyValue)) {
+    if (array && isArray(propertyValue)) {
         return propertyValue.map(v => convert(v));
     }
 
-    if (isMapType(classType, propertyName) && isObject(propertyValue)) {
+    if (map && isObject(propertyValue)) {
         const result: any = {};
         for (const i in propertyValue) {
             if (!propertyValue.hasOwnProperty(i)) continue;
@@ -535,7 +561,24 @@ export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T
 
     for (const i in target) {
         if (!target.hasOwnProperty(i)) continue;
-        result[i] = propertyPlainToClass(classType, i, target[i], parents || [], 1, state)
+        result[i] = propertyPlainToClass(classType, i, target[i], parents || [], 1, state);
+    }
+
+    return result;
+}
+
+
+/**
+ * Takes a object with partial class fields defined of classType and converts only them into the plain variant.
+ *
+ * Returns a new regular object again.
+ */
+export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T>, target: {[path: string]: any}): Partial<{[F in K]: any}> {
+    const result: Partial<{[F in K]: any}> = {};
+
+    for (const i in target) {
+        if (!target.hasOwnProperty(i)) continue;
+        result[i] = propertyClassToPlain(classType, i, target[i]);
     }
 
     return result;

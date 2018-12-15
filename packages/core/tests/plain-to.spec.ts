@@ -64,12 +64,23 @@ test('getResolvedReflection deep', () => {
 
 
 test('getResolvedReflection deep decorator', () => {
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.resolvedClassType).toBe(SubModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.resolvedPropertyName).toBe('label');
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.type).toBe('string');
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.typeValue).toBeNull();
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!.map).toBe(false);
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!).toEqual({
+        resolvedClassType: SimpleModel,
+        resolvedPropertyName: 'childrenCollection',
+        type: 'class',
+        typeValue: SubModel,
+        array: false,
+        map: false,
+    });
+
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!).toEqual({
+        resolvedClassType: SubModel,
+        resolvedPropertyName: 'label',
+        type: 'string',
+        typeValue: null,
+        array: false,
+        map: false,
+    });
 });
 
 test('getResolvedReflection decorator string', () => {
