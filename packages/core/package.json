@@ -1,6 +1,6 @@
 {
   "name": "@marcj/marshal",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Marshal is a library to marshal JSON-representable data from JSON to class instance to Mongo and vice versa.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
