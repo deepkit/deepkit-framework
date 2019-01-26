@@ -145,12 +145,12 @@ test('test nested validation', async () => {
         public nesteds!: A[];
     }
 
-    // expect(await validate(B, {
-    //     type: "test type",
-    // })).toEqual([
-    //     {'message': 'Required value is undefined', 'path': 'nested'},
-    //     {'message': 'Required value is undefined', 'path': 'nesteds'},
-    // ]);
+    expect(await validate(B, {
+        type: "test type",
+    })).toEqual([
+        {'message': 'Required value is undefined', 'path': 'nested'},
+        {'message': 'Required value is undefined', 'path': 'nesteds'},
+    ]);
 
     expect(await validate(B, {
         type: "test type",
