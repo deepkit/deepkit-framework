@@ -142,7 +142,7 @@ export function propertyClassToMongo<T>(
         }
 
         if ('number' === type) {
-            return value+0;
+            return Number(value);
         }
 
         if ('enum' === type) {
@@ -330,3 +330,54 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
     return result;
 }
 
+
+export function convertPlainQueryToMongo<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target: { [path: string]: any },
+    fieldNamesMap: {[name: string]: boolean} = {}
+): { [path: string]: any } {
+    const result: { [i: string]: any } = {};
+
+    for (const i in target) {
+        if (!target.hasOwnProperty(i)) continue;
+
+        const fieldValue: any = target[i];
+
+        if (i[0] === '$') {
+            result[i] = (fieldValue as any[]).map(v => convertPlainQueryToMongo(classType, v, fieldNamesMap));
+            continue;
+        }
+
+        if (isObject(fieldValue)) {
+            for (const j in fieldValue) {
+                if (!fieldValue.hasOwnProperty(j)) continue;
+
+                const queryValue: any = (fieldValue as any)[j];
+
+                if (j[0] !== '$') {
+                    result[i] = propertyClassToMongo(classType, i, fieldValue);
+                    break;
+                } else {
+                    if (j === '$and' || j === '$or' || j === '$nor' || j === '$not') {
+                        (fieldValue as any)[j] = (queryValue as any[]).map(v => convertPlainQueryToMongo(classType, v, fieldNamesMap));
+                    } else if (j === '$in' || j === '$nin' || j === '$all') {
+                        fieldNamesMap[i] = true;
+                        (fieldValue as any)[j] = (queryValue as any[]).map(v => propertyClassToMongo(classType, i, v));
+                    } else if (j === '$exists' || j === '$mod' || j === '$size' || j === '$type' || j === '$regex' || j === '$where') {
+                        //don't transform
+                    } else {
+                        fieldNamesMap[i] = true;
+                        (fieldValue as any)[j] = propertyClassToMongo(classType, i, queryValue);
+                    }
+                }
+            }
+
+            result[i] = fieldValue;
+        } else {
+            fieldNamesMap[i] = true;
+            result[i] = propertyClassToMongo(classType, i, fieldValue);
+        }
+    }
+
+    return result;
+}
