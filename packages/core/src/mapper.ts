@@ -297,15 +297,21 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         return value;
     }
 
-    if (array && isArray(propertyValue)) {
-        return propertyValue.map(v => convert(v));
+    if (array) {
+        if (isArray(propertyValue)) {
+            return propertyValue.map(v => convert(v));
+        }
+
+        return [];
     }
 
-    if (map && isObject(propertyValue)) {
-        const result: any = {};
-        for (const i in propertyValue) {
-            if (!propertyValue.hasOwnProperty(i)) continue;
-            result[i] = convert((<any>propertyValue)[i]);
+    if (map) {
+        const result: { [name: string]: any } = {};
+        if (isObject(propertyValue)) {
+            for (const i in propertyValue) {
+                if (!propertyValue.hasOwnProperty(i)) continue;
+                result[i] = convert((<any>propertyValue)[i]);
+            }
         }
         return result;
     }
@@ -389,15 +395,21 @@ export function propertyPlainToClass<T>(
         return value;
     }
 
-    if (array && isArray(propertyValue)) {
-        return propertyValue.map(v => convert(v));
+    if (array) {
+        if (isArray(propertyValue)) {
+            return propertyValue.map(v => convert(v));
+        }
+
+        return [];
     }
 
-    if (map && isObject(propertyValue)) {
+    if (map) {
         const result: { [name: string]: any } = {};
-        for (const i in propertyValue) {
-            if (!propertyValue.hasOwnProperty(i)) continue;
-            result[i] = convert((<any>propertyValue)[i]);
+        if (isObject(propertyValue)) {
+            for (const i in propertyValue) {
+                if (!propertyValue.hasOwnProperty(i)) continue;
+                result[i] = convert((<any>propertyValue)[i]);
+            }
         }
         return result;
     }
@@ -489,11 +501,16 @@ export function toClass<T>(
     const parameterNames = getCachedParameterNames(classType);
 
     const decoratorName = getDecorator(classType);
+    const backupedClone = cloned;
+
+    if (!isObject(cloned)) {
+        cloned = {};
+    }
 
     const args: any[] = [];
     for (const propertyName of parameterNames) {
         if (decoratorName && propertyName === decoratorName) {
-            cloned[propertyName] = converter(classType, decoratorName, cloned, parents, incomingLevel, state);
+            cloned[propertyName] = converter(classType, decoratorName, backupedClone, parents, incomingLevel, state);
         } else if (parentReferences[propertyName]) {
             const parent = findParent(parents, parentReferences[propertyName]);
             if (parent) {
@@ -672,6 +689,8 @@ export function getCollectionName<T>(classType: ClassType<T>): string {
 }
 
 export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: string]: any }): object {
+    if (!isObject(value)) return {};
+
     const valueWithDefaults = value;
     const instance = plainToClass(classType, value);
 

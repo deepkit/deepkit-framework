@@ -27,10 +27,10 @@ test('test required', async () => {
 
     const instance = new Model;
     expect(await validate(Model, instance)).toBeArrayOfSize(1);
-    expect(await validate(Model, instance)).toEqual([{message: "No value given", path: 'name'}]);
+    expect(await validate(Model, instance)).toEqual([{message: "Required value is undefined", path: 'name'}]);
 
-    expect(await validate(Model, {name: 'foo', map: true})).toEqual([{message: "No Map given", path: 'map'}]);
-    expect(await validate(Model, {name: 'foo', array: 233})).toEqual([{message: "No Array given", path: 'array'}]);
+    expect(await validate(Model, {name: 'foo', map: true})).toEqual([{message: "Invalid type. Expected object, but got boolean", path: 'map'}]);
+    expect(await validate(Model, {name: 'foo', array: 233})).toEqual([{message: "Invalid type. Expected array, but got number", path: 'array'}]);
 
     {
         const pipe = new ValidationPipe();
@@ -65,7 +65,7 @@ test('test required', async () => {
             fail('no exception thrown')
         } catch (error) {
             expect(error).toBeInstanceOf(BadRequestException);
-            expect(error.message).toEqual([{"message": "No value given", "path": "name"}]);
+            expect(error.message).toEqual([{"message": "Required value is undefined", "path": "name"}]);
         }
     }
 

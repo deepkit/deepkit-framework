@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "test": "jest --coverage",
-    "bootstrap": "lerna bootstrap --hoist --no-ci"
+    "bootstrap": "lerna bootstrap --hoist --no-ci",
+    "tsc": "lerna run tsc"
   },
   "peerDependencies": {
     "reflect-metadata": "^0.1.12"

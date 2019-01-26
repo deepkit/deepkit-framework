@@ -8,7 +8,8 @@ Marshal is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(com
 JSON-representable data from JSON to class instance to Mongo and vice versa.
 
 If you have data models in your frontend, Node backend and MongoDB collections,
-then Marshal helps you to convert between all those parties correctly.
+then Marshal helps you to convert and validate between all those parties correctly.
+With NestJS validation support and handy MongoDB storage abstraction.
 
 ![Diagram](https://raw.github.com/marcj/marshal/master/docs/assets/diagram.png)
 
@@ -37,7 +38,6 @@ import {
 } from '@marcj/marshal';
 
 
-@Entity('sub')
 class SubModel {
     @StringType()
     label: string;
@@ -49,7 +49,6 @@ export enum Plan {
     ENTERPRISE,
 }
 
-@Entity('SimpleModel')
 class SimpleModel {
     @ID()
     @UUIDType()
@@ -368,7 +367,7 @@ first argument.
 const entity = new MyEntity();
 entity.children.add('Foo');
 entity.children.add('Bar');
-const result = classToPlain(entity);
+const result = classToPlain(MyEntity, entity);
 /*
 result = {
     id: 'abcde',
@@ -382,7 +381,7 @@ plainToClass) your decorator will be used again and receives as first
 argument the actual property value:
 
 ```typescript
-const entity = plainToClass({
+const entity = plainToClass(MyEntity, {
     id: 'abcde',
     children: ['Foo', 'Bar']
 });
@@ -390,6 +389,54 @@ entity.children instanceof ChildrenCollection; //true
 
 //so you can work with it again
 entity.children.add('Bar2'); 
+```
+
+### Patch transformations
+
+If you work with rather big entities, your probably want to utilise some
+kind of patch mechanism. Marshal supports to transform partial objects as well
+with deep path properties. All of following partial* methods maintain the
+structure of your object and only transform the value. We resolve the dot symbol
+to retrieve type information, so you can use this also in combination with JSON-Patch.
+
+#### partialPlainToClass
+
+```typescript
+const converted = partialPlainToClass(SimpleModel, {
+    id: 'abcde',
+    ['childrenMap.item.label']: 3 
+});
+
+converted['childrenMap.item.label'] === '3' //true
+
+const i2 = partialPlainToClass(SimpleModel, {
+    'children': [{'label': 3}]
+});
+expect(i2['children'][0]).toBeInstanceOf(SubModel);
+expect(i2['children'][0].label).toBe('3');
+````
+
+#### partialClassToPlain / partialClassToMongo
+
+toPlain and toMongo differ in the way, that latter will transform
+@ObjectID and @UUID in different way, suitable for Mongo's binary storage.
+
+```typescript
+const plain = partialClassToPlain(SimpleModel, {
+    'children.0': i.children[0],
+    'stringChildrenCollection': new StringCollectionWrapper(['Foo', 'Bar']),
+    'childrenCollection': new CollectionWrapper([new SubModel('Bar3')]),
+    'childrenCollection.1': new SubModel('Bar4'),
+    'stringChildrenCollection.0': 'Bar2',
+    'childrenCollection.2.label': 'Bar5',
+});
+
+expect(plain['children.0'].label).toBe('Foo');
+expect(plain['stringChildrenCollection']).toEqual(['Foo', 'Bar']);
+expect(plain['stringChildrenCollection.0']).toEqual('Bar2');
+expect(plain['childrenCollection']).toEqual([{label: 'Bar3'}]);
+expect(plain['childrenCollection.1']).toEqual({label: 'Bar4'});
+expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 ```
 
 ## Mongo Database
@@ -429,6 +476,105 @@ const oneItem: SimpleModel = await database.get(
 );
 ```
 
+```typescript
+/**
+ * Handle abstraction of MongoDB.
+ *
+ * The `filter` argument is always a key-value map, whereas values are class instances. Use partialPlainToClass() first
+ * if you want to pass values from JSON/HTTP-Request.
+ */
+export declare class Database {
+    constructor(mongoClient: MongoClient | MongoClientFactory, defaultDatabaseName?: string);
+    
+    /**
+     * Returns one instance based on given filter, or null when not found.
+     */
+    get<T>(classType: ClassType<T>, filter: {
+        [field: string]: any;
+    }): Promise<T | null>;
+    
+    /**
+     * Returns all available documents for given filter as instance classes.
+     *
+     * Use toClass=false to return the raw documents. Use find().map(v => mongoToPlain(classType, v)) so you can
+     * easily return that values back to the HTTP client very fast.
+     */
+    find<T>(classType: ClassType<T>, filter?: {
+        [field: string]: any;
+    }, toClass?: boolean): Promise<T[]>;
+    
+    /**
+     * Returns a mongodb cursor, which you can further modify and then call toArray() to retrieve the documents.
+     *
+     * Use toClass=false to return the raw documents.
+     */
+    cursor<T>(classType: ClassType<T>, filter?: {
+        [field: string]: any;
+    }, toClass?: boolean): Promise<Cursor<T>>;
+    
+    /**
+     * Removes ONE item from the database that has the given id. You need to use @ID() decorator
+     * for at least and max one property at your entity to use this method.
+     */
+    remove<T>(classType: ClassType<T>, id: string): Promise<boolean>;
+    
+    /**
+     * Removes ONE item from the database that matches given filter.
+     */
+    deleteOne<T>(classType: ClassType<T>, filter: {
+        [field: string]: any;
+    }): Promise<void>;
+    
+    /**
+     * Removes ALL items from the database that matches given filter.
+     */
+    deleteMany<T>(classType: ClassType<T>, filter: {
+        [field: string]: any;
+    }): Promise<void>;
+    
+    /**
+     * Adds a new item to the database. Sets _id if defined at your entity.
+     */
+    add<T>(classType: ClassType<T>, item: T): Promise<boolean>;
+    
+    /**
+     * Returns the count of items in the database, that fit that given filter.
+     */
+    count<T>(classType: ClassType<T>, filter?: {
+        [field: string]: any;
+    }): Promise<number>;
+    
+    /**
+     * Returns true when at least one item in the database is found that fits given filter.
+     */
+    has<T>(classType: ClassType<T>, filter?: {
+        [field: string]: any;
+    }): Promise<boolean>;
+    
+    /**
+     * Updates an entity in the database and returns the new version number if successful, or null if not successful.
+     *
+     * If no filter is given, the ID of `update` is used.
+     */
+    update<T>(classType: ClassType<T>, update: T, filter?: {
+        [field: string]: any;
+    }): Promise<number | null>;
+    
+    /**
+     * Patches an entity in the database and returns the new version number if successful, or null if not successful.
+     * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
+     *
+     * Example
+     *
+     * await patch(SimpleEntity, {
+     *     ['children.0.label']: 'Changed label'
+     * });
+     */
+    patch<T>(classType: ClassType<T>, filter: {
+        [field: string]: any;
+    }, patch: Partial<T>): Promise<number | null>;
+}
+```
 
 ## NestJS / Express
 

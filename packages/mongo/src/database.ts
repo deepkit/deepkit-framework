@@ -15,6 +15,12 @@ export class NoIDDefinedError extends Error {
 
 export type MongoClientFactory = () => Promise<MongoClient>;
 
+/**
+ * Handle abstraction of MongoDB.
+ *
+ * The `filter` argument is always a key-value map, whereas values are class instances. Use partialPlainToClass() first
+ * if you want to pass values from JSON/HTTP-Request.
+ */
 export class Database {
     constructor(private mongoClient: MongoClient | MongoClientFactory, private defaultDatabaseName = 'app') {
     }
@@ -34,6 +40,9 @@ export class Database {
             .collection(getCollectionName(classType));
     }
 
+    /**
+     * Returns one instance based on given filter, or null when not found.
+     */
     public async get<T>(
         classType: ClassType<T>,
         filter: { [field: string]: any }
@@ -90,6 +99,10 @@ export class Database {
         return cursor;
     }
 
+    /**
+     * Removes ONE item from the database that has the given id. You need to use @ID() decorator
+     * for at least and max one property at your entity to use this method.
+     */
     public async remove<T>(classType: ClassType<T>, id: string): Promise<boolean> {
         const collection = await this.getCollection(classType);
         const idName = getIdField(classType);
@@ -103,16 +116,25 @@ export class Database {
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
+    /**
+     * Removes ONE item from the database that matches given filter.
+     */
     public async deleteOne<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
         const collection = await this.getCollection(classType);
         await collection.deleteOne(partialClassToMongo(classType, filter));
     }
 
+    /**
+     * Removes ALL items from the database that matches given filter.
+     */
     public async deleteMany<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
         const collection = await this.getCollection(classType);
         await collection.deleteMany(partialClassToMongo(classType, filter));
     }
 
+    /**
+     * Adds a new item to the database. Sets _id if defined at your entity.
+     */
     public async add<T>(classType: ClassType<T>, item: T): Promise<boolean> {
         const collection = await this.getCollection(classType);
 
@@ -135,11 +157,17 @@ export class Database {
         return true;
     }
 
+    /**
+     * Returns the count of items in the database, that fit that given filter.
+     */
     public async count<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<number> {
         const collection = await this.getCollection(classType);
         return await collection.countDocuments(partialClassToMongo(classType, filter));
     }
 
+    /**
+     * Returns true when at least one item in the database is found that fits given filter.
+     */
     public async has<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<boolean> {
         return (await this.count(classType, partialClassToMongo(classType, filter))) > 0;
     }
@@ -182,7 +210,7 @@ export class Database {
         const id = getIdField(classType);
 
         if (!id) {
-            throw new NoIDDefinedError(`Class ${getClassName(classType)} has no @ID defined.`);
+            throw new NoIDDefinedError(`Class ${getClassName(classType)} has no @ID() defined.`);
         }
 
         criteria[id] = propertyClassToMongo(classType, id, (<any>data)[id]);
@@ -192,6 +220,13 @@ export class Database {
 
     /**
      * Patches an entity in the database and returns the new version number if successful, or null if not successful.
+     * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
+     *
+     * Example
+     *
+     * await patch(SimpleEntity, {
+     *     ['children.0.label']: 'Changed label'
+     * });
      */
     public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number | null> {
         const collection = await this.getCollection(classType);

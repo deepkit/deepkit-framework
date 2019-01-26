@@ -23,11 +23,14 @@ export function typeOf(obj: any) {
 }
 
 export function isObject(obj: any): obj is object {
-    return 'object' === typeOf(obj);
+    if (obj === null) {
+        return false;
+    }
+    return ((typeof obj === 'function') || (typeof obj === 'object' && !isArray(obj)));
 }
 
 export function isArray(obj: any): obj is any[] {
-    return 'array' === typeOf(obj);
+    return Array.isArray(obj)
 }
 
 export function isUndefined(obj: any): obj is undefined {
@@ -47,6 +50,7 @@ export function getEnumLabels(enumDefinition: any) {
 }
 
 const cacheEnumKeys = new Map<Object, string[]>();
+
 export function getEnumKeys(enumDefinition: any): any[] {
     let value = cacheEnumKeys.get(enumDefinition);
     if (!value) {
