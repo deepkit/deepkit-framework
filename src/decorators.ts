@@ -90,15 +90,6 @@ export function Type(type: Types) {
 
 export function ArrayType() {
     return (target: Object, property: string) => {
-        class Validator implements PropertyValidator {
-            async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
-                if (!Array.isArray(value)) {
-                    return new PropertyValidatorError('No Array given');
-                }
-            }
-        }
-
-        AddValidator(Validator)(target, property);
         registerProperty(target, property);
         Reflect.defineMetadata('marshal:isArray', true, target, property);
     };
@@ -106,17 +97,6 @@ export function ArrayType() {
 
 export function MapType() {
     return (target: Object, property: string) => {
-
-        class Validator implements PropertyValidator {
-            async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
-                if ('object' !== typeof value) {
-                    return new PropertyValidatorError('No Map given');
-                }
-            }
-        }
-
-
-        AddValidator(Validator)(target, property);
         registerProperty(target, property);
         Reflect.defineMetadata('marshal:isMap', true, target, property);
     };
