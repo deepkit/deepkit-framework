@@ -141,6 +141,9 @@ test('test nested validation', async () => {
         @Class(A)
         public nested!: A;
 
+        @ClassMap(A)
+        public nestedMap!: {[name: string]: A};
+
         @ClassArray(A)
         public nesteds!: A[];
     }
@@ -149,15 +152,18 @@ test('test nested validation', async () => {
         type: "test type",
     })).toEqual([
         {'message': 'Required value is undefined', 'path': 'nested'},
+        {'message': 'Required value is undefined', 'path': 'nestedMap'},
         {'message': 'Required value is undefined', 'path': 'nesteds'},
     ]);
 
     expect(await validate(B, {
         type: "test type",
         nested: [{x: "test x"}],
+        nestedMap: [{x: "test x"}],
         nesteds: {x: "test x"},
     })).toEqual([
         {'message': 'Invalid type. Expected object, but got array', 'path': 'nested'},
+        {'message': 'Invalid type. Expected object, but got array', 'path': 'nestedMap'},
         {'message': 'Invalid type. Expected array, but got object', 'path': 'nesteds'},
     ]);
 
