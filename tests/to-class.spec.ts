@@ -208,6 +208,15 @@ test('test @decorator', async () => {
         const mongo = classToMongo(SimpleModel, instance);
         expect(mongo.name).toBe('myName');
         expect(mongo.stringChildrenCollection).toEqual(['Foo', 'Bar', 'Bar2']);
+
+        const instance2 = toClass(SimpleModel, {
+            name: 'myName',
+            stringChildrenCollection: false
+        });
+
+        expect(instance2.name).toBe('myName');
+        expect(instance2.stringChildrenCollection).toBeInstanceOf(StringCollectionWrapper);
+        expect(instance2.stringChildrenCollection.items).toEqual([]);
     }
 });
 

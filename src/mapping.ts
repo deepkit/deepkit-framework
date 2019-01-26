@@ -59,10 +59,6 @@ export function partialMongoToPlain<T, K extends keyof T>(
     for (const i in target) {
         if (!target.hasOwnProperty(i)) continue;
 
-        if (target[i] as any instanceof RegExp) {
-            continue;
-        }
-
         result[i] = propertyMongoToPlain(classType, i, target[i]);
     }
 
@@ -165,15 +161,20 @@ export function propertyClassToMongo<T>(
         return value;
     }
 
-    if (array && isArray(propertyValue)) {
-        return propertyValue.map(v => convert(v));
+    if (array) {
+        if (isArray(propertyValue)) {
+            return propertyValue.map(v => convert(v));
+        }
+        return [];
     }
 
-    if (map && isObject(propertyValue)) {
+    if (map) {
         const result: { [name: string]: any } = {};
-        for (const i in propertyValue) {
-            if (!propertyValue.hasOwnProperty(i)) continue;
-            result[i] = convert((<any>propertyValue)[i]);
+        if (isObject(propertyValue)) {
+            for (const i in propertyValue) {
+                if (!propertyValue.hasOwnProperty(i)) continue;
+                result[i] = convert((<any>propertyValue)[i]);
+            }
         }
         return result;
     }
@@ -260,15 +261,20 @@ export function propertyMongoToClass<T>(
         return value;
     }
 
-    if (array && isArray(propertyValue)) {
-        return propertyValue.map(v => convert(v));
+    if (array) {
+        if (isArray(propertyValue)) {
+            return propertyValue.map(v => convert(v));
+        }
+        return [];
     }
 
-    if (map && isObject(propertyValue)) {
+    if (map) {
         const result: any = {};
-        for (const i in propertyValue) {
-            if (!propertyValue.hasOwnProperty(i)) continue;
-            result[i] = convert((propertyValue as any)[i]);
+        if (isObject(propertyValue)) {
+            for (const i in propertyValue) {
+                if (!propertyValue.hasOwnProperty(i)) continue;
+                result[i] = convert((propertyValue as any)[i]);
+            }
         }
         return result;
     }

@@ -239,7 +239,7 @@ test('no id', async () => {
 
         dbItem!.name = 'Changed';
 
-    await expect(database.update(NoId, dbItem)).rejects.toThrow('Class NoId has no @ID defined')
+    await expect(database.update(NoId, dbItem)).rejects.toThrow('Class NoId has no @ID() defined')
 });
 
 test('test factory', async () => {
