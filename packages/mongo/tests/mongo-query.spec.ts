@@ -21,6 +21,11 @@ test('simple', () => {
     expect(m['id']['$qt']).toBe(1);
 });
 
+test('simple 2', () => {
+    const m = convertPlainQueryToMongo(Simple, {id: {dif: 1}});
+    expect(m).toEqual({id: {dif: 1}});
+});
+
 test('and', () => {
     const m = convertPlainQueryToMongo(Simple, {$and: [{id: '1'}, {id: '2'}]});
     expect(m).toEqual({$and: [{id: 1}, {id: 2}]});
@@ -46,6 +51,16 @@ test('complex', () => {
 
     expect(m).toEqual({$and: [{price: {$ne: 1.99}}, {price: {$exists: true}}, {id: {$gt: 0}}]});
     expect(Object.keys(names)).toEqual(['price', 'id']);
+});
+
+test('$or', () => {
+    const m = convertPlainQueryToMongo(Simple, {$and: [{$or: [{id: 1}]}]});
+    expect(m).toEqual({$and: [{$or: [{id: 1}]}]});
+});
+
+test('nested $or', () => {
+    const m = convertPlainQueryToMongo(Simple, { $or: [ { id: { $lt: 20 } }, { price: 10 } ] } );
+    expect(m).toEqual({ $or: [ { id: { $lt: 20 } }, { price: 10 } ] } );
 });
 
 test('not', () => {
