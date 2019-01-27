@@ -164,7 +164,8 @@ test('test simple model with not mapped fields', () => {
         name: 'myName',
         type: 5,
         yesNo: 'eads',
-        notMapped: {a: 'foo'}
+        notMapped: {a: 'foo'},
+        excludedForPlain: 'excludedForPlain'
     });
 
     expect(mongoEntry.id).toBeInstanceOf(Binary);
