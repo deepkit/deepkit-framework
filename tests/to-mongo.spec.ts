@@ -11,7 +11,7 @@ import {
 } from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
-import {classToMongo, mongoToClass, partialClassToMongo} from "../src/mapping";
+import {classToMongo, mongoToClass, partialClassToMongo, partialPlainToMongo} from "../src/mapping";
 import {Buffer} from "buffer";
 import {DocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
@@ -135,52 +135,114 @@ test('partial 2', () => {
     expect(instance.name).toBe('Hi');
     expect(instance['children.0.label']).toBe('Foo');
 
-    expect(partialClassToMongo(SimpleModel, {
-        'children.0.label': 2
-    })).toEqual({'children.0.label': '2'});
+    {
+        expect(partialClassToMongo(SimpleModel, {
+            'children.0.label': 2
+        })).toEqual({'children.0.label': '2'});
 
-    const i2 = partialClassToMongo(SimpleModel, {
-        'children.0': new SubModel('3')
-    });
-    expect(i2['children.0'].label).toBe('3');
+        const i = partialClassToMongo(SimpleModel, {
+            'children.0': new SubModel('3')
+        });
+        expect(i['children.0'].label).toBe('3');
+    }
+
+    {
+        expect(partialPlainToMongo(SimpleModel, {
+            'children.0.label': 2
+        })).toEqual({'children.0.label': '2'});
+
+        const i = partialPlainToMongo(SimpleModel, {
+            'children.0': {label: 3}
+        });
+        expect(i['children.0'].label).toBe('3');
+    }
 });
 
 
 test('partial 3', () => {
-    const i2 = partialClassToMongo(SimpleModel, {
-        'children': [new SubModel('3')]
-    });
-    expect(i2['children'][0].label).toBe('3');
+    {
+        const i = partialClassToMongo(SimpleModel, {
+            'children': [new SubModel('3')]
+        });
+        expect(i['children'][0].label).toBe('3');
+    }
+
+    {
+        const i = partialPlainToMongo(SimpleModel, {
+            'children': [{label: 3}]
+        });
+        expect(i['children'][0].label).toBe('3');
+    }
+});
+
+test('partial with required', () => {
+    {
+        expect(() => {partialPlainToMongo(SimpleModel, {
+            'children': [{}]
+        })}).toThrow('Missing value for SubModel::children. Can not convert to mongo');
+    }
 });
 
 
 test('partial 4', () => {
-    const i2 = partialClassToMongo(SimpleModel, {
-        'stringChildrenCollection.0': 4
-    });
-    expect(i2['stringChildrenCollection.0']).toBe('4');
+    {
+        const i = partialClassToMongo(SimpleModel, {
+            'stringChildrenCollection.0': 4
+        });
+        expect(i['stringChildrenCollection.0']).toBe('4');
+    }
+    {
+        const i = partialPlainToMongo(SimpleModel, {
+            'stringChildrenCollection.0': 4
+        });
+        expect(i['stringChildrenCollection.0']).toBe('4');
+    }
 });
 
 test('partial 5', () => {
-    const i2 = partialClassToMongo(SimpleModel, {
-        'childrenMap.foo.label': 5
-    });
-    expect(i2['childrenMap.foo.label']).toBe('5');
+    {
+        const i = partialClassToMongo(SimpleModel, {
+            'childrenMap.foo.label': 5
+        });
+        expect(i['childrenMap.foo.label']).toBe('5');
+    }
+    {
+        const i = partialPlainToMongo(SimpleModel, {
+            'childrenMap.foo.label': 5
+        });
+        expect(i['childrenMap.foo.label']).toBe('5');
+    }
 });
 
 
 test('partial 6', () => {
-    const i = partialClassToMongo(SimpleModel, {
-        'types': [6, 7]
-    });
-    expect(i['types']).toEqual(['6', '7']);
+    {
+        const i = partialClassToMongo(SimpleModel, {
+            'types': [6, 7]
+        });
+        expect(i['types']).toEqual(['6', '7']);
+    }
+    {
+        const i = partialPlainToMongo(SimpleModel, {
+            'types': [6, 7]
+        });
+        expect(i['types']).toEqual(['6', '7']);
+    }
 });
 
 test('partial 7', () => {
-    const i = partialClassToMongo(SimpleModel, {
-        'types.0': [7]
-    });
-    expect(i['types.0']).toEqual('7');
+    {
+        const i = partialClassToMongo(SimpleModel, {
+            'types.0': [7]
+        });
+        expect(i['types.0']).toEqual('7');
+    }
+    {
+        const i = partialPlainToMongo(SimpleModel, {
+            'types.0': [7]
+        });
+        expect(i['types.0']).toEqual('7');
+    }
 });
 
 test('partial document', () => {

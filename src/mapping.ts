@@ -11,10 +11,9 @@ import {
     getValidEnumValue,
     isArray,
     isEnumAllowLabelsAsValue,
-    isObject,
+    isObject, isOptional,
     isUndefined,
     isValidEnumValue,
-    plainToClass,
     toClass,
     ToClassState
 } from "@marcj/marshal";
@@ -44,6 +43,22 @@ export function partialClassToMongo<T, K extends keyof T>(
         }
 
         result[i] = propertyClassToMongo(classType, i, target[i]);
+    }
+
+    return result;
+}
+
+export function partialPlainToMongo<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target?: { [path: string]: any },
+): { [path: string]: any } {
+    if (!target) return {};
+
+    const result = {};
+    for (const i in target) {
+        if (!target.hasOwnProperty(i)) continue;
+
+        result[i] = propertyPlainToMongo(classType, i, target[i]);
     }
 
     return result;
@@ -245,6 +260,20 @@ export function propertyPlainToMongo<T>(
 
         if ('binary' === type && 'string' === typeof value) {
             return new Binary(new Buffer(value, 'base64'));
+        }
+
+        if (type === 'class') {
+            //we need to check if value has all properties set, if one not-optional is missing, we throw an error
+            for (const property of getRegisteredProperties(typeValue)) {
+                if (value[property] === undefined) {
+                    if (isOptional(typeValue, propertyName)) {
+                        continue;
+                    }
+                    throw new Error(`Missing value for ${getClassPropertyName(typeValue, propertyName)}. Can not convert to mongo.`);
+                }
+
+                value[property] = propertyPlainToMongo(typeValue, property, value[property]);
+            }
         }
 
         return value;
