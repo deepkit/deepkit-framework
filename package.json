@@ -1,0 +1,45 @@
+{
+  "name": "@kamille/client",
+  "version": "0.0.1",
+  "main": "dist/main.js",
+  "author": "Kamille Team",
+  "license": "MIT",
+  "bin": "dist/main.js",
+  "scripts": {
+    "build": "node_modules/.bin/webpack --progress --config webpack.config.js",
+    "watch": "NODE_PRESERVE_SYMLINKS=1 node_modules/.bin/nodemon --watch src node_modules/.bin/ts-node --project tsconfig.run.json --ignore 'node_modules/(?!@deepkit)' src/main.ts"
+  },
+  "peerDependencies": {
+    "rxjs": "6.3.3",
+    "@kamille/core": "0.0.1"
+  },
+  "dependencies": {
+    "dot-prop": "^4.2.0"
+  },
+  "devDependencies": {
+    "rxjs": "6.3.3",
+    "@kamille/core": "0.0.1"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@deepkit)"
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfigFile": "tsconfig.run.json"
+    }
+  }
+}
