@@ -1,0 +1,56 @@
+{
+  "name": "@kamille/core",
+  "version": "0.0.1",
+  "main": "src",
+  "module": "src",
+  "author": "Kamille Team",
+  "license": "MIT",
+  "scripts": {},
+  "peerDependencies": {
+    "@marcj/marshal": "^0.4.4",
+    "rxjs": "6.3.3",
+    "reflect-metadata": "^0.1.12"
+  },
+  "dependencies": {
+    "@types/dot-prop": "^4.2.0",
+    "@types/fs-extra": "^5.0.4",
+    "@types/uuid": "^3.4.4",
+    "dot-prop": "^4.2.0",
+    "events": "^2.0.0"
+  },
+  "devDependencies": {
+    "@marcj/marshal": "^0.4.4",
+    "rxjs": "6.3.3",
+    "buffer": "^5.2.1",
+    "reflect-metadata": "^0.1.12",
+    "@types/jest": "^23.3.9",
+    "bluebird": "^3.5.3",
+    "jest": "^23.6.0",
+    "jest-extended": "^0.11.0",
+    "ts-jest": "^23.10.4",
+    "tslint": "5.11.0",
+    "typescript": "3.1.1"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@deepkit)"
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfigFile": "tsconfig.run.json"
+    }
+  }
+}
