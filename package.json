@@ -1,0 +1,85 @@
+{
+  "name": "@kamille/server",
+  "version": "0.0.1",
+  "main": "src",
+  "module": "src",
+  "license": "MIT",
+  "author": "Kamille Team",
+  "scripts": {
+    "watch": "NODE_PRESERVE_SYMLINKS=1 TS_NODE_IGNORE='node_modules/(?!@kamille)' ./node_modules/.bin/ts-node start.ts"
+  },
+  "peerDependencies": {
+    "@kamille/core": "0.0.1"
+  },
+  "dependencies": {
+    "@marcj/marshal": "^0.4.4",
+    "@marcj/marshal-mongo": "^0.4.6",
+    "bluebird": "^3.5.1",
+    "clone": "^2.1.1",
+    "execa": "^1.0.0",
+    "fast-json-patch": "^2.0.6",
+    "fs-extra": "^6.0.1",
+    "injection-js": "^2.2.1",
+    "js-yaml": "^3.11.0",
+    "jsonpath-to-dot": "^0.2.0",
+    "md5": "^2.2.1",
+    "mongodb": "^3.1.10",
+    "redis": "^2.8.0",
+    "reflect-metadata": "^0.1.12",
+    "rethinkdb": "^2.3.3",
+    "rxjs": "6.3.3",
+    "buffer": "^5.2.1",
+    "sift": "^7.0.1",
+    "source-map": "^0.7.3",
+    "source-map-support": "^0.5.9",
+    "ts-node": "^7.0.1",
+    "webpack-node-externals": "^1.7.2",
+    "ws": "^6.1.2"
+  },
+  "devDependencies": {
+    "@kamille/core": "0.0.1",
+    "@types/execa": "^0.9.0",
+    "@types/fs-extra": "^5.0.2",
+    "@types/jest": "^23.3.9",
+    "@types/mongodb": "^3.1.14",
+    "@types/node": "^10.12.10",
+    "@types/redis": "^2.8.8",
+    "@types/rethinkdb": "^2.3.13",
+    "@types/ws": "^6.0.1",
+    "@types/clone": "^0.1.30",
+    "awesome-typescript-loader": "^5.2.1",
+    "cache-loader": "^1.2.2",
+    "jest": "^23.6.0",
+    "jest-extended": "^0.11.0",
+    "nodemon": "^1.17.3",
+    "systemjs": "^0.21.2",
+    "ts-jest": "^23.10.5",
+    "ts-loader": "^4.2.0",
+    "typescript": "^2.8.2",
+    "webpack": "^4.26.1",
+    "webpack-cli": "^3.1.1",
+    "webpack-shell-plugin": "^0.5.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@deepkit)"
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfigFile": "tsconfig.run.json"
+    }
+  }
+}
