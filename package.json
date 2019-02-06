@@ -6,19 +6,19 @@
   "license": "MIT",
   "bin": "dist/main.js",
   "scripts": {
-    "build": "node_modules/.bin/webpack --progress --config webpack.config.js",
-    "watch": "NODE_PRESERVE_SYMLINKS=1 node_modules/.bin/nodemon --watch src node_modules/.bin/ts-node --project tsconfig.run.json --ignore 'node_modules/(?!@deepkit)' src/main.ts"
+    "start": "NODE_PRESERVE_SYMLINKS=1 TS_NODE_IGNORE='node_modules/(?!@kamille)' ./node_modules/.bin/ts-node client.ts"
   },
   "peerDependencies": {
-    "rxjs": "6.3.3",
-    "@kamille/core": "0.0.1"
   },
   "dependencies": {
-    "dot-prop": "^4.2.0"
+    "rxjs": "6.3.3",
+    "@kamille/core": "0.0.1",
+    "dot-prop": "^4.2.0",
+    "@marcj/marshal": "^0.4.4"
   },
   "devDependencies": {
-    "rxjs": "6.3.3",
-    "@kamille/core": "0.0.1"
+    "typescript": "^3.3.1",
+    "ts-node": "^7.0.1"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -30,7 +30,7 @@
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!@deepkit)"
+      "node_modules/(?!@kamille)"
     ],
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"

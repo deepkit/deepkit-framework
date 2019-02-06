@@ -1,10 +1,7 @@
-import {Collection} from './collection';
+import {Collection, IdInterface, eachPair, arrayRemoveItem, empty, CountResult, StreamFileResult} from '@kamille/core';
 import {Observable, Subscriber, Subscription} from 'rxjs';
 import {classToPlain, ClassType, getEntityName, plainToClass, propertyPlainToClass} from "@marcj/marshal";
 import {SocketClient} from "./socket";
-import {eachPair} from "./iterator";
-import {AppClient, CountResult, JobStream, StreamFileResult} from './contracts/rpc';
-import {arrayRemoveItem, empty} from './core';
 import {set} from 'dot-prop';
 
 class StoreItem<T> {
@@ -471,10 +468,6 @@ export class StorageClient {
 
     public async add<T extends IdInterface>(classType: ClassType<T>, item: T): Promise<string> {
         return await this.getSocketClient().app().add(getEntityName(classType), classToPlain(classType, item)).toPromise();
-    }
-
-    public app(): AppClient {
-        return this.getSocketClient().app();
     }
 
     public find<T extends IdInterface>(classType: ClassType<T>, filter?: { [id: string]: any }): Collection<T> {
