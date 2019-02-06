@@ -2,7 +2,7 @@ import * as WebSocket from "ws";
 import {Injector} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import * as util from "util";
-import {Application, Session} from "./application-server";
+import {Application, Session} from "./application";
 import {each} from "@kamille/core";
 
 interface MessageResult {

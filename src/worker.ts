@@ -2,7 +2,7 @@ import * as WebSocket from "ws";
 import {ServerOptions} from "ws";
 import {Provider, ReflectiveInjector} from "injection-js";
 import {Subscription} from "rxjs";
-import {Application, Session} from "./application-server";
+import {Application, Session} from "./application";
 import {Connection} from "./connection";
 
 export class Worker {

@@ -2,10 +2,11 @@ import {Injectable} from 'injection-js';
 import {
     classToPlain,
     ClassType,
-    getCollectionName, getDatabaseName,
-    getIdFieldValue, partialClassToPlain,
+    getCollectionName,
+    getIdFieldValue,
+    partialClassToPlain,
 } from '@marcj/marshal';
-import {Cursor, Collection, MongoClient} from "mongodb";
+import {Collection, Cursor} from "mongodb";
 import {Exchange} from "./exchange";
 import {
     convertPlainQueryToMongo,
@@ -14,14 +15,25 @@ import {
     partialPlainToMongo,
     Database
 } from "@marcj/marshal-mongo";
-import {MongoLock} from "./mongo";
+import {MongoLock, Mongo} from "./mongo";
+import {eachPair} from "@kamille/core";
+import {EntityPatches} from "@kamille/core";
+import {Application} from "./application";
 
 /**
  * A database that also publishes change feeds to the exchange.
  */
 @Injectable()
 export class ExchangeDatabase {
-    constructor(protected mongoClient: MongoClient, protected database: Database, protected exchange: Exchange) {
+    constructor(
+        protected application: Application,
+        protected mongo: Mongo,
+        protected database: Database,
+        protected exchange: Exchange,
+    ) {
+    }
+    public async collection<T>(classType: ClassType<T>): Promise<Collection> {
+        return await this.mongo.collection(getCollectionName(classType));
     }
 
     public async get<T>(
@@ -91,15 +103,8 @@ export class ExchangeDatabase {
         return (await this.database.cursor(classType, filter, toClass)) as Cursor<T>;
     }
 
-    private async getCollection<T>(classType: ClassType<T>): Promise<Collection<T>> {
-        return this.mongoClient
-            .db(getDatabaseName(classType) || this.defaultDatabaseName)
-            .collection(getCollectionName(classType));
-    }
-
     public async plainCursor<T>(classType: ClassType<T>, filter: { [field: string]: any }): Promise<Cursor<T>> {
-
-        const collection = await this.mongoClient.collection(getCollectionName(classType));
+        const collection = await this.mongo.collection(getCollectionName(classType));
 
         return collection.find(convertPlainQueryToMongo(classType, filter));
     }
@@ -126,18 +131,11 @@ export class ExchangeDatabase {
     public async lock<T>(classType: ClassType<T>, id?: string): Promise<MongoLock> {
         const name = 'collection-lock/' + getCollectionName(classType) + (id ? '/' + id : '');
 
-        return this.mongoPool.get().acquireLock(name);
+        return this.mongo.acquireLock(name);
     }
 
     private notifyChanges<T>(classType: ClassType<T>): boolean {
-        const valid: ClassType<any>[] = [Job, Project, Node, File, Cluster, FrontendUser, Team, UserTeam];
-
-        return -1 !== valid.indexOf(classType);
-    }
-
-    public async collection<T>(classType: ClassType<T>): Promise<Collection> {
-        const mongo = this.mongoPool.get();
-        return await mongo.collection(getCollectionName(classType));
+        return this.application.notifyChanges(classType);
     }
 
     /**
@@ -149,8 +147,7 @@ export class ExchangeDatabase {
         id: string,
         fields: F
     ): Promise<F> {
-        const mongo = this.mongoPool.get();
-        const collection = await mongo.collection(getCollectionName(classType));
+        const collection = await this.mongo.collection(getCollectionName(classType));
         const projection: {[key: string]: number} = {};
         const filter = {id: id};
         const statement: { [name: string]: any } = {
@@ -192,9 +189,7 @@ export class ExchangeDatabase {
         additionalProjection: string[] = [],
         plain = false
     ): Promise<{[field: string]: any}> {
-        const mongo = this.mongoPool.get();
-
-        const collection = await mongo.collection(getCollectionName(classType));
+        const collection = await this.mongo.collection(getCollectionName(classType));
 
         const patchStatement: { [name: string]: any } = {
             $inc: {version: +1}

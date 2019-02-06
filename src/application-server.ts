@@ -1,11 +1,14 @@
 import * as cluster from "cluster";
 import {ClassType, NumberType, plainToClass, StringType} from "@marcj/marshal";
 import {Worker} from './worker';
-import {Injector, Provider, ReflectiveInjector} from "injection-js";
+import {Injectable, Injector, Provider, ReflectiveInjector} from "injection-js";
 import {FS} from "./fs";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
 import {getApplicationModuleOptions} from "./decorators";
+import {Database} from "@marcj/marshal-mongo";
+import {Mongo} from "./mongo";
+import {Application} from "./application";
 
 export class ApplicationServerConfig {
     @StringType()
@@ -24,6 +27,9 @@ export class ApplicationServerConfig {
     mongoPort: number = 27017;
 
     @StringType()
+    mongoDbName: string = 'kamille';
+
+    @StringType()
     redisHost: string = 'localhost';
 
     @NumberType()
@@ -36,37 +42,6 @@ export class ApplicationServerConfig {
     fsPath: string = '~/.kamille/files';
 }
 
-export class Session {
-    constructor(
-        public readonly username: string,
-        public readonly token: any,
-    ) {}
-}
-
-export class Application {
-    public readonly controllers: {[path: string]: ClassType<any>} = {};
-
-    public async bootstrap() {
-    }
-
-    /**
-     *
-     */
-    public async hasAccess<T>(session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
-        return true;
-    }
-
-    public async getControllerForPath(path: string): Promise<ClassType<any> | undefined>  {
-        return this.controllers[path];
-    }
-
-    /**
-     * Authenticates the current connection.
-     */
-    public async authenticate(token: any): Promise<Session> {
-        return new Session('anon', undefined);
-    }
-}
 
 export class ApplicationServer {
     protected config: ApplicationServerConfig;
@@ -81,13 +56,15 @@ export class ApplicationServer {
         this.config = config instanceof ApplicationServerConfig ? config : plainToClass(ApplicationServerConfig, config);
 
         const baseInjectors: Provider[] = [
-            ExchangeDatabase,
+            {provide: Application, useClass: application},
             {provide: ApplicationServerConfig, useValue: this.config},
             {provide: 'fs.path', useValue: this.config.fsPath},
             {provide: 'redis.host', useValue: this.config.redisHost},
             {provide: 'redis.port', useValue: this.config.redisPort},
             {provide: 'redis.prefix', useValue: this.config.redisPrefix},
-            {provide: Application, useClass: application},
+            {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
+            {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
+            ExchangeDatabase,
             {
                 provide: FS,
                 deps: [Exchange, ExchangeDatabase, 'fs.path'],
@@ -98,7 +75,25 @@ export class ApplicationServer {
                 deps: ['redis.host', 'redis.port', 'redis.prefix'],
                 useFactory: (host: string, port: number, prefix: string) => new Exchange(host, port, prefix)
             },
-            {provide: Injector, useFactory: () => this.injector},
+            {
+                provide: Database, deps: [Mongo], useFactory: (mongo: Mongo) => {
+                    new Database(async () => {
+                        return mongo.connect();
+                    }, mongo.dbName);
+                }
+            },
+            {
+                provide: ExchangeDatabase, deps: [Application, Mongo, Database, Exchange],
+                useFactory: (a: Application, m: Mongo, d: Database, e: Exchange) => {
+                    return new ExchangeDatabase(a, m, d, e);
+                }
+            },
+            // {provide: Injector, useFactory: () => this.injector}, doesn't work because Injector is not a class
+            {
+                provide: Mongo,
+                deps: ['mongo.host', 'mongo.dbName'],
+                useFactory: (host: string, dbName: string) => new Mongo(host, dbName)
+            },
         ];
 
         baseInjectors.push(...serverProvider);

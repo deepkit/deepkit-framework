@@ -6,7 +6,7 @@
   "license": "MIT",
   "author": "Kamille Team",
   "scripts": {
-    "watch": "NODE_PRESERVE_SYMLINKS=1 TS_NODE_IGNORE='node_modules/(?!@kamille)' ./node_modules/.bin/ts-node start.ts"
+    "start": "NODE_PRESERVE_SYMLINKS=1 TS_NODE_IGNORE='node_modules/(?!@kamille)' ./node_modules/.bin/ts-node start.ts"
   },
   "peerDependencies": {
     "@kamille/core": "0.0.1"
@@ -55,7 +55,7 @@
     "systemjs": "^0.21.2",
     "ts-jest": "^23.10.5",
     "ts-loader": "^4.2.0",
-    "typescript": "^2.8.2",
+    "typescript": "^3.3.1",
     "webpack": "^4.26.1",
     "webpack-cli": "^3.1.1",
     "webpack-shell-plugin": "^0.5.0"
@@ -70,7 +70,7 @@
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!@deepkit)"
+      "node_modules/(?!@kamille)"
     ],
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"

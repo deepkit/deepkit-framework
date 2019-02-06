@@ -2,10 +2,12 @@ import {createClient, RedisClient} from 'redis';
 import {Subscription} from "rxjs";
 import {ClassType, getEntityName} from "@marcj/marshal";
 import {eachPair, AsyncSubscription, ChannelEntity, StreamFileResult} from '@kamille/core';
+import {Injectable} from "injection-js";
 
 
 type Callback<T> = (message: T) => void;
 
+@Injectable()
 export class Exchange {
     private redis: RedisClient;
     private subscriberRedis?: RedisClient;

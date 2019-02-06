@@ -1,42 +1,6 @@
 import {MongoClient, Db, Collection} from 'mongodb';
-import {Database} from '@marcj/marshal-mongo';
-import {arrayHasItem, sleep, isString} from "@kamille/core";
-
-export class MongoPool {
-    protected connection?: Mongo;
-    protected db?: Database;
-
-    public get(): Mongo {
-        if (!this.connection) {
-            this.connection = new Mongo('deepkit');
-        }
-
-        return this.connection;
-    }
-
-    public database(): Database {
-        if (!this.db) {
-            const mongo = this.get();
-            this.db = new Database(() => mongo.connect(), mongo.dbName);
-        }
-
-        return this.db;
-    }
-}
-
-export class SingleMongoPool extends MongoPool {
-    constructor(private mongo: Mongo) {
-        super();
-    }
-
-    get(): Mongo {
-        return this.mongo;
-    }
-
-    database(): Database {
-        return new Database(() => this.get().connect(), this.mongo.dbName);
-    }
-}
+import {sleep} from "@kamille/core";
+import {Injectable} from "injection-js";
 
 export class MongoLock {
     private holding = false;
@@ -134,26 +98,10 @@ export class MongoLock {
     }
 }
 
+@Injectable()
 export class Mongo {
     protected connection?: MongoClient;
     protected host = 'localhost:7802';
-
-    protected indexes:
-        { [collectionName: string]: (string | { name: string, unique: boolean })[] }
-
-        = {
-        files: [{name: 'id', unique: true}, 'path', 'job', 'project'],
-        jobs: [{name: 'id', unique: true}, 'project', 'server', 'status'],
-        projects: [{name: 'id', unique: true}, 'name'],
-        accounts: [{name: 'id', unique: true}],
-        accountMembers: ['user'],
-        tokens: [{name: 'token', unique: true}, 'role'],
-        nodes: [{name: 'id', unique: true}, 'token'],
-        jobQueue: ['job', 'priority', 'added'],
-        locks: [{name: 'name', unique: true}],
-        cluster: [{name: 'id', unique: true}],
-        users: [{name: 'id', unique: true}, {name: 'username', unique: true}],
-    };
 
     constructor(public dbName: string, host?: string) {
         if (host) {
@@ -190,53 +138,6 @@ export class Mongo {
                 reconnectInterval: 1000
             });
 
-            const existinCollections = await this.connection.db(this.dbName).listCollections().toArray();
-
-            for (const collectionName in this.indexes) {
-                if (!this.indexes.hasOwnProperty(collectionName)) continue;
-
-                if (!arrayHasItem(existinCollections, collectionName)) {
-                    try {
-                        await this.connection.db(this.dbName).createCollection(collectionName);
-                    } catch (error) {
-
-                    }
-                }
-                const collection = await this.collection(collectionName);
-
-                for (const index of this.indexes[collectionName]) {
-                    if (isString(index)) {
-                        if (await collection.indexExists(index + '_1')) {
-                            await collection.dropIndex(index + '_1');
-                        }
-
-                        if (!await collection.indexExists(index)) {
-                            try {
-                                await collection.createIndex([index], {
-                                    name: index
-                                });
-                            } catch (error) {
-                                console.error(`Could not create index for ${collectionName}::${index}`, error);
-                            }
-                        }
-                    } else {
-                        if (await collection.indexExists(index.name + '_1')) {
-                            await collection.dropIndex(index.name + '_1');
-                        }
-
-                        if (!await collection.indexExists(index.name)) {
-                            try {
-                                await collection.createIndex([index.name], {
-                                    unique: index.unique,
-                                    name: index.name
-                                });
-                            } catch (error) {
-                                console.error(`Could not create complex index for ${collectionName}::${index.name}`, error);
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         return this.connection;

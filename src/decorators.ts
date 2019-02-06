@@ -1,6 +1,7 @@
 import {Provider} from "injection-js";
-import {Application, ApplicationServerConfig} from "./application-server";
+import {Application} from "./application";
 import {ClassType} from "@marcj/marshal";
+import {ApplicationServerConfig} from "./application-server";
 
 export interface ApplicationDecoratorOptions {
     config: ApplicationServerConfig,
