@@ -372,7 +372,7 @@ export function ThrottleTime(call: Function, cps = 5): (...args: any[]) => void 
 }
 
 export function typeOf(obj: any) {
-    return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+    return (({}).toString.call(obj).match(/\s([a-zA-Z]+)/) || ['', ''])[1].toLowerCase();
 }
 
 export function isFunction(obj: any): obj is Function {
