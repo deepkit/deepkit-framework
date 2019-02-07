@@ -15,7 +15,7 @@
     "reflect-metadata": "^0.1.12",
     "@kamille/core": "0.0.1",
     "dot-prop": "^4.2.0",
-    "@marcj/marshal": "^0.4.4",
+    "@marcj/marshal": "^0.4.7",
     "ws": "^6.1.2",
     "@types/ws": "^6.0.1"
   },

@@ -1,13 +1,22 @@
 import {Collection, IdInterface} from "@kamille/core";
 import {Observable} from "rxjs";
 import {SocketClient} from "./src/socket";
-import {Entity} from "@marcj/marshal";
+import {Entity, NumberType, StringType} from "@marcj/marshal";
 
 @Entity('user')
 class User implements IdInterface {
+    @StringType()
     id!: string;
+
+    @NumberType()
     version!: number;
-    name!: string;
+
+    @StringType()
+    name: string;
+
+    constructor(name: string) {
+        this.name = name;
+    }
 }
 
 interface UserInterface {
@@ -15,7 +24,7 @@ interface UserInterface {
 
     // where do we get the User ClassType?
     //we send with FindResult entityName and add to marshal a entity register
-    users(): Collection<User>;
+    users(): Observable<User>;
 
     bla(): Observable<string>;
 }
@@ -41,10 +50,13 @@ interface UserInterface {
     }, 5000);
 
     const users = await user.users();
-
-    await users.ready.toPromise(); //convert to promise
-
-    console.log('users', users.all());
+    users.subscribe((next) => {
+        console.log('users next', next);
+    }, (error) => {
+        console.log('users error', error);
+    }, () => {
+        console.log('users complete');
+    })
 
     // socket.disconnect();
 })();

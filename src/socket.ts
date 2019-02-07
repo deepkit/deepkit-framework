@@ -1,22 +1,7 @@
 import {Observable, Subject, Subscriber} from "rxjs";
-import {AnyType, NumberType, plainToClass, StringType} from "@marcj/marshal";
+import {AnyType, NumberType, plainToClass, RegisteredEntities, StringType} from "@marcj/marshal";
 import * as WebSocket from "ws";
-import {Collection, FindResult} from "@kamille/core";
-
-interface RemoteChannelMessage {
-    type: 'channel';
-    name: string;
-    data: any;
-}
-
-interface RemoteAnswer {
-    type: 'answer';
-    id: number;
-    returnType: 'json' | 'collection' | 'observable';
-    next?: any;
-    result?: any;
-    error?: any;
-}
+import {Collection, FindResult, MessageResult} from "@kamille/core";
 
 export class SocketClientConfig {
     @StringType()
@@ -99,34 +84,37 @@ export class SocketClient {
     }
 
     protected onMessage(event: { data: WebSocket.Data; type: string; target: WebSocket }) {
-        const reply = JSON.parse(event.data.toString()) as RemoteChannelMessage | RemoteAnswer;
+        const reply = JSON.parse(event.data.toString()) as MessageResult;
 
         if (!reply) {
             throw new Error(`Got invalid message: ` + event.data);
         }
 
-        if (reply.type === 'answer') {
+        if (reply.type === 'complete' || reply.type === 'next' || reply.type === 'error' || reply.type === 'type') {
             const callback = this.replies[reply.id];
 
             if (!callback) {
                 throw new Error(`Got message without reply callback (timeout?): ` + event.data);
             }
 
-            if (reply.returnType) {
+            if (reply.type === 'type') {
                 if (callback.returnType) {
                     callback.returnType(reply.returnType);
                 }
-            } else if (reply.next) {
+            } else if (reply.type === 'next') {
                 if (callback.next) {
+                    //convert if possible
+                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
+                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
+                    }
                     callback.next(reply.next);
                 }
-            } else {
-                if (reply.error) {
+            } else if (reply.type === 'error') {
+                if (callback.error) {
                     callback.error(reply.error);
-                } else {
-                    if (reply.result && callback.next) {
-                        callback.next(reply.result);
-                    }
+                }
+            } else if (reply.type === 'complete') {
+                if (callback.complete) {
                     callback.complete();
                 }
             }
@@ -264,52 +252,52 @@ export class SocketClient {
         })
     }
 
-    protected handleCollectionNext(stream: FindResult) {
-        if (stream.type === 'items') {
-            for (const itemRaw of stream.items) {
-                if (!store.hasItem(itemRaw.id)) {
-                    const item = plainToClass(classType, itemRaw);
-                    store.setItemAndNotifyObservers(item.id, item);
-                }
-                const instance = store.getOrCreateItem(itemRaw.id).instance;
-                if (instance) {
-                    collection.add(instance, false);
-                    observers[itemRaw.id] = new Subscriber((i) => {
-                        collection.deepChange.next(i);
-                        collection.loaded();
-                    });
-                    store.addObserver(itemRaw.id, observers[itemRaw.id]);
-                }
-            }
-
-            if (collection.count() === stream.total) {
-                collection.loaded();
-            }
-        }
-
-        if (stream.type === 'remove') {
-            collection.remove(stream.id);
-            store.removeObserver(stream.id, observers[stream.id]);
-            collection.loaded();
-        }
-
-        if (stream.type === 'add') {
-            if (!store.hasItem(stream.item.id)) {
-                const item = plainToClass(classType, stream.item);
-                store.setItemAndNotifyObservers(stream.item.id, item);
-            }
-
-            const instance = store.getOrCreateItem(stream.item.id).instance;
-            if (instance) {
-                observers[stream.item.id] = new Subscriber((i) => {
-                    collection.deepChange.next(i);
-                    collection.loaded();
-                });
-                store.addObserver(stream.item.id, observers[stream.item.id]);
-                collection.add(instance);
-            }
-        }
-    }
+    // protected handleCollectionNext(stream: FindResult) {
+    //     if (stream.type === 'items') {
+    //         for (const itemRaw of stream.items) {
+    //             if (!store.hasItem(itemRaw.id)) {
+    //                 const item = plainToClass(classType, itemRaw);
+    //                 store.setItemAndNotifyObservers(item.id, item);
+    //             }
+    //             const instance = store.getOrCreateItem(itemRaw.id).instance;
+    //             if (instance) {
+    //                 collection.add(instance, false);
+    //                 observers[itemRaw.id] = new Subscriber((i) => {
+    //                     collection.deepChange.next(i);
+    //                     collection.loaded();
+    //                 });
+    //                 store.addObserver(itemRaw.id, observers[itemRaw.id]);
+    //             }
+    //         }
+    //
+    //         if (collection.count() === stream.total) {
+    //             collection.loaded();
+    //         }
+    //     }
+    //
+    //     if (stream.type === 'remove') {
+    //         collection.remove(stream.id);
+    //         store.removeObserver(stream.id, observers[stream.id]);
+    //         collection.loaded();
+    //     }
+    //
+    //     if (stream.type === 'add') {
+    //         if (!store.hasItem(stream.item.id)) {
+    //             const item = plainToClass(classType, stream.item);
+    //             store.setItemAndNotifyObservers(stream.item.id, item);
+    //         }
+    //
+    //         const instance = store.getOrCreateItem(stream.item.id).instance;
+    //         if (instance) {
+    //             observers[stream.item.id] = new Subscriber((i) => {
+    //                 collection.deepChange.next(i);
+    //                 collection.loaded();
+    //             });
+    //             store.addObserver(stream.item.id, observers[stream.item.id]);
+    //             collection.add(instance);
+    //         }
+    //     }
+    // }
 
     // public async action(controller: string, name: string, ...args: any[]): Promise<any> {
     //     return this.stream(controller, name, ...args);
