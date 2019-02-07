@@ -22,11 +22,11 @@ class User implements IdInterface {
 interface UserInterface {
     name(): string;
 
-    // where do we get the User ClassType?
-    //we send with FindResult entityName and add to marshal a entity register
     users(): Observable<User>;
 
     bla(): Observable<string>;
+
+    users(): Collection<User>;
 }
 
 (async () => {

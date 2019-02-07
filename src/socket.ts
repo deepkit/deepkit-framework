@@ -1,7 +1,8 @@
-import {Observable, Subject, Subscriber} from "rxjs";
+import {Observable, Subscriber} from "rxjs";
 import {AnyType, NumberType, plainToClass, RegisteredEntities, StringType} from "@marcj/marshal";
 import * as WebSocket from "ws";
-import {Collection, FindResult, MessageResult} from "@kamille/core";
+import {Collection, MessageResult, MessageType} from "@kamille/core";
+import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
     @StringType()
@@ -30,7 +31,7 @@ export class SocketClient {
 
     private replies: {
         [messageId: string]: {
-            returnType?: (type: 'json' | 'collection' | 'observable') => void,
+            returnType?: (type: MessageType) => void,
             next?: (data: any) => void,
             complete: () => void,
             error: (error: any) => void
@@ -38,6 +39,8 @@ export class SocketClient {
     } = {};
 
     private connectionPromise?: Promise<void>;
+
+    private entityState = new EntityState();
 
     public constructor(public readonly config: SocketClientConfig = new SocketClientConfig) {
         if (config && !(config instanceof SocketClientConfig)) {
@@ -99,7 +102,7 @@ export class SocketClient {
 
             if (reply.type === 'type') {
                 if (callback.returnType) {
-                    callback.returnType(reply.returnType);
+                    callback.returnType(reply);
                 }
             } else if (reply.type === 'next') {
                 if (callback.next) {
@@ -200,9 +203,8 @@ export class SocketClient {
             let subscriber: Subscriber<any> | undefined;
 
             this.replies[messageId] = {
-                returnType: (type) => {
-                    handleType = type;
-                    if (handleType === 'observable') {
+                returnType: (type: MessageType) => {
+                    if (type.returnType === 'observable') {
                         returnValue = new Observable((observer) => {
                             subscriber = observer;
 
@@ -217,8 +219,14 @@ export class SocketClient {
                             }
                         });
                         resolve(returnValue);
-                    } else if (handleType === 'collection') {
-                        returnValue = new Collection<any>();
+                    }
+                    if (type.returnType === 'collection') {
+                        const classType = RegisteredEntities[type.entityName];
+                        if (!classType) {
+                            throw new Error(`Entity ${type.entityName} not known`);
+                        }
+
+                        returnValue = new Collection<any>(classType);
                     }
                 },
                 next: (data) => {
@@ -226,9 +234,8 @@ export class SocketClient {
                         subscriber.next(data);
                     }
                     if (handleType === 'collection' && returnValue instanceof Collection) {
-
-
-                        returnValue.next(data);
+                        //todo, we need to typecast data to FindResult from state::findAndSubscribe
+                        this.entityState.handleCollectionNext(returnValue, data);
                     }
                     if (handleType === 'json') {
                         resolve(data);
@@ -251,53 +258,6 @@ export class SocketClient {
             this.connect().then(_ => this.send(JSON.stringify(message)));
         })
     }
-
-    // protected handleCollectionNext(stream: FindResult) {
-    //     if (stream.type === 'items') {
-    //         for (const itemRaw of stream.items) {
-    //             if (!store.hasItem(itemRaw.id)) {
-    //                 const item = plainToClass(classType, itemRaw);
-    //                 store.setItemAndNotifyObservers(item.id, item);
-    //             }
-    //             const instance = store.getOrCreateItem(itemRaw.id).instance;
-    //             if (instance) {
-    //                 collection.add(instance, false);
-    //                 observers[itemRaw.id] = new Subscriber((i) => {
-    //                     collection.deepChange.next(i);
-    //                     collection.loaded();
-    //                 });
-    //                 store.addObserver(itemRaw.id, observers[itemRaw.id]);
-    //             }
-    //         }
-    //
-    //         if (collection.count() === stream.total) {
-    //             collection.loaded();
-    //         }
-    //     }
-    //
-    //     if (stream.type === 'remove') {
-    //         collection.remove(stream.id);
-    //         store.removeObserver(stream.id, observers[stream.id]);
-    //         collection.loaded();
-    //     }
-    //
-    //     if (stream.type === 'add') {
-    //         if (!store.hasItem(stream.item.id)) {
-    //             const item = plainToClass(classType, stream.item);
-    //             store.setItemAndNotifyObservers(stream.item.id, item);
-    //         }
-    //
-    //         const instance = store.getOrCreateItem(stream.item.id).instance;
-    //         if (instance) {
-    //             observers[stream.item.id] = new Subscriber((i) => {
-    //                 collection.deepChange.next(i);
-    //                 collection.loaded();
-    //             });
-    //             store.addObserver(stream.item.id, observers[stream.item.id]);
-    //             collection.add(instance);
-    //         }
-    //     }
-    // }
 
     // public async action(controller: string, name: string, ...args: any[]): Promise<any> {
     //     return this.stream(controller, name, ...args);
