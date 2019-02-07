@@ -3,16 +3,8 @@ import {Injector} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import * as util from "util";
 import {Application, Session} from "./application";
-import {Collection, each} from "@kamille/core";
-
-interface MessageResult {
-    type: 'answer';
-    id: number;
-    returnType?: 'json' | 'collection' | 'observable';
-    next?: any;
-    result?: any;
-    error?: any;
-}
+import {Collection, each, MessageResult} from "@kamille/core";
+import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
 
 interface Message {
     id: number;
@@ -20,8 +12,16 @@ interface Message {
     payload: any;
 }
 
+function getSafeEntityName(object: any): string | undefined {
+    try {
+        return getEntityName(object.constructor);
+    } catch (e) {
+        return undefined;
+    }
+}
+
 export class Connection {
-    protected subscriptions: {[messageId: string]: Subscription} = {};
+    protected subscriptions: { [messageId: string]: Subscription } = {};
     protected session?: Session;
     protected app: Application;
 
@@ -76,7 +76,7 @@ export class Connection {
         }
     }
 
-    public async action(data: {controller: string, action: string, args: any[]}): Promise<any> {
+    public async action(data: { controller: string, action: string, args: any[] }): Promise<any> {
         const controllerClass = await this.app.getController(data.controller);
 
         if (!controllerClass) {
@@ -130,37 +130,34 @@ export class Connection {
 
             if (result instanceof Collection) {
                 //todo
-                this.write(JSON.stringify({type: 'answer', id: message.id, returnType: 'collection'} as MessageResult));
+                this.write({type: 'type', id: message.id, returnType: 'collection'});
+
             } else if (result instanceof Observable) {
-                // console.log('its an observable');
-                // console.log('new subscription', externalId);
+                this.write({type: 'type', id: message.id, returnType: 'observable'});
 
-                this.write(JSON.stringify({type: 'answer', id: message.id, returnType: 'observable'} as MessageResult));
                 this.subscriptions[message.id] = result.subscribe((next) => {
-                    this.write(JSON.stringify({type: 'answer', id: message.id, next: next} as MessageResult));
-                }, (error) => {
-                    console.log('error in Observable subscribe', error.stack);
-                    // console.log(error.stack);
-                    // console.log(error.originalStack);
+                    const entityName = getSafeEntityName(next);
+                    if (entityName && RegisteredEntities[entityName]) {
+                        next = classToPlain(RegisteredEntities[entityName], next);
+                    }
 
-                    this.write(JSON.stringify({
-                        type: 'answer',
+                    this.write({type: 'next', id: message.id, entityName: entityName, next: next});
+                }, (error) => {
+                    this.write({
+                        type: 'error',
                         id: message.id,
                         error: error.toString()
-                    } as MessageResult));
+                    });
 
                     delete this.subscriptions[message.id];
                 }, () => {
-                    this.write(JSON.stringify({
-                        type: 'answer',
-                        id: message.id,
-                        complete: true
-                    } as MessageResult));
+                    this.write({type: 'complete', id: message.id});
+                    delete this.subscriptions[message.id];
                     delete this.subscriptions[message.id];
                 });
             } else {
-                this.write(JSON.stringify({type: 'answer', id: message.id, returnType: 'json'} as MessageResult));
-                await this.sendMessage(message.id, result);
+                this.write({type: 'next', id: message.id, next: result});
+                this.write({type: 'complete', id: message.id});
             }
         } catch (e) {
             console.log('Worker execution error', message, util.inspect(e));
@@ -173,17 +170,13 @@ export class Connection {
         }
     }
 
-    public write(message: string) {
+    public write(message: MessageResult) {
         if (this.socket.readyState === this.socket.OPEN) {
-            this.socket.send(message);
+            this.socket.send(JSON.stringify(message));
         }
     }
 
-    public async sendMessage(id: number, result: any) {
-        this.write(JSON.stringify({type: 'answer', id: id, result: result} as MessageResult));
-    }
-
     public async sendError(id: number, error: any) {
-        this.write(JSON.stringify({type: 'answer', id: id, error: error} as MessageResult));
+        this.write({type: 'error', id: id, error: error});
     }
 }
