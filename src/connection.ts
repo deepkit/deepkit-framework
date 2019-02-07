@@ -129,8 +129,9 @@ export class Connection {
             }
 
             if (result instanceof Collection) {
-                //todo
-                this.write({type: 'type', id: message.id, returnType: 'collection'});
+                this.write({type: 'type', id: message.id, returnType: 'collection', entityName: result.entityName});
+
+
 
             } else if (result instanceof Observable) {
                 this.write({type: 'type', id: message.id, returnType: 'observable'});
