@@ -64,21 +64,21 @@ export interface CountUpdateResult {
 export interface StreamFileSet {
     type: 'set';
     path: string;
-    meta?: {[k: string]: any};
+    meta?: { [k: string]: any };
     content: any;
 }
 
 export interface StreamFileAppend {
     type: 'append';
     path: string;
-    meta?: {[k: string]: any};
+    meta?: { [k: string]: any };
     content: any;
 }
 
 export interface StreamFileRemove {
     type: 'remove';
     path: string;
-    meta?: {[k: string]: any};
+    meta?: { [k: string]: any };
 }
 
 export type FindResult = FindResultItems | FindResultAdd | FindResultRemove;
@@ -87,11 +87,26 @@ export type CountResult = CountUpdateResult;
 
 export type StreamFileResult = StreamFileSet | StreamFileAppend | StreamFileRemove;
 
-export interface MessageType {
+export interface MessageTypeJson {
     type: 'type';
     id: number;
-    returnType: 'json' | 'collection' | 'observable';
+    returnType: 'json';
 }
+
+export interface MessageTypeCollection {
+    type: 'type';
+    id: number;
+    returnType: 'collection';
+    entityName: string;
+}
+
+export interface MessageTypeObservable {
+    type: 'type';
+    returnType: 'observable';
+    id: number;
+}
+
+export type MessageType = MessageTypeJson | MessageTypeCollection | MessageTypeObservable;
 
 export interface MessageNext {
     type: 'next';
