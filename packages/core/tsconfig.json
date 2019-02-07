@@ -3,9 +3,9 @@
   "compilerOptions": {
     "outDir": "./lib"
   },
-  "files": [],
   "include": [
     "./src",
+    "./tests",
     "index.ts",
     "global.d.ts"
   ]
