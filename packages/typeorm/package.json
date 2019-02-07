@@ -1,0 +1,49 @@
+{
+  "name": "@marcj/marshal-typeorm",
+  "version": "0.0.1",
+  "description": "Marshals TypeORM management",
+  "main": "lib/index.ts",
+  "types": "lib/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc"
+  },
+  "repository": "https://github.com/marcj/marshal",
+  "author": "Sebastian Hoitz <hoitz@komola.de>",
+  "license": "MIT",
+  "peerDependencies": {
+    "typeorm": "^0.2.12"
+  },
+  "dependencies": {
+    "@marcj/marshal": "^0.4.4"
+  },
+  "devDependencies": {
+    "typeorm": "^0.2.12"
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "collectCoverageFrom": [
+      "**/*.{ts}",
+      "!**/node_modules/**",
+      "!**/lib/**/*",
+      "!**/*.d.ts",
+      "!index.ts"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/*.spec.ts"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
