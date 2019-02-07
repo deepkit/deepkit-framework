@@ -2,8 +2,11 @@ import {Types} from "./mapper";
 import {ClassType, getClassName} from "./utils";
 import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validation";
 
-export function Entity(name: string, collectionName?: string) {
-    return (target: Object) => {
+export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
+
+export function Entity<T>(name: string, collectionName?: string) {
+    return (target: ClassType<T>) => {
+        RegisteredEntities[name] = target;
         Reflect.defineMetadata('marshal:entityName', name, target);
         Reflect.defineMetadata('marshal:collectionName', collectionName || (name + 's'), target);
     };
@@ -46,7 +49,7 @@ function addMetadataArray(metadataKey: string, target: Object, item: any) {
 /**
  * Executes the method when the current class is instantiated and populated.
  */
-export function OnLoad(options: {fullLoad?: boolean} = {}) {
+export function OnLoad(options: { fullLoad?: boolean } = {}) {
     return (target: Object, property: string) => {
         addMetadataArray('marshal:onLoad', target, {
             property: property,

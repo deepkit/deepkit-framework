@@ -6,7 +6,8 @@
   "scripts": {
     "test": "jest --coverage",
     "bootstrap": "lerna bootstrap --hoist --no-ci",
-    "tsc": "lerna run tsc"
+    "tsc": "lerna run tsc",
+    "publish": "lerna publish"
   },
   "peerDependencies": {
     "reflect-metadata": "^0.1.12"
