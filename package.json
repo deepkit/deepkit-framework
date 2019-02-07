@@ -4,8 +4,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "scripts": {
-    "test-local": "docker-compose up -d && npm run test",
-    "test": "jest --coverage",
+    "test": "docker-compose up -d && jest --coverage",
     "bootstrap": "lerna bootstrap --hoist --no-ci",
     "tsc": "lerna run tsc"
   },
