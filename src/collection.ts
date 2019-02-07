@@ -26,16 +26,13 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     protected items: T[] = [];
     protected itemsMapped: { [id: string]: T} = {};
 
-    public readonly entityName: string;
+    // public readonly entityName: string;
     public readonly ready: Observable<T[]>;
     public readonly deepChange = new Subject<T>();
 
-    constructor(
-        public readonly classType: ClassType<T>,
-        public readonly filter: { [id: string]: any } = {}
-    ) {
+    constructor() {
         super(1);
-        this.entityName = getEntityName(classType);
+        // this.entityName = getEntityName(classType);
         this.ready = this.pipe(first());
     }
 
@@ -108,7 +105,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public add(item: T, withEvent = true) {
         if (!item) {
-            throw new Error(`Trying to insert a ${this.entityName} collection item without value`);
+            throw new Error(`Trying to insert a collection item without value`);
         }
 
         if (this.itemsMapped[item.id]) {
