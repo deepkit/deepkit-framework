@@ -26,6 +26,7 @@ import {
     getParentReferenceClass,
     BinaryType,
     classToPlain,
+    RegisteredEntities,
 } from '../';
 import { Buffer } from 'buffer';
 
@@ -40,6 +41,8 @@ test('test entity database', async () => {
         @StringType()
         name?: string;
     }
+
+    expect(RegisteredEntities['DifferentDataBase']).toBe(DifferentDataBase);
 
     class Child extends DifferentDataBase {}
 
