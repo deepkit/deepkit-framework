@@ -11,7 +11,7 @@ export class Session {
 
 @Injectable()
 export class Application {
-    public readonly controllers: { [path: string]: ClassType<any> } = {};
+    public readonly controllers: { [name: string]: ClassType<any> } = {};
 
     public async bootstrap() {
     }
@@ -23,8 +23,8 @@ export class Application {
         return true;
     }
 
-    public async getControllerForPath(path: string): Promise<ClassType<any> | undefined> {
-        return this.controllers[path];
+    public async getController(name: string): Promise<ClassType<any> | undefined> {
+        return this.controllers[name];
     }
 
     /**

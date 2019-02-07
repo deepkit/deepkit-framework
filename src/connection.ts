@@ -3,11 +3,12 @@ import {Injector} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import * as util from "util";
 import {Application, Session} from "./application";
-import {each} from "@kamille/core";
+import {Collection, each} from "@kamille/core";
 
 interface MessageResult {
     type: 'answer';
     id: number;
+    returnType?: 'json' | 'collection' | 'observable';
     next?: any;
     result?: any;
     error?: any;
@@ -75,10 +76,11 @@ export class Connection {
         }
     }
 
-    public async action(data: {path: string, action: string, args: any[]}): Promise<any> {
-        const controllerClass = await this.app.getControllerForPath(data.path);
+    public async action(data: {controller: string, action: string, args: any[]}): Promise<any> {
+        const controllerClass = await this.app.getController(data.controller);
+
         if (!controllerClass) {
-            throw new Error(`Controller not found for ${data.path}`);
+            throw new Error(`Controller not found for ${data.controller}`);
         }
 
         const access = await this.app.hasAccess(this.session, controllerClass, data.action);
@@ -91,7 +93,7 @@ export class Connection {
         const methodName = data.action;
 
         if ((controller as any)[methodName]) {
-            const actions = Reflect.getMetadata('kamille:actions', controllerClass) || {};
+            const actions = Reflect.getMetadata('kamille:actions', controllerClass.prototype) || {};
 
             if (!actions[methodName]) {
                 console.log('Action unknown, but method exists.', methodName);
@@ -118,13 +120,22 @@ export class Connection {
         }
 
         try {
-            const result = exec();
+            let result = exec();
+            console.log('result', result);
+
             if (typeof (result as any)['then'] === 'function') {
                 // console.log('its an Promise');
-                await this.sendMessage(message.id, await result);
+                result = await result;
+            }
+
+            if (result instanceof Collection) {
+                //todo
+                this.write(JSON.stringify({type: 'answer', id: message.id, returnType: 'collection'} as MessageResult));
             } else if (result instanceof Observable) {
                 // console.log('its an observable');
                 // console.log('new subscription', externalId);
+
+                this.write(JSON.stringify({type: 'answer', id: message.id, returnType: 'observable'} as MessageResult));
                 this.subscriptions[message.id] = result.subscribe((next) => {
                     this.write(JSON.stringify({type: 'answer', id: message.id, next: next} as MessageResult));
                 }, (error) => {
@@ -147,6 +158,9 @@ export class Connection {
                     } as MessageResult));
                     delete this.subscriptions[message.id];
                 });
+            } else {
+                this.write(JSON.stringify({type: 'answer', id: message.id, returnType: 'json'} as MessageResult));
+                await this.sendMessage(message.id, result);
             }
         } catch (e) {
             console.log('Worker execution error', message, util.inspect(e));

@@ -30,6 +30,7 @@ export class Worker {
 
         const wss = new WebSocket.Server({host: this.options.host, port: this.options.port});
 
+        console.log('Worker listening on', this.options.host + ':' + this.options.port);
         wss.on('connection', (socket: WebSocket) => {
 
             const provider: Provider[] = [

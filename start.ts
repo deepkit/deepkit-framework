@@ -1,10 +1,20 @@
+import 'reflect-metadata';
 import {ApplicationServer} from "./src/application-server";
-import {ApplicationModule} from "./src/decorators";
+import {Action, ApplicationModule, Controller} from "./src/decorators";
 import {Application, Session} from "./src/application";
+
+@Controller('user')
+class UserController {
+
+    @Action()
+    name(): string {
+        return "this is a name";
+    }
+}
 
 
 @ApplicationModule({
-
+    controllers: [UserController]
 })
 class MyApp extends Application {
     async bootstrap(): Promise<any> {

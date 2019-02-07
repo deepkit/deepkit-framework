@@ -1,44 +1,45 @@
 import * as cluster from "cluster";
-import {ClassType, NumberType, plainToClass, StringType} from "@marcj/marshal";
+import {AnyType, ArrayType, ClassType, getClassName, NumberType, plainToClass, StringType} from "@marcj/marshal";
 import {Worker} from './worker';
 import {Injectable, Injector, Provider, ReflectiveInjector} from "injection-js";
 import {FS} from "./fs";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
-import {getApplicationModuleOptions} from "./decorators";
+import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
 import {Database} from "@marcj/marshal-mongo";
 import {Mongo} from "./mongo";
 import {Application} from "./application";
+import {eachPair} from "@kamille/core";
+
+export function applyDefaults<T>(classType: ClassType<T>, target: {[k: string]: any}): T {
+    const classInstance = new classType();
+
+    for (const [i, v] of eachPair(target)) {
+        (classInstance as any)[i] = v;
+    }
+
+    return classInstance;
+}
 
 export class ApplicationServerConfig {
-    @StringType()
     host: string = 'localhost';
 
-    @NumberType()
     port: number = 8080;
 
-    @NumberType()
     workers: number = 4;
 
-    @StringType()
     mongoHost: string = 'localhost';
 
-    @StringType()
     mongoPort: number = 27017;
 
-    @StringType()
     mongoDbName: string = 'kamille';
 
-    @StringType()
     redisHost: string = 'localhost';
 
-    @NumberType()
     redisPort: number = 6380;
 
-    @StringType()
     redisPrefix: string = 'kamille';
 
-    @StringType()
     fsPath: string = '~/.kamille/files';
 }
 
@@ -48,12 +49,13 @@ export class ApplicationServer {
     protected injector: ReflectiveInjector;
 
     constructor(
+        application: ClassType<any>,
         config: ApplicationServerConfig | Partial<ApplicationServerConfig> = {},
         serverProvider: Provider[] = [],
         protected connectionProvider: Provider[] = [],
-        application: ClassType<any>,
+        controllers: ClassType<any>[] = [],
     ) {
-        this.config = config instanceof ApplicationServerConfig ? config : plainToClass(ApplicationServerConfig, config);
+        this.config = config instanceof ApplicationServerConfig ? config : applyDefaults(ApplicationServerConfig, config);
 
         const baseInjectors: Provider[] = [
             {provide: Application, useClass: application},
@@ -96,15 +98,26 @@ export class ApplicationServer {
             },
         ];
 
+        baseInjectors.push(...controllers);
         baseInjectors.push(...serverProvider);
 
         this.injector = ReflectiveInjector.resolveAndCreate(baseInjectors);
+        const app: Application = this.injector.get(Application);
+
+        for (const controllerClass of controllers) {
+            const options = getControllerOptions(controllerClass);
+            console.log('options', options);
+            if (!options) {
+                throw new Error(`Controller ${getClassName(controllerClass)} has no @Controller decorator.`);
+            }
+            app.controllers[options.name] = controllerClass;
+            console.log(`Controller ${options.name} (${getClassName(controllerClass)}) setup`);
+        }
     }
 
     public static createForModule<T extends Application>(application: ClassType<T>) {
         const options = getApplicationModuleOptions(application);
-
-        return new this(options.config || {}, options.serverProviders || [], options.connectionProviders || [], application);
+        return new this(application, options.config || {}, options.serverProviders || [], options.connectionProviders || [], options.controllers);
     }
 
     public async start() {
