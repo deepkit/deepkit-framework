@@ -86,3 +86,29 @@ export type FindResult = FindResultItems | FindResultAdd | FindResultRemove;
 export type CountResult = CountUpdateResult;
 
 export type StreamFileResult = StreamFileSet | StreamFileAppend | StreamFileRemove;
+
+export interface MessageType {
+    type: 'type';
+    id: number;
+    returnType: 'json' | 'collection' | 'observable';
+}
+
+export interface MessageNext {
+    type: 'next';
+    id: number;
+    next: any;
+    entityName?: string;
+}
+
+export interface MessageComplete {
+    type: 'complete';
+    id: number;
+}
+
+export interface MessageError {
+    type: 'error';
+    id: number;
+    error: any;
+}
+
+export type MessageResult = MessageType | MessageNext | MessageComplete | MessageError;
