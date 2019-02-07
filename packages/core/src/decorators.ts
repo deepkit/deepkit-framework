@@ -6,8 +6,11 @@ import {
     PropertyValidatorError,
 } from './validation';
 
-export function Entity(name: string, collectionName?: string) {
-    return (target: Object) => {
+export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
+
+export function Entity<T>(name: string, collectionName?: string) {
+    return (target: ClassType<T>) => {
+        RegisteredEntities[name] = target;
         Reflect.defineMetadata('marshal:entityName', name, target);
         Reflect.defineMetadata(
             'marshal:collectionName',
