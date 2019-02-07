@@ -366,48 +366,6 @@ export class StorageClient {
         });
     }
 
-    public subscribeJob(jobId: string): Observable<JobStream> {
-        if (!this.subscribeJobCollection[jobId]) {
-            this.subscribeJobCollection[jobId] = {observers: []};
-        }
-
-        return new Observable((o) => {
-            this.subscribeJobCollection[jobId].observers.push(o);
-
-            if (!this.subscribeJobCollection[jobId].subscription) {
-                this.subscribeJobCollection[jobId].subscription = this.getSocketClient().app()
-                    .subscribeJob(jobId)
-                    .subscribe((stream) => {
-                        for (const observer of this.subscribeJobCollection[jobId].observers) {
-                            observer.next(stream);
-                        }
-                    }, (error) => {
-                        for (const observer of this.subscribeJobCollection[jobId].observers) {
-                            observer.error(error);
-                        }
-                    }, () => {
-                        for (const observer of this.subscribeJobCollection[jobId].observers) {
-                            observer.complete();
-                        }
-                    });
-            }
-
-            return {
-                unsubscribe: () => {
-                    arrayRemoveItem(this.subscribeJobCollection[jobId].observers, o);
-
-                    if (this.subscribeJobCollection[jobId] && empty(this.subscribeJobCollection[jobId].observers)) {
-                        const sub = this.subscribeJobCollection[jobId].subscription;
-                        if (sub) {
-                            sub.unsubscribe();
-                        }
-                        delete this.subscribeJobCollection[jobId];
-                    }
-                }
-            };
-        });
-    }
-
     private subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
         if (this.entitySubscriptions.has(classType)) {
             return;

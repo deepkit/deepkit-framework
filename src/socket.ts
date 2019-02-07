@@ -1,6 +1,7 @@
-import {Subject} from "rxjs";
-import {AnyType, NumberType, StringType} from "@marcj/marshal";
+import {Observable, Subject, Subscriber} from "rxjs";
+import {AnyType, NumberType, plainToClass, StringType} from "@marcj/marshal";
 import * as WebSocket from "ws";
+import {Collection, FindResult} from "@kamille/core";
 
 interface RemoteChannelMessage {
     type: 'channel';
@@ -207,37 +208,52 @@ export class SocketClient {
             let returnValue: any;
 
             //todo, implement collection
+            const self = this;
+            let subscriber: Subscriber<any> | undefined;
 
             this.replies[messageId] = {
                 returnType: (type) => {
                     handleType = type;
                     if (handleType === 'observable') {
-                        returnValue = new Subject();
+                        returnValue = new Observable((observer) => {
+                            subscriber = observer;
+
+                            return {
+                                unsubscribe(): void {
+                                    const message = {
+                                        id: messageId,
+                                        name: 'unsubscribe',
+                                    };
+                                    self.connect().then(() => self.send(JSON.stringify(message)));
+                                }
+                            }
+                        });
                         resolve(returnValue);
                     } else if (handleType === 'collection') {
-                        // returnValue = new Collection<any>();
-                        // resolve(returnValue);
+                        returnValue = new Collection<any>();
                     }
                 },
                 next: (data) => {
-                    if (returnValue instanceof Subject) {
-                        returnValue.next(data);
+                    if (subscriber && handleType === 'observable') {
+                        subscriber.next(data);
                     }
-                    if (handleType === 'observable') {
-                        resolve(data);
+                    if (handleType === 'collection' && returnValue instanceof Collection) {
+
+
+                        returnValue.next(data);
                     }
                     if (handleType === 'json') {
                         resolve(data);
                     }
                 },
                 complete: () => {
-                    if (returnValue instanceof Subject) {
-                        returnValue.complete();
+                    if (subscriber) {
+                        subscriber.complete();
                     }
                 },
                 error: (error) => {
-                    if (returnValue instanceof Subject) {
-                        returnValue.error(new Error(error));
+                    if (subscriber) {
+                        subscriber.error(new Error(error));
                     } else {
                         reject(new Error(error));
                     }
@@ -246,39 +262,53 @@ export class SocketClient {
 
             this.connect().then(_ => this.send(JSON.stringify(message)));
         })
+    }
 
-        //
-        // return new Observable((observer) => {
-        //     this.messageId++;
-        //     const messageId = this.messageId;
-        //
-        //     const message = {
-        //         id: messageId,
-        //         name: 'action',
-        //         payload: {controller: controller, action: name, args}
-        //     };
-        //
-        //     this.replies[messageId] = {
-        //         next: (data) => {
-        //             observer.next(data);
-        //         }, success: () => {
-        //             observer.complete();
-        //         }, error: (error) => {
-        //             observer.error(new Error(error));
-        //         }
-        //     };
-        //     this.connect().then(_ => this.send(JSON.stringify(message)));
-        //
-        //     return {
-        //         unsubscribe: () => {
-        //             const message = {
-        //                 id: messageId,
-        //                 name: 'unsubscribe',
-        //             };
-        //             this.connect().then(_ => this.send(JSON.stringify(message)));
-        //         }
-        //     };
-        // });
+    protected handleCollectionNext(stream: FindResult) {
+        if (stream.type === 'items') {
+            for (const itemRaw of stream.items) {
+                if (!store.hasItem(itemRaw.id)) {
+                    const item = plainToClass(classType, itemRaw);
+                    store.setItemAndNotifyObservers(item.id, item);
+                }
+                const instance = store.getOrCreateItem(itemRaw.id).instance;
+                if (instance) {
+                    collection.add(instance, false);
+                    observers[itemRaw.id] = new Subscriber((i) => {
+                        collection.deepChange.next(i);
+                        collection.loaded();
+                    });
+                    store.addObserver(itemRaw.id, observers[itemRaw.id]);
+                }
+            }
+
+            if (collection.count() === stream.total) {
+                collection.loaded();
+            }
+        }
+
+        if (stream.type === 'remove') {
+            collection.remove(stream.id);
+            store.removeObserver(stream.id, observers[stream.id]);
+            collection.loaded();
+        }
+
+        if (stream.type === 'add') {
+            if (!store.hasItem(stream.item.id)) {
+                const item = plainToClass(classType, stream.item);
+                store.setItemAndNotifyObservers(stream.item.id, item);
+            }
+
+            const instance = store.getOrCreateItem(stream.item.id).instance;
+            if (instance) {
+                observers[stream.item.id] = new Subscriber((i) => {
+                    collection.deepChange.next(i);
+                    collection.loaded();
+                });
+                store.addObserver(stream.item.id, observers[stream.item.id]);
+                collection.add(instance);
+            }
+        }
     }
 
     // public async action(controller: string, name: string, ...args: any[]): Promise<any> {
