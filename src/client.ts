@@ -1,7 +1,7 @@
 import {Collection, IdInterface, eachPair, arrayRemoveItem, empty, CountResult, StreamFileResult} from '@kamille/core';
 import {Observable, Subscriber, Subscription} from 'rxjs';
 import {classToPlain, ClassType, getEntityName, plainToClass, propertyPlainToClass} from "@marcj/marshal";
-import {SocketClient} from "./socket";
+import {SocketClient, SocketClientConfig} from "./socket";
 import {set} from 'dot-prop';
 
 class StoreItem<T> {
@@ -106,8 +106,10 @@ export class StorageClient {
 
     private subscribeJobCollection: { [jobId: string]: {subscription?: Subscription, observers: Subscriber<any>[]} } = {};
 
-    constructor(private socketClient?: SocketClient) {
-        this.socketClient = socketClient;
+    public readonly socketClient: SocketClient;
+
+    constructor(public readonly config?: SocketClientConfig) {
+        this.socketClient = new SocketClient(config || new SocketClientConfig());
     }
 
     private getSocketClient(): SocketClient {
@@ -116,10 +118,6 @@ export class StorageClient {
         }
 
         return this.socketClient;
-    }
-
-    public setSocketClient(socketClient: SocketClient) {
-        this.socketClient = socketClient;
     }
 
     private getStore<T>(classType: ClassType<T>): ItemsStore<T> {
@@ -163,33 +161,33 @@ export class StorageClient {
         return this.getSocketClient().app().streamFile(filter, path);
     }
 
-    public streamFileCb(
-        filter: { [id: string]: any },
-        path: string,
-        onSet: (v: string) => void,
-        onAppend: (v: string) => void,
-        onRemove: () => void,
-    ): Subscription {
-        //wrap with Observable to handle disconnects
+    // public streamFileCb(
+    //     filter: { [id: string]: any },
+    //     path: string,
+    //     onSet: (v: string) => void,
+    //     onAppend: (v: string) => void,
+    //     onRemove: () => void,
+    // ): Subscription {
+    //     //wrap with Observable to handle disconnects
+    //
+    //     return this.getSocketClient().app().streamFile(filter, path).subscribe((message) => {
+    //         console.log('message file', filter, path, message);
+    //         if (message.type === 'set') {
+    //             onSet(message.content);
+    //         }
+    //         if (message.type === 'append') {
+    //             onAppend(message.content);
+    //         }
+    //         if (message.type === 'remove') {
+    //             onRemove();
+    //         }
+    //     });
+    // }
 
-        return this.getSocketClient().app().streamFile(filter, path).subscribe((message) => {
-            console.log('message file', filter, path, message);
-            if (message.type === 'set') {
-                onSet(message.content);
-            }
-            if (message.type === 'append') {
-                onAppend(message.content);
-            }
-            if (message.type === 'remove') {
-                onRemove();
-            }
-        });
-    }
-
-    public streamJobFile(jobId: string, path: string): Observable<StreamFileResult> {
-        //wrap with Observable to handle disconnects
-        return this.streamFile({job: jobId}, path);
-    }
+    // public streamJobFile(meta: {}, path: string): Observable<StreamFileResult> {
+    //     //wrap with Observable to handle disconnects
+    //     return this.streamFile(meta, path);
+    // }
 
     public findOne<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Observable<T | undefined> {
         const key = JSON.stringify(filter);
@@ -207,7 +205,8 @@ export class StorageClient {
             if (!stats.subscription || (stats.subscription && stats.subscription.closed)) {
                 stats.observers.push(observer);
 
-                stats.subscription = this.getSocketClient().app().findOne(getEntityName(classType), filter)
+                stats.subscription = this.getSocketClient().api<>('_internal')
+                    .findOne(getEntityName(classType), filter)
                     .subscribe((stream) => {
                         // console.log('findOne', stats.observers.length, stream);
                         try {

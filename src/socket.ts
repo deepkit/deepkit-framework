@@ -1,5 +1,6 @@
-import {Observable} from "rxjs";
-import {AnyType, ClassType, NumberType, StringType} from "@marcj/marshal";
+import {Subject} from "rxjs";
+import {AnyType, NumberType, StringType} from "@marcj/marshal";
+import * as WebSocket from "ws";
 
 interface RemoteChannelMessage {
     type: 'channel';
@@ -10,6 +11,7 @@ interface RemoteChannelMessage {
 interface RemoteAnswer {
     type: 'answer';
     id: number;
+    returnType: 'json' | 'collection' | 'observable';
     next?: any;
     result?: any;
     error?: any;
@@ -20,15 +22,16 @@ export class SocketClientConfig {
     host: string = 'localhost';
 
     @NumberType()
-    port: number = 8701;
+    port: number = 8080;
 
     @AnyType()
     token: any;
 }
 
-export class AuthorizationError extends Error {}
+export class AuthorizationError extends Error {
+}
 
-export class SocketClient  {
+export class SocketClient {
     public socket?: WebSocket;
 
     private connected: boolean = false;
@@ -39,67 +42,54 @@ export class SocketClient  {
     // private maxConnectionTryDelay = 2;
     private connectionTries = 0;
 
-    private token?: any;
-
     private replies: {
         [messageId: string]: {
+            returnType?: (type: 'json' | 'collection' | 'observable') => void,
             next?: (data: any) => void,
-            success: () => void,
+            complete: () => void,
             error: (error: any) => void
         }
     } = {};
 
     private connectionPromise?: Promise<void>;
 
-    public constructor(public readonly config: SocketClientConfig) {
-        // super();
+    public constructor(public readonly config: SocketClientConfig = new SocketClientConfig) {
         if (config && !(config instanceof SocketClientConfig)) {
             throw new Error('Config is not from SocketClientConfig');
         }
-    }
-
-    public setToken(token?: any) {
-        this.token = token;
     }
 
     public isConnected(): boolean {
         return this.connected;
     }
 
-    public isLoggedIn(): boolean {
-        return this.loggedIn;
-    }
+    // public isLoggedIn(): boolean {
+    //     return this.loggedIn;
+    // }
     //
     // on(event: 'offline' | 'online' | string, listener: (...args: any[]) => void): this {
     //     return super.on(event, listener);
     // }
 
-    /**
-     * True when connected and logged in.
-     */
-    public isReady(): boolean {
-        return this.connected && this.loggedIn;
-    }
+    // /**
+    //  * True when connected and logged in.
+    //  */
+    // public isReady(): boolean {
+    //     return this.connected && this.loggedIn;
+    // }
 
-    public api<R, T = any>(implType?: ClassType<T>): R {
+    public controller<T,
+        U extends any[] = [],
+        R = { [P in keyof T]: T[P] extends (...args: any[]) => any ? (...args: U) => Promise<ReturnType<T[P]>> : T[P] }>(name: string): R {
         const t = this;
-        let impl: T | undefined;
-
-        if (implType) {
-            impl = new implType(this.api());
-        }
 
         const o = new Proxy(this, {
-            get: (target, name) => {
+            get: (target, propertyName) => {
                 return function () {
-                    const actionName = String(name);
+                    const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    if (impl && (impl as any)[actionName]) {
-                        return (impl as any)[actionName](...args);
-                    }
-
-                    return t.stream(actionName, ...args);
+                    return t.stream(name, actionName, ...args);
                 };
             }
         });
@@ -107,8 +97,8 @@ export class SocketClient  {
         return (o as any) as R;
     }
 
-    protected onMessage(event: MessageEvent) {
-        const reply = JSON.parse(event.data) as RemoteChannelMessage | RemoteAnswer;
+    protected onMessage(event: { data: WebSocket.Data; type: string; target: WebSocket }) {
+        const reply = JSON.parse(event.data.toString()) as RemoteChannelMessage | RemoteAnswer;
 
         if (!reply) {
             throw new Error(`Got invalid message: ` + event.data);
@@ -121,7 +111,11 @@ export class SocketClient  {
                 throw new Error(`Got message without reply callback (timeout?): ` + event.data);
             }
 
-            if (reply.next) {
+            if (reply.returnType) {
+                if (callback.returnType) {
+                    callback.returnType(reply.returnType);
+                }
+            } else if (reply.next) {
                 if (callback.next) {
                     callback.next(reply.next);
                 }
@@ -132,7 +126,7 @@ export class SocketClient  {
                     if (reply.result && callback.next) {
                         callback.next(reply.result);
                     }
-                    callback.success();
+                    callback.complete();
                 }
             }
         }
@@ -146,7 +140,7 @@ export class SocketClient  {
         const port = this.config.port;
         this.connectionTries++;
         const socket = this.socket = new WebSocket('ws://' + this.config.host + ':' + port);
-        socket.onmessage = (event: MessageEvent) => this.onMessage(event);
+        socket.onmessage = (event: { data: WebSocket.Data; type: string; target: WebSocket }) => this.onMessage(event);
 
         return new Promise<void>((resolve, reject) => {
             socket.onerror = (error: any) => {
@@ -198,43 +192,98 @@ export class SocketClient  {
         }
     }
 
-    public stream(name: string, ...args: any[]): Observable<any> {
-        return new Observable((observer) => {
+    public async stream(controller: string, name: string, ...args: any[]): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
             this.messageId++;
             const messageId = this.messageId;
 
             const message = {
                 id: messageId,
                 name: 'action',
-                payload: {action: name, args}
+                payload: {controller: controller, action: name, args}
             };
+
+            let handleType = 'json';
+            let returnValue: any;
+
+            //todo, implement collection
 
             this.replies[messageId] = {
+                returnType: (type) => {
+                    handleType = type;
+                    if (handleType === 'observable') {
+                        returnValue = new Subject();
+                        resolve(returnValue);
+                    } else if (handleType === 'collection') {
+                        // returnValue = new Collection<any>();
+                        // resolve(returnValue);
+                    }
+                },
                 next: (data) => {
-                    observer.next(data);
-                }, success: () => {
-                    observer.complete();
-                }, error: (error) => {
-                    observer.error(new Error(error));
+                    if (returnValue instanceof Subject) {
+                        returnValue.next(data);
+                    }
+                    if (handleType === 'observable') {
+                        resolve(data);
+                    }
+                    if (handleType === 'json') {
+                        resolve(data);
+                    }
+                },
+                complete: () => {
+                    if (returnValue instanceof Subject) {
+                        returnValue.complete();
+                    }
+                },
+                error: (error) => {
+                    if (returnValue instanceof Subject) {
+                        returnValue.error(new Error(error));
+                    } else {
+                        reject(new Error(error));
+                    }
                 }
             };
+
             this.connect().then(_ => this.send(JSON.stringify(message)));
+        })
 
-            return {
-                unsubscribe: () => {
-                    const message = {
-                        id: messageId,
-                        name: 'unsubscribe',
-                    };
-                    this.connect().then(_ => this.send(JSON.stringify(message)));
-                }
-            };
-        });
+        //
+        // return new Observable((observer) => {
+        //     this.messageId++;
+        //     const messageId = this.messageId;
+        //
+        //     const message = {
+        //         id: messageId,
+        //         name: 'action',
+        //         payload: {controller: controller, action: name, args}
+        //     };
+        //
+        //     this.replies[messageId] = {
+        //         next: (data) => {
+        //             observer.next(data);
+        //         }, success: () => {
+        //             observer.complete();
+        //         }, error: (error) => {
+        //             observer.error(new Error(error));
+        //         }
+        //     };
+        //     this.connect().then(_ => this.send(JSON.stringify(message)));
+        //
+        //     return {
+        //         unsubscribe: () => {
+        //             const message = {
+        //                 id: messageId,
+        //                 name: 'unsubscribe',
+        //             };
+        //             this.connect().then(_ => this.send(JSON.stringify(message)));
+        //         }
+        //     };
+        // });
     }
 
-    public async action(name: string, ...args: any[]): Promise<any> {
-        return this.stream(name, ...args).toPromise();
-    }
+    // public async action(controller: string, name: string, ...args: any[]): Promise<any> {
+    //     return this.stream(controller, name, ...args);
+    // }
 
     public async send(payload: string) {
         if (!this.socket) {
@@ -256,29 +305,20 @@ export class SocketClient  {
 
         // console.time('send ' + channel + ': ' + JSON.stringify(message));
         return new Promise<any>(async (resolve, reject) => {
-            this.replies[messageId] = {next: next, success: resolve, error: reject};
+            this.replies[messageId] = {
+                returnType: (type) => {
+                }, next: next, complete: resolve, error: reject
+            };
             await this.send(JSON.stringify(message));
 
             setTimeout(() => {
                 if (this.replies[messageId]) {
                     delete this.replies[messageId];
-                    reject();
+                    reject('Message timeout');
                 }
             }, 60 * 1000);
         });
     }
-
-    // private async hi(): Promise<boolean> {
-    //     try {
-    //         await this.sendMessage('hi');
-    //         this.connected = true;
-    //         return true;
-    //     } catch (error) {
-    //         console.error('hi error', error);
-    //         this.connected = false;
-    //         throw error;
-    //     }
-    // }
 
     private async authorize(): Promise<boolean> {
         try {
