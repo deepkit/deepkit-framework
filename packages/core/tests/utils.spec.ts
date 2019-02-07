@@ -1,6 +1,6 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
-import {isArray, isObject, isUndefined} from "..";
+import { isArray, isObject, isUndefined } from '..';
 
 class SimpleClass {
     public label: string;
@@ -51,4 +51,3 @@ test('helper is isUndefined', () => {
 
     expect(isUndefined(undefined)).toBeTrue();
 });
-

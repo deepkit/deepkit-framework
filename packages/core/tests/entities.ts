@@ -12,7 +12,11 @@ import {
     Exclude,
     MongoIdType,
     Decorator,
-    Class, ExcludeToMongo, ExcludeToPlain, ArrayType, BooleanType
+    Class,
+    ExcludeToMongo,
+    ExcludeToPlain,
+    ArrayType,
+    BooleanType,
 } from '..';
 
 @Entity('sub')
@@ -94,15 +98,17 @@ export class SimpleModel {
     children: SubModel[] = [];
 
     @ClassMap(SubModel)
-    childrenMap: {[key: string]: SubModel} = {};
+    childrenMap: { [key: string]: SubModel } = {};
 
     @Class(CollectionWrapper)
     childrenCollection: CollectionWrapper = new CollectionWrapper([]);
 
     @Class(StringCollectionWrapper)
-    stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper([]);
+    stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper(
+        []
+    );
 
-    notMapped: {[key: string]: any} = {};
+    notMapped: { [key: string]: any } = {};
 
     @Exclude()
     @StringType()
@@ -138,10 +144,8 @@ export class BaseClass {
     _id?: string;
 }
 
-
 @Entity('ChildClass')
 export class ChildClass extends BaseClass {
     @StringType()
     name?: string;
 }
-

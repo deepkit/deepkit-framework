@@ -1,7 +1,7 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain} from "../";
-import {Plan, SimpleModel, SubModel} from "./entities";
+import { classToPlain } from '../';
+import { Plan, SimpleModel, SubModel } from './entities';
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');
@@ -9,7 +9,6 @@ test('test simple model', () => {
 
     expect(json['id']).toBeString();
     expect(json['name']).toBe('myName');
-
 });
 
 test('test simple model all fields', () => {

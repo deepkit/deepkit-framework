@@ -1,14 +1,19 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, getCachedParameterNames, getRegisteredProperties, plainToClass} from "../src/mapper";
-import {Job} from "./big-entity";
-import {SimpleModel, SuperSimple} from "./entities";
+import {
+    classToPlain,
+    getCachedParameterNames,
+    getRegisteredProperties,
+    plainToClass,
+} from '../src/mapper';
+import { Job } from './big-entity';
+import { SimpleModel, SuperSimple } from './entities';
 
 function benchTime(title: string): () => void {
     const started = performance.now();
     return () => {
         console.log(title, performance.now() - started, 'ms');
-    }
+    };
 }
 
 function bench(title: string, exec: () => void) {
@@ -27,14 +32,12 @@ test('speed ', () => {
             parameters: {
                 lr: 0.05,
                 optimizer: 'sgd',
-            }
+            },
         },
         tasks: {
             meiner: {
-                commands: [
-                    {name: 'erster', command: 'ls -al'}
-                ]
-            }
+                commands: [{ name: 'erster', command: 'ls -al' }],
+            },
         },
         created: '2018-11-25 23:38:24.339Z',
         updated: '2018-11-25 23:38:24.339Z',
@@ -119,14 +122,12 @@ test('speed ', () => {
                     parameters: {
                         lr: 0.05,
                         optimizer: 'sgd',
-                    }
+                    },
                 },
                 tasks: {
                     meiner: {
-                        commands: [
-                            {name: 'erster', command: 'ls -al'}
-                        ]
-                    }
+                        commands: [{ name: 'erster', command: 'ls -al' }],
+                    },
                 },
                 created: '2018-11-25 23:38:24.339Z',
                 updated: '2018-11-25 23:38:24.339Z',
@@ -148,7 +149,6 @@ test('speed ', () => {
             });
         }
     });
-
 
     const base = plainToClass(SuperSimple, {
         name: '1',

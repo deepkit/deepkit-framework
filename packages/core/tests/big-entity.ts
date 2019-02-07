@@ -1,15 +1,20 @@
 import {
     AnyType,
-    ArrayType, BooleanType,
+    ArrayType,
+    BooleanType,
     Class,
     ClassArray,
     ClassMap,
     DateType,
-    Entity, EnumType,
-    ID, MapType, NumberType, Optional,
+    Entity,
+    EnumType,
+    ID,
+    MapType,
+    NumberType,
+    Optional,
     StringType,
-    UUIDType
-} from "../";
+    UUIDType,
+} from '../';
 
 export class JobConfigDocker {
     @StringType()
@@ -83,10 +88,10 @@ export class JobTaskConfigBase {
     args: null | string[] = null;
 
     @Class(JobResources)
-    resources: JobResources = new JobResources;
+    resources: JobResources = new JobResources();
 
     @Class(JobConfigDocker)
-    docker: JobConfigDocker = new JobConfigDocker;
+    docker: JobConfigDocker = new JobConfigDocker();
 
     public isDockerImage(): boolean {
         return !!this.image;
@@ -123,7 +128,7 @@ export class JobConfig extends JobTaskConfigBase {
         'resources',
         'commands',
         'args',
-        'docker'
+        'docker',
     ];
 
     @AnyType()
@@ -369,13 +374,13 @@ export class JobTaskInstance {
     status: JobTaskInstanceStatus = JobTaskInstanceStatus.pending;
 
     @Class(JobEnvironment)
-    environment: JobEnvironment = new JobEnvironment;
+    environment: JobEnvironment = new JobEnvironment();
 
     @UUIDType()
     server?: string;
 
     @Class(JobAssignedResources)
-    assignedResources: JobAssignedResources = new JobAssignedResources;
+    assignedResources: JobAssignedResources = new JobAssignedResources();
 
     constructor(id: number) {
         this.id = id;
@@ -410,16 +415,16 @@ export class JobTaskQueue {
 
 export class JobTask {
     @Class(JobTaskQueue)
-    queue: JobTaskQueue = new JobTaskQueue;
+    queue: JobTaskQueue = new JobTaskQueue();
 
     @StringType()
     name: string;
 
     @Class(JobDocker)
-    docker: JobDocker = new JobDocker;
+    docker: JobDocker = new JobDocker();
 
     @Class(JobDockerImage)
-    dockerImage: JobDockerImage = new JobDockerImage;
+    dockerImage: JobDockerImage = new JobDockerImage();
 
     // exitCodes: { [key: string]: number } = {};
 
@@ -451,9 +456,7 @@ export class JobTask {
             this.instances[this.name + '_' + i] = new JobTaskInstance(i);
         }
     }
-
 }
-
 
 @Entity('job', 'jobs')
 export class Job {
@@ -484,7 +487,7 @@ export class Job {
     author?: string;
 
     @Class(JobConfig)
-    config: JobConfig = new JobConfig;
+    config: JobConfig = new JobConfig();
 
     @Class(JobGit)
     @Optional()

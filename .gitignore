@@ -1,4 +1,6 @@
 node_modules
+.vscode
 .idea
 lib/
 coverage
+package-lock.json

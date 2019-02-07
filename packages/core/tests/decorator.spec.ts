@@ -1,4 +1,4 @@
-import 'jest-extended'
+import 'jest-extended';
 import {
     AnyType,
     ArrayType,
@@ -26,12 +26,11 @@ import {
     getParentReferenceClass,
     BinaryType,
     classToPlain,
-    RegisteredEntities
-} from "../";
-import {Buffer} from "buffer";
+    RegisteredEntities,
+} from '../';
+import { Buffer } from 'buffer';
 
 test('test entity database', async () => {
-
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
@@ -65,7 +64,6 @@ test('test entity database', async () => {
 });
 
 test('test no entity throw error', () => {
-
     expect(() => {
         class Model {}
         getEntityName(Model);
@@ -122,7 +120,10 @@ test('test decorator circular', () => {
             @ClassCircular(() => Sub)
             sub?: Sub;
         }
-        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        expect(getReflectionType(Model, 'sub')).toEqual({
+            type: 'class',
+            typeValue: Sub,
+        });
     }
 
     {
@@ -130,7 +131,10 @@ test('test decorator circular', () => {
             @ClassMapCircular(() => Sub)
             sub?: Sub;
         }
-        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        expect(getReflectionType(Model, 'sub')).toEqual({
+            type: 'class',
+            typeValue: Sub,
+        });
         expect(isMapType(Model, 'sub')).toBeTrue();
     }
 
@@ -139,16 +143,17 @@ test('test decorator circular', () => {
             @ClassArrayCircular(() => Sub)
             sub?: Sub;
         }
-        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        expect(getReflectionType(Model, 'sub')).toEqual({
+            type: 'class',
+            typeValue: Sub,
+        });
         expect(isArrayType(Model, 'sub')).toBeTrue();
     }
 });
 
-
-
 test('test properties', () => {
-    class DataValue { }
-    class DataValue2 { }
+    class DataValue {}
+    class DataValue2 {}
 
     @Entity('Model')
     class Model {
@@ -170,37 +175,37 @@ test('test properties', () => {
     }
 
     {
-        const {type, typeValue} = getReflectionType(Model, '_id');
+        const { type, typeValue } = getReflectionType(Model, '_id');
         expect(type).toBe('objectId');
-        expect(typeValue).toBeNull()
+        expect(typeValue).toBeNull();
     }
 
     {
-        const {type, typeValue} = getReflectionType(Model, 'data');
+        const { type, typeValue } = getReflectionType(Model, 'data');
         expect(type).toBe('class');
-        expect(typeValue).toBe(DataValue)
+        expect(typeValue).toBe(DataValue);
     }
 
     {
-        const {type, typeValue} = getReflectionType(Model, 'data2');
+        const { type, typeValue } = getReflectionType(Model, 'data2');
         expect(type).toBeNull();
         expect(typeValue).toBeNull();
     }
 
     {
-        const {type, typeValue} = getReflectionType(SubModel, '_id');
+        const { type, typeValue } = getReflectionType(SubModel, '_id');
         expect(type).toBe('objectId');
-        expect(typeValue).toBeNull()
+        expect(typeValue).toBeNull();
     }
     {
-        const {type, typeValue} = getReflectionType(SubModel, 'data');
+        const { type, typeValue } = getReflectionType(SubModel, 'data');
         expect(type).toBe('class');
-        expect(typeValue).toBe(DataValue)
+        expect(typeValue).toBe(DataValue);
     }
     {
-        const {type, typeValue} = getReflectionType(SubModel, 'data2');
+        const { type, typeValue } = getReflectionType(SubModel, 'data2');
         expect(type).toBe('class');
-        expect(typeValue).toBe(DataValue2)
+        expect(typeValue).toBe(DataValue2);
     }
 });
 
@@ -216,11 +221,11 @@ test('more decorator', () => {
     {
         const instance = plainToClass(Model, {
             bool: 'wow',
-            whatever: {'any': false}
+            whatever: { any: false },
         });
 
         expect(instance.bool).toBeFalse();
-        expect(instance.whatever).toEqual({any: false});
+        expect(instance.whatever).toEqual({ any: false });
     }
 
     {
@@ -287,7 +292,7 @@ test('binary', () => {
         preview: Buffer = new Buffer('FooBar', 'utf8');
     }
 
-    const {type, typeValue} = getReflectionType(Model, 'preview');
+    const { type, typeValue } = getReflectionType(Model, 'preview');
     expect(type).toBe('binary');
     expect(typeValue).toBeNull();
 

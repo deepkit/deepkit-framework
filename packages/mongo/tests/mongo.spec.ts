@@ -1,15 +1,22 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
 import {
     BinaryType,
-    DatabaseName, Entity, getCollectionName, getDatabaseName, getEntityName, ID, MongoIdType,
-    plainToClass, StringType,
-} from "@marcj/marshal";
-import {Binary, ObjectID, MongoClient} from "mongodb";
-import {Database} from "../src/database";
-import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
-import {uuid4Stringify} from "../src/mapping";
-import {Buffer} from "buffer";
+    DatabaseName,
+    Entity,
+    getCollectionName,
+    getDatabaseName,
+    getEntityName,
+    ID,
+    MongoIdType,
+    plainToClass,
+    StringType,
+} from '@marcj/marshal';
+import { Binary, ObjectID, MongoClient } from 'mongodb';
+import { Database } from '../src/database';
+import { SimpleModel, SuperSimple } from '@marcj/marshal/tests/entities';
+import { uuid4Stringify } from '../src/mapping';
+import { Buffer } from 'buffer';
 
 let connection: MongoClient;
 
@@ -18,7 +25,9 @@ afterEach(async () => {
 });
 
 test('test save model', async () => {
-    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    connection = await MongoClient.connect('mongodb://localhost:27017', {
+        useNewUrlParser: true,
+    });
     await connection.db('testing').dropDatabase();
     const database = new Database(connection, 'testing');
 
@@ -32,17 +41,25 @@ test('test save model', async () => {
     expect((<any>instance)['version']).toBe(1);
 
     expect(await database.count(SimpleModel)).toBe(1);
-    expect(await database.count(SimpleModel, {name: 'myName'})).toBe(1);
-    expect(await database.count(SimpleModel, {name: 'MyNameNOTEXIST'})).toBe(0);
+    expect(await database.count(SimpleModel, { name: 'myName' })).toBe(1);
+    expect(await database.count(SimpleModel, { name: 'MyNameNOTEXIST' })).toBe(
+        0
+    );
 
     expect(await database.has(SimpleModel)).toBeTrue();
-    expect(await database.has(SimpleModel, {name: 'myName'})).toBeTrue();
-    expect(await database.has(SimpleModel, {name: 'myNameNOTEXIST'})).toBeFalse();
+    expect(await database.has(SimpleModel, { name: 'myName' })).toBeTrue();
+    expect(
+        await database.has(SimpleModel, { name: 'myNameNOTEXIST' })
+    ).toBeFalse();
 
-    expect(await database.get(SimpleModel, {name: 'myName'})).not.toBeNull();
-    expect(await database.get(SimpleModel, {name: 'myNameNOTEXIST'})).toBeNull();
+    expect(await database.get(SimpleModel, { name: 'myName' })).not.toBeNull();
+    expect(
+        await database.get(SimpleModel, { name: 'myNameNOTEXIST' })
+    ).toBeNull();
 
-    const collection = connection.db('testing').collection(getCollectionName(SimpleModel));
+    const collection = connection
+        .db('testing')
+        .collection(getCollectionName(SimpleModel));
     const mongoItem = await collection.find().toArray();
     expect(mongoItem).toBeArrayOfSize(1);
     expect(mongoItem[0].name).toBe('myName');
@@ -50,12 +67,12 @@ test('test save model', async () => {
     expect(mongoItem[0].id).toBeInstanceOf(Binary);
     expect(uuid4Stringify(mongoItem[0].id)).toBe(instance.id);
 
-    const found = await database.get(SimpleModel, {id: instance.id});
+    const found = await database.get(SimpleModel, { id: instance.id });
     expect(found).toBeInstanceOf(SimpleModel);
     expect(found!.name).toBe('myName');
     expect(found!.id).toBe(instance.id);
 
-    const list = await database.find(SimpleModel, {id: instance.id});
+    const list = await database.find(SimpleModel, { id: instance.id });
     expect(list[0]).toBeInstanceOf(SimpleModel);
     expect(list[0].name).toBe('myName');
     expect(list[0].id).toBe(instance.id);
@@ -65,38 +82,52 @@ test('test save model', async () => {
     expect(listAll[0].name).toBe('myName');
     expect(listAll[0].id).toBe(instance.id);
 
-    expect(await database.patch(SimpleModel, {name: 'noneExisting'}, {name: 'myName2'})).toBeNull();
+    expect(
+        await database.patch(
+            SimpleModel,
+            { name: 'noneExisting' },
+            { name: 'myName2' }
+        )
+    ).toBeNull();
 
     const notExisting = new SimpleModel('Hi');
     expect(await database.update(SimpleModel, notExisting)).toBeNull();
 
-    expect(await database.patch(SimpleModel, {id: instance.id}, {name: 'myName2'})).toBe((<any>instance)['version'] + 1);
+    expect(
+        await database.patch(
+            SimpleModel,
+            { id: instance.id },
+            { name: 'myName2' }
+        )
+    ).toBe((<any>instance)['version'] + 1);
 
     {
-        const found = await database.get(SimpleModel, {id: instance.id});
+        const found = await database.get(SimpleModel, { id: instance.id });
         expect(found).toBeInstanceOf(SimpleModel);
         expect(found!.name).toBe('myName2');
     }
 
     instance.name = 'New Name';
     await database.update(SimpleModel, instance);
-    expect(await database.has(SimpleModel, {name: 'MyName'})).toBeFalse();
-    expect(await database.has(SimpleModel, {name: 'New Name'})).toBeTrue();
+    expect(await database.has(SimpleModel, { name: 'MyName' })).toBeFalse();
+    expect(await database.has(SimpleModel, { name: 'New Name' })).toBeTrue();
 
     instance.name = 'New Name 2';
-    await database.update(SimpleModel, instance, {noResult: '2132'});
-    expect(await database.has(SimpleModel, {name: 'MyName'})).toBeFalse();
-    expect(await database.has(SimpleModel, {name: 'MyName 2'})).toBeFalse();
-    expect(await database.has(SimpleModel, {name: 'New Name'})).toBeTrue();
+    await database.update(SimpleModel, instance, { noResult: '2132' });
+    expect(await database.has(SimpleModel, { name: 'MyName' })).toBeFalse();
+    expect(await database.has(SimpleModel, { name: 'MyName 2' })).toBeFalse();
+    expect(await database.has(SimpleModel, { name: 'New Name' })).toBeTrue();
 
-    await database.update(SimpleModel, instance, {id: instance.id});
-    expect(await database.has(SimpleModel, {name: 'MyName'})).toBeFalse();
-    expect(await database.has(SimpleModel, {name: 'New Name'})).toBeFalse();
-    expect(await database.has(SimpleModel, {name: 'New Name 2'})).toBeTrue();
+    await database.update(SimpleModel, instance, { id: instance.id });
+    expect(await database.has(SimpleModel, { name: 'MyName' })).toBeFalse();
+    expect(await database.has(SimpleModel, { name: 'New Name' })).toBeFalse();
+    expect(await database.has(SimpleModel, { name: 'New Name 2' })).toBeTrue();
 });
 
 test('test delete', async () => {
-    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    connection = await MongoClient.connect('mongodb://localhost:27017', {
+        useNewUrlParser: true,
+    });
     await connection.db('testing').dropDatabase();
     const database = new Database(connection, 'testing');
 
@@ -112,44 +143,46 @@ test('test delete', async () => {
     await database.add(SimpleModel, instance2);
 
     expect(await database.count(SimpleModel)).toBe(2);
-    expect(await database.count(SimpleModel, {name: 'myName1'})).toBe(1);
-    expect(await database.count(SimpleModel, {name: 'myName2'})).toBe(1);
-    expect(await database.count(SimpleModel, {name: 'myName3'})).toBe(0);
+    expect(await database.count(SimpleModel, { name: 'myName1' })).toBe(1);
+    expect(await database.count(SimpleModel, { name: 'myName2' })).toBe(1);
+    expect(await database.count(SimpleModel, { name: 'myName3' })).toBe(0);
 
     await database.remove(SimpleModel, instance1.id);
 
     expect(await database.count(SimpleModel)).toBe(1);
-    expect(await database.count(SimpleModel, {name: 'myName1'})).toBe(0);
-    expect(await database.count(SimpleModel, {name: 'myName2'})).toBe(1);
-    expect(await database.count(SimpleModel, {name: 'myName3'})).toBe(0);
+    expect(await database.count(SimpleModel, { name: 'myName1' })).toBe(0);
+    expect(await database.count(SimpleModel, { name: 'myName2' })).toBe(1);
+    expect(await database.count(SimpleModel, { name: 'myName3' })).toBe(0);
 
     await database.remove(SimpleModel, instance2.id);
 
     expect(await database.count(SimpleModel)).toBe(0);
-    expect(await database.count(SimpleModel, {name: 'myName1'})).toBe(0);
-    expect(await database.count(SimpleModel, {name: 'myName2'})).toBe(0);
-    expect(await database.count(SimpleModel, {name: 'myName3'})).toBe(0);
+    expect(await database.count(SimpleModel, { name: 'myName1' })).toBe(0);
+    expect(await database.count(SimpleModel, { name: 'myName2' })).toBe(0);
+    expect(await database.count(SimpleModel, { name: 'myName3' })).toBe(0);
 
     await database.add(SimpleModel, instance1);
     await database.add(SimpleModel, instance2);
     expect(await database.count(SimpleModel)).toBe(2);
 
-    await database.deleteMany(SimpleModel, {name: /myName[0-9]/});
+    await database.deleteMany(SimpleModel, { name: /myName[0-9]/ });
     expect(await database.count(SimpleModel)).toBe(0);
 
     await database.add(SimpleModel, instance1);
     await database.add(SimpleModel, instance2);
     expect(await database.count(SimpleModel)).toBe(2);
 
-    await database.deleteOne(SimpleModel, {name: /myName[0-9]/});
+    await database.deleteOne(SimpleModel, { name: /myName[0-9]/ });
     expect(await database.count(SimpleModel)).toBe(1);
 
-    await database.deleteOne(SimpleModel, {name: /myName[0-9]/});
+    await database.deleteOne(SimpleModel, { name: /myName[0-9]/ });
     expect(await database.count(SimpleModel)).toBe(0);
 });
 
 test('test super simple model', async () => {
-    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    connection = await MongoClient.connect('mongodb://localhost:27017', {
+        useNewUrlParser: true,
+    });
     await connection.db('testing').dropDatabase();
     const database = new Database(connection, 'testing');
 
@@ -177,7 +210,9 @@ test('test super simple model', async () => {
 });
 
 test('test databaseName', async () => {
-    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    connection = await MongoClient.connect('mongodb://localhost:27017', {
+        useNewUrlParser: true,
+    });
 
     await connection.db('testing2').dropDatabase();
     await connection.db('testing').dropDatabase();
@@ -205,7 +240,9 @@ test('test databaseName', async () => {
     await database.add(DifferentDataBase, instance);
     expect(instance._id).not.toBeUndefined();
 
-    const collection = connection.db('testing2').collection('differentCollection');
+    const collection = connection
+        .db('testing2')
+        .collection('differentCollection');
     expect(await collection.countDocuments()).toBe(1);
 
     const items = await database.find(DifferentDataBase);
@@ -214,7 +251,9 @@ test('test databaseName', async () => {
 });
 
 test('no id', async () => {
-    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    connection = await MongoClient.connect('mongodb://localhost:27017', {
+        useNewUrlParser: true,
+    });
     await connection.db('testing').dropDatabase();
     const database = new Database(connection, 'testing');
 
@@ -234,21 +273,27 @@ test('no id', async () => {
     await database.add(NoId, instance);
     expect(instance._id).toBeUndefined();
 
-        const dbItem = await database.get(NoId, {name: 'myName'});
-        expect(dbItem!.name).toBe('myName');
+    const dbItem = await database.get(NoId, { name: 'myName' });
+    expect(dbItem!.name).toBe('myName');
 
-        dbItem!.name = 'Changed';
+    dbItem!.name = 'Changed';
 
-    await expect(database.update(NoId, dbItem)).rejects.toThrow('Class NoId has no @ID() defined')
+    await expect(database.update(NoId, dbItem)).rejects.toThrow(
+        'Class NoId has no @ID() defined'
+    );
 });
 
 test('test factory', async () => {
-    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    connection = await MongoClient.connect('mongodb://localhost:27017', {
+        useNewUrlParser: true,
+    });
     await connection.db('testing2').dropDatabase();
     await connection.db('testing').dropDatabase();
 
     const database = new Database(async () => {
-        return await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true})
+        return await MongoClient.connect('mongodb://localhost:27017', {
+            useNewUrlParser: true,
+        });
     }, 'testing');
 
     @Entity('DifferentDataBase', 'differentCollection')
@@ -273,7 +318,9 @@ test('test factory', async () => {
     await database.add(DifferentDataBase, instance);
     expect(instance._id).not.toBeUndefined();
 
-    const collection = connection.db('testing2').collection('differentCollection');
+    const collection = connection
+        .db('testing2')
+        .collection('differentCollection');
     expect(await collection.countDocuments()).toBe(1);
 
     const items = await database.find(DifferentDataBase);
@@ -281,9 +328,10 @@ test('test factory', async () => {
     expect(items[0].name).toBe(instance.name);
 });
 
-
 test('second object id', async () => {
-    connection = await MongoClient.connect('mongodb://localhost:27017', {useNewUrlParser: true});
+    connection = await MongoClient.connect('mongodb://localhost:27017', {
+        useNewUrlParser: true,
+    });
     await connection.db('testing').dropDatabase();
     const database = new Database(connection, 'testing');
 
@@ -311,13 +359,17 @@ test('second object id', async () => {
 
     await database.add(SecondObjectId, instance);
 
-    const dbItem = await database.get(SecondObjectId, {name: 'myName'});
+    const dbItem = await database.get(SecondObjectId, { name: 'myName' });
     expect(dbItem!.name).toBe('myName');
 
-    const dbItemBySecondId = await database.get(SecondObjectId, {secondId: '5bf4a1ccce060e0b38864c9e'});
+    const dbItemBySecondId = await database.get(SecondObjectId, {
+        secondId: '5bf4a1ccce060e0b38864c9e',
+    });
     expect(dbItemBySecondId!.name).toBe('myName');
 
-    const collection = connection.db('testing').collection(getCollectionName(SecondObjectId));
+    const collection = connection
+        .db('testing')
+        .collection(getCollectionName(SecondObjectId));
     const mongoItem = await collection.find().toArray();
     expect(mongoItem).toBeArrayOfSize(1);
     expect(mongoItem[0].name).toBe('myName');
@@ -329,5 +381,4 @@ test('second object id', async () => {
     expect(mongoItem[0].secondId).toBeInstanceOf(ObjectID);
     expect(mongoItem[0]._id.toHexString()).toBe(instance._id);
     expect(mongoItem[0].secondId.toHexString()).toBe(instance.secondId);
-
 });

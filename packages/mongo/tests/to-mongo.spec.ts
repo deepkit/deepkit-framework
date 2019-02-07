@@ -1,21 +1,27 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
 import {
     BinaryType,
     classToPlain,
     EnumType,
-    getReflectionType, getResolvedReflection,
+    getReflectionType,
+    getResolvedReflection,
     MongoIdType,
     plainToClass,
-    UUIDType
-} from "@marcj/marshal";
-import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
-import {Binary, ObjectID} from "mongodb";
-import {classToMongo, mongoToClass, partialClassToMongo, partialPlainToMongo} from "../src/mapping";
-import {Buffer} from "buffer";
-import {DocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
-import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
-import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
+    UUIDType,
+} from '@marcj/marshal';
+import { Plan, SimpleModel, SubModel } from '@marcj/marshal/tests/entities';
+import { Binary, ObjectID } from 'mongodb';
+import {
+    classToMongo,
+    mongoToClass,
+    partialClassToMongo,
+    partialPlainToMongo,
+} from '../src/mapping';
+import { Buffer } from 'buffer';
+import { DocumentClass } from '@marcj/marshal/tests/document-scenario/DocumentClass';
+import { PageCollection } from '@marcj/marshal/tests/document-scenario/PageCollection';
+import { PageClass } from '@marcj/marshal/tests/document-scenario/PageClass';
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');
@@ -23,7 +29,6 @@ test('test simple model', () => {
 
     expect(mongo['id']).toBeInstanceOf(Binary);
     expect(mongo['name']).toBe('myName');
-
 });
 
 test('test simple model all fields', () => {
@@ -92,7 +97,6 @@ test('convert IDs and invalid values', () => {
     }).toThrow('Invalid UUID given in property');
 });
 
-
 test('binary', () => {
     class Model {
         @BinaryType()
@@ -107,7 +111,6 @@ test('binary', () => {
     expect((mongo.preview as Binary).length()).toBe(6);
 });
 
-
 test('binary from mongo', () => {
     class Model {
         @BinaryType()
@@ -115,18 +118,17 @@ test('binary from mongo', () => {
     }
 
     const i = mongoToClass(Model, {
-        preview: new Binary(new Buffer('FooBar', 'utf8'))
+        preview: new Binary(new Buffer('FooBar', 'utf8')),
     });
 
     expect(i.preview.length).toBe(6);
     expect(i.preview.toString('utf8')).toBe('FooBar');
 });
 
-
 test('partial 2', () => {
     const instance = partialClassToMongo(SimpleModel, {
         name: 'Hi',
-        'children.0.label': 'Foo'
+        'children.0.label': 'Foo',
     });
 
     expect(instance).not.toBeInstanceOf(SimpleModel);
@@ -136,40 +138,43 @@ test('partial 2', () => {
     expect(instance['children.0.label']).toBe('Foo');
 
     {
-        expect(partialClassToMongo(SimpleModel, {
-            'children.0.label': 2
-        })).toEqual({'children.0.label': '2'});
+        expect(
+            partialClassToMongo(SimpleModel, {
+                'children.0.label': 2,
+            })
+        ).toEqual({ 'children.0.label': '2' });
 
         const i = partialClassToMongo(SimpleModel, {
-            'children.0': new SubModel('3')
+            'children.0': new SubModel('3'),
         });
         expect(i['children.0'].label).toBe('3');
     }
 
     {
-        expect(partialPlainToMongo(SimpleModel, {
-            'children.0.label': 2
-        })).toEqual({'children.0.label': '2'});
+        expect(
+            partialPlainToMongo(SimpleModel, {
+                'children.0.label': 2,
+            })
+        ).toEqual({ 'children.0.label': '2' });
 
         const i = partialPlainToMongo(SimpleModel, {
-            'children.0': {label: 3}
+            'children.0': { label: 3 },
         });
         expect(i['children.0'].label).toBe('3');
     }
 });
 
-
 test('partial 3', () => {
     {
         const i = partialClassToMongo(SimpleModel, {
-            'children': [new SubModel('3')]
+            children: [new SubModel('3')],
         });
         expect(i['children'][0].label).toBe('3');
     }
 
     {
         const i = partialPlainToMongo(SimpleModel, {
-            'children': [{label: 3}]
+            children: [{ label: 3 }],
         });
         expect(i['children'][0].label).toBe('3');
     }
@@ -177,23 +182,26 @@ test('partial 3', () => {
 
 test('partial with required', () => {
     {
-        expect(() => {partialPlainToMongo(SimpleModel, {
-            'children': [{}]
-        })}).toThrow('Missing value for SubModel::children. Can not convert to mongo');
+        expect(() => {
+            partialPlainToMongo(SimpleModel, {
+                children: [{}],
+            });
+        }).toThrow(
+            'Missing value for SubModel::children. Can not convert to mongo'
+        );
     }
 });
-
 
 test('partial 4', () => {
     {
         const i = partialClassToMongo(SimpleModel, {
-            'stringChildrenCollection.0': 4
+            'stringChildrenCollection.0': 4,
         });
         expect(i['stringChildrenCollection.0']).toBe('4');
     }
     {
         const i = partialPlainToMongo(SimpleModel, {
-            'stringChildrenCollection.0': 4
+            'stringChildrenCollection.0': 4,
         });
         expect(i['stringChildrenCollection.0']).toBe('4');
     }
@@ -202,29 +210,28 @@ test('partial 4', () => {
 test('partial 5', () => {
     {
         const i = partialClassToMongo(SimpleModel, {
-            'childrenMap.foo.label': 5
+            'childrenMap.foo.label': 5,
         });
         expect(i['childrenMap.foo.label']).toBe('5');
     }
     {
         const i = partialPlainToMongo(SimpleModel, {
-            'childrenMap.foo.label': 5
+            'childrenMap.foo.label': 5,
         });
         expect(i['childrenMap.foo.label']).toBe('5');
     }
 });
 
-
 test('partial 6', () => {
     {
         const i = partialClassToMongo(SimpleModel, {
-            'types': [6, 7]
+            types: [6, 7],
         });
         expect(i['types']).toEqual(['6', '7']);
     }
     {
         const i = partialPlainToMongo(SimpleModel, {
-            'types': [6, 7]
+            types: [6, 7],
         });
         expect(i['types']).toEqual(['6', '7']);
     }
@@ -233,24 +240,24 @@ test('partial 6', () => {
 test('partial 7', () => {
     {
         const i = partialClassToMongo(SimpleModel, {
-            'types.0': [7]
+            'types.0': [7],
         });
         expect(i['types.0']).toEqual('7');
     }
     {
         const i = partialPlainToMongo(SimpleModel, {
-            'types.0': [7]
+            'types.0': [7],
         });
         expect(i['types.0']).toEqual('7');
     }
 });
 
 test('partial document', () => {
-    const doc = new DocumentClass;
+    const doc = new DocumentClass();
     const document = partialClassToMongo(DocumentClass, {
         'pages.0.name': 5,
         'pages.0.children.0.name': 6,
-        'pages.0.children': new PageCollection([new PageClass(doc, '7')])
+        'pages.0.children': new PageCollection([new PageClass(doc, '7')]),
     });
     expect(document['pages.0.name']).toBe('5');
     expect(document['pages.0.children.0.name']).toBe('6');
@@ -275,7 +282,9 @@ test('partial document', () => {
         map: false,
     });
 
-    expect(getResolvedReflection(DocumentClass, 'pages.0.children.0.name')).toEqual({
+    expect(
+        getResolvedReflection(DocumentClass, 'pages.0.children.0.name')
+    ).toEqual({
         resolvedClassType: PageClass,
         resolvedPropertyName: 'name',
         type: 'string',

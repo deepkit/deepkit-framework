@@ -1,24 +1,27 @@
-import {Binary, ObjectID} from "mongodb";
+import { Binary, ObjectID } from 'mongodb';
 import {
     classToPlain,
     ClassType,
     deleteExcludedPropertiesFor,
     getClassName,
     getClassPropertyName,
-    getDecorator, getEnumKeys,
+    getDecorator,
+    getEnumKeys,
     getParentReferenceClass,
-    getRegisteredProperties, getResolvedReflection,
+    getRegisteredProperties,
+    getResolvedReflection,
     getValidEnumValue,
     isArray,
     isEnumAllowLabelsAsValue,
-    isObject, isOptional,
+    isObject,
+    isOptional,
     isUndefined,
     isValidEnumValue,
     toClass,
-    ToClassState
-} from "@marcj/marshal";
-import * as clone from "clone";
-import * as mongoUuid from "mongo-uuid";
+    ToClassState,
+} from '@marcj/marshal';
+import * as clone from 'clone';
+import * as mongoUuid from 'mongo-uuid';
 
 export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);
@@ -30,7 +33,7 @@ export function uuid4Stringify(u: Binary | string): string {
 
 export function partialClassToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
-    target?: { [path: string]: any },
+    target?: { [path: string]: any }
 ): { [path: string]: any } {
     if (!target) return {};
 
@@ -38,7 +41,7 @@ export function partialClassToMongo<T, K extends keyof T>(
     for (const i in target) {
         if (!target.hasOwnProperty(i)) continue;
 
-        if (target[i] as any instanceof RegExp) {
+        if ((target[i] as any) instanceof RegExp) {
             continue;
         }
 
@@ -50,7 +53,7 @@ export function partialClassToMongo<T, K extends keyof T>(
 
 export function partialPlainToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
-    target?: { [path: string]: any },
+    target?: { [path: string]: any }
 ): { [path: string]: any } {
     if (!target) return {};
 
@@ -66,7 +69,7 @@ export function partialPlainToMongo<T, K extends keyof T>(
 
 export function partialMongoToPlain<T, K extends keyof T>(
     classType: ClassType<T>,
-    target?: { [path: string]: any },
+    target?: { [path: string]: any }
 ): { [path: string]: any } {
     if (!target) return {};
 
@@ -88,7 +91,7 @@ export function propertyMongoToPlain<T>(
     const reflection = getResolvedReflection(classType, propertyName);
     if (!reflection) return propertyValue;
 
-    const {type} = reflection;
+    const { type } = reflection;
 
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -103,7 +106,11 @@ export function propertyMongoToPlain<T>(
             return uuid4Stringify(value);
         }
 
-        if ('objectId' === type && 'string' !== typeof value && value.toHexString()) {
+        if (
+            'objectId' === type &&
+            'string' !== typeof value &&
+            value.toHexString()
+        ) {
             return (<ObjectID>value).toHexString();
         }
 
@@ -125,7 +132,14 @@ export function propertyClassToMongo<T>(
     const reflection = getResolvedReflection(classType, propertyName);
     if (!reflection) return propertyValue;
 
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+    const {
+        resolvedClassType,
+        resolvedPropertyName,
+        type,
+        typeValue,
+        array,
+        map,
+    } = reflection;
 
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -140,7 +154,12 @@ export function propertyClassToMongo<T>(
             try {
                 return new ObjectID(value);
             } catch (e) {
-                throw new Error(`Invalid ObjectID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
+                throw new Error(
+                    `Invalid ObjectID given in property ${getClassPropertyName(
+                        resolvedClassType,
+                        resolvedPropertyName
+                    )}: '${value}'`
+                );
             }
         }
 
@@ -148,7 +167,12 @@ export function propertyClassToMongo<T>(
             try {
                 return uuid4Binary(value);
             } catch (e) {
-                throw new Error(`Invalid UUID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
+                throw new Error(
+                    `Invalid UUID given in property ${getClassPropertyName(
+                        resolvedClassType,
+                        resolvedPropertyName
+                    )}: '${value}'`
+                );
             }
         }
 
@@ -178,7 +202,7 @@ export function propertyClassToMongo<T>(
 
     if (array) {
         if (isArray(propertyValue)) {
-            return propertyValue.map(v => convert(v));
+            return propertyValue.map((v) => convert(v));
         }
         return [];
     }
@@ -205,7 +229,14 @@ export function propertyPlainToMongo<T>(
     const reflection = getResolvedReflection(classType, propertyName);
     if (!reflection) return propertyValue;
 
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+    const {
+        resolvedClassType,
+        resolvedPropertyName,
+        type,
+        typeValue,
+        array,
+        map,
+    } = reflection;
 
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -220,7 +251,12 @@ export function propertyPlainToMongo<T>(
             try {
                 return new ObjectID(value);
             } catch (e) {
-                throw new Error(`Invalid ObjectID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
+                throw new Error(
+                    `Invalid ObjectID given in property ${getClassPropertyName(
+                        resolvedClassType,
+                        resolvedPropertyName
+                    )}: '${value}'`
+                );
             }
         }
 
@@ -228,10 +264,18 @@ export function propertyPlainToMongo<T>(
             try {
                 return uuid4Binary(value);
             } catch (e) {
-                throw new Error(`Invalid UUID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
+                throw new Error(
+                    `Invalid UUID given in property ${getClassPropertyName(
+                        resolvedClassType,
+                        resolvedPropertyName
+                    )}: '${value}'`
+                );
             }
         }
-        if ('date' === type && ('string' === typeof value || 'number' === typeof value)) {
+        if (
+            'date' === type &&
+            ('string' === typeof value || 'number' === typeof value)
+        ) {
             return new Date(value);
         }
 
@@ -269,10 +313,19 @@ export function propertyPlainToMongo<T>(
                     if (isOptional(typeValue, propertyName)) {
                         continue;
                     }
-                    throw new Error(`Missing value for ${getClassPropertyName(typeValue, propertyName)}. Can not convert to mongo.`);
+                    throw new Error(
+                        `Missing value for ${getClassPropertyName(
+                            typeValue,
+                            propertyName
+                        )}. Can not convert to mongo.`
+                    );
                 }
 
-                value[property] = propertyPlainToMongo(typeValue, property, value[property]);
+                value[property] = propertyPlainToMongo(
+                    typeValue,
+                    property,
+                    value[property]
+                );
             }
         }
 
@@ -281,7 +334,7 @@ export function propertyPlainToMongo<T>(
 
     if (array) {
         if (isArray(propertyValue)) {
-            return propertyValue.map(v => convert(v));
+            return propertyValue.map((v) => convert(v));
         }
         return [];
     }
@@ -319,15 +372,25 @@ export function propertyMongoToClass<T>(
     const reflection = getResolvedReflection(classType, propertyName);
     if (!reflection) return propertyValue;
 
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+    const {
+        resolvedClassType,
+        resolvedPropertyName,
+        type,
+        typeValue,
+        array,
+        map,
+    } = reflection;
 
     function convert(value: any) {
-
         if (value && 'uuid' === type && 'string' !== typeof value) {
             return uuid4Stringify(value);
         }
 
-        if ('objectId' === type && 'string' !== typeof value && value.toHexString()) {
+        if (
+            'objectId' === type &&
+            'string' !== typeof value &&
+            value.toHexString()
+        ) {
             return (<ObjectID>value).toHexString();
         }
 
@@ -359,9 +422,19 @@ export function propertyMongoToClass<T>(
         }
 
         if ('enum' === type) {
-            const allowLabelsAsValue = isEnumAllowLabelsAsValue(resolvedClassType, resolvedPropertyName);
-            if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                throw new Error(`Invalid ENUM given in property ${resolvedPropertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+            const allowLabelsAsValue = isEnumAllowLabelsAsValue(
+                resolvedClassType,
+                resolvedPropertyName
+            );
+            if (
+                undefined !== value &&
+                !isValidEnumValue(typeValue, value, allowLabelsAsValue)
+            ) {
+                throw new Error(
+                    `Invalid ENUM given in property ${resolvedPropertyName}: ${value}, valid: ${getEnumKeys(
+                        typeValue
+                    ).join(',')}`
+                );
             }
 
             return getValidEnumValue(typeValue, value, allowLabelsAsValue);
@@ -370,10 +443,22 @@ export function propertyMongoToClass<T>(
         if (type === 'class') {
             if (value instanceof typeValue) {
                 //already the target type, this is an error
-                throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
+                throw new Error(
+                    `${getClassPropertyName(
+                        resolvedClassType,
+                        resolvedPropertyName
+                    )} is already in target format. Are you calling plainToClass() with an class instance?`
+                );
             }
 
-            return toClass(typeValue, clone(value, false, 1), propertyMongoToClass, parents, incomingLevel, state);
+            return toClass(
+                typeValue,
+                clone(value, false, 1),
+                propertyMongoToClass,
+                parents,
+                incomingLevel,
+                state
+            );
         }
 
         return value;
@@ -381,7 +466,7 @@ export function propertyMongoToClass<T>(
 
     if (array) {
         if (isArray(propertyValue)) {
-            return propertyValue.map(v => convert(v));
+            return propertyValue.map((v) => convert(v));
         }
         return [];
     }
@@ -400,9 +485,20 @@ export function propertyMongoToClass<T>(
     return convert(propertyValue);
 }
 
-export function mongoToClass<T>(classType: ClassType<T>, target: any, parents?: any[]): T {
+export function mongoToClass<T>(
+    classType: ClassType<T>,
+    target: any,
+    parents?: any[]
+): T {
     const state = new ToClassState();
-    const item = toClass(classType, clone(target, false, 1), propertyMongoToClass, parents || [], 1, state);
+    const item = toClass(
+        classType,
+        clone(target, false, 1),
+        propertyMongoToClass,
+        parents || [],
+        1,
+        state
+    );
 
     for (const callback of state.onFullLoadCallbacks) {
         callback();
@@ -415,11 +511,18 @@ export function mongoToPlain<T>(classType: ClassType<T>, target: any) {
     return classToPlain(classType, mongoToClass(classType, target));
 }
 
-export function plainToMongo<T>(classType: ClassType<T>, target: {[k: string]: any}): any {
+export function plainToMongo<T>(
+    classType: ClassType<T>,
+    target: { [k: string]: any }
+): any {
     const result: any = {};
 
     if (target instanceof classType) {
-        throw new Error(`Could not plainToMongo since target is a class instance of ${getClassName(classType)}`);
+        throw new Error(
+            `Could not plainToMongo since target is a class instance of ${getClassName(
+                classType
+            )}`
+        );
     }
 
     for (const propertyName of getRegisteredProperties(classType)) {
@@ -432,7 +535,11 @@ export function plainToMongo<T>(classType: ClassType<T>, target: {[k: string]: a
             continue;
         }
 
-        result[propertyName] = propertyPlainToMongo(classType, propertyName, (target as any)[propertyName]);
+        result[propertyName] = propertyPlainToMongo(
+            classType,
+            propertyName,
+            (target as any)[propertyName]
+        );
     }
 
     deleteExcludedPropertiesFor(classType, result, 'mongo');
@@ -443,12 +550,20 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
     const result: any = {};
 
     if (!(target instanceof classType)) {
-        throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
+        throw new Error(
+            `Could not classToMongo since target is not a class instance of ${getClassName(
+                classType
+            )}`
+        );
     }
 
     const decoratorName = getDecorator(classType);
     if (decoratorName) {
-        return propertyClassToMongo(classType, decoratorName, (target as any)[decoratorName]);
+        return propertyClassToMongo(
+            classType,
+            decoratorName,
+            (target as any)[decoratorName]
+        );
     }
 
     for (const propertyName of getRegisteredProperties(classType)) {
@@ -461,13 +576,16 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
             continue;
         }
 
-        result[propertyName] = propertyClassToMongo(classType, propertyName, (target as any)[propertyName]);
+        result[propertyName] = propertyClassToMongo(
+            classType,
+            propertyName,
+            (target as any)[propertyName]
+        );
     }
 
     deleteExcludedPropertiesFor(classType, result, 'mongo');
     return result;
 }
-
 
 /**
  * Takes a mongo filter query and converts its plain values to classType's mongo types, so you
@@ -476,7 +594,7 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
 export function convertPlainQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    fieldNamesMap: {[name: string]: boolean} = {}
+    fieldNamesMap: { [name: string]: boolean } = {}
 ): { [path: string]: any } {
     const result: { [i: string]: any } = {};
 
@@ -486,7 +604,9 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
         const fieldValue: any = target[i];
 
         if (i[0] === '$') {
-            result[i] = (fieldValue as any[]).map(v => convertPlainQueryToMongo(classType, v, fieldNamesMap));
+            result[i] = (fieldValue as any[]).map((v) =>
+                convertPlainQueryToMongo(classType, v, fieldNamesMap)
+            );
             continue;
         }
 
@@ -500,16 +620,42 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
                     result[i] = propertyClassToMongo(classType, i, fieldValue);
                     break;
                 } else {
-                    if (j === '$and' || j === '$or' || j === '$nor' || j === '$not') {
-                        (fieldValue as any)[j] = (queryValue as any[]).map(v => convertPlainQueryToMongo(classType, v, fieldNamesMap));
+                    if (
+                        j === '$and' ||
+                        j === '$or' ||
+                        j === '$nor' ||
+                        j === '$not'
+                    ) {
+                        (fieldValue as any)[j] = (queryValue as any[]).map(
+                            (v) =>
+                                convertPlainQueryToMongo(
+                                    classType,
+                                    v,
+                                    fieldNamesMap
+                                )
+                        );
                     } else if (j === '$in' || j === '$nin' || j === '$all') {
                         fieldNamesMap[i] = true;
-                        (fieldValue as any)[j] = (queryValue as any[]).map(v => propertyClassToMongo(classType, i, v));
-                    } else if (j === '$text' || j === '$exists' || j === '$mod' || j === '$size' || j === '$type' || j === '$regex' || j === '$where') {
+                        (fieldValue as any)[j] = (queryValue as any[]).map(
+                            (v) => propertyClassToMongo(classType, i, v)
+                        );
+                    } else if (
+                        j === '$text' ||
+                        j === '$exists' ||
+                        j === '$mod' ||
+                        j === '$size' ||
+                        j === '$type' ||
+                        j === '$regex' ||
+                        j === '$where'
+                    ) {
                         //don't transform
                     } else {
                         fieldNamesMap[i] = true;
-                        (fieldValue as any)[j] = propertyClassToMongo(classType, i, queryValue);
+                        (fieldValue as any)[j] = propertyClassToMongo(
+                            classType,
+                            i,
+                            queryValue
+                        );
                     }
                 }
             }

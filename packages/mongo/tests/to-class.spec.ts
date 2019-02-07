@@ -1,4 +1,4 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
 import {
     AnyType,
@@ -22,9 +22,12 @@ import {
     getReflectionType,
     getParentReferenceClass,
     ParentReference,
-    ClassCircular, BooleanType,
-    Optional,Class, OnLoad
-} from "@marcj/marshal";
+    ClassCircular,
+    BooleanType,
+    Optional,
+    Class,
+    OnLoad,
+} from '@marcj/marshal';
 import {
     now,
     SimpleModel,
@@ -32,12 +35,16 @@ import {
     SubModel,
     CollectionWrapper,
     StringCollectionWrapper,
-} from "@marcj/marshal/tests/entities";
-import {Binary} from "mongodb";
-import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
-import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
-import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
-import {classToMongo, mongoToClass, plainToMongo} from "../src/mapping";
+} from '@marcj/marshal/tests/entities';
+import { Binary } from 'mongodb';
+import {
+    ClassWithUnmetParent,
+    DocumentClass,
+    ImpossibleToMetDocumentClass,
+} from '@marcj/marshal/tests/document-scenario/DocumentClass';
+import { PageCollection } from '@marcj/marshal/tests/document-scenario/PageCollection';
+import { PageClass } from '@marcj/marshal/tests/document-scenario/PageClass';
+import { classToMongo, mongoToClass, plainToMongo } from '../src/mapping';
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
@@ -76,18 +83,15 @@ test('test simple model all fields', () => {
             plan: 1,
             yesNo: '1',
             created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
-            children: [
-                {label: 'fooo'},
-                {label: 'barr'},
-            ],
+            children: [{ label: 'fooo' }, { label: 'barr' }],
             childrenMap: {
                 foo: {
-                    label: 'bar'
+                    label: 'bar',
                 },
                 foo2: {
-                    label: 'bar2'
-                }
-            }
+                    label: 'bar2',
+                },
+            },
         });
 
         expect(instance).toBeInstanceOf(SimpleModel);
@@ -97,7 +101,9 @@ test('test simple model all fields', () => {
         expect(instance.yesNo).toBe(true);
         expect(instance.plan).toBe(Plan.PRO);
         expect(instance.created).toBeDate();
-        expect(instance.created).toEqual(new Date('Sat Oct 13 2018 14:17:35 GMT+0200'));
+        expect(instance.created).toEqual(
+            new Date('Sat Oct 13 2018 14:17:35 GMT+0200')
+        );
 
         expect(instance.children).toBeArrayOfSize(2);
 
@@ -146,7 +152,7 @@ test('test simple model with not mapped fields', () => {
         name: 'myName',
         type: 5,
         yesNo: '1',
-        notMapped: {a: 'foo'}
+        notMapped: { a: 'foo' },
     });
 
     expect(instance).toBeInstanceOf(SimpleModel);
@@ -164,8 +170,8 @@ test('test simple model with not mapped fields', () => {
         name: 'myName',
         type: 5,
         yesNo: 'eads',
-        notMapped: {a: 'foo'},
-        excludedForPlain: 'excludedForPlain'
+        notMapped: { a: 'foo' },
+        excludedForPlain: 'excludedForPlain',
     });
 
     expect(mongoEntry.id).toBeInstanceOf(Binary);
@@ -192,11 +198,13 @@ test('test @decorator', async () => {
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(SimpleModel, {
             name: 'myName',
-            stringChildrenCollection: ['Foo', 'Bar']
+            stringChildrenCollection: ['Foo', 'Bar'],
         });
 
         expect(instance.name).toBe('myName');
-        expect(instance.stringChildrenCollection).toBeInstanceOf(StringCollectionWrapper);
+        expect(instance.stringChildrenCollection).toBeInstanceOf(
+            StringCollectionWrapper
+        );
         expect(instance.stringChildrenCollection.items).toEqual(['Foo', 'Bar']);
 
         instance.stringChildrenCollection.add('Bar2');
@@ -212,21 +220,22 @@ test('test @decorator', async () => {
 
         const instance2 = toClass(SimpleModel, {
             name: 'myName',
-            stringChildrenCollection: false
+            stringChildrenCollection: false,
         });
 
         expect(instance2.name).toBe('myName');
-        expect(instance2.stringChildrenCollection).toBeInstanceOf(StringCollectionWrapper);
+        expect(instance2.stringChildrenCollection).toBeInstanceOf(
+            StringCollectionWrapper
+        );
         expect(instance2.stringChildrenCollection.items).toEqual([]);
     }
 });
 
 test('test childrenMap', async () => {
-
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(SimpleModel, {
             name: 'myName',
-            childrenMap: {foo: {label: 'Foo'}, bar: {label: 'Bar'}}
+            childrenMap: { foo: { label: 'Foo' }, bar: { label: 'Bar' } },
         });
 
         expect(instance.childrenMap.foo).toBeInstanceOf(SubModel);
@@ -246,8 +255,8 @@ test('test allowNull', async () => {
 
     for (const toClass of [plainToClass, mongoToClass]) {
         expect(toClass(Model, {}).name).toBe(null);
-        expect(toClass(Model, {name: null}).name).toBe(null);
-        expect(toClass(Model, {name: undefined}).name).toBe(null);
+        expect(toClass(Model, { name: null }).name).toBe(null);
+        expect(toClass(Model, { name: undefined }).name).toBe(null);
     }
 });
 
@@ -268,7 +277,11 @@ test('test OnLoad', async () => {
         @ParentReference()
         parent?: any;
 
-        constructor(name: string, onLoadCallback: (item: Sub) => void, onFullLoadCallback: (item: Sub) => void) {
+        constructor(
+            name: string,
+            onLoadCallback: (item: Sub) => void,
+            onFullLoadCallback: (item: Sub) => void
+        ) {
             this.name = name;
             this.onLoadCallback = onLoadCallback;
             this.onFullLoadCallback = onFullLoadCallback;
@@ -279,7 +292,7 @@ test('test OnLoad', async () => {
             this.onLoadCallback(this);
         }
 
-        @OnLoad({fullLoad: true})
+        @OnLoad({ fullLoad: true })
         onFullLoad() {
             this.onFullLoadCallback(this);
         }
@@ -323,10 +336,8 @@ test('test OnLoad', async () => {
 
             sub2: {
                 name: 'Hi2',
-                onLoadCallback: (item: Sub) => {
-                },
-                onFullLoadCallback: (item: Sub) => {
-                },
+                onLoadCallback: (item: Sub) => {},
+                onFullLoadCallback: (item: Sub) => {},
             },
         });
 
@@ -361,7 +372,7 @@ test('test setter/getter', async () => {
 
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(Model, {
-            fonts: [{name: 'Arial'}, {name: 'Verdana'}]
+            fonts: [{ name: 'Arial' }, { name: 'Verdana' }],
         });
 
         expect(instance.test).toBeTrue();
@@ -375,14 +386,13 @@ test('test setter/getter', async () => {
         expect(mongo._fonts).toBeUndefined();
         expect(mongo.fonts).toBeArrayOfSize(2);
     }
-
 });
 
 test('test decorator complex', async () => {
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(SimpleModel, {
             name: 'myName',
-            childrenCollection: [{label: 'Foo'}, {label: 'Bar'}]
+            childrenCollection: [{ label: 'Foo' }, { label: 'Bar' }],
         });
 
         expect(instance.name).toBe('myName');
@@ -399,40 +409,66 @@ test('test decorator complex', async () => {
         const plain = classToPlain(SimpleModel, instance);
 
         expect(plain.name).toBe('myName');
-        expect(plain.childrenCollection).toEqual([{label: 'Foo'}, {label: 'Bar'}, {label: 'Bar2'}]);
+        expect(plain.childrenCollection).toEqual([
+            { label: 'Foo' },
+            { label: 'Bar' },
+            { label: 'Bar2' },
+        ]);
 
         const mongo = classToMongo(SimpleModel, instance);
         expect(mongo.name).toBe('myName');
-        expect(mongo.childrenCollection).toEqual([{label: 'Foo'}, {label: 'Bar'}, {label: 'Bar2'}]);
+        expect(mongo.childrenCollection).toEqual([
+            { label: 'Foo' },
+            { label: 'Bar' },
+            { label: 'Bar2' },
+        ]);
     }
 });
 
 test('test @decorator with parent', async () => {
-    expect(getReflectionType(DocumentClass, 'pages')).toEqual({type: 'class', typeValue: PageCollection});
-    expect(getReflectionType(PageCollection, 'pages')).toEqual({type: 'class', typeValue: PageClass});
-    expect(getReflectionType(PageClass, 'parent')).toEqual({type: 'class', typeValue: PageClass});
-    expect(getReflectionType(PageClass, 'document')).toEqual({type: 'class', typeValue: DocumentClass});
-    expect(getReflectionType(PageClass, 'children')).toEqual({type: 'class', typeValue: PageCollection});
+    expect(getReflectionType(DocumentClass, 'pages')).toEqual({
+        type: 'class',
+        typeValue: PageCollection,
+    });
+    expect(getReflectionType(PageCollection, 'pages')).toEqual({
+        type: 'class',
+        typeValue: PageClass,
+    });
+    expect(getReflectionType(PageClass, 'parent')).toEqual({
+        type: 'class',
+        typeValue: PageClass,
+    });
+    expect(getReflectionType(PageClass, 'document')).toEqual({
+        type: 'class',
+        typeValue: DocumentClass,
+    });
+    expect(getReflectionType(PageClass, 'children')).toEqual({
+        type: 'class',
+        typeValue: PageCollection,
+    });
 
     expect(getParentReferenceClass(PageClass, 'parent')).toBe(PageClass);
 
     expect(() => {
-        const instance = mongoToClass(ClassWithUnmetParent, {
-        });
+        const instance = mongoToClass(ClassWithUnmetParent, {});
     }).toThrow('ClassWithUnmetParent::parent is defined as');
 
     expect(() => {
         const instance = mongoToClass(PageClass, {
-            name: 'myName'
+            name: 'myName',
         });
     }).toThrow('PageClass::document is in constructor has');
 
     {
         const doc = new DocumentClass();
 
-        const instance = mongoToClass(PageClass, {
-            name: 'myName'
-        }, [doc]);
+        const instance = mongoToClass(
+            PageClass,
+            {
+                name: 'myName',
+            },
+            [doc]
+        );
 
         expect(instance.document).toBe(doc);
     }
@@ -445,12 +481,12 @@ test('test @decorator with parent', async () => {
                     name: 'Foo',
                     children: [
                         {
-                            name: 'Foo.1'
-                        }
-                    ]
+                            name: 'Foo.1',
+                        },
+                    ],
                 },
-                {name: 'Bar'}
-            ]
+                { name: 'Bar' },
+            ],
         });
     }).toThrow('PageClass::document is in constructor has');
 
@@ -460,10 +496,10 @@ test('test @decorator with parent', async () => {
             page: {
                 name: 'RootPage',
                 children: [
-                    {name: 'RootPage.1'},
-                    {name: 'RootPage.2'},
-                    {name: 'RootPage.3'},
-                ]
+                    { name: 'RootPage.1' },
+                    { name: 'RootPage.2' },
+                    { name: 'RootPage.3' },
+                ],
             },
             pages: [
                 {
@@ -472,15 +508,15 @@ test('test @decorator with parent', async () => {
                         {
                             name: 'Foo.1',
                             children: [
-                                {name: 'Foo.1.1'},
-                                {name: 'Foo.1.2'},
-                                {name: 'Foo.1.3'},
-                            ]
-                        }
-                    ]
+                                { name: 'Foo.1.1' },
+                                { name: 'Foo.1.2' },
+                                { name: 'Foo.1.3' },
+                            ],
+                        },
+                    ],
                 },
-                {name: 'Bar'}
-            ]
+                { name: 'Bar' },
+            ],
         });
 
         expect(instance.name).toBe('myName');
@@ -562,9 +598,7 @@ test('test @decorator with parent', async () => {
     }
 });
 
-
 test('simple string + number + boolean', () => {
-
     class Model {
         @StringType()
         name?: string;
@@ -580,26 +614,25 @@ test('simple string + number + boolean', () => {
         const instance = toClass(Model, {
             name: 1,
             age: '2',
-            yesNo: 'false'
+            yesNo: 'false',
         });
         expect(instance.name).toBe('1');
         expect(instance.age).toBe(2);
 
-        expect(toClass(Model, {yesNo: 'false'}).yesNo).toBeFalse();
-        expect(toClass(Model, {yesNo: '0'}).yesNo).toBeFalse();
-        expect(toClass(Model, {yesNo: false}).yesNo).toBeFalse();
-        expect(toClass(Model, {yesNo: 0}).yesNo).toBeFalse();
-        expect(toClass(Model, {yesNo: 'nothing'}).yesNo).toBeFalse();
-        expect(toClass(Model, {yesNo: null}).yesNo).toBeNull();
+        expect(toClass(Model, { yesNo: 'false' }).yesNo).toBeFalse();
+        expect(toClass(Model, { yesNo: '0' }).yesNo).toBeFalse();
+        expect(toClass(Model, { yesNo: false }).yesNo).toBeFalse();
+        expect(toClass(Model, { yesNo: 0 }).yesNo).toBeFalse();
+        expect(toClass(Model, { yesNo: 'nothing' }).yesNo).toBeFalse();
+        expect(toClass(Model, { yesNo: null }).yesNo).toBeNull();
 
-        expect(toClass(Model, {yesNo: 'true'}).yesNo).toBeTrue();
-        expect(toClass(Model, {yesNo: '1'}).yesNo).toBeTrue();
-        expect(toClass(Model, {yesNo: true}).yesNo).toBeTrue();
-        expect(toClass(Model, {yesNo: 1}).yesNo).toBeTrue();
-        expect(toClass(Model, {yesNo: null}).yesNo).toBeNull();
+        expect(toClass(Model, { yesNo: 'true' }).yesNo).toBeTrue();
+        expect(toClass(Model, { yesNo: '1' }).yesNo).toBeTrue();
+        expect(toClass(Model, { yesNo: true }).yesNo).toBeTrue();
+        expect(toClass(Model, { yesNo: 1 }).yesNo).toBeTrue();
+        expect(toClass(Model, { yesNo: null }).yesNo).toBeNull();
     }
 });
-
 
 test('cloneClass', () => {
     class SubModel {
@@ -613,39 +646,39 @@ test('cloneClass', () => {
     }
 
     class Model {
-       @AnyType()
-       data: any;
+        @AnyType()
+        data: any;
 
-       @Class(DataStruct)
-       dataStruct?: DataStruct;
+        @Class(DataStruct)
+        dataStruct?: DataStruct;
 
-       @ClassArray(SubModel)
-       subs?: SubModel[];
+        @ClassArray(SubModel)
+        subs?: SubModel[];
     }
 
     const data = {
-        a: 'true'
+        a: 'true',
     };
 
     const dataStruct = {
-        name: 'Foo'
+        name: 'Foo',
     };
 
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(Model, {
             data: data,
             dataStruct: dataStruct,
-            subs: [{name: 'foo'}],
+            subs: [{ name: 'foo' }],
         });
 
-        expect(instance.data).toEqual({a: 'true'});
+        expect(instance.data).toEqual({ a: 'true' });
         expect(instance.data).not.toBe(data);
         expect(instance.dataStruct!.name).toBe('Foo');
         expect(instance.dataStruct).toEqual(dataStruct);
         expect(instance.dataStruct).not.toBe(dataStruct);
 
         const cloned = cloneClass(instance);
-        expect(cloned.data).toEqual({a: 'true'});
+        expect(cloned.data).toEqual({ a: 'true' });
         expect(cloned.data).not.toBe(data);
         expect(cloned.dataStruct!.name).toBe('Foo');
         expect(cloned.dataStruct).toEqual(dataStruct);
@@ -755,7 +788,7 @@ test('enums', () => {
                 enum2: 'x',
                 enum3: 100,
                 enum4: 'x',
-                enumLabels: 'x'
+                enumLabels: 'x',
             });
 
             expect(instance.enum1).toBe(Enum1.second);
@@ -783,25 +816,25 @@ test('enums', () => {
 
         expect(() => {
             const instance = toClass(Model, {
-                enum1: 2
+                enum1: 2,
             });
         }).toThrow('Invalid ENUM given in property');
 
         expect(() => {
             const instance = plainToClass(Model, {
-                enum2: 2
+                enum2: 2,
             });
         }).toThrow('Invalid ENUM given in property');
 
         expect(() => {
             const instance = toClass(Model, {
-                enum3: 2
+                enum3: 2,
             });
         }).toThrow('Invalid ENUM given in property');
 
         expect(() => {
             const instance = toClass(Model, {
-                enum3: 4
+                enum3: 4,
             });
         }).toThrow('Invalid ENUM given in property');
     }

@@ -1,6 +1,10 @@
-import {Types} from "./mapper";
-import {ClassType, getClassName} from "./utils";
-import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validation";
+import { Types } from './mapper';
+import { ClassType, getClassName } from './utils';
+import {
+    AddValidator,
+    PropertyValidator,
+    PropertyValidatorError,
+} from './validation';
 
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
 
@@ -8,7 +12,11 @@ export function Entity<T>(name: string, collectionName?: string) {
     return (target: ClassType<T>) => {
         RegisteredEntities[name] = target;
         Reflect.defineMetadata('marshal:entityName', name, target);
-        Reflect.defineMetadata('marshal:collectionName', collectionName || (name + 's'), target);
+        Reflect.defineMetadata(
+            'marshal:collectionName',
+            collectionName || name + 's',
+            target
+        );
     };
 }
 
@@ -33,7 +41,12 @@ export function ID() {
 
 export function ParentReference<T>() {
     return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:parentReference', true, target, property);
+        Reflect.defineMetadata(
+            'marshal:parentReference',
+            true,
+            target,
+            property
+        );
     };
 }
 
@@ -53,7 +66,7 @@ export function OnLoad(options: { fullLoad?: boolean } = {}) {
     return (target: Object, property: string) => {
         addMetadataArray('marshal:onLoad', target, {
             property: property,
-            options: options
+            options: options,
         });
     };
 }
@@ -80,9 +93,8 @@ export function ExcludeToPlain() {
 }
 
 export function registerProperty(target: Object, property: string) {
-    addMetadataArray('marshal:properties', target, property)
+    addMetadataArray('marshal:properties', target, property);
 }
-
 
 export function Type(type: Types) {
     return (target: Object, property: string) => {
@@ -108,26 +120,49 @@ export function MapType() {
 export function ClassCircular<T>(classType: () => ClassType<T>) {
     return (target: Object, property: string) => {
         Type('class')(target, property);
-        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
-        Reflect.defineMetadata('marshal:dataTypeValueCircular', true, target, property);
+        Reflect.defineMetadata(
+            'marshal:dataTypeValue',
+            classType,
+            target,
+            property
+        );
+        Reflect.defineMetadata(
+            'marshal:dataTypeValueCircular',
+            true,
+            target,
+            property
+        );
     };
 }
 
 export function Class<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
         if (!classType) {
-            throw new Error(`${getClassName(target)}::${property} has @Class but argument is empty. Use @ClassCircular(() => YourClass) to work around circular dependencies.`);
+            throw new Error(
+                `${getClassName(
+                    target
+                )}::${property} has @Class but argument is empty. Use @ClassCircular(() => YourClass) to work around circular dependencies.`
+            );
         }
 
         Type('class')(target, property);
-        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
+        Reflect.defineMetadata(
+            'marshal:dataTypeValue',
+            classType,
+            target,
+            property
+        );
     };
 }
 
 export function ClassMap<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
         if (!classType) {
-            throw new Error(`${getClassName(target)}::${property} has @ClassMap but argument is empty. Use @ClassMap(() => YourClass) to work around circular dependencies.`);
+            throw new Error(
+                `${getClassName(
+                    target
+                )}::${property} has @ClassMap but argument is empty. Use @ClassMap(() => YourClass) to work around circular dependencies.`
+            );
         }
 
         Class(classType)(target, property);
@@ -145,7 +180,11 @@ export function ClassMapCircular<T>(classType: () => ClassType<T>) {
 export function ClassArray<T>(classType: ClassType<T>) {
     return (target: Object, property: string) => {
         if (!classType) {
-            throw new Error(`${getClassName(target)}::${property} has @ClassArray but argument is empty. Use @ClassArrayCircular(() => YourClass) to work around circular dependencies.`);
+            throw new Error(
+                `${getClassName(
+                    target
+                )}::${property} has @ClassArray but argument is empty. Use @ClassArrayCircular(() => YourClass) to work around circular dependencies.`
+            );
         }
 
         Class(classType)(target, property);
@@ -165,7 +204,7 @@ function concat(...decorators: ((target: Object, property: string) => void)[]) {
         for (const decorator of decorators) {
             decorator(target, property);
         }
-    }
+    };
 }
 
 export function MongoIdType() {
@@ -186,7 +225,11 @@ export function BinaryType() {
 
 export function StringType() {
     class Validator implements PropertyValidator {
-        async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+        async validate<T>(
+            value: any,
+            target: ClassType<T>,
+            property: string
+        ): Promise<PropertyValidatorError | void> {
             if ('string' !== typeof value) {
                 return new PropertyValidatorError('No String given');
             }
@@ -202,7 +245,11 @@ export function AnyType() {
 
 export function NumberType() {
     class Validator implements PropertyValidator {
-        async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+        async validate<T>(
+            value: any,
+            target: ClassType<T>,
+            property: string
+        ): Promise<PropertyValidatorError | void> {
             value = parseFloat(value);
 
             if (!Number.isFinite(value)) {
@@ -222,6 +269,11 @@ export function EnumType(type: any, allowLabelsAsValue = false) {
     return (target: Object, property: string) => {
         Type('enum')(target, property);
         Reflect.defineMetadata('marshal:dataTypeValue', type, target, property);
-        Reflect.defineMetadata('marshal:enum:allowLabelsAsValue', allowLabelsAsValue, target, property);
-    }
+        Reflect.defineMetadata(
+            'marshal:enum:allowLabelsAsValue',
+            allowLabelsAsValue,
+            target,
+            property
+        );
+    };
 }
