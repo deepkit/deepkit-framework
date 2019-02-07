@@ -18,9 +18,13 @@
     "jest": "^23.6.0",
     "jest-extended": "^0.11.0",
     "lerna": "^3.4.3",
+    "prettier": "^1.16.4",
     "reflect-metadata": "^0.1.12",
     "ts-jest": "^23.10.4",
     "ts-node": "^6.0.0",
+    "tslint": "^5.12.1",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-plugin-prettier": "^2.0.1",
     "typescript": "^2.9.2"
   },
   "engines": {
