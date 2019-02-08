@@ -1,6 +1,18 @@
 import 'jest';
 import {NumberType, StringType} from "@marcj/marshal";
-import {convertPlainQueryToMongo} from "..";
+import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
+import {ArrayType, Class, Decorator} from "@marcj/marshal/src/decorators";
+
+class SimpleConfig {
+    @Decorator()
+    @ArrayType()
+    @StringType()
+    items: string[] = [];
+
+    constructor(items: string[] = []) {
+        this.items = items;
+    }
+}
 
 class Simple {
     @NumberType()
@@ -11,6 +23,9 @@ class Simple {
 
     @StringType()
     public label!: string;
+
+    @Class(SimpleConfig)
+    public config: SimpleConfig = new SimpleConfig;
 }
 
 test('simple', () => {
@@ -19,6 +34,19 @@ test('simple', () => {
     });
 
     expect(m['id']['$qt']).toBe(1);
+});
+
+test('simple class', () => {
+    const partial = propertyClassToMongo(Simple, 'config', new SimpleConfig(['a', 'b']));
+    expect(partial).toEqual(['a', 'b']);
+
+    const m = convertClassQueryToMongo(Simple, {
+        id: {$qt: '1'},
+        config: new SimpleConfig(['a', 'b'])
+    });
+
+    expect(m['id']['$qt']).toBe(1);
+    expect(m['config']).toEqual(['a', 'b']);
 });
 
 test('simple 2', () => {

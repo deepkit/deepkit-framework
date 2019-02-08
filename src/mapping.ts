@@ -11,7 +11,7 @@ import {
     getValidEnumValue,
     isArray,
     isEnumAllowLabelsAsValue,
-    isObject, isOptional,
+    isObject, isOptional, isPlainObject,
     isUndefined,
     isValidEnumValue,
     toClass,
@@ -470,12 +470,38 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
 
 
 /**
+ * Takes a mongo filter query and converts its class values to classType's mongo types, so you
+ * can use it to send it to mongo.
+ */
+export function convertClassQueryToMongo<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target: { [path: string]: any },
+    fieldNamesMap: {[name: string]: boolean} = {},
+): { [path: string]: any } {
+    return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
+        console.log('convert classtomongo', path, value, propertyClassToMongo(convertClassType, path, value));
+        return propertyClassToMongo(convertClassType, path, value);
+    }, fieldNamesMap);
+}
+
+/**
  * Takes a mongo filter query and converts its plain values to classType's mongo types, so you
  * can use it to send it to mongo.
  */
 export function convertPlainQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
+    fieldNamesMap: {[name: string]: boolean} = {}
+): { [path: string]: any } {
+    return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
+        return propertyPlainToMongo(convertClassType, path, value);
+    }, fieldNamesMap);
+}
+
+export function convertQueryToMongo<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target: { [path: string]: any },
+    converter: (convertClassType: ClassType<any>, path: string, value: any) => any,
     fieldNamesMap: {[name: string]: boolean} = {}
 ): { [path: string]: any } {
     const result: { [i: string]: any } = {};
@@ -486,30 +512,30 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
         const fieldValue: any = target[i];
 
         if (i[0] === '$') {
-            result[i] = (fieldValue as any[]).map(v => convertPlainQueryToMongo(classType, v, fieldNamesMap));
+            result[i] = (fieldValue as any[]).map(v => convertQueryToMongo(classType, v, converter, fieldNamesMap));
             continue;
         }
 
-        if (isObject(fieldValue)) {
+        if (isPlainObject(fieldValue)) {
             for (const j in fieldValue) {
                 if (!fieldValue.hasOwnProperty(j)) continue;
 
                 const queryValue: any = (fieldValue as any)[j];
 
                 if (j[0] !== '$') {
-                    result[i] = propertyClassToMongo(classType, i, fieldValue);
+                    result[i] = converter(classType, i, fieldValue);
                     break;
                 } else {
                     if (j === '$and' || j === '$or' || j === '$nor' || j === '$not') {
-                        (fieldValue as any)[j] = (queryValue as any[]).map(v => convertPlainQueryToMongo(classType, v, fieldNamesMap));
+                        (fieldValue as any)[j] = (queryValue as any[]).map(v => convertQueryToMongo(classType, v, converter, fieldNamesMap));
                     } else if (j === '$in' || j === '$nin' || j === '$all') {
                         fieldNamesMap[i] = true;
-                        (fieldValue as any)[j] = (queryValue as any[]).map(v => propertyClassToMongo(classType, i, v));
+                        (fieldValue as any)[j] = (queryValue as any[]).map(v => converter(classType, i, v));
                     } else if (j === '$text' || j === '$exists' || j === '$mod' || j === '$size' || j === '$type' || j === '$regex' || j === '$where') {
                         //don't transform
                     } else {
                         fieldNamesMap[i] = true;
-                        (fieldValue as any)[j] = propertyClassToMongo(classType, i, queryValue);
+                        (fieldValue as any)[j] = converter(classType, i, queryValue);
                     }
                 }
             }
@@ -517,7 +543,7 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
             result[i] = fieldValue;
         } else {
             fieldNamesMap[i] = true;
-            result[i] = propertyClassToMongo(classType, i, fieldValue);
+            result[i] = converter(classType, i, fieldValue);
         }
     }
 

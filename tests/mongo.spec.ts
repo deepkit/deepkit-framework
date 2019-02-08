@@ -134,17 +134,17 @@ test('test delete', async () => {
     await database.add(SimpleModel, instance2);
     expect(await database.count(SimpleModel)).toBe(2);
 
-    await database.deleteMany(SimpleModel, {name: /myName[0-9]/});
+    await database.deleteMany(SimpleModel, {name: {$regex: /myName[0-9]/}});
     expect(await database.count(SimpleModel)).toBe(0);
 
     await database.add(SimpleModel, instance1);
     await database.add(SimpleModel, instance2);
     expect(await database.count(SimpleModel)).toBe(2);
 
-    await database.deleteOne(SimpleModel, {name: /myName[0-9]/});
+    await database.deleteOne(SimpleModel, {name: {$regex: /myName[0-9]/}});
     expect(await database.count(SimpleModel)).toBe(1);
 
-    await database.deleteOne(SimpleModel, {name: /myName[0-9]/});
+    await database.deleteOne(SimpleModel, {name: {$regex: /myName[0-9]/}});
     expect(await database.count(SimpleModel)).toBe(0);
 });
 
