@@ -26,7 +26,7 @@ export function *eachKey<T extends {[key: string]: any}, K extends keyof T>(obje
  */
 export function *each<T>(object: {[s: string]: T} | ArrayLike<T>): IterableIterator<T> {
     if (Array.isArray(object)) {
-        for (let i = 0; i <= object.length; i++) {
+        for (let i = 0; i < object.length; i++) {
             yield object[i];
         }
     } else {

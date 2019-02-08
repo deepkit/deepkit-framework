@@ -3,6 +3,39 @@ export interface IdInterface {
     version: number;
 }
 
+
+export interface EntityPatches {
+    [path: string]: any;
+}
+
+export interface ExchangeEntityBase {
+    id: string;
+    version: number;
+}
+
+export interface ExchangeEntityAdd extends ExchangeEntityBase {
+    type: 'add';
+    item: any;
+}
+
+export interface ExchangeEntityRemove extends ExchangeEntityBase {
+    type: 'remove';
+}
+
+export interface ExchangeEntityUpdate extends ExchangeEntityBase {
+    type: 'update';
+    item: any;
+}
+
+export interface ExchangeEntityPatch extends ExchangeEntityBase {
+    type: 'patch';
+    patch: EntityPatches;
+    item: any;
+}
+
+export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityUpdate | ExchangeEntityPatch;
+
+
 export interface MessageEntityBase {
     entityName: string;
     id: string;
@@ -16,10 +49,6 @@ export interface MessageEntityRemove extends MessageEntityBase {
 export interface MessageEntityUpdate extends MessageEntityBase {
     type: 'entity/update';
     item: any;
-}
-
-export interface EntityPatches {
-    [path: string]: any;
 }
 
 export interface MessageEntityPatch extends MessageEntityBase {

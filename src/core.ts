@@ -3,12 +3,23 @@ import * as dotProp from 'dot-prop';
 import {Observable, Subscription} from "rxjs";
 import {Collection} from "./collection";
 import {eachKey, eachPair} from "./iterator";
+import {ClassType} from "@marcj/marshal";
 
 export class CustomError extends Error {
     constructor(message: string) {
         super(message);
         this.name = this.constructor.name;
     }
+}
+
+export function applyDefaults<T>(classType: ClassType<T>, target: {[k: string]: any}): T {
+    const classInstance = new classType();
+
+    for (const [i, v] of eachPair(target)) {
+        (classInstance as any)[i] = v;
+    }
+
+    return classInstance;
 }
 
 export function arrayHasItem<T>(array: T[], item: T): boolean {
@@ -410,7 +421,7 @@ export function isString(obj: any): obj is string {
     return 'string' === typeOf(obj);
 }
 
-export function getPathValue(bag: { [field: string]: any }, parameterPath: string, defaultValue?: any): string {
+export function getPathValue(bag: { [field: string]: any }, parameterPath: string, defaultValue?: any): any {
     if (isSet(bag[parameterPath])) {
         return bag[parameterPath];
     }

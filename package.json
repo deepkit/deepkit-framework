@@ -1,24 +1,24 @@
 {
   "name": "@kamille/core",
   "version": "0.0.1",
-  "main": "src",
-  "module": "src",
+  "main": "dist/index.js",
+  "types": "lib/index.d.ts",
   "author": "Kamille Team",
   "license": "MIT",
   "scripts": {},
   "peerDependencies": {
     "@marcj/marshal": "^0.4.9",
     "rxjs": "6.3.3",
-    "reflect-metadata": "^0.1.12"
+    "reflect-metadata": "^0.1.12",
+    "buffer": "^5.2.1"
   },
   "dependencies": {
+    "dot-prop": "^4.2.0"
+  },
+  "devDependencies": {
     "@types/dot-prop": "^4.2.0",
     "@types/fs-extra": "^5.0.4",
     "@types/uuid": "^3.4.4",
-    "dot-prop": "^4.2.0",
-    "events": "^2.0.0"
-  },
-  "devDependencies": {
     "@marcj/marshal": "^0.4.8",
     "rxjs": "6.3.3",
     "buffer": "^5.2.1",

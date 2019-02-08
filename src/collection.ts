@@ -8,25 +8,25 @@ import {getEntityName, ClassType} from "@marcj/marshal";
 import {first} from "rxjs/operators";
 import {IdInterface} from "./contract";
 
-export interface CollectionStreamAdd {
+export interface CollectionAdd {
     type: 'add';
     item: any;
 }
 
-export interface CollectionStreamRemove {
+export interface CollectionRemove {
     type: 'remove';
     id: string;
 }
 
-export interface CollectionStreamSet {
+export interface CollectionSet {
     type: 'set';
     items: any[];
 }
 
-export type CollectionStreamEvent = CollectionStreamAdd | CollectionStreamRemove | CollectionStreamSet;
+export type CollectionEvent = CollectionAdd | CollectionRemove | CollectionSet;
 
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
-    public readonly event: Subject<CollectionStreamEvent> = new Subject;
+    public readonly event: Subject<CollectionEvent> = new Subject;
 
     public subscription?: Subscription;
 
