@@ -1,6 +1,6 @@
 import {ClassType, plainToClass} from "@marcj/marshal";
 import {Subscriber, Subscription} from "rxjs";
-import {Collection, FindResult, IdInterface} from "@kamille/core";
+import {Collection, CollectionStream, IdInterface} from "@kamille/core";
 
 class StoreItem<T> {
     instance: T | undefined;
@@ -110,14 +110,14 @@ export class EntityState {
     }
 
 
-    public handleCollectionNext<T extends IdInterface>(collection: Collection<T>, stream: FindResult) {
+    public handleCollectionNext<T extends IdInterface>(collection: Collection<T>, stream: CollectionStream) {
         const classType = collection.classType;
         const store = this.getStore(classType);
 
         // this.subscribeEntity(classType);
         const observers: { [id: string]: Subscriber<T> } = {};
 
-        if (stream.type === 'items') {
+        if (stream.type === 'set') {
             for (const itemRaw of stream.items) {
                 if (!store.hasItem(itemRaw.id)) {
                     const item = plainToClass(classType, itemRaw);
@@ -133,16 +133,19 @@ export class EntityState {
                     store.addObserver(itemRaw.id, observers[itemRaw.id]);
                 }
             }
+        }
 
-            if (collection.count() === stream.total) {
-                collection.loaded();
-            }
+        if (stream.type === 'ready') {
+            collection.loaded();
         }
 
         if (stream.type === 'remove') {
             collection.remove(stream.id);
             store.removeObserver(stream.id, observers[stream.id]);
-            collection.loaded();
+
+            if (collection.isLoaded) {
+                collection.loaded();
+            }
         }
 
         if (stream.type === 'add') {
@@ -155,7 +158,9 @@ export class EntityState {
             if (instance) {
                 observers[stream.item.id] = new Subscriber((i) => {
                     collection.deepChange.next(i);
-                    collection.loaded();
+                    if (collection.isLoaded) {
+                        collection.loaded();
+                    }
                 });
                 store.addObserver(stream.item.id, observers[stream.item.id]);
                 collection.add(instance);

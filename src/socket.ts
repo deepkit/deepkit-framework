@@ -1,4 +1,4 @@
-import {Observable, Subscriber} from "rxjs";
+import {Observable, Subject, Subscriber} from "rxjs";
 import {AnyType, NumberType, plainToClass, RegisteredEntities, StringType} from "@marcj/marshal";
 import * as WebSocket from "ws";
 import {Collection, MessageResult, MessageType} from "@kamille/core";
@@ -195,7 +195,7 @@ export class SocketClient {
                 payload: {controller: controller, action: name, args}
             };
 
-            let handleType = 'json';
+            let activeReturnType = 'json';
             let returnValue: any;
 
             //todo, implement collection
@@ -204,6 +204,7 @@ export class SocketClient {
 
             this.replies[messageId] = {
                 returnType: (type: MessageType) => {
+                    activeReturnType = type.returnType;
                     if (type.returnType === 'observable') {
                         returnValue = new Observable((observer) => {
                             subscriber = observer;
@@ -227,17 +228,18 @@ export class SocketClient {
                         }
 
                         returnValue = new Collection<any>(classType);
+                        resolve(returnValue);
                     }
                 },
                 next: (data) => {
-                    if (subscriber && handleType === 'observable') {
+                    if (subscriber && activeReturnType === 'observable') {
                         subscriber.next(data);
                     }
-                    if (handleType === 'collection' && returnValue instanceof Collection) {
-                        //todo, we need to typecast data to FindResult from state::findAndSubscribe
+
+                    if (activeReturnType === 'collection' && returnValue instanceof Collection) {
                         this.entityState.handleCollectionNext(returnValue, data);
                     }
-                    if (handleType === 'json') {
+                    if (activeReturnType === 'json') {
                         resolve(data);
                     }
                 },
@@ -245,8 +247,15 @@ export class SocketClient {
                     if (subscriber) {
                         subscriber.complete();
                     }
+                    if (returnValue instanceof Subject) {
+                        returnValue.complete();
+                    }
                 },
                 error: (error) => {
+                    if (returnValue instanceof Subject) {
+                        returnValue.error(error);
+                    }
+
                     if (subscriber) {
                         subscriber.error(new Error(error));
                     } else {
@@ -258,10 +267,6 @@ export class SocketClient {
             this.connect().then(_ => this.send(JSON.stringify(message)));
         })
     }
-
-    // public async action(controller: string, name: string, ...args: any[]): Promise<any> {
-    //     return this.stream(controller, name, ...args);
-    // }
 
     public async send(payload: string) {
         if (!this.socket) {

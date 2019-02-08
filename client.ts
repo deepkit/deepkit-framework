@@ -26,37 +26,53 @@ interface UserInterface {
 
     bla(): Observable<string>;
 
-    users(): Collection<User>;
+    userList(): Collection<User>;
 }
 
 (async () => {
     const socket = new SocketClient();
 
     const user = socket.controller<UserInterface>('user');
-    const name = await user.name();
+    // const name = await user.name();
+    //
+    // console.log('result is:', name);
+    //
+    // const subscription = (await user.bla()).subscribe((next) => {
+    //     console.log('next', next);
+    // }, (error: any) => {
+    //     console.error('error', error);
+    // }, () => {
+    //     console.log('complete');
+    // });
+    //
+    // setTimeout(() => {
+    //     subscription.unsubscribe();
+    // }, 5000);
+    //
+    // const users = await user.users();
+    // users.subscribe((next) => {
+    //     console.log('users next', next);
+    // }, (error) => {
+    //     console.log('users error', error);
+    // }, () => {
+    //     console.log('users complete');
+    // })
 
-    console.log('result is:', name);
-
-    const subscription = (await user.bla()).subscribe((next) => {
-        console.log('next', next);
-    }, (error: any) => {
-        console.error('error', error);
-    }, () => {
-        console.log('complete');
-    });
-
-    setTimeout(() => {
-        subscription.unsubscribe();
-    }, 5000);
-
-    const users = await user.users();
+    const users = await user.userList();
     users.subscribe((next) => {
         console.log('users next', next);
     }, (error) => {
         console.log('users error', error);
     }, () => {
         console.log('users complete');
-    })
+    });
+
+    // await users.ready.toPromise();
+    // console.log('users', users.all());
+
+    // users.subscribe(() => {
+    //     console.log('users update', users.all());
+    // });
 
     // socket.disconnect();
 })();
