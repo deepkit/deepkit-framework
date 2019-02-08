@@ -1,15 +1,15 @@
 import {Collection, IdInterface} from "@kamille/core";
 import {Observable} from "rxjs";
 import {SocketClient} from "./src/socket";
-import {Entity, NumberType, StringType} from "@marcj/marshal";
+import {Entity, NumberType, StringType, uuid} from "@marcj/marshal";
 
 @Entity('user')
 class User implements IdInterface {
     @StringType()
-    id!: string;
+    id: string = uuid();
 
     @NumberType()
-    version!: number;
+    version: number = 1;
 
     @StringType()
     name: string;

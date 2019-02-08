@@ -1,22 +1,22 @@
 import {Observable, Subject, Subscriber} from "rxjs";
 import {AnyType, NumberType, plainToClass, RegisteredEntities, StringType} from "@marcj/marshal";
 import * as WebSocket from "ws";
-import {Collection, MessageAll, MessageType} from "@kamille/core";
+import {applyDefaults, Collection, MessageAll, MessageType} from "@kamille/core";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
-    @StringType()
     host: string = 'localhost';
 
-    @NumberType()
     port: number = 8080;
 
-    @AnyType()
-    token: any;
+    token: any = undefined;
 }
 
 export class AuthorizationError extends Error {
 }
+
+type ArgumentTypes<T> = T extends (... args: infer U ) => infer R ? U: never;
+
 
 export class SocketClient {
     public socket?: WebSocket;
@@ -41,35 +41,21 @@ export class SocketClient {
     private connectionPromise?: Promise<void>;
 
     private entityState = new EntityState();
+    private config: SocketClientConfig;
 
-    public constructor(public readonly config: SocketClientConfig = new SocketClientConfig) {
-        if (config && !(config instanceof SocketClientConfig)) {
-            throw new Error('Config is not from SocketClientConfig');
-        }
+    public constructor(
+        config: SocketClientConfig | Partial<SocketClientConfig> = {},
+    ) {
+        this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
     }
 
     public isConnected(): boolean {
         return this.connected;
     }
 
-    // public isLoggedIn(): boolean {
-    //     return this.loggedIn;
-    // }
-    //
-    // on(event: 'offline' | 'online' | string, listener: (...args: any[]) => void): this {
-    //     return super.on(event, listener);
-    // }
-
-    // /**
-    //  * True when connected and logged in.
-    //  */
-    // public isReady(): boolean {
-    //     return this.connected && this.loggedIn;
-    // }
-
+    //todo, add better argument inference for U
     public controller<T,
-        U extends any[] = [],
-        R = { [P in keyof T]: T[P] extends (...args: any[]) => any ? (...args: U) => Promise<ReturnType<T[P]>> : T[P] }>(name: string): R {
+        R = { [P in keyof T]: T[P] extends (...args: infer U) => infer RT ? (...args: U) => Promise<RT> : T[P] }>(name: string): R {
         const t = this;
 
         const o = new Proxy(this, {
@@ -88,11 +74,11 @@ export class SocketClient {
 
     protected onMessage(event: { data: WebSocket.Data; type: string; target: WebSocket }) {
         const message = JSON.parse(event.data.toString()) as MessageAll;
+        console.log('onMessage', message);
 
         if (!message) {
             throw new Error(`Got invalid message: ` + event.data);
         }
-
 
         if (message.type === 'entity/remove' || message.type === 'entity/patch' || message.type === 'entity/update') {
             this.entityState.handleEntityMessage(message);
@@ -136,7 +122,8 @@ export class SocketClient {
     protected async doConnect(): Promise<void> {
         const port = this.config.port;
         this.connectionTries++;
-        const socket = this.socket = new WebSocket('ws://' + this.config.host + ':' + port);
+        const url = this.config.host.startsWith('ws+unix') ? this.config.host : 'ws://' + this.config.host + ':' + port;
+        const socket = this.socket = new WebSocket(url);
         socket.onmessage = (event: { data: WebSocket.Data; type: string; target: WebSocket }) => this.onMessage(event);
 
         return new Promise<void>((resolve, reject) => {
@@ -335,3 +322,17 @@ export class SocketClient {
         }
     }
 }
+
+// export class DirectSocketClient extends SocketClient {
+//     public async send(payload: string) {
+//         if (!this.socket) {
+//             throw new Error('Socket not created yet');
+//         }
+//
+//         this.socket.send(payload);
+//     }
+//
+//     protected async doConnect(): Promise<void> {
+//         //nothing needed
+//     }
+// }

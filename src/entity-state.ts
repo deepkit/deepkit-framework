@@ -1,6 +1,6 @@
 import {ClassType, plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
 import {Subscriber} from "rxjs";
-import {Collection, CollectionStream, eachPair, IdInterface, MessageEntity, MessageEntityPatch} from "@kamille/core";
+import {Collection, CollectionStream, eachPair, IdInterface, MessageEntity} from "@kamille/core";
 import {set} from 'dot-prop';
 
 class StoreItem<T> {
@@ -61,7 +61,6 @@ class ItemsStore<T> {
         const item = this.getOrCreateItem(id);
         item.observers.push(observer);
         (observer as any)['_id'] = ++this.observerId;
-        // console.log('add observer', id, observer['_id'], item.observers.length);
     }
 
     public hasObservers(id: string): boolean {
@@ -84,19 +83,12 @@ class ItemsStore<T> {
             if (item.observers.length === 0) {
                 delete this.items[id];
             }
-
-            // console.log('remove observer', id, observer['_id'], item.observers.length);
         }
     }
 }
 
 export class EntityState {
     private readonly items = new Map<ClassType<any>, ItemsStore<any>>();
-    // private readonly findOneStats = new Map<ClassType<any>, { [key: string]: FindOneStat<any> }>();
-
-    // private entitySubscriptions = new Map<ClassType<any>, Subscription>();
-
-    // private subscribeJobCollection: { [jobId: string]: {subscription?: Subscription, observers: Subscriber<any>[]} } = {};
 
     private getStore<T>(classType: ClassType<T>): ItemsStore<T> {
         let store = this.items.get(classType);
@@ -127,17 +119,13 @@ export class EntityState {
 
                 if (storeItem.instance && storeItem.instance.version < toVersion) {
                     //it's important to not patch old versions
-
                     for (const [i, v] of eachPair(stream.patch)) {
                         const vc = propertyPlainToClass(classType, i, v, [], 0, {onFullLoadCallbacks: []});
                         set(storeItem.instance, i, vc);
-                        // console.log('patch', i, vc);
-                        // console.log('patch item', stream.id, i, (storeItem.instance as any)[i]);
                     }
 
                     storeItem.instance.version = toVersion;
                     store.notifyObservers(stream.id);
-                    // console.log('item patched', stream.patch);
                 }
             }
         }
@@ -154,7 +142,6 @@ export class EntityState {
         const classType = collection.classType;
         const store = this.getStore(classType);
 
-        // this.subscribeEntity(classType);
         const observers: { [id: string]: Subscriber<T> } = {};
 
         if (stream.type === 'set') {
