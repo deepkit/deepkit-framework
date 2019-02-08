@@ -4,7 +4,7 @@ import {ClassType, getEntityName, plainToClass} from "@marcj/marshal";
 import {Subscription} from "rxjs";
 import {convertPlainQueryToMongo} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
-import {AsyncSubscription, Collection, IdInterface, Subscriptions} from "@kamille/core";
+import {AsyncSubscription, Collection, ExchangeEntity, IdInterface, Subscriptions} from "@kamille/core";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {Connection} from "./connection";
@@ -104,7 +104,7 @@ export class EntityStorage {
 
         const entityName = getEntityName(classType);
 
-        const sub = this.exchange.subscribeEntity(classType, (message) => {
+        const sub = this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
             if (this.needsToBeSend(classType, message.id, message.version)) {
                 this.setSent(classType, message.id, message.version);
 
@@ -116,7 +116,14 @@ export class EntityStorage {
                         version: message.version,
                         patch: message.patch
                     });
-                } else {
+                } else if (message.type === 'remove') {
+                    this.connection.write({
+                        type: 'entity/remove',
+                        entityName: entityName,
+                        id: message.id,
+                        version: message.version,
+                    });
+                } else if (message.type === 'update') {
                     this.connection.write({
                         type: 'entity/update',
                         entityName: entityName,
@@ -124,6 +131,8 @@ export class EntityStorage {
                         version: message.version,
                         item: message.item
                     });
+                } else if (message.type === 'add') {
+                    //nothing to do.
                 }
             }
         });
@@ -307,8 +316,7 @@ export class EntityStorage {
 
         const fieldSub: AsyncSubscription = await this.exchange.subscribeEntityFields(classType, Object.keys(filterFields));
 
-        const sub: Subscription = this.exchange.subscribeEntity(classType, async (message) => {
-
+        const sub: Subscription = this.exchange.subscribeEntity(classType, async (message: ExchangeEntity) => {
             console.log(
                 'subscribeEntity',
                 IDsInThisList[message.id],

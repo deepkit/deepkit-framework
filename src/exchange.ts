@@ -1,7 +1,7 @@
 import {createClient, RedisClient} from 'redis';
 import {Subscription} from "rxjs";
 import {ClassType, getEntityName} from "@marcj/marshal";
-import {eachPair, AsyncSubscription, ChannelEntity, StreamFileResult} from '@kamille/core';
+import {eachPair, AsyncSubscription, ExchangeEntity, StreamFileResult} from '@kamille/core';
 import {Injectable} from "injection-js";
 
 
@@ -87,12 +87,12 @@ export class Exchange {
         });
     }
 
-    public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ChannelEntity>): Subscription {
+    public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
         const channelName = this.prefix + '/entity/' + getEntityName(classType);
         return this.subscribe(channelName, cb);
     }
 
-    public publishEntity<T>(classType: ClassType<T>, message: ChannelEntity) {
+    public publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
         const channelName = this.prefix + '/entity/' + getEntityName(classType);
         this.publish(channelName, message);
     }

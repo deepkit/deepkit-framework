@@ -4,7 +4,7 @@ import {Action, ApplicationModule, Controller} from "./src/decorators";
 import {Application, Session} from "./src/application";
 import {Observable} from "rxjs";
 import {Collection, IdInterface} from "@kamille/core";
-import {ClassType, Entity, NumberType, StringType, uuid} from "@marcj/marshal";
+import {Entity, NumberType, StringType, uuid} from "@marcj/marshal";
 import {EntityStorage} from "./src/entity-storage";
 import {ExchangeDatabase} from "./src/exchange-database";
 

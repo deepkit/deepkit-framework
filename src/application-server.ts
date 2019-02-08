@@ -9,24 +9,18 @@ import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
 import {Database} from "@marcj/marshal-mongo";
 import {Mongo} from "./mongo";
 import {Application} from "./application";
-import {eachPair} from "@kamille/core";
-
-export function applyDefaults<T>(classType: ClassType<T>, target: {[k: string]: any}): T {
-    const classInstance = new classType();
-
-    for (const [i, v] of eachPair(target)) {
-        (classInstance as any)[i] = v;
-    }
-
-    return classInstance;
-}
+import {applyDefaults, each} from "@kamille/core";
+import {Server} from "http";
+import {ServerOptions} from "ws";
 
 export class ApplicationServerConfig {
+    server?: Server = undefined;
+
     host: string = 'localhost';
 
     port: number = 8080;
 
-    workers: number = 4;
+    workers: number = 1;
 
     mongoHost: string = 'localhost';
 
@@ -47,6 +41,8 @@ export class ApplicationServerConfig {
 export class ApplicationServer {
     protected config: ApplicationServerConfig;
     protected injector: ReflectiveInjector;
+
+    protected masterWorker?: Worker;
 
     constructor(
         application: ClassType<any>,
@@ -112,12 +108,10 @@ export class ApplicationServer {
 
         for (const controllerClass of controllers) {
             const options = getControllerOptions(controllerClass);
-            console.log('options', options);
             if (!options) {
                 throw new Error(`Controller ${getClassName(controllerClass)} has no @Controller decorator.`);
             }
             app.controllers[options.name] = controllerClass;
-            console.log(`Controller ${options.name} (${getClassName(controllerClass)}) setup`);
         }
     }
 
@@ -133,33 +127,62 @@ export class ApplicationServer {
         );
     }
 
+    public close() {
+        if (this.config.workers > 1) {
+            for (const worker of each(cluster.workers)) {
+                if (worker) {
+                    worker.kill();
+                }
+            }
+        } else {
+            if (this.masterWorker) {
+                this.masterWorker.close();
+            }
+        }
+    }
+
     public async start() {
         process.on('unhandledRejection', error => {
             console.log(error);
             process.exit(1);
         });
 
-        if (cluster.isMaster) {
-            const app: Application = this.injector.get(Application);
-            await app.bootstrap();
+        if (this.config.workers > 1) {
+            if (cluster.isMaster) {
+                const app: Application = this.injector.get(Application);
+                await app.bootstrap();
 
-            for (let i = 0; i < this.config.workers; i++) {
-                cluster.fork();
+                for (let i = 0; i < this.config.workers; i++) {
+                    cluster.fork();
+                }
+
+                console.log('master done');
+            } else {
+                const worker = new Worker(this.injector, this.connectionProvider, {
+                    host: this.config.host,
+                    port: this.config.port,
+                });
+
+                cluster.on('exit', (w) => {
+                    console.log('mayday! mayday! worker', w.id, ' is no more!');
+                    cluster.fork();
+                });
+
+                worker.run();
             }
-
-            console.log('master done');
         } else {
-            const worker = new Worker(this.injector, this.connectionProvider, {
+            let options: ServerOptions = {
                 host: this.config.host,
                 port: this.config.port,
-            });
+            };
+            if (this.config.server) {
+                options = {
+                    server: this.config.server
+                }
+            }
 
-            cluster.on('exit', (w) => {
-                console.log('mayday! mayday! worker', w.id, ' is no more!');
-                cluster.fork();
-            });
-
-            worker.run();
+            this.masterWorker = new Worker(this.injector, this.connectionProvider, options);
+            this.masterWorker.run();
         }
     }
 }

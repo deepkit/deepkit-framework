@@ -119,7 +119,6 @@ export class Connection {
 
         try {
             let result = exec();
-            console.log('result', result);
 
             if (typeof (result as any)['then'] === 'function') {
                 // console.log('its an Promise');
@@ -197,6 +196,7 @@ export class Connection {
                     this.complete(message.id);
                 });
             } else {
+                this.write({type: 'type', id: message.id, returnType: 'json'});
                 this.write({type: 'next', id: message.id, next: result});
                 this.complete(message.id);
             }

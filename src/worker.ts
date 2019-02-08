@@ -1,12 +1,13 @@
 import * as WebSocket from "ws";
 import {ServerOptions} from "ws";
 import {Provider, ReflectiveInjector} from "injection-js";
-import {Subscription} from "rxjs";
 import {Application, Session, SessionStack} from "./application";
 import {Connection} from "./connection";
 import {EntityStorage} from "./entity-storage";
 
 export class Worker {
+    protected wss?: WebSocket.Server;
+
     constructor(
         protected mainInjector: ReflectiveInjector,
         protected connectionProvider: Provider[],
@@ -19,17 +20,21 @@ export class Worker {
         return await app.authenticate(token);
     }
 
+    close() {
+        if (this.wss) {
+            this.wss.close();
+        }
+    }
+
     run() {
-        const log = console.log;
-        console.log = (...args: any[]) => {
-            log(`[${process.pid}]`, ...args);
-        };
+        // const log = console.log;
+        // console.log = (...args: any[]) => {
+        //     log(`[${process.pid}]`, ...args);
+        // };
 
-        const wss = new WebSocket.Server({host: this.options.host, port: this.options.port});
+        this.wss = new WebSocket.Server(this.options);
 
-        console.log('Worker listening on', this.options.host + ':' + this.options.port);
-        wss.on('connection', (socket: WebSocket) => {
-
+        this.wss.on('connection', (socket: WebSocket) => {
             let injector: ReflectiveInjector | undefined;
             const app = this.mainInjector.get(Application);
 

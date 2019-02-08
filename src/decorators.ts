@@ -4,7 +4,7 @@ import {ClassType} from "@marcj/marshal";
 import {ApplicationServerConfig} from "./application-server";
 
 export interface ApplicationDecoratorOptions {
-    config: ApplicationServerConfig,
+    config: ApplicationServerConfig | Partial<ApplicationServerConfig>,
     serverProviders: Provider[],
     connectionProviders: Provider[],
     controllers: ClassType<any>[];
