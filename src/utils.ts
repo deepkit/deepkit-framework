@@ -29,6 +29,10 @@ export function isObject(obj: any): obj is object {
     return ((typeof obj === 'function') || (typeof obj === 'object' && !isArray(obj)));
 }
 
+export function isPlainObject(obj: any): obj is object {
+    return Boolean(obj && typeof obj === 'object' && obj.constructor === Object);
+}
+
 export function isArray(obj: any): obj is any[] {
     return Array.isArray(obj)
 }
