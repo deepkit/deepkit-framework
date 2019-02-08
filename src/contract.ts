@@ -34,18 +34,22 @@ export interface ChannelEntityPatch extends ChannelEntityBase {
 
 export type ChannelEntity = ChannelEntityAdd | ChannelEntityRemove | ChannelEntityUpdate | ChannelEntityPatch;
 
-export interface FindResultItems {
-    type: 'items';
+export interface CollectionStreamSet {
+    type: 'set';
     items: IdInterface[];
     total: number;
 }
 
-export interface FindResultAdd {
+export interface CollectionStreamAdd {
     type: 'add';
     item: IdInterface;
 }
 
-export interface FindResultRemove {
+export interface CollectionStreamReady {
+    type: 'ready';
+}
+
+export interface CollectionStreamRemove {
     type: 'remove';
     id: string;
 }
@@ -81,7 +85,7 @@ export interface StreamFileRemove {
     meta?: { [k: string]: any };
 }
 
-export type FindResult = FindResultItems | FindResultAdd | FindResultRemove;
+export type CollectionStream = CollectionStreamSet | CollectionStreamAdd | CollectionStreamRemove | CollectionStreamReady;
 
 export type CountResult = CountUpdateResult;
 

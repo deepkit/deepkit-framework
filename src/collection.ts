@@ -8,26 +8,37 @@ import {getEntityName, ClassType} from "@marcj/marshal";
 import {first} from "rxjs/operators";
 import {IdInterface} from "./contract";
 
-class CollectionStreamEvent<T> {
-    type: 'add' | 'remove' | 'update';
-    item: T;
-
-    constructor(type: 'add' | 'remove' | 'update', item: T) {
-        this.type = type;
-        this.item = item;
-    }
+export interface CollectionStreamAdd {
+    type: 'add';
+    item: any;
 }
 
+export interface CollectionStreamRemove {
+    type: 'remove';
+    id: string;
+}
+
+export interface CollectionStreamSet {
+    type: 'set';
+    items: any[];
+}
+
+export type CollectionStreamEvent = CollectionStreamAdd | CollectionStreamRemove | CollectionStreamSet;
+
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
-    public readonly event: Subject<CollectionStreamEvent<T>> = new Subject;
+    public readonly event: Subject<CollectionStreamEvent> = new Subject;
 
     public subscription?: Subscription;
+
 
     protected items: T[] = [];
     protected itemsMapped: { [id: string]: T} = {};
 
     public readonly entityName: string;
+
     public readonly ready: Observable<T[]>;
+    public isLoaded: boolean = false;
+
     public readonly deepChange = new Subject<T>();
 
     constructor(
@@ -102,7 +113,24 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     public loaded() {
+        this.isLoaded = true;
         this.next(this.items);
+    }
+
+    public set(items: T[], withEvent = true) {
+        this.itemsMapped = {};
+        this.items = items;
+
+        for (const item of items) {
+            this.itemsMapped[item.id] = item;
+        }
+
+        if (withEvent) {
+            this.event.next({type: 'set', items: items});
+            if (this.isLoaded) {
+                this.loaded();
+            }
+        }
     }
 
     public add(item: T, withEvent = true) {
@@ -120,8 +148,10 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
 
         if (withEvent) {
-            this.event.next(new CollectionStreamEvent('add', item));
-            this.next(this.items);
+            this.event.next({type: 'add', item: item});
+            if (this.isLoaded) {
+                this.next(this.items);
+            }
         }
     }
 
@@ -133,8 +163,10 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
                 this.items.splice(index, 1);
 
                 if (withEvent) {
-                    this.event.next(new CollectionStreamEvent('remove', item));
-                    this.next(this.items);
+                    this.event.next({type: 'remove', id: item.id});
+                    if (this.isLoaded) {
+                        this.next(this.items);
+                    }
                 }
             }
         }
