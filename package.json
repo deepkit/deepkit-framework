@@ -1,0 +1,59 @@
+{
+	"name": "@kamille/integration",
+	"version": "0.0.1",
+	"main": "src",
+	"module": "src",
+	"license": "MIT",
+	"author": "Kamille Team",
+	"dependencies": {
+		"@kamille/server": "0.0.1",
+		"@kamille/core": "0.0.1",
+		"@kamille/client": "0.0.1",
+		"@marcj/marshal": "^0.4.8",
+		"@marcj/marshal-mongo": "^0.4.9",
+		"bluebird": "^3.5.1",
+		"buffer": "^5.2.1",
+		"clone": "^2.1.1",
+		"fs-extra": "^6.0.1",
+		"injection-js": "^2.2.1",
+		"md5": "^2.2.1",
+		"reflect-metadata": "^0.1.12",
+		"rxjs": "6.3.3",
+		"sift": "^7.0.1",
+		"source-map": "^0.7.3",
+		"source-map-support": "^0.5.9",
+		"tmp": "^0.0.33",
+		"ts-node": "^7.0.1"
+	},
+	"devDependencies": {
+		"@types/clone": "^0.1.30",
+		"@types/fs-extra": "^5.0.2",
+		"@types/jest": "^23.3.9",
+		"@types/node": "^10.12.10",
+		"@types/tmp": "^0.0.33",
+		"awesome-typescript-loader": "^5.2.1",
+		"cache-loader": "^1.2.2"
+	},
+	"jest": {
+		"moduleFileExtensions": [
+			"ts",
+			"tsx",
+			"js"
+		],
+		"transform": {
+			"^.+\\.(ts|tsx)$": "ts-jest"
+		},
+		"transformIgnorePatterns": [
+			"node_modules/(?!@kamille)"
+		],
+		"testMatch": [
+			"**/tests/**/*.+(ts|tsx|js)"
+		],
+		"setupTestFrameworkScriptFile": "jest-extended"
+	},
+	"globals": {
+		"ts-jest": {
+			"tsConfigFile": "tsconfig.json"
+		}
+	}
+}
