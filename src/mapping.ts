@@ -479,7 +479,6 @@ export function convertClassQueryToMongo<T, K extends keyof T>(
     fieldNamesMap: {[name: string]: boolean} = {},
 ): { [path: string]: any } {
     return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
-        console.log('convert classtomongo', path, value, propertyClassToMongo(convertClassType, path, value));
         return propertyClassToMongo(convertClassType, path, value);
     }, fieldNamesMap);
 }
@@ -533,6 +532,7 @@ export function convertQueryToMongo<T, K extends keyof T>(
                         (fieldValue as any)[j] = (queryValue as any[]).map(v => converter(classType, i, v));
                     } else if (j === '$text' || j === '$exists' || j === '$mod' || j === '$size' || j === '$type' || j === '$regex' || j === '$where') {
                         //don't transform
+                        fieldNamesMap[i] = true;
                     } else {
                         fieldNamesMap[i] = true;
                         (fieldValue as any)[j] = converter(classType, i, queryValue);
