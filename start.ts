@@ -3,16 +3,16 @@ import {ApplicationServer} from "./src/application-server";
 import {Action, ApplicationModule, Controller} from "./src/decorators";
 import {Application, Session} from "./src/application";
 import {Observable} from "rxjs";
-import {IdInterface} from "@kamille/core";
-import {Entity, NumberType, StringType} from "@marcj/marshal";
+import {Collection, IdInterface} from "@kamille/core";
+import {Entity, NumberType, StringType, uuid} from "@marcj/marshal";
 
 @Entity('user')
 class User implements IdInterface {
     @StringType()
-    id!: string;
+    id: string = uuid();
 
     @NumberType()
-    version!: number;
+    version: number = 1;
 
     @StringType()
     name: string;
@@ -45,6 +45,24 @@ class UserController {
                 observer.complete();
             }, 3000);
         });
+    }
+
+    @Action()
+    userList(): Collection<User> {
+        const collection = new Collection(User);
+        collection.add(new User('Peter1'));
+        collection.add(new User('Peter2'));
+        collection.loaded();
+
+        setTimeout(() => {
+            collection.add(new User('Peter3'));
+        }, 1000);
+
+        setTimeout(() => {
+            collection.complete();
+        }, 2000);
+
+        return collection;
     }
 
     @Action()

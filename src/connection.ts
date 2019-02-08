@@ -3,7 +3,7 @@ import {Injector} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import * as util from "util";
 import {Application, Session} from "./application";
-import {Collection, each, MessageResult} from "@kamille/core";
+import {Collection, each, CollectionStream, MessageResult} from "@kamille/core";
 import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
 
 interface Message {
@@ -69,8 +69,6 @@ export class Connection {
                     } catch (error) {
                         console.error('Error in unsubscribing', error);
                     }
-                } else {
-                    console.log('already unsubscribed from', message.id);
                 }
             }
         }
@@ -129,10 +127,55 @@ export class Connection {
             }
 
             if (result instanceof Collection) {
-                this.write({type: 'type', id: message.id, returnType: 'collection', entityName: result.entityName});
+                const collection: Collection<any> = result;
 
+                this.write({type: 'type', id: message.id, returnType: 'collection', entityName: collection.entityName});
+                let nextValue: CollectionStream | undefined;
 
+                if (collection.count() > 0) {
+                    nextValue = {
+                        type: 'set',
+                        total: collection.count(),
+                        items: collection.all().map(v => classToPlain(collection.classType, v))
+                    };
+                    this.write({type: 'next', id: message.id, next: nextValue});
+                }
 
+                collection.ready.toPromise().then(() => {
+                    nextValue = {type: 'ready'};
+                    this.write({type: 'next', id: message.id, next: nextValue});
+                });
+
+                this.subscriptions[message.id] = collection.subscribe((next) => {
+
+                }, (error) => {
+                    this.sendError(message.id, error);
+                }, () => {
+                    console.log('completed');
+                    this.complete(message.id);
+                });
+                this.subscriptions[message.id] = collection.event.subscribe((event) => {
+                    if (event.type === 'add') {
+                        nextValue = {type: 'add', item: classToPlain(collection.classType, event.item)};
+                        this.write({type: 'next', id: message.id, next: nextValue});
+                    }
+
+                    if (event.type === 'remove') {
+                        nextValue = {type: 'remove', id: event.id};
+                        this.write({type: 'next', id: message.id, next: nextValue});
+                    }
+
+                    if (event.type === 'set') {
+                        //consider batching the items, so we don't block the connection stack
+                        //when we have thousand of items
+                        nextValue = {
+                            type: 'set',
+                            total: event.items.length,
+                            items: event.items.map(v => classToPlain(collection.classType, v))
+                        };
+                        this.write({type: 'next', id: message.id, next: nextValue});
+                    }
+                });
             } else if (result instanceof Observable) {
                 this.write({type: 'type', id: message.id, returnType: 'observable'});
 
@@ -144,30 +187,17 @@ export class Connection {
 
                     this.write({type: 'next', id: message.id, entityName: entityName, next: next});
                 }, (error) => {
-                    this.write({
-                        type: 'error',
-                        id: message.id,
-                        error: error.toString()
-                    });
-
-                    delete this.subscriptions[message.id];
+                    this.sendError(message.id, error);
                 }, () => {
-                    this.write({type: 'complete', id: message.id});
-                    delete this.subscriptions[message.id];
-                    delete this.subscriptions[message.id];
+                    this.complete(message.id);
                 });
             } else {
                 this.write({type: 'next', id: message.id, next: result});
-                this.write({type: 'complete', id: message.id});
+                this.complete(message.id);
             }
-        } catch (e) {
-            console.log('Worker execution error', message, util.inspect(e));
-
-            if (e instanceof Error) {
-                await this.sendError(message.id, e.message);
-            } else {
-                await this.sendError(message.id, e);
-            }
+        } catch (error) {
+            console.log('Worker execution error', message, error);
+            await this.sendError(message.id, error);
         }
     }
 
@@ -177,7 +207,13 @@ export class Connection {
         }
     }
 
-    public async sendError(id: number, error: any) {
-        this.write({type: 'error', id: id, error: error});
+    public complete(id: number) {
+        delete this.subscriptions[id];
+        this.write({type: 'complete', id: id});
+    }
+
+    public sendError(id: number, error: any) {
+        delete this.subscriptions[id];
+        this.write({type: 'error', id: id, error: error instanceof Error ? error.message : error});
     }
 }
