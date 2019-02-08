@@ -29,24 +29,28 @@ class Simple {
 }
 
 test('simple', () => {
+    const fieldNames = {};
     const m = convertPlainQueryToMongo(Simple, {
         id: {$qt: '1'}
-    });
+    }, fieldNames);
 
     expect(m['id']['$qt']).toBe(1);
+    expect(Object.keys(fieldNames)).toEqual(['id']);
 });
 
 test('simple class', () => {
     const partial = propertyClassToMongo(Simple, 'config', new SimpleConfig(['a', 'b']));
     expect(partial).toEqual(['a', 'b']);
+    const fieldNames = {};
 
     const m = convertClassQueryToMongo(Simple, {
         id: {$qt: '1'},
         config: new SimpleConfig(['a', 'b'])
-    });
+    }, fieldNames);
 
     expect(m['id']['$qt']).toBe(1);
     expect(m['config']).toEqual(['a', 'b']);
+    expect(Object.keys(fieldNames)).toEqual(['id', 'config']);
 });
 
 test('simple 2', () => {
@@ -54,12 +58,21 @@ test('simple 2', () => {
     expect(m).toEqual({id: {dif: 1}});
 });
 
+test('regex', () => {
+    const fieldNames = {};
+    const m = convertPlainQueryToMongo(Simple, {id: {$regex: /0-9+/}}, fieldNames);
+    expect(m).toEqual({id: {$regex: /0-9+/}});
+    expect(Object.keys(fieldNames)).toEqual(['id']);
+});
+
 test('and', () => {
-    const m = convertPlainQueryToMongo(Simple, {$and: [{id: '1'}, {id: '2'}]});
+    const fieldNames = {};
+    const m = convertPlainQueryToMongo(Simple, {$and: [{id: '1'}, {id: '2'}]}, fieldNames);
     expect(m).toEqual({$and: [{id: 1}, {id: 2}]});
 
     expect(m['$and'][0]['id']).toBe(1);
     expect(m['$and'][1]['id']).toBe(2);
+    expect(Object.keys(fieldNames)).toEqual(['id']);
 });
 
 test('in', () => {
