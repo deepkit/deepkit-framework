@@ -8,7 +8,14 @@ import {
 } from '@marcj/marshal';
 
 import {MongoClient, Collection, Cursor} from 'mongodb';
-import {classToMongo, mongoToClass, partialClassToMongo, partialMongoToPlain, propertyClassToMongo} from "./mapping";
+import {
+    classToMongo,
+    convertClassQueryToMongo,
+    mongoToClass,
+    partialClassToMongo,
+    partialMongoToPlain,
+    propertyClassToMongo
+} from "./mapping";
 
 export class NoIDDefinedError extends Error {
 }
@@ -49,7 +56,7 @@ export class Database {
     ): Promise<T | null> {
         const collection = await this.getCollection(classType);
 
-        const item = await collection.findOne(partialClassToMongo(classType, filter));
+        const item = await collection.findOne(convertClassQueryToMongo(classType, filter));
 
         if (item) {
             return mongoToClass(classType, item);
@@ -71,7 +78,7 @@ export class Database {
     ): Promise<T[]> {
         const collection = await this.getCollection(classType);
 
-        const items = await collection.find(filter ? partialClassToMongo(classType, filter) : undefined).toArray();
+        const items = await collection.find(filter ? convertClassQueryToMongo(classType, filter) : undefined).toArray();
 
         const converter = toClass ? mongoToClass : partialMongoToPlain;
 
@@ -92,7 +99,7 @@ export class Database {
     ): Promise<Cursor<T>> {
         const collection = await this.getCollection(classType);
 
-        const cursor = collection.find(filter ? partialClassToMongo(classType, filter) : undefined);
+        const cursor = collection.find(filter ? convertClassQueryToMongo(classType, filter) : undefined);
         const converter = toClass ? mongoToClass : partialMongoToPlain;
         cursor.map(v => converter(classType, v));
 
@@ -111,7 +118,7 @@ export class Database {
         const filter: { [name: string]: any } = {};
         filter[idName] = id;
 
-        const result = await collection.deleteOne(partialClassToMongo(classType, filter));
+        const result = await collection.deleteOne(convertClassQueryToMongo(classType, filter));
 
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
@@ -121,7 +128,7 @@ export class Database {
      */
     public async deleteOne<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
         const collection = await this.getCollection(classType);
-        await collection.deleteOne(partialClassToMongo(classType, filter));
+        await collection.deleteOne(convertClassQueryToMongo(classType, filter));
     }
 
     /**
@@ -129,7 +136,7 @@ export class Database {
      */
     public async deleteMany<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
         const collection = await this.getCollection(classType);
-        await collection.deleteMany(partialClassToMongo(classType, filter));
+        await collection.deleteMany(convertClassQueryToMongo(classType, filter));
     }
 
     /**
@@ -160,16 +167,16 @@ export class Database {
     /**
      * Returns the count of items in the database, that fit that given filter.
      */
-    public async count<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<number> {
+    public async count<T>(classType: ClassType<T>, filter: { [field: string]: any } = {}): Promise<number> {
         const collection = await this.getCollection(classType);
-        return await collection.countDocuments(partialClassToMongo(classType, filter));
+        return await collection.countDocuments(convertClassQueryToMongo(classType, filter));
     }
 
     /**
      * Returns true when at least one item in the database is found that fits given filter.
      */
-    public async has<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<boolean> {
-        return (await this.count(classType, partialClassToMongo(classType, filter))) > 0;
+    public async has<T>(classType: ClassType<T>, filter: { [field: string]: any } = {}): Promise<boolean> {
+        return (await this.count(classType, filter)) > 0;
     }
 
     /**
@@ -187,7 +194,7 @@ export class Database {
         updateStatement['$set'] = classToMongo(classType, update);
         delete updateStatement['$set']['version'];
 
-        const filterQuery = filter ? partialClassToMongo(classType, filter) : this.buildFindCriteria(classType, update);
+        const filterQuery = filter ? convertClassQueryToMongo(classType, filter) : this.buildFindCriteria(classType, update);
 
         const response = await collection.findOneAndUpdate(filterQuery, updateStatement, {
             projection: {version: 1},
@@ -241,7 +248,7 @@ export class Database {
 
         patchStatement['$set'] = partialClassToMongo(classType, patch);
 
-        const response = await collection.findOneAndUpdate(partialClassToMongo(classType, filter), patchStatement, {
+        const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), patchStatement, {
             projection: {version: 1},
             returnOriginal: false
         });

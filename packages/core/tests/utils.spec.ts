@@ -1,6 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {isArray, isObject, isUndefined} from "..";
+import {isArray, isObject, isPlainObject, isUndefined} from "..";
 
 class SimpleClass {
     public label: string;
@@ -10,7 +10,7 @@ class SimpleClass {
     }
 }
 
-test('helper is Object', () => {
+test('helper isObject', () => {
     expect(isObject([])).toBeFalse();
     expect(isObject(false)).toBeFalse();
     expect(isObject(true)).toBeFalse();
@@ -22,6 +22,26 @@ test('helper is Object', () => {
     expect(isObject({})).toBeTrue();
     expect(isObject(new Date())).toBeTrue();
     expect(isObject(new SimpleClass('asd'))).toBeTrue();
+});
+
+test('helper isPlainObject', () => {
+    expect(isPlainObject([])).toBeFalse();
+    expect(isPlainObject(false)).toBeFalse();
+    expect(isPlainObject(true)).toBeFalse();
+    expect(isPlainObject(null)).toBeFalse();
+    expect(isPlainObject(undefined)).toBeFalse();
+    expect(isPlainObject(1)).toBeFalse();
+    expect(isPlainObject('1')).toBeFalse();
+
+    expect(isPlainObject(new Date())).toBeFalse();
+    expect(isPlainObject(new SimpleClass('asd'))).toBeFalse();
+
+    class O extends Object {
+    }
+    expect(isPlainObject(new O)).toBeFalse();
+
+    expect(isPlainObject({})).toBeTrue();
+    expect(isPlainObject(new Object)).toBeTrue();
 });
 
 test('helper is array', () => {
