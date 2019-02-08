@@ -12,8 +12,8 @@
     "@kamille/core": "0.0.1"
   },
   "dependencies": {
-    "@marcj/marshal": "^0.4.7",
-    "@marcj/marshal-mongo": "^0.4.7",
+    "@marcj/marshal": "^0.4.8",
+    "@marcj/marshal-mongo": "^0.4.9",
     "bluebird": "^3.5.1",
     "clone": "^2.1.1",
     "execa": "^1.0.0",

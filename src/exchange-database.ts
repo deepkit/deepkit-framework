@@ -13,10 +13,11 @@ import {
     partialClassToMongo,
     partialMongoToPlain,
     partialPlainToMongo,
-    Database
+    Database,
+    convertClassQueryToMongo
 } from "@marcj/marshal-mongo";
 import {MongoLock, Mongo} from "./mongo";
-import {eachPair} from "@kamille/core";
+import {eachPair, IdInterface} from "@kamille/core";
 import {EntityPatches} from "@kamille/core";
 import {Application} from "./application";
 
@@ -82,13 +83,13 @@ export class ExchangeDatabase {
         //todo, add exchange.Publish
     }
 
-    public async add<T>(classType: ClassType<T>, item: T) {
+    public async add<T extends IdInterface>(classType: ClassType<T>, item: T) {
         await this.database.add(classType, item);
 
         if (this.notifyChanges(classType)) {
             this.exchange.publishEntity(classType, {
                 type: 'add',
-                id: getIdFieldValue(classType, item),
+                id: item.id,
                 version: 1,
                 item: classToPlain(classType, item)
             });
@@ -159,7 +160,7 @@ export class ExchangeDatabase {
             projection[i] = 1;
         }
 
-        const response = await collection.findOneAndUpdate(partialClassToMongo(classType, filter), statement, {
+        const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), statement, {
             projection: projection,
             returnOriginal: false
         });
@@ -223,7 +224,7 @@ export class ExchangeDatabase {
             projection[field] = 1;
         }
 
-        const response = await collection.findOneAndUpdate(partialClassToMongo(classType, filter), patchStatement, {
+        const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), patchStatement, {
             projection: projection,
             returnOriginal: false
         });

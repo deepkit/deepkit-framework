@@ -4,7 +4,9 @@ import {Action, ApplicationModule, Controller} from "./src/decorators";
 import {Application, Session} from "./src/application";
 import {Observable} from "rxjs";
 import {Collection, IdInterface} from "@kamille/core";
-import {Entity, NumberType, StringType, uuid} from "@marcj/marshal";
+import {ClassType, Entity, NumberType, StringType, uuid} from "@marcj/marshal";
+import {EntityStorage} from "./src/entity-storage";
+import {ExchangeDatabase} from "./src/exchange-database";
 
 @Entity('user')
 class User implements IdInterface {
@@ -24,6 +26,10 @@ class User implements IdInterface {
 
 @Controller('user')
 class UserController {
+
+    constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+
+    }
 
     @Action()
     name(): string {
@@ -48,21 +54,26 @@ class UserController {
     }
 
     @Action()
-    userList(): Collection<User> {
-        const collection = new Collection(User);
-        collection.add(new User('Peter1'));
-        collection.add(new User('Peter2'));
-        collection.loaded();
+    async userList(): Promise<Collection<User>> {
+        await this.database.deleteMany(User, {});
+        const peter = new User('Peter 1');
 
-        setTimeout(() => {
-            collection.add(new User('Peter3'));
+        await this.database.add(User, peter);
+        await this.database.add(User, new User('Peter 2'));
+        await this.database.add(User, new User('Guschdl'));
+        await this.database.add(User, new User('Ingrid'));
+
+        setTimeout(async () => {
+            await this.database.add(User, new User('Peter 3'));
         }, 1000);
 
-        setTimeout(() => {
-            collection.complete();
-        }, 2000);
+        setTimeout(async () => {
+            await this.database.patch(User, peter.id, {name: 'Peter patched'});
+        }, 3000);
 
-        return collection;
+        return await this.storage.find(User, {
+            name: { $regex: /Peter/ }
+        });
     }
 
     @Action()
@@ -95,7 +106,8 @@ class UserController {
 
 
 @ApplicationModule({
-    controllers: [UserController]
+    controllers: [UserController],
+    notifyEntities: [User],
 })
 class MyApp extends Application {
     async bootstrap(): Promise<any> {

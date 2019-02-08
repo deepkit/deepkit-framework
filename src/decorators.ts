@@ -8,6 +8,7 @@ export interface ApplicationDecoratorOptions {
     serverProviders: Provider[],
     connectionProviders: Provider[],
     controllers: ClassType<any>[];
+    notifyEntities: ClassType<any>[];
 }
 
 export interface ControllerOptions {

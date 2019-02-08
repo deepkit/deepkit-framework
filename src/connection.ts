@@ -1,9 +1,8 @@
 import * as WebSocket from "ws";
-import {Injector} from "injection-js";
+import {Injectable} from "injection-js";
 import {Observable, Subscription} from "rxjs";
-import * as util from "util";
-import {Application, Session} from "./application";
-import {Collection, each, CollectionStream, MessageResult} from "@kamille/core";
+import {Application, SessionStack} from "./application";
+import {Collection, CollectionStream, each, MessageAll, Subscriptions} from "@kamille/core";
 import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
 
 interface Message {
@@ -20,16 +19,16 @@ function getSafeEntityName(object: any): string | undefined {
     }
 }
 
+@Injectable()
 export class Connection {
-    protected subscriptions: { [messageId: string]: Subscription } = {};
-    protected session?: Session;
-    protected app: Application;
+    protected subscriptions: { [messageId: string]: Subscription | Subscriptions } = {};
 
     constructor(
+        protected app: Application,
         protected socket: WebSocket,
-        protected injector: Injector,
+        protected sessionStack: SessionStack,
+        protected injector: (token: any) => any,
     ) {
-        this.app = this.injector.get(Application);
     }
 
     public destroy() {
@@ -44,8 +43,9 @@ export class Connection {
 
             if ('authenticate' === message['name']) {
                 this.send(message, async () => {
-                    this.session = await this.app.authenticate(message.payload);
-                    if (this.session instanceof Session) {
+                    this.sessionStack.setSession(await this.app.authenticate(message.payload));
+
+                    if (this.sessionStack.isSet()) {
                         return true;
                     }
 
@@ -81,12 +81,12 @@ export class Connection {
             throw new Error(`Controller not found for ${data.controller}`);
         }
 
-        const access = await this.app.hasAccess(this.session, controllerClass, data.action);
+        const access = await this.app.hasAccess(this.sessionStack.getSession(), controllerClass, data.action);
         if (!access) {
             throw new Error(`Access denied.`);
         }
 
-        const controller = this.injector.get(controllerClass);
+        const controller = this.injector(controllerClass);
 
         const methodName = data.action;
 
@@ -146,7 +146,11 @@ export class Connection {
                     this.write({type: 'next', id: message.id, next: nextValue});
                 });
 
-                this.subscriptions[message.id] = collection.subscribe((next) => {
+                this.subscriptions[message.id] = new Subscriptions(() => {
+                    collection.complete();
+                });
+
+                this.subscriptions[message.id].add = collection.subscribe((next) => {
 
                 }, (error) => {
                     this.sendError(message.id, error);
@@ -154,7 +158,8 @@ export class Connection {
                     console.log('completed');
                     this.complete(message.id);
                 });
-                this.subscriptions[message.id] = collection.event.subscribe((event) => {
+
+                this.subscriptions[message.id].add = collection.event.subscribe((event) => {
                     if (event.type === 'add') {
                         nextValue = {type: 'add', item: classToPlain(collection.classType, event.item)};
                         this.write({type: 'next', id: message.id, next: nextValue});
@@ -201,7 +206,7 @@ export class Connection {
         }
     }
 
-    public write(message: MessageResult) {
+    public write(message: MessageAll) {
         if (this.socket.readyState === this.socket.OPEN) {
             this.socket.send(JSON.stringify(message));
         }

@@ -1,7 +1,7 @@
 import * as cluster from "cluster";
-import {AnyType, ArrayType, ClassType, getClassName, NumberType, plainToClass, StringType} from "@marcj/marshal";
+import {ClassType, getClassName} from "@marcj/marshal";
 import {Worker} from './worker';
-import {Injectable, Injector, Provider, ReflectiveInjector} from "injection-js";
+import {Provider, ReflectiveInjector} from "injection-js";
 import {FS} from "./fs";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
@@ -36,7 +36,7 @@ export class ApplicationServerConfig {
 
     redisHost: string = 'localhost';
 
-    redisPort: number = 6380;
+    redisPort: number = 6379;
 
     redisPrefix: string = 'kamille';
 
@@ -54,6 +54,7 @@ export class ApplicationServer {
         serverProvider: Provider[] = [],
         protected connectionProvider: Provider[] = [],
         controllers: ClassType<any>[] = [],
+        notifyEntities:ClassType<any>[] = [],
     ) {
         this.config = config instanceof ApplicationServerConfig ? config : applyDefaults(ApplicationServerConfig, config);
 
@@ -79,7 +80,7 @@ export class ApplicationServer {
             },
             {
                 provide: Database, deps: [Mongo], useFactory: (mongo: Mongo) => {
-                    new Database(async () => {
+                    return new Database(async () => {
                         return mongo.connect();
                     }, mongo.dbName);
                 }
@@ -94,15 +95,20 @@ export class ApplicationServer {
             {
                 provide: Mongo,
                 deps: ['mongo.host', 'mongo.dbName'],
-                useFactory: (host: string, dbName: string) => new Mongo(host, dbName)
+                useFactory: (host: string, dbName: string) => {
+                    return new Mongo(dbName, host);
+                }
             },
         ];
 
-        baseInjectors.push(...controllers);
         baseInjectors.push(...serverProvider);
 
         this.injector = ReflectiveInjector.resolveAndCreate(baseInjectors);
         const app: Application = this.injector.get(Application);
+
+        app.notifyEntities.push(...notifyEntities);
+
+        connectionProvider.push(...controllers);
 
         for (const controllerClass of controllers) {
             const options = getControllerOptions(controllerClass);
@@ -117,7 +123,14 @@ export class ApplicationServer {
 
     public static createForModule<T extends Application>(application: ClassType<T>) {
         const options = getApplicationModuleOptions(application);
-        return new this(application, options.config || {}, options.serverProviders || [], options.connectionProviders || [], options.controllers);
+        return new this(
+            application,
+            options.config || {},
+            options.serverProviders || [],
+            options.connectionProviders || [],
+            options.controllers,
+            options.notifyEntities,
+        );
     }
 
     public async start() {
