@@ -1,7 +1,7 @@
 import {Observable, Subject, Subscriber} from "rxjs";
 import {AnyType, NumberType, plainToClass, RegisteredEntities, StringType} from "@marcj/marshal";
 import * as WebSocket from "ws";
-import {Collection, MessageResult, MessageType} from "@kamille/core";
+import {Collection, MessageAll, MessageType} from "@kamille/core";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
@@ -87,36 +87,41 @@ export class SocketClient {
     }
 
     protected onMessage(event: { data: WebSocket.Data; type: string; target: WebSocket }) {
-        const reply = JSON.parse(event.data.toString()) as MessageResult;
+        const message = JSON.parse(event.data.toString()) as MessageAll;
 
-        if (!reply) {
+        if (!message) {
             throw new Error(`Got invalid message: ` + event.data);
         }
 
-        if (reply.type === 'complete' || reply.type === 'next' || reply.type === 'error' || reply.type === 'type') {
-            const callback = this.replies[reply.id];
+
+        if (message.type === 'entity/remove' || message.type === 'entity/patch' || message.type === 'entity/update') {
+            this.entityState.handleEntityMessage(message);
+        }
+
+        if (message.type === 'complete' || message.type === 'next' || message.type === 'error' || message.type === 'type') {
+            const callback = this.replies[message.id];
 
             if (!callback) {
                 throw new Error(`Got message without reply callback (timeout?): ` + event.data);
             }
 
-            if (reply.type === 'type') {
+            if (message.type === 'type') {
                 if (callback.returnType) {
-                    callback.returnType(reply);
+                    callback.returnType(message);
                 }
-            } else if (reply.type === 'next') {
+            } else if (message.type === 'next') {
                 if (callback.next) {
                     //convert if possible
-                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
-                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
+                    if (message.entityName && RegisteredEntities[message.entityName]) {
+                        message.next = plainToClass(RegisteredEntities[message.entityName], message.next);
                     }
-                    callback.next(reply.next);
+                    callback.next(message.next);
                 }
-            } else if (reply.type === 'error') {
+            } else if (message.type === 'error') {
                 if (callback.error) {
-                    callback.error(reply.error);
+                    callback.error(message.error);
                 }
-            } else if (reply.type === 'complete') {
+            } else if (message.type === 'complete') {
                 if (callback.complete) {
                     callback.complete();
                 }
@@ -235,7 +240,6 @@ export class SocketClient {
                     if (subscriber && activeReturnType === 'observable') {
                         subscriber.next(data);
                     }
-
                     if (activeReturnType === 'collection' && returnValue instanceof Collection) {
                         this.entityState.handleCollectionNext(returnValue, data);
                     }

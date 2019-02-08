@@ -1,6 +1,7 @@
-import {ClassType, plainToClass} from "@marcj/marshal";
-import {Subscriber, Subscription} from "rxjs";
-import {Collection, CollectionStream, IdInterface} from "@kamille/core";
+import {ClassType, plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
+import {Subscriber} from "rxjs";
+import {Collection, CollectionStream, eachPair, IdInterface, MessageEntity, MessageEntityPatch} from "@kamille/core";
+import {set} from 'dot-prop';
 
 class StoreItem<T> {
     instance: T | undefined;
@@ -93,10 +94,9 @@ export class EntityState {
     private readonly items = new Map<ClassType<any>, ItemsStore<any>>();
     // private readonly findOneStats = new Map<ClassType<any>, { [key: string]: FindOneStat<any> }>();
 
-    private entitySubscriptions = new Map<ClassType<any>, Subscription>();
+    // private entitySubscriptions = new Map<ClassType<any>, Subscription>();
 
     // private subscribeJobCollection: { [jobId: string]: {subscription?: Subscription, observers: Subscriber<any>[]} } = {};
-
 
     private getStore<T>(classType: ClassType<T>): ItemsStore<T> {
         let store = this.items.get(classType);
@@ -109,6 +109,46 @@ export class EntityState {
         return store;
     }
 
+    public handleEntityMessage<T extends IdInterface>(stream: MessageEntity) {
+        const classType = RegisteredEntities[stream.entityName];
+        const store = this.getStore(classType);
+
+        if (stream.type === 'entity/update') {
+            if (store.hasItem(stream.id)) {
+                const item = plainToClass(classType, stream.item);
+                store.setItemAndNotifyObservers(stream.id, item);
+            }
+        }
+
+        if (stream.type === 'entity/patch') {
+            if (store.hasItem(stream.id)) {
+                const toVersion = stream.version;
+                const storeItem = store.getOrCreateItem(stream.id);
+
+                if (storeItem.instance && storeItem.instance.version < toVersion) {
+                    //it's important to not patch old versions
+
+                    for (const [i, v] of eachPair(stream.patch)) {
+                        const vc = propertyPlainToClass(classType, i, v, [], 0, {onFullLoadCallbacks: []});
+                        set(storeItem.instance, i, vc);
+                        // console.log('patch', i, vc);
+                        // console.log('patch item', stream.id, i, (storeItem.instance as any)[i]);
+                    }
+
+                    storeItem.instance.version = toVersion;
+                    store.notifyObservers(stream.id);
+                    // console.log('item patched', stream.patch);
+                }
+            }
+        }
+
+        if (stream.type === 'entity/remove') {
+            if (store.hasItem(stream.id)) {
+                store.removeItemAndNotifyObservers(stream.id);
+            }
+        }
+
+    }
 
     public handleCollectionNext<T extends IdInterface>(collection: Collection<T>, stream: CollectionStream) {
         const classType = collection.classType;
