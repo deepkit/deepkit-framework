@@ -12,8 +12,15 @@ export class AsyncSubscription {
 export class Subscriptions {
     protected subscription: Subscription[] = [];
 
+    constructor(protected teardown?: () => void | Promise<void>) {
+
+    }
+
     public subscribe<T>(observable: Observable<T>, callback: (next: T) => any) {
         this.subscription.push(observable.subscribe(callback));
+        if (this.teardown) {
+            this.teardown();
+        }
     }
 
     public set add(v: Subscription) {

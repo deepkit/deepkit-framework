@@ -3,22 +3,18 @@ export interface IdInterface {
     version: number;
 }
 
-export interface ChannelEntityBase {
+export interface MessageEntityBase {
+    entityName: string;
     id: string;
     version: number;
 }
 
-export interface ChannelEntityAdd extends ChannelEntityBase {
-    type: 'add';
-    item: any;
+export interface MessageEntityRemove extends MessageEntityBase {
+    type: 'entity/remove';
 }
 
-export interface ChannelEntityRemove extends ChannelEntityBase {
-    type: 'remove';
-}
-
-export interface ChannelEntityUpdate extends ChannelEntityBase {
-    type: 'update';
+export interface MessageEntityUpdate extends MessageEntityBase {
+    type: 'entity/update';
     item: any;
 }
 
@@ -26,13 +22,12 @@ export interface EntityPatches {
     [path: string]: any;
 }
 
-export interface ChannelEntityPatch extends ChannelEntityBase {
-    type: 'patch';
+export interface MessageEntityPatch extends MessageEntityBase {
+    type: 'entity/patch';
     patch: EntityPatches;
-    item: any;
 }
 
-export type ChannelEntity = ChannelEntityAdd | ChannelEntityRemove | ChannelEntityUpdate | ChannelEntityPatch;
+export type MessageEntity = MessageEntityRemove | MessageEntityUpdate | MessageEntityPatch;
 
 export interface CollectionStreamSet {
     type: 'set';
@@ -131,3 +126,11 @@ export interface MessageError {
 }
 
 export type MessageResult = MessageType | MessageNext | MessageComplete | MessageError;
+
+export interface MessageChannel {
+    type: 'channel';
+    name: string;
+    data: any;
+}
+
+export type MessageAll = MessageResult | MessageChannel | MessageEntity;
