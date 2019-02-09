@@ -2,14 +2,8 @@ import * as WebSocket from "ws";
 import {Injectable} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {Collection, CollectionStream, each, MessageAll, Subscriptions} from "@kamille/core";
+import {ClientMessageAll, Collection, CollectionStream, each, ServerMessageAll, Subscriptions} from "@kamille/core";
 import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
-
-interface Message {
-    id: number;
-    name: string;
-    payload: any;
-}
 
 function getSafeEntityName(object: any): string | undefined {
     try {
@@ -21,7 +15,8 @@ function getSafeEntityName(object: any): string | undefined {
 
 @Injectable()
 export class Connection {
-    protected subscriptions: { [messageId: string]: Subscription | Subscriptions } = {};
+    protected collectionSubscriptions: { [messageId: string]: Subscriptions } = {};
+    protected observables: { [messageId: string]: { observable: Observable<any>, subscriber: { [subscriberId: string]: Subscription } } } = {};
 
     constructor(
         protected app: Application,
@@ -32,65 +27,93 @@ export class Connection {
     }
 
     public destroy() {
-        for (const sub of each(this.subscriptions)) {
+        for (const sub of each(this.collectionSubscriptions)) {
             sub.unsubscribe();
+        }
+        for (const ob of each(this.observables)) {
+            for (const sub of each(ob.subscriber)) {
+                sub.unsubscribe();
+            }
         }
     }
 
     public async onMessage(raw: string) {
         if ('string' === typeof raw) {
-            const message = JSON.parse(raw) as Message;
+            const message = JSON.parse(raw) as ClientMessageAll;
 
-            if ('authenticate' === message['name']) {
-                this.send(message, async () => {
-                    this.sessionStack.setSession(await this.app.authenticate(message.payload));
+            if (message.name === 'authenticate') {
+                this.sessionStack.setSession(await this.app.authenticate(message.token));
 
-                    if (this.sessionStack.isSet()) {
-                        return true;
-                    }
-
-                    return false;
+                this.write({
+                    type: 'authenticate/result',
+                    id: message.id,
+                    result: this.sessionStack.isSet(),
                 });
             }
 
-            if ('action' === message['name']) {
+            if (message.name === 'action') {
                 // console.log('Got action', message);
                 try {
-                    this.send(message, () => this.action(message.payload));
+                    this.send(message, () => this.action(message.controller, message.action, message.args));
                 } catch (error) {
-                    console.log('Unhandled shit', error);
+                    console.log('Unhandled action error', error);
                 }
             }
 
-            if ('unsubscribe' === message['name']) {
-                if (this.subscriptions[message.id]) {
-                    try {
-                        this.subscriptions[message.id].unsubscribe();
-                    } catch (error) {
-                        console.error('Error in unsubscribing', error);
-                    }
+            if (message.name === 'observable/subscribe') {
+                if (!this.observables[message.id]) {
+                    throw new Error('No observable registered.');
                 }
+
+                if (this.observables[message.id].subscriber[message.subscribeId]) {
+                    throw new Error('Subscriber already registered.');
+                }
+
+                this.observables[message.id].subscriber[message.subscribeId] = this.observables[message.id].observable.subscribe((next) => {
+                    const entityName = getSafeEntityName(next);
+                    if (entityName && RegisteredEntities[entityName]) {
+                        next = classToPlain(RegisteredEntities[entityName], next);
+                    }
+
+                    this.write({type: 'next/observable', id: message.id, subscribeId: message.subscribeId, entityName: entityName, next: next});
+                }, (error) => {
+                    this.sendError(message.id, error);
+                }, () => {
+                    this.complete(message.id);
+                });
+            }
+
+            if (message.name === 'observable/unsubscribe') {
+                if (!this.observables[message.id]) {
+                    throw new Error('No observable registered.');
+                }
+
+                if (!this.observables[message.id].subscriber[message.subscribeId]) {
+                    throw new Error('Subscriber already unsubscribed.');
+                }
+
+                this.observables[message.id].subscriber[message.subscribeId].unsubscribe();
             }
         }
     }
 
-    public async action(data: { controller: string, action: string, args: any[] }): Promise<any> {
-        const controllerClass = await this.app.getController(data.controller);
+    public async action(controller: string, action: string, args: any[]): Promise<any> {
+        const controllerClass = await this.app.getController(controller);
 
         if (!controllerClass) {
-            throw new Error(`Controller not found for ${data.controller}`);
+            throw new Error(`Controller not found for ${controller}`);
         }
 
-        const access = await this.app.hasAccess(this.sessionStack.getSession(), controllerClass, data.action);
+        const access = await this.app.hasAccess(this.sessionStack.getSession(), controllerClass, action);
         if (!access) {
             throw new Error(`Access denied.`);
         }
 
-        const controller = this.injector(controllerClass);
+        const controllerIntance = this.injector(controllerClass);
 
-        const methodName = data.action;
+        const methodName = action;
 
-        if ((controller as any)[methodName]) {
+        if ((controllerIntance as any)[methodName]) {
             const actions = Reflect.getMetadata('kamille:actions', controllerClass.prototype) || {};
 
             if (!actions[methodName]) {
@@ -99,7 +122,9 @@ export class Connection {
             }
 
             try {
-                const result = (controller as any)[methodName](...data['args']);
+                //todo, convert args via plainToClass
+
+                const result = (controllerIntance as any)[methodName](...args);
                 return result;
             } catch (error) {
                 // possible security whole, when we send all errors.
@@ -112,11 +137,7 @@ export class Connection {
         throw new Error(`Action unknown ${methodName}`);
     }
 
-    public async send(message: Message, exec: (() => Promise<any> | Observable<any>)) {
-        if (this.subscriptions[message.id]) {
-            throw new Error(`Message id ${message.id} already used.`);
-        }
-
+    public async send(message: ClientMessageAll, exec: (() => Promise<any> | Observable<any>)) {
         try {
             let result = exec();
 
@@ -137,36 +158,41 @@ export class Connection {
                         total: collection.count(),
                         items: collection.all().map(v => classToPlain(collection.classType, v))
                     };
-                    this.write({type: 'next', id: message.id, next: nextValue});
+                    this.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 
                 collection.ready.toPromise().then(() => {
                     nextValue = {type: 'ready'};
-                    this.write({type: 'next', id: message.id, next: nextValue});
+                    this.write({type: 'next/collection', id: message.id, next: nextValue});
                 });
 
-                this.subscriptions[message.id] = new Subscriptions(() => {
+                if (this.collectionSubscriptions[message.id]) {
+                    throw new Error('Collection already subscribed');
+                }
+
+                this.collectionSubscriptions[message.id] = new Subscriptions(() => {
                     collection.complete();
                 });
 
-                this.subscriptions[message.id].add = collection.subscribe((next) => {
+                this.collectionSubscriptions[message.id].add = collection.subscribe((next) => {
 
                 }, (error) => {
                     this.sendError(message.id, error);
+                    this.collectionSubscriptions[message.id].unsubscribe();
                 }, () => {
-                    console.log('completed');
                     this.complete(message.id);
+                    this.collectionSubscriptions[message.id].unsubscribe();
                 });
 
-                this.subscriptions[message.id].add = collection.event.subscribe((event) => {
+                this.collectionSubscriptions[message.id].add = collection.event.subscribe((event) => {
                     if (event.type === 'add') {
                         nextValue = {type: 'add', item: classToPlain(collection.classType, event.item)};
-                        this.write({type: 'next', id: message.id, next: nextValue});
+                        this.write({type: 'next/collection', id: message.id, next: nextValue});
                     }
 
                     if (event.type === 'remove') {
                         nextValue = {type: 'remove', id: event.id};
-                        this.write({type: 'next', id: message.id, next: nextValue});
+                        this.write({type: 'next/collection', id: message.id, next: nextValue});
                     }
 
                     if (event.type === 'set') {
@@ -177,27 +203,20 @@ export class Connection {
                             total: event.items.length,
                             items: event.items.map(v => classToPlain(collection.classType, v))
                         };
-                        this.write({type: 'next', id: message.id, next: nextValue});
+                        this.write({type: 'next/collection', id: message.id, next: nextValue});
                     }
                 });
             } else if (result instanceof Observable) {
                 this.write({type: 'type', id: message.id, returnType: 'observable'});
-
-                this.subscriptions[message.id] = result.subscribe((next) => {
-                    const entityName = getSafeEntityName(next);
-                    if (entityName && RegisteredEntities[entityName]) {
-                        next = classToPlain(RegisteredEntities[entityName], next);
-                    }
-
-                    this.write({type: 'next', id: message.id, entityName: entityName, next: next});
-                }, (error) => {
-                    this.sendError(message.id, error);
-                }, () => {
-                    this.complete(message.id);
-                });
+                this.observables[message.id] = {observable: result, subscriber: {}};
             } else {
+                let next = result;
+                const entityName = getSafeEntityName(next);
+                if (entityName && RegisteredEntities[entityName]) {
+                    next = classToPlain(RegisteredEntities[entityName], next);
+                }
                 this.write({type: 'type', id: message.id, returnType: 'json'});
-                this.write({type: 'next', id: message.id, next: result});
+                this.write({type: 'next/json', id: message.id, entityName: entityName, next: next});
                 this.complete(message.id);
             }
         } catch (error) {
@@ -206,19 +225,17 @@ export class Connection {
         }
     }
 
-    public write(message: MessageAll) {
+    public write(message: ServerMessageAll) {
         if (this.socket.readyState === this.socket.OPEN) {
             this.socket.send(JSON.stringify(message));
         }
     }
 
     public complete(id: number) {
-        delete this.subscriptions[id];
         this.write({type: 'complete', id: id});
     }
 
     public sendError(id: number, error: any) {
-        delete this.subscriptions[id];
         this.write({type: 'error', id: id, error: error instanceof Error ? error.message : error});
     }
 }
