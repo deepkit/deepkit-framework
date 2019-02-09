@@ -1,6 +1,6 @@
 import {ClassType, plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
 import {Subscriber} from "rxjs";
-import {Collection, CollectionStream, eachPair, IdInterface, MessageEntity} from "@kamille/core";
+import {Collection, CollectionStream, eachPair, IdInterface, ServerMessageEntity} from "@kamille/core";
 import {set} from 'dot-prop';
 
 class StoreItem<T> {
@@ -101,7 +101,7 @@ export class EntityState {
         return store;
     }
 
-    public handleEntityMessage<T extends IdInterface>(stream: MessageEntity) {
+    public handleEntityMessage<T extends IdInterface>(stream: ServerMessageEntity) {
         const classType = RegisteredEntities[stream.entityName];
         const store = this.getStore(classType);
 

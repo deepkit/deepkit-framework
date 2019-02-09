@@ -1,7 +1,14 @@
-import {Observable, Subject, Subscriber} from "rxjs";
-import {AnyType, NumberType, plainToClass, RegisteredEntities, StringType} from "@marcj/marshal";
+import {Observable, Subscriber} from "rxjs";
+import {plainToClass, RegisteredEntities} from "@marcj/marshal";
 import * as WebSocket from "ws";
-import {applyDefaults, Collection, MessageAll, MessageType} from "@kamille/core";
+import {
+    applyDefaults,
+    ClientMessageAll,
+    ClientMessageWithoutId,
+    Collection,
+    ServerMessageAll,
+    ServerMessageResult
+} from "@kamille/core";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
@@ -15,9 +22,6 @@ export class SocketClientConfig {
 export class AuthorizationError extends Error {
 }
 
-type ArgumentTypes<T> = T extends (... args: infer U ) => infer R ? U: never;
-
-
 export class SocketClient {
     public socket?: WebSocket;
 
@@ -29,13 +33,17 @@ export class SocketClient {
     // private maxConnectionTryDelay = 2;
     private connectionTries = 0;
 
+    // private replies: {
+    //     [messageId: string]: {
+    //         returnType?: (type: ServerMessageType) => void,
+    //         next?: (data: any) => void,
+    //         complete: () => void,
+    //         error: (error: any) => void
+    //     }
+    // } = {};
+
     private replies: {
-        [messageId: string]: {
-            returnType?: (type: MessageType) => void,
-            next?: (data: any) => void,
-            complete: () => void,
-            error: (error: any) => void
-        }
+        [messageId: string]: (data: ServerMessageResult) => void
     } = {};
 
     private connectionPromise?: Promise<void>;
@@ -73,8 +81,8 @@ export class SocketClient {
     }
 
     protected onMessage(event: { data: WebSocket.Data; type: string; target: WebSocket }) {
-        const message = JSON.parse(event.data.toString()) as MessageAll;
-        console.log('onMessage', message);
+        const message = JSON.parse(event.data.toString()) as ServerMessageAll;
+        // console.log('onMessage', message);
 
         if (!message) {
             throw new Error(`Got invalid message: ` + event.data);
@@ -82,37 +90,46 @@ export class SocketClient {
 
         if (message.type === 'entity/remove' || message.type === 'entity/patch' || message.type === 'entity/update') {
             this.entityState.handleEntityMessage(message);
-        }
-
-        if (message.type === 'complete' || message.type === 'next' || message.type === 'error' || message.type === 'type') {
-            const callback = this.replies[message.id];
-
-            if (!callback) {
-                throw new Error(`Got message without reply callback (timeout?): ` + event.data);
-            }
-
-            if (message.type === 'type') {
-                if (callback.returnType) {
-                    callback.returnType(message);
-                }
-            } else if (message.type === 'next') {
-                if (callback.next) {
-                    //convert if possible
-                    if (message.entityName && RegisteredEntities[message.entityName]) {
-                        message.next = plainToClass(RegisteredEntities[message.entityName], message.next);
-                    }
-                    callback.next(message.next);
-                }
-            } else if (message.type === 'error') {
-                if (callback.error) {
-                    callback.error(message.error);
-                }
-            } else if (message.type === 'complete') {
-                if (callback.complete) {
-                    callback.complete();
-                }
+            return;
+        } else if (message.type === 'channel') {
+        } else {
+            if (this.replies[message.id]) {
+                this.replies[message.id](message);
+            } else {
+                console.debug(`No replies callback for message ${message.id}`);
             }
         }
+
+
+        // if (message.type === 'complete' || message.type === 'next' || message.type === 'error' || message.type === 'type') {
+        //     const callback = this.replies[message.id];
+        //
+        //     if (!callback) {
+        //         throw new Error(`Got message without reply callback (timeout?): ` + event.data);
+        //     }
+        //
+        //     if (message.type === 'type') {
+        //         if (callback.returnType) {
+        //             callback.returnType(message);
+        //         }
+        //     } else if (message.type === 'next') {
+        //         if (callback.next) {
+        //             //convert if possible
+        //             if (message.entityName && RegisteredEntities[message.entityName]) {
+        //                 message.next = plainToClass(RegisteredEntities[message.entityName], message.next);
+        //             }
+        //             callback.next(message.next);
+        //         }
+        //     } else if (message.type === 'error') {
+        //         if (callback.error) {
+        //             callback.error(message.error);
+        //         }
+        //     } else if (message.type === 'complete') {
+        //         if (callback.complete) {
+        //             callback.complete();
+        //         }
+        //     }
+        // }
     }
 
     public async onConnected(): Promise<void> {
@@ -140,7 +157,7 @@ export class SocketClient {
 
             socket.onopen = async () => {
                 if (this.config.token) {
-                    if (!await this.authorize()) {
+                    if (!await this.authenticate()) {
                         reject(new AuthorizationError());
                         return;
                     }
@@ -178,138 +195,149 @@ export class SocketClient {
 
     public async stream(controller: string, name: string, ...args: any[]): Promise<any> {
         return new Promise<any>((resolve, reject) => {
-            this.messageId++;
-            const messageId = this.messageId;
-
-            const message = {
-                id: messageId,
-                name: 'action',
-                payload: {controller: controller, action: name, args}
-            };
+            //todo, handle reject when we sending message fails
 
             let activeReturnType = 'json';
             let returnValue: any;
 
-            //todo, implement collection
             const self = this;
-            let subscriber: Subscriber<any> | undefined;
+            let subscribers: { [subscriberId: number]: Subscriber<any> } = {};
+            let subscriberIdCounter = 0;
 
-            this.replies[messageId] = {
-                returnType: (type: MessageType) => {
-                    activeReturnType = type.returnType;
-                    if (type.returnType === 'observable') {
+            this.sendMessage({
+                name: 'action',
+                controller: controller,
+                action: name,
+                args: args
+            }, (reply: ServerMessageResult) => {
+                if (reply.type === 'type') {
+                    activeReturnType = reply.returnType;
+                    if (reply.returnType === 'observable') {
                         returnValue = new Observable((observer) => {
-                            subscriber = observer;
+                            let subscriberId = ++subscriberIdCounter;
+
+                            subscribers[subscriberId] = observer;
+
+                            self.send({
+                                id: reply.id,
+                                name: 'observable/subscribe',
+                                subscribeId: subscriberId
+                            });
 
                             return {
                                 unsubscribe(): void {
-                                    const message = {
-                                        id: messageId,
-                                        name: 'unsubscribe',
-                                    };
-                                    self.connect().then(() => self.send(JSON.stringify(message)));
+                                    self.send({
+                                        id: reply.id,
+                                        name: 'observable/unsubscribe',
+                                        subscribeId: subscriberId
+                                    });
                                 }
                             }
                         });
                         resolve(returnValue);
                     }
-                    if (type.returnType === 'collection') {
-                        const classType = RegisteredEntities[type.entityName];
+
+                    if (reply.returnType === 'collection') {
+                        const classType = RegisteredEntities[reply.entityName];
                         if (!classType) {
-                            throw new Error(`Entity ${type.entityName} not known`);
+                            throw new Error(`Entity ${reply.entityName} not known`);
                         }
 
                         returnValue = new Collection<any>(classType);
                         resolve(returnValue);
                     }
-                },
-                next: (data) => {
-                    if (subscriber && activeReturnType === 'observable') {
-                        subscriber.next(data);
+                }
+
+                if (reply.type === 'next/json') {
+                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
+                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
                     }
-                    if (activeReturnType === 'collection' && returnValue instanceof Collection) {
-                        this.entityState.handleCollectionNext(returnValue, data);
-                    }
-                    if (activeReturnType === 'json') {
-                        resolve(data);
-                    }
-                },
-                complete: () => {
-                    if (subscriber) {
-                        subscriber.complete();
-                    }
-                    if (returnValue instanceof Subject) {
-                        returnValue.complete();
-                    }
-                },
-                error: (error) => {
-                    if (returnValue instanceof Subject) {
-                        returnValue.error(error);
+                    resolve(reply.next);
+                }
+
+                if (reply.type === 'next/observable') {
+                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
+                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
                     }
 
-                    if (subscriber) {
-                        subscriber.error(new Error(error));
-                    } else {
-                        reject(new Error(error));
+                    if (subscribers[reply.subscribeId]) {
+                        subscribers[reply.subscribeId].next(reply.next);
                     }
                 }
-            };
 
-            this.connect().then(_ => this.send(JSON.stringify(message)));
+                if (reply.type === 'next/collection') {
+                    this.entityState.handleCollectionNext(returnValue, reply.next);
+                }
+
+                if (reply.type === 'complete') {
+                    if (returnValue instanceof Collection) {
+                        returnValue.complete();
+                    }
+                }
+
+                if (reply.type === 'error') {
+                    if (returnValue instanceof Collection) {
+                        returnValue.error(reply.error);
+                    } else {
+                        reject(reply.error);
+                    }
+                }
+
+                if (reply.type === 'error/observable') {
+                    if (subscribers[reply.subscribeId]) {
+                        subscribers[reply.subscribeId].error(reply.error);
+                    }
+                }
+
+                if (reply.type === 'complete/observable') {
+                    if (subscribers[reply.subscribeId]) {
+                        subscribers[reply.subscribeId].complete();
+                    }
+                }
+            });
+
         })
     }
 
-    public async send(payload: string) {
+    public send(message: ClientMessageAll) {
         if (!this.socket) {
             throw new Error('Socket not created yet');
         }
 
-        this.socket.send(payload);
+        this.socket.send(JSON.stringify(message));
     }
 
-    private async sendMessage(name: string, payload: any, next?: (data: any) => void): Promise<any> {
+    private sendMessage(messageWithoutId: ClientMessageWithoutId, answer: (data: ServerMessageResult) => void): void {
         this.messageId++;
         const messageId = this.messageId;
 
         const message = {
-            id: messageId,
-            name: name,
-            payload: payload
+            id: messageId, ...messageWithoutId
         };
 
-        // console.time('send ' + channel + ': ' + JSON.stringify(message));
-        return new Promise<any>(async (resolve, reject) => {
-            this.replies[messageId] = {
-                returnType: (type) => {
-                }, next: next, complete: resolve, error: reject
-            };
-            await this.send(JSON.stringify(message));
+        this.replies[messageId] = answer;
 
-            setTimeout(() => {
-                if (this.replies[messageId]) {
-                    delete this.replies[messageId];
-                    reject('Message timeout');
-                }
-            }, 60 * 1000);
-        });
+        this.connect().then(() => this.send(message));
     }
 
-    private async authorize(): Promise<boolean> {
-        try {
-            const success = this.sendMessage('authorize', {
+    private async authenticate(): Promise<boolean> {
+        this.loggedIn = await new Promise<boolean>((resolve, reject) => {
+            this.sendMessage({
+                name: 'authenticate',
                 token: this.config.token,
-            });
-            if (success) {
-                this.loggedIn = true;
-                return true;
-            }
+            }, (reply: ServerMessageResult) => {
+                if (reply.type === 'authenticate/result') {
+                    resolve(reply.result);
+                }
 
-            return false;
-        } catch (error) {
-            console.error('login error', error);
-            this.loggedIn = false;
-            throw error;
-        }
+                if (reply.type === 'error') {
+                    reject(reply.error);
+                }
+            });
+
+        });
+
+        return this.loggedIn;
     }
 
     public disconnect() {
@@ -322,17 +350,3 @@ export class SocketClient {
         }
     }
 }
-
-// export class DirectSocketClient extends SocketClient {
-//     public async send(payload: string) {
-//         if (!this.socket) {
-//             throw new Error('Socket not created yet');
-//         }
-//
-//         this.socket.send(payload);
-//     }
-//
-//     protected async doConnect(): Promise<void> {
-//         //nothing needed
-//     }
-// }
