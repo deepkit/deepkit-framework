@@ -29,18 +29,7 @@ export class SocketClient {
     private loggedIn: boolean = false;
 
     private messageId: number = 0;
-    // private maxConnectionTries = 5;
-    // private maxConnectionTryDelay = 2;
     private connectionTries = 0;
-
-    // private replies: {
-    //     [messageId: string]: {
-    //         returnType?: (type: ServerMessageType) => void,
-    //         next?: (data: any) => void,
-    //         complete: () => void,
-    //         error: (error: any) => void
-    //     }
-    // } = {};
 
     private replies: {
         [messageId: string]: (data: ServerMessageResult) => void
@@ -55,10 +44,6 @@ export class SocketClient {
         config: SocketClientConfig | Partial<SocketClientConfig> = {},
     ) {
         this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
-    }
-
-    public isConnected(): boolean {
-        return this.connected;
     }
 
     //todo, add better argument inference for U
@@ -99,37 +84,6 @@ export class SocketClient {
                 console.debug(`No replies callback for message ${message.id}`);
             }
         }
-
-
-        // if (message.type === 'complete' || message.type === 'next' || message.type === 'error' || message.type === 'type') {
-        //     const callback = this.replies[message.id];
-        //
-        //     if (!callback) {
-        //         throw new Error(`Got message without reply callback (timeout?): ` + event.data);
-        //     }
-        //
-        //     if (message.type === 'type') {
-        //         if (callback.returnType) {
-        //             callback.returnType(message);
-        //         }
-        //     } else if (message.type === 'next') {
-        //         if (callback.next) {
-        //             //convert if possible
-        //             if (message.entityName && RegisteredEntities[message.entityName]) {
-        //                 message.next = plainToClass(RegisteredEntities[message.entityName], message.next);
-        //             }
-        //             callback.next(message.next);
-        //         }
-        //     } else if (message.type === 'error') {
-        //         if (callback.error) {
-        //             callback.error(message.error);
-        //         }
-        //     } else if (message.type === 'complete') {
-        //         if (callback.complete) {
-        //             callback.complete();
-        //         }
-        //     }
-        // }
     }
 
     public async onConnected(): Promise<void> {
@@ -212,6 +166,33 @@ export class SocketClient {
             }, (reply: ServerMessageResult) => {
                 if (reply.type === 'type') {
                     activeReturnType = reply.returnType;
+
+                    if (reply.returnType === 'entity') {
+                        const classType = RegisteredEntities[reply.entityName];
+
+                        if (!classType) {
+                            throw new Error(`Entity ${reply.entityName} not known`);
+                        }
+
+                        if (reply.item) {
+                            if (this.entityState.hasEntitySubject(classType, reply.item.id)) {
+                                const subject = this.entityState.handleEntity(classType, reply.item);
+                                resolve(subject);
+                            } else {
+                                const subject = this.entityState.handleEntity(classType, reply.item);
+                                //it got created, so we subscribe only once
+                                subject.subscribe(() => {
+                                }, () => {
+                                }, () => {
+                                    //todo, send to server we unsubscribed from that entity
+                                    // so we stop getting
+                                });
+
+                                resolve(subject);
+                            }
+                        }
+                    }
+
                     if (reply.returnType === 'observable') {
                         returnValue = new Observable((observer) => {
                             let subscriberId = ++subscriberIdCounter;
@@ -243,8 +224,13 @@ export class SocketClient {
                             throw new Error(`Entity ${reply.entityName} not known`);
                         }
 
-                        returnValue = new Collection<any>(classType);
-                        resolve(returnValue);
+                        const collection = new Collection<any>(classType);
+                        returnValue = collection;
+
+                        collection.addTeardown(new Subscriber(() => {
+                            this.entityState.unsubscribeCollection(collection);
+                        }));
+                        resolve(collection);
                     }
                 }
 

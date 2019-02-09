@@ -1,100 +1,75 @@
 import {ClassType, plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
-import {Subscriber} from "rxjs";
-import {Collection, CollectionStream, eachPair, IdInterface, ServerMessageEntity} from "@kamille/core";
+import {Subscription} from "rxjs";
+import {
+    Collection,
+    CollectionStream,
+    each,
+    eachPair,
+    EntitySubject,
+    IdInterface,
+    JSONEntity,
+    ServerMessageEntity
+} from "@kamille/core";
 import {set} from 'dot-prop';
 
-class StoreItem<T> {
-    instance: T | undefined;
-    deleted: boolean = false;
-    observers: Subscriber<T>[] = [];
+class EntitySubjectStore<T extends IdInterface> {
+    subjects: { [id: string]: EntitySubject<T | undefined> } = {};
 
-    constructor(instance: T | undefined) {
-        this.instance = instance;
-    }
-}
-
-class ItemsStore<T> {
-    items: { [id: string]: StoreItem<any> } = {};
-    protected observerId = 0;
-
-    public getOrCreateItem(id: string): StoreItem<T> {
-        if (!this.items[id]) {
-            this.items[id] = new StoreItem(undefined);
+    public getOrCreateSubject(id: string, item?: T): EntitySubject<T | undefined> {
+        if (!this.subjects[id]) {
+            this.subjects[id] = new EntitySubject<T | undefined>(item);
         }
 
-        return this.items[id];
+        return this.subjects[id];
+    }
+
+    public getItem(id: string): T {
+        if (this.subjects[id]) {
+            const item = this.subjects[id].getValue();
+
+            if (item) {
+                return item;
+            }
+        }
+
+        throw new Error(`Not non-undefined item for in SubjectStore for ${id}`);
     }
 
     public removeItemAndNotifyObservers(id: string) {
-        delete this.items[id];
-        for (const ob of this.items[id].observers) {
-            ob.next(undefined);
-            ob.complete();
+        if (this.subjects[id]) {
+            this.subjects[id].next(undefined);
+            this.subjects[id].complete();
+
+            delete this.subjects[id];
         }
     }
 
     public notifyObservers(id: string) {
-        for (const ob of this.items[id].observers) {
-            ob.next(this.items[id].instance);
-        }
+        this.subjects[id].next(this.subjects[id].getValue());
     }
 
-    public setItemAndNotifyObservers(id: string, item: T): StoreItem<T> {
-        if (!this.items[id]) {
-            this.items[id] = new StoreItem(item);
-        } else {
-            this.items[id].instance = item;
-            //todo, add throttling
-            for (const ob of this.items[id].observers) {
-                ob.next(item);
-            }
+    public setItemAndNotifyObservers(id: string, item: T) {
+        if (!this.subjects[id]) {
+            throw new Error(`Item not found in store for $id}`);
         }
 
-        return this.items[id];
+        this.subjects[id].next(item);
     }
 
-    public hasItem(id: string): boolean {
-        return !!this.items[id];
-    }
-
-    public addObserver(id: string, observer: Subscriber<T>) {
-        const item = this.getOrCreateItem(id);
-        item.observers.push(observer);
-        (observer as any)['_id'] = ++this.observerId;
-    }
-
-    public hasObservers(id: string): boolean {
-        if (this.hasItem(id)) {
-            const item = this.getOrCreateItem(id);
-            return item.observers.length > 0;
-        }
-
-        return false;
-    }
-
-    public removeObserver(id: string, observer: Subscriber<T>) {
-        if (this.hasItem(id)) {
-            const item = this.getOrCreateItem(id);
-            const index = item.observers.indexOf(observer);
-            if (-1 !== index) {
-                item.observers.splice(index, 1);
-            }
-
-            if (item.observers.length === 0) {
-                delete this.items[id];
-            }
-        }
+    public hasStoreItem(id: string): boolean {
+        return !!this.subjects[id];
     }
 }
 
 export class EntityState {
-    private readonly items = new Map<ClassType<any>, ItemsStore<any>>();
+    private readonly items = new Map<ClassType<any>, EntitySubjectStore<any>>();
+    private readonly collectionSubscriptions = new Map<Collection<any>, {[id: string]: Subscription}>();
 
-    private getStore<T>(classType: ClassType<T>): ItemsStore<T> {
+    private getStore<T extends IdInterface>(classType: ClassType<T>): EntitySubjectStore<T> {
         let store = this.items.get(classType);
 
         if (!store) {
-            store = new ItemsStore;
+            store = new EntitySubjectStore;
             this.items.set(classType, store);
         }
 
@@ -106,59 +81,92 @@ export class EntityState {
         const store = this.getStore(classType);
 
         if (stream.type === 'entity/update') {
-            if (store.hasItem(stream.id)) {
+            if (store.hasStoreItem(stream.id)) {
                 const item = plainToClass(classType, stream.item);
                 store.setItemAndNotifyObservers(stream.id, item);
             }
         }
 
         if (stream.type === 'entity/patch') {
-            if (store.hasItem(stream.id)) {
+            if (store.hasStoreItem(stream.id)) {
                 const toVersion = stream.version;
-                const storeItem = store.getOrCreateItem(stream.id);
+                const item = store.getItem(stream.id);
 
-                if (storeItem.instance && storeItem.instance.version < toVersion) {
+                if (item && item.version < toVersion) {
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(stream.patch)) {
                         const vc = propertyPlainToClass(classType, i, v, [], 0, {onFullLoadCallbacks: []});
-                        set(storeItem.instance, i, vc);
+                        set(item, i, vc);
                     }
 
-                    storeItem.instance.version = toVersion;
+                    item.version = toVersion;
                     store.notifyObservers(stream.id);
                 }
             }
         }
 
         if (stream.type === 'entity/remove') {
-            if (store.hasItem(stream.id)) {
+            if (store.hasStoreItem(stream.id)) {
                 store.removeItemAndNotifyObservers(stream.id);
             }
         }
+    }
 
+    public hasEntitySubject<T extends IdInterface>(classType: ClassType<T>, id: string): boolean {
+        const store = this.getStore(classType);
+        return store.hasStoreItem(id);
+    }
+
+    public handleEntity<T extends IdInterface>(classType: ClassType<T>, jsonItem: JSONEntity<T>): EntitySubject<T | undefined> {
+        const store = this.getStore(classType);
+        const item = plainToClass(classType, jsonItem);
+
+        return store.getOrCreateSubject(item.id, item);
+    }
+
+    public unsubscribeCollection<T extends IdInterface>(collection: Collection<T>) {
+        const subs = this.collectionSubscriptions.get(collection);
+
+        if (subs) {
+            for (const sub of each(subs)) {
+                sub.unsubscribe();
+            }
+        }
+    }
+
+    protected getOrCreateCollectionSubscriptions<T extends IdInterface>(collection: Collection<T>): {[id: string]: Subscription} {
+        let subs = this.collectionSubscriptions.get(collection);
+
+        if (!subs) {
+            subs = {};
+            this.collectionSubscriptions.set(collection, subs);
+        }
+
+        return subs;
     }
 
     public handleCollectionNext<T extends IdInterface>(collection: Collection<T>, stream: CollectionStream) {
         const classType = collection.classType;
         const store = this.getStore(classType);
 
-        const observers: { [id: string]: Subscriber<T> } = {};
+        const observers = this.getOrCreateCollectionSubscriptions(collection);
 
         if (stream.type === 'set') {
             for (const itemRaw of stream.items) {
-                if (!store.hasItem(itemRaw.id)) {
-                    const item = plainToClass(classType, itemRaw);
+
+                const item = plainToClass(classType, itemRaw);
+                collection.add(item, false);
+
+                if (store.hasStoreItem(itemRaw.id)) {
                     store.setItemAndNotifyObservers(item.id, item);
                 }
-                const instance = store.getOrCreateItem(itemRaw.id).instance;
-                if (instance) {
-                    collection.add(instance, false);
-                    observers[itemRaw.id] = new Subscriber((i) => {
-                        collection.deepChange.next(i);
-                        collection.loaded();
-                    });
-                    store.addObserver(itemRaw.id, observers[itemRaw.id]);
-                }
+
+                const subject = store.getOrCreateSubject(item.id, item);
+
+                observers[itemRaw.id] = subject.subscribe((i) => {
+                    collection.deepChange.next(i);
+                    collection.loaded();
+                });
             }
         }
 
@@ -168,7 +176,12 @@ export class EntityState {
 
         if (stream.type === 'remove') {
             collection.remove(stream.id);
-            store.removeObserver(stream.id, observers[stream.id]);
+
+            if (!observers[stream.id]) {
+                throw new Error(`Item with id ${stream.id} already removed from state-collection.`);
+            }
+
+            observers[stream.id].unsubscribe();
 
             if (collection.isLoaded) {
                 collection.loaded();
@@ -176,22 +189,23 @@ export class EntityState {
         }
 
         if (stream.type === 'add') {
-            if (!store.hasItem(stream.item.id)) {
-                const item = plainToClass(classType, stream.item);
-                store.setItemAndNotifyObservers(stream.item.id, item);
+            const item = plainToClass(classType, stream.item);
+            collection.add(item, false);
+
+            if (store.hasStoreItem(item.id)) {
+                store.setItemAndNotifyObservers(item.id, item);
             }
 
-            const instance = store.getOrCreateItem(stream.item.id).instance;
-            if (instance) {
-                observers[stream.item.id] = new Subscriber((i) => {
-                    collection.deepChange.next(i);
-                    if (collection.isLoaded) {
-                        collection.loaded();
-                    }
-                });
-                store.addObserver(stream.item.id, observers[stream.item.id]);
-                collection.add(instance);
+            const subject = store.getOrCreateSubject(item.id, item);
+
+            if (observers[item.id]) {
+                throw new Error(`Item with id ${item.id} already known in that state-collection.`);
             }
+
+            observers[item.id] = subject.subscribe((i) => {
+                collection.deepChange.next(i);
+                collection.loaded();
+            });
         }
     }
 }
