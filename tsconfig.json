@@ -2,7 +2,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./lib",
-    "target": "es2017"
+    "target": "es2017",
+    "preserveSymlinks": true,
   },
   "include": [
     "./src",

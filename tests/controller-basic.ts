@@ -2,7 +2,7 @@ import 'jest';
 import {Action, Controller} from "@kamille/server";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
-import {bufferCount, take} from "rxjs/operators";
+import {bufferCount} from "rxjs/operators";
 import {Entity, StringType} from '@marcj/marshal';
 
 @Entity('user')
@@ -108,8 +108,6 @@ test('test observable', async () => {
     const observer = await test.observer();
     expect(observer).toBeInstanceOf(Observable);
 
-    // first item is ommited since we subscribe too late. We need to start the
-    // observer only when we subscribe. And every subscribe creates a new observer at the backend
     await subscribeAndWait(observer.pipe(bufferCount(3)), async (next) => {
         expect(next).toEqual(['a', 'b', 'c']);
     });

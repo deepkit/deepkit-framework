@@ -21,7 +21,8 @@ export async function subscribeAndWait<T>(observable: Observable<T>, callback: (
 }
 
 export async function createServerClientPair(
-    controllers: ClassType<any>[]
+    controllers: ClassType<any>[],
+    entityChangeFeeds: ClassType<any>[] = [],
 ): Promise<{ server: ApplicationServer, client: SocketClient, close: () => void }> {
     const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
     const server = createServer();
@@ -34,7 +35,7 @@ export async function createServerClientPair(
 
     const app = new ApplicationServer(Application, {
         server: server
-    }, [], [], controllers);
+    }, [], [], controllers, entityChangeFeeds);
 
     await app.start();
 
