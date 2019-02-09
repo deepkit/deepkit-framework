@@ -35,6 +35,35 @@ export interface ExchangeEntityPatch extends ExchangeEntityBase {
 
 export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityUpdate | ExchangeEntityPatch;
 
+export interface ClientMessageId {
+    id: number;
+}
+
+export interface ClientMessageAuthorize {
+    name: 'authenticate';
+    token: any;
+}
+
+export interface ClientMessageAction {
+    name: 'action';
+    controller: string,
+    action: string,
+    args: any[],
+}
+
+export interface ClientMessageObservableSubscribe {
+    name: 'observable/subscribe';
+    subscribeId: number;
+}
+
+export interface ClientMessageObservableUnsubscribe {
+    name: 'observable/unsubscribe';
+    subscribeId: number;
+}
+
+export type ClientMessageWithoutId = ClientMessageAuthorize | ClientMessageAction | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe;
+
+export type ClientMessageAll = ClientMessageWithoutId & ClientMessageId;
 
 export interface MessageEntityBase {
     entityName: string;
@@ -42,21 +71,21 @@ export interface MessageEntityBase {
     version: number;
 }
 
-export interface MessageEntityRemove extends MessageEntityBase {
+export interface ServerMessageEntityRemove extends MessageEntityBase {
     type: 'entity/remove';
 }
 
-export interface MessageEntityUpdate extends MessageEntityBase {
+export interface ServerMessageEntityUpdate extends MessageEntityBase {
     type: 'entity/update';
     item: any;
 }
 
-export interface MessageEntityPatch extends MessageEntityBase {
+export interface ServerMessageEntityPatch extends MessageEntityBase {
     type: 'entity/patch';
     patch: EntityPatches;
 }
 
-export type MessageEntity = MessageEntityRemove | MessageEntityUpdate | MessageEntityPatch;
+export type ServerMessageEntity = ServerMessageEntityRemove | ServerMessageEntityUpdate | ServerMessageEntityPatch;
 
 export interface CollectionStreamSet {
     type: 'set';
@@ -115,51 +144,90 @@ export type CountResult = CountUpdateResult;
 
 export type StreamFileResult = StreamFileSet | StreamFileAppend | StreamFileRemove;
 
-export interface MessageTypeJson {
+export interface ServerMessageTypeJson {
     type: 'type';
     id: number;
     returnType: 'json';
 }
 
-export interface MessageTypeCollection {
+export interface ServerMessageTypeCollection {
     type: 'type';
     id: number;
     returnType: 'collection';
     entityName: string;
 }
 
-export interface MessageTypeObservable {
+export interface ServerMessageTypeObservable {
     type: 'type';
     returnType: 'observable';
     id: number;
 }
 
-export type MessageType = MessageTypeJson | MessageTypeCollection | MessageTypeObservable;
+export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollection | ServerMessageTypeObservable;
 
-export interface MessageNext {
-    type: 'next';
+export interface ServerMessageNextJson {
+    type: 'next/json';
     id: number;
     next: any;
     entityName?: string;
 }
 
-export interface MessageComplete {
+export interface ServerMessageNextObservable {
+    type: 'next/observable';
+    id: number;
+    next: any;
+    subscribeId: number;
+    entityName?: string;
+}
+
+export interface ServerMessageNextCollection {
+    type: 'next/collection';
+    id: number;
+    next: CollectionStream;
+}
+
+export type ServerMessageNext = ServerMessageNextJson | ServerMessageNextObservable | ServerMessageNextCollection;
+
+export interface ServerMessageCompleteGeneral {
     type: 'complete';
     id: number;
 }
 
-export interface MessageError {
+export interface ServerMessageCompleteObservable {
+    type: 'complete/observable';
+    id: number;
+    subscribeId: number;
+}
+
+export type ServerMessageComplete = ServerMessageCompleteGeneral | ServerMessageCompleteObservable;
+
+export interface ServerMessageErrorGeneral {
     type: 'error';
     id: number;
     error: any;
 }
 
-export type MessageResult = MessageType | MessageNext | MessageComplete | MessageError;
+export interface ServerMessageErrorObservable {
+    type: 'error/observable';
+    id: number;
+    error: any;
+    subscribeId: number;
+}
 
-export interface MessageChannel {
+export type ServerMessageError = ServerMessageErrorGeneral | ServerMessageErrorObservable;
+
+export interface ServerMessageAuthorize {
+    type: 'authenticate/result';
+    id: number;
+    result: boolean;
+}
+
+export type ServerMessageResult = ServerMessageAuthorize | ServerMessageType | ServerMessageNext | ServerMessageComplete | ServerMessageError;
+
+export interface ServerMessageChannel {
     type: 'channel';
     name: string;
     data: any;
 }
 
-export type MessageAll = MessageResult | MessageChannel | MessageEntity;
+export type ServerMessageAll = ServerMessageResult | ServerMessageChannel | ServerMessageEntity;
