@@ -1,4 +1,4 @@
-import {MongoClient, Db, Collection} from 'mongodb';
+import {Collection, Db, MongoClient} from 'mongodb';
 import {sleep} from "@kamille/core";
 import {Injectable} from "injection-js";
 

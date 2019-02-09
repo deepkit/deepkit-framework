@@ -4,7 +4,7 @@ import {ClassType, getEntityName, plainToClass} from "@marcj/marshal";
 import {Subscription} from "rxjs";
 import {convertPlainQueryToMongo} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
-import {AsyncSubscription, Collection, ExchangeEntity, IdInterface, Subscriptions} from "@kamille/core";
+import {AsyncSubscription, Collection, EntitySubject, ExchangeEntity, IdInterface, Subscriptions} from "@kamille/core";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {Connection} from "./connection";
@@ -87,13 +87,6 @@ export class EntityStorage {
         const state = this.getSentState(classType, id);
         state.listeners++;
     }
-
-    // /**
-    //  *
-    //  * @param classType
-    //  */
-    // @Action()
-    // @Role(RoleType.regular)
 
     protected entitySubscription = new Map<ClassType<any>, Subscription>();
 
@@ -304,6 +297,40 @@ export class EntityStorage {
     //     });
     // }
 
+    public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T | undefined>> {
+        const item = await this.database.get(classType, filter);
+
+        if (item) {
+            const foundId = item.id;
+
+            this.increaseUsage(classType, foundId);
+            this.setSent(classType, item.id, item.version);
+
+            return new EntitySubject<T | undefined>(item, () => {
+                this.decreaseUsage(classType, foundId);
+            });
+        } else {
+            return new EntitySubject<T | undefined>(undefined, classType);
+        }
+    }
+
+    public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T>> {
+        const item = await this.database.get(classType, filter);
+
+        if (item) {
+            const foundId = item.id;
+            this.increaseUsage(classType, foundId);
+            this.setSent(classType, item.id, item.version);
+            this.subscribeEntity(classType);
+
+            return new EntitySubject(item, () => {
+                this.decreaseUsage(classType, foundId);
+            });
+        } else {
+            throw new Error('Item not found');
+        }
+    }
+
     async find<T extends IdInterface>(classType: ClassType<T>, filter: { [field: string]: any } = {}): Promise<Collection<T>> {
         const collection = new Collection(classType);
 
@@ -311,19 +338,18 @@ export class EntityStorage {
         const filterFields: { [name: string]: boolean } = {};
         const mongoFilter = convertPlainQueryToMongo(classType, filter, filterFields);
 
-        //todo, subscribe to Entity
         this.subscribeEntity(classType);
 
         const fieldSub: AsyncSubscription = await this.exchange.subscribeEntityFields(classType, Object.keys(filterFields));
 
         const sub: Subscription = this.exchange.subscribeEntity(classType, async (message: ExchangeEntity) => {
-            console.log(
-                'subscribeEntity',
-                IDsInThisList[message.id],
-                (message as any).item ? findQuerySatisfied((message as any).item, filter) : undefined,
-                filter,
-                message
-            );
+            // console.log(
+            //     'subscribeEntity',
+            //     IDsInThisList[message.id],
+            //     (message as any).item ? findQuerySatisfied((message as any).item, filter) : undefined,
+            //     filter,
+            //     message
+            // );
 
             if (!IDsInThisList[message.id] && message.type === 'add' && findQuerySatisfied(message.item, filter)) {
                 IDsInThisList[message.id] = true;
@@ -332,7 +358,6 @@ export class EntityStorage {
 
                 //todo, we double convert here. first to class and when we do it again to plain
                 // this unnecessary when the controller doesn't do anything with that entity.
-                console.log('add to collection', collection.isLoaded);
                 collection.add(plainToClass(classType, message.item));
             }
 
@@ -384,11 +409,8 @@ export class EntityStorage {
         });
 
         setTimeout(async () => {
-            //do async
-            console.log('find', mongoFilter);
-            //todo, here again, we convert mongo to class and from class back to plain
-            // not necessary.
-
+            //todo, here again, we convert mongo to class and from class back to plain.
+            // not necessary, so add option to same with plain values.
             const items = await this.database.find(classType, mongoFilter, true);
             for (const item of items) {
                 IDsInThisList[item.id] = true;
@@ -397,7 +419,6 @@ export class EntityStorage {
 
             collection.set(items);
             collection.loaded();
-            console.log('collection loaded', collection.all());
         });
 
         return collection;

@@ -2,7 +2,15 @@ import * as WebSocket from "ws";
 import {Injectable} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ClientMessageAll, Collection, CollectionStream, each, ServerMessageAll, Subscriptions} from "@kamille/core";
+import {
+    ClientMessageAll,
+    Collection,
+    CollectionStream,
+    each,
+    ServerMessageAll,
+    Subscriptions,
+    EntitySubject
+} from "@kamille/core";
 import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
 
 function getSafeEntityName(object: any): string | undefined {
@@ -75,7 +83,13 @@ export class Connection {
                         next = classToPlain(RegisteredEntities[entityName], next);
                     }
 
-                    this.write({type: 'next/observable', id: message.id, subscribeId: message.subscribeId, entityName: entityName, next: next});
+                    this.write({
+                        type: 'next/observable',
+                        id: message.id,
+                        subscribeId: message.subscribeId,
+                        entityName: entityName,
+                        next: next
+                    });
                 }, (error) => {
                     this.sendError(message.id, error);
                 }, () => {
@@ -146,7 +160,19 @@ export class Connection {
                 result = await result;
             }
 
-            if (result instanceof Collection) {
+            if (result instanceof EntitySubject) {
+                const item = result.getValue();
+                const entityName = getEntityName(item.constructor);
+
+                this.write({
+                    type: 'type',
+                    id: message.id,
+                    returnType: 'entity',
+                    entityName: entityName,
+                    item: classToPlain(item.constructor, item)
+                });
+
+            } else if (result instanceof Collection) {
                 const collection: Collection<any> = result;
 
                 this.write({type: 'type', id: message.id, returnType: 'collection', entityName: collection.entityName});

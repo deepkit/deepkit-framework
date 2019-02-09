@@ -50,7 +50,7 @@ export class ApplicationServer {
         serverProvider: Provider[] = [],
         protected connectionProvider: Provider[] = [],
         controllers: ClassType<any>[] = [],
-        notifyEntities:ClassType<any>[] = [],
+        entityChangeFeeds: ClassType<any>[] = [],
     ) {
         this.config = config instanceof ApplicationServerConfig ? config : applyDefaults(ApplicationServerConfig, config);
 
@@ -102,7 +102,7 @@ export class ApplicationServer {
         this.injector = ReflectiveInjector.resolveAndCreate(baseInjectors);
         const app: Application = this.injector.get(Application);
 
-        app.notifyEntities.push(...notifyEntities);
+        app.entityChangeFeeds.push(...entityChangeFeeds);
 
         connectionProvider.push(...controllers);
 

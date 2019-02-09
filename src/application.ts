@@ -29,7 +29,7 @@ export class SessionStack {
 @Injectable()
 export class Application {
     public readonly controllers: { [name: string]: ClassType<any> } = {};
-    public readonly notifyEntities: ClassType<any>[] = [];
+    public readonly entityChangeFeeds: ClassType<any>[] = [];
 
     public async bootstrap() {
     }
@@ -56,6 +56,6 @@ export class Application {
      * Whether changes to that entity should be broadcasted to all subscribers.
      */
     notifyChanges<T>(classType: ClassType<T>): boolean {
-        return -1 !== this.notifyEntities.indexOf(classType);
+        return -1 !== this.entityChangeFeeds.indexOf(classType);
     }
 }

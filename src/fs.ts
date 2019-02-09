@@ -156,21 +156,6 @@ export class FS {
     }
 
     public async read(path: string, metaData?: FileMetaData): Promise<Buffer | undefined> {
-        // const mongo = this.database.mongoPool.get(accountId);
-        // const connection = await mongo.connect();
-
-        // console.time('Read file ' + path);
-        // // console.time('collection file ' + path);
-        // const files = connection.db('account_' + accountId).collection('files');
-        // // console.timeEnd('collection file ' + path);
-        // // console.time('Read file ' + path);
-        // const row = await files.findOne(partialClassToMongo(File, {job: metaData.job, path: path}));
-        // // console.timeEnd('Read file ' + path);
-        // // console.time('Transform file ' + path);
-        // const file = mongoToClass(File, row);
-        // // console.timeEnd('Transform file ' + path);
-        // console.timeEnd('Read file ' + path);
-
         const file = await this.findOne(path, metaData);
         console.log('Read file ' + path, metaData, file ? file.id : undefined);
 

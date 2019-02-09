@@ -27,11 +27,6 @@ export class Worker {
     }
 
     run() {
-        // const log = console.log;
-        // console.log = (...args: any[]) => {
-        //     log(`[${process.pid}]`, ...args);
-        // };
-
         this.wss = new WebSocket.Server(this.options);
 
         this.wss.on('connection', (socket: WebSocket) => {

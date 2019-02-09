@@ -1,7 +1,7 @@
 import {createClient, RedisClient} from 'redis';
 import {Subscription} from "rxjs";
 import {ClassType, getEntityName} from "@marcj/marshal";
-import {eachPair, AsyncSubscription, ExchangeEntity, StreamFileResult} from '@kamille/core';
+import {AsyncSubscription, eachPair, ExchangeEntity, StreamFileResult} from '@kamille/core';
 import {Injectable} from "injection-js";
 
 
