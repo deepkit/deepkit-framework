@@ -1,4 +1,4 @@
-import {Observable, Subscription} from "rxjs";
+import {Observable, Subscription, TeardownLogic} from "rxjs";
 
 export class AsyncSubscription {
     constructor(private cb: () => Promise<void>) {
@@ -6,6 +6,14 @@ export class AsyncSubscription {
 
     async unsubscribe(): Promise<void> {
         await this.cb();
+    }
+}
+
+export function tearDown(teardown: TeardownLogic) {
+    if ('function' === typeof teardown) {
+        teardown();
+    } else if ('object' === typeof teardown && teardown.unsubscribe) {
+        teardown.unsubscribe();
     }
 }
 

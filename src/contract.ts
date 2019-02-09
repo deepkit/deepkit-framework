@@ -1,3 +1,5 @@
+import {JSONEntity} from "./entity";
+
 export interface IdInterface {
     id: string;
     version: number;
@@ -163,7 +165,15 @@ export interface ServerMessageTypeObservable {
     id: number;
 }
 
-export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollection | ServerMessageTypeObservable;
+export interface ServerMessageTypeEntity<T extends IdInterface> {
+    type: 'type';
+    returnType: 'entity';
+    entityName: string;
+    id: number;
+    item: JSONEntity<T> | undefined;
+}
+
+export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollection | ServerMessageTypeObservable | ServerMessageTypeEntity<IdInterface>;
 
 export interface ServerMessageNextJson {
     type: 'next/json';

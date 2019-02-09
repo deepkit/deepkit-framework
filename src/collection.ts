@@ -3,9 +3,9 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import {Observable, ReplaySubject, Subject, Subscription} from "rxjs";
-import {getEntityName, ClassType} from "@marcj/marshal";
-import {first} from "rxjs/operators";
+import {Observable, ReplaySubject, Subject, Subscriber} from "rxjs";
+import {ClassType, getEntityName} from "@marcj/marshal";
+import {first, map} from "rxjs/operators";
 import {IdInterface} from "./contract";
 
 export interface CollectionAdd {
@@ -28,25 +28,25 @@ export type CollectionEvent = CollectionAdd | CollectionRemove | CollectionSet;
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent> = new Subject;
 
-    public subscription?: Subscription;
-
+    protected readonly teardowns: Subscriber<void>[] = [];
 
     protected items: T[] = [];
-    protected itemsMapped: { [id: string]: T} = {};
+    protected itemsMapped: { [id: string]: T } = {};
 
     public readonly entityName: string;
 
-    public readonly ready: Observable<T[]>;
+    public readonly ready: Observable<void>;
     public isLoaded: boolean = false;
 
     public readonly deepChange = new Subject<T>();
+    protected nextChange?: Subject<void>;
 
     constructor(
         public readonly classType: ClassType<T>,
     ) {
         super(1);
         this.entityName = getEntityName(classType);
-        this.ready = this.pipe(first());
+        this.ready = this.pipe(first(), map(() => undefined));
     }
 
     public has(id: string) {
@@ -58,13 +58,38 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     /**
+     * Once the collection has completely loaded for the first time, this
+     * promise is resolved.
+     */
+    get readyState(): Promise<void> {
+        return this.ready.toPromise();
+    }
+
+    /**
+     * Resolves when next change happened.
+     */
+    get nextStateChange(): Promise<void> {
+        if (!this.nextChange) {
+            this.nextChange = new Subject<void>();
+        }
+        return this.nextChange.toPromise();
+    }
+
+    /**
      * Unsubscribe from the backend stream.
      */
     public unsubscribe() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            delete this.subscription;
+        super.unsubscribe();
+
+        for (const teardown of this.teardowns) {
+            teardown.unsubscribe();
         }
+
+        this.teardowns.splice(0, this.teardowns.length);
+    }
+
+    public addTeardown(teardown: Subscriber<void>) {
+        this.teardowns.push(teardown);
     }
 
     public index(item: T): number {
@@ -115,6 +140,10 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public loaded() {
         this.isLoaded = true;
         this.next(this.items);
+        if (this.nextChange) {
+            this.nextChange.complete();
+            delete this.nextChange;
+        }
     }
 
     public set(items: T[], withEvent = true) {
@@ -149,8 +178,9 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
         if (withEvent) {
             this.event.next({type: 'add', item: item});
+
             if (this.isLoaded) {
-                this.next(this.items);
+                this.loaded();
             }
         }
     }
@@ -165,7 +195,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
                 if (withEvent) {
                     this.event.next({type: 'remove', id: item.id});
                     if (this.isLoaded) {
-                        this.next(this.items);
+                        this.loaded();
                     }
                 }
             }
