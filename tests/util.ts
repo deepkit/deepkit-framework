@@ -3,6 +3,7 @@ import {Application, ApplicationServer} from "@kamille/server";
 import {SocketClient} from "@kamille/client";
 import {createServer} from "http";
 import {Observable} from "rxjs";
+import {sleep} from "@kamille/core";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -23,7 +24,7 @@ export async function subscribeAndWait<T>(observable: Observable<T>, callback: (
 export async function createServerClientPair(
     controllers: ClassType<any>[],
     entityChangeFeeds: ClassType<any>[] = [],
-): Promise<{ server: ApplicationServer, client: SocketClient, close: () => void }> {
+): Promise<{ server: ApplicationServer, client: SocketClient, close: () => Promise<void> }> {
     const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
     const server = createServer();
 
@@ -46,10 +47,6 @@ export async function createServerClientPair(
     return {
         server: app,
         client: socket,
-        close: () => {
-            socket.disconnect();
-            app.close();
-            server.close();
-        }
+        close: close,
     };
 }

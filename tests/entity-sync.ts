@@ -2,7 +2,7 @@ import 'jest';
 import {Action, Controller, EntityStorage, ExchangeDatabase} from "@kamille/server";
 import {createServerClientPair} from "./util";
 import {Entity, NumberType, StringType} from '@marcj/marshal';
-import {Collection, EntitySubject, IdInterface} from "@kamille/core";
+import {Collection, EntitySubject, IdInterface, sleep} from "@kamille/core";
 import uuid = require("uuid");
 
 @Entity('user')
@@ -69,7 +69,7 @@ test('test entity sync list', async () => {
     expect(users.count()).toBe(3);
     expect(users.all()[0].name).toBe('Peter patched');
 
-    close();
+    await close();
 });
 
 test('test entity sync item', async () => {

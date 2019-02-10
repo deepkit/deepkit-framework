@@ -39,7 +39,7 @@ test('test basic setup', async () => {
     expect(user).toBeInstanceOf(User);
     expect(user.name).toEqual('pete');
 
-    close();
+    await close();
 });
 
 test('test basic promise', async () => {
@@ -66,7 +66,7 @@ test('test basic promise', async () => {
     expect(user).toBeInstanceOf(User);
     expect(user.name).toEqual('pete');
 
-    close();
+    await close();
 });
 
 test('test observable', async () => {
@@ -119,5 +119,5 @@ test('test observable', async () => {
         expect(next[1].name).toEqual('pete');
     });
 
-    close();
+    await close();
 });
