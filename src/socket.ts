@@ -1,6 +1,7 @@
 import {Observable, Subscriber} from "rxjs";
 import {plainToClass, RegisteredEntities} from "@marcj/marshal";
-import * as WebSocket from "ws";
+// import * as WebSocket from "ws";
+
 import {
     applyDefaults,
     ClientMessageAll,
@@ -12,7 +13,7 @@ import {
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
-    host: string = 'localhost';
+    host: string = '127.0.0.1';
 
     port: number = 8080;
 
@@ -65,7 +66,7 @@ export class SocketClient {
         return (o as any) as R;
     }
 
-    protected onMessage(event: { data: WebSocket.Data; type: string; target: WebSocket }) {
+    protected onMessage(event: MessageEvent) {
         const message = JSON.parse(event.data.toString()) as ServerMessageAll;
         // console.log('onMessage', message);
 
@@ -94,8 +95,12 @@ export class SocketClient {
         const port = this.config.port;
         this.connectionTries++;
         const url = this.config.host.startsWith('ws+unix') ? this.config.host : 'ws://' + this.config.host + ':' + port;
+        console.log('connect', url);
         const socket = this.socket = new WebSocket(url);
-        socket.onmessage = (event: { data: WebSocket.Data; type: string; target: WebSocket }) => this.onMessage(event);
+        socket.onmessage = (event: MessageEvent) => {
+            this.onMessage(event);
+        };
+        // socket.onmessage = (event: { data: WebSocket.Data; type: string; target: WebSocket }) => this.onMessage(event);
 
         return new Promise<void>((resolve, reject) => {
             socket.onerror = (error: any) => {
@@ -155,7 +160,7 @@ export class SocketClient {
             let returnValue: any;
 
             const self = this;
-            let subscribers: { [subscriberId: number]: Subscriber<any> } = {};
+            const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
             let subscriberIdCounter = 0;
 
             this.sendMessage({
@@ -202,7 +207,7 @@ export class SocketClient {
 
                     if (reply.returnType === 'observable') {
                         returnValue = new Observable((observer) => {
-                            let subscriberId = ++subscriberIdCounter;
+                            const subscriberId = ++subscriberIdCounter;
 
                             subscribers[subscriberId] = observer;
 
@@ -220,7 +225,7 @@ export class SocketClient {
                                         subscribeId: subscriberId
                                     });
                                 }
-                            }
+                            };
                         });
                         resolve(returnValue);
                     }
@@ -289,7 +294,7 @@ export class SocketClient {
                 }
             });
 
-        })
+        });
     }
 
     public send(message: ClientMessageAll) {

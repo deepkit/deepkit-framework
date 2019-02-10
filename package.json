@@ -1,8 +1,7 @@
 {
   "name": "@kamille/client",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "types": "lib/index.d.ts",
+  "main": "index.ts",
   "author": "Kamille Team",
   "license": "MIT",
   "scripts": {
@@ -10,15 +9,16 @@
   },
   "peerDependencies": {
     "rxjs": "6.3.3",
-    "reflect-metadata": "^0.1.12"
+    "reflect-metadata": "^0.1.12",
+    "@kamille/core": "0.0.1"
   },
   "dependencies": {
-    "@kamille/core": "0.0.1",
     "@marcj/marshal": "^0.4.8",
     "dot-prop": "^4.2.0",
     "ws": "^6.1.2"
   },
   "devDependencies": {
+    "@kamille/core": "0.0.1",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
     "typescript": "^3.3.1",
