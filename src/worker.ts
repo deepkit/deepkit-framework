@@ -1,9 +1,11 @@
 import * as WebSocket from "ws";
 import {ServerOptions} from "ws";
 import {Provider, ReflectiveInjector} from "injection-js";
-import {Application, Session, SessionStack} from "./application";
+import {SessionStack} from "./application";
 import {Connection} from "./connection";
 import {EntityStorage} from "./entity-storage";
+import {ConnectionMiddleware} from "./connection-middleware";
+import {ConnectionWriter} from "./connection-writer";
 
 export class Worker {
     protected wss?: WebSocket.Server;
@@ -13,11 +15,6 @@ export class Worker {
         protected connectionProvider: Provider[],
         protected options: ServerOptions,
     ) {
-    }
-
-    protected async authenticate(token: any): Promise<Session> {
-        const app: Application = this.mainInjector.get(Application);
-        return await app.authenticate(token);
     }
 
     close() {

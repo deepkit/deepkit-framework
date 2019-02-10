@@ -20,8 +20,6 @@ function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query
 
 @Injectable()
 export class EntityStorage {
-    private subs = new Subscriptions();
-
     protected sentEntities = new Map<ClassType<any>, { [id: string]: SentState }>();
 
     protected entitySubscription = new Map<ClassType<any>, Subscription>();
@@ -34,8 +32,10 @@ export class EntityStorage {
     ) {
     }
 
-    public async destroy() {
-        this.subs.unsubscribe();
+    public destroy() {
+        for (const sub of this.entitySubscription.values()) {
+            sub.unsubscribe();
+        }
     }
 
     private getSentStateStore<T>(classType: ClassType<T>): { [id: string]: SentState } {
