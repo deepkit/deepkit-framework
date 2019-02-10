@@ -5,7 +5,7 @@ import {
     applyDefaults,
     ClientMessageAll,
     ClientMessageWithoutId,
-    Collection,
+    Collection, EntitySubject,
     ServerMessageAll,
     ServerMessageResult
 } from "@kamille/core";
@@ -48,7 +48,7 @@ export class SocketClient {
 
     //todo, add better argument inference for U
     public controller<T,
-        R = { [P in keyof T]: T[P] extends (...args: infer U) => infer RT ? (...args: U) => Promise<RT> : T[P] }>(name: string): R {
+        R = { [P in keyof T]: T[P] extends (...args: infer U) => infer RT ? RT extends Promise<any> ? T[P] : (...args: U) => Promise<RT> : T[P] }>(name: string): R {
         const t = this;
 
         const o = new Proxy(this, {
@@ -168,28 +168,35 @@ export class SocketClient {
                     activeReturnType = reply.returnType;
 
                     if (reply.returnType === 'entity') {
-                        const classType = RegisteredEntities[reply.entityName];
+                        if (reply.item && reply.entityName) {
+                            const classType = RegisteredEntities[reply.entityName];
 
-                        if (!classType) {
-                            throw new Error(`Entity ${reply.entityName} not known`);
-                        }
+                            if (!classType) {
+                                throw new Error(`Entity ${reply.entityName} not known`);
+                            }
 
-                        if (reply.item) {
                             if (this.entityState.hasEntitySubject(classType, reply.item.id)) {
                                 const subject = this.entityState.handleEntity(classType, reply.item);
                                 resolve(subject);
                             } else {
+                                //it got created, so we subscribe only once to notify server about
+                                //unused EntitySubject when completed.
                                 const subject = this.entityState.handleEntity(classType, reply.item);
-                                //it got created, so we subscribe only once
                                 subject.subscribe(() => {
                                 }, () => {
                                 }, () => {
-                                    //todo, send to server we unsubscribed from that entity
-                                    // so we stop getting
+                                    //user completed the entity subject, so we stop syncing changes
+                                    console.log('COMPLETE THAT SYNC SHIT');
+                                    self.send({
+                                        id: reply.id,
+                                        name: 'entity/complete'
+                                    });
                                 });
 
                                 resolve(subject);
                             }
+                        } else {
+                            resolve(undefined);
                         }
                     }
 
