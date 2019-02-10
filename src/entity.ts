@@ -6,7 +6,7 @@ export class EntitySubject<T> extends BehaviorSubject<T> {
 
     constructor(
         item: T,
-        protected teardown: TeardownLogic,
+        protected teardown?: TeardownLogic,
     ) {
         super(item);
     }
