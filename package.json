@@ -2,7 +2,7 @@
   "name": "@kamille/core",
   "version": "0.0.1",
   "main": "dist/index.js",
-  "types": "lib/index.d.ts",
+  "types": "dist/index.d.ts",
   "author": "Kamille Team",
   "license": "MIT",
   "scripts": {},
