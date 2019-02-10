@@ -106,5 +106,6 @@ test('test entity sync item', async () => {
     await user.nextStateChange;
     expect(user.getValue().name).toBe('Peter patched');
 
-    close();
+    await close();
+
 });

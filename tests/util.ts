@@ -1,3 +1,4 @@
+import 'jest';
 import {ClassType} from "@marcj/marshal";
 import {Application, ApplicationServer} from "@kamille/server";
 import {SocketClient} from "@kamille/client";
@@ -20,6 +21,16 @@ export async function subscribeAndWait<T>(observable: Observable<T>, callback: (
         }, timeout * 1000);
     });
 }
+
+const closer: (() => Promise<void>)[] = [];
+
+// doesn't work yet automatically
+// afterEach(async () => {
+//     for (const close of closer) {
+//         await close();
+//     }
+// });
+
 
 export async function createServerClientPair(
     controllers: ClassType<any>[],
@@ -44,6 +55,22 @@ export async function createServerClientPair(
         host: 'ws+unix://' + socketPath
     });
 
+    let closed = false;
+
+    const close = async () => {
+        if (closed) {
+            return;
+        }
+        closed = true;
+
+        socket.disconnect();
+
+        await sleep(0.1); //let the server read the disconnect
+        server.close();
+        await app.close();
+    };
+
+    closer.push(close);
     return {
         server: app,
         client: socket,
