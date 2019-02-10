@@ -127,6 +127,7 @@ export class Mongo {
     public async disconnect() {
         if (this.connection) {
             await this.connection.close();
+            delete this.connection;
         }
     }
 

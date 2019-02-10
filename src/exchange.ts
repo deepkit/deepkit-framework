@@ -21,7 +21,14 @@ export class Exchange {
     }
 
     public async disconnect() {
-        return new Promise((resolve, reject) => this.redis.quit((err) => err ? reject(err) : resolve()));
+        await new Promise((resolve, reject) => this.redis.quit((err) => err ? reject(err) : resolve()));
+        await new Promise((resolve, reject) => {
+            if (this.subscriberRedis) {
+                this.subscriberRedis.quit((err) => err ? reject(err) : resolve())
+            } else {
+                resolve();
+            }
+        });
     }
 
     public async flush() {
@@ -32,7 +39,6 @@ export class Exchange {
         if (!this.subscriberRedis) {
             this.subscriberRedis = this.redis.duplicate();
         }
-
         return this.subscriberRedis;
     }
 

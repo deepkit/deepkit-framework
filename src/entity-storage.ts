@@ -7,7 +7,7 @@ import sift, {SiftQuery} from "sift";
 import {AsyncSubscription, Collection, EntitySubject, ExchangeEntity, IdInterface, Subscriptions} from "@kamille/core";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
-import {Connection} from "./connection";
+import {ConnectionWriter} from "./connection-writer";
 
 interface SentState {
     lastSentVersion: number;
@@ -24,8 +24,10 @@ export class EntityStorage {
 
     protected sentEntities = new Map<ClassType<any>, { [id: string]: SentState }>();
 
+    protected entitySubscription = new Map<ClassType<any>, Subscription>();
+
     constructor(
-        protected readonly connection: Connection,
+        protected readonly writer: ConnectionWriter,
         protected readonly exchange: Exchange,
         protected readonly database: ExchangeDatabase,
         protected readonly fs: FS,
@@ -74,11 +76,16 @@ export class EntityStorage {
         return state.listeners > 0 && version > state.lastSentVersion;
     }
 
-    private decreaseUsage<T>(classType: ClassType<T>, id: string) {
+    public decreaseUsage<T>(classType: ClassType<T>, id: string) {
         const state = this.getSentState(classType, id);
         state.listeners--;
+
         if (state.listeners <= 0) {
             const store = this.getSentStateStore(classType);
+            const entitySubscription = this.entitySubscription.get(classType);
+            if (entitySubscription) {
+                entitySubscription.unsubscribe();
+            }
             delete store[id];
         }
     }
@@ -87,8 +94,6 @@ export class EntityStorage {
         const state = this.getSentState(classType, id);
         state.listeners++;
     }
-
-    protected entitySubscription = new Map<ClassType<any>, Subscription>();
 
     subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
         if (this.entitySubscription.has(classType)) {
@@ -102,7 +107,7 @@ export class EntityStorage {
                 this.setSent(classType, message.id, message.version);
 
                 if (message.type === 'patch') {
-                    this.connection.write({
+                    this.writer.write({
                         type: 'entity/patch',
                         entityName: entityName,
                         id: message.id,
@@ -110,14 +115,14 @@ export class EntityStorage {
                         patch: message.patch
                     });
                 } else if (message.type === 'remove') {
-                    this.connection.write({
+                    this.writer.write({
                         type: 'entity/remove',
                         entityName: entityName,
                         id: message.id,
                         version: message.version,
                     });
                 } else if (message.type === 'update') {
-                    this.connection.write({
+                    this.writer.write({
                         type: 'entity/update',
                         entityName: entityName,
                         id: message.id,
@@ -297,22 +302,23 @@ export class EntityStorage {
     //     });
     // }
 
-    public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T | undefined>> {
-        const item = await this.database.get(classType, filter);
-
-        if (item) {
-            const foundId = item.id;
-
-            this.increaseUsage(classType, foundId);
-            this.setSent(classType, item.id, item.version);
-
-            return new EntitySubject<T | undefined>(item, () => {
-                this.decreaseUsage(classType, foundId);
-            });
-        } else {
-            return new EntitySubject<T | undefined>(undefined, classType);
-        }
-    }
+    // public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T | undefined>> {
+    //     const item = await this.database.get(classType, filter);
+    //
+    //     if (item) {
+    //         const foundId = item.id;
+    //
+    //         this.increaseUsage(classType, foundId);
+    //         this.setSent(classType, item.id, item.version);
+    //         this.subscribeEntity(classType);
+    //
+    //         return new EntitySubject<T | undefined>(item, () => {
+    //             this.decreaseUsage(classType, foundId);
+    //         });
+    //     } else {
+    //         return new EntitySubject<T | undefined>(undefined, classType);
+    //     }
+    // }
 
     public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T>> {
         const item = await this.database.get(classType, filter);
@@ -323,9 +329,7 @@ export class EntityStorage {
             this.setSent(classType, item.id, item.version);
             this.subscribeEntity(classType);
 
-            return new EntitySubject(item, () => {
-                this.decreaseUsage(classType, foundId);
-            });
+            return new EntitySubject(item);
         } else {
             throw new Error('Item not found');
         }

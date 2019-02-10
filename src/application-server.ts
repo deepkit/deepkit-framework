@@ -127,7 +127,7 @@ export class ApplicationServer {
         );
     }
 
-    public close() {
+    public async close() {
         if (this.config.workers > 1) {
             for (const worker of each(cluster.workers)) {
                 if (worker) {
@@ -136,6 +136,13 @@ export class ApplicationServer {
             }
         } else {
             if (this.masterWorker) {
+
+                const mongo: Mongo = this.injector.get(Mongo);
+                await mongo.disconnect();
+
+                const exchange: Exchange = this.injector.get(Exchange);
+                await exchange.disconnect();
+
                 this.masterWorker.close();
             }
         }

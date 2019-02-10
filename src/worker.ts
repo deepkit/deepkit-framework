@@ -31,26 +31,28 @@ export class Worker {
 
         this.wss.on('connection', (socket: WebSocket) => {
             let injector: ReflectiveInjector | undefined;
-            const app = this.mainInjector.get(Application);
-
-            const sessionStack = new SessionStack;
-            const connection = new Connection(app, socket, sessionStack, (name) => {
-                return injector!.get(name);
-            });
 
             const provider: Provider[] = [
-                {provide: 'WebSocket', useValue: socket},
+                {provide: 'socket', useValue: socket},
                 EntityStorage,
-                {provide: Connection, useValue: connection},
-                {provide: SessionStack, useValue: sessionStack},
+                SessionStack,
+                Connection,
+                ConnectionMiddleware,
+                ConnectionWriter,
+                {
+                    provide: 'injector', useValue: (name: string) => {
+                        return injector!.get(name);
+                    }
+                },
             ];
 
             provider.push(...this.connectionProvider);
 
             injector = this.mainInjector.resolveAndCreateChild(provider);
+            const connection: Connection = injector.get(Connection);
 
             socket.on('message', async (raw: string) => {
-                connection.onMessage(raw);
+                await connection.onMessage(raw);
             });
 
             socket.on('close', async (data: object) => {
@@ -60,6 +62,7 @@ export class Worker {
             });
 
             socket.on('error', (error: any) => {
+                console.log('error');
                 console.log('error from client: ', error);
             });
 
