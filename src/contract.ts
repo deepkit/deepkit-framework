@@ -53,6 +53,10 @@ export interface ClientMessageAction {
     args: any[],
 }
 
+export interface ClientMessageEntityComplete {
+    name: 'entity/complete';
+}
+
 export interface ClientMessageObservableSubscribe {
     name: 'observable/subscribe';
     subscribeId: number;
@@ -63,7 +67,7 @@ export interface ClientMessageObservableUnsubscribe {
     subscribeId: number;
 }
 
-export type ClientMessageWithoutId = ClientMessageAuthorize | ClientMessageAction | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe;
+export type ClientMessageWithoutId = ClientMessageAuthorize | ClientMessageAction | ClientMessageEntityComplete | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe;
 
 export type ClientMessageAll = ClientMessageWithoutId & ClientMessageId;
 
@@ -168,9 +172,9 @@ export interface ServerMessageTypeObservable {
 export interface ServerMessageTypeEntity<T extends IdInterface> {
     type: 'type';
     returnType: 'entity';
-    entityName: string;
     id: number;
-    item: JSONEntity<T> | undefined;
+    entityName?: string;
+    item?: JSONEntity<T>;
 }
 
 export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollection | ServerMessageTypeObservable | ServerMessageTypeEntity<IdInterface>;
