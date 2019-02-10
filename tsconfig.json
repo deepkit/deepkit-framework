@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "./lib",
     "target": "es2017",
-    "preserveSymlinks": true,
+    "preserveSymlinks": true
   },
   "include": [
     "./src",

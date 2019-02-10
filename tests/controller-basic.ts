@@ -14,9 +14,18 @@ class User {
         this.name = name;
     }
 }
+@Entity('user2')
+class User2 {
+    @StringType()
+    public name: string;
+
+    constructor(name: string) {
+        this.name = name;
+    }
+}
 
 test('test basic setup', async () => {
-    @Controller('test')
+    @Controller('test', {v: 1})
     class TestController {
         @Action()
         names(last: string): string[] {
@@ -24,7 +33,22 @@ test('test basic setup', async () => {
         }
 
         @Action()
-        user(name: string): User {
+        user(name: string, lastName?: string): User {
+            if (lastName) {
+
+            }
+            return new User(name);
+        }
+    }
+
+    @Controller('test', {v: 2})
+    class TestController2 extends TestController {
+        @Action()
+        names(last: string): string[] {
+            return ['a', 'b', 'c', last];
+        }
+
+        user(name: string,): User {
             return new User(name);
         }
     }
@@ -45,14 +69,22 @@ test('test basic setup', async () => {
 test('test basic promise', async () => {
     @Controller('test')
     class TestController {
+        @RestGet('/asd')
         @Action()
         async names(last: string): Promise<string[]> {
             return ['a', 'b', 'c', last];
         }
 
+        @RestGet('/user')
         @Action()
         async user(name: string): Promise<User> {
             return new User(name);
+        }
+
+        @RestPost('/user')
+        @Action()
+        async userAdd(user: User): Promise<User> {
+            return new User(user.name);
         }
     }
 
@@ -74,7 +106,7 @@ test('test observable', async () => {
     class TestController {
         @Action()
         observer(): Observable<string> {
-            return new Observable((observer) => {
+            return new Observable((observer, state: {active: boolean}) => {
                 observer.next('a');
 
                 setTimeout(() => {

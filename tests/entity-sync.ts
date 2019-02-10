@@ -89,6 +89,10 @@ test('test entity sync item', async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
             }, 20);
 
+            setTimeout(async () => {
+                await this.database.remove(User, peter.id);
+            }, 40);
+
             return await this.storage.findOne(User, {
                 name: { $regex: /Peter/ }
             });
@@ -105,6 +109,47 @@ test('test entity sync item', async () => {
 
     await user.nextStateChange;
     expect(user.getValue().name).toBe('Peter patched');
+
+    await user.nextStateChange;
+    expect(user.getValue().name).toBe('Peter patched');
+
+    await close();
+
+});
+
+test('test entity sync item undefined', async () => {
+    @Controller('test')
+    class TestController {
+        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {}
+
+        names(): string[] {
+            return ['a'];
+        }
+
+        @Action()
+        async user(): Promise<EntitySubject<User | undefined>> {
+            await this.database.deleteMany(User, {});
+            await this.database.add(User, new User('Guschdl'));
+
+            const peter = new User('Peter 1');
+            await this.database.add(User, peter);
+
+            setTimeout(async () => {
+                await this.database.patch(User, peter.id, {name: 'Peter patched'});
+            }, 20);
+
+            return await this.storage.findOneOrUndefined(User, {
+                name: { $regex: /Marie/ }
+            });
+        }
+    }
+
+    const {server, client, close} = await createServerClientPair([TestController], [User]);
+    const test = client.controller<TestController>('test');
+
+    const user = await test.user();
+    expect(user).toBeInstanceOf(EntitySubject);
+    expect(user.getValue()).toBeUndefined();
 
     await close();
 
