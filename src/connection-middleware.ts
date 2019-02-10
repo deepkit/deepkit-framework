@@ -104,9 +104,11 @@ export class ConnectionMiddleware {
                     returnType: 'entity',
                     item: undefined,
                 });
+                return;
             }
 
             const entityName = getEntityName(item.constructor);
+
             this.entitySubjectSent[message.id] = {
                 classType: item.constructor,
                 id: item.id,

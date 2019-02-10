@@ -16,7 +16,7 @@ import {ServerOptions} from "ws";
 export class ApplicationServerConfig {
     server?: Server = undefined;
 
-    host: string = 'localhost';
+    host: string = '127.0.0.1';
 
     port: number = 8080;
 
@@ -185,7 +185,7 @@ export class ApplicationServer {
             if (this.config.server) {
                 options = {
                     server: this.config.server
-                }
+                };
             }
 
             this.masterWorker = new Worker(this.injector, this.connectionProvider, options);

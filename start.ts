@@ -26,7 +26,6 @@ class User implements IdInterface {
 
 @Controller('user')
 class UserController {
-
     constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
 
     }
@@ -107,6 +106,9 @@ class UserController {
 
 @ApplicationModule({
     controllers: [UserController],
+    connectionProviders: [
+
+    ],
     notifyEntities: [User],
 })
 class MyApp extends Application {

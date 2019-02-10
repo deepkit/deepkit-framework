@@ -1,8 +1,7 @@
 {
   "name": "@kamille/server",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "types": "lib/index.d.ts",
+  "main": "index.ts",
   "license": "MIT",
   "author": "Kamille Team",
   "sideEffects": false,

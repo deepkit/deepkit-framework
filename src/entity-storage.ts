@@ -302,23 +302,23 @@ export class EntityStorage {
     //     });
     // }
 
-    // public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T | undefined>> {
-    //     const item = await this.database.get(classType, filter);
-    //
-    //     if (item) {
-    //         const foundId = item.id;
-    //
-    //         this.increaseUsage(classType, foundId);
-    //         this.setSent(classType, item.id, item.version);
-    //         this.subscribeEntity(classType);
-    //
-    //         return new EntitySubject<T | undefined>(item, () => {
-    //             this.decreaseUsage(classType, foundId);
-    //         });
-    //     } else {
-    //         return new EntitySubject<T | undefined>(undefined, classType);
-    //     }
-    // }
+    public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T | undefined>> {
+        const item = await this.database.get(classType, filter);
+
+        if (item) {
+            const foundId = item.id;
+
+            this.increaseUsage(classType, foundId);
+            this.setSent(classType, item.id, item.version);
+            this.subscribeEntity(classType);
+
+            return new EntitySubject<T | undefined>(item, () => {
+                this.decreaseUsage(classType, foundId);
+            });
+        } else {
+            return new EntitySubject<T | undefined>(undefined, classType);
+        }
+    }
 
     public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T>> {
         const item = await this.database.get(classType, filter);
@@ -427,142 +427,4 @@ export class EntityStorage {
 
         return collection;
     }
-
-    // @Action()
-    // @Role(RoleType.regular)
-    // findAndSubscribe<T extends IdInterface>(classType: ClassType<T>, filter: { [field: string]: any } = {}): Observable<FindResult> {
-    //     return new Observable((observer) => {
-    //         let running = true;
-    //         let sub: Subscription;
-    //         let fieldSub: AsyncSubscription;
-    //         const IDsInThisList: { [id: string]: boolean } = {};
-    //         let cursor: Cursor<IdInterface>;
-    //         const filterFields: { [name: string]: boolean } = {};
-    //         const mongoFilter = convertPlainQueryToMongo(classType, filter, filterFields);
-    //
-    //         (async () => {
-    //             try {
-    //                 fieldSub = await this.exchange.subscribeEntityFields(classType, Object.keys(filterFields));
-    //
-    //                 sub = this.exchange.subscribeEntity(classType, async (message) => {
-    //
-    //                     // console.log(
-    //                     //     'subscribeEntity',
-    //                     //     IDsInThisList[message.id],
-    //                     //     (message as any).item ? findQuerySatisfied((message as any).item, filter) : undefined,
-    //                     //     filter,
-    //                     //     message
-    //                     // );
-    //
-    //                     if (!IDsInThisList[message.id] && message.type === 'add' && findQuerySatisfied(message.item, filter)) {
-    //                         IDsInThisList[message.id] = true;
-    //                         // addToLastValues(message.id, message.item);
-    //                         this.increaseUsage(classType, message.id);
-    //                         observer.next({type: 'add', item: message.item});
-    //                     }
-    //
-    //                     if ((message.type === 'update' || message.type === 'patch') && message.item) {
-    //                         const querySatisfied = findQuerySatisfied(message.item, filter);
-    //
-    //                         if (IDsInThisList[message.id] && !querySatisfied) {
-    //                             //got invalid after updates?
-    //                             delete IDsInThisList[message.id];
-    //                             this.decreaseUsage(classType, message.id);
-    //                             console.log('send removal because filter doesnt fit anymore',
-    //                                 filter,
-    //                                 message.item,
-    //                             );
-    //                             observer.next({type: 'remove', id: message.id});
-    //
-    //                         } else if (!IDsInThisList[message.id] && querySatisfied) {
-    //                             //got valid after updates?
-    //                             IDsInThisList[message.id] = true;
-    //                             // addToLastValues(message.id, message.item);
-    //                             this.increaseUsage(classType, message.id);
-    //
-    //                             let itemToSend = message.item;
-    //                             if (message.type === 'patch') {
-    //                                 //message.item is not complete when message.type === 'patch', so load it
-    //                                 itemToSend = await this.database.get(classType, {id: message.id});
-    //                             }
-    //
-    //                             observer.next({type: 'add', item: itemToSend});
-    //                         }
-    //                     }
-    //
-    //                     if (message.type === 'remove' && IDsInThisList[message.id]) {
-    //                         delete IDsInThisList[message.id];
-    //                         this.decreaseUsage(classType, message.id);
-    //                         observer.next({type: 'remove', id: message.id});
-    //                         // console.log('Removed entity', entityName, message.id);
-    //                     }
-    //                 });
-    //
-    //                 const batchSize = 64;
-    //
-    //                 (async () => {
-    //                     cursor = (await this.database.plainCursor(classType, mongoFilter))
-    //                         .batchSize(batchSize);
-    //
-    //                     const total = await cursor.count();
-    //
-    //                     if (total) {
-    //                         let items = [];
-    //                         while (running && await cursor.hasNext()) {
-    //                             const item = mongoToPlain(classType, await cursor.next());
-    //                             IDsInThisList[item.id] = true;
-    //                             this.increaseUsage(classType, item.id);
-    //
-    //                             items.push(mongoToPlain(classType, item));
-    //
-    //                             if (items.length >= batchSize) {
-    //                                 observer.next({type: 'items', items: items, total: total});
-    //                                 items = [];
-    //                             }
-    //                         }
-    //
-    //                         if (items.length) {
-    //                             //send rest
-    //                             observer.next({type: 'items', items: items, total: total});
-    //                         }
-    //                     } else {
-    //                         observer.next({type: 'items', items: [], total: 0});
-    //                     }
-    //                 })();
-    //             } catch (err) {
-    //                 observer.error(err);
-    //             }
-    //         })();
-    //
-    //         return {
-    //             unsubscribe: async () => {
-    //                 sub.unsubscribe();
-    //
-    //                 for (const i in IDsInThisList) {
-    //                     if (!IDsInThisList.hasOwnProperty(i)) continue;
-    //                     this.decreaseUsage(classType, i);
-    //                 }
-    //
-    //                 running = false;
-    //                 if (cursor) {
-    //                     cursor.close();
-    //                 }
-    //
-    //                 await fieldSub.unsubscribe();
-    //             }
-    //         };
-    //     });
-    // }
-
-    // @Action()
-    // @Role(RoleType.regular)
-    // find<T extends IdInterface>(classType: ClassType<T>, filter: { [field: string]: any }): Observable<T[]> {
-    //     return promiseToObservable(async () => {
-    //         const items = await this.database.find(classType, filter, false);
-    //
-    //         return items.map(v => {
-    //             return mongoToPlain(classType, v);
-    //         });
-    //     });
-    // }
 }
