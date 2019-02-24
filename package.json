@@ -1,6 +1,6 @@
 {
   "name": "@marcj/estdlib-rxjs",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "engineering stdlib for typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,7 +15,7 @@
     "rxjs": "6.3.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "0.0.1"
+    "@marcj/estdlib": "^0.1.0"
   },
   "devDependencies": {
     "rxjs": "6.3.3"
@@ -29,8 +29,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "transformIgnorePatterns": [
-    ],
+    "transformIgnorePatterns": [],
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
     ],
