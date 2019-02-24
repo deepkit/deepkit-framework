@@ -7,6 +7,9 @@
   "module": "dist/",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc"
