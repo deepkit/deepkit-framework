@@ -1,6 +1,6 @@
 {
   "name": "@marcj/estdlib",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "engineering stdlib for typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,12 +11,6 @@
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc"
   },
-  "peerDependencies": {
-  },
-  "dependencies": {
-  },
-  "devDependencies": {
-  },
   "jest": {
     "moduleFileExtensions": [
       "ts",
@@ -26,8 +20,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "transformIgnorePatterns": [
-    ],
+    "transformIgnorePatterns": [],
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
     ],
