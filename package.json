@@ -1,0 +1,44 @@
+{
+  "name": "@marcj/estdlib-rxjs",
+  "version": "0.0.1",
+  "description": "engineering stdlib for typescript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && tsc"
+  },
+  "peerDependencies": {
+    "rxjs": "6.3.3"
+  },
+  "dependencies": {
+    "@marcj/estdlib": "0.0.1"
+  },
+  "devDependencies": {
+    "rxjs": "6.3.3"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfigFile": "tsconfig.json"
+    }
+  }
+}
