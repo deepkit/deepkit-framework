@@ -1,6 +1,8 @@
 import {EntityStorage} from "./entity-storage";
-import {ClientMessageAll, Collection, CollectionStream, each, EntitySubject, Subscriptions} from "@kamille/core";
+import {ClientMessageAll, Collection, CollectionStream, EntitySubject} from "@marcj/glut-core";
 import {classToPlain, ClassType, getEntityName, RegisteredEntities} from "@marcj/marshal";
+import {each} from "@marcj/estdlib";
+import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";

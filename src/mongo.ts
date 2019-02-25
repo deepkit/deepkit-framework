@@ -1,5 +1,5 @@
 import {Collection, Db, MongoClient} from 'mongodb';
-import {sleep} from "@kamille/core";
+import {sleep} from "@marcj/estdlib";
 import {Injectable} from "injection-js";
 
 export class MongoLock {

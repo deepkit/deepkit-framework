@@ -11,7 +11,7 @@ import {
     partialPlainToMongo
 } from "@marcj/marshal-mongo";
 import {Mongo, MongoLock} from "./mongo";
-import {eachPair, EntityPatches, IdInterface} from "@kamille/core";
+import {EntityPatches, IdInterface} from "@marcj/glut-core";
 import {Application} from "./application";
 
 /**

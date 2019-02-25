@@ -1,6 +1,6 @@
 import * as WebSocket from "ws";
 import {Injectable, Inject} from "injection-js";
-import {ServerMessageAll} from "@kamille/core";
+import {ServerMessageAll} from "@marcj/glut-core";
 
 
 @Injectable()

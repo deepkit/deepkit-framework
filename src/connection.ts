@@ -1,7 +1,7 @@
 import {Inject, Injectable} from "injection-js";
 import {Observable} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ClientMessageAll} from "@kamille/core";
+import {ClientMessageAll} from "@marcj/glut-core";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
 

@@ -4,7 +4,8 @@ import {Exchange} from "./exchange";
 import {uuid4Binary} from "@marcj/marshal-mongo";
 import {Binary} from "bson";
 import {ExchangeDatabase} from "./exchange-database";
-import {eachPair, File, FileMode} from "@kamille/core";
+import {File, FileMode} from "@marcj/glut-core";
+import {eachPair} from "@marcj/estdlib";
 import * as crypto from "crypto";
 
 export function getMd5(content: string | Buffer): string {

@@ -9,7 +9,7 @@ import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
 import {Database} from "@marcj/marshal-mongo";
 import {Mongo} from "./mongo";
 import {Application} from "./application";
-import {applyDefaults, each} from "@kamille/core";
+import {applyDefaults, each} from "@marcj/estdlib";
 import {Server} from "http";
 import {ServerOptions} from "ws";
 
