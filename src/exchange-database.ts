@@ -1,18 +1,12 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, ClassType, getCollectionName, getIdFieldValue, partialClassToPlain,} from '@marcj/marshal';
+import {classToPlain, ClassType, getCollectionName, getIdFieldValue, partialClassToPlain} from '@marcj/marshal';
 import {Collection, Cursor} from "mongodb";
 import {Exchange} from "./exchange";
-import {
-    convertClassQueryToMongo,
-    convertPlainQueryToMongo,
-    Database,
-    partialClassToMongo,
-    partialMongoToPlain,
-    partialPlainToMongo
-} from "@marcj/marshal-mongo";
+import {convertClassQueryToMongo, convertPlainQueryToMongo, Database, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
 import {Mongo, MongoLock} from "./mongo";
 import {EntityPatches, IdInterface} from "@marcj/glut-core";
 import {Application} from "./application";
+import {eachPair} from '@marcj/estdlib';
 
 /**
  * A database that also publishes change feeds to the exchange.
@@ -26,6 +20,7 @@ export class ExchangeDatabase {
         protected exchange: Exchange,
     ) {
     }
+
     public async collection<T>(classType: ClassType<T>): Promise<Collection> {
         return await this.mongo.collection(getCollectionName(classType));
     }
@@ -136,13 +131,13 @@ export class ExchangeDatabase {
      * Increases one or multiple fields atomic and returns the new value.
      * This does not send patches to the exchange.
      */
-    public async increase<T, F extends {[field: string]: number}>(
+    public async increase<T, F extends { [field: string]: number }>(
         classType: ClassType<T>,
         id: string,
         fields: F
     ): Promise<F> {
         const collection = await this.mongo.collection(getCollectionName(classType));
-        const projection: {[key: string]: number} = {};
+        const projection: { [key: string]: number } = {};
         const filter = {id: id};
         const statement: { [name: string]: any } = {
             $inc: {}
@@ -164,9 +159,9 @@ export class ExchangeDatabase {
     public async patchPlain<T>(
         classType: ClassType<T>,
         id: string,
-        patches: {[path: string]: any},
+        patches: { [path: string]: any },
         additionalProjection: string[] = []
-    ): Promise<{[field: string]: any}> {
+    ): Promise<{ [field: string]: any }> {
         return this.patch(
             classType,
             id,
@@ -179,10 +174,10 @@ export class ExchangeDatabase {
     public async patch<T>(
         classType: ClassType<T>,
         id: string,
-        patches: Partial<T> | {[path: string]: any},
+        patches: Partial<T> | { [path: string]: any },
         additionalProjection: string[] = [],
         plain = false
-    ): Promise<{[field: string]: any}> {
+    ): Promise<{ [field: string]: any }> {
         const collection = await this.mongo.collection(getCollectionName(classType));
 
         const patchStatement: { [name: string]: any } = {
@@ -205,7 +200,7 @@ export class ExchangeDatabase {
 
         const filter = {id: id};
         const subscribedFields = await this.exchange.getSubscribedEntityFields(classType);
-        const projection: {[key: string]: number} = {
+        const projection: { [key: string]: number } = {
             version: 1,
         };
 
