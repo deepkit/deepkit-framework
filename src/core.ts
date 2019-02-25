@@ -1,5 +1,43 @@
-import {eachPair} from "./iterators";
+import {eachPair, eachKey} from "./iterators";
+import * as dotProp from 'dot-prop';
 
+/**
+ * Makes sure the error once printed using console.log contains the actual class name.
+ *
+ * class MyApiError extends CustomerError {}
+ *
+ * throw MyApiError() // prints MyApiError instead of simply "Error".
+ */
+export class CustomError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = this.constructor.name;
+    }
+}
+
+export interface ClassType<T> {
+    new (...args: any[]): T;
+}
+
+export function getClassName<T>(classType: ClassType<T> | Object): string {
+    return classType['name'] || (classType.constructor ? classType.constructor.name : '');
+}
+
+export function getClassPropertyName<T>(classType: ClassType<T> | Object, propertyName: string): string {
+    const name = getClassName(classType);
+
+    return `${name}::${propertyName}`;
+}
+
+export function applyDefaults<T>(classType: ClassType<T>, target: {[k: string]: any}): T {
+    const classInstance = new classType();
+
+    for (const [i, v] of eachPair(target)) {
+        (classInstance as any)[i] = v;
+    }
+
+    return classInstance;
+}
 
 function typeOf(obj: any) {
     return ((({}).toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
@@ -255,4 +293,38 @@ export function mergeStack(error: Error, stack: string) {
  */
 export function time(): number {
     return Date.now() / 1000;
+}
+
+export function getPathValue(bag: { [field: string]: any }, parameterPath: string, defaultValue?: any): any {
+    if (isSet(bag[parameterPath])) {
+        return bag[parameterPath];
+    }
+
+    const result = dotProp.get(bag, parameterPath);
+
+    return isSet(result) ? result : defaultValue;
+}
+
+export function setPathValue(bag: object, parameterPath: string, value: any) {
+    dotProp.set(bag, parameterPath, value);
+}
+
+/**
+ * Returns the human readable byte representation.
+ */
+export function humanBytes(bytes: number, si: boolean = false): string {
+    const thresh = si ? 1000 : 1024;
+    if (Math.abs(bytes) < thresh) {
+        return bytes + ' B';
+    }
+    const units = si
+        ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+        : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    let u = -1;
+    do {
+        bytes /= thresh;
+        ++u;
+    } while (Math.abs(bytes) >= thresh && u < units.length - 1);
+
+    return bytes.toFixed(2) + ' ' + units[u];
 }
