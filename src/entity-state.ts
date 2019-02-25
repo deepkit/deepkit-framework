@@ -1,14 +1,8 @@
 import {ClassType, plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
 import {Subscription} from "rxjs";
-import {
-    Collection,
-    CollectionStream,
-    EntitySubject,
-    IdInterface,
-    JSONEntity,
-    ServerMessageEntity
-} from "@marcj/glut-core";
+import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "@marcj/glut-core";
 import {set} from 'dot-prop';
+import {eachPair, each} from "@marcj/estdlib";
 
 class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T | undefined> } = {};
@@ -61,7 +55,7 @@ class EntitySubjectStore<T extends IdInterface> {
 
 export class EntityState {
     private readonly items = new Map<ClassType<any>, EntitySubjectStore<any>>();
-    private readonly collectionSubscriptions = new Map<Collection<any>, {[id: string]: Subscription}>();
+    private readonly collectionSubscriptions = new Map<Collection<any>, { [id: string]: Subscription }>();
 
     private getStore<T extends IdInterface>(classType: ClassType<T>): EntitySubjectStore<T> {
         let store = this.items.get(classType);
@@ -132,7 +126,7 @@ export class EntityState {
         }
     }
 
-    protected getOrCreateCollectionSubscriptions<T extends IdInterface>(collection: Collection<T>): {[id: string]: Subscription} {
+    protected getOrCreateCollectionSubscriptions<T extends IdInterface>(collection: Collection<T>): { [id: string]: Subscription } {
         let subs = this.collectionSubscriptions.get(collection);
 
         if (!subs) {
