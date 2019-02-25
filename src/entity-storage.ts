@@ -74,7 +74,7 @@ export class EntityStorage {
         if (!this.hasSentState(classType, id)) return false;
 
         const state = this.getSentState(classType, id);
-        return state.listeners > 0 && version > state.lastSentVersion;
+        return state.listeners > 0 && (version === 0 || version > state.lastSentVersion);
     }
 
     public decreaseUsage<T>(classType: ClassType<T>, id: string) {
@@ -400,7 +400,6 @@ export class EntityStorage {
             if (message.type === 'remove' && IDsInThisList[message.id]) {
                 delete IDsInThisList[message.id];
                 this.decreaseUsage(classType, message.id);
-                // observer.next({type: 'remove', id: message.id});
                 collection.remove(message.id);
                 // console.log('Removed entity', entityName, message.id);
             }

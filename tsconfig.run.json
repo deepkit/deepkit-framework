@@ -23,6 +23,6 @@
   ],
   "include": [
     "src/",
-    "node_modules/@kamille/*/src/**/*.ts"
+    "node_modules/@marcj/glut*/*/src/**/*.ts"
   ]
 }

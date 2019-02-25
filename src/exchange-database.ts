@@ -54,7 +54,7 @@ export class ExchangeDatabase {
             this.exchange.publishEntity(classType, {
                 type: 'remove',
                 id: id,
-                version: 0,
+                version: 0, //0 means it overwrites always, no matter what previous version was
             });
         }
 
