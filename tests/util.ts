@@ -1,13 +1,13 @@
 import 'jest';
 import {ClassType} from "@marcj/marshal";
-import {Application, ApplicationServer} from "@kamille/server";
-import {SocketClient} from "@kamille/client";
+import {Application, ApplicationServer} from "@marcj/glut-server";
+import {SocketClient} from "@marcj/glut-client";
 import {createServer} from "http";
 import {Observable} from "rxjs";
-import {sleep} from "@kamille/core";
+import {sleep} from "@marcj/estdlib";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
         const sub = observable.subscribe((next) => {
             callback(next);
             sub.unsubscribe();
@@ -30,7 +30,6 @@ const closer: (() => Promise<void>)[] = [];
 //         await close();
 //     }
 // });
-
 
 export async function createServerClientPair(
     controllers: ClassType<any>[],

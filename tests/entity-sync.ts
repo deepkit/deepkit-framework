@@ -1,9 +1,10 @@
 import 'jest';
-import {Action, Controller, EntityStorage, ExchangeDatabase} from "@kamille/server";
+import {Action, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
 import {Entity, NumberType, StringType} from '@marcj/marshal';
-import {Collection, EntitySubject, IdInterface, sleep} from "@kamille/core";
+import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
 import uuid = require("uuid");
+global['WebSocket'] = require('ws');
 
 @Entity('user')
 class User implements IdInterface {
@@ -91,7 +92,7 @@ test('test entity sync item', async () => {
 
             setTimeout(async () => {
                 await this.database.remove(User, peter.id);
-            }, 40);
+            }, 80);
 
             return await this.storage.findOne(User, {
                 name: { $regex: /Peter/ }
