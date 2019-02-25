@@ -1,11 +1,17 @@
 {
-  "name": "@kamille/core",
+  "name": "@marcj/glut-core",
   "version": "0.0.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Kamille Team",
   "license": "MIT",
-  "scripts": {},
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && tsc"
+  },
   "peerDependencies": {
     "@marcj/marshal": "^0.4.9",
     "rxjs": "6.3.3",
@@ -13,23 +19,13 @@
     "buffer": "^5.2.1"
   },
   "dependencies": {
-    "dot-prop": "^4.2.0"
+    "@marcj/estdlib-rxjs": "^0.1.2"
   },
   "devDependencies": {
-    "@types/dot-prop": "^4.2.0",
     "@types/fs-extra": "^5.0.4",
-    "@types/uuid": "^3.4.4",
     "@marcj/marshal": "^0.4.8",
     "rxjs": "6.3.3",
-    "buffer": "^5.2.1",
-    "reflect-metadata": "^0.1.12",
-    "@types/jest": "^23.3.9",
-    "bluebird": "^3.5.3",
-    "jest": "^23.6.0",
-    "jest-extended": "^0.11.0",
-    "ts-jest": "^23.10.4",
-    "tslint": "5.11.0",
-    "typescript": "3.1.1"
+    "buffer": "^5.2.1"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -50,7 +46,7 @@
   },
   "globals": {
     "ts-jest": {
-      "tsConfigFile": "tsconfig.run.json"
+      "tsConfigFile": "tsconfig.json"
     }
   }
 }

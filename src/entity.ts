@@ -1,5 +1,5 @@
 import {BehaviorSubject, TeardownLogic, Subject} from "rxjs";
-import {tearDown} from "./rx";
+import {tearDown} from "@marcj/estdlib-rxjs";
 
 export class EntitySubject<T> extends BehaviorSubject<T> {
     protected nextChange?: Subject<void>;
