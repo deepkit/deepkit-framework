@@ -43,7 +43,7 @@ test('test entity sync list', async () => {
 
             setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
-            }, 20);
+            }, 50);
 
             return await this.storage.find(User, {
                 name: { $regex: /Peter/ }
@@ -92,7 +92,7 @@ test('test entity sync item', async () => {
 
             setTimeout(async () => {
                 await this.database.remove(User, peter.id);
-            }, 80);
+            }, 280);
 
             return await this.storage.findOne(User, {
                 name: { $regex: /Peter/ }
@@ -112,7 +112,7 @@ test('test entity sync item', async () => {
     expect(user.getValue().name).toBe('Peter patched');
 
     await user.nextStateChange;
-    expect(user.getValue().name).toBe('Peter patched');
+    expect(user.getValue()).toBeUndefined();
 
     await close();
 

@@ -2,11 +2,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./lib",
-    "target": "es2017",
-    "preserveSymlinks": true
+    "target": "es2017"
   },
   "include": [
-    "./src",
+    "src/",
     "index.ts"
   ]
 }
