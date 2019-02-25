@@ -1,4 +1,4 @@
-import {Observable, Subscription, Subscriber} from "rxjs";
+import {Observable, Subscription, Subscriber, TeardownLogic} from "rxjs";
 import {createStack, mergePromiseStack, mergeStack} from "@marcj/estdlib";
 
 export class AsyncSubscription {
@@ -90,4 +90,12 @@ export function promiseToObservable<T>(o: () => Promise<T>): Observable<T> {
         }
 
     });
+}
+
+export function tearDown(teardown: TeardownLogic) {
+    if ('function' === typeof teardown) {
+        teardown();
+    } else if ('object' === typeof teardown && teardown.unsubscribe) {
+        teardown.unsubscribe();
+    }
 }
