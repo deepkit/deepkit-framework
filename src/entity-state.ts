@@ -84,7 +84,7 @@ export class EntityState {
                 const toVersion = stream.version;
                 const item = store.getItem(stream.id);
 
-                if (item && item.version < toVersion) {
+                if (item && (toVersion === 0 || item.version < toVersion)) {
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(stream.patch)) {
                         const vc = propertyPlainToClass(classType, i, v, [], 0, {onFullLoadCallbacks: []});

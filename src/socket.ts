@@ -192,7 +192,6 @@ export class SocketClient {
                                 }, () => {
                                 }, () => {
                                     //user completed the entity subject, so we stop syncing changes
-                                    console.log('COMPLETE THAT SYNC SHIT');
                                     self.send({
                                         id: reply.id,
                                         name: 'entity/complete'
@@ -202,7 +201,7 @@ export class SocketClient {
                                 resolve(subject);
                             }
                         } else {
-                            resolve(undefined);
+                            resolve(new EntitySubject(undefined));
                         }
                     }
 

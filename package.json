@@ -39,7 +39,7 @@
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!@kamille)"
+      "node_modules/(?!@marcj/glut-*)"
     ],
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
@@ -48,7 +48,7 @@
   },
   "globals": {
     "ts-jest": {
-      "tsConfigFile": "tsconfig.json"
+      "tsConfig": "tsconfig.run.json"
     }
   }
 }
