@@ -1,29 +1,33 @@
 {
-  "name": "@kamille/client",
+  "name": "@marcj/glut-client",
   "version": "0.0.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Kamille Team",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "start": "NODE_PRESERVE_SYMLINKS=1 TS_NODE_IGNORE='node_modules/(?!@kamille)' ./node_modules/.bin/ts-node client.ts"
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && tsc"
   },
   "peerDependencies": {
     "rxjs": "6.3.3",
     "reflect-metadata": "^0.1.12",
-    "@kamille/core": "0.0.1"
+    "@marcj/glut-core": "0.0.1"
   },
   "dependencies": {
     "@marcj/marshal": "^0.4.8",
+    "@marcj/estdlib": "^0.1.1",
     "dot-prop": "^4.2.0",
     "ws": "^6.1.2"
   },
   "devDependencies": {
-    "@kamille/core": "0.0.1",
+    "@marcj/glut-core": "0.0.1",
+    "reflect-metadata": "^0.1.13",
     "@types/dot-prop": "^4.2.0",
-    "@types/ws": "^6.0.1",
-    "typescript": "^3.3.1",
-    "ts-node": "^7.0.1"
+    "@types/ws": "^6.0.1"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -44,7 +48,7 @@
   },
   "globals": {
     "ts-jest": {
-      "tsConfigFile": "tsconfig.run.json"
+      "tsConfigFile": "tsconfig.json"
     }
   }
 }

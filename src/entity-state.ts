@@ -3,13 +3,11 @@ import {Subscription} from "rxjs";
 import {
     Collection,
     CollectionStream,
-    each,
-    eachPair,
     EntitySubject,
     IdInterface,
     JSONEntity,
     ServerMessageEntity
-} from "@kamille/core";
+} from "@marcj/glut-core";
 import {set} from 'dot-prop';
 
 class EntitySubjectStore<T extends IdInterface> {

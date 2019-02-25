@@ -13,7 +13,7 @@
       "node_modules/@types"
     ],
     "paths": {
-      "@kamille/core": ["../core/src"]
+      "@marcj/glut-core": ["../core/src"]
     },
     "lib": [
       "es2017",

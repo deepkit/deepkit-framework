@@ -3,13 +3,14 @@ import {plainToClass, RegisteredEntities} from "@marcj/marshal";
 // import * as WebSocket from "ws";
 
 import {
-    applyDefaults,
+
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection, EntitySubject,
     ServerMessageAll,
     ServerMessageResult
-} from "@kamille/core";
+} from "@marcj/glut-core";
+import {applyDefaults} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
