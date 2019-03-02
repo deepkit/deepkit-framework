@@ -15,7 +15,8 @@
   },
   "scripts": {
     "test": "jest --coverage",
-    "tsc": "rm -rf dist && tsc"
+    "tsc": "rm -rf dist && tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "jest": {
     "moduleFileExtensions": [
