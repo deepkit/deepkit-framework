@@ -1,6 +1,6 @@
 {
   "name": "@marcj/estdlib-rxjs",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "engineering stdlib for typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,7 +19,7 @@
     "rxjs": "6.3.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.2"
+    "@marcj/estdlib": "^0.1.4"
   },
   "devDependencies": {
     "rxjs": "6.3.3"
