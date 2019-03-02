@@ -7,8 +7,8 @@
   "author": "Kamille Team",
   "private": true,
   "dependencies": {
-    "@marcj/estdlib": "^0.1.2",
-    "@marcj/estdlib-rxjs": "^0.1.3",
+    "@marcj/estdlib": "^0.1.4",
+    "@marcj/estdlib-rxjs": "^0.1.4",
     "@marcj/glut-client": "^0.0.2",
     "@marcj/glut-core": "^0.0.2",
     "@marcj/glut-server": "^0.0.2",
