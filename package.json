@@ -8,6 +8,7 @@
   "private": true,
   "dependencies": {
     "@marcj/estdlib": "^0.1.2",
+    "@marcj/estdlib-rxjs": "^0.1.3",
     "@marcj/glut-client": "^0.0.2",
     "@marcj/glut-core": "^0.0.2",
     "@marcj/glut-server": "^0.0.2",
@@ -53,7 +54,7 @@
   },
   "globals": {
     "ts-jest": {
-      "tsConfig": "tsconfig.run.json"
+      "tsConfigFile": "tsconfig.run.json"
     }
   }
 }

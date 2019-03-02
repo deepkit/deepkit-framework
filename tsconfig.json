@@ -1,11 +1,16 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./lib",
-    "target": "es2017"
+    "target": "es2017",
+    "preserveSymlinks": true
   },
+  "exclude": [
+    "**/tests/**.ts",
+    "**/*.spec.ts"
+  ],
   "include": [
     "src/",
-    "index.ts"
+    "node_modules/@marcj/glut-*/index.ts",
+    "node_modules/@marcj/glut-*/src/**/*.ts"
   ]
 }

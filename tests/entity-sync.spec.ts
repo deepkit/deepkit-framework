@@ -4,6 +4,9 @@ import {createServerClientPair} from "./util";
 import {Entity, NumberType, StringType} from '@marcj/marshal';
 import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
 import uuid = require("uuid");
+import {Observable, BehaviorSubject} from 'rxjs';
+import {nextValue} from '@marcj/estdlib-rxjs';
+
 global['WebSocket'] = require('ws');
 
 @Entity('user')
@@ -25,7 +28,8 @@ class User implements IdInterface {
 test('test entity sync list', async () => {
     @Controller('test')
     class TestController {
-        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {}
+        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        }
 
         @Action()
         async users(): Promise<Collection<User>> {
@@ -46,7 +50,7 @@ test('test entity sync list', async () => {
             }, 50);
 
             return await this.storage.find(User, {
-                name: { $regex: /Peter/ }
+                name: {$regex: /Peter/}
             });
         }
     }
@@ -76,7 +80,8 @@ test('test entity sync list', async () => {
 test('test entity sync item', async () => {
     @Controller('test')
     class TestController {
-        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {}
+        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        }
 
         @Action()
         async user(): Promise<EntitySubject<User>> {
@@ -95,7 +100,7 @@ test('test entity sync item', async () => {
             }, 280);
 
             return await this.storage.findOne(User, {
-                name: { $regex: /Peter/ }
+                name: {$regex: /Peter/}
             });
         }
     }
@@ -115,13 +120,13 @@ test('test entity sync item', async () => {
     expect(user.getValue()).toBeUndefined();
 
     await close();
-
 });
 
 test('test entity sync item undefined', async () => {
     @Controller('test')
     class TestController {
-        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {}
+        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        }
 
         names(): string[] {
             return ['a'];
@@ -137,10 +142,10 @@ test('test entity sync item undefined', async () => {
 
             setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
-            }, 20);
+            }, 50);
 
             return await this.storage.findOneOrUndefined(User, {
-                name: { $regex: /Marie/ }
+                name: {$regex: /Marie/}
             });
         }
     }
@@ -153,5 +158,90 @@ test('test entity sync item undefined', async () => {
     expect(user.getValue()).toBeUndefined();
 
     await close();
+});
 
+
+test('test entity sync count', async () => {
+    @Controller('test')
+    class TestController {
+        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        }
+
+        @Action()
+        async userCount(): Promise<Observable<number>> {
+            await this.database.deleteMany(User, {});
+            await this.database.add(User, new User('Guschdl'));
+            const peter1 = new User('Peter 1');
+
+            setTimeout(async () => {
+                console.log('add peter1');
+                await this.database.add(User, peter1);
+            }, 100);
+
+            setTimeout(async () => {
+                console.log('add peter2');
+                await this.database.add(User, new User('Peter 2'));
+            }, 150);
+
+            setTimeout(async () => {
+                console.log('remove peter1');
+                await this.database.remove(User, peter1.id);
+            }, 200);
+
+            return await this.storage.count(User, {
+                name: {$regex: /Peter/}
+            });
+        }
+    }
+
+    const {server, client, close} = await createServerClientPair([TestController], [User]);
+    const test = client.controller<TestController>('test');
+
+    const result = await test.userCount();
+
+    let i: number = 0;
+    result.subscribe((next) => {
+        console.log('next', next);
+        if (i === 0) {
+            //first count is not found
+            expect(next).toBe(0);
+        }
+        if (i === 1) {
+            //we created peter 1
+            expect(next).toBe(1);
+        }
+        if (i === 2) {
+            //we created peter 2
+            expect(next).toBe(2);
+        }
+        if (i === 3) {
+            //we deleted peter 1
+            expect(next).toBe(1);
+        }
+
+        i++;
+    });
+
+    const userCount = new BehaviorSubject<number>(0);
+    expect(userCount.getValue()).toBe(0);
+
+    console.log('subscribe again');
+    result.subscribe(userCount);
+    console.log('subscribe again done');
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(0);
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(1);
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(2);
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(1);
+
+    expect(i).toBe(4);
+
+    await close();
 });
