@@ -1,5 +1,6 @@
-import {Observable, Subscription, Subscriber, TeardownLogic} from "rxjs";
+import {Observable, Subscription, Subscriber, TeardownLogic, BehaviorSubject} from "rxjs";
 import {createStack, mergePromiseStack, mergeStack} from "@marcj/estdlib";
+import {skip, first} from 'rxjs/operators';
 
 export class AsyncSubscription {
     constructor(private cb: () => Promise<void>) {
@@ -16,7 +17,8 @@ export class AsyncSubscription {
 export class Subscriptions {
     protected subscription: Subscription[] = [];
 
-    constructor(protected teardown?: () => void | Promise<void>) {}
+    constructor(protected teardown?: () => void | Promise<void>) {
+    }
 
     public subscribe<T>(observable: Observable<T>, callback: (next: T) => any) {
         this.subscription.push(observable.subscribe(callback));
@@ -48,19 +50,12 @@ export function subscriptionToPromise<T>(subscription: Subscription): Promise<vo
     });
 }
 
-export function awaitFirst<T>(o: Observable<T>): Promise<T> {
-    const stack = createStack();
-    return new Promise((resolve, reject) => {
+export function nextValue<T>(o: Observable<T>): Promise<T> {
+    if (o instanceof BehaviorSubject) {
+        return o.pipe(skip(1)).pipe(first()).toPromise();
+    }
 
-        o.subscribe((data: any) => {
-            resolve(data);
-        }, (error: any) => {
-            mergeStack(error, stack);
-            reject(error);
-        }, () => {
-            resolve();
-        });
-    });
+    return o.pipe(first()).toPromise();
 }
 
 export function observableToPromise<T>(o: Observable<T>, next?: (data: T) => void): Promise<T> {
