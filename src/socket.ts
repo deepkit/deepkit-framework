@@ -1,4 +1,4 @@
-import {Observable, Subscriber} from "rxjs";
+import {Observable, Subscriber, Subject} from "rxjs";
 import {plainToClass, RegisteredEntities} from "@marcj/marshal";
 // import * as WebSocket from "ws";
 
@@ -178,9 +178,10 @@ export class SocketClient {
                             const classType = RegisteredEntities[reply.entityName];
 
                             if (!classType) {
-                                throw new Error(`Entity ${reply.entityName} not known`);
+                                throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                             }
 
+                            //
                             if (this.entityState.hasEntitySubject(classType, reply.item.id)) {
                                 const subject = this.entityState.handleEntity(classType, reply.item);
                                 resolve(subject);
@@ -233,7 +234,7 @@ export class SocketClient {
                     if (reply.returnType === 'collection') {
                         const classType = RegisteredEntities[reply.entityName];
                         if (!classType) {
-                            throw new Error(`Entity ${reply.entityName} not known`);
+                            throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                         }
 
                         const collection = new Collection<any>(classType);
