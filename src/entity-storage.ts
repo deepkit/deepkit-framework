@@ -4,12 +4,11 @@ import {ClassType, getEntityName, plainToClass} from "@marcj/marshal";
 import {Observable, Subscription} from "rxjs";
 import {convertPlainQueryToMongo, partialMongoToPlain} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
-import {Collection, CountResult, EntitySubject, ExchangeEntity, IdInterface} from "@marcj/glut-core";
+import {Collection, EntitySubject, ExchangeEntity, IdInterface} from "@marcj/glut-core";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";
-import {eachPair} from "@marcj/estdlib";
 
 interface SentState {
     lastSentVersion: number;
@@ -19,6 +18,7 @@ interface SentState {
 function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: SiftQuery<T[]>): boolean {
     return sift(query, [target]).length > 0;
 }
+
 
 @Injectable()
 export class EntityStorage {
@@ -198,110 +198,110 @@ export class EntityStorage {
     // }
     //
 
-    multiCount<T extends IdInterface>(classType: ClassType<T>, filters: { [p: string]: any }[] = []): Observable<CountResult> {
-        return new Observable((observer) => {
-            let fieldSub: AsyncSubscription;
-            let sub: Subscription;
-            let running = true;
-
-            (async () => {
-                const filterFields: { [id: string]: boolean } = {};
-                const counters: number[] = [];
-                const ids: { [id: string]: boolean }[] = [];
-
-                for (const filter of filters) {
-                    counters.push(0);
-                    ids.push({});
-                    for (const field of Object.keys(filter)) {
-                        filterFields[field] = true;
-                    }
-
-                }
-
-                fieldSub = await this.exchange.subscribeEntityFields(classType, Object.keys(filterFields));
-
-                sub = this.exchange.subscribeEntity(classType, (message) => {
-                    if (message.type === 'add') {
-                        for (const [i, filter] of eachPair(filters)) {
-                            if (!ids[i][message.id] && findQuerySatisfied(message.item, filter)) {
-                                counters[i]++;
-                                ids[i][message.id] = true;
-                                observer.next({
-                                    type: 'count',
-                                    index: i,
-                                    count: counters[i]
-                                });
-                            }
-                        }
-                    }
-
-                    if (message.type === 'patch' || message.type === 'update') {
-                        for (const [i, filter] of eachPair(filters)) {
-                            if (ids[i][message.id] && !findQuerySatisfied(message.item, filter)) {
-                                counters[i]--;
-                                delete ids[i][message.id];
-                                observer.next({
-                                    type: 'count',
-                                    index: i,
-                                    count: counters[i]
-                                });
-                            } else if (!ids[i][message.id] && findQuerySatisfied(message.item, filter)) {
-                                counters[i]++;
-                                ids[i][message.id] = true;
-                                observer.next({
-                                    type: 'count',
-                                    index: i,
-                                    count: counters[i]
-                                });
-                            }
-                        }
-                    }
-
-                    if (message.type === 'remove') {
-                        for (const [i, filter] of eachPair(filters)) {
-                            if (ids[i][message.id]) {
-                                counters[i]--;
-                                delete ids[i][message.id];
-                                observer.next({
-                                    type: 'count',
-                                    index: i,
-                                    count: counters[i]
-                                });
-                            }
-                        }
-                    }
-                });
-
-                for (const [i, filter] of eachPair(filters)) {
-                    const cursor = await this.database.cursor(classType, filter);
-                    cursor.project({id: 1}).batchSize(64);
-
-                    while (running && await cursor.hasNext()) {
-                        const next = await cursor.next();
-                        if (!next) continue;
-                        const item = partialMongoToPlain(classType, next);
-                        counters[i]++;
-                        ids[i][item.id] = true;
-                    }
-
-                    observer.next({
-                        type: 'count',
-                        index: i,
-                        count: counters[i]
-                    });
-                }
-            })();
-
-
-            return {
-                unsubscribe: async () => {
-                    running = false;
-                    sub.unsubscribe();
-                    await fieldSub.unsubscribe();
-                }
-            };
-        });
-    }
+    // multiCount<T extends IdInterface>(classType: ClassType<T>, filters: { [p: string]: any }[] = []): Observable<CountResult> {
+    //     return new Observable((observer) => {
+    //         let fieldSub: AsyncSubscription;
+    //         let sub: Subscription;
+    //         let running = true;
+    //
+    //         (async () => {
+    //             const filterFields: { [id: string]: boolean } = {};
+    //             const counters: number[] = [];
+    //             const ids: { [id: string]: boolean }[] = [];
+    //
+    //             for (const filter of filters) {
+    //                 counters.push(0);
+    //                 ids.push({});
+    //                 for (const field of Object.keys(filter)) {
+    //                     filterFields[field] = true;
+    //                 }
+    //
+    //             }
+    //
+    //             fieldSub = await this.exchange.subscribeEntityFields(classType, Object.keys(filterFields));
+    //
+    //             sub = this.exchange.subscribeEntity(classType, (message) => {
+    //                 if (message.type === 'add') {
+    //                     for (const [i, filter] of eachPair(filters)) {
+    //                         if (!ids[i][message.id] && findQuerySatisfied(message.item, filter)) {
+    //                             counters[i]++;
+    //                             ids[i][message.id] = true;
+    //                             observer.next({
+    //                                 type: 'count',
+    //                                 index: i,
+    //                                 count: counters[i]
+    //                             });
+    //                         }
+    //                     }
+    //                 }
+    //
+    //                 if (message.type === 'patch' || message.type === 'update') {
+    //                     for (const [i, filter] of eachPair(filters)) {
+    //                         if (ids[i][message.id] && !findQuerySatisfied(message.item, filter)) {
+    //                             counters[i]--;
+    //                             delete ids[i][message.id];
+    //                             observer.next({
+    //                                 type: 'count',
+    //                                 index: i,
+    //                                 count: counters[i]
+    //                             });
+    //                         } else if (!ids[i][message.id] && findQuerySatisfied(message.item, filter)) {
+    //                             counters[i]++;
+    //                             ids[i][message.id] = true;
+    //                             observer.next({
+    //                                 type: 'count',
+    //                                 index: i,
+    //                                 count: counters[i]
+    //                             });
+    //                         }
+    //                     }
+    //                 }
+    //
+    //                 if (message.type === 'remove') {
+    //                     for (const [i, filter] of eachPair(filters)) {
+    //                         if (ids[i][message.id]) {
+    //                             counters[i]--;
+    //                             delete ids[i][message.id];
+    //                             observer.next({
+    //                                 type: 'count',
+    //                                 index: i,
+    //                                 count: counters[i]
+    //                             });
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //
+    //             for (const [i, filter] of eachPair(filters)) {
+    //                 const cursor = await this.database.cursor(classType, filter);
+    //                 cursor.project({id: 1}).batchSize(64);
+    //
+    //                 while (running && await cursor.hasNext()) {
+    //                     const next = await cursor.next();
+    //                     if (!next) continue;
+    //                     const item = partialMongoToPlain(classType, next);
+    //                     counters[i]++;
+    //                     ids[i][item.id] = true;
+    //                 }
+    //
+    //                 observer.next({
+    //                     type: 'count',
+    //                     index: i,
+    //                     count: counters[i]
+    //                 });
+    //             }
+    //         })();
+    //
+    //
+    //         return {
+    //             unsubscribe: async () => {
+    //                 running = false;
+    //                 sub.unsubscribe();
+    //                 await fieldSub.unsubscribe();
+    //             }
+    //         };
+    //     });
+    // }
 
     public count<T extends IdInterface>(classType: ClassType<T>, filter: { [p: string]: any }): Observable<number> {
         return new Observable((observer) => {
