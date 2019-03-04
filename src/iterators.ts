@@ -1,14 +1,20 @@
-
 /**
  * Iterator for each key of an array or object.
  *
+ * @example
+ * ```
  * for (const i of eachKey(['a', 'b']) {
  *    console.log(i); //0, 1
  * }
+ * ```
+ *
+ * @public
  */
 export function eachKey<T>(object: ArrayLike<T>): IterableIterator<number>;
-export function eachKey<T extends {[key: string]: any}, K extends keyof T>(object: T): IterableIterator<string>;
-export function *eachKey<T extends {[key: string]: any}, K extends keyof T>(object: T | ArrayLike<T>): IterableIterator<string | number> {
+/** @public */
+export function eachKey<T extends { [key: string]: any }, K extends keyof T>(object: T): IterableIterator<string>;
+/** @public */
+export function* eachKey<T extends { [key: string]: any }, K extends keyof T>(object: T | ArrayLike<T>): IterableIterator<string | number> {
     if (Array.isArray(object)) {
         for (let i = 0; i < object.length; i++) {
             yield i;
@@ -25,11 +31,16 @@ export function *eachKey<T extends {[key: string]: any}, K extends keyof T>(obje
 /**
  * Iterator for each value of an array or object.
  *
+ * @example
+ * ```
  * for (const v of each(['a', 'b']) {
  *    console.log(v); //a, b
  * }
+ * ```
+ *
+ * @public
  */
-export function *each<T>(object: {[s: string]: T} | ArrayLike<T>): IterableIterator<T> {
+export function* each<T>(object: { [s: string]: T } | ArrayLike<T>): IterableIterator<T> {
     if (Array.isArray(object)) {
         for (let i = 0; i < object.length; i++) {
             yield object[i];
@@ -37,7 +48,7 @@ export function *each<T>(object: {[s: string]: T} | ArrayLike<T>): IterableItera
     } else {
         for (const i in object) {
             if (object.hasOwnProperty(i)) {
-                yield (object as {[s: string]: T})[i];
+                yield (object as { [s: string]: T })[i];
             }
         }
     }
@@ -46,6 +57,8 @@ export function *each<T>(object: {[s: string]: T} | ArrayLike<T>): IterableItera
 /**
  * Iterator for key value pair of an array or object.
  *
+ * @example
+ * ```
  * for (const [i, v] of eachPair(['a', 'b']) {
  *    console.log(i, v); //0 a, 1 b
  * }
@@ -53,10 +66,15 @@ export function *each<T>(object: {[s: string]: T} | ArrayLike<T>): IterableItera
  * for (const [i, v] of eachPair({'foo': 'bar}) {
  *    console.log(i, v); //foo bar
  * }
+ * ```
+ *
+ * @public
  */
 export function eachPair<T>(object: ArrayLike<T>): IterableIterator<[number, T]>;
+/** @public */
 export function eachPair<T>(object: { [s: string]: T }): IterableIterator<[string, T]>;
-export function *eachPair<T>(object: { [s: string]: T } |  ArrayLike<T>): IterableIterator<[string, T] | [number, T]> {
+/** @public */
+export function* eachPair<T>(object: { [s: string]: T } | ArrayLike<T>): IterableIterator<[string, T] | [number, T]> {
     if (Array.isArray(object)) {
         for (let i = 0; i < object.length; i++) {
             yield [i, object[i]];
@@ -64,7 +82,7 @@ export function *eachPair<T>(object: { [s: string]: T } |  ArrayLike<T>): Iterab
     } else {
         for (const i in object) {
             if (object.hasOwnProperty(i)) {
-                yield [i, (object as {[s: string]: T})[i]];
+                yield [i, (object as { [s: string]: T })[i]];
             }
         }
     }

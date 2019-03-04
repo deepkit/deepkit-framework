@@ -4,9 +4,14 @@ import * as dotProp from 'dot-prop';
 /**
  * Makes sure the error once printed using console.log contains the actual class name.
  *
+ * @example
+ * ```
  * class MyApiError extends CustomerError {}
  *
  * throw MyApiError() // prints MyApiError instead of simply "Error".
+ * ```
+ *
+ * @public
  */
 export class CustomError extends Error {
     constructor(message: string) {
@@ -15,20 +20,32 @@ export class CustomError extends Error {
     }
 }
 
+/**
+ * @public
+ */
 export interface ClassType<T> {
     new (...args: any[]): T;
 }
 
+/**
+ * @public
+ */
 export function getClassName<T>(classType: ClassType<T> | Object): string {
     return classType['name'] || (classType.constructor ? classType.constructor.name : '');
 }
 
+/**
+ * @public
+ */
 export function getClassPropertyName<T>(classType: ClassType<T> | Object, propertyName: string): string {
     const name = getClassName(classType);
 
     return `${name}::${propertyName}`;
 }
 
+/**
+ * @public
+ */
 export function applyDefaults<T>(classType: ClassType<T>, target: {[k: string]: any}): T {
     const classInstance = new classType();
 
@@ -46,8 +63,10 @@ function typeOf(obj: any) {
 /**
  * Returns true if the given obj is a plain object, and no class instance.
  *
- * isPlainObject({}) === true
+ * isPlainObject(\{\}) === true
  * isPlainObject(new ClassXY) === false
+ *
+ * @public
  */
 export function isPlainObject(obj: any): obj is object {
     return Boolean(obj && typeof obj === 'object' && obj.constructor === Object);
@@ -55,11 +74,16 @@ export function isPlainObject(obj: any): obj is object {
 
 /**
  * Returns true if given obj is a function.
+ *
+ * @public
  */
 export function isFunction(obj: any): obj is Function {
     return 'function' === typeOf(obj);
 }
 
+/**
+ * @public
+ */
 export function isObject(obj: any): obj is object {
     if (obj === null) {
         return false;
@@ -67,37 +91,60 @@ export function isObject(obj: any): obj is object {
     return ((typeof obj === 'function') || (typeof obj === 'object' && !isArray(obj)));
 }
 
+/**
+ * @public
+ */
 export function isArray(obj: any): obj is any[] {
     return Array.isArray(obj);
 }
 
+/**
+ * @public
+ */
 export function isNull(obj: any): obj is null {
     return null === obj;
 }
 
+/**
+ * @public
+ */
 export function isUndefined(obj: any): obj is undefined {
     return undefined === obj;
 }
 
 /**
  * Checks if obj is not null and not undefined.
+ *
+ * @public
  */
 export function isSet(obj: any): boolean {
     return !isNull(obj) && !isUndefined(obj);
 }
 
+/**
+ * @public
+ */
 export function isNumber(obj: any): obj is number {
     return 'number' === typeOf(obj);
 }
 
+/**
+ * @public
+ */
 export function isString(obj: any): obj is string {
     return 'string' === typeOf(obj);
 }
 
+/**
+ * @public
+ */
 export function arrayHasItem<T>(array: T[], item: T): boolean {
     return -1 !== array.indexOf(item);
 }
 
+/**
+ * @public
+ */
 export function indexOf<T>(array: T[], item: T): number {
     if (!array) {
         return -1;
@@ -106,12 +153,17 @@ export function indexOf<T>(array: T[], item: T): number {
     return array.indexOf(item);
 }
 
+/**
+ * @public
+ */
 export async function sleep(seconds: number): Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, seconds * 1000));
 }
 
 /**
  * Creates a shallow copy of given array.
+ *
+ * @public
  */
 export function copy<T>(v: T[]): T[] {
     if (isArray(v)) {
@@ -123,6 +175,8 @@ export function copy<T>(v: T[]): T[] {
 
 /**
  * Checks whether given array or object is empty (no keys)
+ *
+ * @public
  */
 export function empty<T>(array: T[] | { [key: string]: T }): boolean {
     if (!array) {
@@ -138,6 +192,8 @@ export function empty<T>(array: T[] | { [key: string]: T }): boolean {
 
 /**
  * Returns the size of given array or object.
+ *
+ * @public
  */
 export function size<T>(array: T[] | { [key: string]: T }): number {
     if (!array) {
@@ -153,6 +209,8 @@ export function size<T>(array: T[] | { [key: string]: T }): number {
 
 /**
  * Returns the first key of a given object.
+ *
+ * @public
  */
 export function firstKey(v: { [key: string]: any } | object): string | undefined {
     return Object.keys(v)[0];
@@ -160,6 +218,8 @@ export function firstKey(v: { [key: string]: any } | object): string | undefined
 
 /**
  * Returns the last key of a given object.
+ *
+ * @public
  */
 export function lastKey(v: { [key: string]: any } | object): string | undefined {
     const keys = Object.keys(v);
@@ -171,6 +231,8 @@ export function lastKey(v: { [key: string]: any } | object): string | undefined 
 
 /**
  * Returns the first value of given array or object.
+ *
+ * @public
  */
 export function first<T>(v: { [key: string]: T } | T[]): T | undefined {
     if (isArray(v)) {
@@ -185,6 +247,8 @@ export function first<T>(v: { [key: string]: T } | T[]): T | undefined {
 
 /**
  * Returns the last value of given array or object.
+ *
+ * @public
  */
 export function last<T>(v: { [key: string]: T } | T[]): T | undefined {
     if (isArray(v)) {
@@ -202,6 +266,8 @@ export function last<T>(v: { [key: string]: T } | T[]): T | undefined {
 
 /**
  * Clears the array so its empty. Returns the amount of removed items.
+ *
+ * @public
  */
 export function arrayClear<T>(array: T[]): number {
     return array.splice(0, array.length).length;
@@ -209,6 +275,8 @@ export function arrayClear<T>(array: T[]): number {
 
 /**
  * Removes on particular item by reference of an array.
+ *
+ * @public
  */
 export function arrayRemoveItem<T>(array: T[], item: T): boolean {
     const index = array.indexOf(item);
@@ -222,6 +290,8 @@ export function arrayRemoveItem<T>(array: T[], item: T): boolean {
 
 /**
  * Returns the average of a number array.
+ *
+ * @public
  */
 export function average(array: number[]): number {
     let sum = 0;
@@ -233,6 +303,9 @@ export function average(array: number[]): number {
 }
 
 
+/**
+ * @public
+ */
 export function prependObjectKeys(o: { [k: string]: any }, prependText: string): { [k: string]: any } {
     const converted: { [k: string]: any } = {};
     for (const i in o) {
@@ -242,6 +315,9 @@ export function prependObjectKeys(o: { [k: string]: any }, prependText: string):
     return converted;
 }
 
+/**
+ * @public
+ */
 export function appendObject(origin: { [k: string]: any }, extend: { [k: string]: any }, prependKeyName: string = '') {
     const no = prependObjectKeys(extend, prependKeyName);
     for (const [i, v] of eachPair(no)) {
@@ -250,6 +326,9 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
 }
 
 
+/**
+ * @public
+ */
 export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promise<T> {
     stack = stack || createStack();
     promise.then(() => {
@@ -259,6 +338,9 @@ export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promi
     return promise;
 }
 
+/**
+ * @beta
+ */
 export function createStack(removeCallee: boolean = true): string {
     let stack = new Error().stack || '';
 
@@ -282,6 +364,9 @@ export function createStack(removeCallee: boolean = true): string {
     return stack;
 }
 
+/**
+ * @beta
+ */
 export function mergeStack(error: Error, stack: string) {
     if (error instanceof Error && error.stack) {
         error.stack += '\n' + stack;
@@ -290,11 +375,16 @@ export function mergeStack(error: Error, stack: string) {
 
 /**
  * Returns the current time as seconds.
+ *
+ * @public
  */
 export function time(): number {
     return Date.now() / 1000;
 }
 
+/**
+ * @public
+ */
 export function getPathValue(bag: { [field: string]: any }, parameterPath: string, defaultValue?: any): any {
     if (isSet(bag[parameterPath])) {
         return bag[parameterPath];
@@ -305,12 +395,17 @@ export function getPathValue(bag: { [field: string]: any }, parameterPath: strin
     return isSet(result) ? result : defaultValue;
 }
 
+/**
+ * @public
+ */
 export function setPathValue(bag: object, parameterPath: string, value: any) {
     dotProp.set(bag, parameterPath, value);
 }
 
 /**
  * Returns the human readable byte representation.
+ *
+ * @public
  */
 export function humanBytes(bytes: number, si: boolean = false): string {
     const thresh = si ? 1000 : 1024;

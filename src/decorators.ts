@@ -17,6 +17,8 @@ function initializeProperty(target: any, name: string): { [k: string]: any } {
 
 /**
  * Logs every call to this method on stdout.
+ *
+ * @public
  */
 export function log() {
     return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
@@ -33,6 +35,8 @@ export function log() {
 
 /**
  * Makes sure that calls to this async method are stacked up and are called one after another and not parallel.
+ *
+ * @public
  */
 export function stack() {
     return function (target: object, propertyKey: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>) {
@@ -62,6 +66,8 @@ export function stack() {
 /**
  * Makes sure that this async method is only running once at a time. When this method is running and it is tried
  * to call it another times, that call is dropped and returns simply the result of the previous running call.
+ *
+ * @public
  */
 export function singleStack() {
     return function (target: object, propertyKey: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>) {
