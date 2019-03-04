@@ -6,6 +6,10 @@
   "license": "MIT",
   "author": "Kamille Team",
   "private": true,
+  "scripts": {
+    "tsc": "echo nothing",
+    "tsc-watch": "echo nothing"
+  },
   "dependencies": {
     "@marcj/estdlib": "^0.1.4",
     "@marcj/estdlib-rxjs": "^0.1.4",
