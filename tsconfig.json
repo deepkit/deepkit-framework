@@ -1,20 +1,10 @@
 {
-  "compileOnSave": false,
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "./dist",
-    "declaration": false,
-    "strict": true,
-    "moduleResolution": "node",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "target": "es2017",
-    "typeRoots": [
-      "node_modules/@types"
-    ],
-    "lib": [
-      "es2017",
-      "dom"
-    ]
-  }
+    "outDir": "./dist"
+  },
+  "include": [
+    "./src",
+    "index.ts"
+  ]
 }
