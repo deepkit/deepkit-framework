@@ -7,6 +7,10 @@ export class Session {
         public readonly token: any,
     ) {
     }
+
+    public isAnonymouse(): boolean {
+        return undefined === this.token;
+    }
 }
 
 @Injectable()
@@ -31,16 +35,22 @@ export class Application {
     public readonly controllers: { [name: string]: ClassType<any> } = {};
     public readonly entityChangeFeeds: ClassType<any>[] = [];
 
+    /**
+     * Method executed in the master process, right before workers are forked.
+     */
     public async bootstrap() {
     }
 
     /**
-     *
+     * Method to check whether given session (created by authenticate) has access to controller::action.
      */
     public async hasAccess<T>(session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
         return true;
     }
 
+    /**
+     * Resolves a name to a controller.
+     */
     public async getController(name: string): Promise<ClassType<any> | undefined> {
         return this.controllers[name];
     }

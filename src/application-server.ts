@@ -9,7 +9,7 @@ import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
 import {Database} from "@marcj/marshal-mongo";
 import {Mongo} from "./mongo";
 import {Application} from "./application";
-import {applyDefaults, each} from "@marcj/estdlib";
+import {applyDefaults, each, eachPair} from "@marcj/estdlib";
 import {Server} from "http";
 import {ServerOptions} from "ws";
 
@@ -148,6 +148,15 @@ export class ApplicationServer {
         }
     }
 
+    protected done() {
+        const app: Application = this.injector.get(Application);
+
+        for (const [name, controllerClass] of eachPair(app.controllers)) {
+            console.log('registered controller', name, getClassName(controllerClass));
+        }
+        console.log('Server up and running');
+    }
+
     public async start() {
         process.on('unhandledRejection', error => {
             console.log(error);
@@ -163,7 +172,7 @@ export class ApplicationServer {
                     cluster.fork();
                 }
 
-                console.log('master done');
+                this.done();
             } else {
                 const worker = new Worker(this.injector, this.connectionProvider, {
                     host: this.config.host,
@@ -178,6 +187,9 @@ export class ApplicationServer {
                 worker.run();
             }
         } else {
+            const app: Application = this.injector.get(Application);
+            await app.bootstrap();
+
             let options: ServerOptions = {
                 host: this.config.host,
                 port: this.config.port,
@@ -190,6 +202,7 @@ export class ApplicationServer {
 
             this.masterWorker = new Worker(this.injector, this.connectionProvider, options);
             this.masterWorker.run();
+            this.done();
         }
     }
 }
