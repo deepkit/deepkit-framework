@@ -1,27 +1,10 @@
 {
-  "compileOnSave": false,
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "./",
-    "declaration": false,
-    "strict": true,
-    "moduleResolution": "node",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "target": "es2017",
-    "typeRoots": [
-      "node_modules/@types"
-    ],
-    "lib": [
-      "es2017",
-      "dom"
-    ]
+    "outDir": "./dist"
   },
-  "exclude": [
-    "**/tests/**.ts",
-    "**/*.spec.ts"
-  ],
   "include": [
-    "src/",
-    "node_modules/@marcj/glut*/*/src/**/*.ts"
+    "./src",
+    "index.ts"
   ]
 }
