@@ -16,7 +16,7 @@
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc",
     "docs": "typedoc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
+    "tsc-watch": "tsc --watch"
   },
   "jest": {
     "moduleFileExtensions": [
