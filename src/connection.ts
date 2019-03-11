@@ -4,6 +4,7 @@ import {Application, SessionStack} from "./application";
 import {ClientMessageAll} from "@marcj/glut-core";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
+import {arrayRemoveItem} from "@marcj/estdlib";
 
 
 @Injectable()
@@ -37,7 +38,10 @@ export class Connection {
      * Creates a regular timer using setTimeout() and automatically cancel it once the connection breaks or server stops.
      */
     public setTimeout(cb: () => void, timeout: number): NodeJS.Timeout {
-        const timer = setTimeout(cb, timeout);
+        const timer = setTimeout(() => {
+            cb();
+            arrayRemoveItem(this.timeoutTimers, timer);
+        }, timeout);
         this.timeoutTimers.push(timer);
         return timer;
     }

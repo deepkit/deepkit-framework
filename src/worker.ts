@@ -44,7 +44,14 @@ export class Worker {
             const connection: Connection = injector.get(Connection);
 
             socket.on('message', async (raw: string) => {
-                await connection.onMessage(raw);
+                try {
+                    await connection.onMessage(raw);
+                } catch (error) {
+                    console.error('Error on connection message');
+                    console.error(error);
+                    console.error('Got message:');
+                    console.error(raw);
+                }
             });
 
             socket.on('close', async (data: object) => {

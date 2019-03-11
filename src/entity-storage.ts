@@ -438,11 +438,9 @@ export class EntityStorage {
             }
         });
 
-        collection.subscribe(() => {
-        }, () => {
-        }, async () => {
-            await fieldSub.unsubscribe();
+        collection.addTeardown(() => {
             sub.unsubscribe();
+            fieldSub.unsubscribe();
         });
 
         setTimeout(async () => {
