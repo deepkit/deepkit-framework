@@ -1,11 +1,12 @@
 import 'jest';
-import {Action, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
+import {Action, Connection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
 import {Entity, NumberType, StringType} from '@marcj/marshal';
 import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
 import uuid = require("uuid");
 import {Observable, BehaviorSubject} from 'rxjs';
 import {nextValue} from '@marcj/estdlib-rxjs';
+import {sleep} from '@marcj/estdlib';
 
 global['WebSocket'] = require('ws');
 
@@ -53,12 +54,17 @@ test('test entity sync list', async () => {
                 name: {$regex: /Peter/}
             });
         }
+
+        @Action()
+        async addUser(name: string) {
+            await this.database.add(User, new User(name));
+        }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController], [User]);
-    const test = client.controller<TestController>('test');
+    const {server, client, close, createControllerClient} = await createServerClientPair([TestController], [User]);
+    const testController = client.controller<TestController>('test');
 
-    const users = await test.users();
+    const users: Collection<User> = await testController.users();
     await users.readyState;
 
     expect(users.count()).toBe(2);
@@ -74,13 +80,33 @@ test('test entity sync list', async () => {
     expect(users.count()).toBe(3);
     expect(users.all()[0].name).toBe('Peter patched');
 
+    const testController2 = createControllerClient<TestController>('test');
+    await testController2.addUser('Peter 20');
+
+    await users.nextStateChange;
+    expect(users.count()).toBe(4);
+    users.unsubscribe();
+
+    //unsubscribe is sent async, so we wait a bit.
+    await sleep(0.1);
+
+    await testController2.addUser('Peter 30');
+
+    await sleep(0.1);
+    //still 4, since we unsubscribed from feed
+    expect(users.count()).toBe(4);
+
     await close();
 });
 
 test('test entity sync item', async () => {
     @Controller('test')
     class TestController {
-        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        constructor(
+            private connection: Connection,
+            private storage: EntityStorage,
+            private database: ExchangeDatabase,
+        ) {
         }
 
         @Action()
@@ -91,11 +117,11 @@ test('test entity sync item', async () => {
             const peter = new User('Peter 1');
             await this.database.add(User, peter);
 
-            setTimeout(async () => {
+            this.connection.setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
             }, 20);
 
-            setTimeout(async () => {
+            this.connection.setTimeout(async () => {
                 await this.database.remove(User, peter.id);
             }, 280);
 
@@ -105,19 +131,47 @@ test('test entity sync item', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController], [User]);
+    const {server, client, close, app} = await createServerClientPair([TestController], [User]);
     const test = client.controller<TestController>('test');
 
-    const user = await test.user();
-    expect(user).toBeInstanceOf(EntitySubject);
-    expect(user.getValue()).toBeInstanceOf(User);
-    expect(user.getValue().name).toBe('Peter 1');
+    {
+        const user = await test.user();
+        expect(user).toBeInstanceOf(EntitySubject);
+        expect(user.getValue()).toBeInstanceOf(User);
+        expect(user.getValue().name).toBe('Peter 1');
+        const userId = user.getValue().id;
 
-    await user.nextStateChange;
-    expect(user.getValue().name).toBe('Peter patched');
+        const entityStorage = app.lastConnectionInjector!.get(EntityStorage);
+        await user.nextStateChange;
+        expect(user.getValue().name).toBe('Peter patched');
+        expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(true);
 
-    await user.nextStateChange;
-    expect(user.getValue()).toBeUndefined();
+        await user.nextStateChange;
+        expect(user.getValue()).toBeUndefined();
+
+        // there are two ways to stop syncing that entity:
+        // call user.unsubscribe() or when server sent next(undefined), which means it got deleted.
+        expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(false);
+    }
+
+    {
+        const user = await test.user();
+        expect(user).toBeInstanceOf(EntitySubject);
+        expect(user.getValue()).toBeInstanceOf(User);
+        expect(user.getValue().name).toBe('Peter 1');
+        const userId = user.getValue().id;
+
+        const entityStorage = app.lastConnectionInjector!.get(EntityStorage);
+        expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(true);
+
+        //this happens async, since we sent a message to the server that
+        //we want to stop syncing.
+        user.unsubscribe();
+        await sleep(0.1);
+
+        expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(false);
+        expect(() => user.getValue()).toThrow('object unsubscribed');
+    }
 
     await close();
 });
@@ -125,7 +179,11 @@ test('test entity sync item', async () => {
 test('test entity sync item undefined', async () => {
     @Controller('test')
     class TestController {
-        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        constructor(
+            private connection: Connection,
+            private storage: EntityStorage,
+            private database: ExchangeDatabase,
+        ) {
         }
 
         names(): string[] {
@@ -140,7 +198,7 @@ test('test entity sync item undefined', async () => {
             const peter = new User('Peter 1');
             await this.database.add(User, peter);
 
-            setTimeout(async () => {
+            this.connection.setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
             }, 50);
 
@@ -164,7 +222,11 @@ test('test entity sync item undefined', async () => {
 test('test entity sync count', async () => {
     @Controller('test')
     class TestController {
-        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        constructor(
+            private connection: Connection,
+            private storage: EntityStorage,
+            private database: ExchangeDatabase,
+        ) {
         }
 
         @Action()
@@ -173,17 +235,17 @@ test('test entity sync count', async () => {
             await this.database.add(User, new User('Guschdl'));
             const peter1 = new User('Peter 1');
 
-            setTimeout(async () => {
+            this.connection.setTimeout(async () => {
                 console.log('add peter1');
                 await this.database.add(User, peter1);
             }, 100);
 
-            setTimeout(async () => {
+            this.connection.setTimeout(async () => {
                 console.log('add peter2');
                 await this.database.add(User, new User('Peter 2'));
             }, 150);
 
-            setTimeout(async () => {
+            this.connection.setTimeout(async () => {
                 console.log('remove peter1');
                 await this.database.remove(User, peter1.id);
             }, 200);
@@ -225,9 +287,7 @@ test('test entity sync count', async () => {
     const userCount = new BehaviorSubject<number>(0);
     expect(userCount.getValue()).toBe(0);
 
-    console.log('subscribe again');
     result.subscribe(userCount);
-    console.log('subscribe again done');
 
     await nextValue(userCount);
     expect(userCount.getValue()).toBe(0);

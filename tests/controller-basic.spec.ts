@@ -4,6 +4,7 @@ import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
 import {Entity, StringType} from '@marcj/marshal';
+import {ObserverTimer} from "@marcj/estdlib-rxjs";
 global['WebSocket'] = require('ws');
 
 @Entity('user')
@@ -78,15 +79,17 @@ test('test observable', async () => {
             return new Observable((observer) => {
                 observer.next('a');
 
-                setTimeout(() => {
+                const timer = new ObserverTimer(observer);
+
+                timer.setTimeout(() => {
                     observer.next('b');
                 }, 100);
 
-                setTimeout(() => {
+                timer.setTimeout(() => {
                     observer.next('c');
                 }, 200);
 
-                setTimeout(() => {
+                timer.setTimeout(() => {
                     observer.complete();
                 }, 300);
             });
@@ -96,7 +99,10 @@ test('test observable', async () => {
         user(name: string): Observable<User> {
             return new Observable((observer) => {
                 observer.next(new User('first'));
-                setTimeout(() => {
+
+                const timer = new ObserverTimer(observer);
+
+                timer.setTimeout(() => {
                     observer.next(new User(name));
                 }, 200);
             });
@@ -106,10 +112,10 @@ test('test observable', async () => {
     const {server, client, close} = await createServerClientPair([TestController]);
     const test = client.controller<TestController>('test');
 
-    const observer = await test.observer();
-    expect(observer).toBeInstanceOf(Observable);
+    const observable = await test.observer();
+    expect(observable).toBeInstanceOf(Observable);
 
-    await subscribeAndWait(observer.pipe(bufferCount(3)), async (next) => {
+    await subscribeAndWait(observable.pipe(bufferCount(3)), async (next) => {
         expect(next).toEqual(['a', 'b', 'c']);
     });
 
