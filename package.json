@@ -14,16 +14,15 @@
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc",
     "docs": "typedoc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
+    "tsc-watch": "tsc --watch"
   },
   "peerDependencies": {
-    "rxjs": "6.3.3"
-  },
-  "dependencies": {
+    "rxjs": "6.3.3",
     "@marcj/estdlib": "^0.1.4"
   },
   "devDependencies": {
-    "rxjs": "6.3.3"
+    "rxjs": "6.3.3",
+    "@marcj/estdlib": "^0.1.4"
   },
   "jest": {
     "moduleFileExtensions": [
