@@ -10,6 +10,10 @@ import {sleep} from '@marcj/estdlib';
 
 global['WebSocket'] = require('ws');
 
+const Promise = require('bluebird');
+Promise.longStackTraces(); //needs to be disabled in production since it leaks memory
+global.Promise = Promise;
+
 @Entity('user')
 class User implements IdInterface {
     @StringType()
@@ -44,11 +48,11 @@ test('test entity sync list', async () => {
 
             setTimeout(async () => {
                 await this.database.add(User, new User('Peter 3'));
-            }, 10);
+            }, 50);
 
             setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
-            }, 50);
+            }, 100);
 
             return await this.storage.find(User, {
                 name: {$regex: /Peter/}
@@ -58,6 +62,7 @@ test('test entity sync list', async () => {
         @Action()
         async addUser(name: string) {
             await this.database.add(User, new User(name));
+            return false;
         }
     }
 

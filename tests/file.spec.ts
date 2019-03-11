@@ -4,10 +4,6 @@ import {createServerClientPair} from "./util";
 
 global['WebSocket'] = require('ws');
 
-test('test', async () => {
-
-});
-
 test('test file list', async () => {
     @Controller('test')
     class TestController {
@@ -20,15 +16,15 @@ test('test file list', async () => {
 
         @Action()
         async files() {
-
+            //todo
         }
     }
 
     const {server, client, close} = await createServerClientPair([TestController], []);
     const test = client.controller<TestController>('test');
 
-    const users = await test.users();
-    await users.readyState;
+    const files = await test.files();
+    // await users.readyState;
 
     await close();
 });
