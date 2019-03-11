@@ -98,7 +98,9 @@ export class SocketClient {
         const port = this.config.port;
         this.connectionTries++;
         const url = this.config.host.startsWith('ws+unix') ? this.config.host : 'ws://' + this.config.host + ':' + port;
+
         console.log('connect', url);
+
         const socket = this.socket = new WebSocket(url);
         socket.onmessage = (event: MessageEvent) => {
             this.onMessage(event);
@@ -345,7 +347,7 @@ export class SocketClient {
 
         this.replies[messageId] = answer;
 
-        this.connect().then(() => this.send(message));
+        this.connect().then(() => this.send(message), (error) => {throw error});
     }
 
     private async authenticate(): Promise<boolean> {
