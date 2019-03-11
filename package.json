@@ -1,6 +1,6 @@
 {
   "name": "@marcj/estdlib-rxjs",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "engineering stdlib for typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,12 +17,12 @@
     "tsc-watch": "tsc --watch"
   },
   "peerDependencies": {
-    "rxjs": "6.3.3",
-    "@marcj/estdlib": "^0.1.4"
+    "@marcj/estdlib": "^0.1.4",
+    "rxjs": "6.3.3"
   },
   "devDependencies": {
-    "rxjs": "6.3.3",
-    "@marcj/estdlib": "^0.1.4"
+    "@marcj/estdlib": "^0.1.5",
+    "rxjs": "6.3.3"
   },
   "jest": {
     "moduleFileExtensions": [
