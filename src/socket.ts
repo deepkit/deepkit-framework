@@ -8,7 +8,7 @@ import {
     ClientMessageWithoutId,
     Collection, EntitySubject,
     ServerMessageAll,
-    ServerMessageResult
+    ServerMessageResult, StreamBehaviorSubject
 } from "@marcj/glut-core";
 import {applyDefaults} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
@@ -23,6 +23,9 @@ export class SocketClientConfig {
 
 export class AuthorizationError extends Error {
 }
+
+//todo, add better argument inference for U
+export type Promisify<T> = { [P in keyof T]: T[P] extends (...args: infer U) => infer RT ? RT extends Promise<any> ? T[P] : (...args: U) => Promise<RT> : T[P] };
 
 export class SocketClient {
     public socket?: WebSocket;
@@ -49,8 +52,7 @@ export class SocketClient {
     }
 
     //todo, add better argument inference for U
-    public controller<T,
-        R = { [P in keyof T]: T[P] extends (...args: infer U) => infer RT ? RT extends Promise<any> ? T[P] : (...args: U) => Promise<RT> : T[P] }>(name: string): R {
+    public controller<T>(name: string): Promisify<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -64,7 +66,7 @@ export class SocketClient {
             }
         });
 
-        return (o as any) as R;
+        return (o as any) as Promisify<T>;
     }
 
     protected onMessage(event: MessageEvent) {
@@ -163,6 +165,7 @@ export class SocketClient {
             const self = this;
             const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
             let subscriberIdCounter = 0;
+            let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
             this.sendMessage({
                 name: 'action',
@@ -173,9 +176,14 @@ export class SocketClient {
                 if (reply.type === 'type') {
                     activeReturnType = reply.returnType;
 
+                    if (reply.returnType === 'subject') {
+                        streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
+                        resolve(streamBehaviorSubject);
+                    }
+
                     if (reply.returnType === 'entity') {
-                        if (reply.item && reply.entityName) {
-                            const classType = RegisteredEntities[reply.entityName];
+                        if (reply.item) {
+                            const classType = RegisteredEntities[reply.entityName || ''];
 
                             if (!classType) {
                                 throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
@@ -189,13 +197,11 @@ export class SocketClient {
                                 //it got created, so we subscribe only once to notify server about
                                 //unused EntitySubject when completed.
                                 const subject = this.entityState.handleEntity(classType, reply.item);
-                                subject.subscribe(() => {
-                                }, () => {
-                                }, () => {
-                                    //user completed the entity subject, so we stop syncing changes
+                                subject.addTearDown(() => {
+                                    //user unsubscribed the entity subject, so we stop syncing changes
                                     self.send({
                                         id: reply.id,
-                                        name: 'entity/complete'
+                                        name: 'entity/unsubscribe'
                                     });
                                 });
 
@@ -240,9 +246,16 @@ export class SocketClient {
                         const collection = new Collection<any>(classType);
                         returnValue = collection;
 
-                        collection.addTeardown(new Subscriber(() => {
+                        collection.addTeardown(() => {
+                            console.log('client: unsubscribe collection');
                             this.entityState.unsubscribeCollection(collection);
-                        }));
+
+                            //collection unsubscribed, so we stop syncing changes
+                            self.send({
+                                id: reply.id,
+                                name: 'collection/unsubscribe'
+                            });
+                        });
                         resolve(collection);
                     }
                 }
@@ -264,6 +277,16 @@ export class SocketClient {
                     }
                 }
 
+                if (reply.type === 'next/subject') {
+                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
+                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
+                    }
+
+                    if (streamBehaviorSubject) {
+                        streamBehaviorSubject.next(reply.next);
+                    }
+                }
+
                 if (reply.type === 'next/collection') {
                     this.entityState.handleCollectionNext(returnValue, reply.next);
                 }
@@ -272,11 +295,17 @@ export class SocketClient {
                     if (returnValue instanceof Collection) {
                         returnValue.complete();
                     }
+
+                    if (streamBehaviorSubject) {
+                        streamBehaviorSubject.complete();
+                    }
                 }
 
                 if (reply.type === 'error') {
                     if (returnValue instanceof Collection) {
                         returnValue.error(reply.error);
+                    } else if (streamBehaviorSubject) {
+                        streamBehaviorSubject.error(reply.error);
                     } else {
                         reject(reply.error);
                     }

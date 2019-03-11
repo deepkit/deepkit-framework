@@ -74,7 +74,7 @@ export class EntityState {
 
         if (stream.type === 'entity/update') {
             if (store.hasStoreItem(stream.id)) {
-                const item = plainToClass(classType, stream.item);
+                const item = plainToClass(classType, stream.data);
                 store.setItemAndNotifyObservers(stream.id, item);
             }
         }
