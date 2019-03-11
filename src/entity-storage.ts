@@ -4,18 +4,19 @@ import {ClassType, getEntityName, plainToClass} from "@marcj/marshal";
 import {Observable, Subscription} from "rxjs";
 import {convertPlainQueryToMongo, partialMongoToPlain} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
-import {Collection, EntitySubject, ExchangeEntity, IdInterface} from "@marcj/glut-core";
+import {Collection, EntitySubject, ExchangeEntity, File, FilterQuery, IdInterface} from "@marcj/glut-core";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";
+import {StreamBehaviorSubject} from "@marcj/glut-core/src/core";
 
 interface SentState {
     lastSentVersion: number;
     listeners: number;
 }
 
-function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: SiftQuery<T[]>): boolean {
+function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index: string]: any }, query: SiftQuery<T[]>): boolean {
     return sift(query, [target]).length > 0;
 }
 
@@ -40,7 +41,7 @@ export class EntityStorage {
         }
     }
 
-    private getSentStateStore<T>(classType: ClassType<T>): { [id: string]: SentState } {
+    protected getSentStateStore<T>(classType: ClassType<T>): { [id: string]: SentState } {
         let store = this.sentEntities.get(classType);
         if (!store) {
             store = {};
@@ -50,11 +51,20 @@ export class EntityStorage {
         return store;
     }
 
-    private hasSentState<T>(classType: ClassType<T>, id: string): boolean {
+    protected hasSentState<T>(classType: ClassType<T>, id: string): boolean {
         return !!this.getSentStateStore(classType)[id];
     }
 
-    private getSentState<T>(classType: ClassType<T>, id: string): SentState {
+    /**
+     * Necessary when the whole state of `id` should be deleted from memory, so it wont sync to client anymore.
+     */
+    protected rmSentState<T>(classType: ClassType<T>, id: string) {
+        const store = this.getSentStateStore(classType);
+
+        delete store[id];
+    }
+
+    protected getSentState<T>(classType: ClassType<T>, id: string): SentState {
         const store = this.getSentStateStore(classType);
 
         if (!store[id]) {
@@ -67,11 +77,11 @@ export class EntityStorage {
         return store[id];
     }
 
-    private setSent<T>(classType: ClassType<T>, id: string, version: number) {
+    protected setSent<T>(classType: ClassType<T>, id: string, version: number) {
         this.getSentState(classType, id).lastSentVersion = version;
     }
 
-    private needsToBeSend<T>(classType: ClassType<T>, id: string, version: number): boolean {
+    public needsToBeSend<T>(classType: ClassType<T>, id: string, version: number): boolean {
         if (!this.hasSentState(classType, id)) return false;
 
         const state = this.getSentState(classType, id);
@@ -98,7 +108,9 @@ export class EntityStorage {
     }
 
     subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
+
         if (this.entitySubscription.has(classType)) {
+            //already subscribed, nothing to do here
             return;
         }
 
@@ -117,6 +129,12 @@ export class EntityStorage {
                         patch: message.patch
                     });
                 } else if (message.type === 'remove') {
+                    //we remove it from our sentState, so we stop syncing changes
+                    //this works, since subscribeEntity() and findOne() is always made
+                    //no the same connection. If a different connection calls findOne()
+                    //it also calls subscribeEntity.
+                    this.rmSentState(classType, message.id);
+
                     this.writer.write({
                         type: 'entity/remove',
                         entityName: entityName,
@@ -129,7 +147,7 @@ export class EntityStorage {
                         entityName: entityName,
                         id: message.id,
                         version: message.version,
-                        item: message.item
+                        data: message.item
                     });
                 } else if (message.type === 'add') {
                     //nothing to do.
@@ -139,64 +157,6 @@ export class EntityStorage {
 
         this.entitySubscription.set(classType, sub);
     }
-
-    //
-    // @Action()
-    // @Role(RoleType.regular)
-    // streamFile(filter: FileMetaData, path: string): Observable<StreamFileResult> {
-    //     return new Observable((observer) => {
-    //
-    //         const fits = (message: StreamFileResult): boolean => {
-    //             if (path !== message.path) {
-    //                 return false;
-    //             }
-    //
-    //             //todo, limit access to filter.accountId
-    //
-    //             if (filter.job && message.context.job !== filter.job) {
-    //                 return false;
-    //             }
-    //
-    //             if (filter.project && message.context.project !== filter.project) {
-    //                 return false;
-    //             }
-    //
-    //             if (filter.type && message.context.type !== filter.type) {
-    //                 return false;
-    //             }
-    //
-    //
-    //             return true;
-    //         };
-    //
-    //         let started = false;
-    //         const sub = this.exchange.subscribeFile((message) => {
-    //             if (!started) return;
-    //             if (!fits(message)) return;
-    //
-    //             observer.next(message);
-    //         });
-    //
-    //         (async () => {
-    //             //read initial content
-    //             const data = await this.fs.read(path, filter);
-    //             observer.next({
-    //                 type: 'set',
-    //                 path: path,
-    //                 context: filter,
-    //                 content: data ? data.toString('utf8') : ''
-    //             });
-    //             started = true;
-    //         })();
-    //
-    //         return {
-    //             unsubscribe: async () => {
-    //                 sub.unsubscribe();
-    //             }
-    //         };
-    //     });
-    // }
-    //
 
     // multiCount<T extends IdInterface>(classType: ClassType<T>, filters: { [p: string]: any }[] = []): Observable<CountResult> {
     //     return new Observable((observer) => {
@@ -400,7 +360,10 @@ export class EntityStorage {
             this.setSent(classType, item.id, item.version);
             this.subscribeEntity(classType);
 
-            return new EntitySubject(item);
+            //todo, teardown is not called when item has been removed. mh
+            return new EntitySubject(item, () => {
+                this.decreaseUsage(classType, foundId);
+            });
         } else {
             throw new Error('Item not found');
         }
@@ -496,5 +459,53 @@ export class EntityStorage {
         });
 
         return collection;
+    }
+
+    async fileContent(path: string, additionalFilter?: FilterQuery<File>): Promise<StreamBehaviorSubject<string | undefined>> {
+        const subject = new StreamBehaviorSubject<string | undefined>('');
+        const file = await this.findOne(File, {path: path, ...additionalFilter});
+        let exchangeSubscription: Subscription | undefined;
+        let fileSubscription: Subscription | undefined;
+
+        fileSubscription = file.subscribe(() => {
+            //file changed, but we don't care. we care about content
+        }, (error) => {
+            subject.error(error);
+        }, () => {
+            //file has been deleted or filter doesn't match anymore
+            subject.complete();
+
+            if (exchangeSubscription) {
+                exchangeSubscription.unsubscribe();
+            }
+        });
+
+        exchangeSubscription = this.exchange.subscribeFile(file.getValue().id, (message) => {
+            if (message.type === 'set') {
+                subject.next(message.content);
+            } else if (message.type === 'append') {
+                subject.next(subject.getValue() + message.content);
+            } else if (message.type === 'remove') {
+                subject.next(undefined);
+            }
+        });
+
+        subject.addTearDown(() => {
+            if (exchangeSubscription) {
+                exchangeSubscription.unsubscribe();
+            }
+
+            if (fileSubscription) {
+                fileSubscription.unsubscribe();
+            }
+        });
+
+        //read initial content
+        const data = await this.fs.read(path, additionalFilter);
+
+        //todo, support binary
+        subject.next(data ? data.toString('utf8') : undefined);
+
+        return subject;
     }
 }

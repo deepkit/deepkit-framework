@@ -1,8 +1,7 @@
 {
   "name": "@marcj/glut-server",
   "version": "0.0.2",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "index.ts",
   "license": "MIT",
   "author": "Kamille Team",
   "sideEffects": false,

@@ -100,25 +100,31 @@ export class Exchange {
         return this.subscribe(channelName, cb);
     }
 
-    public publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
+    public async publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
         const channelName = this.prefix + '/entity/' + getEntityName(classType);
-        this.publish(channelName, message);
+        await this.publish(channelName, message);
     }
 
-    public publishFile<T>(message: StreamFileResult) {
-        //todo, maybe it makes sense to limit what is sent so save bandwidth to redis
-        // so same with patch fields.
-        const channelName = this.prefix + '/file';
-        this.publish(channelName, message);
+    public async publishFile<T>(fileId: string, message: StreamFileResult) {
+        const channelName = this.prefix + '/file/' + fileId;
+        await this.publish(channelName, message);
     }
 
-    public subscribeFile<T>(cb: Callback<StreamFileResult>) {
-        const channelName = this.prefix + '/file';
+    public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>) {
+        const channelName = this.prefix + '/file/' + fileId;
         return this.subscribe(channelName, cb);
     }
 
-    public publish(channelName: string, message: any) {
-        this.redis.publish(channelName, JSON.stringify(message));
+    public async publish(channelName: string, message: any) {
+        return new Promise<void>((resolve, reject) => {
+            this.redis.publish(channelName, JSON.stringify(message), (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        });
     }
 
     protected subscribeToMessages() {

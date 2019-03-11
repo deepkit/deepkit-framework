@@ -1,5 +1,5 @@
 import {EntityStorage} from "./entity-storage";
-import {ClientMessageAll, Collection, CollectionStream, EntitySubject} from "@marcj/glut-core";
+import {ClientMessageAll, Collection, CollectionStream, EntitySubject, StreamBehaviorSubject} from "@marcj/glut-core";
 import {classToPlain, ClassType, getEntityName, RegisteredEntities} from "@marcj/marshal";
 import {each} from "@marcj/estdlib";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
@@ -19,8 +19,9 @@ function getSafeEntityName(object: any): string | undefined {
 @Injectable()
 export class ConnectionMiddleware {
     protected collectionSubscriptions: { [messageId: string]: Subscriptions } = {};
+    protected subjectSubscriptions: { [messageId: string]: Subscriptions } = {};
     protected observables: { [messageId: string]: { observable: Observable<any>, subscriber: { [subscriberId: string]: Subscription } } } = {};
-    protected entitySubjectSent: { [messageId: string]: { classType: ClassType<any>, id: string } } = {};
+    protected entitySent: { [messageId: string]: { classType: ClassType<any>, id: string } } = {};
 
     constructor(
         protected writer: ConnectionWriter,
@@ -30,6 +31,10 @@ export class ConnectionMiddleware {
 
     public destroy() {
         for (const sub of each(this.collectionSubscriptions)) {
+            sub.unsubscribe();
+        }
+
+        for (const sub of each(this.subjectSubscriptions)) {
             sub.unsubscribe();
         }
 
@@ -45,13 +50,29 @@ export class ConnectionMiddleware {
     public async messageIn(message: ClientMessageAll) {
         // console.log('messageIn', message);
 
-        if (message.name === 'entity/complete') {
-            const sent = this.entitySubjectSent[message.id];
+        if (message.name === 'entity/unsubscribe') {
+            const sent = this.entitySent[message.id];
             if (!sent) {
                 throw new Error(`Entity not sent for message ${message.id}`);
             }
 
             this.entityStorage.decreaseUsage(sent.classType, sent.id);
+        }
+
+        if (message.name === 'subject/unsubscribe') {
+            const sent = this.subjectSubscriptions[message.id];
+            if (!sent) {
+                throw new Error(`Subject not subscribed ${message.id}`);
+            }
+
+            sent.unsubscribe();
+        }
+
+        if (message.name === 'collection/unsubscribe') {
+            console.log('server: collection/unsubscribe', message.id);
+            if (this.collectionSubscriptions[message.id]) {
+                this.collectionSubscriptions[message.id].unsubscribe();
+            }
         }
 
         if (message.name === 'observable/subscribe') {
@@ -99,11 +120,13 @@ export class ConnectionMiddleware {
     public async messageOut(message: ClientMessageAll, result: any) {
         if (result instanceof EntitySubject) {
             const item = result.getValue();
-            if (!item) {
+
+            if (undefined === item) {
                 this.writer.write({
                     type: 'type',
                     id: message.id,
                     returnType: 'entity',
+                    entityName: undefined,
                     item: undefined,
                 });
                 return;
@@ -111,7 +134,7 @@ export class ConnectionMiddleware {
 
             const entityName = getEntityName(item.constructor);
 
-            this.entitySubjectSent[message.id] = {
+            this.entitySent[message.id] = {
                 classType: item.constructor,
                 id: item.id,
             };
@@ -121,9 +144,46 @@ export class ConnectionMiddleware {
                 id: message.id,
                 returnType: 'entity',
                 entityName: entityName,
-                item: classToPlain(item.constructor, item)
+                item: entityName ? classToPlain(item.constructor, item) : item
             });
             this.writer.complete(message.id);
+            //no further subscribes/messages necessary since the 'entity' channel handles updates of it.
+            //this means, once this entity is registered in entity-storage, we automatically push changed of this entity.
+
+        } else if (result instanceof StreamBehaviorSubject) {
+            const item = result.getValue();
+
+            const entityName = item ? getEntityName(item.constructor) : undefined;
+
+            this.writer.write({
+                type: 'type',
+                id: message.id,
+                returnType: 'subject',
+                entityName: entityName,
+                data: entityName ? classToPlain(item.constructor, item) : item
+            });
+
+            this.subjectSubscriptions[message.id] = new Subscriptions(() => {
+                result.unsubscribe();
+                delete this.subjectSubscriptions[message.id];
+            });
+
+            this.subjectSubscriptions[message.id].add = result.subscribe((next) => {
+                const entityName = next ? getEntityName(next.constructor) : undefined;
+
+                this.writer.write({
+                    type: 'next/subject',
+                    id: message.id,
+                    entityName: entityName,
+                    next: entityName ? classToPlain(item.constructor, item) : item
+                });
+            }, (error) => {
+                this.writer.sendError(message.id, error);
+                this.subjectSubscriptions[message.id].unsubscribe();
+            }, () => {
+                this.writer.complete(message.id);
+                this.subjectSubscriptions[message.id].unsubscribe();
+            });
 
         } else if (result instanceof Collection) {
             const collection: Collection<any> = result;
@@ -155,20 +215,20 @@ export class ConnectionMiddleware {
             }
 
             this.collectionSubscriptions[message.id] = new Subscriptions(() => {
-                collection.complete();
+                collection.unsubscribe();
+                delete this.collectionSubscriptions[message.id];
             });
 
             this.collectionSubscriptions[message.id].add = collection.subscribe(() => {
 
             }, (error) => {
                 this.writer.sendError(message.id, error);
-                this.collectionSubscriptions[message.id].unsubscribe();
             }, () => {
                 this.writer.complete(message.id);
-                this.collectionSubscriptions[message.id].unsubscribe();
             });
 
             this.collectionSubscriptions[message.id].add = collection.event.subscribe((event) => {
+                console.log('server: got collection event', event);
                 if (event.type === 'add') {
                     nextValue = {type: 'add', item: classToPlain(collection.classType, event.item)};
                     this.writer.write({type: 'next/collection', id: message.id, next: nextValue});

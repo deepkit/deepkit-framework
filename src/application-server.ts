@@ -127,6 +127,10 @@ export class ApplicationServer {
         );
     }
 
+    public getApplication(): Application {
+        return this.injector.get(Application);
+    }
+
     public async close() {
         if (this.config.workers > 1) {
             for (const worker of each(cluster.workers)) {
@@ -154,6 +158,7 @@ export class ApplicationServer {
         for (const [name, controllerClass] of eachPair(app.controllers)) {
             console.log('registered controller', name, getClassName(controllerClass));
         }
+
         console.log('Server up and running');
     }
 

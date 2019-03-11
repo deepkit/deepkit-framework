@@ -1,5 +1,6 @@
-import {Injectable} from "injection-js";
+import {Injectable, Injector} from "injection-js";
 import {ClassType} from "@marcj/marshal";
+import {File} from "@marcj/glut-core";
 
 export class Session {
     constructor(
@@ -33,7 +34,7 @@ export class SessionStack {
 @Injectable()
 export class Application {
     public readonly controllers: { [name: string]: ClassType<any> } = {};
-    public readonly entityChangeFeeds: ClassType<any>[] = [];
+    public readonly entityChangeFeeds: ClassType<any>[] = [File];
 
     /**
      * Method executed in the master process, right before workers are forked.
@@ -44,21 +45,21 @@ export class Application {
     /**
      * Method to check whether given session (created by authenticate) has access to controller::action.
      */
-    public async hasAccess<T>(session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
+    public async hasAccess<T>(injector: Injector, session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
         return true;
     }
 
     /**
      * Resolves a name to a controller.
      */
-    public async getController(name: string): Promise<ClassType<any> | undefined> {
+    public async resolveController(name: string): Promise<ClassType<any> | undefined> {
         return this.controllers[name];
     }
 
     /**
      * Authenticates the current connection.
      */
-    public async authenticate(token: any): Promise<Session> {
+    public async authenticate(injector: Injector, token: any): Promise<Session> {
         return new Session('anon', undefined);
     }
 

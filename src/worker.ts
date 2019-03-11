@@ -35,12 +35,7 @@ export class Worker {
                 SessionStack,
                 Connection,
                 ConnectionMiddleware,
-                ConnectionWriter,
-                {
-                    provide: 'injector', useValue: (name: string) => {
-                        return injector!.get(name);
-                    }
-                },
+                ConnectionWriter
             ];
 
             provider.push(...this.connectionProvider);

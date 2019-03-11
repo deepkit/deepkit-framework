@@ -1,4 +1,4 @@
-import {Inject, Injectable} from "injection-js";
+import {Injectable, Injector} from "injection-js";
 import {Observable} from "rxjs";
 import {Application, SessionStack} from "./application";
 import {ClientMessageAll} from "@marcj/glut-core";
@@ -8,10 +8,13 @@ import {ConnectionWriter} from "./connection-writer";
 
 @Injectable()
 export class Connection {
+    protected timeoutTimers: NodeJS.Timeout[] = [];
+    protected destroyed = false;
+
     constructor(
         protected app: Application,
         protected sessionStack: SessionStack,
-        @Inject('injector') protected injector: (token: any) => any,
+        protected injector: Injector,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
     ) {
@@ -19,6 +22,24 @@ export class Connection {
 
     public destroy() {
         this.connectionMiddleware.destroy();
+        this.destroyed = true;
+
+        for (const timeout of this.timeoutTimers) {
+            clearTimeout(timeout);
+        }
+    }
+
+    public isActive(): boolean {
+        return !this.destroyed;
+    }
+
+    /**
+     * Creates a regular timer using setTimeout() and automatically cancel it once the connection breaks or server stops.
+     */
+    public setTimeout(cb: () => void, timeout: number): NodeJS.Timeout {
+        const timer = setTimeout(cb, timeout);
+        this.timeoutTimers.push(timer);
+        return timer;
     }
 
     public async onMessage(raw: string) {
@@ -35,7 +56,7 @@ export class Connection {
             }
 
             if (message.name === 'authenticate') {
-                this.sessionStack.setSession(await this.app.authenticate(message.token));
+                this.sessionStack.setSession(await this.app.authenticate(this.injector, message.token));
 
                 this.writer.write({
                     type: 'authenticate/result',
@@ -49,18 +70,18 @@ export class Connection {
     }
 
     public async action(controller: string, action: string, args: any[]): Promise<any> {
-        const controllerClass = await this.app.getController(controller);
+        const controllerClass = await this.app.resolveController(controller);
 
         if (!controllerClass) {
             throw new Error(`Controller not found for ${controller}`);
         }
 
-        const access = await this.app.hasAccess(this.sessionStack.getSession(), controllerClass, action);
+        const access = await this.app.hasAccess(this.injector, this.sessionStack.getSession(), controllerClass, action);
         if (!access) {
             throw new Error(`Access denied`);
         }
 
-        const controllerInstance = this.injector(controllerClass);
+        const controllerInstance = this.injector.get(controllerClass);
 
         const methodName = action;
 

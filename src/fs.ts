@@ -70,10 +70,9 @@ export class FS {
 
             fileIds.push(uuid4Binary(file.id));
 
-            this.exchange.publishFile({
+            this.exchange.publishFile(file.id, {
                 type: 'remove',
-                path: file.path,
-                meta: file.meta,
+                path: file.path
             });
         }
 
