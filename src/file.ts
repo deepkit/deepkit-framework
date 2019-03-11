@@ -1,6 +1,9 @@
 import {IdInterface} from "./contract";
 import {AnyType, DateType, Entity, EnumType, ID, NumberType, StringType, uuid, UUIDType} from "@marcj/marshal";
 
+export interface FileContext {
+    [name: string]: any;
+}
 
 export enum FileMode {
     closed,
@@ -42,7 +45,7 @@ export class File implements IdInterface {
     updated: Date = new Date();
 
     @AnyType()
-    meta?: {[k: string]: any} = {};
+    meta?: { [k: string]: any } = {};
 
     constructor(path: string) {
         this.path = path;

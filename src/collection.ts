@@ -3,10 +3,11 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import {Observable, ReplaySubject, Subject, Subscriber} from "rxjs";
+import {Observable, ReplaySubject, Subject, Subscriber, TeardownLogic} from "rxjs";
 import {ClassType, getEntityName} from "@marcj/marshal";
 import {first, map} from "rxjs/operators";
 import {IdInterface} from "./contract";
+import {tearDown} from "@marcj/estdlib-rxjs";
 
 export interface CollectionAdd {
     type: 'add';
@@ -28,7 +29,7 @@ export type CollectionEvent = CollectionAdd | CollectionRemove | CollectionSet;
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent> = new Subject;
 
-    protected readonly teardowns: Subscriber<void>[] = [];
+    protected readonly teardowns: TeardownLogic[] = [];
 
     protected items: T[] = [];
     protected itemsMapped: { [id: string]: T } = {};
@@ -81,14 +82,15 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public unsubscribe() {
         super.unsubscribe();
 
+        console.log('client: unsubscribe collection, teardowns=', this.teardowns.length);
         for (const teardown of this.teardowns) {
-            teardown.unsubscribe();
+            tearDown(teardown);
         }
 
         this.teardowns.splice(0, this.teardowns.length);
     }
 
-    public addTeardown(teardown: Subscriber<void>) {
+    public addTeardown(teardown: TeardownLogic) {
         this.teardowns.push(teardown);
     }
 

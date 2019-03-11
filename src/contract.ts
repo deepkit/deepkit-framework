@@ -1,4 +1,4 @@
-import {JSONEntity} from "./entity";
+import {JSONEntity} from "./core";
 
 export interface IdInterface {
     id: string;
@@ -48,13 +48,21 @@ export interface ClientMessageAuthorize {
 
 export interface ClientMessageAction {
     name: 'action';
-    controller: string,
-    action: string,
-    args: any[],
+    controller: string;
+    action: string;
+    args: any[];
 }
 
-export interface ClientMessageEntityComplete {
-    name: 'entity/complete';
+export interface ClientMessageEntityUnsubscribe {
+    name: 'entity/unsubscribe';
+}
+
+export interface ClientMessageSubjectUnsubscribe {
+    name: 'subject/unsubscribe';
+}
+
+export interface ClientMessageCollectionUnsubscribe {
+    name: 'collection/unsubscribe';
 }
 
 export interface ClientMessageObservableSubscribe {
@@ -67,7 +75,9 @@ export interface ClientMessageObservableUnsubscribe {
     subscribeId: number;
 }
 
-export type ClientMessageWithoutId = ClientMessageAuthorize | ClientMessageAction | ClientMessageEntityComplete | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe;
+export type ClientMessageWithoutId = ClientMessageAuthorize | ClientMessageAction | ClientMessageEntityUnsubscribe
+                                   | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe
+                                   | ClientMessageCollectionUnsubscribe | ClientMessageSubjectUnsubscribe;
 
 export type ClientMessageAll = ClientMessageWithoutId & ClientMessageId;
 
@@ -83,7 +93,7 @@ export interface ServerMessageEntityRemove extends MessageEntityBase {
 
 export interface ServerMessageEntityUpdate extends MessageEntityBase {
     type: 'entity/update';
-    item: any;
+    data: any;
 }
 
 export interface ServerMessageEntityPatch extends MessageEntityBase {
@@ -127,21 +137,21 @@ export interface CountUpdateResult {
 export interface StreamFileSet {
     type: 'set';
     path: string;
-    meta?: { [k: string]: any };
+    // meta: { [k: string]: any };
     content: any;
 }
 
 export interface StreamFileAppend {
     type: 'append';
     path: string;
-    meta?: { [k: string]: any };
+    // meta: { [k: string]: any };
     content: any;
 }
 
 export interface StreamFileRemove {
     type: 'remove';
     path: string;
-    meta?: { [k: string]: any };
+    // meta: { [k: string]: any };
 }
 
 export type CollectionStream = CollectionStreamSet | CollectionStreamAdd | CollectionStreamRemove | CollectionStreamReady;
@@ -177,7 +187,16 @@ export interface ServerMessageTypeEntity<T extends IdInterface> {
     item?: JSONEntity<T>;
 }
 
-export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollection | ServerMessageTypeObservable | ServerMessageTypeEntity<IdInterface>;
+export interface ServerMessageTypeSubject {
+    type: 'type';
+    returnType: 'subject';
+    id: number;
+    entityName?: string;
+    data: any;
+}
+
+export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollection | ServerMessageTypeObservable
+                              | ServerMessageTypeEntity<IdInterface> | ServerMessageTypeSubject;
 
 export interface ServerMessageNextJson {
     type: 'next/json';
@@ -194,13 +213,20 @@ export interface ServerMessageNextObservable {
     entityName?: string;
 }
 
+export interface ServerMessageNextSubject {
+    type: 'next/subject';
+    id: number;
+    next: any;
+    entityName?: string;
+}
+
 export interface ServerMessageNextCollection {
     type: 'next/collection';
     id: number;
     next: CollectionStream;
 }
 
-export type ServerMessageNext = ServerMessageNextJson | ServerMessageNextObservable | ServerMessageNextCollection;
+export type ServerMessageNext = ServerMessageNextJson | ServerMessageNextObservable | ServerMessageNextCollection | ServerMessageNextSubject;
 
 export interface ServerMessageCompleteGeneral {
     type: 'complete';
