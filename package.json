@@ -18,6 +18,7 @@
   "dependencies": {
     "clone": "^2.1.2",
     "get-parameter-names": "^0.3.0",
+    "@marcj/estdlib": "^0.1.6",
     "uuid": "^3.2.1"
   },
   "devDependencies": {
