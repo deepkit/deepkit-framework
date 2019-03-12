@@ -2,7 +2,7 @@ import 'jest-extended'
 import 'reflect-metadata';
 import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {getReflectionType, getResolvedReflection, partialPlainToClass, plainToClass, Types} from "../src/mapper";
-import {ClassType, EnumType} from "..";
+import {EnumType} from "..";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from "./document-scenario/PageClass";
 import {PageCollection} from "./document-scenario/PageCollection";
