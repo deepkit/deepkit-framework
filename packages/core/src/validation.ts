@@ -1,14 +1,9 @@
-import {ClassType, isArray, isObject, typeOf} from "./utils";
+import {ClassType, isArray, isObject, typeOf} from "@marcj/estdlib";
 import {applyDefaultValues, getReflectionType, getRegisteredProperties, isArrayType, isMapType} from "./mapper";
+import {getEntitySchema, getOrCreateEntitySchema, PropertyValidator} from "./decorators";
 
-export function addValidator<T>(target: Object, property: string, validator: ClassType<T>) {
-    const validators = Reflect.getMetadata('marshal:validators', target, property) || [];
-    if (-1 === validators.indexOf(validator)) {
-        validators.push(validator);
-    }
-
-    //todo, add to EntitySchema
-    Reflect.defineMetadata('marshal:validators', validators, target, property);
+export function addValidator<T extends PropertyValidator>(target: Object, property: string, validator: ClassType<T>) {
+    getOrCreateEntitySchema(target).getOrCreateProperty(property).validators.push(validator);
 }
 
 export class PropertyValidatorError {
@@ -19,15 +14,7 @@ export class PropertyValidatorError {
     }
 }
 
-export interface PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void>;
-}
-
-export function getValidators<T>(classType: ClassType<T>, propertyName: string): ClassType<PropertyValidator>[] {
-    return Reflect.getMetadata('marshal:validators', classType.prototype, propertyName) || [];
-}
-
-export function AddValidator<T>(validator: ClassType<T>) {
+export function AddValidator<T extends PropertyValidator>(validator: ClassType<T>) {
     return (target: Object, property: string) => {
         addValidator(target, property, validator);
     };
@@ -43,12 +30,12 @@ export class RequiredValidator implements PropertyValidator {
 
 export function Optional() {
     return (target: Object, propertyName: string) => {
-        Reflect.defineMetadata('marshal:isOptional', true, target, propertyName);
+        getOrCreateEntitySchema(target).getOrCreateProperty(propertyName).isOptional = true;
     };
 }
 
 export function isOptional<T>(classType: ClassType<T>, propertyName: string): boolean {
-    return Reflect.getMetadata('marshal:isOptional', classType.prototype, propertyName) || false;
+    return getOrCreateEntitySchema(classType).getOrCreateProperty(propertyName).isOptional;
 }
 
 export class ValidationError {
@@ -65,9 +52,10 @@ export class ValidationError {
     }
 }
 
-export async function validate<T>(classType: ClassType<T>, item: {[name: string]: any}, path?: string): Promise<ValidationError[]> {
+export async function validate<T>(classType: ClassType<T>, item: { [name: string]: any }, path?: string): Promise<ValidationError[]> {
     const properties = getRegisteredProperties(classType);
     const errors: ValidationError[] = [];
+    const schema = getEntitySchema(classType);
 
     if (!(item instanceof classType)) {
         item = applyDefaultValues(classType, item as object);
@@ -92,7 +80,7 @@ export async function validate<T>(classType: ClassType<T>, item: {[name: string]
     for (const propertyName of properties) {
         const {type, typeValue} = getReflectionType(classType, propertyName);
         const propertyPath = path ? path + '.' + propertyName : propertyName;
-        const validators = getValidators(classType, propertyName);
+        const validators = schema.getProperty(propertyName).validators;
         const propertyValue: any = item[propertyName];
         const array = isArrayType(classType, propertyName);
         const map = isMapType(classType, propertyName);

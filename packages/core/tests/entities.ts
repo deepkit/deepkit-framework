@@ -1,18 +1,23 @@
 import {
-    DateType,
-    Entity,
-    EnumType,
-    ID,
-    NumberType,
-    StringType,
+    ArrayType,
+    BooleanType,
+    Class,
     ClassArray,
     ClassMap,
-    UUIDType,
-    uuid,
-    Exclude,
-    MongoIdType,
+    DateType,
     Decorator,
-    Class, ExcludeToMongo, ExcludeToPlain, ArrayType, BooleanType
+    Entity,
+    EnumType,
+    Exclude,
+    ExcludeToMongo,
+    ExcludeToPlain,
+    ID,
+    Index,
+    MongoIdType,
+    NumberType,
+    StringType,
+    uuid,
+    UUIDType
 } from '..';
 
 @Entity('sub')
@@ -66,12 +71,14 @@ export class StringCollectionWrapper {
 }
 
 @Entity('SimpleModel')
+@Index({unique: true}, ['name', 'type'])
 export class SimpleModel {
     @ID()
     @UUIDType()
     id: string = uuid();
 
     @StringType()
+    @Index()
     name: string;
 
     @NumberType()

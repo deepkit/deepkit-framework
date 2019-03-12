@@ -1,20 +1,20 @@
-import {
-    ClassType,
-    isArray,
-    isObject,
-    isUndefined,
-    getEnumKeys,
-    isValidEnumValue,
-    getValidEnumValue,
-    getClassPropertyName,
-    getClassName,
-    getEnumLabels
-} from './utils';
 import {isOptional} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
 import {getEntitySchema} from "./decorators";
+import {
+    ClassType,
+    getClassName,
+    getClassPropertyName,
+    getEnumLabels,
+    getEnumValues,
+    getValidEnumValue,
+    isArray,
+    isObject,
+    isUndefined,
+    isValidEnumValue
+} from "@marcj/estdlib";
 
 export type Types = 'objectId' | 'uuid' | 'binary' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
 
@@ -345,7 +345,7 @@ export function propertyPlainToClass<T>(
         if ('enum' === type) {
             const allowLabelsAsValue = isEnumAllowLabelsAsValue(resolvedClassType, resolvedPropertyName);
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                const valids = getEnumKeys(typeValue);
+                const valids = getEnumValues(typeValue);
                 if (allowLabelsAsValue) {
                     for (const label of getEnumLabels(typeValue)) {
                         valids.push(label);
@@ -652,14 +652,8 @@ export function getDatabaseName<T>(classType: ClassType<T>): string | undefined 
     return getEntitySchema(classType).databaseName;
 }
 
-export function getCollectionName<T>(classType: ClassType<T>): string {
-    const name = getEntitySchema(classType).collectionName;
-
-    if (!name) {
-        return getEntityName(classType) + 's';
-    }
-
-    return name;
+export function getCollectionName<T>(classType: ClassType<T>): string | undefined {
+    return getEntitySchema(classType).collectionName;
 }
 
 export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: string]: any }): object {

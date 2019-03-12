@@ -10,7 +10,6 @@ import {
     MapType,
     MongoIdType,
     StringType,
-    getCollectionName,
     getDatabaseName,
     getEntityName,
     getReflectionType,
@@ -27,7 +26,6 @@ import {
     BinaryType,
     classToPlain,
     RegisteredEntities,
-    ClassType
 } from "../";
 import {Buffer} from "buffer";
 
@@ -57,19 +55,15 @@ test('test entity database', async () => {
 
     expect(getDatabaseName(DifferentDataBase)).toBe('testing1');
     expect(getEntityName(DifferentDataBase)).toBe('DifferentDataBase');
-    expect(getCollectionName(DifferentDataBase)).toBe('differentCollection');
 
     expect(getDatabaseName(Child2)).toBe('testing2');
     expect(getEntityName(Child2)).toBe('DifferentDataBase2');
-    expect(getCollectionName(Child2)).toBe('differentCollection2');
 
     expect(getDatabaseName(Child)).toBe('testing1');
     expect(getEntityName(Child)).toBe('DifferentDataBase');
-    expect(getCollectionName(Child)).toBe('differentCollection');
 
     expect(getDatabaseName(Child3)).toBe('testing1'); //is inherited
     expect(getEntityName(Child3)).toBe('DifferentDataBase3');
-    expect(getCollectionName(Child3)).toBe('DifferentDataBase3s');
 });
 
 test('test no entity throw error', () => {
@@ -77,11 +71,6 @@ test('test no entity throw error', () => {
     expect(() => {
         class Model {}
         getEntityName(Model);
-    }).toThrowError('No @Entity() defined for class class Model');
-
-    expect(() => {
-        class Model {}
-        getCollectionName(Model);
     }).toThrowError('No @Entity() defined for class class Model');
 });
 

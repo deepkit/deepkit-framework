@@ -1,9 +1,22 @@
 import {Types} from "./mapper";
-import {ClassType, getClassName} from "./utils";
-import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validation";
+import {AddValidator, PropertyValidatorError} from "./validation";
 import * as clone from 'clone';
+import {ClassType, getClassName, isArray, isString} from '@marcj/estdlib';
 
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
+
+export interface PropertyValidator {
+    validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void>;
+}
+
+type IndexOptions = Partial<{
+    unique: boolean,
+    spatial: boolean,
+    sparse: boolean,
+    synchronize: boolean,
+    fulltext: boolean,
+    where: string,
+}>;
 
 export class PropertySchema {
     name: string;
@@ -12,7 +25,10 @@ export class PropertySchema {
     isMap: boolean = false;
     isDecorated: boolean = false;
     isParentReference: boolean = false;
+    isOptional: boolean = false;
     isId: boolean = false;
+
+    readonly validators: ClassType<PropertyValidator>[] = [];
 
     /**
      * For enums.
@@ -46,6 +62,8 @@ export class EntitySchema {
     properties: { [name: string]: PropertySchema } = {};
     idField?: string;
     propertyNames: string[] = [];
+
+    indices: { name?: string, fields: string[], options: IndexOptions }[] = [];
 
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
 
@@ -288,6 +306,20 @@ export function DateType() {
 
 export function BinaryType() {
     return Type('binary');
+}
+
+export function Index(options?: IndexOptions, fields?: string | string[], name?: string) {
+    return (target: Object, property?: string) => {
+        const schema = getOrCreateEntitySchema(target);
+
+        if (isArray(fields)) {
+            schema.indices.push({name: name, fields: fields, options: options || {}});
+        } else if (isString(fields)) {
+            schema.indices.push({name: name, fields: [fields], options: options || {}});
+        } else if (property) {
+            schema.indices.push({name: name, fields: [property], options: fields || {}});
+        }
+    }
 }
 
 export function StringType() {
