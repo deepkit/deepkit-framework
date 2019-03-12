@@ -56,7 +56,10 @@ export function applyDefaults<T>(classType: ClassType<T>, target: {[k: string]: 
     return classInstance;
 }
 
-function typeOf(obj: any) {
+/**
+ * Tries to identify the object by normalised result of Object.toString(obj).
+ */
+export function typeOf(obj: any) {
     return ((({}).toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
 }
 
