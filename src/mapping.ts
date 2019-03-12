@@ -1,24 +1,30 @@
 import {Binary, ObjectID} from "mongodb";
+import * as clone from "clone";
+import * as mongoUuid from "mongo-uuid";
 import {
     classToPlain,
-    ClassType,
     deleteExcludedPropertiesFor,
-    getClassName,
-    getClassPropertyName,
-    getDecorator, getEnumKeys,
+    getDecorator,
     getParentReferenceClass,
-    getRegisteredProperties, getResolvedReflection,
-    getValidEnumValue,
-    isArray,
+    getRegisteredProperties,
+    getResolvedReflection,
     isEnumAllowLabelsAsValue,
-    isObject, isOptional, isPlainObject,
-    isUndefined,
-    isValidEnumValue,
+    isOptional,
     toClass,
     ToClassState
 } from "@marcj/marshal";
-import * as clone from "clone";
-import * as mongoUuid from "mongo-uuid";
+import {
+    ClassType,
+    getClassName,
+    getClassPropertyName,
+    getEnumValues,
+    getValidEnumValue,
+    isArray,
+    isObject,
+    isPlainObject,
+    isUndefined,
+    isValidEnumValue
+} from "@marcj/estdlib";
 
 export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);
@@ -361,7 +367,7 @@ export function propertyMongoToClass<T>(
         if ('enum' === type) {
             const allowLabelsAsValue = isEnumAllowLabelsAsValue(resolvedClassType, resolvedPropertyName);
             if (undefined !== value && !isValidEnumValue(typeValue, value, allowLabelsAsValue)) {
-                throw new Error(`Invalid ENUM given in property ${resolvedPropertyName}: ${value}, valid: ${getEnumKeys(typeValue).join(',')}`);
+                throw new Error(`Invalid ENUM given in property ${resolvedPropertyName}: ${value}, valid: ${getEnumValues(typeValue).join(',')}`);
             }
 
             return getValidEnumValue(typeValue, value, allowLabelsAsValue);
@@ -415,7 +421,7 @@ export function mongoToPlain<T>(classType: ClassType<T>, target: any) {
     return classToPlain(classType, mongoToClass(classType, target));
 }
 
-export function plainToMongo<T>(classType: ClassType<T>, target: {[k: string]: any}): any {
+export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: any }): any {
     const result: any = {};
 
     if (target instanceof classType) {
@@ -476,7 +482,7 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
 export function convertClassQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    fieldNamesMap: {[name: string]: boolean} = {},
+    fieldNamesMap: { [name: string]: boolean } = {},
 ): { [path: string]: any } {
     return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
         return propertyClassToMongo(convertClassType, path, value);
@@ -490,7 +496,7 @@ export function convertClassQueryToMongo<T, K extends keyof T>(
 export function convertPlainQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    fieldNamesMap: {[name: string]: boolean} = {}
+    fieldNamesMap: { [name: string]: boolean } = {}
 ): { [path: string]: any } {
     return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
         return propertyPlainToMongo(convertClassType, path, value);
@@ -501,7 +507,7 @@ export function convertQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
     converter: (convertClassType: ClassType<any>, path: string, value: any) => any,
-    fieldNamesMap: {[name: string]: boolean} = {}
+    fieldNamesMap: { [name: string]: boolean } = {}
 ): { [path: string]: any } {
     const result: { [i: string]: any } = {};
 

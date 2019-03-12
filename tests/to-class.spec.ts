@@ -8,13 +8,9 @@ import {
     EnumType,
     Exclude,
     getEntityName,
-    getEnumKeys,
-    getEnumLabels,
     getIdField,
     getIdFieldValue,
-    getValidEnumValue,
     isExcluded,
-    isValidEnumValue,
     NumberType,
     plainToClass,
     StringType,
@@ -38,6 +34,7 @@ import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from 
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
 import {classToMongo, mongoToClass, plainToMongo} from "../src/mapping";
+import {getEnumLabels, getEnumValues, isValidEnumValue, getValidEnumValue} from '@marcj/estdlib';
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
@@ -693,15 +690,16 @@ test('enums', () => {
         enumLabels?: Enum4;
     }
 
+    //todo, move tests to estdlib.ts
     expect(getEnumLabels(Enum1)).toEqual(['first', 'second']);
     expect(getEnumLabels(Enum2)).toEqual(['first', 'second']);
     expect(getEnumLabels(Enum3)).toEqual(['first', 'second']);
     expect(getEnumLabels(Enum4)).toEqual(['first', 'second']);
 
-    expect(getEnumKeys(Enum1)).toEqual([0, 1]);
-    expect(getEnumKeys(Enum2)).toEqual(['z', 'x']);
-    expect(getEnumKeys(Enum3)).toEqual([200, 100]);
-    expect(getEnumKeys(Enum4)).toEqual(['200', 'x']);
+    expect(getEnumValues(Enum1)).toEqual([0, 1]);
+    expect(getEnumValues(Enum2)).toEqual(['z', 'x']);
+    expect(getEnumValues(Enum3)).toEqual([200, 100]);
+    expect(getEnumValues(Enum4)).toEqual(['200', 'x']);
 
     expect(isValidEnumValue(Enum1, 'first')).toBeFalse();
     expect(isValidEnumValue(Enum1, 'second')).toBeFalse();

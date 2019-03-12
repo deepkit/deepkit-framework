@@ -1,13 +1,5 @@
-import {
-    ClassType,
-    getCollectionName,
-    getDatabaseName,
-    getIdField,
-    getClassName,
-    getReflectionType
-} from '@marcj/marshal';
+import {getCollectionName, getDatabaseName, getEntityName, getIdField, getReflectionType} from '@marcj/marshal';
 
-import {MongoClient, Collection, Cursor} from 'mongodb';
 import {
     classToMongo,
     convertClassQueryToMongo,
@@ -16,11 +8,11 @@ import {
     partialMongoToPlain,
     propertyClassToMongo
 } from "./mapping";
+import {Collection, Connection, Cursor} from 'typeorm';
+import {ClassType, getClassName} from '@marcj/estdlib';
 
 export class NoIDDefinedError extends Error {
 }
-
-export type MongoClientFactory = () => Promise<MongoClient>;
 
 /**
  * Handle abstraction of MongoDB.
@@ -29,22 +21,29 @@ export type MongoClientFactory = () => Promise<MongoClient>;
  * if you want to pass values from JSON/HTTP-Request.
  */
 export class Database {
-    constructor(private mongoClient: MongoClient | MongoClientFactory, private defaultDatabaseName = 'app') {
+    constructor(private connection: Connection, private defaultDatabaseName = 'app') {
     }
 
-    private async getMongoClient(): Promise<MongoClient> {
-        if ('function' === typeof this.mongoClient) {
-            const f = (this.mongoClient as MongoClientFactory);
-            return await f();
-        }
-
-        return this.mongoClient;
+    public async close() {
+        await this.connection.close();
     }
 
-    private async getCollection<T>(classType: ClassType<T>): Promise<Collection<T>> {
-        return (await this.getMongoClient())
-            .db(getDatabaseName(classType) || this.defaultDatabaseName)
-            .collection(getCollectionName(classType));
+    /**
+     * The naming policy defines the collection name, so we need typeorm.Connection for it.
+     */
+    public getCollectionName<T>(classType: ClassType<T>): string {
+        return this.connection.namingStrategy.tableName(getEntityName(classType), getCollectionName(classType));
+    }
+
+    public async dropDatabase(dbName: string) {
+        const mongoConnection = this.connection.mongoManager.queryRunner.databaseConnection;
+        await mongoConnection.db(dbName).dropDatabase();
+    }
+
+    public getCollection<T>(classType: ClassType<T>): Collection<T> {
+        const mongoConnection = this.connection.mongoManager.queryRunner.databaseConnection;
+        const db = mongoConnection.db(getDatabaseName(classType) || this.defaultDatabaseName);
+        return db.collection('asd');
     }
 
     /**
