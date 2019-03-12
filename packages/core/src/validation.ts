@@ -7,6 +7,7 @@ export function addValidator<T>(target: Object, property: string, validator: Cla
         validators.push(validator);
     }
 
+    //todo, add to EntitySchema
     Reflect.defineMetadata('marshal:validators', validators, target, property);
 }
 

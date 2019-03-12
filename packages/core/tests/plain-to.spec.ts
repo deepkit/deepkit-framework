@@ -11,7 +11,7 @@ test('getResolvedReflection simple', () => {
     expect(getResolvedReflection(SimpleModel, 'id')!.resolvedClassType).toBe(SimpleModel);
     expect(getResolvedReflection(SimpleModel, 'id')!.resolvedPropertyName).toBe('id');
     expect(getResolvedReflection(SimpleModel, 'id')!.type).toBe('uuid');
-    expect(getResolvedReflection(SimpleModel, 'id')!.typeValue).toBeNull();
+    expect(getResolvedReflection(SimpleModel, 'id')!.typeValue).toBeUndefined();
     expect(getResolvedReflection(SimpleModel, 'id')!.array).toBe(false);
     expect(getResolvedReflection(SimpleModel, 'id')!.map).toBe(false);
 
@@ -41,14 +41,14 @@ test('getResolvedReflection deep', () => {
     expect(getResolvedReflection(SimpleModel, 'children.0.label')!.resolvedClassType).toBe(SubModel);
     expect(getResolvedReflection(SimpleModel, 'children.0.label')!.resolvedPropertyName).toBe('label');
     expect(getResolvedReflection(SimpleModel, 'children.0.label')!.type).toBe('string');
-    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.typeValue).toBeNull();
+    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.typeValue).toBeUndefined();
     expect(getResolvedReflection(SimpleModel, 'children.0.label')!.array).toBe(false);
     expect(getResolvedReflection(SimpleModel, 'children.0.label')!.map).toBe(false);
 
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.resolvedClassType).toBe(SubModel);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.resolvedPropertyName).toBe('label');
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.type).toBe('string');
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.typeValue).toBeNull();
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.typeValue).toBeUndefined();
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.array).toBe(false);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.map).toBe(false);
 
@@ -77,7 +77,7 @@ test('getResolvedReflection deep decorator', () => {
         resolvedClassType: SubModel,
         resolvedPropertyName: 'label',
         type: 'string',
-        typeValue: null,
+        typeValue: undefined,
         array: false,
         map: false,
     });
@@ -97,7 +97,7 @@ test('getResolvedReflection deep decorator string', () => {
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.resolvedClassType).toBe(SimpleModel);
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.resolvedPropertyName).toBe('stringChildrenCollection');
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.type).toBe('string');
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.typeValue).toBeNull();
+    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.typeValue).toBeUndefined();
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.array).toBe(false);
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.map).toBe(false);
 });
@@ -210,7 +210,7 @@ test('partial document', () => {
         resolvedClassType: PageClass,
         resolvedPropertyName: 'name',
         type: 'string',
-        typeValue: null,
+        typeValue: undefined,
         array: false,
         map: false,
     });
@@ -228,7 +228,7 @@ test('partial document', () => {
         resolvedClassType: PageClass,
         resolvedPropertyName: 'name',
         type: 'string',
-        typeValue: null,
+        typeValue: undefined,
         array: false,
         map: false,
     });
