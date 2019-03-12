@@ -20,5 +20,5 @@ before_script:
 - sleep 2 # thanks mongo
 
 script:
-- ./node_modules/.bin/jest --coverage
+- ./node_modules/.bin/jest --coverage --detectOpenHandles
 - cat ./coverage/lcov.info | coveralls
