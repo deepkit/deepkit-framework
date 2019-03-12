@@ -65,7 +65,7 @@ test('test required', async () => {
             fail('no exception thrown')
         } catch (error) {
             expect(error).toBeInstanceOf(BadRequestException);
-            expect(error.message).toEqual([{"message": "Required value is undefined", "path": "name"}]);
+            expect(error.message).toEqual({"error": "Bad Request", "message": [{"message": "Required value is undefined", "path": "name"}], "statusCode": 400});
         }
     }
 
