@@ -26,7 +26,8 @@ import {
     getParentReferenceClass,
     BinaryType,
     classToPlain,
-    RegisteredEntities
+    RegisteredEntities,
+    ClassType
 } from "../";
 import {Buffer} from "buffer";
 
@@ -51,6 +52,9 @@ test('test entity database', async () => {
     @DatabaseName('testing2')
     class Child2 extends DifferentDataBase {}
 
+    @Entity('DifferentDataBase3')
+    class Child3 extends DifferentDataBase {}
+
     expect(getDatabaseName(DifferentDataBase)).toBe('testing1');
     expect(getEntityName(DifferentDataBase)).toBe('DifferentDataBase');
     expect(getCollectionName(DifferentDataBase)).toBe('differentCollection');
@@ -62,6 +66,10 @@ test('test entity database', async () => {
     expect(getDatabaseName(Child)).toBe('testing1');
     expect(getEntityName(Child)).toBe('DifferentDataBase');
     expect(getCollectionName(Child)).toBe('differentCollection');
+
+    expect(getDatabaseName(Child3)).toBe('testing1'); //is inherited
+    expect(getEntityName(Child3)).toBe('DifferentDataBase3');
+    expect(getCollectionName(Child3)).toBe('DifferentDataBase3s');
 });
 
 test('test no entity throw error', () => {
@@ -172,7 +180,7 @@ test('test properties', () => {
     {
         const {type, typeValue} = getReflectionType(Model, '_id');
         expect(type).toBe('objectId');
-        expect(typeValue).toBeNull()
+        expect(typeValue).toBeUndefined()
     }
 
     {
@@ -183,14 +191,14 @@ test('test properties', () => {
 
     {
         const {type, typeValue} = getReflectionType(Model, 'data2');
-        expect(type).toBeNull();
-        expect(typeValue).toBeNull();
+        expect(type).toBeUndefined();
+        expect(typeValue).toBeUndefined();
     }
 
     {
         const {type, typeValue} = getReflectionType(SubModel, '_id');
         expect(type).toBe('objectId');
-        expect(typeValue).toBeNull()
+        expect(typeValue).toBeUndefined()
     }
     {
         const {type, typeValue} = getReflectionType(SubModel, 'data');
@@ -289,7 +297,7 @@ test('binary', () => {
 
     const {type, typeValue} = getReflectionType(Model, 'preview');
     expect(type).toBe('binary');
-    expect(typeValue).toBeNull();
+    expect(typeValue).toBeUndefined();
 
     const i = new Model();
     expect(i.preview.toString('utf8')).toBe('FooBar');

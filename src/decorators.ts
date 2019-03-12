@@ -1,59 +1,173 @@
 import {Types} from "./mapper";
 import {ClassType, getClassName} from "./utils";
 import {AddValidator, PropertyValidator, PropertyValidatorError} from "./validation";
+import * as clone from 'clone';
 
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
+
+export class PropertySchema {
+    name: string;
+    type: Types = 'any';
+    isArray: boolean = false;
+    isMap: boolean = false;
+    isDecorated: boolean = false;
+    isParentReference: boolean = false;
+    isId: boolean = false;
+
+    /**
+     * For enums.
+     */
+    allowLabelsAsValue: boolean = false;
+
+    exclude?: 'all' | 'mongo' | 'plain';
+
+    classType?: ClassType<any>;
+    classTypeCircular?: (() => ClassType<any>);
+
+    constructor(name: string) {
+        this.name = name;
+    }
+
+    getResolvedClassType(): ClassType<any> | undefined {
+        if (this.classTypeCircular) {
+            return this.classTypeCircular();
+        }
+
+        return this.classType;
+    }
+}
+
+export class EntitySchema {
+    proto: Object;
+    name?: string;
+    collectionName?: string;
+    databaseName?: string;
+    decorator?: string;
+    properties: { [name: string]: PropertySchema } = {};
+    idField?: string;
+    propertyNames: string[] = [];
+
+    onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
+
+    constructor(proto: Object) {
+        this.proto = proto;
+    }
+
+    public getOrCreateProperty(name: string): PropertySchema {
+        if (!this.properties[name]) {
+            this.properties[name] = new PropertySchema(name);
+            this.propertyNames.push(name);
+        }
+
+        return this.properties[name];
+    }
+
+    public getProperty(name: string): PropertySchema {
+        if (!this.properties[name]) {
+            throw new Error(`Property ${name} not found`);
+        }
+
+        return this.properties[name];
+    }
+}
+
+export const EntitySchemas = new Map<object, EntitySchema>();
+
+export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): EntitySchema {
+    const proto = target['prototype'] ? target['prototype'] : target;
+
+    if (!EntitySchemas.has(proto)) {
+        //check if parent has a EntitySchema, if so clone and use it as base.
+
+        let currentProto = Object.getPrototypeOf(proto);
+        let found = false;
+        while (currentProto && currentProto !== Object.prototype) {
+            if (EntitySchemas.has(currentProto)) {
+                found = true;
+                const cloned = clone(EntitySchemas.get(currentProto));
+                EntitySchemas.set(proto, cloned!);
+                break;
+            }
+            currentProto = Object.getPrototypeOf(currentProto);
+        }
+
+        if (!found) {
+            const reflection = new EntitySchema(proto);
+            EntitySchemas.set(proto, reflection);
+        }
+    }
+
+    return EntitySchemas.get(proto)!;
+}
+
+export function getEntitySchema<T>(classType: ClassType<T>): EntitySchema {
+    if (!EntitySchemas.has(classType.prototype)) {
+        //check if parent has a EntitySchema, if so clone and use it as base.
+        let currentProto = Object.getPrototypeOf(classType.prototype);
+        let found = false;
+        while (currentProto && currentProto !== Object.prototype) {
+            if (EntitySchemas.has(currentProto)) {
+                found = true;
+                const cloned = clone(EntitySchemas.get(currentProto));
+                EntitySchemas.set(classType.prototype, cloned!);
+                break;
+            }
+            currentProto = Object.getPrototypeOf(currentProto);
+        }
+
+        if (!found) {
+            const reflection = new EntitySchema(classType.prototype);
+            EntitySchemas.set(classType.prototype, reflection);
+        }
+    }
+
+    return EntitySchemas.get(classType.prototype)!;
+}
 
 export function Entity<T>(name: string, collectionName?: string) {
     return (target: ClassType<T>) => {
         RegisteredEntities[name] = target;
-        Reflect.defineMetadata('marshal:entityName', name, target);
-        Reflect.defineMetadata('marshal:collectionName', collectionName || (name + 's'), target);
+        getOrCreateEntitySchema(target).name = name;
+        getOrCreateEntitySchema(target).collectionName = collectionName;
     };
 }
 
-export function DatabaseName(name: string) {
-    return (target: Object) => {
-        Reflect.defineMetadata('marshal:databaseName', name, target);
+export function DatabaseName<T>(name: string) {
+    return (target: ClassType<T>) => {
+        getOrCreateEntitySchema(target).databaseName = name;
     };
 }
 
-export function Decorator() {
-    return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:dataDecorator', property, target);
+export function Decorator<T>() {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).decorator = property;
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).isDecorated = true;
     };
 }
 
-export function ID() {
-    return (target: Object, property: string) => {
-        registerProperty(target, property);
-        Reflect.defineMetadata('marshal:idField', property, target);
+export function ID<T>() {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).idField = property;
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).isId = true;
     };
 }
 
 export function ParentReference<T>() {
-    return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:parentReference', true, target, property);
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).isParentReference = true;
     };
 }
 
-function addMetadataArray(metadataKey: string, target: Object, item: any) {
-    const array = Reflect.getMetadata(metadataKey, target) || [];
-    if (-1 === array.indexOf(item)) {
-        array.push(item);
-    }
-
-    Reflect.defineMetadata(metadataKey, array, target);
-}
 
 /**
  * Executes the method when the current class is instantiated and populated.
  */
-export function OnLoad(options: { fullLoad?: boolean } = {}) {
-    return (target: Object, property: string) => {
-        addMetadataArray('marshal:onLoad', target, {
-            property: property,
-            options: options
+export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
+    return (target: T, property: string) => {
+
+        getOrCreateEntitySchema(target).onLoad.push({
+            methodName: property,
+            options: options,
         });
     };
 }
@@ -61,71 +175,63 @@ export function OnLoad(options: { fullLoad?: boolean } = {}) {
 /**
  * Exclude in *toMongo and *toPlain.
  */
-export function Exclude() {
-    return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:exclude', 'all', target, property);
+export function Exclude<T>() {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'all';
     };
 }
 
-export function ExcludeToMongo() {
-    return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:exclude', 'mongo', target, property);
+export function ExcludeToMongo<T>() {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'mongo';
     };
 }
 
-export function ExcludeToPlain() {
-    return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:exclude', 'plain', target, property);
+export function ExcludeToPlain<T>() {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'plain';
     };
 }
 
-export function registerProperty(target: Object, property: string) {
-    addMetadataArray('marshal:properties', target, property)
-}
 
-
-export function Type(type: Types) {
-    return (target: Object, property: string) => {
-        Reflect.defineMetadata('marshal:dataType', type, target, property);
-        registerProperty(target, property);
+export function Type<T>(type: Types) {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).type = type;
     };
 }
 
-export function ArrayType() {
-    return (target: Object, property: string) => {
-        registerProperty(target, property);
-        Reflect.defineMetadata('marshal:isArray', true, target, property);
+export function ArrayType<T>() {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).isArray = true;
     };
 }
 
-export function MapType() {
-    return (target: Object, property: string) => {
-        registerProperty(target, property);
-        Reflect.defineMetadata('marshal:isMap', true, target, property);
+export function MapType<T>() {
+    return (target: T, property: string) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).isMap = true;
     };
 }
 
-export function ClassCircular<T>(classType: () => ClassType<T>) {
-    return (target: Object, property: string) => {
+export function ClassCircular<T, K>(classType: () => ClassType<K>) {
+    return (target: T, property: string) => {
         Type('class')(target, property);
-        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
-        Reflect.defineMetadata('marshal:dataTypeValueCircular', true, target, property);
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).classTypeCircular = classType;
     };
 }
 
-export function Class<T>(classType: ClassType<T>) {
-    return (target: Object, property: string) => {
+export function Class<T, K>(classType: ClassType<K>) {
+    return (target: T, property: string) => {
         if (!classType) {
             throw new Error(`${getClassName(target)}::${property} has @Class but argument is empty. Use @ClassCircular(() => YourClass) to work around circular dependencies.`);
         }
 
         Type('class')(target, property);
-        Reflect.defineMetadata('marshal:dataTypeValue', classType, target, property);
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = classType;
     };
 }
 
-export function ClassMap<T>(classType: ClassType<T>) {
-    return (target: Object, property: string) => {
+export function ClassMap<T, K>(classType: ClassType<K>) {
+    return (target: T, property: string) => {
         if (!classType) {
             throw new Error(`${getClassName(target)}::${property} has @ClassMap but argument is empty. Use @ClassMap(() => YourClass) to work around circular dependencies.`);
         }
@@ -135,15 +241,15 @@ export function ClassMap<T>(classType: ClassType<T>) {
     };
 }
 
-export function ClassMapCircular<T>(classType: () => ClassType<T>) {
-    return (target: Object, property: string) => {
+export function ClassMapCircular<T, K>(classType: () => ClassType<K>) {
+    return (target: T, property: string) => {
         ClassCircular(classType)(target, property);
         MapType()(target, property);
     };
 }
 
-export function ClassArray<T>(classType: ClassType<T>) {
-    return (target: Object, property: string) => {
+export function ClassArray<T, K>(classType: ClassType<K>) {
+    return (target: T, property: string) => {
         if (!classType) {
             throw new Error(`${getClassName(target)}::${property} has @ClassArray but argument is empty. Use @ClassArrayCircular(() => YourClass) to work around circular dependencies.`);
         }
@@ -153,8 +259,8 @@ export function ClassArray<T>(classType: ClassType<T>) {
     };
 }
 
-export function ClassArrayCircular<T>(classType: () => ClassType<T>) {
-    return (target: Object, property: string) => {
+export function ClassArrayCircular<T, K>(classType: () => ClassType<K>) {
+    return (target: T, property: string) => {
         ClassCircular(classType)(target, property);
         ArrayType()(target, property);
     };
@@ -186,7 +292,7 @@ export function BinaryType() {
 
 export function StringType() {
     class Validator implements PropertyValidator {
-        async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+        async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
             if ('string' !== typeof value) {
                 return new PropertyValidatorError('No String given');
             }
@@ -202,7 +308,7 @@ export function AnyType() {
 
 export function NumberType() {
     class Validator implements PropertyValidator {
-        async validate<T>(value: any, target: ClassType<T>, property: string): Promise<PropertyValidatorError | void> {
+        async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
             value = parseFloat(value);
 
             if (!Number.isFinite(value)) {
@@ -218,10 +324,10 @@ export function BooleanType() {
     return Type('boolean');
 }
 
-export function EnumType(type: any, allowLabelsAsValue = false) {
+export function EnumType<T>(type: any, allowLabelsAsValue = false) {
     return (target: Object, property: string) => {
         Type('enum')(target, property);
-        Reflect.defineMetadata('marshal:dataTypeValue', type, target, property);
-        Reflect.defineMetadata('marshal:enum:allowLabelsAsValue', allowLabelsAsValue, target, property);
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = type;
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).allowLabelsAsValue = allowLabelsAsValue;
     }
 }
