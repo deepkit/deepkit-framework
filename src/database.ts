@@ -25,6 +25,7 @@ export class Database {
     }
 
     public async close() {
+        await this.connection.mongoManager.queryRunner.databaseConnection.close(true);
         await this.connection.close();
     }
 
