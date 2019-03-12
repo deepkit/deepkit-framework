@@ -261,7 +261,7 @@ test('partial document', () => {
         resolvedClassType: PageClass,
         resolvedPropertyName: 'name',
         type: 'string',
-        typeValue: null,
+        typeValue: undefined,
         array: false,
         map: false,
     });
@@ -279,7 +279,7 @@ test('partial document', () => {
         resolvedClassType: PageClass,
         resolvedPropertyName: 'name',
         type: 'string',
-        typeValue: null,
+        typeValue: undefined,
         array: false,
         map: false,
     });

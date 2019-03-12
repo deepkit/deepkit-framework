@@ -43,7 +43,7 @@ test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
     expect(getIdField(SimpleModel)).toBe('id');
 
-    expect(getIdField(SubModel)).toBe(null);
+    expect(getIdField(SubModel)).toBe(undefined);
 
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(SimpleModel, {
@@ -67,7 +67,7 @@ test('test simple model all fields', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
     expect(getIdField(SimpleModel)).toBe('id');
 
-    expect(getIdField(SubModel)).toBe(null);
+    expect(getIdField(SubModel)).toBe(undefined);
 
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(SimpleModel, {
