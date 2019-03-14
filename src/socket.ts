@@ -77,10 +77,11 @@ export class SocketClient {
             throw new Error(`Got invalid message: ` + event.data);
         }
 
-        if (message.type === 'entity/remove' || message.type === 'entity/patch' || message.type === 'entity/update') {
+        if (message.type === 'entity/remove' || message.type === 'entity/patch' || message.type === 'entity/update' || message.type === 'entity/removeMany') {
             this.entityState.handleEntityMessage(message);
             return;
         } else if (message.type === 'channel') {
+            //not built in yet
         } else {
             if (this.replies[message.id]) {
                 this.replies[message.id](message);
@@ -347,7 +348,9 @@ export class SocketClient {
 
         this.replies[messageId] = answer;
 
-        this.connect().then(() => this.send(message), (error) => {throw error});
+        this.connect().then(() => this.send(message), (error) => {
+            throw error;
+        });
     }
 
     private async authenticate(): Promise<boolean> {

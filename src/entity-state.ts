@@ -1,8 +1,8 @@
-import {ClassType, plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
+import {plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
 import {Subscription} from "rxjs";
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "@marcj/glut-core";
 import {set} from 'dot-prop';
-import {eachPair, each} from "@marcj/estdlib";
+import {ClassType, eachPair, each} from "@marcj/estdlib";
 
 class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T | undefined> } = {};
@@ -157,7 +157,9 @@ export class EntityState {
 
                 observers[itemRaw.id] = subject.subscribe((i) => {
                     collection.deepChange.next(i);
-                    collection.loaded();
+                    if (collection.isLoaded) {
+                        collection.loaded();
+                    }
                 });
             }
         }
@@ -166,14 +168,26 @@ export class EntityState {
             collection.loaded();
         }
 
+        if (stream.type === 'removeMany') {
+            for (const id of stream.ids) {
+                collection.remove(id);
+
+                if (observers[id]) {
+                    observers[id].unsubscribe();
+                }
+            }
+
+            if (collection.isLoaded) {
+                collection.loaded();
+            }
+        }
+
         if (stream.type === 'remove') {
             collection.remove(stream.id);
 
-            if (!observers[stream.id]) {
-                throw new Error(`Item with id ${stream.id} already removed from state-collection.`);
+            if (observers[stream.id]) {
+                observers[stream.id].unsubscribe();
             }
-
-            observers[stream.id].unsubscribe();
 
             if (collection.isLoaded) {
                 collection.loaded();
@@ -196,7 +210,10 @@ export class EntityState {
 
             observers[item.id] = subject.subscribe((i) => {
                 collection.deepChange.next(i);
-                collection.loaded();
+
+                if (collection.isLoaded) {
+                    collection.loaded();
+                }
             });
         }
     }
