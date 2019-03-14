@@ -14,8 +14,6 @@ const Promise = require('bluebird');
 Promise.longStackTraces(); //needs to be disabled in production since it leaks memory
 global.Promise = Promise;
 
-jest.setTimeout(60000);
-
 @Entity('user')
 class User implements IdInterface {
     @ID()
@@ -73,7 +71,7 @@ test('test entity sync list', async () => {
         }
     }
 
-    const {server, client, close, createControllerClient} = await createServerClientPair('test entity sync list', [TestController], [User]);
+    const {client, close, createControllerClient} = await createServerClientPair('test entity sync list', [TestController], [User]);
     const testController = client.controller<TestController>('test');
 
     const users: Collection<User> = await testController.users();
@@ -150,7 +148,7 @@ test('test entity sync list: remove', async () => {
         }
     }
 
-    const {server, client, close, createControllerClient} = await createServerClientPair('test entity sync list: remove', [TestController], [User]);
+    const {client, close} = await createServerClientPair('test entity sync list: remove', [TestController], [User]);
     const testController = client.controller<TestController>('test');
 
     const users: Collection<User> = await testController.users();
@@ -167,11 +165,11 @@ test('test entity sync list: remove', async () => {
     //this triggers no nextStateChange as the filter doesn't match
     await testController.addUser('Nix da');
 
-    testController.remove(peter3Id);
+    await testController.remove(peter3Id);
     await users.nextStateChange;
     expect(users.count()).toBe(2);
 
-    testController.removeAll();
+    await testController.removeAll();
     await users.nextStateChange;
     expect(users.count()).toBe(0);
 
@@ -210,7 +208,7 @@ test('test entity sync item', async () => {
         }
     }
 
-    const {server, client, close, app} = await createServerClientPair('test entity sync item', [TestController], [User]);
+    const {client, close, app} = await createServerClientPair('test entity sync item', [TestController], [User]);
     const test = client.controller<TestController>('test');
 
     {
@@ -265,10 +263,6 @@ test('test entity sync item undefined', async () => {
         ) {
         }
 
-        names(): string[] {
-            return ['a'];
-        }
-
         @Action()
         async user(): Promise<EntitySubject<User | undefined>> {
             await this.database.deleteMany(User, {});
@@ -287,7 +281,7 @@ test('test entity sync item undefined', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair('test entity sync item undefined', [TestController], [User]);
+    const {client, close} = await createServerClientPair('test entity sync item undefined', [TestController], [User]);
     const test = client.controller<TestController>('test');
 
     const user = await test.user();
@@ -335,7 +329,7 @@ test('test entity sync count', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair('test entity sync count', [TestController], [User]);
+    const {client, close} = await createServerClientPair('test entity sync count', [TestController], [User]);
     const test = client.controller<TestController>('test');
 
     const result = await test.userCount();
