@@ -53,11 +53,11 @@ test('test entity sync list', async () => {
 
             setTimeout(async () => {
                 await this.database.add(User, new User('Peter 3'));
-            }, 1000);
+            }, 250);
 
             setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
-            }, 2000);
+            }, 500);
 
             return await this.storage.find(User, {
                 name: {$regex: /Peter/}
