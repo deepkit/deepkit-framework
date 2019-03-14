@@ -57,7 +57,7 @@ export class ExchangeDatabase {
         const removed = this.database.remove(classType, id);
 
         if (this.notifyChanges(classType)) {
-            this.exchange.publishEntity(classType, {
+            await this.exchange.publishEntity(classType, {
                 type: 'remove',
                 id: id,
                 version: 0, //0 means it overwrites always, no matter what previous version was
@@ -75,16 +75,18 @@ export class ExchangeDatabase {
     public async deleteOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
         const ids = await this.getIds(classType, filter);
 
-        return this.database.remove(classType, ids[0]);
+        return this.remove(classType, ids[0]);
     }
 
     public async deleteMany<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
         const ids = await this.getIds(classType, filter);
 
-        this.exchange.publishEntity(classType, {
-            type: 'removeMany',
-            ids: ids
-        });
+        if (this.notifyChanges(classType)) {
+            this.exchange.publishEntity(classType, {
+                type: 'removeMany',
+                ids: ids
+            });
+        }
 
         return this.database.deleteMany(classType, {id: {$in: ids}});
     }

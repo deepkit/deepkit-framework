@@ -50,7 +50,7 @@ export class Exchange {
 
         return new Promise<string[]>((resolve, reject) => {
             try {
-                this.redis.hgetall(key, (err, keys: {[field: string]: any}) => {
+                this.redis.hgetall(key, (err, keys: { [field: string]: any }) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -107,19 +107,19 @@ export class Exchange {
         });
     }
 
+    public publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
+        const channelName = this.prefix + '/entity/' + getEntityName(classType);
+        this.publish(channelName, message);
+    }
+
+    public publishFile<T>(fileId: string, message: StreamFileResult) {
+        const channelName = this.prefix + '/file/' + fileId;
+        this.publish(channelName, message);
+    }
+
     public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
         const channelName = this.prefix + '/entity/' + getEntityName(classType);
         return this.subscribe(channelName, cb);
-    }
-
-    public async publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
-        const channelName = this.prefix + '/entity/' + getEntityName(classType);
-        await this.publish(channelName, message);
-    }
-
-    public async publishFile<T>(fileId: string, message: StreamFileResult) {
-        const channelName = this.prefix + '/file/' + fileId;
-        await this.publish(channelName, message);
     }
 
     public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>) {
@@ -127,13 +127,13 @@ export class Exchange {
         return this.subscribe(channelName, cb);
     }
 
-    public async publish(channelName: string, message: any) {
-        return new Promise<void>((resolve, reject) => {
+    public publish(channelName: string, message: any) {
+        // important to put that publish to next queue item,
+        // otherwise we could end up in having race conditions (especially in unit test circumstances)
+        setTimeout(() => {
             this.redis.publish(channelName, JSON.stringify(message), (error) => {
                 if (error) {
-                    reject(error);
-                } else {
-                    resolve();
+                    console.error(`Error publishing to '${channelName}'`, error);
                 }
             });
         });
