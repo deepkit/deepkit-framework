@@ -169,13 +169,7 @@ export class EntityState {
         }
 
         if (stream.type === 'removeMany') {
-            for (const id of stream.ids) {
-                collection.remove(id);
-
-                if (observers[id]) {
-                    observers[id].unsubscribe();
-                }
-            }
+            collection.removeMany(stream.ids);
 
             if (collection.isLoaded) {
                 collection.loaded();
