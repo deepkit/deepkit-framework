@@ -2,8 +2,8 @@
   "name": "@marcj/marshal-nest",
   "version": "0.5.0",
   "description": "A plugin for NestJS to convert HTTP Body to your class instance with validation using Marshal",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
     "test": "jest --coverage",
