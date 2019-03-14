@@ -57,7 +57,7 @@ export class ExchangeDatabase {
         const removed = this.database.remove(classType, id);
 
         if (this.notifyChanges(classType)) {
-            await this.exchange.publishEntity(classType, {
+            this.exchange.publishEntity(classType, {
                 type: 'remove',
                 id: id,
                 version: 0, //0 means it overwrites always, no matter what previous version was
