@@ -3,11 +3,12 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import {Observable, ReplaySubject, Subject, Subscriber, TeardownLogic} from "rxjs";
-import {ClassType, getEntityName} from "@marcj/marshal";
+import {Observable, ReplaySubject, Subject, TeardownLogic} from "rxjs";
+import {getEntityName} from "@marcj/marshal";
 import {first, map} from "rxjs/operators";
 import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";
+import {ClassType} from "@marcj/estdlib";
 
 export interface CollectionAdd {
     type: 'add';
@@ -19,12 +20,18 @@ export interface CollectionRemove {
     id: string;
 }
 
+
+export interface CollectionRemoveMany {
+    type: 'removeMany';
+    ids: string[];
+}
+
 export interface CollectionSet {
     type: 'set';
     items: any[];
 }
 
-export type CollectionEvent = CollectionAdd | CollectionRemove | CollectionSet;
+export type CollectionEvent = CollectionAdd | CollectionRemove | CollectionRemoveMany | CollectionSet;
 
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent> = new Subject;
@@ -82,7 +89,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public unsubscribe() {
         super.unsubscribe();
 
-        console.log('client: unsubscribe collection, teardowns=', this.teardowns.length);
         for (const teardown of this.teardowns) {
             tearDown(teardown);
         }
@@ -159,8 +165,23 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         if (withEvent) {
             this.event.next({type: 'set', items: items});
             if (this.isLoaded) {
+                console.log('loaded set()');
                 this.loaded();
             }
+        }
+    }
+
+    public removeMany(ids: string[], withEvent = true) {
+        for (const id of ids) {
+            const item = this.itemsMapped[id];
+            const index = this.items.indexOf(item);
+            if (-1 !== index) {
+                this.items.splice(index, 1);
+            }
+        }
+
+        if (withEvent) {
+            this.event.next({type: 'removeMany', ids: ids});
         }
     }
 
@@ -182,6 +203,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
             this.event.next({type: 'add', item: item});
 
             if (this.isLoaded) {
+                console.log('loaded add()');
                 this.loaded();
             }
         }
@@ -197,6 +219,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
                 if (withEvent) {
                     this.event.next({type: 'remove', id: item.id});
                     if (this.isLoaded) {
+                        console.log('loaded remove()');
                         this.loaded();
                     }
                 }

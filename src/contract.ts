@@ -5,7 +5,6 @@ export interface IdInterface {
     version: number;
 }
 
-
 export interface EntityPatches {
     [path: string]: any;
 }
@@ -24,6 +23,11 @@ export interface ExchangeEntityRemove extends ExchangeEntityBase {
     type: 'remove';
 }
 
+export interface ExchangeEntityRemoveMany {
+    type: 'removeMany';
+    ids: string[];
+}
+
 export interface ExchangeEntityUpdate extends ExchangeEntityBase {
     type: 'update';
     item: any;
@@ -35,7 +39,7 @@ export interface ExchangeEntityPatch extends ExchangeEntityBase {
     item: any;
 }
 
-export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityUpdate | ExchangeEntityPatch;
+export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityUpdate | ExchangeEntityPatch | ExchangeEntityRemoveMany;
 
 export interface ClientMessageId {
     id: number;
@@ -91,6 +95,13 @@ export interface ServerMessageEntityRemove extends MessageEntityBase {
     type: 'entity/remove';
 }
 
+export interface ServerMessageEntityRemoveMany  {
+    id: string;
+    entityName: string;
+    type: 'entity/removeMany';
+    ids: string[];
+}
+
 export interface ServerMessageEntityUpdate extends MessageEntityBase {
     type: 'entity/update';
     data: any;
@@ -101,7 +112,7 @@ export interface ServerMessageEntityPatch extends MessageEntityBase {
     patch: EntityPatches;
 }
 
-export type ServerMessageEntity = ServerMessageEntityRemove | ServerMessageEntityUpdate | ServerMessageEntityPatch;
+export type ServerMessageEntity = ServerMessageEntityRemove | ServerMessageEntityRemoveMany | ServerMessageEntityUpdate | ServerMessageEntityPatch;
 
 export interface CollectionStreamSet {
     type: 'set';
@@ -121,6 +132,11 @@ export interface CollectionStreamReady {
 export interface CollectionStreamRemove {
     type: 'remove';
     id: string;
+}
+
+export interface CollectionStreamRemoveMany {
+    type: 'removeMany';
+    ids: string[];
 }
 
 export interface FindOneResult {
@@ -154,7 +170,7 @@ export interface StreamFileRemove {
     // meta: { [k: string]: any };
 }
 
-export type CollectionStream = CollectionStreamSet | CollectionStreamAdd | CollectionStreamRemove | CollectionStreamReady;
+export type CollectionStream = CollectionStreamSet | CollectionStreamAdd | CollectionStreamRemove | CollectionStreamRemoveMany | CollectionStreamReady;
 
 export type CountResult = CountUpdateResult;
 

@@ -1,9 +1,33 @@
-import {SiftQuery} from "sift";
 import {BehaviorSubject, TeardownLogic, Subject} from "rxjs";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {IdInterface} from "./contract";
 
-export type FilterQuery<T> = SiftQuery<T[]>;
+export type Query<T> = {
+    $eq?: T;
+    $ne?: T;
+    $or?: Array<FilterQuery<T>>;
+    $gt?: T;
+    $gte?: T;
+    $lt?: T;
+    $lte?: T;
+    $mod?: number[];
+    $in?: Array<T>;
+    $nin?: Array<T>;
+    $not?: FilterQuery<T>;
+    $type?: any;
+    $all?: Array<Partial<T>>;
+    $size?: number;
+    $nor?: Array<FilterQuery<T>>;
+    $and?: Array<FilterQuery<T>>;
+    $regex?: RegExp | string;
+    $exists?: boolean;
+    $options?: "i" | "g" | "m" | "u";
+};
+
+export type FilterQuery<T> = {
+    [P in keyof T]?: Query<T[P]> | T[P];
+} | Query<T>;
+
 
 export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     protected nextChange?: Subject<void>;
