@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-client",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "index.ts",
   "author": "Kamille Team",
   "license": "MIT",
@@ -13,8 +13,8 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@marcj/marshal": "^0.5.1",
     "@marcj/glut-core": "0.0.2",
+    "@marcj/marshal": "^0.5.1",
     "reflect-metadata": "^0.1.12",
     "rxjs": "6.3.3"
   },
@@ -24,8 +24,8 @@
     "ws": "^6.1.2"
   },
   "devDependencies": {
+    "@marcj/glut-core": "^0.0.3",
     "@marcj/marshal": "^0.5.1",
-    "@marcj/glut-core": "^0.0.2",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
     "reflect-metadata": "^0.1.13"
