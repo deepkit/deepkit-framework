@@ -56,8 +56,6 @@ export class Worker {
 
             socket.on('close', async (data: object) => {
                 connection.destroy();
-
-                console.log('close from server', data);
             });
 
             socket.on('error', (error: any) => {

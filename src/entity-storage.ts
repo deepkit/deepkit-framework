@@ -278,7 +278,6 @@ export class EntityStorage {
 
     public count<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Observable<number> {
         return new Observable((observer) => {
-            console.log('new count subscription');
             let fieldSub: AsyncSubscription;
             let sub: Subscription;
             let running = true;
