@@ -1,17 +1,19 @@
 # Marshal
 
-[![Build Status](https://travis-ci.com/marcj/marshal.svg?branch=master)](https://travis-ci.com/marcj/marshal)
+[![Build Status](https://travis-ci.com/marcj/marshal.ts.svg?branch=master)](https://travis-ci.com/marcj/marshal.ts)
 [![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
-[![Coverage Status](https://coveralls.io/repos/github/marcj/marshal/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
 Marshal is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
-JSON-representable data from JSON to class instance to Mongo and vice versa.
+JSON-representable data from JSON to class instance to Database and vice versa.
 
-If you have data models in your frontend, Node backend and MongoDB collections,
+If you have data models in your frontend, Node backend and Database,
 then Marshal helps you to convert and validate between all those parties correctly.
 With NestJS validation support and handy MongoDB storage abstraction.
 
-![Diagram](https://raw.github.com/marcj/marshal/master/docs/assets/diagram.png)
+With TypeORM support.
+
+![Diagram](https://raw.github.com/marcj/marshal.ts/master/docs/assets/diagram.png)
 
 ## Install
 
