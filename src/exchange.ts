@@ -1,8 +1,8 @@
 import {createClient, RedisClient} from 'redis';
 import {Subscription} from "rxjs";
-import {ClassType, getEntityName} from "@marcj/marshal";
+import {getEntityName} from "@marcj/marshal";
 import {ExchangeEntity, StreamFileResult} from '@marcj/glut-core';
-import {eachPair} from '@marcj/estdlib';
+import {ClassType, eachPair} from '@marcj/estdlib';
 import {AsyncSubscription} from '@marcj/estdlib-rxjs';
 import {Injectable} from "injection-js";
 
@@ -18,23 +18,24 @@ export class Exchange {
 
     private subscribedChannelMessages = false;
 
-    constructor(protected host: string, protected port: number, protected prefix: string) {
+    constructor(protected host: string = 'localhost', protected port: number = 6379, protected db: number = 0) {
         this.redis = createClient();
+        this.redis.select(this.db);
     }
 
     public async disconnect() {
         await new Promise((resolve, reject) => this.redis.quit((err) => err ? reject(err) : resolve()));
         await new Promise((resolve, reject) => {
             if (this.subscriberRedis) {
-                this.subscriberRedis.quit((err) => err ? reject(err) : resolve())
+                this.subscriberRedis.quit((err) => err ? reject(err) : resolve());
             } else {
                 resolve();
             }
         });
     }
 
-    public async flush() {
-        return new Promise((resolve, reject) => this.redis.flushall((err) => err ? reject(err) : resolve()));
+    public async flushDb() {
+        return new Promise((resolve, reject) => this.redis.flushdb((err) => err ? reject(err) : resolve()));
     }
 
     public getSubscriberConnection(): RedisClient {
@@ -45,7 +46,7 @@ export class Exchange {
     }
 
     public async getSubscribedEntityFields<T>(classType: ClassType<T>): Promise<string[]> {
-        const key = this.prefix + '/entity-field-subscription/' + getEntityName(classType);
+        const key = this.db + '/entity-field-subscription/' + getEntityName(classType);
         const fields: string[] = [];
 
         return new Promise<string[]>((resolve, reject) => {
@@ -69,7 +70,7 @@ export class Exchange {
     }
 
     public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
-        const key = this.prefix + '/entity-field-subscription/' + getEntityName(classType);
+        const key = this.db + '/entity-field-subscription/' + getEntityName(classType);
 
         const promises: Promise<void>[] = [];
         for (const field of fields) {
@@ -96,22 +97,22 @@ export class Exchange {
     }
 
     public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
-        const channelName = this.prefix + '/entity/' + getEntityName(classType);
+        const channelName = this.db + '/entity/' + getEntityName(classType);
         return this.subscribe(channelName, cb);
     }
 
     public async publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
-        const channelName = this.prefix + '/entity/' + getEntityName(classType);
+        const channelName = this.db + '/entity/' + getEntityName(classType);
         await this.publish(channelName, message);
     }
 
     public async publishFile<T>(fileId: string, message: StreamFileResult) {
-        const channelName = this.prefix + '/file/' + fileId;
+        const channelName = this.db + '/file/' + fileId;
         await this.publish(channelName, message);
     }
 
     public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>) {
-        const channelName = this.prefix + '/file/' + fileId;
+        const channelName = this.db + '/file/' + fileId;
         return this.subscribe(channelName, cb);
     }
 

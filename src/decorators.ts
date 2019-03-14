@@ -1,6 +1,6 @@
 import {Provider} from "injection-js";
 import {Application} from "./application";
-import {ClassType} from "@marcj/marshal";
+import {ClassType} from "@marcj/estdlib";
 import {ApplicationServerConfig} from "./application-server";
 
 export interface ApplicationDecoratorOptions {
@@ -37,7 +37,7 @@ export function Action(name?: string) {
         actions[name] = property;
 
         Reflect.defineMetadata('kamille:actions', actions, target);
-    }
+    };
 }
 
 export function Controller(name: string) {
@@ -45,5 +45,5 @@ export function Controller(name: string) {
         Reflect.defineMetadata('kamille:controller', {
             name: name,
         }, target);
-    }
+    };
 }

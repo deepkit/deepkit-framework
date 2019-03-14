@@ -1,7 +1,7 @@
 import {EntityStorage} from "./entity-storage";
 import {ClientMessageAll, Collection, CollectionStream, EntitySubject, StreamBehaviorSubject} from "@marcj/glut-core";
-import {classToPlain, ClassType, getEntityName, RegisteredEntities} from "@marcj/marshal";
-import {each} from "@marcj/estdlib";
+import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
+import {each, ClassType} from "@marcj/estdlib";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {Injectable} from "injection-js";
@@ -69,7 +69,6 @@ export class ConnectionMiddleware {
         }
 
         if (message.name === 'collection/unsubscribe') {
-            console.log('server: collection/unsubscribe', message.id);
             if (this.collectionSubscriptions[message.id]) {
                 this.collectionSubscriptions[message.id].unsubscribe();
             }
@@ -118,6 +117,13 @@ export class ConnectionMiddleware {
     }
 
     public async messageOut(message: ClientMessageAll, result: any) {
+        // console.log('messageOut', {
+        //     EntitySubject: result instanceof EntitySubject,
+        //     StreamBehaviorSubject: result instanceof StreamBehaviorSubject,
+        //     Collection: result instanceof Collection,
+        //     Observable: result instanceof Observable,
+        // }, result);
+
         if (result instanceof EntitySubject) {
             const item = result.getValue();
 
@@ -228,9 +234,13 @@ export class ConnectionMiddleware {
             });
 
             this.collectionSubscriptions[message.id].add = collection.event.subscribe((event) => {
-                console.log('server: got collection event', event);
                 if (event.type === 'add') {
                     nextValue = {type: 'add', item: classToPlain(collection.classType, event.item)};
+                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                }
+
+                if (event.type === 'removeMany') {
+                    nextValue = {type: 'removeMany', ids: event.ids};
                     this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 

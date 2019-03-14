@@ -1,10 +1,11 @@
 import {Exchange} from "./exchange";
 import {FS} from "./fs";
-import {ClassType, getEntityName, plainToClass} from "@marcj/marshal";
+import {plainToClass, getEntityName} from "@marcj/marshal";
 import {Observable, Subscription} from "rxjs";
 import {convertPlainQueryToMongo, partialMongoToPlain} from "@marcj/marshal-mongo";
-import sift, {SiftQuery} from "sift";
+import sift from "sift";
 import {Collection, EntitySubject, ExchangeEntity, File, FilterQuery, IdInterface} from "@marcj/glut-core";
+import {ClassType} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
@@ -16,10 +17,9 @@ interface SentState {
     listeners: number;
 }
 
-function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index: string]: any }, query: SiftQuery<T[]>): boolean {
+function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index: string]: any }, query: FilterQuery<T>): boolean {
     return sift(query, [target]).length > 0;
 }
-
 
 @Injectable()
 export class EntityStorage {
@@ -117,6 +117,19 @@ export class EntityStorage {
         const entityName = getEntityName(classType);
 
         const sub = this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
+            if (message.type === 'removeMany') {
+                for (const id of message.ids) {
+                    this.rmSentState(classType, id);
+                }
+
+                this.writer.write({
+                    type: 'entity/removeMany',
+                    entityName: entityName,
+                    ids: message.ids,
+                });
+                return;
+            }
+
             if (this.needsToBeSend(classType, message.id, message.version)) {
                 this.setSent(classType, message.id, message.version);
 
@@ -263,7 +276,7 @@ export class EntityStorage {
     //     });
     // }
 
-    public count<T extends IdInterface>(classType: ClassType<T>, filter: { [p: string]: any }): Observable<number> {
+    public count<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Observable<number> {
         return new Observable((observer) => {
             console.log('new count subscription');
             let fieldSub: AsyncSubscription;
@@ -333,7 +346,7 @@ export class EntityStorage {
         });
     }
 
-    public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T | undefined>> {
+    public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T | undefined>> {
         const item = await this.database.get(classType, filter);
 
         if (item) {
@@ -351,7 +364,7 @@ export class EntityStorage {
         }
     }
 
-    public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: { [path: string]: any } = {}): Promise<EntitySubject<T>> {
+    public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T>> {
         const item = await this.database.get(classType, filter);
 
         if (item) {
@@ -369,8 +382,8 @@ export class EntityStorage {
         }
     }
 
-    async find<T extends IdInterface>(classType: ClassType<T>, filter: { [field: string]: any } = {}): Promise<Collection<T>> {
-        const collection = new Collection(classType);
+    async find<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<Collection<T>> {
+        const collection = new Collection<T>(classType);
 
         const KnownIDs: { [id: string]: boolean } = {};
         const filterFields: { [name: string]: boolean } = {};
@@ -389,6 +402,15 @@ export class EntityStorage {
             //     message
             // );
 
+            if (message.type === 'removeMany') {
+                collection.removeMany(message.ids);
+                for (const id of message.ids) {
+                    delete KnownIDs[id];
+                }
+
+                return;
+            }
+
             if (!KnownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, filter)) {
                 KnownIDs[message.id] = true;
                 // addToLastValues(message.id, message.item);
@@ -406,10 +428,10 @@ export class EntityStorage {
                     //got invalid after updates?
                     delete KnownIDs[message.id];
                     this.decreaseUsage(classType, message.id);
-                    console.log('send removal because filter doesnt fit anymore',
-                        filter,
-                        message.item,
-                    );
+                    // console.log('send removal because filter doesnt fit anymore',
+                    //     filter,
+                    //     message.item,
+                    // );
                     collection.remove(message.id);
 
                 } else if (!KnownIDs[message.id] && querySatisfied) {

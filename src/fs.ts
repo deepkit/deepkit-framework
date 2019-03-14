@@ -4,7 +4,7 @@ import {Exchange} from "./exchange";
 import {uuid4Binary} from "@marcj/marshal-mongo";
 import {Binary} from "bson";
 import {ExchangeDatabase} from "./exchange-database";
-import {File, FileMode} from "@marcj/glut-core";
+import {File, FileMode, FilterQuery} from "@marcj/glut-core";
 import {eachPair} from "@marcj/estdlib";
 import * as crypto from "crypto";
 
@@ -28,7 +28,7 @@ export class FS {
     constructor(
         private exchange: Exchange,
         private database: ExchangeDatabase,
-        private fileDir: string /* .deepkit/data/files/ */,
+        private fileDir: string /* .glut/data/files/ */,
     ) {
     }
 
@@ -36,13 +36,13 @@ export class FS {
         this.fileDir = dir;
     }
 
-    public async removeAll(metaData?: FileMetaData): Promise<boolean> {
-        const files = await this.database.find(File, metaData || {});
+    public async removeAll(filter: FilterQuery<File>): Promise<boolean> {
+        const files = await this.database.find(File, filter);
         return this.removeFiles(files);
     }
 
-    public async remove(path: string, metaData?: FileMetaData): Promise<boolean> {
-        const file = await this.findOne(path);
+    public async remove(path: string, filter: FilterQuery<File>): Promise<boolean> {
+        const file = await this.findOne(path, filter);
         if (file) {
             return this.removeFile(file);
         }
@@ -56,7 +56,7 @@ export class FS {
 
     public async removeFiles(files: File[]): Promise<boolean> {
         const md5ToCheckMap: { [k: string]: number } = {};
-        const fileIds: Binary[] = [];
+        const fileIds: string[] = [];
 
         for (const file of files) {
             if (file.md5) {
@@ -68,7 +68,7 @@ export class FS {
                 await remove(localPath);
             }
 
-            fileIds.push(uuid4Binary(file.id));
+            fileIds.push(file.id);
 
             this.exchange.publishFile(file.id, {
                 type: 'remove',
@@ -112,12 +112,12 @@ export class FS {
         return true;
     }
 
-    public async ls(metaData?: FileMetaData): Promise<File[]> {
-        return await this.database.find(File, metaData || {});
+    public async ls(filter: FilterQuery<File>): Promise<File[]> {
+        return await this.database.find(File, filter);
     }
 
-    public async findOne(path: string, metaData?: FileMetaData): Promise<File | null> {
-        return await this.database.get(File, {...metaData, path});
+    public async findOne(path: string, filter?: FilterQuery<File>): Promise<File | null> {
+        return await this.database.get(File, {...filter, path});
     }
 
     public async registerFile(md5: string, path: string, metaData?: FileMetaData) {
@@ -133,7 +133,6 @@ export class FS {
             const newFile = file.fork(path);
             newFile.meta = metaData;
             await this.database.add(File, newFile);
-            console.log('file added', newFile.id);
         } else {
             throw new Error(`File with md5 '${md5}' not found (content deleted).`);
         }
@@ -155,9 +154,9 @@ export class FS {
         return false;
     }
 
-    public async read(path: string, metaData?: FileMetaData): Promise<Buffer | undefined> {
-        const file = await this.findOne(path, metaData);
-        console.log('Read file ' + path, metaData, file ? file.id : undefined);
+    public async read(path: string, filter?: FilterQuery<File>): Promise<Buffer | undefined> {
+        const file = await this.findOne(path, filter);
+        // console.log('Read file ' + path, filter, file ? file.id : undefined);
 
         if (!file) {
             return;
@@ -174,7 +173,7 @@ export class FS {
                     resolve(data);
                 });
             } else {
-                console.log('path does not exist', localPath);
+                console.error('path does not exist', localPath);
                 resolve();
             }
         });
@@ -207,8 +206,15 @@ export class FS {
         return join(this.fileDir, 'streaming', this.getIdSplit(file.id));
     }
 
-    public async write(path: string, data: Buffer, metaData?: FileMetaData): Promise<File> {
-        let file = await this.findOne(path, metaData);
+    /**
+     * Adds a new file or updates an existing one.
+     */
+    public async write(path: string, data: string | Buffer, metaData?: FileMetaData): Promise<File> {
+        let file = await this.findOne(path, metaData ? {meta: metaData} : {});
+
+        if ('string' === typeof data) {
+            data = Buffer.from(data, 'utf8');
+        }
 
         if (file && !file.id) {
             throw new Error(`File has no id ${path} from DB`);
@@ -247,10 +253,9 @@ export class FS {
         await ensureDir(localDir);
         await writeFile(localPath, data);
 
-        this.exchange.publishFile({
+        this.exchange.publishFile(file.id, {
             type: 'set',
             path: path,
-            meta: file.meta,
             content: data.toString('utf8')
         });
 
@@ -261,7 +266,7 @@ export class FS {
      * Streams content by always appending data to the file's content.
      */
     public async stream(path: string, data: Buffer, metaData?: FileMetaData) {
-        let file = await this.findOne(path, metaData);
+        let file = await this.findOne(path, metaData ? {meta: metaData} : {});
 
         if (!file) {
             file = new File(path);
@@ -276,12 +281,10 @@ export class FS {
 
         await appendFile(localPath, data);
 
-        this.exchange.publishFile({
+        this.exchange.publishFile(file.id, {
             type: 'append',
             path: path,
-            meta: file.meta,
             content: data.toString(),
         });
-
     }
 }

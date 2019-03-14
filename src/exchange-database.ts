@@ -1,12 +1,14 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, ClassType, getCollectionName, getIdFieldValue, partialClassToPlain} from '@marcj/marshal';
-import {Collection, Cursor} from "mongodb";
+import {classToPlain, getIdFieldValue, partialClassToPlain, getEntityName} from '@marcj/marshal';
+import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, convertPlainQueryToMongo, Database, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
-import {Mongo, MongoLock} from "./mongo";
-import {EntityPatches, IdInterface} from "@marcj/glut-core";
-import {Application} from "./application";
-import {eachPair} from '@marcj/estdlib';
+import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
+import {ClassType, eachPair} from '@marcj/estdlib';
+
+export interface ExchangeNotifyPolicy {
+    notifyChanges<T>(classType: ClassType<T>): boolean;
+}
 
 /**
  * A database that also publishes change feeds to the exchange.
@@ -14,40 +16,44 @@ import {eachPair} from '@marcj/estdlib';
 @Injectable()
 export class ExchangeDatabase {
     constructor(
-        protected application: Application,
-        protected mongo: Mongo,
+        protected exchangeNotifyPolicy: ExchangeNotifyPolicy,
         protected database: Database,
         protected exchange: Exchange,
     ) {
     }
 
-    public async collection<T>(classType: ClassType<T>): Promise<Collection> {
-        return await this.mongo.collection(getCollectionName(classType));
+    public async collection<T>(classType: ClassType<T>): Promise<Collection<T>> {
+        return await this.database.getCollection(classType);
     }
 
-    public async get<T>(
+    private notifyChanges<T>(classType: ClassType<T>): boolean {
+        return this.exchangeNotifyPolicy.notifyChanges(classType);
+    }
+
+
+    public async get<T extends IdInterface>(
         classType: ClassType<T>,
-        filter: { [field: string]: any }
+        filter: FilterQuery<T>
     ): Promise<T | null> {
         return await this.database.get(classType, filter);
     }
 
-    public async find<T>(
+    public async find<T extends IdInterface>(
         classType: ClassType<T>,
-        filter: { [field: string]: any },
+        filter: FilterQuery<T>,
         toClass = false
     ): Promise<T[]> {
         return await this.database.find(classType, filter, toClass) as T[];
     }
 
-    public async has<T>(
+    public async has<T extends IdInterface>(
         classType: ClassType<T>,
-        filter: { [field: string]: any }
+        filter: FilterQuery<T>
     ): Promise<boolean> {
         return this.database.has(classType, filter);
     }
 
-    public async remove<T>(classType: ClassType<T>, id: string) {
+    public async remove<T extends IdInterface>(classType: ClassType<T>, id: string) {
         const removed = this.database.remove(classType, id);
 
         if (this.notifyChanges(classType)) {
@@ -61,14 +67,26 @@ export class ExchangeDatabase {
         return removed;
     }
 
-    public async deleteOne<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
-        return this.database.deleteOne(classType, filter);
-        //todo, add exchange.Publish
+    public async getIds<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<string[]> {
+        const cursor = await this.cursor(classType, filter, false);
+        return (await cursor.project({id: 1}).toArray()).map(v => v.id);
     }
 
-    public async deleteMany<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
-        return this.database.deleteMany(classType, filter);
-        //todo, add exchange.Publish
+    public async deleteOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
+        const ids = await this.getIds(classType, filter);
+
+        return this.database.remove(classType, ids[0]);
+    }
+
+    public async deleteMany<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
+        const ids = await this.getIds(classType, filter);
+
+        this.exchange.publishEntity(classType, {
+            type: 'removeMany',
+            ids: ids
+        });
+
+        return this.database.deleteMany(classType, {id: {$in: ids}});
     }
 
     public async add<T extends IdInterface>(classType: ClassType<T>, item: T) {
@@ -84,16 +102,16 @@ export class ExchangeDatabase {
         }
     }
 
-    public async count<T>(classType: ClassType<T>, filter?: { [field: string]: any }): Promise<number> {
+    public async count<T>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<number> {
         return await this.database.count(classType, filter);
     }
 
-    public async cursor<T>(classType: ClassType<T>, filter?: { [field: string]: any }, toClass = false): Promise<Cursor<T>> {
+    public async cursor<T>(classType: ClassType<T>, filter?: FilterQuery<T>, toClass = false): Promise<Cursor<T>> {
         return (await this.database.cursor(classType, filter, toClass)) as Cursor<T>;
     }
 
-    public async plainCursor<T>(classType: ClassType<T>, filter: { [field: string]: any }): Promise<Cursor<T>> {
-        const collection = await this.mongo.collection(getCollectionName(classType));
+    public async plainCursor<T>(classType: ClassType<T>, filter: FilterQuery<T>): Promise<Cursor<T>> {
+        const collection = await this.collection(classType);
 
         return collection.find(convertPlainQueryToMongo(classType, filter));
     }
@@ -117,16 +135,6 @@ export class ExchangeDatabase {
         return version;
     }
 
-    public async lock<T>(classType: ClassType<T>, id?: string): Promise<MongoLock> {
-        const name = 'collection-lock/' + getCollectionName(classType) + (id ? '/' + id : '');
-
-        return this.mongo.acquireLock(name);
-    }
-
-    private notifyChanges<T>(classType: ClassType<T>): boolean {
-        return this.application.notifyChanges(classType);
-    }
-
     /**
      * Increases one or multiple fields atomic and returns the new value.
      * This does not send patches to the exchange.
@@ -136,7 +144,7 @@ export class ExchangeDatabase {
         id: string,
         fields: F
     ): Promise<F> {
-        const collection = await this.mongo.collection(getCollectionName(classType));
+        const collection = await this.collection(classType);
         const projection: { [key: string]: number } = {};
         const filter = {id: id};
         const statement: { [name: string]: any } = {
@@ -178,7 +186,7 @@ export class ExchangeDatabase {
         additionalProjection: string[] = [],
         plain = false
     ): Promise<{ [field: string]: any }> {
-        const collection = await this.mongo.collection(getCollectionName(classType));
+        const collection = await this.collection(classType);
 
         const patchStatement: { [name: string]: any } = {
             $inc: {version: +1}

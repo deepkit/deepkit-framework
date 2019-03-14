@@ -1,5 +1,5 @@
 import {Injectable, Injector} from "injection-js";
-import {ClassType} from "@marcj/marshal";
+import {ClassType} from "@marcj/estdlib";
 import {File} from "@marcj/glut-core";
 
 export class Session {

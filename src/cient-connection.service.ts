@@ -8,7 +8,7 @@ import {arrayRemoveItem} from "@marcj/estdlib";
 
 
 @Injectable()
-export class Connection {
+export class CientConnection {
     protected timeoutTimers: NodeJS.Timeout[] = [];
     protected destroyed = false;
 

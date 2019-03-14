@@ -1,17 +1,17 @@
 import * as cluster from "cluster";
-import {ClassType, getClassName} from "@marcj/marshal";
+import {ClassType, getClassName} from "@marcj/estdlib";
 import {Worker} from './worker';
 import {Provider, ReflectiveInjector} from "injection-js";
 import {FS} from "./fs";
 import {Exchange} from "./exchange";
-import {ExchangeDatabase} from "./exchange-database";
+import {ExchangeDatabase, ExchangeNotifyPolicy} from "./exchange-database";
 import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
-import {Database} from "@marcj/marshal-mongo";
-import {Mongo} from "./mongo";
+import {Database, getTypeOrmEntity} from "@marcj/marshal-mongo";
 import {Application} from "./application";
 import {applyDefaults, each, eachPair} from "@marcj/estdlib";
 import {Server} from "http";
 import {ServerOptions} from "ws";
+import {createConnection, Connection} from "typeorm";
 
 export class ApplicationServerConfig {
     server?: Server = undefined;
@@ -26,93 +26,43 @@ export class ApplicationServerConfig {
 
     mongoPort: number = 27017;
 
-    mongoDbName: string = 'kamille';
+    mongoDbName: string = 'glut';
+
+    mongoConnectionName: string = 'default';
+
+    /**
+     * Whether entity definition (mongo indices) should be synchronised on bootstrap.
+     */
+    mongoSynchronize: boolean = false;
 
     redisHost: string = 'localhost';
 
     redisPort: number = 6379;
 
-    redisPrefix: string = 'kamille';
+    redisDb: number = 0;
 
-    fsPath: string = '~/.kamille/files';
+    fsPath: string = '~/.glut/files';
 }
 
 
 export class ApplicationServer {
     protected config: ApplicationServerConfig;
-    protected injector: ReflectiveInjector;
+    protected injector?: ReflectiveInjector;
+
+    protected connection?: Connection;
 
     protected masterWorker?: Worker;
 
     constructor(
-        application: ClassType<any>,
+        protected application: ClassType<any>,
         config: ApplicationServerConfig | Partial<ApplicationServerConfig> = {},
-        serverProvider: Provider[] = [],
+        protected serverProvider: Provider[] = [],
         protected connectionProvider: Provider[] = [],
-        controllers: ClassType<any>[] = [],
-        entityChangeFeeds: ClassType<any>[] = [],
+        protected controllers: ClassType<any>[] = [],
+        protected entities: ClassType<any>[] = [],
+        protected entityChangeFeeds: ClassType<any>[] = [],
     ) {
         this.config = config instanceof ApplicationServerConfig ? config : applyDefaults(ApplicationServerConfig, config);
-
-        const baseInjectors: Provider[] = [
-            {provide: Application, useClass: application},
-            {provide: ApplicationServerConfig, useValue: this.config},
-            {provide: 'fs.path', useValue: this.config.fsPath},
-            {provide: 'redis.host', useValue: this.config.redisHost},
-            {provide: 'redis.port', useValue: this.config.redisPort},
-            {provide: 'redis.prefix', useValue: this.config.redisPrefix},
-            {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
-            {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
-            ExchangeDatabase,
-            {
-                provide: FS,
-                deps: [Exchange, ExchangeDatabase, 'fs.path'],
-                useFactory: (exchange: Exchange, database: ExchangeDatabase, fsPath: string) => new FS(exchange, database, fsPath)
-            },
-            {
-                provide: Exchange,
-                deps: ['redis.host', 'redis.port', 'redis.prefix'],
-                useFactory: (host: string, port: number, prefix: string) => new Exchange(host, port, prefix)
-            },
-            {
-                provide: Database, deps: [Mongo], useFactory: (mongo: Mongo) => {
-                    return new Database(async () => {
-                        return mongo.connect();
-                    }, mongo.dbName);
-                }
-            },
-            {
-                provide: ExchangeDatabase, deps: [Application, Mongo, Database, Exchange],
-                useFactory: (a: Application, m: Mongo, d: Database, e: Exchange) => {
-                    return new ExchangeDatabase(a, m, d, e);
-                }
-            },
-            // {provide: Injector, useFactory: () => this.injector}, doesn't work because Injector is not a class
-            {
-                provide: Mongo,
-                deps: ['mongo.host', 'mongo.dbName'],
-                useFactory: (host: string, dbName: string) => {
-                    return new Mongo(dbName, host);
-                }
-            },
-        ];
-
-        baseInjectors.push(...serverProvider);
-
-        this.injector = ReflectiveInjector.resolveAndCreate(baseInjectors);
-        const app: Application = this.injector.get(Application);
-
-        app.entityChangeFeeds.push(...entityChangeFeeds);
-
-        connectionProvider.push(...controllers);
-
-        for (const controllerClass of controllers) {
-            const options = getControllerOptions(controllerClass);
-            if (!options) {
-                throw new Error(`Controller ${getClassName(controllerClass)} has no @Controller decorator.`);
-            }
-            app.controllers[options.name] = controllerClass;
-        }
     }
 
     public static createForModule<T extends Application>(application: ClassType<T>) {
@@ -128,7 +78,15 @@ export class ApplicationServer {
     }
 
     public getApplication(): Application {
-        return this.injector.get(Application);
+        return this.getInjector().get(Application);
+    }
+
+    public getInjector(): ReflectiveInjector {
+        if (!this.injector) {
+            throw new Error('ApplicationServer not bootstrapped.');
+        }
+
+        return this.injector;
     }
 
     public async close() {
@@ -141,10 +99,11 @@ export class ApplicationServer {
         } else {
             if (this.masterWorker) {
 
-                const mongo: Mongo = this.injector.get(Mongo);
-                await mongo.disconnect();
+                if (this.connection) {
+                    this.connection.close();
+                }
 
-                const exchange: Exchange = this.injector.get(Exchange);
+                const exchange: Exchange = this.getInjector().get(Exchange);
                 await exchange.disconnect();
 
                 this.masterWorker.close();
@@ -153,16 +112,83 @@ export class ApplicationServer {
     }
 
     protected done() {
-        const app: Application = this.injector.get(Application);
-
-        for (const [name, controllerClass] of eachPair(app.controllers)) {
+        for (const [name, controllerClass] of eachPair(this.getApplication().controllers)) {
             console.log('registered controller', name, getClassName(controllerClass));
         }
 
-        console.log('Server up and running');
+        console.log(`Server up and running (connection: ${this.config.mongoConnectionName})`);
+    }
+
+    protected async bootstrap() {
+        this.connection = await createConnection({
+            type: "mongodb",
+            host: this.config.mongoHost,
+            port: this.config.mongoPort,
+            database: this.config.mongoDbName,
+            name: this.config.mongoConnectionName,
+            useNewUrlParser: true,
+            synchronize: this.config.mongoSynchronize,
+            entities: this.entities.map(v => getTypeOrmEntity(v))
+        });
+
+        const baseInjectors: Provider[] = [
+            {provide: Application, useClass: this.application},
+            {provide: ApplicationServerConfig, useValue: this.config},
+            {provide: 'fs.path', useValue: this.config.fsPath},
+            {provide: 'redis.host', useValue: this.config.redisHost},
+            {provide: 'redis.port', useValue: this.config.redisPort},
+            {provide: 'redis.db', useValue: this.config.redisDb},
+            {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
+            {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
+            {provide: Connection, useValue: this.connection},
+            {
+                provide: FS,
+                deps: [Exchange, ExchangeDatabase, 'fs.path'],
+                useFactory: (exchange: Exchange, database: ExchangeDatabase, fsPath: string) => new FS(exchange, database, fsPath)
+            },
+            {
+                provide: Exchange,
+                deps: ['redis.host', 'redis.port', 'redis.db'],
+                useFactory: (host: string, port: number, db: number) => new Exchange(host, port, db)
+            },
+            {
+                provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection, dbName) => {
+                    return new Database(connection, dbName);
+                }
+            },
+            {
+                provide: ExchangeDatabase, deps: [Application, Database, Exchange],
+                useFactory: (a: Application, d: Database, e: Exchange) => {
+                    return new ExchangeDatabase(new class implements ExchangeNotifyPolicy {
+                        notifyChanges<T>(classType: ClassType<T>): boolean {
+                            return a.notifyChanges(classType);
+                        }
+                    }, d, e);
+                }
+            },
+        ];
+
+        baseInjectors.push(...this.serverProvider);
+
+        this.injector = ReflectiveInjector.resolveAndCreate(baseInjectors);
+        const app: Application = this.injector.get(Application);
+
+        app.entityChangeFeeds.push(...this.entityChangeFeeds);
+
+        this.connectionProvider.push(...this.controllers);
+
+        for (const controllerClass of this.controllers) {
+            const options = getControllerOptions(controllerClass);
+            if (!options) {
+                throw new Error(`Controller ${getClassName(controllerClass)} has no @Controller decorator.`);
+            }
+            app.controllers[options.name] = controllerClass;
+        }
     }
 
     public async start() {
+        await this.bootstrap();
+
         process.on('unhandledRejection', error => {
             console.log(error);
             process.exit(1);
@@ -170,7 +196,7 @@ export class ApplicationServer {
 
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
-                const app: Application = this.injector.get(Application);
+                const app: Application = this.getInjector().get(Application);
                 await app.bootstrap();
 
                 for (let i = 0; i < this.config.workers; i++) {
@@ -179,7 +205,7 @@ export class ApplicationServer {
 
                 this.done();
             } else {
-                const worker = new Worker(this.injector, this.connectionProvider, {
+                const worker = new Worker(this.getInjector(), this.connectionProvider, {
                     host: this.config.host,
                     port: this.config.port,
                 });
@@ -192,7 +218,7 @@ export class ApplicationServer {
                 worker.run();
             }
         } else {
-            const app: Application = this.injector.get(Application);
+            const app: Application = this.getInjector().get(Application);
             await app.bootstrap();
 
             let options: ServerOptions = {
@@ -205,7 +231,7 @@ export class ApplicationServer {
                 };
             }
 
-            this.masterWorker = new Worker(this.injector, this.connectionProvider, options);
+            this.masterWorker = new Worker(this.getInjector(), this.connectionProvider, options);
             this.masterWorker.run();
             this.done();
         }
