@@ -128,15 +128,11 @@ export class Exchange {
     }
 
     public publish(channelName: string, message: any) {
-        // important to put that publish to next queue item,
-        // otherwise we could end up in having race conditions (especially in unit test circumstances)
-        setTimeout(() => {
-            this.redis.publish(channelName, JSON.stringify(message), (error) => {
-                if (error) {
-                    console.error(`Error publishing to '${channelName}'`, error);
-                }
-            });
-        }, 50);
+        this.redis.publish(channelName, JSON.stringify(message), (error) => {
+            if (error) {
+                console.error(`Error publishing to '${channelName}'`, error);
+            }
+        });
     }
 
     protected subscribeToMessages() {
