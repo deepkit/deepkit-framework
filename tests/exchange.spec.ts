@@ -4,8 +4,9 @@ import {Exchange} from "../src/exchange";
 import {File} from "@marcj/glut-core";
 
 test('test subscribe entity fields', async () => {
-    const exchange = new Exchange('localhost', 6379, 2);
-    await exchange.flushDb();
+    const exchange = new Exchange('localhost', 6379);
+
+    await exchange.clearEntityFields(File);
 
     {
         const subscription = await exchange.subscribeEntityFields(File, ['iteration', 'batch']);

@@ -3,7 +3,7 @@ import {FS} from "./fs";
 import {plainToClass, getEntityName} from "@marcj/marshal";
 import {Observable, Subscription} from "rxjs";
 import {convertPlainQueryToMongo, partialMongoToPlain} from "@marcj/marshal-mongo";
-import sift from "sift";
+import sift, {SiftQuery} from "sift";
 import {Collection, EntitySubject, ExchangeEntity, File, FilterQuery, IdInterface} from "@marcj/glut-core";
 import {ClassType} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
@@ -18,7 +18,7 @@ interface SentState {
 }
 
 function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index: string]: any }, query: FilterQuery<T>): boolean {
-    return sift(query, [target]).length > 0;
+    return sift(query as SiftQuery<T[]>, [target]).length > 0;
 }
 
 @Injectable()
@@ -443,7 +443,7 @@ export class EntityStorage {
                     let itemToSend = message.item;
                     if (message.type === 'patch') {
                         //message.item is not complete when message.type === 'patch', so load it
-                        itemToSend = await this.database.get(classType, {id: message.id});
+                        itemToSend = await this.database.get(classType, {id: message.id} as T);
                     }
 
                     //todo, we double convert here. first to class and when we do it again to plain

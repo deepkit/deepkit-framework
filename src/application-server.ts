@@ -39,7 +39,7 @@ export class ApplicationServerConfig {
 
     redisPort: number = 6379;
 
-    redisDb: number = 0;
+    redisPrefix: string = 'glut';
 
     fsPath: string = '~/.glut/files';
 }
@@ -137,7 +137,7 @@ export class ApplicationServer {
             {provide: 'fs.path', useValue: this.config.fsPath},
             {provide: 'redis.host', useValue: this.config.redisHost},
             {provide: 'redis.port', useValue: this.config.redisPort},
-            {provide: 'redis.db', useValue: this.config.redisDb},
+            {provide: 'redis.prefix', useValue: this.config.redisPrefix},
             {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
             {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
             {provide: Connection, useValue: this.connection},
@@ -148,8 +148,8 @@ export class ApplicationServer {
             },
             {
                 provide: Exchange,
-                deps: ['redis.host', 'redis.port', 'redis.db'],
-                useFactory: (host: string, port: number, db: number) => new Exchange(host, port, db)
+                deps: ['redis.host', 'redis.port', 'redis.prefix'],
+                useFactory: (host: string, port: number, prefix: string) => new Exchange(host, port, prefix)
             },
             {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection, dbName) => {

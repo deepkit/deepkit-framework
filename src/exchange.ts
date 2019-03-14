@@ -18,9 +18,8 @@ export class Exchange {
 
     private subscribedChannelMessages = false;
 
-    constructor(protected host: string = 'localhost', protected port: number = 6379, protected db: number = 0) {
+    constructor(protected host: string = 'localhost', protected port: number = 6379, protected prefix: string = '') {
         this.redis = createClient();
-        this.redis.select(this.db);
     }
 
     public async disconnect() {
@@ -34,8 +33,8 @@ export class Exchange {
         });
     }
 
-    public async flushDb() {
-        return new Promise((resolve, reject) => this.redis.flushdb((err) => err ? reject(err) : resolve()));
+    public async flush() {
+        return new Promise((resolve, reject) => this.redis.flushall((err) => err ? reject(err) : resolve()));
     }
 
     public getSubscriberConnection(): RedisClient {
@@ -46,7 +45,7 @@ export class Exchange {
     }
 
     public async getSubscribedEntityFields<T>(classType: ClassType<T>): Promise<string[]> {
-        const key = this.db + '/entity-field-subscription/' + getEntityName(classType);
+        const key = this.prefix + '/entity-field-subscription/' + getEntityName(classType);
         const fields: string[] = [];
 
         return new Promise<string[]>((resolve, reject) => {
@@ -69,8 +68,20 @@ export class Exchange {
         });
     }
 
+    public async del(key: string) {
+        return new Promise((resolve, reject) => {
+            this.redis.del(key, (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
+    }
+
+    public async clearEntityFields<T>(classType: ClassType<T>) {
+        return this.del(this.prefix + '/entity-field-subscription/' + getEntityName(classType));
+    }
+
     public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
-        const key = this.db + '/entity-field-subscription/' + getEntityName(classType);
+        const key = this.prefix + '/entity-field-subscription/' + getEntityName(classType);
 
         const promises: Promise<void>[] = [];
         for (const field of fields) {
@@ -97,22 +108,22 @@ export class Exchange {
     }
 
     public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
-        const channelName = this.db + '/entity/' + getEntityName(classType);
+        const channelName = this.prefix + '/entity/' + getEntityName(classType);
         return this.subscribe(channelName, cb);
     }
 
     public async publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
-        const channelName = this.db + '/entity/' + getEntityName(classType);
+        const channelName = this.prefix + '/entity/' + getEntityName(classType);
         await this.publish(channelName, message);
     }
 
     public async publishFile<T>(fileId: string, message: StreamFileResult) {
-        const channelName = this.db + '/file/' + fileId;
+        const channelName = this.prefix + '/file/' + fileId;
         await this.publish(channelName, message);
     }
 
     public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>) {
-        const channelName = this.db + '/file/' + fileId;
+        const channelName = this.prefix + '/file/' + fileId;
         return this.subscribe(channelName, cb);
     }
 
