@@ -1,11 +1,12 @@
 import 'jest';
-import {ClassType} from "@marcj/marshal";
+import {ClassType} from "@marcj/estdlib";
 import {Application, ApplicationServer, Session} from "@marcj/glut-server";
 import {SocketClient, Promisify} from "@marcj/glut-client";
 import {createServer} from "http";
 import {Observable} from "rxjs";
 import {sleep} from "@marcj/estdlib";
 import {Injector} from 'injection-js';
+import {Database} from '@marcj/marshal-mongo';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -41,6 +42,8 @@ class MyApp extends Application {
     }
 }
 
+let testId = 0;
+
 export async function createServerClientPair(
     controllers: ClassType<any>[],
     entityChangeFeeds: ClassType<any>[] = [],
@@ -54,6 +57,7 @@ export async function createServerClientPair(
 }> {
     const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
     const server = createServer();
+    testId++;
 
     await new Promise((resolve) => {
         server.listen(socketPath, function () {
@@ -61,11 +65,19 @@ export async function createServerClientPair(
         });
     });
 
+    const dbName = 'glut_tests_' + testId;
+
     const app = new ApplicationServer(MyApp, {
-        server: server
-    }, [], [], controllers, entityChangeFeeds);
+        server: server,
+        mongoDbName: dbName,
+        mongoConnectionName: dbName,
+        mongoSynchronize: false,
+    }, [], [], controllers, [], entityChangeFeeds);
 
     await app.start();
+
+    const db: Database = app.getInjector().get(Database);
+    await db.dropDatabase(dbName);
 
     const socket = new SocketClient({
         host: 'ws+unix://' + socketPath
@@ -77,6 +89,8 @@ export async function createServerClientPair(
         if (closed) {
             return;
         }
+
+        await db.dropDatabase(dbName);
         closed = true;
 
         socket.disconnect();

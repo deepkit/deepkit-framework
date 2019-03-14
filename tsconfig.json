@@ -4,10 +4,6 @@
     "target": "es2016",
     "preserveSymlinks": true
   },
-  "exclude": [
-    "**/tests/**.ts",
-    "**/*.spec.ts"
-  ],
   "include": [
     "src/",
     "node_modules/@marcj/glut-*/index.ts",

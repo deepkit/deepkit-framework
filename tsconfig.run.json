@@ -16,10 +16,6 @@
       "es2016"
     ]
   },
-  "exclude": [
-    "**/tests/**.ts",
-    "**/*.spec.ts"
-  ],
   "include": [
     "src/",
     "node_modules/@marcj/glut-*/index.ts",

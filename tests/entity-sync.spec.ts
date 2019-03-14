@@ -1,7 +1,7 @@
 import 'jest';
-import {Action, Connection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
+import {Action, CientConnection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
-import {Entity, NumberType, StringType} from '@marcj/marshal';
+import {Entity, NumberType, StringType, ID} from '@marcj/marshal';
 import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
 import uuid = require("uuid");
 import {Observable, BehaviorSubject} from 'rxjs';
@@ -16,6 +16,7 @@ global.Promise = Promise;
 
 @Entity('user')
 class User implements IdInterface {
+    @ID()
     @StringType()
     id: string = uuid();
 
@@ -46,13 +47,17 @@ test('test entity sync list', async () => {
             await this.database.add(User, new User('Guschdl'));
             await this.database.add(User, new User('Ingrid'));
 
+            const ids = await this.database.getIds(User);
+            expect(ids[0]).toBe(peter.id);
+            expect(ids.length).toBe(4);
+
             setTimeout(async () => {
                 await this.database.add(User, new User('Peter 3'));
-            }, 50);
+            }, 1000);
 
             setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
-            }, 100);
+            }, 2000);
 
             return await this.storage.find(User, {
                 name: {$regex: /Peter/}
@@ -71,15 +76,18 @@ test('test entity sync list', async () => {
 
     const users: Collection<User> = await testController.users();
     await users.readyState;
+    console.log('readyState done');
 
     expect(users.count()).toBe(2);
     expect(users.all()[0].name).toBe('Peter 1');
     expect(users.all()[1].name).toBe('Peter 2');
 
     await users.nextStateChange;
+    console.log('users.nextStateChange');
     expect(users.count()).toBe(3);
-    expect(users.all()[2].name).toBe('Peter 3');
     expect(users.all()[0].name).toBe('Peter 1');
+    expect(users.all()[1].name).toBe('Peter 2');
+    expect(users.all()[2].name).toBe('Peter 3');
 
     await users.nextStateChange;
     expect(users.count()).toBe(3);
@@ -104,11 +112,75 @@ test('test entity sync list', async () => {
     await close();
 });
 
+test('test entity sync list: remove', async () => {
+    @Controller('test')
+    class TestController {
+        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        }
+
+        @Action()
+        async users(): Promise<Collection<User>> {
+            await this.database.deleteMany(User, {});
+
+            await this.database.add(User, new User('Peter 1'));
+            await this.database.add(User, new User('Peter 2'));
+
+            return await this.storage.find(User, {
+                name: {$regex: /Peter/}
+            });
+        }
+
+        @Action()
+        async removeAll() {
+            await this.database.deleteMany(User, {});
+        }
+
+        @Action()
+        async remove(id: string) {
+            await this.database.remove(User, id);
+        }
+
+        @Action()
+        async addUser(name: string): Promise<string> {
+            const user = new User(name);
+            await this.database.add(User, user);
+            return user.id;
+        }
+    }
+
+    const {server, client, close, createControllerClient} = await createServerClientPair([TestController], [User]);
+    const testController = client.controller<TestController>('test');
+
+    const users: Collection<User> = await testController.users();
+    await users.readyState;
+
+    expect(users.count()).toBe(2);
+    expect(users.all()[0].name).toBe('Peter 1');
+    expect(users.all()[1].name).toBe('Peter 2');
+
+    const peter3Id = await testController.addUser('Peter 3');
+    await users.nextStateChange;
+    expect(users.count()).toBe(3);
+
+    //this triggers no nextStateChange as the filter doesn't match
+    await testController.addUser('Nix da');
+
+    testController.remove(peter3Id);
+    await users.nextStateChange;
+    expect(users.count()).toBe(2);
+
+    testController.removeAll();
+    await users.nextStateChange;
+    expect(users.count()).toBe(0);
+
+    await close();
+});
+
 test('test entity sync item', async () => {
     @Controller('test')
     class TestController {
         constructor(
-            private connection: Connection,
+            private connection: CientConnection,
             private storage: EntityStorage,
             private database: ExchangeDatabase,
         ) {
@@ -185,7 +257,7 @@ test('test entity sync item undefined', async () => {
     @Controller('test')
     class TestController {
         constructor(
-            private connection: Connection,
+            private connection: CientConnection,
             private storage: EntityStorage,
             private database: ExchangeDatabase,
         ) {
@@ -228,7 +300,7 @@ test('test entity sync count', async () => {
     @Controller('test')
     class TestController {
         constructor(
-            private connection: Connection,
+            private connection: CientConnection,
             private storage: EntityStorage,
             private database: ExchangeDatabase,
         ) {
