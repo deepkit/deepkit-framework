@@ -44,7 +44,7 @@ export class Database {
     public getCollection<T>(classType: ClassType<T>): Collection<T> {
         const mongoConnection = this.connection.mongoManager.queryRunner.databaseConnection;
         const db = mongoConnection.db(getDatabaseName(classType) || this.defaultDatabaseName);
-        return db.collection('asd');
+        return db.collection(this.getCollectionName(classType));
     }
 
     /**
@@ -90,7 +90,7 @@ export class Database {
     /**
      * Returns a mongodb cursor, which you can further modify and then call toArray() to retrieve the documents.
      *
-     * Use toClass=false to return the raw documents.
+     * Use toClass=false to return plain documents instead of class (faster).
      */
     public async cursor<T>(
         classType: ClassType<T>,
