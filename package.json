@@ -1,6 +1,6 @@
 {
   "name": "@marcj/marshal-mongo",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "description": "Marshal's Mongo database management.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -16,8 +16,8 @@
     "mongodb": "^3.1.13"
   },
   "dependencies": {
-    "@marcj/marshal": "^0.4.8",
     "@marcj/estdlib": "^0.1.6",
+    "@marcj/marshal": "^0.5.0",
     "mongo-uuid": "^1.0.0",
     "typeorm": "^0.2.14"
   },
