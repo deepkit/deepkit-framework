@@ -36,7 +36,7 @@ test('test file list', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController], []);
+    const {server, client, close} = await createServerClientPair('test file list', [TestController], []);
     const test = client.controller<TestController>('test');
 
     const files = await test.files();

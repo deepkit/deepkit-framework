@@ -31,7 +31,7 @@ test('test basic setup', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController]);
+    const {server, client, close} = await createServerClientPair('test basic setup', [TestController]);
     const test = client.controller<TestController>('test');
 
     const names = await test.names('d');
@@ -58,7 +58,7 @@ test('test basic promise', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController]);
+    const {server, client, close} = await createServerClientPair('test basic promise', [TestController]);
     const test = client.controller<TestController>('test');
 
     const names = await test.names('d');
@@ -109,7 +109,7 @@ test('test observable', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController]);
+    const {server, client, close} = await createServerClientPair('test observable', [TestController]);
     const test = client.controller<TestController>('test');
 
     const observable = await test.observer();

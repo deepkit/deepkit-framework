@@ -71,7 +71,7 @@ test('test entity sync list', async () => {
         }
     }
 
-    const {server, client, close, createControllerClient} = await createServerClientPair([TestController], [User]);
+    const {server, client, close, createControllerClient} = await createServerClientPair('test entity sync list', [TestController], [User]);
     const testController = client.controller<TestController>('test');
 
     const users: Collection<User> = await testController.users();
@@ -148,7 +148,7 @@ test('test entity sync list: remove', async () => {
         }
     }
 
-    const {server, client, close, createControllerClient} = await createServerClientPair([TestController], [User]);
+    const {server, client, close, createControllerClient} = await createServerClientPair('test entity sync list: remove', [TestController], [User]);
     const testController = client.controller<TestController>('test');
 
     const users: Collection<User> = await testController.users();
@@ -208,7 +208,7 @@ test('test entity sync item', async () => {
         }
     }
 
-    const {server, client, close, app} = await createServerClientPair([TestController], [User]);
+    const {server, client, close, app} = await createServerClientPair('test entity sync item', [TestController], [User]);
     const test = client.controller<TestController>('test');
 
     {
@@ -285,7 +285,7 @@ test('test entity sync item undefined', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController], [User]);
+    const {server, client, close} = await createServerClientPair('test entity sync item undefined', [TestController], [User]);
     const test = client.controller<TestController>('test');
 
     const user = await test.user();
@@ -333,7 +333,7 @@ test('test entity sync count', async () => {
         }
     }
 
-    const {server, client, close} = await createServerClientPair([TestController], [User]);
+    const {server, client, close} = await createServerClientPair('test entity sync count', [TestController], [User]);
     const test = client.controller<TestController>('test');
 
     const result = await test.userCount();

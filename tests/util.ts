@@ -42,9 +42,12 @@ class MyApp extends Application {
     }
 }
 
-let testId = 0;
+const testState = {
+    id: 0
+};
 
 export async function createServerClientPair(
+    dbTestName: string,
     controllers: ClassType<any>[],
     entityChangeFeeds: ClassType<any>[] = [],
 ): Promise<{
@@ -57,7 +60,7 @@ export async function createServerClientPair(
 }> {
     const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
     const server = createServer();
-    testId++;
+    const dbName = 'glut_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
 
     await new Promise((resolve) => {
         server.listen(socketPath, function () {
@@ -65,13 +68,12 @@ export async function createServerClientPair(
         });
     });
 
-    const dbName = 'glut_tests_' + testId;
-
     const app = new ApplicationServer(MyApp, {
         server: server,
         mongoDbName: dbName,
         mongoConnectionName: dbName,
         mongoSynchronize: false,
+        redisPrefix: dbName,
     }, [], [], controllers, [], entityChangeFeeds);
 
     await app.start();
