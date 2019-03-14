@@ -96,7 +96,6 @@ export interface ServerMessageEntityRemove extends MessageEntityBase {
 }
 
 export interface ServerMessageEntityRemoveMany  {
-    id: string;
     entityName: string;
     type: 'entity/removeMany';
     ids: string[];
