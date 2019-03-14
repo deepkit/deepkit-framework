@@ -159,7 +159,8 @@ test('test entity sync list: remove', async () => {
     expect(users.all()[0].name).toBe('Peter 1');
     expect(users.all()[1].name).toBe('Peter 2');
 
-    const peter3Id = await testController.addUser('Peter 3');
+    let peter3Id: any;
+    testController.addUser('Peter 3').then(v => peter3Id = v);
     console.log('wait peter3Id');
     await users.nextStateChange;
     expect(users.count()).toBe(3);
@@ -167,12 +168,13 @@ test('test entity sync list: remove', async () => {
     //this triggers no nextStateChange as the filter doesn't match
     await testController.addUser('Nix da');
 
-    await testController.remove(peter3Id);
+    testController.remove(peter3Id);
+
     console.log('wait remove peter3Id');
     await users.nextStateChange;
     expect(users.count()).toBe(2);
 
-    await testController.removeAll();
+    testController.removeAll();
     console.log('wait removeAll');
     await users.nextStateChange;
     expect(users.count()).toBe(0);
