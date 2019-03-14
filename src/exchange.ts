@@ -136,7 +136,7 @@ export class Exchange {
                     console.error(`Error publishing to '${channelName}'`, error);
                 }
             });
-        });
+        }, 50);
     }
 
     protected subscribeToMessages() {
