@@ -14,7 +14,7 @@ const Promise = require('bluebird');
 Promise.longStackTraces(); //needs to be disabled in production since it leaks memory
 global.Promise = Promise;
 
-jest.setTimeout(60);
+jest.setTimeout(60000);
 
 @Entity('user')
 class User implements IdInterface {
