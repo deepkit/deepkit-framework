@@ -165,7 +165,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         if (withEvent) {
             this.event.next({type: 'set', items: items});
             if (this.isLoaded) {
-                console.log('loaded set()');
                 this.loaded();
             }
         }
@@ -203,7 +202,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
             this.event.next({type: 'add', item: item});
 
             if (this.isLoaded) {
-                console.log('loaded add()');
                 this.loaded();
             }
         }
@@ -219,7 +217,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
                 if (withEvent) {
                     this.event.next({type: 'remove', id: item.id});
                     if (this.isLoaded) {
-                        console.log('loaded remove()');
                         this.loaded();
                     }
                 }
