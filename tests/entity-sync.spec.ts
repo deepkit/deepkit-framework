@@ -152,6 +152,7 @@ test('test entity sync list: remove', async () => {
     const testController = client.controller<TestController>('test');
 
     const users: Collection<User> = await testController.users();
+    console.log('wait collection');
     await users.readyState;
 
     expect(users.count()).toBe(2);
@@ -159,6 +160,7 @@ test('test entity sync list: remove', async () => {
     expect(users.all()[1].name).toBe('Peter 2');
 
     const peter3Id = await testController.addUser('Peter 3');
+    console.log('wait peter3Id');
     await users.nextStateChange;
     expect(users.count()).toBe(3);
 
@@ -166,13 +168,16 @@ test('test entity sync list: remove', async () => {
     await testController.addUser('Nix da');
 
     await testController.remove(peter3Id);
+    console.log('wait remove peter3Id');
     await users.nextStateChange;
     expect(users.count()).toBe(2);
 
     await testController.removeAll();
+    console.log('wait removeAll');
     await users.nextStateChange;
     expect(users.count()).toBe(0);
 
+    console.log('done');
     await close();
 });
 
