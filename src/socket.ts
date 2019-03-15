@@ -11,7 +11,7 @@ import {
     ServerMessageResult,
     StreamBehaviorSubject
 } from "@marcj/glut-core";
-import {applyDefaults, eachKey} from "@marcj/estdlib";
+import {applyDefaults, eachKey, isArray} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 import {tearDown} from "@marcj/estdlib-rxjs";
 
@@ -251,6 +251,25 @@ export class SocketClient {
                 args: args
             });
 
+            function deserializeResult(next: any): any {
+                if (types.returnType.type === 'Entity') {
+                    const classType = RegisteredEntities[types.returnType.entityName!];
+                    if (!classType) {
+                        reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
+                        subject.close();
+                        return;
+                    }
+
+                    if (isArray(next)) {
+                        return next.map(v => plainToClass(classType, v));
+                    } else {
+                        return plainToClass(classType, next);
+                    }
+                }
+
+                return next;
+            }
+
             subject.subscribe((reply) => {
                 if (reply.type === 'type') {
                     if (reply.returnType === 'subject') {
@@ -336,29 +355,19 @@ export class SocketClient {
                 }
 
                 if (reply.type === 'next/json') {
-                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
-                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
-                    }
-                    resolve(reply.next);
+                    resolve(deserializeResult(reply.next));
                 }
 
                 if (reply.type === 'next/observable') {
-                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
-                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
-                    }
 
                     if (subscribers[reply.subscribeId]) {
-                        subscribers[reply.subscribeId].next(reply.next);
+                        subscribers[reply.subscribeId].next(deserializeResult(reply.next));
                     }
                 }
 
                 if (reply.type === 'next/subject') {
-                    if (reply.entityName && RegisteredEntities[reply.entityName]) {
-                        reply.next = plainToClass(RegisteredEntities[reply.entityName], reply.next);
-                    }
-
                     if (streamBehaviorSubject) {
-                        streamBehaviorSubject.next(reply.next);
+                        streamBehaviorSubject.next(deserializeResult(reply.next));
                     }
                 }
 
@@ -395,6 +404,7 @@ export class SocketClient {
                         subscribers[reply.subscribeId].error(reply.error);
                     }
 
+                    delete subscribers[reply.subscribeId];
                     subject.close();
                 }
 
@@ -403,6 +413,7 @@ export class SocketClient {
                         subscribers[reply.subscribeId].complete();
                     }
 
+                    delete subscribers[reply.subscribeId];
                     subject.close();
                 }
             });
