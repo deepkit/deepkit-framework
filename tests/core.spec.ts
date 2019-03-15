@@ -1,10 +1,24 @@
 import 'jest-extended'
-import {isArray, isObject, isPlainObject, isUndefined} from "../src/core";
+import {getClassName, isArray, isObject, isPlainObject, isUndefined} from "../src/core";
 import {getPathValue, setPathValue} from "../src/core";
 
 class SimpleClass {
     constructor(public name: string){}
 }
+
+test('helper getClassName', () => {
+    class User {
+        constructor(public readonly name: string) {}
+    }
+
+    class MyError extends Error {}
+
+    expect(getClassName(new User('peter'))).toBe('User');
+    expect(getClassName(User)).toBe('User');
+
+    expect(getClassName(MyError)).toBe('MyError');
+    expect(getClassName(new MyError)).toBe('MyError');
+});
 
 test('helper isObject', () => {
     expect(isObject([])).toBeFalse();

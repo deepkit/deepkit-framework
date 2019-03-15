@@ -28,13 +28,28 @@ export interface ClassType<T> {
 }
 
 /**
+ * Returns the class name either of the class definition or of the class of an instance.
+ *
+ * Note when code is minimized/uglified this output will change. You should disable in your compile the
+ * className modification.
+ *
+ * @example
+ * ```typescript
+ * class User {}
+ *
+ * expect(getClassName(User)).toBe('User');
+ * expect(getClassName(new User())).toBe('User');
+ * ```
+ *
  * @public
  */
-export function getClassName<T>(classType: ClassType<T> | Object): string {
-    return classType['name'] || (classType.constructor ? classType.constructor.name : '');
+export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
+    const proto = classTypeOrInstance['prototype'] ? classTypeOrInstance['prototype'] : classTypeOrInstance;
+    return proto.constructor.name;
 }
 
 /**
+ * Same as getClassName but appends the propertyName.
  * @public
  */
 export function getClassPropertyName<T>(classType: ClassType<T> | Object, propertyName: string): string {
@@ -85,6 +100,8 @@ export function isFunction(obj: any): obj is Function {
 }
 
 /**
+ * Returns true for real objects: object literals ({}) or class instances (new MyClass).
+ *
  * @public
  */
 export function isObject(obj: any): obj is object {
