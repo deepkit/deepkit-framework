@@ -11,8 +11,8 @@
     "tsc-watch": "echo nothing"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.6",
-    "@marcj/estdlib-rxjs": "^0.1.6",
+    "@marcj/estdlib": "^0.1.7",
+    "@marcj/estdlib-rxjs": "^0.1.7",
     "@marcj/glut-client": "^0.0.4",
     "@marcj/glut-core": "^0.0.4",
     "@marcj/glut-server": "^0.0.4",

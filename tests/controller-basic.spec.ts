@@ -79,6 +79,7 @@ test('test basic serialisation: primitives', async () => {
     @Controller('test')
     class TestController {
         @Action()
+        @ReturnType(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', 15 as any as string, last];
         }
@@ -89,8 +90,7 @@ test('test basic serialisation: primitives', async () => {
     const test = client.controller<TestController>('test');
     const names = await test.names(16 as any as string);
 
-    //we do not convert primitives as typescript checks that already at build time.
-    expect(names).toEqual(['a', 'b', 'c', 15, 16]);
+    expect(names).toEqual(['a', 'b', 'c', "15", "16"]);
 
     await close();
 });
@@ -99,17 +99,55 @@ test('test basic serialisation return: entity', async () => {
     @Controller('test')
     class TestController {
         @Action()
+        @ReturnType(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
+
+        @Action()
+        @ReturnType(User)
+        async users(name: string): Promise<User[]> {
+            return [new User(name)];
+        }
+
+        @Action()
+        async failUser(name: string): Promise<User> {
+            return new User(name);
+        }
+
+        @Action()
+        async failObservable(name: string): Promise<Observable<User>> {
+            return new Observable((observer) => {
+                observer.next(new User(name));
+            });
+        }
     }
 
-    const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+    const {client, close} = await createServerClientPair('test basic serialisation return: entity', [TestController]);
 
     const test = client.controller<TestController>('test');
     const user = await test.user('peter');
     expect(user).toBeInstanceOf(User);
-    console.log('user', user);
+
+    const users = await test.users('peter');
+    expect(users.length).toBe(1);
+    expect(users[0]).toBeInstanceOf(User);
+
+    try {
+        await test.failUser('peter');
+        fail('Should fail');
+    } catch (e) {
+        expect(e).toMatch('Action test::failUser failed: Error: Result returns an not annotated object (User) that can not be serialized. ' +
+            'Use e.g. @ReturnType(MyClass) at your action');
+    }
+
+    try {
+        await (await test.failObservable('peter')).toPromise();
+        fail('Should fail');
+    } catch (e) {
+        expect(e).toMatch('Action test::failObservable failed: Observable returns an not annotated object (User) that can not be serialized. ' +
+            'Use e.g. @ReturnType(MyClass) at your action.');
+    }
 
     await close();
 });
@@ -123,7 +161,7 @@ test('test basic serialisation param: entity', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+    const {client, close} = await createServerClientPair('test basic serialisation param: entity', [TestController]);
 
     const test = client.controller<TestController>('test');
     const userValid = await test.user(new User('peter2'));
@@ -141,6 +179,7 @@ test('test basic promise', async () => {
         }
 
         @Action()
+        @ReturnType(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
@@ -184,6 +223,7 @@ test('test observable', async () => {
         }
 
         @Action()
+        @ReturnType(User)
         user(name: string): Observable<User> {
             return new Observable((observer) => {
                 observer.next(new User('first'));
