@@ -45,6 +45,12 @@ export interface ClientMessageId {
     id: number;
 }
 
+export interface ClientMessageActionTypes {
+    name: 'actionTypes';
+    controller: string;
+    action: string;
+}
+
 export interface ClientMessageAuthorize {
     name: 'authenticate';
     token: any;
@@ -79,9 +85,9 @@ export interface ClientMessageObservableUnsubscribe {
     subscribeId: number;
 }
 
-export type ClientMessageWithoutId = ClientMessageAuthorize | ClientMessageAction | ClientMessageEntityUnsubscribe
-                                   | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe
-                                   | ClientMessageCollectionUnsubscribe | ClientMessageSubjectUnsubscribe;
+export type ClientMessageWithoutId = ClientMessageActionTypes | ClientMessageAuthorize | ClientMessageAction | ClientMessageEntityUnsubscribe
+    | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe
+    | ClientMessageCollectionUnsubscribe | ClientMessageSubjectUnsubscribe;
 
 export type ClientMessageAll = ClientMessageWithoutId & ClientMessageId;
 
@@ -95,7 +101,7 @@ export interface ServerMessageEntityRemove extends MessageEntityBase {
     type: 'entity/remove';
 }
 
-export interface ServerMessageEntityRemoveMany  {
+export interface ServerMessageEntityRemoveMany {
     entityName: string;
     type: 'entity/removeMany';
     ids: string[];
@@ -211,7 +217,7 @@ export interface ServerMessageTypeSubject {
 }
 
 export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollection | ServerMessageTypeObservable
-                              | ServerMessageTypeEntity<IdInterface> | ServerMessageTypeSubject;
+    | ServerMessageTypeEntity<IdInterface> | ServerMessageTypeSubject;
 
 export interface ServerMessageNextJson {
     type: 'next/json';
@@ -277,7 +283,24 @@ export interface ServerMessageAuthorize {
     result: boolean;
 }
 
-export type ServerMessageResult = ServerMessageAuthorize | ServerMessageType | ServerMessageNext | ServerMessageComplete | ServerMessageError;
+export type ServerMessageActionTypeNames = 'Entity' | 'Object' | 'String' | 'Number' | 'Boolean' | 'undefined';
+
+export type ServerMessageActionType = {
+    partial: boolean,
+    type: ServerMessageActionTypeNames;
+    array: boolean;
+    entityName?: string,
+};
+
+export interface ServerMessageActionTypes {
+    type: 'actionTypes/result';
+    id: number;
+    parameters: ServerMessageActionType[];
+    returnType: ServerMessageActionType;
+}
+
+export type ServerMessageResult = ServerMessageActionTypes | ServerMessageAuthorize | ServerMessageType
+                                | ServerMessageNext | ServerMessageComplete | ServerMessageError;
 
 export interface ServerMessageChannel {
     type: 'channel';
