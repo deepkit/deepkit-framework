@@ -8,7 +8,7 @@ import {getEntityName} from "@marcj/marshal";
 import {first, map} from "rxjs/operators";
 import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";
-import {ClassType} from "@marcj/estdlib";
+import {ClassType, getClassName} from "@marcj/estdlib";
 
 export interface CollectionAdd {
     type: 'add';
@@ -41,8 +41,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     protected items: T[] = [];
     protected itemsMapped: { [id: string]: T } = {};
 
-    public readonly entityName: string;
-
     public readonly ready: Observable<void>;
     public isLoaded: boolean = false;
 
@@ -53,7 +51,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         public readonly classType: ClassType<T>,
     ) {
         super(1);
-        this.entityName = getEntityName(classType);
         this.ready = this.pipe(first(), map(() => undefined));
     }
 
@@ -186,7 +183,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public add(item: T, withEvent = true) {
         if (!item) {
-            throw new Error(`Trying to insert a ${this.entityName} collection item without value`);
+            throw new Error(`Trying to insert a ${getClassName(this.classType)} collection item without value`);
         }
 
         if (this.itemsMapped[item.id]) {

@@ -280,7 +280,7 @@ export interface ServerMessageAuthorize {
     result: boolean;
 }
 
-export type ServerMessageActionTypeNames = 'Entity' | 'Object' | 'String' | 'Number' | 'Boolean' | 'undefined';
+export type ServerMessageActionTypeNames = 'Entity' | 'Object' | 'String' | 'Date' | 'Number' | 'Boolean' | 'undefined';
 
 export type ServerMessageActionType = {
     partial: boolean,

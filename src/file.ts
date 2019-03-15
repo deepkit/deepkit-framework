@@ -49,6 +49,17 @@ export class File implements IdInterface {
 
     constructor(path: string) {
         this.path = path;
+        if (this.path.substr(0, 1) === '/') {
+            this.path = this.path.substr(1);
+        }
+    }
+
+    public getMd5(): string {
+        if (!this.md5) {
+            throw new Error('File is in streaming mode and has no md5.');
+        }
+
+        return this.md5;
     }
 
     public fork(newPath: string): File {
@@ -74,12 +85,18 @@ export class File implements IdInterface {
         return fullPath.substr(fullPath.lastIndexOf('/') + 1);
     }
 
+    /**
+     * Returns always leading slash and trailing slash.
+     */
     public getDirectory(): string {
         const fullPath = '/' + this.path;
 
         return fullPath.substr(0, fullPath.lastIndexOf('/') + 1);
     }
 
+    /**
+     * Name without slashes.
+     */
     public getDirectoryName(): string {
         const fullPath = '/' + this.path;
         const dirPath = fullPath.substr(0, fullPath.lastIndexOf('/'));
@@ -87,20 +104,12 @@ export class File implements IdInterface {
         return dirPath.substr(dirPath.lastIndexOf('/') + 1);
     }
 
-    public getDirectoryIn(dir: string = '/'): string {
-        const fullPath = '/' + this.path;
-
-        if (fullPath === dir) {
-            return '';
-        }
-
-        const rPath = fullPath.substr(dir.length);
-
-        console.log('getDirectoryIn', fullPath, dir, rPath, '----', rPath.substr(0, rPath.indexOf('/')));
-        return rPath.substr(0, rPath.indexOf('/'));
-    }
-
-    public inDirectory(dir: string = '/') {
+    /**
+     * Checks whether this file is in given directory.
+     *
+     * @param dir with leading slash and trailing slash. Same as getDirectory().
+     */
+    public inDirectory(dir: string = '/'): boolean {
         return this.getDirectory() === dir;
     }
 }
