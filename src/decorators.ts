@@ -39,6 +39,7 @@ function typeNameOf(type: TYPES): ServerMessageActionTypeNames {
     if (type === Object) return 'Object';
     if (type === String) return 'String';
     if (type === Number) return 'Number';
+    if (type === Date) return 'Date';
     if (type === Boolean) return 'Boolean';
     if (type === undefined) return 'undefined';
 
@@ -52,6 +53,7 @@ function getSafeEntityName(classType: any): string | undefined {
         || classType === Number
         || classType === Boolean
         || classType === Array
+        || classType === Date
         || classType === undefined
         || classType === Promise
         || classType === Observable

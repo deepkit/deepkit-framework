@@ -120,7 +120,7 @@ export class FS {
         return await this.database.get(File, {...filter, path});
     }
 
-    public async registerFile(md5: string, path: string, metaData?: FileMetaData) {
+    public async registerFile(md5: string, path: string, metaData?: FileMetaData): Promise<File> {
         const file = await this.database.get(File, {md5: md5});
 
         if (!file || !file.md5) {
@@ -133,6 +133,7 @@ export class FS {
             const newFile = file.fork(path);
             newFile.meta = metaData;
             await this.database.add(File, newFile);
+            return newFile;
         } else {
             throw new Error(`File with md5 '${md5}' not found (content deleted).`);
         }

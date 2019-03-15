@@ -57,6 +57,8 @@ test('test fs storage based on md5', async () => {
     expect(await fs.hasMd5InDb(md5)).toBeTrue();
     expect(await fs.hasMd5(md5)).toBeTrue();
 
+    expect((await fs.read('file2.txt'))!.toString()).toBe(content.toString());
+
     const path1 = fs.getLocalPath(file1);
     const path2 = fs.getLocalPath(file1);
 
@@ -112,6 +114,57 @@ test('test fs single deletion', async () => {
 
     expect(await fs.findOne('file1.txt')).toBeNull();
     expect(await pathExists(path1)).toBeFalse();
+
+    await disconnect();
+});
+
+test('test fs fork', async () => {
+    const [fs, disconnect] = await createFs();
+    const content = new Buffer('TestString ' + Math.random());
+    const file1 = await fs.write('file1.txt', content);
+
+    const path1 = fs.getLocalPath(file1);
+    expect(await pathExists(path1)).toBeTrue();
+
+    const file2 = await fs.registerFile(file1.md5!, 'file1-copy.txt');
+
+    const path2 = fs.getLocalPath(file1);
+    expect(path2).toBe(path1); //same path since same md5
+
+    const file2Changed = await fs.write('file1-copy.txt', 'changed');
+    expect(file2Changed.md5).not.toBe(file2.md5);
+    expect(fs.getLocalPath(file2Changed)).not.toBe(path1); //changed since new md5
+
+    await fs.removeFile(file2Changed);
+    expect(await pathExists(path1)).toBeTrue();
+
+    await fs.removeFile(file1);
+
+    expect(await fs.findOne('file1.txt')).toBeNull();
+    expect(await pathExists(path1)).toBeFalse();
+
+    await disconnect();
+});
+
+test('test fs stream', async () => {
+    const [fs, disconnect] = await createFs();
+
+    await fs.stream('filestream.txt', new Buffer('start\n'));
+
+    const file1 = await fs.findOne('filestream.txt');
+
+    expect(() => {
+        file1!.getMd5();
+    }).toThrow('File is in streaming mode');
+
+    const path1 = fs.getLocalPath(file1!);
+    expect(await pathExists(path1)).toBeTrue();
+    expect(await readFile(path1, 'utf8')).toBe('start\n');
+
+    await fs.stream('filestream.txt', new Buffer('next1\n'));
+    expect(await readFile(path1, 'utf8')).toBe('start\nnext1\n');
+
+    expect(await pathExists(path1)).toBeTrue();
 
     await disconnect();
 });

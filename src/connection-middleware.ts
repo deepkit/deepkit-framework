@@ -210,7 +210,7 @@ export class ConnectionMiddleware {
                 type: 'type',
                 id: message.id,
                 returnType: 'collection',
-                entityName: collection.entityName
+                entityName: getEntityName(collection.classType)
             });
             let nextValue: CollectionStream | undefined;
 

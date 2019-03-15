@@ -6,7 +6,7 @@ import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
 import {arrayRemoveItem, each, eachKey, isArray, isObject, isPlainObject, getClassName} from "@marcj/estdlib";
 import {getActionParameters, getActionReturnType, getActions} from "./decorators";
-import {plainToClass, RegisteredEntities, validate, classToPlain} from "@marcj/marshal";
+import {plainToClass, RegisteredEntities, validate, classToPlain, partialPlainToClass, partialClassToPlain} from "@marcj/marshal";
 import {map} from "rxjs/operators";
 
 type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMessageActionType };
@@ -66,12 +66,8 @@ export class ClientConnection {
             const message = JSON.parse(raw) as ClientMessageAll;
 
             if (message.name === 'action') {
-                // console.log('Got action', message);
-                try {
-                    this.actionSend(message, () => this.action(message.controller, message.action, message.args));
-                } catch (error) {
-                    console.log('Unhandled action error', error);
-                }
+                this.actionSend(message, () => this.action(message.controller, message.action, message.args));
+                return;
             }
 
             if (message.name === 'actionTypes') {
@@ -87,6 +83,7 @@ export class ClientConnection {
                 } catch (error) {
                     this.writer.sendError(message.id, error);
                 }
+                return;
             }
 
             if (message.name === 'authenticate') {
@@ -97,6 +94,7 @@ export class ClientConnection {
                     id: message.id,
                     result: this.sessionStack.isSet(),
                 });
+                return;
             }
 
             await this.connectionMiddleware.messageIn(message);
@@ -175,12 +173,20 @@ export class ClientConnection {
                         throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
                     }
 
-                    const errors = await validate(RegisteredEntities[type.entityName], args[i]);
-                    if (errors.length) {
-                        //todo, wrap in own ValidationError so we can serialise it better when send to the client
-                        throw new Error(`${fullName} validation failed: ` + JSON.stringify(errors));
+                    //todo, validate also partial objects, but @marcj/marshal needs an adjustments for the `validation` method to avoid Required() validator
+                    // otherwise it fails always.
+                    if (!type.partial) {
+                        const errors = await validate(RegisteredEntities[type.entityName], args[i]);
+                        if (errors.length) {
+                            //todo, wrap in own ValidationError so we can serialise it better when send to the client
+                            throw new Error(`${fullName} validation failed: ` + JSON.stringify(errors));
+                        }
                     }
-                    args[i] = plainToClass(RegisteredEntities[type.entityName], args[i]);
+                    if (type.partial) {
+                        args[i] = partialPlainToClass(RegisteredEntities[type.entityName], args[i]);
+                    } else {
+                        args[i] = plainToClass(RegisteredEntities[type.entityName], args[i]);
+                    }
                 }
             }
 
@@ -202,13 +208,20 @@ export class ClientConnection {
 
                 const converter = {
                     'Entity': (v) => {
-                        return classToPlain(RegisteredEntities[types.returnType.entityName!], v);
+                        if (types.returnType.partial) {
+                            return partialClassToPlain(RegisteredEntities[types.returnType.entityName!], v);
+                        } else {
+                            return classToPlain(RegisteredEntities[types.returnType.entityName!], v);
+                        }
                     },
                     'Boolean': (v) => {
                         return Boolean(v);
                     },
                     'Number': (v) => {
                         return Number(v);
+                    },
+                    'Date': (v) => {
+                        return v;
                     },
                     'String': (v) => {
                         return String(v);
@@ -224,7 +237,11 @@ export class ClientConnection {
                     }
 
                     if (isObject(v) && !isPlainObject(v)) {
-                        throw new Error(`${prefix} returns an not annotated object (${getClassName(v)}) that can not be serialized. Use e.g. @ReturnType(MyClass) at your action.`);
+                        throw new Error(`${prefix} returns an not annotated custom class instance (${getClassName(v)}) that can not be serialized.\n` +
+                            `Use e.g. @ReturnType(MyClass) at your action.`);
+                    } else if (isObject(v)) {
+                        throw new Error(`${prefix} returns an not annotated object literal that can not be serialized.\n` +
+                            `Use either @ReturnPlainObject() to avoid serialisation, or (better) create an entity and use @ReturnType(MyEntity) at your action.`);
                     }
                 }
 
@@ -245,6 +262,12 @@ export class ClientConnection {
                 }
 
                 if (types.returnType.type === 'undefined') {
+                    checkForNonObjects(result);
+
+                    return result;
+                }
+
+                if (types.returnType.type === 'Object') {
                     checkForNonObjects(result);
 
                     return result;

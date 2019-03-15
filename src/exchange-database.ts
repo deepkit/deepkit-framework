@@ -227,6 +227,7 @@ export class ExchangeDatabase {
             returnOriginal: false
         });
 
+        console.log('patch done', response);
         const doc = response.value;
 
         if (!doc) {
