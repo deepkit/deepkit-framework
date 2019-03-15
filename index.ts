@@ -1,6 +1,6 @@
 export * from './src/application-server';
 export * from './src/application';
-export * from './src/cient-connection.service';
+export * from './src/client-connection';
 export * from './src/decorators';
 export * from './src/entity-storage';
 export * from './src/exchange-database';

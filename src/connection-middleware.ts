@@ -1,7 +1,7 @@
 import {EntityStorage} from "./entity-storage";
 import {ClientMessageAll, Collection, CollectionStream, EntitySubject, StreamBehaviorSubject} from "@marcj/glut-core";
 import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
-import {each, ClassType} from "@marcj/estdlib";
+import {ClassType, each} from "@marcj/estdlib";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {Injectable} from "injection-js";
@@ -116,7 +116,7 @@ export class ConnectionMiddleware {
         }
     }
 
-    public async messageOut(message: ClientMessageAll, result: any) {
+    public async actionMessageOut(message: ClientMessageAll, result: any) {
         // console.log('messageOut', {
         //     EntitySubject: result instanceof EntitySubject,
         //     StreamBehaviorSubject: result instanceof StreamBehaviorSubject,

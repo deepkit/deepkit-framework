@@ -2,7 +2,7 @@ import * as WebSocket from "ws";
 import {ServerOptions} from "ws";
 import {Provider, ReflectiveInjector} from "injection-js";
 import {SessionStack} from "./application";
-import {CientConnection} from "./cient-connection.service";
+import {ClientConnection} from "./client-connection";
 import {EntityStorage} from "./entity-storage";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
@@ -33,7 +33,7 @@ export class Worker {
                 {provide: 'socket', useValue: socket},
                 EntityStorage,
                 SessionStack,
-                CientConnection,
+                ClientConnection,
                 ConnectionMiddleware,
                 ConnectionWriter
             ];
@@ -41,7 +41,7 @@ export class Worker {
             provider.push(...this.connectionProvider);
 
             injector = this.mainInjector.resolveAndCreateChild(provider);
-            const connection: CientConnection = injector.get(CientConnection);
+            const connection: ClientConnection = injector.get(ClientConnection);
 
             socket.on('message', async (raw: string) => {
                 try {
