@@ -1,3 +1,4 @@
+import 'jest';
 import {
     Action,
     Controller,
@@ -114,32 +115,6 @@ test('decorators actions parameters', () => {
     }
 });
 
-//it destroys UX when we enforce @ReturnType on array/promise/observable
-// test('decorators actions invalid returnType array', () => {
-//     class MyController {
-//         @Action()
-//         createUser(): string[] {
-//             return ['d'];
-//         }
-//     }
-//
-//     {
-//         expect(() => {
-//             getActionReturnType(MyController, 'createUser');
-//         }).toThrowError('MyController::createUser returns an Array. You need to specify it\'s content using e.g. @ReturnType(String).');
-//     }
-//
-//     class MyController2 {
-//         @Action()
-//         @ReturnType(String)
-//         createUser(): string[] {
-//             return ['d'];
-//         }
-//     }
-//
-//     expect(getActionReturnType(MyController2, 'createUser').type).toBe('String');
-// });
-
 test('decorators actions invalid returnType entity', () => {
     class User {
     }
@@ -181,7 +156,7 @@ test('decorators actions invalid parameterType array', () => {
     expect(getActionParameters(MyController2, 'createUser')[0].type).toBe('String');
 });
 
-test('decorators actions valid undefined returnType', () => {
+test('decorators actions valid uncomplete returnType', () => {
     class MyController {
         @Action()
         stringArray(): string[] {
@@ -205,13 +180,8 @@ test('decorators actions valid undefined returnType', () => {
             });
         }
     }
-
-    expect(getActionReturnType(MyController, 'stringArray').array).toBe(true);
     expect(getActionReturnType(MyController, 'stringArray').type).toBe('undefined');
-
-    expect(getActionReturnType(MyController, 'numberArray').array).toBe(true);
     expect(getActionReturnType(MyController, 'numberArray').type).toBe('undefined');
-
     expect(getActionReturnType(MyController, 'promise').type).toBe('undefined');
     expect(getActionReturnType(MyController, 'observable').type).toBe('undefined');
 });
@@ -232,6 +202,11 @@ test('decorators actions valid defined returnType', () => {
         }
 
         @Action()
+        obj(): object {
+            return {};
+        }
+
+        @Action()
         @ReturnType(Number)
         async promise(): Promise<number[]> {
             return [];
@@ -248,6 +223,8 @@ test('decorators actions valid defined returnType', () => {
 
     expect(getActionReturnType(MyController, 'stringArray').array).toBe(true);
     expect(getActionReturnType(MyController, 'stringArray').type).toBe('String');
+
+    expect(getActionReturnType(MyController, 'obj').type).toBe('Object');
 
     expect(getActionReturnType(MyController, 'numberArray').array).toBe(true);
     expect(getActionReturnType(MyController, 'numberArray').type).toBe('Number');

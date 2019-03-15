@@ -1,12 +1,13 @@
 import {Injectable, Injector} from "injection-js";
 import {Observable} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ClientMessageAll, ServerMessageActionType} from "@marcj/glut-core";
+import {ClientMessageAll, Collection, EntitySubject, ServerMessageActionType} from "@marcj/glut-core";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
-import {arrayRemoveItem, each, eachKey} from "@marcj/estdlib";
+import {arrayRemoveItem, each, eachKey, isArray, isObject, isPlainObject, getClassName} from "@marcj/estdlib";
 import {getActionParameters, getActionReturnType, getActions} from "./decorators";
-import {plainToClass, RegisteredEntities, validate} from "@marcj/marshal";
+import {plainToClass, RegisteredEntities, validate, classToPlain} from "@marcj/marshal";
+import {map} from "rxjs/operators";
 
 type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMessageActionType };
 
@@ -176,7 +177,7 @@ export class ClientConnection {
 
                     const errors = await validate(RegisteredEntities[type.entityName], args[i]);
                     if (errors.length) {
-                        //todo, wrapp in own ValidationError so we can serialise it better when send to the client
+                        //todo, wrap in own ValidationError so we can serialise it better when send to the client
                         throw new Error(`${fullName} validation failed: ` + JSON.stringify(errors));
                     }
                     args[i] = plainToClass(RegisteredEntities[type.entityName], args[i]);
@@ -184,30 +185,89 @@ export class ClientConnection {
             }
 
             try {
-                return (controllerInstance as any)[methodName](...args);
+                let result = (controllerInstance as any)[methodName](...args);
+
+                if (typeof (result as any)['then'] === 'function') {
+                    // console.log('its an Promise');
+                    result = await result;
+                }
+
+                if (result instanceof EntitySubject) {
+                    return result;
+                }
+
+                if (result instanceof Collection) {
+                    return result;
+                }
+
+                const converter = {
+                    'Entity': (v) => {
+                        return classToPlain(RegisteredEntities[types.returnType.entityName!], v);
+                    },
+                    'Boolean': (v) => {
+                        return Boolean(v);
+                    },
+                    'Number': (v) => {
+                        return Number(v);
+                    },
+                    'String': (v) => {
+                        return String(v);
+                    },
+                    'Object': (v) => {
+                        return v;
+                    }
+                };
+
+                function checkForNonObjects(v: any, prefix: string = 'Result') {
+                    if (isArray(v) && v[0]) {
+                        v = v[0];
+                    }
+
+                    if (isObject(v) && !isPlainObject(v)) {
+                        throw new Error(`${prefix} returns an not annotated object (${getClassName(v)}) that can not be serialized. Use e.g. @ReturnType(MyClass) at your action.`);
+                    }
+                }
+
+                if (result instanceof Observable) {
+                    return result.pipe(map((v) => {
+                        if (types.returnType.type === 'undefined') {
+                            checkForNonObjects(v, `Action ${fullName} failed: Observable`);
+
+                            return v;
+                        }
+
+                        if (isArray(v)) {
+                            return v.map(j => converter[types.returnType.type](j));
+                        }
+
+                        return converter[types.returnType.type](v);
+                    }));
+                }
+
+                if (types.returnType.type === 'undefined') {
+                    checkForNonObjects(result);
+
+                    return result;
+                }
+
+                if (isArray(result)) {
+                    return result.map(v => converter[types.returnType.type](v));
+                }
+
+                return converter[types.returnType.type](result);
             } catch (error) {
                 // possible security whole, when we send all errors.
-                console.error(error);
                 throw new Error(`Action ${fullName} failed: ${error}`);
             }
         }
 
-        console.error('Action unknown', fullName);
         throw new Error(`Action unknown ${fullName}`);
     }
 
     public async actionSend(message: ClientMessageAll, exec: (() => Promise<any> | Observable<any>)) {
         try {
-            let result = exec();
-
-            if (typeof (result as any)['then'] === 'function') {
-                // console.log('its an Promise');
-                result = await result;
-            }
-
-            await this.connectionMiddleware.actionMessageOut(message, result);
+            await this.connectionMiddleware.actionMessageOut(message, await exec());
         } catch (error) {
-            console.log('Worker execution error', message, error);
             await this.writer.sendError(message.id, error);
         }
     }

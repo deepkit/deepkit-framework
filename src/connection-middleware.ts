@@ -1,7 +1,7 @@
 import {EntityStorage} from "./entity-storage";
 import {ClientMessageAll, Collection, CollectionStream, EntitySubject, StreamBehaviorSubject} from "@marcj/glut-core";
 import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
-import {ClassType, each} from "@marcj/estdlib";
+import {ClassType, each, isObject, isPlainObject, getClassName} from "@marcj/estdlib";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {Injectable} from "injection-js";
@@ -84,22 +84,35 @@ export class ConnectionMiddleware {
             }
 
             this.observables[message.id].subscriber[message.subscribeId] = this.observables[message.id].observable.subscribe((next) => {
-                const entityName = getSafeEntityName(next);
-                if (entityName && RegisteredEntities[entityName]) {
-                    next = classToPlain(RegisteredEntities[entityName], next);
+                //todo, redo with types.returnType
+                // const entityName = getSafeEntityName(next);
+                // if (entityName && RegisteredEntities[entityName]) {
+                //     next = classToPlain(RegisteredEntities[entityName], next);
+                // }
+
+                if (isObject(next) && !isPlainObject(next)) {
+                    console.warn(`Warning: you are sending an object (${getClassName(next)}) without serialising it using @Entity.`);
                 }
 
                 this.writer.write({
                     type: 'next/observable',
                     id: message.id,
                     subscribeId: message.subscribeId,
-                    entityName: entityName,
                     next: next
                 });
             }, (error) => {
-                this.writer.sendError(message.id, error);
+                this.writer.write({
+                    type: 'error/observable',
+                    id: message.id,
+                    error: error.message || error,
+                    subscribeId: message.subscribeId
+                });
             }, () => {
-                this.writer.complete(message.id);
+                this.writer.write({
+                    type: 'complete/observable',
+                    id: message.id,
+                    subscribeId: message.subscribeId
+                });
             });
         }
 
@@ -180,7 +193,6 @@ export class ConnectionMiddleware {
                 this.writer.write({
                     type: 'next/subject',
                     id: message.id,
-                    entityName: entityName,
                     next: entityName ? classToPlain(item.constructor, item) : item
                 });
             }, (error) => {
@@ -264,13 +276,8 @@ export class ConnectionMiddleware {
             this.writer.write({type: 'type', id: message.id, returnType: 'observable'});
             this.observables[message.id] = {observable: result, subscriber: {}};
         } else {
-            let next = result;
-            const entityName = getSafeEntityName(next);
-            if (entityName && RegisteredEntities[entityName]) {
-                next = classToPlain(RegisteredEntities[entityName], next);
-            }
             this.writer.write({type: 'type', id: message.id, returnType: 'json'});
-            this.writer.write({type: 'next/json', id: message.id, entityName: entityName, next: next});
+            this.writer.write({type: 'next/json', id: message.id, next: result});
             this.writer.complete(message.id);
         }
     }

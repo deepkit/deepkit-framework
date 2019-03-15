@@ -73,24 +73,6 @@ export function getActionReturnType<T>(target: ClassType<T>, method: string): Se
         partial: true
     };
 
-    //destroys UX at the moment
-    // if (!meta && returnType === Array) {
-    //     throw Error(`${getClassName(target)}::${method} returns an Array. You need to specify it's content using e.g. @ReturnType(String).`);
-    // }
-    //
-    // if (!meta && returnType === Object) {
-    //     throw Error(`${getClassName(target)}::${method} returns an Object with unknown structure. Define an entity and use @ReturnType(MyEntity).`);
-    // }
-    //
-    // if (!meta && returnType === Observable) {
-    //     throw Error(`${getClassName(target)}::${method} returns an Observable with unknown structure. You need to specify it's content using e.g. @ReturnType(String).`);
-    // }
-    //
-    // if (!meta && returnType === Promise) {
-    //     throw Error(`${getClassName(target)}::${method} returns an Promise with unknown structure. You need to specify it's content using e.g. @ReturnType(String).`);
-    // }
-
-
     if (meta) {
         const typeName = typeNameOf(meta.type);
         try {
@@ -132,6 +114,10 @@ export function getActionReturnType<T>(target: ClassType<T>, method: string): Se
 }
 
 export function getActionParameters<T>(target: ClassType<T>, method: string): ServerMessageActionType[] {
+    if (!target || !target.prototype) {
+        throw new Error('Target is undefined or has no prototype.');
+    }
+
     const paramTypes = Reflect.getMetadata('design:paramtypes', target.prototype, method);
 
     if (!paramTypes) {
