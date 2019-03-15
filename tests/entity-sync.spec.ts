@@ -1,5 +1,5 @@
 import 'jest';
-import {Action, CientConnection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
+import {Action, ClientConnection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
 import {Entity, NumberType, StringType, ID} from '@marcj/marshal';
 import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
@@ -187,7 +187,7 @@ test('test entity sync item', async () => {
     @Controller('test')
     class TestController {
         constructor(
-            private connection: CientConnection,
+            private connection: ClientConnection,
             private storage: EntityStorage,
             private database: ExchangeDatabase,
         ) {
@@ -264,7 +264,7 @@ test('test entity sync item undefined', async () => {
     @Controller('test')
     class TestController {
         constructor(
-            private connection: CientConnection,
+            private connection: ClientConnection,
             private storage: EntityStorage,
             private database: ExchangeDatabase,
         ) {
@@ -303,7 +303,7 @@ test('test entity sync count', async () => {
     @Controller('test')
     class TestController {
         constructor(
-            private connection: CientConnection,
+            private connection: ClientConnection,
             private storage: EntityStorage,
             private database: ExchangeDatabase,
         ) {

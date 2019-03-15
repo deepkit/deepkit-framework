@@ -1,5 +1,5 @@
 import 'jest';
-import {Action, Controller} from "@marcj/glut-server";
+import {Action, Controller, ReturnType} from "@marcj/glut-server";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
@@ -21,6 +21,7 @@ test('test basic setup', async () => {
     @Controller('test')
     class TestController {
         @Action()
+        @ReturnType(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }
@@ -32,6 +33,35 @@ test('test basic setup', async () => {
     }
 
     const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+    {
+        const types = await client.getActionTypes('test', 'names');
+        expect(types.parameters[0]).toEqual({
+            partial: false,
+            type: 'String',
+            array: false,
+        });
+        expect(types.returnType).toEqual({
+            partial: false,
+            type: 'String',
+            array: true,
+        });
+    }
+
+    {
+        const types = await client.getActionTypes('test', 'user');
+        expect(types.parameters[0]).toEqual({
+            partial: false,
+            type: 'String',
+            array: false,
+        });
+        expect(types.returnType).toEqual({
+            partial: false,
+            type: 'Entity',
+            entityName: 'user',
+            array: false,
+        });
+    }
+
     const test = client.controller<TestController>('test');
 
     const names = await test.names('d');
@@ -40,6 +70,64 @@ test('test basic setup', async () => {
     const user = await test.user('pete');
     expect(user).toBeInstanceOf(User);
     expect(user.name).toEqual('pete');
+
+    await close();
+});
+
+
+test('test basic serialisation: primitives', async () => {
+    @Controller('test')
+    class TestController {
+        @Action()
+        names(last: string): string[] {
+            return ['a', 'b', 'c', 15 as any as string, last];
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+
+    const test = client.controller<TestController>('test');
+    const names = await test.names(16 as any as string);
+
+    //we do not convert primitives as typescript checks that already at build time.
+    expect(names).toEqual(['a', 'b', 'c', 15, 16]);
+
+    await close();
+});
+
+test('test basic serialisation return: entity', async () => {
+    @Controller('test')
+    class TestController {
+        @Action()
+        async user(name: string): Promise<User> {
+            return new User(name);
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+
+    const test = client.controller<TestController>('test');
+    const user = await test.user('peter');
+    expect(user).toBeInstanceOf(User);
+    console.log('user', user);
+
+    await close();
+});
+
+test('test basic serialisation param: entity', async () => {
+    @Controller('test')
+    class TestController {
+        @Action()
+        user(user: User): boolean {
+            return user instanceof User && user.name === 'peter2';
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+
+    const test = client.controller<TestController>('test');
+    const userValid = await test.user(new User('peter2'));
+    expect(userValid).toBe(true);
 
     await close();
 });
