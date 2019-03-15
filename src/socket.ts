@@ -1,6 +1,6 @@
 import {Observable, Subject, Subscriber, TeardownLogic} from "rxjs";
 import {first} from "rxjs/operators";
-import {classToPlain, plainToClass, RegisteredEntities} from "@marcj/marshal";
+import {classToPlain, plainToClass, RegisteredEntities, partialClassToPlain, partialPlainToClass} from "@marcj/marshal";
 import {
     ClientMessageAll,
     ClientMessageWithoutId,
@@ -222,201 +222,227 @@ export class SocketClient {
 
     public async stream(controller: string, name: string, ...args: any[]): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
-            //todo, handle reject when we sending message fails
+            try {
+                //todo, handle reject when we sending message fails
 
-            let returnValue: any;
+                let returnValue: any;
 
-            const self = this;
-            const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
-            let subscriberIdCounter = 0;
-            let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
+                const self = this;
+                const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
+                let subscriberIdCounter = 0;
+                let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
-            const types = await this.getActionTypes(controller, name);
+                const types = await this.getActionTypes(controller, name);
 
-            for (const i of eachKey(args)) {
-                const type = types.parameters[i];
-                if (type.type === 'Entity' && type.entityName) {
-                    if (!RegisteredEntities[type.entityName]) {
-                        throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
-                    }
+                for (const i of eachKey(args)) {
+                    const type = types.parameters[i];
+                    if (type.type === 'Entity' && type.entityName) {
+                        if (!RegisteredEntities[type.entityName]) {
+                            throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
+                        }
 
-                    args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
-                }
-            }
-
-            const subject = this.sendMessage({
-                name: 'action',
-                controller: controller,
-                action: name,
-                args: args
-            });
-
-            function deserializeResult(next: any): any {
-                if (types.returnType.type === 'Entity') {
-                    const classType = RegisteredEntities[types.returnType.entityName!];
-                    if (!classType) {
-                        reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                        subject.close();
-                        return;
-                    }
-
-                    if (isArray(next)) {
-                        return next.map(v => plainToClass(classType, v));
-                    } else {
-                        return plainToClass(classType, next);
+                        if (type.partial) {
+                            args[i] = partialClassToPlain(RegisteredEntities[type.entityName], args[i]);
+                        } else {
+                            args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
+                        }
                     }
                 }
 
-                return next;
-            }
+                const subject = this.sendMessage({
+                    name: 'action',
+                    controller: controller,
+                    action: name,
+                    args: args
+                });
 
-            subject.subscribe((reply) => {
-                if (reply.type === 'type') {
-                    if (reply.returnType === 'subject') {
-                        streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
-                        resolve(streamBehaviorSubject);
+                function deserializeResult(next: any): any {
+                    if (types.returnType.type === 'Date') {
+                        return new Date(next);
                     }
 
-                    if (reply.returnType === 'entity') {
-                        if (reply.item) {
-                            const classType = RegisteredEntities[reply.entityName || ''];
+                    if (types.returnType.type === 'Entity') {
+                        const classType = RegisteredEntities[types.returnType.entityName!];
 
+                        if (!classType) {
+                            reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
+                            subject.close();
+                            return;
+                        }
+
+                        if (types.returnType.partial) {
+                            if (isArray(next)) {
+                                return next.map(v => partialPlainToClass(classType, v));
+                            } else {
+                                return partialPlainToClass(classType, next);
+                            }
+                        } else {
+                            if (isArray(next)) {
+                                return next.map(v => plainToClass(classType, v));
+                            } else {
+                                return plainToClass(classType, next);
+                            }
+                        }
+                    }
+
+                    return next;
+                }
+
+                subject.subscribe((reply) => {
+                    if (reply.type === 'type') {
+                        if (reply.returnType === 'subject') {
+                            streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
+                            resolve(streamBehaviorSubject);
+                        }
+
+                        if (reply.returnType === 'entity') {
+                            if (reply.item) {
+                                const classType = RegisteredEntities[reply.entityName || ''];
+
+                                if (!classType) {
+                                    throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
+                                }
+
+                                if (this.entityState.hasEntitySubject(classType, reply.item.id)) {
+                                    const subject = this.entityState.handleEntity(classType, reply.item);
+                                    resolve(subject);
+                                } else {
+                                    //it got created, so we subscribe only once to notify server about
+                                    //unused EntitySubject when completed.
+                                    const subject = this.entityState.handleEntity(classType, reply.item);
+                                    subject.addTearDown(() => {
+                                        //user unsubscribed the entity subject, so we stop syncing changes
+                                        self.send({
+                                            id: reply.id,
+                                            name: 'entity/unsubscribe'
+                                        });
+                                    });
+
+                                    resolve(subject);
+                                }
+                            } else {
+                                resolve(new EntitySubject(undefined));
+                            }
+                        }
+
+                        if (reply.returnType === 'observable') {
+                            returnValue = new Observable((observer) => {
+                                const subscriberId = ++subscriberIdCounter;
+
+                                subscribers[subscriberId] = observer;
+
+                                self.send({
+                                    id: reply.id,
+                                    name: 'observable/subscribe',
+                                    subscribeId: subscriberId
+                                });
+
+                                return {
+                                    unsubscribe(): void {
+                                        self.send({
+                                            id: reply.id,
+                                            name: 'observable/unsubscribe',
+                                            subscribeId: subscriberId
+                                        });
+                                    }
+                                };
+                            });
+                            resolve(returnValue);
+                        }
+
+                        if (reply.returnType === 'collection') {
+                            const classType = RegisteredEntities[reply.entityName];
                             if (!classType) {
                                 throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                             }
 
-                            if (this.entityState.hasEntitySubject(classType, reply.item.id)) {
-                                const subject = this.entityState.handleEntity(classType, reply.item);
-                                resolve(subject);
-                            } else {
-                                //it got created, so we subscribe only once to notify server about
-                                //unused EntitySubject when completed.
-                                const subject = this.entityState.handleEntity(classType, reply.item);
-                                subject.addTearDown(() => {
-                                    //user unsubscribed the entity subject, so we stop syncing changes
-                                    self.send({
-                                        id: reply.id,
-                                        name: 'entity/unsubscribe'
-                                    });
+                            const collection = new Collection<any>(classType);
+                            returnValue = collection;
+
+                            collection.addTeardown(() => {
+                                this.entityState.unsubscribeCollection(collection);
+
+                                //collection unsubscribed, so we stop syncing changes
+                                self.send({
+                                    id: reply.id,
+                                    name: 'collection/unsubscribe'
                                 });
+                            });
+                            resolve(collection);
+                        }
+                    }
 
-                                resolve(subject);
-                            }
+                    if (reply.type === 'next/json') {
+                        resolve(deserializeResult(reply.next));
+                    }
+
+                    if (reply.type === 'next/observable') {
+
+                        if (subscribers[reply.subscribeId]) {
+                            subscribers[reply.subscribeId].next(deserializeResult(reply.next));
+                        }
+                    }
+
+                    if (reply.type === 'next/subject') {
+                        if (streamBehaviorSubject) {
+                            streamBehaviorSubject.next(deserializeResult(reply.next));
+                        }
+                    }
+
+                    if (reply.type === 'next/collection') {
+                        this.entityState.handleCollectionNext(returnValue, reply.next);
+                    }
+
+                    if (reply.type === 'complete') {
+                        if (returnValue instanceof Collection) {
+                            returnValue.complete();
+                        }
+
+                        if (streamBehaviorSubject) {
+                            streamBehaviorSubject.complete();
+                        }
+
+                        subject.close();
+                    }
+
+                    if (reply.type === 'error') {
+                        //todo, try to find a way to get correct Error instance as well.
+                        const error = new Error(reply.error);
+
+                        if (returnValue instanceof Collection) {
+                            returnValue.error(error);
+                        } else if (streamBehaviorSubject) {
+                            streamBehaviorSubject.error(error);
                         } else {
-                            resolve(new EntitySubject(undefined));
-                        }
-                    }
-
-                    if (reply.returnType === 'observable') {
-                        returnValue = new Observable((observer) => {
-                            const subscriberId = ++subscriberIdCounter;
-
-                            subscribers[subscriberId] = observer;
-
-                            self.send({
-                                id: reply.id,
-                                name: 'observable/subscribe',
-                                subscribeId: subscriberId
-                            });
-
-                            return {
-                                unsubscribe(): void {
-                                    self.send({
-                                        id: reply.id,
-                                        name: 'observable/unsubscribe',
-                                        subscribeId: subscriberId
-                                    });
-                                }
-                            };
-                        });
-                        resolve(returnValue);
-                    }
-
-                    if (reply.returnType === 'collection') {
-                        const classType = RegisteredEntities[reply.entityName];
-                        if (!classType) {
-                            throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
+                            reject(error);
                         }
 
-                        const collection = new Collection<any>(classType);
-                        returnValue = collection;
-
-                        collection.addTeardown(() => {
-                            this.entityState.unsubscribeCollection(collection);
-
-                            //collection unsubscribed, so we stop syncing changes
-                            self.send({
-                                id: reply.id,
-                                name: 'collection/unsubscribe'
-                            });
-                        });
-                        resolve(collection);
-                    }
-                }
-
-                if (reply.type === 'next/json') {
-                    resolve(deserializeResult(reply.next));
-                }
-
-                if (reply.type === 'next/observable') {
-
-                    if (subscribers[reply.subscribeId]) {
-                        subscribers[reply.subscribeId].next(deserializeResult(reply.next));
-                    }
-                }
-
-                if (reply.type === 'next/subject') {
-                    if (streamBehaviorSubject) {
-                        streamBehaviorSubject.next(deserializeResult(reply.next));
-                    }
-                }
-
-                if (reply.type === 'next/collection') {
-                    this.entityState.handleCollectionNext(returnValue, reply.next);
-                }
-
-                if (reply.type === 'complete') {
-                    if (returnValue instanceof Collection) {
-                        returnValue.complete();
+                        subject.close();
                     }
 
-                    if (streamBehaviorSubject) {
-                        streamBehaviorSubject.complete();
+                    if (reply.type === 'error/observable') {
+                        //todo, try to find a way to get correct Error instance as well.
+                        const error = new Error(reply.error);
+                        if (subscribers[reply.subscribeId]) {
+                            subscribers[reply.subscribeId].error(error);
+                        }
+
+                        delete subscribers[reply.subscribeId];
+                        subject.close();
                     }
 
-                    subject.close();
-                }
+                    if (reply.type === 'complete/observable') {
+                        if (subscribers[reply.subscribeId]) {
+                            subscribers[reply.subscribeId].complete();
+                        }
 
-                if (reply.type === 'error') {
-                    if (returnValue instanceof Collection) {
-                        returnValue.error(reply.error);
-                    } else if (streamBehaviorSubject) {
-                        streamBehaviorSubject.error(reply.error);
-                    } else {
-                        reject(reply.error);
+                        delete subscribers[reply.subscribeId];
+                        subject.close();
                     }
-
-                    subject.close();
-                }
-
-                if (reply.type === 'error/observable') {
-                    if (subscribers[reply.subscribeId]) {
-                        subscribers[reply.subscribeId].error(reply.error);
-                    }
-
-                    delete subscribers[reply.subscribeId];
-                    subject.close();
-                }
-
-                if (reply.type === 'complete/observable') {
-                    if (subscribers[reply.subscribeId]) {
-                        subscribers[reply.subscribeId].complete();
-                    }
-
-                    delete subscribers[reply.subscribeId];
-                    subject.close();
-                }
-            });
+                });
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
