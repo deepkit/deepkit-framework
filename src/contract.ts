@@ -223,7 +223,6 @@ export interface ServerMessageNextJson {
     type: 'next/json';
     id: number;
     next: any;
-    entityName?: string;
 }
 
 export interface ServerMessageNextObservable {
@@ -231,14 +230,12 @@ export interface ServerMessageNextObservable {
     id: number;
     next: any;
     subscribeId: number;
-    entityName?: string;
 }
 
 export interface ServerMessageNextSubject {
     type: 'next/subject';
     id: number;
     next: any;
-    entityName?: string;
 }
 
 export interface ServerMessageNextCollection {
