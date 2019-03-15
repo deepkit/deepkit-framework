@@ -1,9 +1,9 @@
 import 'jest';
-import {Action, Controller, ReturnType} from "@marcj/glut-server";
+import {Action, Controller, PartialEntityReturnType, PartialParamType, ReturnType} from "@marcj/glut-server";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
-import {Entity, StringType} from '@marcj/marshal';
+import {Entity, StringType, DateType} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
 global['WebSocket'] = require('ws');
 
@@ -137,15 +137,15 @@ test('test basic serialisation return: entity', async () => {
         await test.failUser('peter');
         fail('Should fail');
     } catch (e) {
-        expect(e).toMatch('Action test::failUser failed: Error: Result returns an not annotated object (User) that can not be serialized. ' +
-            'Use e.g. @ReturnType(MyClass) at your action');
+        expect(e.message).toMatch('Action test::failUser failed: Error: Result returns an not annotated custom class instance (User) that can not be serialized.\n' +
+            'Use e.g. @ReturnType(MyClass) at your action.');
     }
 
     try {
         await (await test.failObservable('peter')).toPromise();
         fail('Should fail');
     } catch (e) {
-        expect(e).toMatch('Action test::failObservable failed: Observable returns an not annotated object (User) that can not be serialized. ' +
+        expect(e.message).toMatch('Action test::failObservable failed: Observable returns an not annotated custom class instance (User) that can not be serialized.\n' +
             'Use e.g. @ReturnType(MyClass) at your action.');
     }
 
@@ -166,6 +166,83 @@ test('test basic serialisation param: entity', async () => {
     const test = client.controller<TestController>('test');
     const userValid = await test.user(new User('peter2'));
     expect(userValid).toBe(true);
+
+    await close();
+});
+
+test('test basic serialisation partial param: entity', async () => {
+    @Entity('user3')
+    class User {
+        @StringType()
+        name: string;
+
+        @StringType()
+        defaultVar = 'yes';
+
+        @DateType()
+        birthdate?: Date;
+
+        constructor(name: string) {
+            this.name = name;
+        }
+    }
+
+    @Controller('test')
+    class TestController {
+        @Action()
+        failUser(user: Partial<User>) {
+        }
+
+        @Action()
+        failPartialUser(name: string, date: Date): Partial<User> {
+            return {
+                name: name,
+                birthdate: date
+            };
+        }
+
+        @Action()
+        @PartialEntityReturnType(User)
+        partialUser(name: string, date: Date): Partial<User> {
+            return {
+                name: name,
+                birthdate: date
+            };
+        }
+
+        @Action()
+        user(@PartialParamType(User) user: Partial<User>): boolean {
+            return !(user instanceof User) && user.name === 'peter2' && !user.defaultVar;
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test basic serialisation partial param: entity', [TestController]);
+
+    const test = client.controller<TestController>('test');
+
+    try {
+        await test.failUser({name: 'asd'});
+        fail('Should fail');
+    } catch (e) {
+        expect(e.message).toMatch('TestController::failUser argument 0 is an Object with unknown structure. Define an entity and use @ParamType(MyEntity)');
+    }
+
+    const date = new Date('1987-12-12T11:00:00.000Z');
+
+    try {
+        await test.failPartialUser('asd', date);
+        fail('Should fail');
+    } catch (e) {
+        expect(e.message).toMatch('Action test::failPartialUser failed: Error: Result returns an not annotated object literal that can not be serialized.\n' +
+            'Use either @ReturnPlainObject() to avoid serialisation, or (better) create an entity and use @ReturnType(MyEntity) at your action.');
+    }
+
+    const a = await test.user({name: 'peter2'});
+    expect(a).toBeTruthy();
+
+    const partialUser = await test.partialUser('peter2', date);
+    expect(partialUser.name).toBe('peter2');
+    expect(partialUser.birthdate).toEqual(date);
 
     await close();
 });

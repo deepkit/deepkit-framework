@@ -278,10 +278,6 @@ test('test entity sync item undefined', async () => {
             const peter = new User('Peter 1');
             await this.database.add(User, peter);
 
-            this.connection.setTimeout(async () => {
-                await this.database.patch(User, peter.id, {name: 'Peter patched'});
-            }, 50);
-
             return await this.storage.findOneOrUndefined(User, {
                 name: {$regex: /Marie/}
             });
