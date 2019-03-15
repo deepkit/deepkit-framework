@@ -1,17 +1,19 @@
-import {Observable, Subscriber, Subject} from "rxjs";
-import {plainToClass, RegisteredEntities} from "@marcj/marshal";
-// import * as WebSocket from "ws";
-
+import {Observable, Subject, Subscriber, TeardownLogic} from "rxjs";
+import {first} from "rxjs/operators";
+import {classToPlain, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {
-
     ClientMessageAll,
     ClientMessageWithoutId,
-    Collection, EntitySubject,
+    Collection,
+    EntitySubject,
+    ServerMessageActionType,
     ServerMessageAll,
-    ServerMessageResult, StreamBehaviorSubject
+    ServerMessageResult,
+    StreamBehaviorSubject
 } from "@marcj/glut-core";
-import {applyDefaults} from "@marcj/estdlib";
+import {applyDefaults, eachKey} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
+import {tearDown} from "@marcj/estdlib-rxjs";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';
@@ -21,7 +23,38 @@ export class SocketClientConfig {
     token: any = undefined;
 }
 
+type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMessageActionType };
+
 export class AuthorizationError extends Error {
+}
+
+export class MessageSubject<T> extends Subject<T> {
+    constructor(private teardown: TeardownLogic) {
+        super();
+    }
+
+    /**
+     * Used to unsubscribe from replies regarding this message and closing (completing) the subject.
+     * Necessary to avoid memory leaks.
+     */
+    close() {
+        tearDown(this.teardown);
+        this.complete();
+    }
+
+    async firstAndClose(): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            this.pipe(first()).subscribe((next) => {
+                resolve(next);
+            }, (error) => {
+                reject(error);
+            }, () => {
+                //complete
+            }).add(() => {
+                this.close();
+            });
+        });
+    }
 }
 
 //todo, add better argument inference for U
@@ -37,13 +70,17 @@ export class SocketClient {
     private connectionTries = 0;
 
     private replies: {
-        [messageId: string]: (data: ServerMessageResult) => void
+        [messageId: string]: (data: any) => void
     } = {};
 
     private connectionPromise?: Promise<void>;
 
     private entityState = new EntityState();
     private config: SocketClientConfig;
+
+    private cachedActionsTypes: {
+        [controllerName: string]: { [actionName: string]: ActionTypes }
+    } = {};
 
     public constructor(
         config: SocketClientConfig | Partial<SocketClientConfig> = {},
@@ -86,7 +123,7 @@ export class SocketClient {
             if (this.replies[message.id]) {
                 this.replies[message.id](message);
             } else {
-                console.debug(`No replies callback for message ${message.id}`);
+                console.error(`No replies callback for message ${message.id}: ` + JSON.stringify(message));
             }
         }
     }
@@ -156,11 +193,37 @@ export class SocketClient {
         }
     }
 
+    public async getActionTypes(controller: string, actionName: string): Promise<ActionTypes> {
+        if (!this.cachedActionsTypes[controller]) {
+            this.cachedActionsTypes[controller] = {};
+        }
+
+        if (!this.cachedActionsTypes[controller][actionName]) {
+            const reply = await this.sendMessage({
+                name: 'actionTypes',
+                controller: controller,
+                action: actionName
+            }).firstAndClose();
+
+            if (reply.type === 'error') {
+                throw new Error(reply.error);
+            } else if (reply.type === 'actionTypes/result') {
+                this.cachedActionsTypes[controller][actionName] = {
+                    parameters: reply.parameters,
+                    returnType: reply.returnType
+                };
+            } else {
+                throw new Error('Invalid message returned: ' + JSON.stringify(reply));
+            }
+        }
+
+        return this.cachedActionsTypes[controller][actionName];
+    }
+
     public async stream(controller: string, name: string, ...args: any[]): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+        return new Promise<any>(async (resolve, reject) => {
             //todo, handle reject when we sending message fails
 
-            let activeReturnType = 'json';
             let returnValue: any;
 
             const self = this;
@@ -168,15 +231,28 @@ export class SocketClient {
             let subscriberIdCounter = 0;
             let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
-            this.sendMessage({
+            const types = await this.getActionTypes(controller, name);
+
+            for (const i of eachKey(args)) {
+                const type = types.parameters[i];
+                if (type.type === 'Entity' && type.entityName) {
+                    if (!RegisteredEntities[type.entityName]) {
+                        throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
+                    }
+
+                    args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
+                }
+            }
+
+            const subject = this.sendMessage({
                 name: 'action',
                 controller: controller,
                 action: name,
                 args: args
-            }, (reply: ServerMessageResult) => {
-                if (reply.type === 'type') {
-                    activeReturnType = reply.returnType;
+            });
 
+            subject.subscribe((reply) => {
+                if (reply.type === 'type') {
                     if (reply.returnType === 'subject') {
                         streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
                         resolve(streamBehaviorSubject);
@@ -190,7 +266,6 @@ export class SocketClient {
                                 throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                             }
 
-                            //
                             if (this.entityState.hasEntitySubject(classType, reply.item.id)) {
                                 const subject = this.entityState.handleEntity(classType, reply.item);
                                 resolve(subject);
@@ -299,6 +374,8 @@ export class SocketClient {
                     if (streamBehaviorSubject) {
                         streamBehaviorSubject.complete();
                     }
+
+                    subject.close();
                 }
 
                 if (reply.type === 'error') {
@@ -309,21 +386,26 @@ export class SocketClient {
                     } else {
                         reject(reply.error);
                     }
+
+                    subject.close();
                 }
 
                 if (reply.type === 'error/observable') {
                     if (subscribers[reply.subscribeId]) {
                         subscribers[reply.subscribeId].error(reply.error);
                     }
+
+                    subject.close();
                 }
 
                 if (reply.type === 'complete/observable') {
                     if (subscribers[reply.subscribeId]) {
                         subscribers[reply.subscribeId].complete();
                     }
+
+                    subject.close();
                 }
             });
-
         });
     }
 
@@ -335,7 +417,9 @@ export class SocketClient {
         this.socket.send(JSON.stringify(message));
     }
 
-    private sendMessage(messageWithoutId: ClientMessageWithoutId, answer: (data: ServerMessageResult) => void): void {
+    private sendMessage<T extends ServerMessageResult>(
+        messageWithoutId: ClientMessageWithoutId
+    ): MessageSubject<T> {
         this.messageId++;
         const messageId = this.messageId;
 
@@ -343,29 +427,34 @@ export class SocketClient {
             id: messageId, ...messageWithoutId
         };
 
-        this.replies[messageId] = answer;
+        const subject = new MessageSubject<T>(() => {
+            delete this.replies[messageId];
+        });
+
+        this.replies[messageId] = (reply: T) => {
+            subject.next(reply);
+        };
 
         this.connect().then(() => this.send(message), (error) => {
-            throw error;
+            subject.error(error);
         });
+
+        return subject;
     }
 
     private async authenticate(): Promise<boolean> {
-        this.loggedIn = await new Promise<boolean>((resolve, reject) => {
-            this.sendMessage({
-                name: 'authenticate',
-                token: this.config.token,
-            }, (reply: ServerMessageResult) => {
-                if (reply.type === 'authenticate/result') {
-                    resolve(reply.result);
-                }
+        const reply = await this.sendMessage({
+            name: 'authenticate',
+            token: this.config.token,
+        }).firstAndClose();
 
-                if (reply.type === 'error') {
-                    reject(reply.error);
-                }
-            });
+        if (reply.type === 'authenticate/result') {
+            this.loggedIn = reply.result;
+        }
 
-        });
+        if (reply.type === 'error') {
+            throw new Error(reply.error);
+        }
 
         return this.loggedIn;
     }
