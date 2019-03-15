@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-client",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "index.ts",
   "author": "Kamille Team",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "ws": "^6.1.2"
   },
   "devDependencies": {
-    "@marcj/glut-core": "^0.0.3",
+    "@marcj/glut-core": "^0.0.4",
     "@marcj/marshal": "^0.5.1",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
