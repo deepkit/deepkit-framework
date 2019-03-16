@@ -54,9 +54,6 @@ function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: strin
         if (reflection.type === 'enum') {
             type = 'enum';
             enumValues = getEnumValues(reflection.typeValue);
-            if (isEnumAllowLabelsAsValue(classType, propertyName)) {
-                enumValues.push(...getEnumLabels(reflection.typeValue));
-            }
         }
     }
 

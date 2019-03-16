@@ -23,15 +23,16 @@ import {
     isObject,
     isPlainObject,
     isUndefined,
-    isValidEnumValue
+    isValidEnumValue,
+    eachKey
 } from "@marcj/estdlib";
 
 export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);
 }
 
-export function uuid4Stringify(u: Binary | string): string {
-    return 'string' === typeof u ? u : mongoUuid.stringify(u);
+export function uuid4Stringify(u: Binary): string {
+    return mongoUuid.stringify(u);
 }
 
 export function partialClassToMongo<T, K extends keyof T>(
@@ -61,9 +62,7 @@ export function partialPlainToMongo<T, K extends keyof T>(
     if (!target) return {};
 
     const result = {};
-    for (const i in target) {
-        if (!target.hasOwnProperty(i)) continue;
-
+    for (const i of eachKey(target)) {
         result[i] = propertyPlainToMongo(classType, i, target[i]);
     }
 
@@ -77,7 +76,7 @@ export function partialMongoToPlain<T, K extends keyof T>(
     if (!target) return {};
 
     const result = {};
-    for (const i in target) {
+    for (const i of eachKey(target)) {
         if (!target.hasOwnProperty(i)) continue;
 
         result[i] = propertyMongoToPlain(classType, i, target[i]);
@@ -192,8 +191,7 @@ export function propertyClassToMongo<T>(
     if (map) {
         const result: { [name: string]: any } = {};
         if (isObject(propertyValue)) {
-            for (const i in propertyValue) {
-                if (!propertyValue.hasOwnProperty(i)) continue;
+            for (const i of eachKey(propertyValue)) {
                 result[i] = convert((<any>propertyValue)[i]);
             }
         }
@@ -295,7 +293,7 @@ export function propertyPlainToMongo<T>(
     if (map) {
         const result: { [name: string]: any } = {};
         if (isObject(propertyValue)) {
-            for (const i in propertyValue) {
+            for (const i of eachKey(propertyValue)) {
                 if (!propertyValue.hasOwnProperty(i)) continue;
                 result[i] = convert((<any>propertyValue)[i]);
             }
@@ -395,7 +393,7 @@ export function propertyMongoToClass<T>(
     if (map) {
         const result: any = {};
         if (isObject(propertyValue)) {
-            for (const i in propertyValue) {
+                for (const i of eachKey(propertyValue)) {
                 if (!propertyValue.hasOwnProperty(i)) continue;
                 result[i] = convert((propertyValue as any)[i]);
             }
@@ -511,9 +509,7 @@ export function convertQueryToMongo<T, K extends keyof T>(
 ): { [path: string]: any } {
     const result: { [i: string]: any } = {};
 
-    for (const i in target) {
-        if (!target.hasOwnProperty(i)) continue;
-
+    for (const i of eachKey(target)) {
         const fieldValue: any = target[i];
 
         if (i[0] === '$') {

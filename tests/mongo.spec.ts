@@ -8,7 +8,7 @@ import {
 import {Binary, ObjectID, MongoClient} from "mongodb";
 import {Database} from "../src/database";
 import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
-import {uuid4Stringify} from "../src/mapping";
+import {plainToMongo, uuid4Stringify} from "../src/mapping";
 import {Buffer} from "buffer";
 import {createConnection} from "typeorm";
 
@@ -51,8 +51,8 @@ test('test save model', async () => {
     expect(await database.has(SimpleModel, {name: 'myName'})).toBeTrue();
     expect(await database.has(SimpleModel, {name: 'myNameNOTEXIST'})).toBeFalse();
 
-    expect(await database.get(SimpleModel, {name: 'myName'})).not.toBeNull();
-    expect(await database.get(SimpleModel, {name: 'myNameNOTEXIST'})).toBeNull();
+    expect(await database.get(SimpleModel, {name: 'myName'})).not.toBeUndefined();
+    expect(await database.get(SimpleModel, {name: 'myNameNOTEXIST'})).toBeUndefined();
 
     const collection = database.getCollection(SimpleModel);
     const mongoItem = await collection.find().toArray();
@@ -77,10 +77,10 @@ test('test save model', async () => {
     expect(listAll[0].name).toBe('myName');
     expect(listAll[0].id).toBe(instance.id);
 
-    expect(await database.patch(SimpleModel, {name: 'noneExisting'}, {name: 'myName2'})).toBeNull();
+    expect(await database.patch(SimpleModel, {name: 'noneExisting'}, {name: 'myName2'})).toBeUndefined();
 
     const notExisting = new SimpleModel('Hi');
-    expect(await database.update(SimpleModel, notExisting)).toBeNull();
+    expect(await database.update(SimpleModel, notExisting)).toBeUndefined();
 
     expect(await database.patch(SimpleModel, {id: instance.id}, {name: 'myName2'})).toBe((<any>instance)['version'] + 1);
 
@@ -265,6 +265,23 @@ test('second object id', async () => {
         @MongoIdType()
         secondId?: string;
     }
+
+    {
+        const instance = plainToMongo(SecondObjectId, {
+            _id: '5c8a99d8fdfafb2c8dd59ad6',
+            name: 'peter',
+            secondId: '5bf4a1ccce060e0b38864c9e',
+            preview: 'QmFhcg==', //Baar
+        });
+        expect(instance._id).toBeInstanceOf(ObjectID);
+        expect(instance._id).toEqual(new ObjectID('5c8a99d8fdfafb2c8dd59ad6'));
+        expect(instance.secondId).toBeInstanceOf(ObjectID);
+        expect(instance.secondId).toEqual(new ObjectID('5bf4a1ccce060e0b38864c9e'));
+        expect(instance.name).toBe('peter');
+        expect(instance.preview).toBeInstanceOf(Buffer);
+        expect(instance.preview.toString()).toBe('Baar');
+    }
+
 
     const instance = plainToClass(SecondObjectId, {
         name: 'myName',
