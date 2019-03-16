@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-core",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "index.ts",
   "author": "Kamille Team",
   "license": "MIT",
