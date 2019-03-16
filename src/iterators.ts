@@ -9,6 +9,7 @@
  * ```
  *
  * @public
+ * @category iterator
  */
 export function eachKey<T>(object: ArrayLike<T>): IterableIterator<number>;
 /** @public */
@@ -39,6 +40,7 @@ export function* eachKey<T extends { [key: string]: any }, K extends keyof T>(ob
  * ```
  *
  * @public
+ * @category iterator
  */
 export function* each<T>(object: { [s: string]: T } | ArrayLike<T>): IterableIterator<T> {
     if (Array.isArray(object)) {
@@ -69,6 +71,7 @@ export function* each<T>(object: { [s: string]: T } | ArrayLike<T>): IterableIte
  * ```
  *
  * @public
+ * @category iterator
  */
 export function eachPair<T>(object: ArrayLike<T>): IterableIterator<[number, T]>;
 /** @public */
