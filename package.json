@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-server",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "index.ts",
   "license": "MIT",
   "author": "Kamille Team",
@@ -35,7 +35,7 @@
     "ws": "^6.1.2"
   },
   "devDependencies": {
-    "@marcj/glut-core": "^0.0.5",
+    "@marcj/glut-core": "^0.0.6",
     "@marcj/marshal": "^0.5.1",
     "@types/clone": "^0.1.30",
     "@types/fs-extra": "^5.0.2",
