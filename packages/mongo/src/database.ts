@@ -53,7 +53,7 @@ export class Database {
     public async get<T>(
         classType: ClassType<T>,
         filter: { [field: string]: any }
-    ): Promise<T | null> {
+    ): Promise<T | undefined> {
         const collection = await this.getCollection(classType);
 
         const item = await collection.findOne(convertClassQueryToMongo(classType, filter));
@@ -62,7 +62,7 @@ export class Database {
             return mongoToClass(classType, item);
         }
 
-        return null;
+        return;
     }
 
     /**
@@ -90,7 +90,7 @@ export class Database {
     /**
      * Returns a mongodb cursor, which you can further modify and then call toArray() to retrieve the documents.
      *
-     * Use toClass=false to return plain documents instead of class (faster).
+     * Depending on toClass to the cursor is a map() call applied, mongoToClass when toClass=true, partialMongoToPlain when toClass=false.
      */
     public async cursor<T>(
         classType: ClassType<T>,
@@ -184,7 +184,7 @@ export class Database {
      *
      * If no filter is given, the ID of `update` is used.
      */
-    public async update<T>(classType: ClassType<T>, update: T, filter?: { [field: string]: any }): Promise<number | null> {
+    public async update<T>(classType: ClassType<T>, update: T, filter?: { [field: string]: any }): Promise<number | undefined> {
         const collection = await this.getCollection(classType);
 
         const updateStatement: { [name: string]: any } = {
@@ -204,7 +204,7 @@ export class Database {
         const doc = response.value;
 
         if (!doc) {
-            return null;
+            return undefined;
         }
 
         (<any>update)['version'] = (<any>doc)['version'];
@@ -235,7 +235,7 @@ export class Database {
      *     ['children.0.label']: 'Changed label'
      * });
      */
-    public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number | null> {
+    public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number | undefined> {
         const collection = await this.getCollection(classType);
 
         const patchStatement: { [name: string]: any } = {
@@ -256,7 +256,7 @@ export class Database {
         const doc = response.value;
 
         if (!doc) {
-            return null;
+            return undefined;
         }
 
         return (<any>doc)['version'];

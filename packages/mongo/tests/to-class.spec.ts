@@ -33,7 +33,7 @@ import {Binary} from "mongodb";
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
-import {classToMongo, mongoToClass, plainToMongo} from "../src/mapping";
+import {classToMongo, mongoToClass, mongoToPlain, plainToMongo} from "../src/mapping";
 import {getEnumLabels, getEnumValues, isValidEnumValue, getValidEnumValue} from '@marcj/estdlib';
 
 test('test simple model', () => {
@@ -127,6 +127,62 @@ test('test simple model all fields', () => {
 
         expect(plain).toEqual(classToPlain(SimpleModel, copy));
     }
+});
+
+test('test simple model all fields plainToMongo', () => {
+    expect(getEntityName(SimpleModel)).toBe('SimpleModel');
+    expect(getIdField(SimpleModel)).toBe('id');
+
+    expect(getIdField(SubModel)).toBe(undefined);
+
+    const mongoItem = plainToMongo(SimpleModel, {
+        name: 'myName',
+        type: 5,
+        plan: 1,
+        yesNo: '1',
+        created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
+        children: [
+            {label: 'fooo'},
+            {label: 'barr'},
+        ],
+        childrenMap: {
+            foo: {
+                label: 'bar'
+            },
+            foo2: {
+                label: 'bar2'
+            }
+        }
+    });
+
+    expect(mongoItem).toBeObject();
+    expect(mongoItem).not.toBeInstanceOf(SimpleModel);
+    expect(mongoItem.id).toBeUndefined(); //since it doesn't apply defaults
+    expect(mongoItem.name).toBe('myName');
+    expect(mongoItem.type).toBe(5);
+    expect(mongoItem.yesNo).toBe(true);
+    expect(mongoItem.plan).toBe(Plan.PRO);
+    expect(mongoItem.created).toBeDate();
+    expect(mongoItem.created).toEqual(new Date('Sat Oct 13 2018 14:17:35 GMT+0200'));
+
+    expect(mongoItem.children).toBeArrayOfSize(2);
+
+    expect(mongoItem.children[0]).not.toBeInstanceOf(SubModel);
+    expect(mongoItem.children[1]).not.toBeInstanceOf(SubModel);
+
+    expect(mongoItem.children[0].label).toBe('fooo');
+    expect(mongoItem.children[1].label).toBe('barr');
+
+    expect(mongoItem.childrenMap).toBeObject();
+    expect(mongoItem.childrenMap.foo).not.toBeInstanceOf(SubModel);
+    expect(mongoItem.childrenMap.foo2).not.toBeInstanceOf(SubModel);
+
+    expect(mongoItem.childrenMap.foo.label).toBe('bar');
+    expect(mongoItem.childrenMap.foo2.label).toBe('bar2');
+
+    const plain = mongoToPlain(SimpleModel, mongoItem);
+    expect(plain.yesNo).toBeTrue();
+    expect(plain.plan).toBe(1);
 });
 
 test('test simple model with not mapped fields', () => {
