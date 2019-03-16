@@ -13,7 +13,6 @@
   "scripts": {
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc",
-    "docs": "typedoc",
     "tsc-watch": "tsc --watch"
   },
   "peerDependencies": {
