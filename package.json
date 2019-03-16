@@ -7,7 +7,10 @@
     "test": "jest --coverage",
     "bootstrap": "lerna bootstrap --hoist --no-ci",
     "tsc": "lerna run tsc",
-    "publish": "lerna run tsc && lerna publish"
+    "docs": "lerna run tsc && typedoc",
+    "docker-image": "docker build -t marshal/website .",
+    "publish": "lerna run tsc && lerna publish",
+    "publish-website": "heroku container:push web && heroku container:release web"
   },
   "peerDependencies": {
     "reflect-metadata": "^0.1.12"
@@ -22,7 +25,9 @@
     "reflect-metadata": "^0.1.12",
     "ts-jest": "^23.10.4",
     "ts-node": "^6.0.0",
-    "typescript": "^2.9.2"
+    "typescript": "^2.9.2",
+    "typedoc": "^0.14.2",
+    "typedoc-plugin-lerna-packages": "^0.1.3"
   },
   "engines": {
     "node": ">= 8.9.0"

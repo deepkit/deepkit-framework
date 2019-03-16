@@ -80,7 +80,7 @@ export class Database {
 
         const items = await collection.find(filter ? convertClassQueryToMongo(classType, filter) : undefined).toArray();
 
-        const converter = toClass ? mongoToClass : partialMongoToPlain;
+        const converter: (c: any, v: any) => any = toClass ? mongoToClass : partialMongoToPlain;
 
         return items.map(v => {
             return converter(classType, v);
@@ -100,7 +100,7 @@ export class Database {
         const collection = await this.getCollection(classType);
 
         const cursor = collection.find(filter ? convertClassQueryToMongo(classType, filter) : undefined);
-        const converter = toClass ? mongoToClass : partialMongoToPlain;
+        const converter: (c: any, v: any) => any = toClass ? mongoToClass : partialMongoToPlain;
         cursor.map(v => converter(classType, v));
 
         return cursor;

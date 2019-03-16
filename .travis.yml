@@ -1,24 +1,32 @@
 language: node_js
 
 node_js:
-- '8'
-- '10'
+  - '8'
+  - '10'
 
 services:
-- mongodb
+  - mongodb
 
 sudo: false
 
 cache:
   directories:
-  - 'node_modules'
+    - node_modules
 
 before_script:
-- npm install
-- npm install -g coveralls lerna
-- lerna bootstrap --hoist --no-ci
-- sleep 2 # thanks mongo
+  - npm install
+  - npm install -g coveralls lerna
+  - lerna bootstrap --hoist --no-ci
+  - sleep 2
 
 script:
-- ./node_modules/.bin/jest --coverage --detectOpenHandles
-- cat ./coverage/lcov.info | coveralls
+  - "./node_modules/.bin/jest --coverage --detectOpenHandles"
+  - cat ./coverage/lcov.info | coveralls
+  -
+deploy:
+  provider: heroku
+  api_key:
+    secure: nTlqIOpfeJuOvdoPv7v2ftjbndnO/NLwIBnm3YQtO9Td8Na+SOGIPYRZhL36ACPMU/mSgDml+UAXV5QcDXdvQSsaYOtszj5Jj7KmHD3r1Tri/j5Inns622vOqhachhGgBfGYtSe0B/uTCpdqntgBw4XrEo6kZRRZ0Y82RMnMk1WMXJOSTVHb3JUhpGoE30RHvgw7+Soulf8IFTObcPKe9BvWL+uyLDllhRbfZpE/zlzcHhFpn/+/EY2igWOlMM4pXonldixc7h2YDztCPzBvVN9hRPi6XngMIyXpZylA/vWuoxflVUTFTXje/qjdUZ1CR8xT1ANNpHCH4mGIYR5teXS3MjFYdv5fW81cUgFzBuQ1dFPyPsdVO0fRuwgUM9weRp+/dPNo0c7fUE4/+qCUxTJIORuElcURoYBCzRSui9PEk0UH02NaRN73PdVXVgyZTiVqWeA9WLTxO0XQ5jWql6PeDy9mAGwNtdEUCdojHR55qyhYSyMzfeSu4CaLkUXt6vZQ1B9hsV/KgKPFmsa4+r+S6igVCzuR/Dx+nMj5Ty9FfqX02Css7OjQ3JgkbPy7ocjK1lCldWyKL5y9U1RTMch7bphEoDyjfl8pEYMSG/fC0XffYRjh+66T5wnWrgT2Zm/iFzMJ9r7bkQfW6ohcfWbKJO7aKJyx3hwJZyLH2Qs=
+    run:
+      - "heroku container:push web"
+      - "heroku container:release web"
