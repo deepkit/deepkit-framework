@@ -380,18 +380,6 @@ export class JobTaskInstance {
     constructor(id: number) {
         this.id = id;
     }
-
-    public isStarted() {
-        return this.status >= JobTaskInstanceStatus.booting;
-    }
-
-    public isRunning() {
-        return this.isStarted() && !this.isEnded();
-    }
-
-    public isEnded() {
-        return this.status >= JobTaskInstanceStatus.done;
-    }
 }
 
 export class JobTaskQueue {
@@ -421,16 +409,8 @@ export class JobTask {
     @Class(JobDockerImage)
     dockerImage: JobDockerImage = new JobDockerImage;
 
-    // exitCodes: { [key: string]: number } = {};
-
-    // @UUIDType()
-    // server: string | null = null;
-
     @EnumType(JobTaskStatus)
     status: JobTaskStatus = JobTaskStatus.pending;
-
-    // @Class(JobAssignedResources)
-    // assignedResources: JobAssignedResources = new JobAssignedResources;
 
     @DateType()
     assigned: Date | null = null;
@@ -446,10 +426,6 @@ export class JobTask {
 
     constructor(name: string, replicas: number) {
         this.name = name;
-
-        for (let i = 1; i <= replicas; i++) {
-            this.instances[this.name + '_' + i] = new JobTaskInstance(i);
-        }
     }
 
 }
