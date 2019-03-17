@@ -217,7 +217,7 @@ import {Field, AddValidator, InlineValidator, ClassType} from '@marcj/marshal';
 
 class Entity {
     @Field()
-    @InlineValidator(async (value: any, target: ClassType<any>, propertyName: string) => {
+    @InlineValidator(async (value: any) => {
         if (value.length > 10) {
              throw new Error('Too long :()');
         }
