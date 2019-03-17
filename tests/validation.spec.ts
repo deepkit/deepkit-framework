@@ -1,6 +1,15 @@
 import 'reflect-metadata';
 import 'jest-extended'
-import {Field, Optional, validate, ValidationError} from "../";
+import {
+    AddValidator,
+    Field,
+    InlineValidator,
+    Optional,
+    PropertyValidator,
+    PropertyValidatorError,
+    validate,
+    ValidationError
+} from "../";
 
 test('test simple', async () => {
     class Page {
@@ -101,6 +110,40 @@ test('test deep', async () => {
 
     instance.deepMap.foo.name = 'defined';
     expect(await validate(Model, instance)).toEqual([]);
+});
+
+test('test AddValidator', async () => {
+    class MyValidator implements PropertyValidator {
+        async validate<T>(value: any): Promise<PropertyValidatorError | void> {
+            if (value.length > 5) {
+                return new PropertyValidatorError('Too long');
+            }
+        }
+    }
+
+    class Model {
+        @Field()
+        @AddValidator(MyValidator)
+        id: string = '2';
+    }
+
+    expect(await validate(Model, {id: '2'})).toEqual([]);
+    expect(await validate(Model, {id: '123456'})).toEqual([{message: 'Too long', path: 'id'}]);
+});
+
+test('test inline validator', async () => {
+    class Model {
+        @Field()
+        @InlineValidator(async (value: string) => {
+            if (value.length > 5) {
+                throw new Error('Too long');
+            }
+        })
+        id: string = '2';
+    }
+
+    expect(await validate(Model, {id: '2'})).toEqual([]);
+    expect(await validate(Model, {id: '123456'})).toEqual([{message: 'Too long', path: 'id'}]);
 });
 
 test('test string', async () => {

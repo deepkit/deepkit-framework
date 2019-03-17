@@ -88,6 +88,8 @@ export class PropertySchema {
     }
 }
 
+export interface EntityIndex { name?: string, fields: string[], options: IndexOptions }
+
 export class EntitySchema {
     proto: Object;
     name?: string;
@@ -98,7 +100,7 @@ export class EntitySchema {
     idField?: string;
     propertyNames: string[] = [];
 
-    indices: { name?: string, fields: string[], options: IndexOptions }[] = [];
+    indices: EntityIndex[] = [];
 
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
 
@@ -106,10 +108,15 @@ export class EntitySchema {
         this.proto = proto;
     }
 
-    public getOrCreateProperty(name: string): PropertySchema {
-        if (undefined === name) {
-            throw new Error('Property name can not be undefined.');
+    public getIndex(name: string): EntityIndex | undefined {
+        for (const index of this.indices) {
+            if (index.name === name) {
+                return index;
+            }
         }
+    }
+
+    public getOrCreateProperty(name: string): PropertySchema {
 
         if (!this.properties[name]) {
             this.properties[name] = new PropertySchema(name);
@@ -126,10 +133,6 @@ export class EntitySchema {
     }
 
     public getProperty(name: string): PropertySchema {
-        if (undefined === name) {
-            throw new Error('Property name can not be undefined.');
-        }
-
         if (!this.properties[name]) {
             throw new Error(`Property ${name} not found`);
         }
@@ -465,6 +468,33 @@ export function forwardRef<T>(forward: ForwardRefFn<T>): ForwardedRef<T> {
     return new ForwardedRef(forward);
 }
 
+/**
+ * Helper for decorators that are allowed to be placed in property declaration and constructor property declaration.
+ * We detect the name by reading the constructor' signature, which would be otherwise lost.
+ */
+function FieldDecoratorWrapper(
+    cb: (target: Object, property?: string, returnType?: any) => void
+): (target: Object, property?: string, parameterIndexOrDescriptor?: any) => void {
+    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
+        let returnType;
+
+        if (property) {
+            returnType = Reflect.getMetadata('design:type', target, property);
+        }
+
+        if (isNumber(parameterIndexOrDescriptor)) {
+            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
+            property = constructorParamNames[parameterIndexOrDescriptor];
+
+            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
+            returnType = returnTypes[parameterIndexOrDescriptor];
+            target = target['prototype'];
+        }
+
+        cb(target, property, returnType)
+    };
+}
+
 interface FieldOptions {
     /**
      * Whether the type is a map. You should prefer the short {} annotation
@@ -499,9 +529,9 @@ interface FieldOptions {
 }
 
 /**
- * Decorator to defining a field for an entity.
+ * Decorator to define a field for an entity.
  *
- * @example
+ *
  * ```typescript
  * class User {
  *     @Field()
@@ -530,26 +560,12 @@ interface FieldOptions {
  * @category Decorator
  */
 export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }, options?: FieldOptions) {
-    return (target: Object, property: string, parameterIndexOrDescriptor?: any) => {
+    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
+        if (!property) return;
+
         options = options || {};
 
-        let returnType = Reflect.getMetadata('design:type', target, property);
-
-        //constructor definition
-        if (isNumber(parameterIndexOrDescriptor)) {
-            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
-            property = constructorParamNames[parameterIndexOrDescriptor];
-            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
-            returnType = returnTypes[parameterIndexOrDescriptor];
-        }
-
-        // console.log('property', property, returnType, Buffer);
-
         const id = getClassName(target) + '::' + property;
-
-        if (!returnType) {
-            //not wild, happens for circular dependencies
-        }
 
         function getTypeName(t: any): string {
             if (t === Object) return 'Object';
@@ -676,10 +692,8 @@ export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTyp
 
         if (options.type) {
             getOrCreateEntitySchema(target).getOrCreateProperty(property).type = options.type!;
-        } else {
-            throw new Error(`${id} could not detect type`);
         }
-    }
+    });
 }
 
 /**
@@ -694,7 +708,7 @@ export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTyp
  *     @FieldAny([])
  *     configs: any[];
  *
- *     @FieldAny({}})
+ *     @FieldAny({})
  *     configMap: {[name: string]: any};
  * }
  *
@@ -768,9 +782,9 @@ export function FieldArray(type: FieldTypes) {
  * @hidden
  */
 function Type<T>(type: Types) {
-    return (target: T, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).type = type;
-    };
+    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property!).type = type;
+    });
 }
 
 
@@ -798,17 +812,17 @@ export function UUIDField() {
  * @category Decorator
  */
 export function Index(options?: IndexOptions, fields?: string | string[], name?: string) {
-    return (target: Object, property?: string) => {
+    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
         const schema = getOrCreateEntitySchema(target);
 
         if (isArray(fields)) {
-            schema.indices.push({name: name, fields: fields, options: options || {}});
+            schema.indices.push({name: name || fields.join('_'), fields: fields as string[], options: options || {}});
         } else if (isString(fields)) {
-            schema.indices.push({name: name, fields: [fields], options: options || {}});
+            schema.indices.push({name: name || fields, fields: [fields] as string[], options: options || {}});
         } else if (property) {
-            schema.indices.push({name: name, fields: [property], options: fields || {}});
+            schema.indices.push({name: name || property, fields: [property] as string[], options: options || {}});
         }
-    }
+    });
 }
 
 /**
@@ -817,9 +831,11 @@ export function Index(options?: IndexOptions, fields?: string | string[], name?:
  * @category Decorator
  */
 export function EnumType<T>(type: any, allowLabelsAsValue = false) {
-    return (target: Object, property: string) => {
-        Type('enum')(target, property);
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = type;
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).allowLabelsAsValue = allowLabelsAsValue;
-    }
+    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
+        if (property) {
+            Type('enum')(target, property);
+            getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = type;
+            getOrCreateEntitySchema(target).getOrCreateProperty(property).allowLabelsAsValue = allowLabelsAsValue;
+        }
+    });
 }

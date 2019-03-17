@@ -1,8 +1,8 @@
 import {ClassType, isArray, isObject, typeOf} from "@marcj/estdlib";
-import {applyDefaultValues, getReflectionType, getRegisteredProperties, isArrayType, isMapType} from "./mapper";
+import {applyDefaultValues, getRegisteredProperties} from "./mapper";
 import {getEntitySchema, getOrCreateEntitySchema, PropertyValidator} from "./decorators";
 
-export function addValidator<T extends PropertyValidator>(target: Object, property: string, validator: ClassType<T>) {
+function addValidator<T extends PropertyValidator>(target: Object, property: string, validator: ClassType<T>) {
     getOrCreateEntitySchema(target).getOrCreateProperty(property).validators.push(validator);
 }
 
@@ -14,9 +14,68 @@ export class PropertyValidatorError {
     }
 }
 
+/**
+ * Decorator to add a custom validator class.
+ *
+ * @example
+ * ```typescript
+ * import {PropertyValidator} from '@marcj/marshal';
+ *
+ * class MyCustomValidator implements PropertyValidator {
+ *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
+ *          if (value.length > 10) {
+ *              return new PropertyValidatorError('Too long :()');
+ *          }
+ *      };
+ * }
+ *
+ * class Entity {
+ *     @Field()
+ *     @AddValidator(MyCustomValidator)
+ *     name: string;
+ * }
+ *
+ * ```
+ *
+ * @category Decorator
+ */
 export function AddValidator<T extends PropertyValidator>(validator: ClassType<T>) {
     return (target: Object, property: string) => {
         addValidator(target, property, validator);
+    };
+}
+
+/**
+ * Decorator to add a custom inline validator.
+ *
+ * @example
+ * ```typescript
+ * class Entity {
+ *     @Field()
+ *     @InlineValidator(async (value: any, target: ClassType<T>, propertyName: string) => {
+ *          if (value.length > 10) {
+ *              throw new Error('TooLong');
+ *          }
+ *     }))
+ *     name: string;
+ * }
+ * ```
+ * @category Decorator
+ */
+export function InlineValidator<T extends PropertyValidator>(cb: (value: any, target: ClassType<any>, propertyName: string) => void | Promise<void>) {
+    return (target: Object, property: string) => {
+        addValidator(target, property, class implements PropertyValidator {
+            async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
+                try {
+                    const res = cb(value, target, propertyName);
+                    if (res['then']) {
+                        await res;
+                    }
+                } catch (error) {
+                    return new PropertyValidatorError(error.message ? error.message : error);
+                }
+            }
+        });
     };
 }
 

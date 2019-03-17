@@ -34,15 +34,7 @@ export class JobResources {
 }
 
 export class JobTaskCommand {
-    @Field()
-    name: string = '';
-
-    @Field()
-    command: string = '';
-
-    constructor(name: string, command: string) {
-        this.name = name;
-        this.command = command;
+    constructor(@Field() public name: string, @Field() public command: string) {
     }
 }
 
@@ -76,14 +68,6 @@ export class JobTaskConfigBase {
 
     @Field(JobConfigDocker)
     docker: JobConfigDocker = new JobConfigDocker;
-
-    public isDockerImage(): boolean {
-        return !!this.image;
-    }
-
-    public hasCommand() {
-        return this.commands.length > 0;
-    }
 }
 
 export class JobTaskConfig extends JobTaskConfigBase {
@@ -292,15 +276,7 @@ export class Channel {
 }
 
 export class JobAssignedResourcesGpu {
-    @Field()
-    id: number;
-
-    @Field()
-    memory: number;
-
-    constructor(id: number, memory: number) {
-        this.id = id;
-        this.memory = memory;
+    constructor(@Field() public id: number, @Field() public memory: number) {
     }
 }
 
@@ -313,41 +289,9 @@ export class JobAssignedResources {
 
     @Field([JobAssignedResourcesGpu])
     gpus: JobAssignedResourcesGpu[] = [];
-
-    public getMinGpuMemory(): number {
-        let minGpuMemory = 0;
-
-        for (const gpu of this.gpus) {
-            if (gpu.memory < minGpuMemory) minGpuMemory = gpu.memory;
-        }
-
-        return minGpuMemory;
-    }
-
-    public getMaxGpuMemory(): number {
-        let maxGpuMemory = 0;
-
-        for (const gpu of this.gpus) {
-            if (gpu.memory > maxGpuMemory) maxGpuMemory = gpu.memory;
-        }
-
-        return maxGpuMemory;
-    }
-
-    public getGpuMemoryRange(): string {
-        const min = this.getMinGpuMemory();
-        const max = this.getMaxGpuMemory();
-
-        if (min === max) return `${min}`;
-
-        return `${min}-${max}`;
-    }
 }
 
 export class JobTaskInstance {
-    @Field()
-    id: number;
-
     @EnumType(JobTaskInstanceStatus)
     status: JobTaskInstanceStatus = JobTaskInstanceStatus.pending;
 
@@ -360,8 +304,7 @@ export class JobTaskInstance {
     @Field(JobAssignedResources)
     assignedResources: JobAssignedResources = new JobAssignedResources;
 
-    constructor(id: number) {
-        this.id = id;
+    constructor(@Field() public id: number) {
     }
 }
 

@@ -56,7 +56,7 @@ export interface ResolvedReflectionFound {
 /**
  * @hidden
  */
-export type ResolvedReflection = ResolvedReflectionFound | null;
+export type ResolvedReflection = ResolvedReflectionFound | undefined;
 
 /**
  * @hidden
@@ -79,7 +79,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
             if (inClassField && resolvedClassTypeCandidate) {
                 const {type} = getReflectionType(resolvedClassTypeCandidate, name);
                 if (!type) {
-                    return null;
+                    return;
                 }
                 inClassField = false;
                 inArrayOrMap = false;
@@ -93,7 +93,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
         const {type, typeValue} = getReflectionType(resolvedClassType, name);
 
         if (!type) {
-            return null;
+            return;
         }
 
         resolvedPropertyName = name;
@@ -141,7 +141,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                             }
                         }
                     } else {
-                        return null;
+                        return;
                     }
                 }
             } else {
@@ -177,8 +177,6 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
             map: isMap,
         }
     }
-
-    return null;
 }
 
 /**
@@ -351,7 +349,7 @@ export function propertyPlainToClass<T>(
         }
 
         if ('binary' === type && 'string' === typeof value) {
-            return new Buffer(value, 'base64');
+            return Buffer.from(value, 'base64');
         }
 
         if ('boolean' === type && 'boolean' !== typeof value) {
@@ -439,10 +437,6 @@ export function classToPlain<T>(classType: ClassType<T>, target: T): any {
     const propertyNames = getRegisteredProperties(classType);
 
     for (const propertyName of propertyNames) {
-        if (undefined === (target as any)[propertyName]) {
-            continue;
-        }
-
         if (getParentReferenceClass(classType, propertyName)) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
