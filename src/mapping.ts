@@ -128,6 +128,7 @@ export function propertyClassToMongo<T>(
     propertyValue: any
 ) {
     const reflection = getResolvedReflection(classType, propertyName);
+
     if (!reflection) return propertyValue;
 
     const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;

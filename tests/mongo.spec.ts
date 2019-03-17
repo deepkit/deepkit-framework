@@ -1,11 +1,16 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
-    BinaryType,
-    DatabaseName, Entity, getDatabaseName, getEntityName, ID, MongoIdType,
-    plainToClass, StringType,
+    DatabaseName,
+    Entity,
+    Field,
+    getDatabaseName,
+    getEntityName,
+    IDField,
+    MongoIdField,
+    plainToClass,
 } from "@marcj/marshal";
-import {Binary, ObjectID, MongoClient} from "mongodb";
+import {Binary, ObjectID} from "mongodb";
 import {Database} from "../src/database";
 import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {plainToMongo, uuid4Stringify} from "../src/mapping";
@@ -191,11 +196,11 @@ test('test databaseName', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing2')
     class DifferentDataBase {
-        @ID()
-        @MongoIdType()
+        @IDField()
+        @MongoIdField()
         _id?: string;
 
-        @StringType()
+        @Field()
         name?: string;
     }
 
@@ -223,10 +228,10 @@ test('no id', async () => {
 
     @Entity('NoId')
     class NoId {
-        @MongoIdType()
+        @MongoIdField()
         _id?: string;
 
-        @StringType()
+        @Field()
         name?: string;
     }
 
@@ -238,10 +243,10 @@ test('no id', async () => {
     await database.add(NoId, instance);
     expect(instance._id).toBeUndefined();
 
-        const dbItem = await database.get(NoId, {name: 'myName'});
-        expect(dbItem!.name).toBe('myName');
+    const dbItem = await database.get(NoId, {name: 'myName'});
+    expect(dbItem!.name).toBe('myName');
 
-        dbItem!.name = 'Changed';
+    dbItem!.name = 'Changed';
 
     await expect(database.update(NoId, dbItem)).rejects.toThrow('Class NoId has no @ID() defined')
 });
@@ -250,19 +255,21 @@ test('no id', async () => {
 test('second object id', async () => {
     const database = await createDatabase('testing');
 
+    console.log('Buffer', Buffer);
+
     @Entity('SecondObjectId')
     class SecondObjectId {
-        @ID()
-        @MongoIdType()
+        @IDField()
+        @MongoIdField()
         _id?: string;
 
-        @StringType()
+        @Field()
         name?: string;
 
-        @BinaryType()
+        @Field(Buffer)
         preview: Buffer = new Buffer('FooBar', 'utf8');
 
-        @MongoIdType()
+        @MongoIdField()
         secondId?: string;
     }
 

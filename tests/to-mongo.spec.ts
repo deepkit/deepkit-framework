@@ -1,14 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {
-    BinaryType,
-    classToPlain,
-    EnumType,
-    getReflectionType, getResolvedReflection,
-    MongoIdType,
-    plainToClass,
-    UUIDType
-} from "@marcj/marshal";
+import {EnumType, Field, getResolvedReflection, MongoIdField, UUIDField} from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
 import {classToMongo, mongoToClass, partialClassToMongo, partialPlainToMongo} from "../src/mapping";
@@ -62,10 +54,10 @@ test('convert IDs and invalid values', () => {
     }
 
     class Model {
-        @MongoIdType()
+        @MongoIdField()
         id2?: string;
 
-        @UUIDType()
+        @UUIDField()
         uuid?: string;
 
         @EnumType(Enum)
@@ -95,7 +87,7 @@ test('convert IDs and invalid values', () => {
 
 test('binary', () => {
     class Model {
-        @BinaryType()
+        @Field(Buffer)
         preview: Buffer = new Buffer('FooBar', 'utf8');
     }
 
@@ -110,7 +102,7 @@ test('binary', () => {
 
 test('binary from mongo', () => {
     class Model {
-        @BinaryType()
+        @Field()
         preview: Buffer = new Buffer('FooBar', 'utf8');
     }
 
@@ -177,9 +169,11 @@ test('partial 3', () => {
 
 test('partial with required', () => {
     {
-        expect(() => {partialPlainToMongo(SimpleModel, {
-            'children': [{}]
-        })}).toThrow('Missing value for SubModel::children. Can not convert to mongo');
+        expect(() => {
+            partialPlainToMongo(SimpleModel, {
+                'children': [{}]
+            })
+        }).toThrow('Missing value for SubModel::children. Can not convert to mongo');
     }
 });
 
