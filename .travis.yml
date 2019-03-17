@@ -22,6 +22,3 @@ deploy:
   api_key:
     secure: C/WOCMw5UNgipFeLCesVBSoKKki+/GpusCGUjcxdzACBP2FELaH8Ja754PEFa/ZSoSl3qweO+uiSFiEMIncUyGZzhztkZFXT5j0Np6wgYWfayR8Y2Ki1mjNjQwmWodtaH8w3eNH7QrSncvucB8v28dEMDiNXuudTMqlEa1GPb+DaTn8Li9GXfyjABAZI3wj3rmbsUQXk5yYFWotX01mor5su8SEotpPOzFA8E6NAWS8dVs3WkkoIGLQztvwlJ8WbSoXk1HvuwrYoRlGlnOvzJKF5T3EcKeprHvsshFtlD4+DQI8MVdQPHl61cUZEZZztprVO4WfIUzk8fH6FKE2n6pKNBUb+ELPx4qOXe/s7Fo1RS/I4XG5RO0Wi2aKeaQT5VdgFNDrI+NSZqxc4JlsEJ75hd6m2jYUA/2A1ed90zKtBsq/vJuodki/GQFoxBV55/C7ZrIZqV2jf4YwEsoBy39Q0XUTALrus3FyJBbnqNPTuME3JNrseZ25iETBP9Ck9rTKISoc4Hm+JBvDFmk4r9HsEBHDLxCK8Lal2xi3YIRuu8Y7g/rCTpwM6pXX+PEpMtNrBEhDJFijWxyIfg+/8V7wbQ7T9iaVJI8G9N6I04cpQAsANWL/bIFb4D0tilFWsqdGK3pBAEc0a8o86PkxPU3ToaMB6VHonL5m8WWC9J70=
   app: marcj-marshal
-  run:
-    - "heroku container:push web"
-    - "heroku container:release web"
