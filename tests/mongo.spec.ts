@@ -267,7 +267,7 @@ test('second object id', async () => {
         name?: string;
 
         @Field(Buffer)
-        preview: Buffer = new Buffer('FooBar', 'utf8');
+        preview: Buffer = Buffer.from('FooBar', 'utf8');
 
         @MongoIdField()
         secondId?: string;
@@ -285,7 +285,7 @@ test('second object id', async () => {
         expect(instance.secondId).toBeInstanceOf(ObjectID);
         expect(instance.secondId).toEqual(new ObjectID('5bf4a1ccce060e0b38864c9e'));
         expect(instance.name).toBe('peter');
-        expect(instance.preview).toBeInstanceOf(Buffer);
+        expect(instance.preview).toBeInstanceOf(Binary);
         expect(instance.preview.toString()).toBe('Baar');
     }
 

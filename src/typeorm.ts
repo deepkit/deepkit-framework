@@ -1,22 +1,19 @@
 import {
     getDatabaseName,
-    getEntityName, getEntitySchema,
+    getEntityName,
+    getEntitySchema,
     getIdField,
     getParentReferenceClass,
     getRegisteredProperties,
     getResolvedReflection,
-    isEnumAllowLabelsAsValue, isExcluded,
+    isExcluded,
     isOptional
 } from "@marcj/marshal";
 import {ColumnType, EntitySchema, EntitySchemaColumnOptions, EntitySchemaIndexOptions} from "typeorm";
-import {ClassType, getEnumValues, getEnumLabels} from "@marcj/estdlib";
+import {ClassType, getEnumValues} from "@marcj/estdlib";
 
 function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: string): EntitySchemaColumnOptions {
-
-    const reflection = getResolvedReflection(classType, propertyName);
-    if (!reflection) {
-        throw new Error(`No reflection found for ${getEntityName(classType)}::${propertyName}`)
-    }
+    const reflection = getResolvedReflection(classType, propertyName)!;
 
     const nullable = isOptional(classType, propertyName);
     let type: ColumnType = 'json';

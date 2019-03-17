@@ -1,9 +1,23 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {EnumType, Field, getResolvedReflection, MongoIdField, UUIDField} from "@marcj/marshal";
+import {
+    EnumType,
+    Field,
+    forwardRef,
+    getResolvedReflection,
+    MongoIdField, Optional,
+    ParentReference,
+    UUIDField
+} from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
-import {classToMongo, mongoToClass, partialClassToMongo, partialPlainToMongo} from "../src/mapping";
+import {
+    classToMongo,
+    mongoToClass,
+    partialClassToMongo,
+    partialMongoToPlain,
+    partialPlainToMongo, plainToMongo
+} from "../src/mapping";
 import {Buffer} from "buffer";
 import {DocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
@@ -88,7 +102,7 @@ test('convert IDs and invalid values', () => {
 test('binary', () => {
     class Model {
         @Field(Buffer)
-        preview: Buffer = new Buffer('FooBar', 'utf8');
+        preview: Buffer = Buffer.from('FooBar', 'utf8');
     }
 
     const i = new Model();
@@ -102,12 +116,12 @@ test('binary', () => {
 
 test('binary from mongo', () => {
     class Model {
-        @Field()
-        preview: Buffer = new Buffer('FooBar', 'utf8');
+        @Field(Buffer)
+        preview: Buffer = Buffer.from('FooBar', 'utf8');
     }
 
     const i = mongoToClass(Model, {
-        preview: new Binary(new Buffer('FooBar', 'utf8'))
+        preview: new Binary(Buffer.from('FooBar', 'utf8'))
     });
 
     expect(i.preview.length).toBe(6);
@@ -173,7 +187,7 @@ test('partial with required', () => {
             partialPlainToMongo(SimpleModel, {
                 'children': [{}]
             })
-        }).toThrow('Missing value for SubModel::children. Can not convert to mongo');
+        }).toThrow('Missing value in SimpleModel::children for SubModel::label');
     }
 });
 
@@ -236,6 +250,200 @@ test('partial 7', () => {
             'types.0': [7]
         });
         expect(i['types.0']).toEqual('7');
+    }
+});
+
+test('partial invalid', () => {
+
+    expect(() => {
+        partialPlainToMongo(SimpleModel, {
+            id: 'invalid-id'
+        });
+    }).toThrow('Invalid UUID given in property SimpleModel::id');
+
+    expect(() => {
+        partialClassToMongo(SimpleModel, {
+            id: 'invalid-id'
+        });
+    }).toThrow('Invalid UUID given in property SimpleModel::id');
+
+    expect(() => {
+        partialPlainToMongo(DocumentClass, {
+            _id: 'invalid-id'
+        });
+    }).toThrow('Invalid ObjectID given in property DocumentClass::_id');
+
+    expect(() => {
+        partialClassToMongo(DocumentClass, {
+            _id: 'invalid-id'
+        });
+    }).toThrow('Invalid ObjectID given in property DocumentClass::_id');
+
+    {
+        const m = partialClassToMongo(DocumentClass, {
+            _id: null
+        });
+
+        expect(m._id).toBeNull();
+    }
+
+    {
+        const m = partialPlainToMongo(DocumentClass, {
+            _id: null,
+        });
+
+        expect(m._id).toBeNull();
+    }
+
+    partialPlainToMongo(DocumentClass, {
+        _id: undefined
+    });
+    partialPlainToMongo(DocumentClass, {
+        _id: undefined
+    });
+});
+
+test('partial fail ', () => {
+    expect(() => {
+        plainToMongo(SimpleModel, new SimpleModel('peter'));
+    }).toThrow('Could not plainToMongo since target');
+
+    expect(() => {
+        mongoToClass(SimpleModel, {
+            name: 'peter',
+            children: [new SubModel('p')]
+        });
+    }).toThrow('SimpleModel::children is already in target format');
+
+    expect(() => {
+        plainToMongo(SimpleModel, {
+            name: 'peter',
+            children: [
+                {name: 'p'},
+                {age: 2},
+                {}
+            ]
+        });
+    }).toThrow('Missing value in SimpleModel::children for SubModel::label');
+});
+
+
+test('partial any copy ', () => {
+    const anyV = {'peter': 1};
+
+    const m = plainToMongo(SimpleModel, {
+        name: 'peter',
+        anyField: anyV
+    });
+
+    expect(m.anyField).not.toBe(anyV);
+});
+
+test('partial mongo to plain ', () => {
+    class User {
+        @Field()
+        name?: string;
+
+        @Field([String])
+        tags?: string[];
+
+        @Field(Buffer)
+        picture?: Buffer;
+
+        @Field(forwardRef(() => User))
+        @ParentReference()
+        @Optional()
+        parent?: User;
+    }
+
+    {
+        const u = plainToMongo(User, {
+            name: 'peter',
+            picture: null,
+            tags: {},
+            parent: {name: 'Marie'}
+        });
+
+        expect(u.name).toBe('peter');
+        expect(u.picture).toBe(null);
+        expect(u.tags).toEqual([]);
+        expect(u.parent).toBeUndefined();
+    }
+
+    {
+        const u = mongoToClass(User, {
+            name: 'peter',
+            picture: null,
+            tags: {},
+            parent: {name: 'Marie'}
+        });
+
+        expect(u.name).toBe('peter');
+        expect(u.picture).toBe(null);
+        expect(u.tags).toEqual([]);
+        expect(u.parent).toBeUndefined();
+    }
+
+    const bin = Buffer.from('Hello', 'utf8');
+
+    {
+        const m = partialMongoToPlain(User, {
+            name: undefined,
+            picture: null,
+            tags: {}
+        });
+
+        expect(m.name).toBe(undefined);
+        expect(m.picture).toBe(null);
+        expect(m.tags).toBeObject(); //because we trust mongo
+    }
+
+    {
+        const m = partialClassToMongo(User, {
+            name: undefined,
+            picture: null,
+            parent: new User(),
+            tags: {}
+        });
+
+        expect(m.name).toBe(undefined);
+        expect(m.picture).toBe(null);
+        expect(m.parent).toBeUndefined();
+        expect(m.tags).toBeArray();
+    }
+
+    {
+        const m = partialMongoToPlain(User, {
+            picture: new Binary(bin),
+            name: 'peter'
+        });
+
+        expect(m.name).toBe('peter');
+        expect(m.picture).toBe(bin.toString('base64'));
+    }
+
+    {
+        const m = partialClassToMongo(User, {
+            picture: bin,
+            name: 'peter'
+        });
+
+        expect(m.name).toBe('peter');
+        expect(m.picture).toBeInstanceOf(Binary);
+        expect(m.picture.buffer.toString('base64')).toBe(bin.toString('base64'));
+    }
+
+    {
+        const m = partialPlainToMongo(User, {
+            picture: bin.toString('base64'),
+            name: 'peter',
+            tags: {}
+        });
+
+        expect(m.name).toBe('peter');
+        expect(m.picture).toBeInstanceOf(Binary);
+        expect(m.picture.buffer.toString('base64')).toBe(bin.toString('base64'));
+        expect(m.tags).toBeArray();
     }
 });
 

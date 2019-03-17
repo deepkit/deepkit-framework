@@ -4,7 +4,7 @@ import * as mongoUuid from "mongo-uuid";
 import {
     classToPlain,
     deleteExcludedPropertiesFor,
-    getDecorator,
+    getDecorator, getOrCreateEntitySchema,
     getParentReferenceClass,
     getRegisteredProperties,
     getResolvedReflection,
@@ -44,10 +44,6 @@ export function partialClassToMongo<T, K extends keyof T>(
     const result = {};
     for (const i in target) {
         if (!target.hasOwnProperty(i)) continue;
-
-        if (target[i] as any instanceof RegExp) {
-            continue;
-        }
 
         result[i] = propertyClassToMongo(classType, i, target[i]);
     }
@@ -116,6 +112,10 @@ export function propertyMongoToPlain<T>(
             return value.toJSON();
         }
 
+        if ('binary' === type && value instanceof Binary) {
+            return value.buffer.toString('base64');
+        }
+
         return value;
     }
 
@@ -139,6 +139,10 @@ export function propertyClassToMongo<T>(
 
     if (null === propertyValue) {
         return null;
+    }
+
+    if (getParentReferenceClass(resolvedClassType, resolvedPropertyName)) {
+        return undefined;
     }
 
     function convert(value: any) {
@@ -249,7 +253,7 @@ export function propertyPlainToMongo<T>(
         }
 
         if ('binary' === type && 'string' === typeof value) {
-            return new Buffer(value, 'base64');
+            return new Binary(Buffer.from(value, 'base64'));
         }
 
         if ('boolean' === type && 'boolean' !== typeof value) {
@@ -263,18 +267,15 @@ export function propertyPlainToMongo<T>(
             return clone(value, false);
         }
 
-        if ('binary' === type && 'string' === typeof value) {
-            return new Binary(new Buffer(value, 'base64'));
-        }
-
         if (type === 'class') {
             //we need to check if value has all properties set, if one not-optional is missing, we throw an error
             for (const property of getRegisteredProperties(typeValue)) {
                 if (value[property] === undefined) {
-                    if (isOptional(typeValue, propertyName)) {
+                    if (isOptional(typeValue, property)) {
                         continue;
                     }
-                    throw new Error(`Missing value for ${getClassPropertyName(typeValue, propertyName)}. Can not convert to mongo.`);
+                    throw new Error(`Missing value in ${getClassPropertyName(resolvedClassType, propertyName)} for `+
+                        `${getClassPropertyName(typeValue, property)}. Can not convert to mongo.`);
                 }
 
                 value[property] = propertyPlainToMongo(typeValue, property, value[property]);
@@ -428,10 +429,6 @@ export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: 
     }
 
     for (const propertyName of getRegisteredProperties(classType)) {
-        if (undefined === (target as any)[propertyName]) {
-            continue;
-        }
-
         if (getParentReferenceClass(classType, propertyName)) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
@@ -457,10 +454,6 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
     }
 
     for (const propertyName of getRegisteredProperties(classType)) {
-        if (undefined === (target as any)[propertyName]) {
-            continue;
-        }
-
         if (getParentReferenceClass(classType, propertyName)) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
@@ -528,9 +521,7 @@ export function convertQueryToMongo<T, K extends keyof T>(
                     result[i] = converter(classType, i, fieldValue);
                     break;
                 } else {
-                    if (j === '$and' || j === '$or' || j === '$nor' || j === '$not') {
-                        (fieldValue as any)[j] = (queryValue as any[]).map(v => convertQueryToMongo(classType, v, converter, fieldNamesMap));
-                    } else if (j === '$in' || j === '$nin' || j === '$all') {
+                    if (j === '$in' || j === '$nin' || j === '$all') {
                         fieldNamesMap[i] = true;
                         (fieldValue as any)[j] = (queryValue as any[]).map(v => converter(classType, i, v));
                     } else if (j === '$text' || j === '$exists' || j === '$mod' || j === '$size' || j === '$type' || j === '$regex' || j === '$where') {

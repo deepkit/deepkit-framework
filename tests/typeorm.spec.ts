@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import {createConnection} from "typeorm";
 import {Plan, SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {getTypeOrmEntity} from "../src/typeorm";
+import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
 
 test('basic SuperSimple', async () => {
     const entity = getTypeOrmEntity(SuperSimple);
@@ -27,19 +28,42 @@ test('basic SuperSimple', async () => {
     });
 });
 
+test('basic PageClass', async () => {
+    const entity = getTypeOrmEntity(PageClass);
+
+    expect(entity.options.name).toBe('PageClass');
+
+    expect(entity.options.columns.id).toEqual({
+        name: 'id',
+        type: 'uuid',
+        objectId: false,
+        enum: undefined,
+        primary: false,
+        nullable: false
+    });
+    expect(entity.options.columns.picture).toEqual({
+        name: 'picture',
+        type: 'binary',
+        objectId: false,
+        enum: undefined,
+        primary: false,
+        nullable: false
+    });
+    expect(entity.options.columns.parent).toBeUndefined()
+});
 
 test('basic SimpleModel', async () => {
     const entity = getTypeOrmEntity(SimpleModel);
 
     expect(entity.options.indices![1]).toEqual({
         columns: ['name', 'type'],
-        name: undefined,
+        name: 'name_type',
         unique: true
     });
 
     expect(entity.options.indices![0]).toEqual({
         columns: ['name'],
-        name: undefined,
+        name: 'name',
     });
 
     expect(entity.options.name).toBe('SimpleModel');
