@@ -4,6 +4,7 @@ module.exports = {
     exclude: [
         '**/node_modules/**',
         '**/*.spec.ts',
+        '**/tests/**/*.ts',
     ],
     name: 'marshal.ts',
     excludePrivate: true,
