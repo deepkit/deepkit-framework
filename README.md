@@ -24,6 +24,7 @@ The result is having only one entity and validation definition for all sides at 
 * Entity definition export to TypeORM (currently only columns + indices)
 * Validation: Built-in, custom class and inline validators
 * NestJS validation pipe
+* MongoDB database abstraction
 
 
 ## Todo
@@ -434,6 +435,8 @@ Marshal's MongoDB database abstraction makes it super easy to
 retrieve and store data from and into your MongoDB. We make sure the
 data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
+
+See [documentation](./modules/_marcj_marshal.html) for more information;
 
 ```
 npm install @marcj/marshal-mongo

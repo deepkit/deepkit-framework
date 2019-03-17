@@ -8,19 +8,24 @@ data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
 
 ```
-npm install @marcj/marshal-mongo
+npm install @marcj/marshal-mongo reflect-metadata typeorm
 ```
 
+Install `buffer` as well if you want binary support.
+
 ```typescript
-import {MongoClient} from "mongodb";
 import {plainToClass} from "@marcj/marshal";
 import {Database} from "@marcj/marshal-mongo";
+import {createConnection} from "typeorm";
 
-const connection = await MongoClient.connect(
-    'mongodb://localhost:27017', 
-    {useNewUrlParser: true}
-);
-await connection.db('testing').dropDatabase();
+(async () => {
+const connection = await createConnection({
+    type: "mongodb",
+    host: "localhost",
+    port: 27017,
+    database: "testing",
+    useNewUrlParser: true,
+});
 const database = new Database(connection, 'testing');
 
 const instance: SimpleModel = plainToClass(SimpleModel, {
@@ -35,4 +40,5 @@ const oneItem: SimpleModel = await database.get(
     SimpleModel,
     {id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}
 );
+});
 ```
