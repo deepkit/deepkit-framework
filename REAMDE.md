@@ -1,5 +1,6 @@
-
 ## Mongo Database for Marshal
+
+[![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal-mongo.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal-mongo)
 
 Marshal's MongoDB database abstraction makes it super easy to
 retrieve and store data from and into your MongoDB. We make sure the
