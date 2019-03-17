@@ -52,7 +52,7 @@ export function AddValidator<T extends PropertyValidator>(validator: ClassType<T
  * ```typescript
  * class Entity {
  *     @Field()
- *     @InlineValidator(async (value: any, target: ClassType<T>, propertyName: string) => {
+ *     @InlineValidator(async (value: any) => {
  *          if (value.length > 10) {
  *              throw new Error('TooLong');
  *          }
