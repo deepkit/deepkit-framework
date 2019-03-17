@@ -1,5 +1,7 @@
 # NestJS / Express for Marshal
 
+[![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal-nest.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal-nest)
+
 It's super common to accept data from a frontend via HTTP, transform the
 body into your class instance, work with it, and then store that data in
 your MongoDB or somewhere else. With Marshal this scenario is super
