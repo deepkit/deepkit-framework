@@ -310,7 +310,7 @@ export function IDField<T>() {
  *
  * @category Decorator
  *
- * @example One direction.
+ * Example one direction.
  * ```typescript
  * class JobConfig {
  *     @Type(() => Job) //necessary since circular dependency
@@ -325,7 +325,7 @@ export function IDField<T>() {
  * }
  * ```
  *
- * @example Circular parent-child setup.
+ * Example circular parent-child setup.
  * ```typescript
  * export class PageClass {
  *     @UUIDType()
@@ -441,7 +441,6 @@ class ForwardedRef<T> {
  *
  * For instance, if you reference a circular dependency or a not yet defined variable.
  *
- * @example
  * ```typescript
  * class User {
  *     @Field(forwardRef(() => Config)
@@ -499,7 +498,7 @@ interface FieldOptions {
     /**
      * Whether the type is a map. You should prefer the short {} annotation
      *
-     * @example short {} annotation
+     * Example short {} annotation
      * ```typescript
      * class User {
      *     @Field({MyClass})
@@ -507,7 +506,7 @@ interface FieldOptions {
      * }
      * ```
      *
-     * @example verbose annotation is necessary for factory method, if you face circular dependencies.
+     * Example verbose annotation is necessary for factory method, if you face circular dependencies.
      * ```typescript
      * class User {
      *     @Field(() => MyClass, {map: true})
@@ -531,29 +530,43 @@ interface FieldOptions {
 /**
  * Decorator to define a field for an entity.
  *
- *
  * ```typescript
  * class User {
  *     @Field()
- *     name: string;
- *
- *     @Field([String])
- *     tags: string[];
- *
- *     @Field([flatConfig])
- *     flatStringConfigs: {[name: string]: String};
- *
- *     @FieldAny({})
- *     flatConfig: {[name: string]: any};
+ *     @Optional()
+ *     num?: number;
  *
  *     @Field()
- *     birthdate: Date;
+ *     @Optional()
+ *     birthdate?: Date;
+ *
+ *     @Field()
+ *     @Optional()
+ *     yes?: Boolean;
+ *
+ *     @Field([String])
+ *     tags: string[] = [];
+ *
+ *     @Field({String})
+ *     flatStringConfigs: {[name: string]: String} = {}};
+ *
+ *     @FieldAny({})
+ *     flatConfig: {[name: string]: any} = {}};
  *
  *     @Field(MyClass)
- *     config: MyClass;
+ *     config: MyClass = new wMyClass;
  *
- *     @Field(MyClass)
- *     config: MyClass;
+ *     @Field([MyClass])
+ *     configArray: MyClass[] = []];
+ *
+ *     @Field({MyClass})
+ *     configMap: {[name: string]: MyClass} = {}};
+ *
+ *     constrcutor(
+ *         @Field()
+ *         @Index({unique: true})
+ *         public name: string
+ *     ) {}
  * }
  * ```
  *
@@ -699,7 +712,6 @@ export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTyp
 /**
  * Same as @Field() but defines type as 'any'. With type any no transformation is applied.
  *
- * @example
  * ```typescript
  * class User {
  *     @FieldAny()
@@ -741,7 +753,6 @@ export function FieldAny(type?: {} | Array<any>) {
  * }
  * ```
  *
- * @example
  * ```typescript
  * class User {
  *     @FieldMap(String)
@@ -761,7 +772,6 @@ export function FieldMap(type: FieldTypes) {
 /**
  * Same as @Field(T) but defines the field as map of type T.
  *
- * @example
  * ```typescript
  * class User {
  *     @FieldArray(String)
@@ -789,7 +799,23 @@ function Type<T>(type: Types) {
 
 
 /**
- * Used to define a field as ObjectId.
+ * Used to define a field as ObjectId. This decorator is necessary if you want to use Mongo's _id.
+ *
+ *
+ * ```typescript
+ * class Page {
+ *     @MongoIdField()
+ *     referenceToSomething?: string;
+ *
+ *     constructor(
+ *         @IdType()
+ *         @MongoIdField()
+ *         public readonly _id: string
+ *     ) {
+ *
+ *     }
+ * }
+ * ```
  *
  * @category Decorator
  */

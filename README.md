@@ -54,6 +54,7 @@ import {
     plainToClass,
     uuid,
     Optional,
+    Index,
 } from '@marcj/marshal';
 import {Buffer} from 'buffer';
 
@@ -72,9 +73,6 @@ class SimpleModel {
     @IDField()
     @UUIDField()
     id: string = uuid();
-
-    @Field()
-    name: string;
 
     @Field([String])
     tags: string[] = [];
@@ -98,10 +96,11 @@ class SimpleModel {
     @Field({SubModel})
     childrenMap: {[key: string]: SubModel} = {};
 
-    constructor(name: string) {
-        //constructor is supported and called as well
-        this.name = name;
-    }
+    constructor(
+        @Field() 
+        @Index() 
+        public name: string
+    ) {}
 }
 
 //data comes usually from files or http request
