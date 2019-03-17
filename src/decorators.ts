@@ -1,8 +1,12 @@
-import {Types} from "./mapper";
-import {AddValidator, PropertyValidatorError} from "./validation";
+import {getCachedParameterNames, Types} from "./mapper";
+import {NumberValidator, PropertyValidatorError, StringValidator} from "./validation";
 import * as clone from 'clone';
-import {ClassType, getClassName, isArray, isString} from '@marcj/estdlib';
+import {ClassType, getClassName, isArray, isNumber, isObject, isPlainObject, isString} from '@marcj/estdlib';
+import {Buffer} from "buffer";
 
+/**
+ * Registry of all registered entity that used the @Entity('name') decorator.
+ */
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
 
 export interface PropertyValidator {
@@ -38,15 +42,46 @@ export class PropertySchema {
     exclude?: 'all' | 'mongo' | 'plain';
 
     classType?: ClassType<any>;
-    classTypeCircular?: (() => ClassType<any>);
+    classTypeForwardRef?: ForwardedRef<any>;
+    classTypeResolved?: ClassType<any>;
 
     constructor(name: string) {
         this.name = name;
     }
 
-    getResolvedClassType(): ClassType<any> | undefined {
-        if (this.classTypeCircular) {
-            return this.classTypeCircular();
+    getValidators(): ClassType<PropertyValidator>[] {
+        if (this.type === 'string') {
+            return [...[StringValidator], ...this.validators];
+        }
+
+        if (this.type === 'number') {
+            return [...[NumberValidator], ...this.validators];
+        }
+
+        return this.validators;
+    }
+
+    getResolvedClassTypeForValidType(): ClassType<any> | undefined {
+        if (this.type === 'class' || this.type === 'enum') {
+            return this.getResolvedClassType();
+        }
+    }
+
+    getResolvedClassType(): ClassType<any> {
+        if (this.classTypeResolved) {
+            return this.classTypeResolved;
+        }
+
+        if (this.classTypeForwardRef) {
+            this.classTypeResolved = this.classTypeForwardRef.forward();
+            if (this.classTypeResolved) {
+                return this.classTypeResolved;
+            }
+            throw new Error(`ForwardRef returns no value. ${this.classTypeForwardRef.forward}`);
+        }
+
+        if (!this.classType) {
+            throw new Error(`No classType given for ${this.name}.`);
         }
 
         return this.classType;
@@ -72,6 +107,10 @@ export class EntitySchema {
     }
 
     public getOrCreateProperty(name: string): PropertySchema {
+        if (undefined === name) {
+            throw new Error('Property name can not be undefined.');
+        }
+
         if (!this.properties[name]) {
             this.properties[name] = new PropertySchema(name);
             this.propertyNames.push(name);
@@ -80,7 +119,17 @@ export class EntitySchema {
         return this.properties[name];
     }
 
+    public getPropertyOrUndefined(name: string): PropertySchema | undefined {
+        if (this.properties[name]) {
+            return this.properties[name];
+        }
+    }
+
     public getProperty(name: string): PropertySchema {
+        if (undefined === name) {
+            throw new Error('Property name can not be undefined.');
+        }
+
         if (!this.properties[name]) {
             throw new Error(`Property ${name} not found`);
         }
@@ -89,8 +138,14 @@ export class EntitySchema {
     }
 }
 
+/**
+ * @hidden
+ */
 export const EntitySchemas = new Map<object, EntitySchema>();
 
+/**
+ * @hidden
+ */
 export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): EntitySchema {
     const proto = target['prototype'] ? target['prototype'] : target;
 
@@ -118,6 +173,9 @@ export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): Entit
     return EntitySchemas.get(proto)!;
 }
 
+/**
+ * Returns meta information / schema about given entity class.
+ */
 export function getEntitySchema<T>(classType: ClassType<T>): EntitySchema {
     if (!EntitySchemas.has(classType.prototype)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
@@ -142,6 +200,15 @@ export function getEntitySchema<T>(classType: ClassType<T>): EntitySchema {
     return EntitySchemas.get(classType.prototype)!;
 }
 
+/**
+ * Used to define a entity name for an entity.
+ *
+ * The name is used for an internal registry, so you should be the name unique.
+ *
+ * Marshal's database abstraction uses this name to generate the collection name / table name.
+ *
+ * @category Decorator
+ */
 export function Entity<T>(name: string, collectionName?: string) {
     return (target: ClassType<T>) => {
         RegisteredEntities[name] = target;
@@ -150,35 +217,163 @@ export function Entity<T>(name: string, collectionName?: string) {
     };
 }
 
+/**
+ *
+ * Used to define a database name for an entity. Per default marshal's database abstraction
+ * uses the default database, but you can change that using this decorator.
+ *
+ * @category Decorator
+ */
 export function DatabaseName<T>(name: string) {
     return (target: ClassType<T>) => {
         getOrCreateEntitySchema(target).databaseName = name;
     };
 }
 
-export function Decorator<T>() {
+/**
+ * Used to define a field as decorated.
+ * This is necessary if you want to wrap a field value in the class instance using
+ * a own class, like for example for Array manipulations, but keep the JSON and Database value
+ * as primitive as possible.
+ *
+ * Only one field per class can be the decorated one.
+ *
+ * @category Decorator
+ *
+ * Example
+ * ```typescript
+ * export class PageCollection {
+ *     @Field(() => PageClass)
+ *     @Decorated()
+ *     private readonly pages: PageClass[] = [];
+ *
+ *     constructor(pages: PageClass[] = []) {
+ *         this.pages = pages;
+ *     }
+ *
+ *     public count(): number {
+ *         return this.pages.length;
+ *     }
+ *
+ *     public add(name: string): number {
+ *         return this.pages.push(new PageClass(name));
+ *     }
+ * }
+ *
+ * export class PageClass {
+ *     @UUIDType()
+ *     id: string = uuid();
+ *
+ *     @Field()
+ *     name: string;
+ *
+ *     @ClassCircular(() => PageCollection)
+ *     children: PageCollection = new PageCollection;
+ *
+ *     constructor(name: string) {
+ *         this.name = name;
+ *     }
+ * }
+ * ```
+ *
+ * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
+ * `PageCollection.pages` (always the field where @Decorator() is applied to), here a array of PagesClass `PageClass[]`.
+ */
+export function Decorated<T>() {
     return (target: T, property: string) => {
         getOrCreateEntitySchema(target).decorator = property;
         getOrCreateEntitySchema(target).getOrCreateProperty(property).isDecorated = true;
     };
 }
 
-export function ID<T>() {
+/**
+ *
+ * Used to define a field as a reference to an ID.
+ * This is important if you interact with the database abstraction.
+ *
+ * Only one field can be the ID.
+ *
+ * @category Decorator
+ */
+export function IDField<T>() {
     return (target: T, property: string) => {
         getOrCreateEntitySchema(target).idField = property;
         getOrCreateEntitySchema(target).getOrCreateProperty(property).isId = true;
     };
 }
 
+/**
+ * Used to define a field as a reference to a parent.
+ *
+ * @category Decorator
+ *
+ * @example One direction.
+ * ```typescript
+ * class JobConfig {
+ *     @Type(() => Job) //necessary since circular dependency
+ *     @ParentReference()
+ *     job: Job;
+ *
+ * }
+ *
+ * class Job {
+ *     @Field()
+ *     config: JobConfig;
+ * }
+ * ```
+ *
+ * @example Circular parent-child setup.
+ * ```typescript
+ * export class PageClass {
+ *     @UUIDType()
+ *     id: string = uuid();
+ *
+ *     @Field()
+ *     name: string;
+ *
+ *     @Field(() => PageClass)
+ *     @ArrayType()
+ *     children: Page[] = [];
+ *
+ *     @Field(() => PageClass)
+ *     @ParentReference()
+ *     @Optional()
+ *     parent?: PageClass;
+ *
+ *     constructor(name: string) {
+ *         this.name = name;
+ *     }
+ * ```
+ */
 export function ParentReference<T>() {
     return (target: T, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).isParentReference = true;
     };
 }
 
-
 /**
- * Executes the method when the current class is instantiated and populated.
+ * Used to define a method as callback which will be called when the object has been completely serialized.
+ * When fullLoad is true the callback is called when all references are loaded as well. This is particularly useful
+ * when you have @ParentReference() properties, which will be undefined in regular OnLoad callback.
+ *
+ * Example
+ * ```typescript
+ * class User {
+ *
+ *     @OnLoad()
+ *     onLoad() {
+ *         console.log('self loaded!');
+ *     }
+ *
+ *     @OnLoad({fullLoad: true})
+ *     onFullLoad() {
+ *         console.log('fully loaded, including parent references');
+ *     }
+ * }
+ *
+ * ```
+ *
+ * @category Decorator
  */
 export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
     return (target: T, property: string) => {
@@ -191,7 +386,10 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
 }
 
 /**
- * Exclude in *toMongo and *toPlain.
+ * Used to define a field as excluded when serialized to Mongo or JSON.
+ * PlainToClass or mongoToClass is not effected by this.
+ *
+ * @category Decorator
  */
 export function Exclude<T>() {
     return (target: T, property: string) => {
@@ -199,115 +397,406 @@ export function Exclude<T>() {
     };
 }
 
+/**
+ * Used to define a field as excluded when serialized to Mongo.
+ * PlainToClass or mongoToClass is not effected by this.
+ *
+ * @category Decorator
+ */
 export function ExcludeToMongo<T>() {
     return (target: T, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'mongo';
     };
 }
 
+/**
+ * Used to define a field as excluded when serialized to JSON.
+ * PlainToClass or mongoToClass is not effected by this.
+ *
+ * @category Decorator
+ */
 export function ExcludeToPlain<T>() {
     return (target: T, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'plain';
     };
 }
 
+type FieldTypes = String | Number | Date | ClassType<any> | ForwardedRef<any>;
 
-export function Type<T>(type: Types) {
+class Any {
+}
+
+type ForwardRefFn<T> = () => T;
+
+class ForwardedRef<T> {
+    constructor(public readonly forward: ForwardRefFn<T>) {
+    }
+}
+
+/**
+ * Allows to refer to references which are not yet defined.
+ *
+ * For instance, if you reference a circular dependency or a not yet defined variable.
+ *
+ * @example
+ * ```typescript
+ * class User {
+ *     @Field(forwardRef(() => Config)
+ *     config: Config;
+
+ *
+ *     @Field([forwardRef(() => Config])
+ *     configArray: Config[] = [];
+ *
+ *     @FieldArray(forwardRef(() => Config)
+ *     configArray: Config[] = [];
+ *
+ *
+ *     @FieldMap(forwardRef(() => Config)
+ *     configMap: {[k: string]: Config} = {};
+ *
+ *     @Field({forwardRef(() => Config})
+ *     configMap: {[k: string]: Config} = {};
+ * }
+ *
+ * ```
+ */
+export function forwardRef<T>(forward: ForwardRefFn<T>): ForwardedRef<T> {
+    return new ForwardedRef(forward);
+}
+
+interface FieldOptions {
+    /**
+     * Whether the type is a map. You should prefer the short {} annotation
+     *
+     * @example short {} annotation
+     * ```typescript
+     * class User {
+     *     @Field({MyClass})
+     *     config2: {[name: string]: MyClass} = {};
+     * }
+     * ```
+     *
+     * @example verbose annotation is necessary for factory method, if you face circular dependencies.
+     * ```typescript
+     * class User {
+     *     @Field(() => MyClass, {map: true})
+     *     config2: {[name: string]: MyClass} = {};
+     * }
+     * ```
+     */
+    map?: boolean;
+
+    /**
+     * @internal
+     */
+    array?: boolean;
+
+    /**
+     * @internal
+     */
+    type?: Types;
+}
+
+/**
+ * Decorator to defining a field for an entity.
+ *
+ * @example
+ * ```typescript
+ * class User {
+ *     @Field()
+ *     name: string;
+ *
+ *     @Field([String])
+ *     tags: string[];
+ *
+ *     @Field([flatConfig])
+ *     flatStringConfigs: {[name: string]: String};
+ *
+ *     @FieldAny({})
+ *     flatConfig: {[name: string]: any};
+ *
+ *     @Field()
+ *     birthdate: Date;
+ *
+ *     @Field(MyClass)
+ *     config: MyClass;
+ *
+ *     @Field(MyClass)
+ *     config: MyClass;
+ * }
+ * ```
+ *
+ * @category Decorator
+ */
+export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }, options?: FieldOptions) {
+    return (target: Object, property: string, parameterIndexOrDescriptor?: any) => {
+        options = options || {};
+
+        let returnType = Reflect.getMetadata('design:type', target, property);
+
+        //constructor definition
+        if (isNumber(parameterIndexOrDescriptor)) {
+            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
+            property = constructorParamNames[parameterIndexOrDescriptor];
+            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
+            returnType = returnTypes[parameterIndexOrDescriptor];
+        }
+
+        // console.log('property', property, returnType, Buffer);
+
+        const id = getClassName(target) + '::' + property;
+
+        if (!returnType) {
+            //not wild, happens for circular dependencies
+        }
+
+        function getTypeName(t: any): string {
+            if (t === Object) return 'Object';
+            if (t === String) return 'String';
+            if (t === Number) return 'Number';
+            if (t === Boolean) return 'Boolean';
+            if (t instanceof ForwardedRef) return 'ForwardedRef';
+            if (t === Buffer) return 'Buffer';
+            if (t === Date) return 'Date';
+            if (t === undefined) return 'undefined';
+
+            return getClassName(t);
+        }
+
+        function getTypeDeclaration(t: any, options: FieldOptions): string {
+            if (options.array) return `${getTypeName(t)}[]`;
+            if (options.map) return `{[key: string]: ${getTypeName(t)}}`;
+            return getTypeName(t);
+        }
+
+        if (!options.type) {
+            // console.log(`${id} ${returnType} ${typeof type} ${type}`);
+
+            if (type && isArray(type)) {
+                type = type[0];
+                options.array = true;
+            }
+
+            if (type && isPlainObject(type)) {
+                type = type[Object.keys(type)[0]];
+                options.map = true;
+            }
+
+            if (type && options.array && returnType !== Array) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                    `Please use the correct type in @Field().`
+                );
+            }
+
+            if (type && !options.array && returnType === Array) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                    `Please use @Field([MyType]) or @FieldArray(MyType) or @FieldArray(forwardRef() => MyType)), e.g. @Field([String]) for '${property}: String[]'.`);
+            }
+
+            if (type && options.map && returnType !== Object) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                    `Please use the correct type in @Field().`);
+            }
+
+            if (!type && returnType === Object) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
+                    `When you don't declare a type in TypeScript, you need to pass a type in @Field(), e.g. @Field(String).\n` +
+                    `If you don't have a type, use @FieldAny(). If you reference a class with circular dependency, use @Field(forwardRef(() => MyType)).`
+                );
+            }
+
+            const isCustomObject = type !== String
+                && type !== String
+                && type !== Number
+                && type !== Date
+                && type !== Buffer
+                && type !== Boolean
+                && type !== Any
+                && type !== Object
+                && !(type instanceof ForwardedRef);
+
+            if (type && !options.map && isCustomObject && returnType === Object) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
+                    `The actual type is an Object, but you specified a Class in @Field(T).\n` +
+                    `Please declare a type or use @Field({${getClassName(type)}} for '${property}: {[k: string]: ${getClassName(type)}}'.`);
+            }
+
+            options.type = 'any';
+
+            if (!type) {
+                type = returnType;
+            }
+
+            if (type === String) {
+                options.type = 'string';
+            }
+
+            if (type === Number) {
+                options.type = 'number';
+            }
+            if (type === Date) {
+                options.type = 'date';
+            }
+            if (type === Buffer) {
+                options.type = 'binary';
+            }
+            if (type === Boolean) {
+                options.type = 'boolean';
+            }
+        }
+
+        if (options.array) {
+            getOrCreateEntitySchema(target).getOrCreateProperty(property).isArray = true;
+        }
+
+        if (options.map) {
+            getOrCreateEntitySchema(target).getOrCreateProperty(property).isMap = true;
+        }
+
+        const isCustomObject = type !== String
+            && type !== String
+            && type !== Number
+            && type !== Date
+            && type !== Buffer
+            && type !== Boolean
+            && type !== Any
+            && type !== Object;
+
+        if (isCustomObject) {
+            getOrCreateEntitySchema(target).getOrCreateProperty(property).type = 'class';
+            getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = type as ClassType<any>;
+
+            if (type instanceof ForwardedRef) {
+                getOrCreateEntitySchema(target).getOrCreateProperty(property).classTypeForwardRef = type;
+                delete getOrCreateEntitySchema(target).getOrCreateProperty(property).classType;
+            }
+            return;
+        }
+
+        if (options.type) {
+            getOrCreateEntitySchema(target).getOrCreateProperty(property).type = options.type!;
+        } else {
+            throw new Error(`${id} could not detect type`);
+        }
+    }
+}
+
+/**
+ * Same as @Field() but defines type as 'any'. With type any no transformation is applied.
+ *
+ * @example
+ * ```typescript
+ * class User {
+ *     @FieldAny()
+ *     config: any;
+ *
+ *     @FieldAny([])
+ *     configs: any[];
+ *
+ *     @FieldAny({}})
+ *     configMap: {[name: string]: any};
+ * }
+ *
+ * ```
+ *
+ * @category Decorator
+ */
+export function FieldAny(type?: {} | Array<any>) {
+    if (isObject(type)) {
+        return Field({Any});
+    }
+
+    if (isArray(type)) {
+        return Field([Any]);
+    }
+
+    return Field(Any);
+}
+
+/**
+ * Same as @Field(T) but defines the field as array of type T.
+ * This is the same as @Field({T}).
+ *
+ * Use this method if you reference a circular dependency class, e.g.
+ * ```typescript
+ *
+ * class User {
+ *     @FieldMap(() => MyConfig)
+ *     config: {[k: string]: MyConfig};
+ * }
+ * ```
+ *
+ * @example
+ * ```typescript
+ * class User {
+ *     @FieldMap(String)
+ *     tags: {[k: string]: string};
+ *
+ *     @Field({String})
+ *     tags: {[k: string]: string};
+ * }
+ * ```
+ *
+ * @category Decorator
+ */
+export function FieldMap(type: FieldTypes) {
+    return Field({type});
+}
+
+/**
+ * Same as @Field(T) but defines the field as map of type T.
+ *
+ * @example
+ * ```typescript
+ * class User {
+ *     @FieldArray(String)
+ *     tags: string[];
+ *
+ *     @Field([String])
+ *     tags: string[];
+ * }
+ * ```
+ *
+ * @category Decorator
+ */
+export function FieldArray(type: FieldTypes) {
+    return Field([type]);
+}
+
+/**
+ * @hidden
+ */
+function Type<T>(type: Types) {
     return (target: T, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).type = type;
     };
 }
 
-export function ArrayType<T>() {
-    return (target: T, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).isArray = true;
-    };
-}
 
-export function MapType<T>() {
-    return (target: T, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).isMap = true;
-    };
-}
-
-export function ClassCircular<T, K>(classType: () => ClassType<K>) {
-    return (target: T, property: string) => {
-        Type('class')(target, property);
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).classTypeCircular = classType;
-    };
-}
-
-export function Class<T, K>(classType: ClassType<K>) {
-    return (target: T, property: string) => {
-        if (!classType) {
-            throw new Error(`${getClassName(target)}::${property} has @Class but argument is empty. Use @ClassCircular(() => YourClass) to work around circular dependencies.`);
-        }
-
-        Type('class')(target, property);
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = classType;
-    };
-}
-
-export function ClassMap<T, K>(classType: ClassType<K>) {
-    return (target: T, property: string) => {
-        if (!classType) {
-            throw new Error(`${getClassName(target)}::${property} has @ClassMap but argument is empty. Use @ClassMap(() => YourClass) to work around circular dependencies.`);
-        }
-
-        Class(classType)(target, property);
-        MapType()(target, property);
-    };
-}
-
-export function ClassMapCircular<T, K>(classType: () => ClassType<K>) {
-    return (target: T, property: string) => {
-        ClassCircular(classType)(target, property);
-        MapType()(target, property);
-    };
-}
-
-export function ClassArray<T, K>(classType: ClassType<K>) {
-    return (target: T, property: string) => {
-        if (!classType) {
-            throw new Error(`${getClassName(target)}::${property} has @ClassArray but argument is empty. Use @ClassArrayCircular(() => YourClass) to work around circular dependencies.`);
-        }
-
-        Class(classType)(target, property);
-        ArrayType()(target, property);
-    };
-}
-
-export function ClassArrayCircular<T, K>(classType: () => ClassType<K>) {
-    return (target: T, property: string) => {
-        ClassCircular(classType)(target, property);
-        ArrayType()(target, property);
-    };
-}
-
-function concat(...decorators: ((target: Object, property: string) => void)[]) {
-    return (target: Object, property: string) => {
-        for (const decorator of decorators) {
-            decorator(target, property);
-        }
-    }
-}
-
-export function MongoIdType() {
+/**
+ * Used to define a field as ObjectId.
+ *
+ * @category Decorator
+ */
+export function MongoIdField() {
     return Type('objectId');
 }
 
-export function UUIDType() {
+/**
+ * Used to define a field as UUID (v4).
+ *
+ * @category Decorator
+ */
+export function UUIDField() {
     return Type('uuid');
 }
 
-export function DateType() {
-    return Type('date');
-}
-
-export function BinaryType() {
-    return Type('binary');
-}
-
+/**
+ * Used to define an index on a field.
+ *
+ * @category Decorator
+ */
 export function Index(options?: IndexOptions, fields?: string | string[], name?: string) {
     return (target: Object, property?: string) => {
         const schema = getOrCreateEntitySchema(target);
@@ -322,40 +811,11 @@ export function Index(options?: IndexOptions, fields?: string | string[], name?:
     }
 }
 
-export function StringType() {
-    class Validator implements PropertyValidator {
-        async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
-            if ('string' !== typeof value) {
-                return new PropertyValidatorError('No String given');
-            }
-        }
-    }
-
-    return concat(AddValidator(Validator), Type('string'));
-}
-
-export function AnyType() {
-    return Type('any');
-}
-
-export function NumberType() {
-    class Validator implements PropertyValidator {
-        async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
-            value = parseFloat(value);
-
-            if (!Number.isFinite(value)) {
-                return new PropertyValidatorError('No Number given');
-            }
-        }
-    }
-
-    return concat(AddValidator(Validator), Type('number'));
-}
-
-export function BooleanType() {
-    return Type('boolean');
-}
-
+/**
+ * Used to define a field as Enum.
+ *
+ * @category Decorator
+ */
 export function EnumType<T>(type: any, allowLabelsAsValue = false) {
     return (target: Object, property: string) => {
         Type('enum')(target, property);

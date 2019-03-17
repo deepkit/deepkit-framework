@@ -1,9 +1,9 @@
-import {ClassArray, Decorator} from "../../src/decorators";
+import {Field, Decorated} from "../../src/decorators";
 import {PageClass} from "./PageClass";
 
 export class PageCollection {
-    @ClassArray(PageClass)
-    @Decorator()
+    @Field([PageClass])
+    @Decorated()
     private readonly pages: PageClass[] = [];
 
     constructor(pages: PageClass[] = []) {

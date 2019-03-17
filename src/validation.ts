@@ -20,6 +20,33 @@ export function AddValidator<T extends PropertyValidator>(validator: ClassType<T
     };
 }
 
+/**
+ * @hidden
+ */
+export class NumberValidator implements PropertyValidator {
+    async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
+        value = parseFloat(value);
+
+        if (!Number.isFinite(value)) {
+            return new PropertyValidatorError('No Number given');
+        }
+    }
+}
+
+/**
+ * @hidden
+ */
+export class StringValidator implements PropertyValidator {
+    async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
+        if ('string' !== typeof value) {
+            return new PropertyValidatorError('No String given');
+        }
+    }
+}
+
+/**
+ * @hidden
+ */
 export class RequiredValidator implements PropertyValidator {
     async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
         if (undefined === value) {
@@ -28,16 +55,30 @@ export class RequiredValidator implements PropertyValidator {
     }
 }
 
+/**
+ * Used to mark a field as optional. The validation requires field values per default, this makes it optional.
+ *
+ * @category Decorator
+ */
 export function Optional() {
     return (target: Object, propertyName: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(propertyName).isOptional = true;
     };
 }
 
+/**
+ * @hidden
+ */
 export function isOptional<T>(classType: ClassType<T>, propertyName: string): boolean {
     return getOrCreateEntitySchema(classType).getOrCreateProperty(propertyName).isOptional;
 }
 
+/**
+ * The structure of a validation error.
+ *
+ * Path defines the shallow or deep path (using dots).
+ * Message is an arbitrary message in english.
+ */
 export class ValidationError {
     path: string;
     message: string;
@@ -52,7 +93,15 @@ export class ValidationError {
     }
 }
 
-export async function validate<T>(classType: ClassType<T>, item: { [name: string]: any }, path?: string): Promise<ValidationError[]> {
+/**
+ * Validates a object or class instance and returns all errors.
+ *
+ * @example
+ * ```
+ * validate(SimpleModel, {id: false});
+ * ```
+ */
+export async function validate<T>(classType: ClassType<T>, item: { [name: string]: any } | T, path?: string): Promise<ValidationError[]> {
     const properties = getRegisteredProperties(classType);
     const errors: ValidationError[] = [];
     const schema = getEntitySchema(classType);
@@ -78,12 +127,11 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
     }
 
     for (const propertyName of properties) {
-        const {type, typeValue} = getReflectionType(classType, propertyName);
+        const propSchema = getEntitySchema(classType).getProperty(propertyName);
+
         const propertyPath = path ? path + '.' + propertyName : propertyName;
-        const validators = schema.getProperty(propertyName).validators;
+        const validators = schema.getProperty(propertyName).getValidators();
         const propertyValue: any = item[propertyName];
-        const array = isArrayType(classType, propertyName);
-        const map = isMapType(classType, propertyName);
 
         if (!isOptional(classType, propertyName)) {
             await handleValidator(RequiredValidator, propertyValue, propertyName, propertyPath);
@@ -94,13 +142,13 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
             continue;
         }
 
-        if (array) {
+        if (propSchema.isArray) {
             if (!isArray(propertyValue)) {
                 errors.push(ValidationError.createInvalidType(propertyPath, 'array', propertyValue));
                 continue;
             }
         } else {
-            if (type === 'class' || map) {
+            if (propSchema.type === 'class' || propSchema.isMap) {
                 if (!isObject(propertyValue)) {
                     errors.push(ValidationError.createInvalidType(propertyPath, 'object', propertyValue));
                     continue;
@@ -112,18 +160,18 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
             await handleValidator(validatorType, propertyValue, propertyName, propertyPath);
         }
 
-        if (type === 'class') {
-            if (map || array) {
-                if (array && !isArray(propertyValue)) continue;
-                if (map && !isObject(propertyValue)) continue;
+        if (propSchema.type === 'class') {
+            if (propSchema.isMap || propSchema.isArray) {
+                if (propSchema.isArray && !isArray(propertyValue)) continue;
+                if (propSchema.isMap && !isObject(propertyValue)) continue;
 
                 for (const i in propertyValue) {
                     const deepPropertyPath = propertyPath + '.' + i;
-                    errors.push(...await validate(typeValue, propertyValue[i], deepPropertyPath));
+                    errors.push(...await validate(propSchema.getResolvedClassType(), propertyValue[i], deepPropertyPath));
                 }
             } else {
                 //deep validation
-                errors.push(...await validate(typeValue, propertyValue, propertyPath));
+                errors.push(...await validate(propSchema.getResolvedClassType(), propertyValue, propertyPath));
             }
         }
     }

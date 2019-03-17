@@ -8,24 +8,43 @@ This is the main module of marshal.
 npm install @marcj/marshal
 ```
 
+See the main documentation at [marshal.marcj.dev](https://marshal.marcj.dev) for more information.
 
 ### Example
 
 ```typescript
-import {Entity, StringType, DateType, plainToClass} from '@marcj/marshal';
+import {Entity, Field, plainToClass} from '@marcj/marshal';
 
-@Entity()
+class Config {
+    @Field()
+    ttl?: number;
+    
+    @Field()
+    yes?: boolean;
+}
+
+@Entity('myDto')
 class Dto {
-    @StringType()
+    @Field()
     name: string;
     
-    @DateType()
+    @Field()
     created: Date = new Date;
+    
+    @Field([String])
+    tags: string[] = [];
+    
+    @Field(Config)
+    tags: Config = new Config;
 }
 
 const item = plainToClass({
     name: 'Peter',
-    created: "2019-03-17T00:41:49.479Z"
+    created: "2019-03-17T00:41:49.479Z",
+    tags: ['Peter'],
+    config: {
+        yes: true
+    }
 });
 
 expect(item).toBeInstanceOf(Dto);
