@@ -16,13 +16,95 @@ import {
     ParentReference,
     plainToClass,
     RegisteredEntities,
-    FieldAny, FieldMap, forwardRef, FieldArray,
+    FieldAny, FieldMap, forwardRef, FieldArray, Index,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
 
-test('test entity database', async () => {
+test('test invalid usage', async () => {
+    class Config {}
 
+    class Base {
+        @Field(forwardRef(() => undefined))
+        ohwe: any;
+
+        @Field(forwardRef(() => Config))
+        config?: any;
+
+        constructor(@Field() public id: string) {}
+    }
+
+    expect(() => {
+        getEntitySchema(Base).getProperty('ohwe').getResolvedClassType();
+    }).toThrowError('ForwardRef returns no value');
+
+    expect(getEntitySchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
+
+    //second call uses cached one
+    expect(getEntitySchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
+
+    expect(() => {
+        getEntitySchema(Base).getProperty('id').getResolvedClassType();
+    }).toThrowError('No classType given for id');
+
+    expect(() => {
+        getEntitySchema(Base).getProperty('bla');
+    }).toThrowError('Property bla not found');
+});
+
+test('test inheritance', async () => {
+    class Base {
+        constructor(
+            @Field()
+            @Index({}, 'id2')
+            public id: string,
+        ) {}
+    }
+
+    class Page extends Base {
+        constructor(id: string, @Field() public name: string) {
+            super(id);
+        }
+    }
+
+    class Between extends Page {
+
+    }
+
+    class SuperPage extends Between {
+        @Field()
+        super?: number
+    }
+
+    class Super2 extends SuperPage {}
+    class Super3 extends Super2 {}
+
+    expect(getEntitySchema(Base).getProperty('id').type).toBe('string');
+    expect(getEntitySchema(Base).getIndex('id2')!.name).toBe('id2');
+
+    expect(getEntitySchema(Page).getProperty('id').type).toBe('string');
+    expect(getEntitySchema(Page).getProperty('name').type).toBe('string');
+    expect(getEntitySchema(Page).getIndex('id2')!.name).toBe('id2');
+
+    expect(getEntitySchema(SuperPage).getProperty('id').type).toBe('string');
+    expect(getEntitySchema(SuperPage).getProperty('name').type).toBe('string');
+    expect(getEntitySchema(SuperPage).getProperty('super').type).toBe('number');
+    expect(getEntitySchema(SuperPage).getIndex('id2')!.name).toBe('id2');
+
+    expect(getEntitySchema(Super3).getProperty('id').type).toBe('string');
+    expect(getEntitySchema(Super3).getProperty('name').type).toBe('string');
+    expect(getEntitySchema(Super3).getProperty('super').type).toBe('number');
+    expect(getEntitySchema(Super3).getIndex('id2')!.name).toBe('id2');
+
+    expect(getEntitySchema(Super2).getProperty('id').type).toBe('string');
+    expect(getEntitySchema(Super2).getProperty('name').type).toBe('string');
+    expect(getEntitySchema(Super2).getProperty('super').type).toBe('number');
+    expect(getEntitySchema(Super2).getIndex('id2')!.name).toBe('id2');
+
+
+});
+
+test('test entity database', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
@@ -429,8 +511,8 @@ test('more array/map', () => {
 
 test('binary', () => {
     class Model {
-        @Field()
-        preview: Buffer = new Buffer('FooBar', 'utf8');
+        @Field(Buffer)
+        preview: Buffer = Buffer.from('FooBar', 'utf8');
     }
 
     const {type, typeValue} = getReflectionType(Model, 'preview');
@@ -442,7 +524,7 @@ test('binary', () => {
 
     const plain = classToPlain(Model, i);
     expect(plain.preview).toBe('Rm9vQmFy');
-    expect(plain.preview).toBe(new Buffer('FooBar', 'utf8').toString('base64'));
+    expect(plain.preview).toBe(Buffer.from('FooBar', 'utf8').toString('base64'));
 
     const back = plainToClass(Model, plain);
     expect(back.preview).toBeInstanceOf(Buffer);

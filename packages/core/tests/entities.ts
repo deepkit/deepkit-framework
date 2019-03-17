@@ -5,10 +5,10 @@ import {
     Exclude,
     ExcludeToMongo,
     ExcludeToPlain,
-    Field,
+    Field, FieldAny,
     IDField,
     Index,
-    MongoIdField,
+    MongoIdField, Optional,
     uuid,
     UUIDField
 } from '..';
@@ -17,6 +17,10 @@ import {
 export class SubModel {
     @Field()
     label: string;
+
+    @Field()
+    @Optional()
+    age?: number;
 
     constructorUsed = false;
 
@@ -101,6 +105,9 @@ export class SimpleModel {
     stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper([]);
 
     notMapped: {[key: string]: any} = {};
+
+    @FieldAny()
+    anyField: any;
 
     @Exclude()
     @Field()

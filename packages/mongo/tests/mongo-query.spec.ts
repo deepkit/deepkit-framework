@@ -36,7 +36,7 @@ test('simple', () => {
     expect(Object.keys(fieldNames)).toEqual(['id']);
 });
 
-test('simple class', () => {
+test('simple class query', () => {
     const partial = propertyClassToMongo(Simple, 'config', new SimpleConfig(['a', 'b']));
     expect(partial).toEqual(['a', 'b']);
     const fieldNames = {};
@@ -49,6 +49,24 @@ test('simple class', () => {
     expect(m['id']['$qt']).toBe(1);
     expect(m['config']).toEqual(['a', 'b']);
     expect(Object.keys(fieldNames)).toEqual(['id', 'config']);
+});
+
+test('simple class query array', () => {
+    const partial = propertyClassToMongo(Simple, 'config', new SimpleConfig(['a', 'b']));
+    expect(partial).toEqual(['a', 'b']);
+    const fieldNames = {};
+
+    const m = convertClassQueryToMongo(Simple, {
+        $and: [{id: {$qt: '1'}}],
+        $or: [{id: {$qt: '1'}}],
+        $nor: [{id: {$qt: '1'}}],
+        $not: [{id: {$qt: '1'}}],
+    }, fieldNames);
+
+    expect(m['$and'][0]['id']['$qt']).toBe(1);
+    expect(m['$or'][0]['id']['$qt']).toBe(1);
+    expect(m['$nor'][0]['id']['$qt']).toBe(1);
+    expect(m['$not'][0]['id']['$qt']).toBe(1);
 });
 
 test('simple 2', () => {

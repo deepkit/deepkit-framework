@@ -1,8 +1,15 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
-import {getReflectionType, getResolvedReflection, partialPlainToClass, plainToClass, Types} from "../src/mapper";
-import {EnumType} from "..";
+import {
+    classToPlain,
+    getReflectionType,
+    getResolvedReflection,
+    partialClassToPlain,
+    partialPlainToClass,
+    plainToClass
+} from "../src/mapper";
+import {EnumType, Field, forwardRef, Optional, ParentReference} from "..";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from "./document-scenario/PageClass";
 import {PageCollection} from "./document-scenario/PageCollection";
@@ -52,7 +59,7 @@ test('getResolvedReflection deep', () => {
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.array).toBe(false);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.map).toBe(false);
 
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.unknown')).toBeNull();
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.unknown')).toBeUndefined();
 
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.resolvedClassType).toBe(SimpleModel);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.resolvedPropertyName).toBe('childrenMap');
@@ -84,7 +91,10 @@ test('getResolvedReflection deep decorator', () => {
 });
 
 test('getResolvedReflection decorator string', () => {
-    expect(getReflectionType(SimpleModel, 'stringChildrenCollection')).toEqual({type: 'class', typeValue: StringCollectionWrapper});
+    expect(getReflectionType(SimpleModel, 'stringChildrenCollection')).toEqual({
+        type: 'class',
+        typeValue: StringCollectionWrapper
+    });
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.resolvedClassType).toBe(SimpleModel);
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.resolvedPropertyName).toBe('stringChildrenCollection');
     expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.type).toBe('class');
@@ -262,6 +272,7 @@ test('test enum labels', () => {
         @EnumType(MyEnum, true)
         enum: MyEnum = MyEnum.third;
     }
+
     expect(plainToClass(ModelWithLabels, {enum: MyEnum.first}).enum).toBe(MyEnum.first);
     expect(plainToClass(ModelWithLabels, {enum: MyEnum.second}).enum).toBe(MyEnum.second);
     expect(plainToClass(ModelWithLabels, {enum: 0}).enum).toBe(MyEnum.first);
@@ -276,4 +287,77 @@ test('test enum labels', () => {
         expect(plainToClass(ModelWithLabels, {enum: 'Hi'}).enum).toBe(MyEnum.first);
     }).toThrow('Invalid ENUM given in property enum: Hi, valid: 0,1,2,first,second,third');
 
+});
+
+
+test('partial edge cases', () => {
+    class Config {}
+
+    class User {
+        @Field()
+        name?: string;
+
+        @Field([String])
+        tags?: string[];
+
+        @Field()
+        config?: Config;
+
+        @Field(forwardRef(() => User))
+        @ParentReference()
+        @Optional()
+        parent?: User;
+    }
+
+    {
+        const u = plainToClass(User, {
+            name: 'peter',
+            tags: {},
+            parent: {name: 'Marie'}
+        });
+
+        expect(u.name).toBe('peter');
+        expect(u.tags).toEqual([]);
+        expect(u.parent).toBeUndefined();
+    }
+
+    {
+        const user = new User();
+        user.name = null as any;
+        user.tags = {} as any;
+        user.parent = {} as any;
+
+        const u = classToPlain(User, user);
+
+        expect(u.name).toBe(null);
+        expect(u.tags).toEqual([]);
+        expect(u.parent).toBeUndefined();
+    }
+
+    {
+        const m = partialClassToPlain(User, {
+            name: undefined,
+            picture: null,
+            tags: {}
+        });
+
+        expect(m.name).toBe(undefined);
+        expect(m.tags).toBeArray()
+    }
+
+    expect(() => {
+        const m = partialPlainToClass(User, {
+            name: undefined,
+            picture: null,
+            parent: new User(),
+            tags: {}
+        });
+    }).toThrow('User::parent is already in target format. Are you calling plainToClass() with an class instance?');
+
+    expect(() => {
+        const user = new User();
+        user.config = {} as any;
+
+        const m = classToPlain(User, user);
+    }).toThrow('Could not convert User::config since target is not a class instance of Config. Got Object');
 });

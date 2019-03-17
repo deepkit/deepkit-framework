@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "test": "jest --coverage",
-    "bootstrap": "lerna bootstrap --no-hoist --no-ci",
+    "bootstrap": "lerna bootstrap --hoist --no-ci",
     "tsc": "lerna run tsc",
     "docs": "rm -rf docs && typedoc",
     "docker-image": "docker build -t marshal/website .",
@@ -43,6 +43,7 @@
       "**/*.{ts}",
       "!**/node_modules/**",
       "!**/lib/**/*",
+      "!**/tests/**/*",
       "!**/*.d.ts",
       "!index.ts"
     ],

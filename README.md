@@ -7,53 +7,58 @@
 Marshal is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
 JSON-representable data from JSON to class instance to Database and vice versa.
 
-If you have data models in your frontend, Node backend and Database,
-then Marshal helps you to convert and validate between all those parties correctly.
-With NestJS validation support and handy MongoDB storage abstraction.
-
+If you have data models in your frontend, Node backend, and Database,
+then Marshal helps you to convert and validate between all those correctly.
+The result is having only one entity and validation definition for all sides at once.
 
 ## Features
 
+* Supported types: String, Number, Boolean, Date, Binary, custom classes, Array, Map, any.
 * Fast marshalling from and to JSON
 * Fast marshalling from and to MongoDB
 * Constructor support (required property can be placed in constructor)
 * Decorators support (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
 * Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/))
 * Complex models with parent references
-* Entity definition export to TypeORM
-* Built in validators and custom validators
+* Supports getter as fields
+* Entity definition export to TypeORM (currently only columns + indices)
+* Validation: Built-in, custom class and inline validators
 * NestJS validation pipe
 
 
-![Diagram](https://raw.github.com/marcj/marshal.ts/master/docs/assets/diagram.png)
+## Todo
+
+* Add more built-in validators
+* Support discriminators (union class types)
+* Add support for TypeORM types completely (so we support MySQL, Postgres, SQLiTe, etc.), currently we use TypeOrm's Connection abstraction.
+
+![Diagram](https://raw.github.com/marcj/marshal.ts/master/assets/diagram.png)
 
 ## Install
 
 ```
-npm install @marcj/marshal
+npm install @marcj/marshal reflect-metadata
 ```
+
+Install `buffer` as well if you want to have Binary support.
 
 ## Example Entity
 
 ```typescript
 import {
-    ClassArray,
-    ClassMap,
-    DateType,
+    Field,
     Entity,
-    ID,
-    UUIDType,
-    NumberType,
-    EnumType,
+    IDField,
+    UUIDField,
+    EnumField,
     plainToClass,
-    StringType,
     uuid,
-    ArrayType,
-} from '@marcj/marshal'; import {Field} from "./decorators";
-
+    Optional,
+} from '@marcj/marshal';
+import {Buffer} from 'buffer';
 
 class SubModel {
-    @StringType()
+    @Field()
     label: string;
 }
 
@@ -64,8 +69,8 @@ export enum Plan {
 }
 
 class SimpleModel {
-    @ID()
-    @UUIDType()
+    @IDField()
+    @UUIDField()
     id: string = uuid();
 
     @Field()
@@ -74,10 +79,14 @@ class SimpleModel {
     @Field([String])
     tags: string[] = [];
 
+    @Field(Buffer) //binary
+    @Optional()
+    picture?: Buffer;
+
     @Field()
     type: number = 0;
 
-    @EnumType(Plan)
+    @EnumField(Plan)
     plan: Plan = Plan.DEFAULT;
 
     @Field()
@@ -95,6 +104,7 @@ class SimpleModel {
     }
 }
 
+//data comes usually from files or http request
 const instance = plainToClass(SimpleModel, {
     name: 'myName',
     tags: ['foo', 'bar'],
@@ -118,7 +128,7 @@ console.log(instance);
 */
 ```
 
-## Usage:
+## Usage
 
 ### Config
 
@@ -137,10 +147,10 @@ If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle:
 
 ### Definition
 
-Once your have defined your entity (see above) you can use one of Marshal's core methods
+Once your have defined your entity (see above) using the [@Field decorators](modules/_marcj_marshal.html#field) you can use one of Marshal's core methods
 to transform data.
 
-Note: Class fields that are not annotated either by @Field() or any other decorator
+Note: Class fields that aren't annotated either by @Field() or any other decorator
 won't be serialized. Their value will be dropped.
 
 ### Serialization
@@ -164,7 +174,7 @@ You can validate incoming object literals or an class instance.
 First make sure you have some validators attached to your fields you want to validate.
 
 ```typescript
-import {Field, validate} from '@marcj/marshal';
+import {Field, validate, ValidationError} from '@marcj/marshal';
 
 class Page {
     @Field()
@@ -175,12 +185,48 @@ class Page {
 }
 
 const errors = validate(Page, {name: 'peter'});
-expect(errors.length).toBe(1)
+expect(errors.length).toBe(1);
 expect(errors[0]).toBeInstanceOf(ValidationError);
 expect(errors[0].path).toBe('age');
 expect(errors[0].message).toBe('Required value is undefined');
 ````
-You can also valid
+
+You can also custom validators
+
+```typescript
+import {Field, AddValidator, PropertyValidator, PropertyValidatorError, ClassType} from '@marcj/marshal';
+
+class MyCustomValidator implements PropertyValidator {
+     async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
+         if (value.length > 10) {
+             return new PropertyValidatorError('Too long :()');
+         }
+     };
+}
+
+class Entity {
+    @Field()
+    @AddValidator(MyCustomValidator)
+    name: string;
+}
+```
+
+or inline validators
+
+```typescript
+import {Field, AddValidator, InlineValidator, ClassType} from '@marcj/marshal';
+
+class Entity {
+    @Field()
+    @InlineValidator(async (value: any, target: ClassType<any>, propertyName: string) => {
+        if (value.length > 10) {
+             throw new Error('Too long :()');
+        }
+    })
+    name: string;
+}
+```
+
 
 ### Partial serialization
 
@@ -196,186 +242,19 @@ you might have the need to serialize only one field.
 
 ## Types
 
-Class fields are annotated using decorators.
+Class fields are annotated using mainly [@Field decorators](modules/_marcj_marshal.html#field).
 You can define primitives, class mappings, relations between parents, and indices for the database (currently MongoDB).
 
-See [documentation of @marcj/marshal](https://marshal.marcj.dev/modules/_marcj_marshal.html) for all available decorators.
+See [documentation of @marcj/marshal](./modules/_marcj_marshal.html) for all available decorators. (Search for "Category: Decorator")
 
 ## TypeORM
 
 The meta information about your entity can be exported to TypeORM EntitySchema.
 
-### ID
-
-`@ID()` allows you to define the id of the entity. There can be only one
-ID. Properties marked as ID on `_id` will receive its value after
-inserting the instance in MongoDB using `Database.add()`. You need to
-define either `@MongoIdType()` or `@UUIDType` together with `@ID()`.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### MongoIdType
-
-`@MongoIdType()` stores an ObjectID. In TypeScript and JSON it's string, and in
-MongoDB we store it automatically using Mongo's `ObjectID`.
-You can have multiple properties using `@MongoIdType()`.
-
-Data types:
-
-| Plain  | Class  | Mongo  |
-|:-------|:-------|:-------|
-| string | string | ObjectID() |
-
-
-### UUIDType
-
-`@UUIDType()` stores a UUID. In TypeScript and JSON it's string, and in
-MongoDB we store it automatically using Mongo's `UUID`.
-You can have multiple properties using `@UUIDType()`.
-
-Data types:
-
-| Plain  | Class  | Mongo  |
-|:-------|:-------|:-------|
-| string | string | UUID() |
-
-### StringType
-
-`@StringType()` makes sure the property has always a string type.
-
-
-Data types:
-
-| JSON   | Class  | Mongo  |
-|:-------|:-------|:-------|
-| string | string | string |
-
-### NumberType
-
-`@NumberType()` makes sure the property has always a number type.
-
-
-Data types:
-
-| JSON   | Class  | Mongo  |
-|:-------|:-------|:-------|
-| number | number | number |
-
-### DateType
-
-`@DateType()` makes sure the property has always a date type. In JSON transport
-(using classToPlain, or mongoToPlain) we use strings.
-
-Data types:
-
-| JSON    | Class | Mongo |
-|:-------|:------|:------|
-| string | Date  | Date  |
-
-
-### EnumType
-
-`@EnumType(enum)` makes sure the property has always a valid enum value. In JSON transport
-(using classToPlain, or mongoToPlain) we use strings.
-
-Data types:
-
-| JSON   | Class | Mongo  |
-|:-------|:------|:-------|
-| String | Enum  | String |
-
-
-### Class
-
-`@Class(ClassDefinition)` makes sure you have in Javascript (plainToClass, or mongoToClass)
-always an instance of `ClassDefinition`. In JSON and MongoDB it is stored as plain object.
-
-Data types:
-
-| JSON   | Class | Mongo  |
-|:-------|:------|:-------|
-| object | class | object |
-
-
-### ClassArray
-
-`@ClassArray(ClassDefinition)` makes sure you have in Javascript (plainToClass, or mongoToClass)
-always an instance of `ClassDefinition[]`.
-In JSON and MongoDB it is stored as plain array.
-
-Data types:
-
-| JSON  | Class | Mongo |
-|:------|:------|:------|
-| array | array | array |
-
-
-### ClassMap
-
-`@ClassMap(ClassDefinition)` makes sure you have in Javascript (plainToClass, or mongoToClass)
-always an instance of `{[key: string]: ClassDefinition}`.
-In JSON and MongoDB it is stored as plain object.
-
-Data types:
-
-| JSON   | Class  | Mongo  |
-|:-------|:-------|:-------|
-| object | object | object |
-
-
-### Binary
-
-`@Binary()` makes sure you have in Javascript (plainToClass, or mongoToClass)
-always an instance of `Buffer` (npm Buffer package), in JSON a base64 string,
-and mongo native Binary.
-
-Data types:
-
-| JSON   | Class  | Mongo  |
-|:-------|:-------|:-------|
-| string | Buffer | Binary |
-
-
-## More Decorators
-
-### ArrayType
-
-`@ArrayType` is used to mark the property as array of defined type.
-You should use together with `@ArrayType` one data type decorator from above.
-
 ```typescript
-class Model {
-    @StringType()
-    @ArrayType()
-    names: string[]; 
-}
-```
+import {getTypeOrmEntity} from "@marcj/marshal-mongo";
 
-### MapType
-
-`@MapType` is used to mark the property as object / map of defined type.
-You should use together with `@MapType` one data type decorator from above.
-
-```typescript
-class Model {
-    @StringType()
-    @MapType()
-    names: {[name: string]: string}; 
-}
+const TypeOrmSchema = getTypeOrmEntity(MyEntity);
 ```
 
 ### Exclude
@@ -387,8 +266,8 @@ have more control.
 
 ```typescript
 class MyEntity {
-    @ID()
-    @ObjectID()
+    @IDType()
+    @MongoIdField()
     id: string;
     
     @Exclude()
@@ -398,21 +277,20 @@ class MyEntity {
 
 ### ParentReference
 
-
-`@ParentReference` together with `@Class` is used for all `*ToClass` functions
-and allows you to have the parent from instance of class given in `@Class` assigned
+`@ParentReference` together with `@Field` is used for all `*ToClass` functions
+and allows you to have the parent from instance of class given in `@Field` assigned
 as reference. Properties that used `@ParentReference` are automatically excluded
 in `*ToPlain` and `*ToMongo` functions.
 
 ```typescript
-class  Page {
-    @StringType()
+class Page {
+    @Field()
     name: string;
     
-    @ClassArray(Page)
+    @Field([Page])
     children: Page[] = [];
     
-    @Class(Page)
+    @Field(Page)
     @ParentReference()
     parent?: PageClass;
 }
@@ -448,8 +326,7 @@ example `string[]` => `ChildrenCollection`.
 ```typescript
 class ChildrenCollection {
     @Decorator()
-    @StringType()
-    @ArrayType()
+    @Field([String])
     items: string[];
     
     constructor(items: string[]) {
@@ -462,12 +339,12 @@ class ChildrenCollection {
 }
 
 class MyEntity {
-    @ID()
-    @ObjectID()
+    @IDField()
+    @MongoIdField()
     id: string;
     
     //in *toMongo and *toPlain is children the value of ChildrenCollection::items
-    @Class(ChildrenCollection)
+    @Field(ChildrenCollection)
     children: ChildrenCollection = new ChildrenCollection([]);
 }
 ```
