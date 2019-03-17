@@ -15,10 +15,11 @@ export class NoIDDefinedError extends Error {
 }
 
 /**
- * Handle abstraction of MongoDB.
+ * Simple abstraction for MongoDB.
  *
- * The `filter` argument is always a key-value map, whereas values are class instances. Use partialPlainToClass() first
- * if you want to pass values from JSON/HTTP-Request.
+ * All `filter` arguments require the actual class instance value.
+ *
+ * So, if you accept JSON, make sure to run `const filter = partialPlainToClass(Model, {...})` first.
  */
 export class Database {
     constructor(private connection: Connection, private defaultDatabaseName = 'app') {
