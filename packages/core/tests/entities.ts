@@ -1,28 +1,21 @@
 import {
-    ArrayType,
-    BooleanType,
-    Class,
-    ClassArray,
-    ClassMap,
-    DateType,
-    Decorator,
+    Decorated,
     Entity,
     EnumType,
     Exclude,
     ExcludeToMongo,
     ExcludeToPlain,
-    ID,
+    Field,
+    IDField,
     Index,
-    MongoIdType,
-    NumberType,
-    StringType,
+    MongoIdField,
     uuid,
-    UUIDType
+    UUIDField
 } from '..';
 
 @Entity('sub')
 export class SubModel {
-    @StringType()
+    @Field()
     label: string;
 
     constructorUsed = false;
@@ -42,8 +35,8 @@ export enum Plan {
 export const now = new Date();
 
 export class CollectionWrapper {
-    @ClassArray(SubModel)
-    @Decorator()
+    @Field([SubModel])
+    @Decorated()
     public items: SubModel[];
 
     constructor(items: SubModel[]) {
@@ -56,9 +49,8 @@ export class CollectionWrapper {
 }
 
 export class StringCollectionWrapper {
-    @Decorator()
-    @StringType()
-    @ArrayType()
+    @Decorated()
+    @Field([String])
     public items: string[];
 
     constructor(items: string[]) {
@@ -73,54 +65,53 @@ export class StringCollectionWrapper {
 @Entity('SimpleModel')
 @Index({unique: true}, ['name', 'type'])
 export class SimpleModel {
-    @ID()
-    @UUIDType()
+    @IDField()
+    @UUIDField()
     id: string = uuid();
 
-    @StringType()
+    @Field()
     @Index()
     name: string;
 
-    @NumberType()
+    @Field()
     type: number = 0;
 
-    @BooleanType()
+    @Field()
     yesNo: boolean = false;
 
     @EnumType(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @DateType()
+    @Field()
     created: Date = now;
 
-    @ArrayType()
-    @StringType()
+    @Field([String])
     types: string[] = [];
 
-    @ClassArray(SubModel)
+    @Field([SubModel])
     children: SubModel[] = [];
 
-    @ClassMap(SubModel)
+    @Field({SubModel})
     childrenMap: {[key: string]: SubModel} = {};
 
-    @Class(CollectionWrapper)
+    @Field(CollectionWrapper)
     childrenCollection: CollectionWrapper = new CollectionWrapper([]);
 
-    @Class(StringCollectionWrapper)
+    @Field(StringCollectionWrapper)
     stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper([]);
 
     notMapped: {[key: string]: any} = {};
 
     @Exclude()
-    @StringType()
+    @Field()
     excluded: string = 'default';
 
     @ExcludeToMongo()
-    @StringType()
+    @Field()
     excludedForMongo: string = 'excludedForMongo';
 
     @ExcludeToPlain()
-    @StringType()
+    @Field()
     excludedForPlain: string = 'excludedForPlain';
 
     constructor(name: string) {
@@ -130,25 +121,25 @@ export class SimpleModel {
 
 @Entity('SuperSimple')
 export class SuperSimple {
-    @ID()
-    @MongoIdType()
+    @IDField()
+    @MongoIdField()
     _id?: string;
 
-    @StringType()
+    @Field()
     name?: string;
 }
 
 @Entity('BaseClass')
 export class BaseClass {
-    @ID()
-    @MongoIdType()
+    @IDField()
+    @MongoIdField()
     _id?: string;
 }
 
 
 @Entity('ChildClass')
 export class ChildClass extends BaseClass {
-    @StringType()
+    @Field()
     name?: string;
 }
 

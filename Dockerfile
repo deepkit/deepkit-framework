@@ -1,6 +1,5 @@
 FROM node:alpine
 
-
 RUN npm config set unsafe-perm true
 RUN npm i -g lerna
 RUN apk --no-cache add git

@@ -1,8 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
-    AnyType,
-    ClassArray,
     classToPlain,
     cloneClass,
     EnumType,
@@ -11,15 +9,13 @@ import {
     getIdField,
     getIdFieldValue,
     isExcluded,
-    NumberType,
     plainToClass,
-    StringType,
     uuid,
     getReflectionType,
     getParentReferenceClass,
     ParentReference,
-    ClassCircular, BooleanType,
-    Optional,Class, OnLoad
+    Optional,
+    OnLoad, Field, forwardRef, FieldAny
 } from "@marcj/marshal";
 import {
     now,
@@ -292,15 +288,15 @@ test('test childrenMap', async () => {
 
 test('test allowNull', async () => {
     class Model {
-        @StringType()
+        @Field()
         @Optional()
-        name: string | null = null;
+        name?: string;
     }
 
     for (const toClass of [plainToClass, mongoToClass]) {
-        expect(toClass(Model, {}).name).toBe(null);
+        expect(toClass(Model, {}).name).toBe(undefined);
         expect(toClass(Model, {name: null}).name).toBe(null);
-        expect(toClass(Model, {name: undefined}).name).toBe(null);
+        expect(toClass(Model, {name: undefined}).name).toBe(undefined);
     }
 });
 
@@ -308,16 +304,14 @@ test('test OnLoad', async () => {
     let ModelRef;
 
     class Sub {
-        @StringType()
+        @Field()
         name?: string;
 
-        @AnyType()
         onLoadCallback: (item: Sub) => void;
 
-        @AnyType()
         onFullLoadCallback: (item: Sub) => void;
 
-        @ClassCircular(() => ModelRef)
+        @Field(forwardRef(() => ModelRef))
         @ParentReference()
         parent?: any;
 
@@ -339,14 +333,14 @@ test('test OnLoad', async () => {
     }
 
     class Model {
-        @StringType()
+        @Field()
         @Optional()
-        name: string | null = null;
+        name?: string;
 
-        @Class(Sub)
+        @Field(Sub)
         sub?: Sub;
 
-        @Class(Sub)
+        @Field(Sub)
         sub2?: Sub;
     }
 
@@ -396,14 +390,14 @@ test('test setter/getter', async () => {
 
     class Model {
         @Exclude()
-        private _fonts?: Font[];
+        private _fonts: Font[] = [];
 
         get test() {
             return true;
         }
 
-        @ClassArray(Font)
-        get fonts() {
+        @Field([Font])
+        get fonts(): Font[] {
             return this._fonts;
         }
 
@@ -428,7 +422,6 @@ test('test setter/getter', async () => {
         expect(mongo._fonts).toBeUndefined();
         expect(mongo.fonts).toBeArrayOfSize(2);
     }
-
 });
 
 test('test decorator complex', async () => {
@@ -619,13 +612,13 @@ test('test @decorator with parent', async () => {
 test('simple string + number + boolean', () => {
 
     class Model {
-        @StringType()
+        @Field()
         name?: string;
 
-        @NumberType()
-        age?: string;
+        @Field()
+        age?: number;
 
-        @BooleanType()
+        @Field()
         yesNo?: boolean;
     }
 
@@ -656,23 +649,23 @@ test('simple string + number + boolean', () => {
 
 test('cloneClass', () => {
     class SubModel {
-        @StringType()
+        @Field()
         name?: string;
     }
 
     class DataStruct {
-        @StringType()
+        @Field()
         name?: string;
     }
 
     class Model {
-       @AnyType()
+       @FieldAny()
        data: any;
 
-       @Class(DataStruct)
+       @Field(DataStruct)
        dataStruct?: DataStruct;
 
-       @ClassArray(SubModel)
+       @Field([SubModel])
        subs?: SubModel[];
     }
 

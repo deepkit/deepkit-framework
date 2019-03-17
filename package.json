@@ -5,9 +5,9 @@
   "license": "MIT",
   "scripts": {
     "test": "jest --coverage",
-    "bootstrap": "lerna bootstrap --hoist --no-ci",
+    "bootstrap": "lerna bootstrap --no-hoist --no-ci",
     "tsc": "lerna run tsc",
-    "docs": "lerna run tsc && typedoc",
+    "docs": "rm -rf docs && typedoc",
     "docker-image": "docker build -t marshal/website .",
     "publish": "lerna run tsc && lerna publish",
     "publish-website": "heroku container:push web && heroku container:release web"

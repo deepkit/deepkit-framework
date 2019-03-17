@@ -1,25 +1,41 @@
 import 'reflect-metadata';
 import 'jest-extended'
-import {Class, ClassArray, NumberType, StringType, ClassMap, ArrayType, MapType, Optional, validate} from "../";
+import {Field, Optional, validate, ValidationError} from "../";
+
+test('test simple', async () => {
+    class Page {
+        constructor(
+            @Field() public name: string,
+            @Field() public age: number,
+        ) {
+        }
+    }
+
+    const errors = await validate(Page, {name: 'peter'});
+    expect(errors.length).toBe(1);
+    expect(errors[0]).toBeInstanceOf(ValidationError);
+    expect(errors[0].message).toBe('Required value is undefined');
+    expect(errors[0].path).toBe('age');
+});
 
 test('test required', async () => {
 
     class Model {
-        @StringType()
+        @Field()
         id: string = '1';
 
-        @StringType()
+        @Field()
         name?: string;
 
         @Optional()
         optional?: string;
 
         @Optional()
-        @MapType()
+        @Field({String})
         map?: { [name: string]: string };
 
         @Optional()
-        @ArrayType()
+        @Field([String])
         array?: string[];
     }
 
@@ -27,8 +43,14 @@ test('test required', async () => {
     expect(await validate(Model, instance)).toBeArrayOfSize(1);
     expect(await validate(Model, instance)).toEqual([{message: "Required value is undefined", path: 'name'}]);
 
-    expect(await validate(Model, {name: 'foo', map: true})).toEqual([{message: "Invalid type. Expected object, but got boolean", path: 'map'}]);
-    expect(await validate(Model, {name: 'foo', array: 233})).toEqual([{message: "Invalid type. Expected array, but got number", path: 'array'}]);
+    expect(await validate(Model, {
+        name: 'foo',
+        map: true
+    })).toEqual([{message: "Invalid type. Expected object, but got boolean", path: 'map'}]);
+    expect(await validate(Model, {
+        name: 'foo',
+        array: 233
+    })).toEqual([{message: "Invalid type. Expected array, but got number", path: 'array'}]);
 
     instance.name = 'Pete';
     expect(await validate(Model, instance)).toEqual([]);
@@ -38,21 +60,21 @@ test('test required', async () => {
 test('test deep', async () => {
 
     class Deep {
-        @StringType()
+        @Field()
         name?: string;
     }
 
     class Model {
-        @StringType()
+        @Field()
         id: string = '2';
 
-        @Class(Deep)
+        @Field(Deep)
         deep?: Deep;
 
-        @ClassArray(Deep)
+        @Field([Deep])
         deepArray: Deep[] = [];
 
-        @ClassMap(Deep)
+        @Field({Deep})
         deepMap: { [name: string]: Deep } = {};
     }
 
@@ -65,11 +87,17 @@ test('test deep', async () => {
 
     instance.deep.name = 'defined';
     instance.deepArray.push(new Deep());
-    expect(await validate(Model, instance)).toEqual([{message: "Required value is undefined", path: 'deepArray.0.name'}]);
+    expect(await validate(Model, instance)).toEqual([{
+        message: "Required value is undefined",
+        path: 'deepArray.0.name'
+    }]);
 
     instance.deepArray[0].name = 'defined';
     instance.deepMap.foo = new Deep();
-    expect(await validate(Model, instance)).toEqual([{message: "Required value is undefined", path: 'deepMap.foo.name'}]);
+    expect(await validate(Model, instance)).toEqual([{
+        message: "Required value is undefined",
+        path: 'deepMap.foo.name'
+    }]);
 
     instance.deepMap.foo.name = 'defined';
     expect(await validate(Model, instance)).toEqual([]);
@@ -77,7 +105,7 @@ test('test deep', async () => {
 
 test('test string', async () => {
     class Model {
-        @StringType()
+        @Field()
         id: string = '2';
     }
 
@@ -88,7 +116,7 @@ test('test string', async () => {
     expect(await validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
-        @StringType()
+        @Field()
         @Optional()
         id?: string;
     }
@@ -102,7 +130,7 @@ test('test string', async () => {
 
 test('test number', async () => {
     class Model {
-        @NumberType()
+        @Field()
         id: number = 2;
     }
 
@@ -114,7 +142,7 @@ test('test number', async () => {
     expect(await validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
-        @NumberType()
+        @Field()
         @Optional()
         id?: number;
     }
@@ -130,21 +158,21 @@ test('test number', async () => {
 test('test nested validation', async () => {
     // Class definition with validation rules
     class A {
-        @StringType()
+        @Field()
         public x!: string;
     }
 
     class B {
-        @StringType()
+        @Field()
         public type!: string;
 
-        @Class(A)
+        @Field(A)
         public nested!: A;
 
-        @ClassMap(A)
-        public nestedMap!: {[name: string]: A};
+        @Field({A})
+        public nestedMap!: { [name: string]: A };
 
-        @ClassArray(A)
+        @Field([A])
         public nesteds!: A[];
     }
 
@@ -168,10 +196,10 @@ test('test nested validation', async () => {
     ]);
 
     class BOptional {
-        @StringType()
+        @Field()
         public type!: string;
 
-        @Class(A)
+        @Field(A)
         @Optional()
         public nested!: A;
     }

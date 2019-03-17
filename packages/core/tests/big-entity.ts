@@ -1,49 +1,43 @@
 import {
-    AnyType,
-    ArrayType, BooleanType,
-    Class,
-    ClassArray,
-    ClassMap,
-    DateType,
-    Entity, EnumType,
-    ID, MapType, NumberType, Optional,
-    StringType,
-    UUIDType
+    Entity,
+    EnumType,
+    Field,
+    FieldAny,
+    IDField,
+    Optional,
+    UUIDField
 } from "../";
 
 export class JobConfigDocker {
-    @StringType()
-    @ArrayType()
+    @Field([String])
     env: string[] = []; //e.g. ["PATH=bla"]
 
-    @StringType()
-    @ArrayType()
+    @Field([String])
     binds: string[] = []; //e.g. ["/tmp:/tmp"]
 
-    @StringType()
-    @ArrayType()
+    @Field([String])
     links: string[] = []; //e.g. ["redis3:redis"]
 }
 
 export class JobResources {
-    @NumberType()
+    @Field()
     cpu: number = 1;
 
-    @NumberType()
+    @Field()
     memory: number = 1;
 
-    @NumberType()
+    @Field()
     gpu: number = 0;
 
-    @NumberType()
+    @Field()
     gpuMemory: number = 0;
 }
 
 export class JobTaskCommand {
-    @StringType()
+    @Field()
     name: string = '';
 
-    @StringType()
+    @Field()
     command: string = '';
 
     constructor(name: string, command: string) {
@@ -53,39 +47,34 @@ export class JobTaskCommand {
 }
 
 export class JobTaskConfigBase {
-    @StringType()
-    @ArrayType()
-    install: string[] | null = null;
+    @Field([String])
+    install?: string[];
 
-    @StringType()
+    @Field()
     dockerfile: string = '';
 
-    @StringType()
-    @ArrayType()
-    install_files: string[] | null = null;
+    @Field([String])
+    install_files?: string[];
 
-    @StringType()
+    @Field()
     image: string = '';
 
-    @StringType()
-    @ArrayType()
+    @Field([String])
     environmentVariables: string[] = [];
 
-    @StringType()
-    @ArrayType()
+    @Field([String])
     servers: string[] = [];
 
-    @ClassArray(JobTaskCommand)
+    @Field([JobTaskCommand])
     commands: JobTaskCommand[] = [];
 
-    @StringType()
-    @ArrayType()
-    args: null | string[] = null;
+    @Field([String])
+    args?: string[];
 
-    @Class(JobResources)
+    @Field(JobResources)
     resources: JobResources = new JobResources;
 
-    @Class(JobConfigDocker)
+    @Field(JobConfigDocker)
     docker: JobConfigDocker = new JobConfigDocker;
 
     public isDockerImage(): boolean {
@@ -101,14 +90,13 @@ export class JobTaskConfig extends JobTaskConfigBase {
     /**
      * Will be set by config loading.
      */
-    @StringType()
+    @Field()
     name: string = '';
 
-    @NumberType()
+    @Field()
     replicas: number = 1;
 
-    @StringType()
-    @ArrayType()
+    @Field([String])
     depends_on: string[] = [];
 }
 
@@ -126,82 +114,79 @@ export class JobConfig extends JobTaskConfigBase {
         'docker'
     ];
 
-    @AnyType()
+    @FieldAny()
     parameters: { [name: string]: any } = {};
 
-    @StringType()
-    @ArrayType()
+    @Field([String])
     ignore: string[] = [];
 
-    @NumberType()
+    @Field()
     priority: number = 0;
 
-    @StringType()
+    @Field()
     import: string = '';
 
-    @ClassMap(JobTaskConfig)
+    @Field({JobTaskConfig})
     tasks: { [name: string]: JobTaskConfig } = {};
 }
 
 export class JobEnvironmentPython {
-    @StringType()
+    @Field()
     version?: string;
 
-    @StringType()
+    @Field()
     binary?: string;
 
-    @StringType()
+    @Field()
     sdkVersion?: string;
 
-    @StringType()
-    @MapType()
+    @Field({String})
     pipPackages: { [name: string]: string } = {};
 }
 
 export class JobEnvironment {
-    @StringType()
+    @Field()
     hostname?: string;
 
-    @StringType()
+    @Field()
     username?: string;
 
-    @StringType()
+    @Field()
     platform?: string;
 
-    @StringType()
+    @Field()
     release?: string;
 
-    @StringType()
+    @Field()
     arch?: string;
 
-    @NumberType()
+    @Field()
     uptime?: number;
 
-    @StringType()
+    @Field()
     nodeVersion?: string;
 
-    @StringType()
-    @MapType()
+    @Field({String})
     environmentVariables?: { [name: string]: string };
 
-    @Class(JobEnvironmentPython)
+    @Field(JobEnvironmentPython)
     python?: JobEnvironmentPython;
 }
 
 export class JobGit {
-    @StringType()
+    @Field()
     author?: string;
 
-    @StringType()
+    @Field()
     branch?: string;
 
-    @StringType()
+    @Field()
     commit?: string;
 
-    @StringType()
+    @Field()
     message?: string;
 
-    @StringType()
+    @Field()
     origin?: string;
 }
 
@@ -210,25 +195,25 @@ export class JobDocker {
 }
 
 export class JobDockerImage {
-    @StringType()
+    @Field()
     name?: string;
 
-    @StringType()
+    @Field()
     id?: string;
 
-    @NumberType()
+    @Field()
     size?: number;
 
-    @StringType()
+    @Field()
     os?: string;
 
-    @StringType()
+    @Field()
     arch?: string;
 
-    @DateType()
+    @Field()
     created?: Date;
 
-    @StringType()
+    @Field()
     builtWithDockerVersion?: string;
 }
 
@@ -278,41 +263,39 @@ export enum JobTaskInstanceStatus {
 }
 
 export class Channel {
-    @StringType()
-    @ArrayType()
+    @Field([String])
     traces: string[] = [];
 
-    @BooleanType()
+    @Field()
     main?: boolean;
 
-    @BooleanType()
+    @Field()
     kpi?: boolean;
 
-    @NumberType()
+    @Field()
     kpiTrace: number = 0;
 
-    @BooleanType()
+    @Field()
     maxOptimization: boolean = true;
 
-    @AnyType()
-    @ArrayType()
+    @FieldAny([])
     lastValue: any[] = [];
 
-    @AnyType()
+    @FieldAny()
     xaxis?: object;
 
-    @AnyType()
+    @FieldAny()
     yaxis?: object;
 
-    @AnyType()
+    @FieldAny()
     layout?: object;
 }
 
 export class JobAssignedResourcesGpu {
-    @NumberType()
+    @Field()
     id: number;
 
-    @NumberType()
+    @Field()
     memory: number;
 
     constructor(id: number, memory: number) {
@@ -322,13 +305,13 @@ export class JobAssignedResourcesGpu {
 }
 
 export class JobAssignedResources {
-    @NumberType()
+    @Field()
     cpu: number = 0;
 
-    @NumberType()
+    @Field()
     memory: number = 0;
 
-    @ClassArray(JobAssignedResourcesGpu)
+    @Field([JobAssignedResourcesGpu])
     gpus: JobAssignedResourcesGpu[] = [];
 
     public getMinGpuMemory(): number {
@@ -362,19 +345,19 @@ export class JobAssignedResources {
 }
 
 export class JobTaskInstance {
-    @NumberType()
+    @Field()
     id: number;
 
     @EnumType(JobTaskInstanceStatus)
     status: JobTaskInstanceStatus = JobTaskInstanceStatus.pending;
 
-    @Class(JobEnvironment)
+    @Field(JobEnvironment)
     environment: JobEnvironment = new JobEnvironment;
 
-    @UUIDType()
+    @UUIDField()
     server?: string;
 
-    @Class(JobAssignedResources)
+    @Field(JobAssignedResources)
     assignedResources: JobAssignedResources = new JobAssignedResources;
 
     constructor(id: number) {
@@ -383,45 +366,45 @@ export class JobTaskInstance {
 }
 
 export class JobTaskQueue {
-    @NumberType()
+    @Field()
     position: number = 0;
 
-    @NumberType()
+    @Field()
     tries: number = 0;
 
-    @StringType()
+    @Field()
     result: string = '';
 
-    @DateType()
+    @Field()
     added: Date = new Date();
 }
 
 export class JobTask {
-    @Class(JobTaskQueue)
+    @Field(JobTaskQueue)
     queue: JobTaskQueue = new JobTaskQueue;
 
-    @StringType()
+    @Field()
     name: string;
 
-    @Class(JobDocker)
+    @Field(JobDocker)
     docker: JobDocker = new JobDocker;
 
-    @Class(JobDockerImage)
+    @Field(JobDockerImage)
     dockerImage: JobDockerImage = new JobDockerImage;
 
     @EnumType(JobTaskStatus)
     status: JobTaskStatus = JobTaskStatus.pending;
 
-    @DateType()
-    assigned: Date | null = null;
+    @Field()
+    assigned?: Date;
 
-    @DateType()
-    started: Date | null = null;
+    @Field()
+    started?: Date;
 
-    @DateType()
-    ended: Date | null = null;
+    @Field()
+    ended?: Date;
 
-    @ClassMap(JobTaskInstance)
+    @Field({JobTaskInstance})
     private instances: { [name: string]: JobTaskInstance } = {};
 
     constructor(name: string, replicas: number) {
@@ -433,99 +416,94 @@ export class JobTask {
 
 @Entity('job', 'jobs')
 export class Job {
-    @ID()
-    @UUIDType()
+    @IDField()
+    @UUIDField()
     id: string;
 
-    @UUIDType()
+    @UUIDField()
     project: string;
 
-    @NumberType()
+    @Field()
     number: number = 0;
 
-    @NumberType()
+    @Field()
     version: number = 1;
 
-    //obsolete
-    alive: boolean = false;
-
-    @DateType()
+    @Field()
     created: Date = new Date();
 
-    @DateType()
+    @Field()
     updated: Date = new Date();
 
-    // exitCode = 0;
-    @StringType()
+    @Field()
     author?: string;
 
-    @Class(JobConfig)
+    @Field(JobConfig)
     config: JobConfig = new JobConfig;
 
-    @Class(JobGit)
+    @Field(JobGit)
     @Optional()
     git?: JobGit;
 
-    @StringType()
+    @Field()
     configFile?: string;
 
     @EnumType(JobStatus)
     status: JobStatus = JobStatus.creating;
 
-    @StringType()
+    @Field()
     title: string = '';
 
-    @ClassMap(JobTask)
+    @Field({JobTask})
     tasks: { [name: string]: JobTask } = {};
 
-    @BooleanType()
+    @Field()
     runOnCluster: boolean = false;
 
-    @DateType()
-    assigned: Date | null = null;
+    @Field()
+    assigned?: Date;
 
-    @DateType()
-    started: Date | null = null;
+    @Field()
+    started?: Date;
 
-    @DateType()
-    ended: Date | null = null;
+    @Field()
+    ended?: Date;
 
-    @DateType()
-    ping: Date | null = null;
+    @Field()
+    ping?: Date;
 
-    //aka epochs
-    @NumberType()
+    @Field()
     iteration: number = 0;
 
-    @NumberType()
+    @Field()
     iterations: number = 0;
 
-    @NumberType()
+    @Field()
     secondsPerIteration: number = 0;
 
     //aka batches
-    @NumberType()
+    @Field()
     step: number = 0;
 
-    @NumberType()
+    @Field()
     steps: number = 0;
 
-    @StringType()
+    @Field()
     stepLabel: string = 'step';
 
     /**
      * ETA in seconds. Time left.
      */
-    @NumberType()
+    @Field()
     eta: number = 0;
 
-    @NumberType()
+    @Field()
     speed: number = 0;
 
-    @StringType()
+    @Field()
     speedLabel: string = 'sample/s';
 
-    @ClassMap(Channel)
+    @Field({Channel})
     channels: { [name: string]: Channel } = {};
 
     constructor(id: string, project: string) {

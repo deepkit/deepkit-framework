@@ -22,6 +22,8 @@ const cache = new Map<Object, Map<string, any>>();
 
 /**
  * Parameter names for the constructor.
+ *
+ * @hidden
  */
 export function getCachedParameterNames<T>(classType: ClassType<T>): string[] {
     let valueMap = cache.get(classType.prototype);
@@ -39,6 +41,9 @@ export function getCachedParameterNames<T>(classType: ClassType<T>): string[] {
     return value;
 }
 
+/**
+ * @hidden
+ */
 export interface ResolvedReflectionFound {
     resolvedClassType: ClassType<any>;
     resolvedPropertyName: string;
@@ -48,8 +53,14 @@ export interface ResolvedReflectionFound {
     map: boolean;
 }
 
+/**
+ * @hidden
+ */
 export type ResolvedReflection = ResolvedReflectionFound | null;
 
+/**
+ * @hidden
+ */
 export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: string): ResolvedReflection {
     const names = propertyPath.split('.');
     let resolvedClassType: ClassType<any> = classType;
@@ -170,6 +181,9 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
     return null;
 }
 
+/**
+ * @hidden
+ */
 export function getReflectionType<T>(classType: ClassType<T>, propertyName: string): { type: Types | undefined, typeValue: any | undefined } {
     let valueMap = cache.get(classType.prototype);
     if (!valueMap) {
@@ -180,17 +194,17 @@ export function getReflectionType<T>(classType: ClassType<T>, propertyName: stri
     let value = valueMap.get('getReflectionType::' + propertyName);
 
     if (undefined === value) {
-        try {
-            const schema = getEntitySchema(classType).getProperty(propertyName);
+        const schema = getEntitySchema(classType).getPropertyOrUndefined(propertyName);
 
+        if (schema) {
             value = {
                 type: schema.type,
-                typeValue: schema.getResolvedClassType()
+                typeValue: schema.getResolvedClassTypeForValidType()
             };
-        } catch (e) {
+        } else {
             value = {
                 type: undefined,
-                typeValue: undefined,
+                typeValue: undefined
             }
         }
 
@@ -200,6 +214,9 @@ export function getReflectionType<T>(classType: ClassType<T>, propertyName: stri
     return value;
 }
 
+/**
+ * @hidden
+ */
 export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName: string): any {
     let valueMap = cache.get(classType.prototype);
     if (!valueMap) {
@@ -222,6 +239,9 @@ export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName
     return value;
 }
 
+/**
+ * @hidden
+ */
 export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
 
     if (undefined === propertyValue) {
@@ -293,6 +313,9 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     return convert(propertyValue);
 }
 
+/**
+ * @hidden
+ */
 export function propertyPlainToClass<T>(
     classType: ClassType<T>,
     propertyName: string,
@@ -391,11 +414,16 @@ export function propertyPlainToClass<T>(
     return convert(propertyValue);
 }
 
-
+/**
+ * Clones a class instance deeply.
+ */
 export function cloneClass<T>(target: T, parents?: any[]): T {
     return plainToClass(target.constructor as ClassType<T>, classToPlain(target.constructor as ClassType<T>, target), parents);
 }
 
+/**
+ * Converts a class instance into a plain object, which an be used with JSON.stringify() to convert it into a JSON string.
+ */
 export function classToPlain<T>(classType: ClassType<T>, target: T): any {
     const result: any = {};
 
@@ -430,6 +458,9 @@ export function classToPlain<T>(classType: ClassType<T>, target: T): any {
     return result;
 }
 
+/**
+ * @hidden
+ */
 export class ToClassState {
     onFullLoadCallbacks: (() => void)[] = [];
 }
@@ -437,6 +468,9 @@ export class ToClassState {
 const propertyNamesCache = new Map<ClassType<any>, string[]>();
 const parentReferencesCache = new Map<ClassType<any>, {[propertyName: string]: any}>();
 
+/**
+ * @hidden
+ */
 function findParent<T>(parents: any[], parentType: ClassType<T>): T | null {
     for (let i = parents.length - 1; i >= 0; i--) {
         if (parents[i] instanceof parentType) {
@@ -447,6 +481,9 @@ function findParent<T>(parents: any[], parentType: ClassType<T>): T | null {
     return null;
 }
 
+/**
+ * @hidden
+ */
 export function toClass<T>(
     classType: ClassType<T>,
     cloned: object,
@@ -590,6 +627,9 @@ export function plainToClass<T>(classType: ClassType<T>, target: object, parents
     return item;
 }
 
+/**
+ * @hidden
+ */
 export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: any, target: 'mongo' | 'plain') {
     for (const propertyName in item) {
         if (!item.hasOwnProperty(propertyName)) continue;
@@ -599,35 +639,59 @@ export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: an
     }
 }
 
+/**
+ * @hidden
+ */
 export function getIdField<T>(classType: ClassType<T>): string | undefined {
     return getEntitySchema(classType).idField;
 }
 
+/**
+ * @hidden
+ */
 export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
     const id = getIdField(classType);
     return id ? target[id] : undefined;
 }
 
+/**
+ * @hidden
+ */
 export function getDecorator<T>(classType: ClassType<T>): string | undefined {
     return getEntitySchema(classType).decorator;
 }
 
+/**
+ * @hidden
+ */
 export function getRegisteredProperties<T>(classType: ClassType<T>): string[] {
     return getEntitySchema(classType).propertyNames;
 }
 
+/**
+ * @hidden
+ */
 export function isArrayType<T>(classType: ClassType<T>, property: string): boolean {
     return getEntitySchema(classType).getProperty(property).isArray;
 }
 
+/**
+ * @hidden
+ */
 export function isMapType<T>(classType: ClassType<T>, property: string): boolean {
     return getEntitySchema(classType).getProperty(property).isMap;
 }
 
+/**
+ * @hidden
+ */
 export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property: string): boolean {
     return getEntitySchema(classType).getProperty(property).allowLabelsAsValue;
 }
 
+/**
+ * @hidden
+ */
 export function isExcluded<T>(classType: ClassType<T>, property: string, wantedTarget: 'mongo' | 'plain'): boolean {
     const mode = getEntitySchema(classType).getProperty(property).exclude;
 
@@ -648,14 +712,23 @@ export function getEntityName<T>(classType: ClassType<T>): string {
     return name;
 }
 
+/**
+ * @hidden
+ */
 export function getDatabaseName<T>(classType: ClassType<T>): string | undefined {
     return getEntitySchema(classType).databaseName;
 }
 
+/**
+ * @hidden
+ */
 export function getCollectionName<T>(classType: ClassType<T>): string | undefined {
     return getEntitySchema(classType).collectionName;
 }
 
+/**
+ * @hidden
+ */
 export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: string]: any }): object {
     if (!isObject(value)) return {};
 

@@ -11,7 +11,19 @@ If you have data models in your frontend, Node backend and Database,
 then Marshal helps you to convert and validate between all those parties correctly.
 With NestJS validation support and handy MongoDB storage abstraction.
 
-With TypeORM support.
+
+## Features
+
+* Fast marshalling from and to JSON
+* Fast marshalling from and to MongoDB
+* Constructor support (required property can be placed in constructor)
+* Decorators support (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
+* Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/))
+* Complex models with parent references
+* Entity definition export to TypeORM
+* Built in validators and custom validators
+* NestJS validation pipe
+
 
 ![Diagram](https://raw.github.com/marcj/marshal.ts/master/docs/assets/diagram.png)
 
@@ -37,7 +49,7 @@ import {
     StringType,
     uuid,
     ArrayType,
-} from '@marcj/marshal';
+} from '@marcj/marshal'; import {Field} from "./decorators";
 
 
 class SubModel {
@@ -56,26 +68,25 @@ class SimpleModel {
     @UUIDType()
     id: string = uuid();
 
-    @StringType()
+    @Field()
     name: string;
 
-    @StringType()
-    @ArrayType()
-    tags: string[];
+    @Field([String])
+    tags: string[] = [];
 
-    @NumberType()
+    @Field()
     type: number = 0;
 
     @EnumType(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @DateType()
+    @Field()
     created: Date = new Date;
 
-    @ClassArray(SubModel)
+    @Field([SubModel])
     children: SubModel[] = [];
 
-    @ClassMap(SubModel)
+    @Field({SubModel})
     childrenMap: {[key: string]: SubModel} = {};
 
     constructor(name: string) {
@@ -107,7 +118,92 @@ console.log(instance);
 */
 ```
 
+## Usage:
+
+### Config
+
+Make sure you have `experimentalDecorators` and `emitDecoratorMetadata` enabled in tsconfig.json:
+
+```
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle: false`), which is the default.
+
+### Definition
+
+Once your have defined your entity (see above) you can use one of Marshal's core methods
+to transform data.
+
+Note: Class fields that are not annotated either by @Field() or any other decorator
+won't be serialized. Their value will be dropped.
+
+### Serialization
+
+* JSON object to class instance (`plainToClass`).
+* JSON object to mongo record (`plainToMongo`).
+
+* class instance to JSON object (`classToPlain`).
+* class instance to mongo record (`classToMongo`).
+
+* mongo record to class instance (`mongoToClass`).
+* mongo record to JSON object (`mongoToPlain`).
+
+Note: 'JSON object' is not a string, but an object with valid JSON values, which can then
+be used to serialise to JSON string using JSON.stringify(classToPlain(SimpleModel, ...)).
+
+### Validation
+
+You can validate incoming object literals or an class instance.
+
+First make sure you have some validators attached to your fields you want to validate.
+
+```typescript
+import {Field, validate} from '@marcj/marshal';
+
+class Page {
+    @Field()
+    name: string;
+    
+    @Field()
+    age: number;
+}
+
+const errors = validate(Page, {name: 'peter'});
+expect(errors.length).toBe(1)
+expect(errors[0]).toBeInstanceOf(ValidationError);
+expect(errors[0].path).toBe('age');
+expect(errors[0].message).toBe('Required value is undefined');
+````
+You can also valid
+
+### Partial serialization
+
+Most of the time, you want to have full class instances so the internal state is always valid.
+However, if you have a patch mechanism, use JSON Patch, or just want to change one field value in the database,
+you might have the need to serialize only one field.
+
+* partialPlainToClass
+* partialClassToPlain
+* partialClassToMongo
+* partialPlainToMongo
+* partialMongoToPlain
+
 ## Types
+
+Class fields are annotated using decorators.
+You can define primitives, class mappings, relations between parents, and indices for the database (currently MongoDB).
+
+See [documentation of @marcj/marshal](https://marshal.marcj.dev/modules/_marcj_marshal.html) for all available decorators.
+
+## TypeORM
+
+The meta information about your entity can be exported to TypeORM EntitySchema.
 
 ### ID
 
@@ -115,6 +211,21 @@ console.log(instance);
 ID. Properties marked as ID on `_id` will receive its value after
 inserting the instance in MongoDB using `Database.add()`. You need to
 define either `@MongoIdType()` or `@UUIDType` together with `@ID()`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ### MongoIdType
@@ -453,15 +564,18 @@ npm install @marcj/marshal-mongo
 ```
 
 ```typescript
-import {MongoClient} from "mongodb";
 import {plainToClass} from "@marcj/marshal";
 import {Database} from "@marcj/marshal-mongo";
+import {createConnection} from "typeorm";
 
-const connection = await MongoClient.connect(
-    'mongodb://localhost:27017', 
-    {useNewUrlParser: true}
-);
-await connection.db('testing').dropDatabase();
+(async () => {
+const connection = await createConnection({
+    type: "mongodb",
+    host: "localhost",
+    port: 27017,
+    database: "testing",
+    useNewUrlParser: true,
+});
 const database = new Database(connection, 'testing');
 
 const instance: SimpleModel = plainToClass(SimpleModel, {
@@ -476,106 +590,7 @@ const oneItem: SimpleModel = await database.get(
     SimpleModel,
     {id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}
 );
-```
-
-```typescript
-/**
- * Handle abstraction of MongoDB.
- *
- * The `filter` argument is always a key-value map, whereas values are class instances. Use partialPlainToClass() first
- * if you want to pass values from JSON/HTTP-Request.
- */
-export declare class Database {
-    constructor(mongoClient: MongoClient | MongoClientFactory, defaultDatabaseName?: string);
-    
-    /**
-     * Returns one instance based on given filter, or null when not found.
-     */
-    get<T>(classType: ClassType<T>, filter: {
-        [field: string]: any;
-    }): Promise<T | null>;
-    
-    /**
-     * Returns all available documents for given filter as instance classes.
-     *
-     * Use toClass=false to return the raw documents. Use find().map(v => mongoToPlain(classType, v)) so you can
-     * easily return that values back to the HTTP client very fast.
-     */
-    find<T>(classType: ClassType<T>, filter?: {
-        [field: string]: any;
-    }, toClass?: boolean): Promise<T[]>;
-    
-    /**
-     * Returns a mongodb cursor, which you can further modify and then call toArray() to retrieve the documents.
-     *
-     * Use toClass=false to return the raw documents.
-     */
-    cursor<T>(classType: ClassType<T>, filter?: {
-        [field: string]: any;
-    }, toClass?: boolean): Promise<Cursor<T>>;
-    
-    /**
-     * Removes ONE item from the database that has the given id. You need to use @ID() decorator
-     * for at least and max one property at your entity to use this method.
-     */
-    remove<T>(classType: ClassType<T>, id: string): Promise<boolean>;
-    
-    /**
-     * Removes ONE item from the database that matches given filter.
-     */
-    deleteOne<T>(classType: ClassType<T>, filter: {
-        [field: string]: any;
-    }): Promise<void>;
-    
-    /**
-     * Removes ALL items from the database that matches given filter.
-     */
-    deleteMany<T>(classType: ClassType<T>, filter: {
-        [field: string]: any;
-    }): Promise<void>;
-    
-    /**
-     * Adds a new item to the database. Sets _id if defined at your entity.
-     */
-    add<T>(classType: ClassType<T>, item: T): Promise<boolean>;
-    
-    /**
-     * Returns the count of items in the database, that fit that given filter.
-     */
-    count<T>(classType: ClassType<T>, filter?: {
-        [field: string]: any;
-    }): Promise<number>;
-    
-    /**
-     * Returns true when at least one item in the database is found that fits given filter.
-     */
-    has<T>(classType: ClassType<T>, filter?: {
-        [field: string]: any;
-    }): Promise<boolean>;
-    
-    /**
-     * Updates an entity in the database and returns the new version number if successful, or null if not successful.
-     *
-     * If no filter is given, the ID of `update` is used.
-     */
-    update<T>(classType: ClassType<T>, update: T, filter?: {
-        [field: string]: any;
-    }): Promise<number | null>;
-    
-    /**
-     * Patches an entity in the database and returns the new version number if successful, or null if not successful.
-     * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
-     *
-     * Example
-     *
-     * await patch(SimpleEntity, {
-     *     ['children.0.label']: 'Changed label'
-     * });
-     */
-    patch<T>(classType: ClassType<T>, filter: {
-        [field: string]: any;
-    }, patch: Partial<T>): Promise<number | null>;
-}
+});
 ```
 
 ## NestJS / Express
@@ -597,22 +612,22 @@ import {
 } from '@nestjs/common';
 
 import {SimpleModel} from "@marcj/marshal/tests/entities";
-import {plainToClass, Database, classToPlain} from "@marcj/marshal";
+import {Database, classToPlain} from "@marcj/marshal";
 import {ValidationPipe} from "@marcj/marshal-nest";
-import {MongoClient} from "mongodb";
 
 @Controller()
 class MyController {
-    
     private database: Database;
     
     private async getDatabase() {
         if (!this.database) {
-            const connection = await MongoClient.connect(
-                'mongodb://localhost:27017',
-                {useNewUrlParser: true}
-            );
-            await connection.db('testing').dropDatabase();
+            const connection = await createConnection({
+                type: "mongodb",
+                host: "localhost",
+                port: 27017,
+                database: "testing",
+                useNewUrlParser: true,
+            });
             this.database = new Database(connection, 'testing');
         }
         

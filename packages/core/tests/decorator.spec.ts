@@ -1,57 +1,52 @@
 import 'jest-extended'
 import {
-    AnyType,
-    ArrayType,
-    BooleanType,
-    Class,
+    classToPlain,
     DatabaseName,
     Entity,
-    ID,
-    MapType,
-    MongoIdType,
-    StringType,
+    Field,
     getDatabaseName,
     getEntityName,
+    getEntitySchema,
+    getParentReferenceClass,
     getReflectionType,
+    IDField,
     isArrayType,
     isMapType,
-    plainToClass,
-    ClassMap,
-    ClassArray,
-    ClassCircular,
-    ClassArrayCircular,
-    ClassMapCircular,
+    MongoIdField,
     ParentReference,
-    getParentReferenceClass,
-    BinaryType,
-    classToPlain,
+    plainToClass,
     RegisteredEntities,
+    FieldAny, FieldMap, forwardRef, FieldArray,
 } from "../";
 import {Buffer} from "buffer";
+import {SimpleModel} from "./entities";
 
 test('test entity database', async () => {
 
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
-        @ID()
-        @MongoIdType()
+        @IDField()
+        @MongoIdField()
         _id?: string;
 
-        @StringType()
+        @Field()
         name?: string;
     }
 
     expect(RegisteredEntities['DifferentDataBase']).toBe(DifferentDataBase);
 
-    class Child extends DifferentDataBase {}
+    class Child extends DifferentDataBase {
+    }
 
     @Entity('DifferentDataBase2', 'differentCollection2')
     @DatabaseName('testing2')
-    class Child2 extends DifferentDataBase {}
+    class Child2 extends DifferentDataBase {
+    }
 
     @Entity('DifferentDataBase3')
-    class Child3 extends DifferentDataBase {}
+    class Child3 extends DifferentDataBase {
+    }
 
     expect(getDatabaseName(DifferentDataBase)).toBe('testing1');
     expect(getEntityName(DifferentDataBase)).toBe('DifferentDataBase');
@@ -66,103 +61,255 @@ test('test entity database', async () => {
     expect(getEntityName(Child3)).toBe('DifferentDataBase3');
 });
 
+test('test uuid', () => {
+    const schema = getEntitySchema(SimpleModel);
+    expect(schema.getProperty('id').type).toBe('uuid');
+    expect(schema.getProperty('id').isId).toBe(true);
+});
+
+test('test binary', () => {
+    class User {
+        @Field(Buffer)
+        picture?: Buffer
+    }
+    const schema = getEntitySchema(User);
+    expect(schema.getProperty('picture').type).toBe('binary');
+});
+
+test('test @Field', () => {
+    class Config {
+        @Field()
+        created: Date = new Date;
+    }
+
+    class Page {
+        @Field({Config})
+        map: { [name: string]: Config } = {};
+
+        @Field([Config])
+        configArray: Config[] = [];
+
+        constructor(
+            @Field() name: string,
+            @Field([String]) tags: string[]
+        ) {
+        }
+    }
+
+    const schema = getEntitySchema(Page);
+
+    expect(schema.getProperty('name').isMap).toBe(false);
+    expect(schema.getProperty('name').isArray).toBe(false);
+    expect(schema.getProperty('name').type).toBe('string');
+
+    expect(schema.getProperty('tags').isMap).toBe(false);
+    expect(schema.getProperty('tags').isArray).toBe(true);
+    expect(schema.getProperty('tags').type).toBe('string');
+
+    expect(schema.getProperty('map').type).toBe('class');
+    expect(schema.getProperty('map').isMap).toBe(true);
+    expect(schema.getProperty('map').getResolvedClassType()).toBe(Config);
+    expect(schema.getProperty('map').isArray).toBe(false);
+
+    expect(schema.getProperty('configArray').type).toBe('class');
+    expect(schema.getProperty('configArray').isArray).toBe(true);
+    expect(schema.getProperty('configArray').getResolvedClassType()).toBe(Config);
+    expect(schema.getProperty('configArray').isMap).toBe(false);
+});
+
+test('test invalid @Field', () => {
+    class Config {
+        @Field()
+        name?: string;
+    }
+
+    expect(() => {
+        class User {
+            @Field()
+            notDefined;
+        }
+    }).toThrowError('User::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
+
+    expect(() => {
+        var NOTEXIST;
+
+        class User {
+            @Field(NOTEXIST)
+            notDefined;
+        }
+    }).toThrowError('User::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
+
+    expect(() => {
+        class User {
+            @Field()
+            created = new Date;
+        }
+    }).toThrowError('User::created type mismatch. Given undefined, but declared is Object or undefined.');
+
+    expect(() => {
+        class User {
+            @Field(Config)
+            config: Config[] = [];
+        }
+    }).toThrowError('User::config type mismatch. Given Config, but declared is Array.');
+
+    expect(() => {
+        class User {
+            @Field([Config])
+            config?: Config;
+        }
+    }).toThrowError('User::config type mismatch. Given Config[], but declared is Config.');
+
+    expect(() => {
+        class User {
+            @Field(Config)
+            config: { [k: string]: Config } = {};
+        }
+    }).toThrowError('User::config type mismatch. Given Config, but declared is Object or undefined');
+
+    expect(() => {
+        class Model {
+            @Field([forwardRef(() => Config)])
+            sub?: Config;
+        }
+
+    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[], but declared is Config.');
+
+    expect(() => {
+        class Model {
+            @FieldArray(forwardRef(() => Config))
+            sub?: Config;
+        }
+
+    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[], but declared is Config.');
+
+    expect(() => {
+        class Model {
+            @FieldMap(forwardRef(() => Config))
+            sub?: Config;
+        }
+    }).toThrowError('Model::sub type mismatch. Given {[key: string]: ForwardedRef}, but declared is Config.');
+
+    expect(() => {
+        class Model {
+            @Field({Config})
+            sub?: Config[];
+        }
+
+    }).toThrowError('Model::sub type mismatch. Given {[key: string]: Config}, but declared is Array.');
+
+    expect(() => {
+        class Model {
+            @FieldAny()
+            any?: any[];
+        }
+    }).toThrowError('Model::any type mismatch. Given Any, but declared is Array.');
+
+    {
+        //works
+        class Model {
+            @FieldAny()
+            any?: { [k: string]: any };
+        }
+    }
+    {
+        //works
+        class Model {
+            @FieldAny({})
+            any?;
+        }
+    }
+
+    {
+        //works
+        class Model {
+            @Field(forwardRef(() => Config))
+            sub?: Config;
+        }
+    }
+});
+
 test('test no entity throw error', () => {
 
     expect(() => {
-        class Model {}
+        class Model {
+        }
+
         getEntityName(Model);
     }).toThrowError('No @Entity() defined for class class Model');
 });
 
-test('test decorator errors', () => {
-    class Sub {}
-
-    expect(() => {
-        class Model {
-            @Class(<any>undefined)
-            sub?: Sub;
-        }
-    }).toThrowError('Model::sub has @Class but argument is empty.');
-
-    expect(() => {
-        class Model {
-            @ClassMap(<any>undefined)
-            sub?: Sub;
-        }
-    }).toThrowError('Model::sub has @ClassMap but argument is empty.');
-
-    expect(() => {
-        class Model {
-            @ClassArray(<any>undefined)
-            sub?: Sub;
-        }
-    }).toThrowError('Model::sub has @ClassArray but argument is empty.');
-});
-
 test('test decorator ParentReference without class', () => {
-    class Sub {}
+    class Sub {
+    }
 
     expect(() => {
         class Model {
             @ParentReference()
             sub?: Sub;
         }
+
         getParentReferenceClass(Model, 'sub');
     }).toThrowError('Model::sub has @ParentReference but no @Class defined.');
 });
 
 test('test decorator circular', () => {
-    class Sub {}
+    class Sub {
+    }
 
     {
         class Model {
-            @ClassCircular(() => Sub)
+            @Field(forwardRef(() => Sub))
             sub?: Sub;
         }
+
         expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
     }
 
     {
         class Model {
-            @ClassMapCircular(() => Sub)
-            sub?: Sub;
+            @FieldMap(forwardRef(() => Sub))
+            sub?: { [l: string]: Sub };
         }
+
         expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
         expect(isMapType(Model, 'sub')).toBeTrue();
     }
 
     {
         class Model {
-            @ClassArrayCircular(() => Sub)
-            sub?: Sub;
+            @Field([forwardRef(() => Sub)])
+            sub?: Sub[];
         }
+
         expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
         expect(isArrayType(Model, 'sub')).toBeTrue();
     }
 });
 
-
-
 test('test properties', () => {
-    class DataValue { }
-    class DataValue2 { }
+    class DataValue {
+    }
+
+    class DataValue2 {
+    }
 
     @Entity('Model')
     class Model {
-        @ID()
-        @MongoIdType()
+        @IDField()
+        @MongoIdField()
         _id?: string;
 
-        @StringType()
+        @Field()
         name?: string;
 
-        @Class(DataValue)
+        @Field(DataValue)
         data?: DataValue;
     }
 
     @Entity('SubModel')
     class SubModel extends Model {
-        @Class(DataValue2)
+        @Field(DataValue2)
         data2?: DataValue2;
     }
 
@@ -203,10 +350,10 @@ test('test properties', () => {
 
 test('more decorator', () => {
     class Model {
-        @BooleanType()
+        @Field()
         bool: boolean = false;
 
-        @AnyType()
+        @FieldAny()
         whatever: any;
     }
 
@@ -265,22 +412,24 @@ test('more decorator', () => {
 
 test('more array/map', () => {
     class Model {
-        @BooleanType()
-        @ArrayType()
+        @Field([Boolean])
         bools?: boolean[];
 
-        @AnyType()
-        @MapType()
+        @FieldAny([])
         whatever?: any[];
+
+        @FieldAny({})
+        whatevermap?: {[k: string]: any};
     }
 
     expect(isArrayType(Model, 'bools')).toBeTrue();
-    expect(isMapType(Model, 'whatever')).toBeTrue();
+    expect(isMapType(Model, 'whatevermap')).toBeTrue();
+    expect(isMapType(Model, 'whatever')).toBeFalse();
 });
 
 test('binary', () => {
     class Model {
-        @BinaryType()
+        @Field()
         preview: Buffer = new Buffer('FooBar', 'utf8');
     }
 

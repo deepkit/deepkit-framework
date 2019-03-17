@@ -1,25 +1,25 @@
 import {PageCollection} from "./PageCollection";
 import {DocumentClass} from "./DocumentClass";
-import {Class, ClassCircular, ParentReference, StringType, UUIDType} from "../../src/decorators";
+import {Field, forwardRef, ParentReference, UUIDField} from "../../src/decorators";
 import {uuid} from "../../src/utils";
 import {Optional} from "../../src/validation";
 
 export class PageClass {
-    @UUIDType()
+    @UUIDField()
     id: string = uuid();
 
-    @StringType()
-    name: string | undefined;
+    @Field()
+    name?: string;
 
-    @ClassCircular(() => PageCollection)
+    @Field(forwardRef(() => PageCollection))
     children: PageCollection = new PageCollection;
 
-    @Class(PageClass)
+    @Field(PageClass)
     @ParentReference()
     @Optional()
     parent?: PageClass;
 
-    @ClassCircular(() => DocumentClass)
+    @Field(forwardRef(() => DocumentClass))
     @ParentReference()
     document: DocumentClass;
 

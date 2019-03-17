@@ -9,6 +9,7 @@
     "strict": true,
     "sourceMap": true,
     "inlineSources": true,
+    "preserveSymlinks": true,
     "module": "commonjs",
     "target": "es2017",
     "skipLibCheck": true,

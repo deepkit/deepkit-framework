@@ -1,16 +1,16 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {ObjectID} from "mongodb";
-import {DateType, ID, MongoIdType, UUIDType} from "@marcj/marshal";
+import {Field, IDField, MongoIdField, UUIDField} from "@marcj/marshal";
 import {mongoToPlain, partialMongoToPlain, uuid4Binary} from "../src/mapping";
 
 test('mongo to plain', () => {
     class Model {
-        @ID()
-        @MongoIdType()
+        @IDField()
+        @MongoIdField()
         _id?: string;
 
-        @DateType()
+        @Field()
         date?: Date;
     }
 
@@ -25,14 +25,14 @@ test('mongo to plain', () => {
 
 test('mongo to plain partial', () => {
     class Model {
-        @ID()
-        @MongoIdType()
+        @IDField()
+        @MongoIdField()
         _id?: string;
 
-        @UUIDType()
+        @UUIDField()
         uuid?: string;
 
-        @DateType()
+        @Field()
         date?: Date;
     }
 

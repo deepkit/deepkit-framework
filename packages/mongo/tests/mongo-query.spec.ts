@@ -1,12 +1,10 @@
 import 'jest';
-import {NumberType, StringType} from "@marcj/marshal";
 import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
-import {ArrayType, Class, Decorator} from "@marcj/marshal/src/decorators";
+import {Field, Decorated} from "@marcj/marshal/src/decorators";
 
 class SimpleConfig {
-    @Decorator()
-    @ArrayType()
-    @StringType()
+    @Decorated()
+    @Field([String])
     items: string[] = [];
 
     constructor(items: string[] = []) {
@@ -15,16 +13,16 @@ class SimpleConfig {
 }
 
 class Simple {
-    @NumberType()
+    @Field()
     public id!: number;
 
-    @NumberType()
+    @Field()
     public price!: number;
 
-    @StringType()
+    @Field()
     public label!: string;
 
-    @Class(SimpleConfig)
+    @Field(SimpleConfig)
     public config: SimpleConfig = new SimpleConfig;
 }
 
