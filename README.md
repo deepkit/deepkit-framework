@@ -13,9 +13,9 @@ The result is having only one entity and validation definition for all sides at 
 
 ## Features
 
-* Supported types: String, Number, Boolean, Date, Binary, custom classes, Array, Map, any.
-* Fast marshalling from and to JSON
-* Fast marshalling from and to MongoDB
+* Supported types: String, Number, Boolean, Date, Binary, custom classes, Array, object maps, any.
+* Fast marshalling of class instance from and to JSON object
+* Fast marshalling of class instance from and to MongoDB record
 * Constructor support (required property can be placed in constructor)
 * Decorators support (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
 * Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/))
@@ -29,6 +29,8 @@ The result is having only one entity and validation definition for all sides at 
 
 ## Todo
 
+* Add type support for: Map<T, K>, Set<T> (WeakMap<T, K>, and Set<T>)
+* Add type support for: BigInt, Big*Array, Float*Array, Int*Array, Uint*Array,
 * Add more built-in validators
 * Support discriminators (union class types)
 * Add support for TypeORM types completely (so we support MySQL, Postgres, SQLiTe, etc.), currently we use TypeOrm's Connection abstraction.
