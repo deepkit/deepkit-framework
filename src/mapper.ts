@@ -115,12 +115,9 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                     }
 
                     if (type === 'class') {
-                        if (!typeValue) {
-                           throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} has no class defined. Use Circular decorator if that class really exists.`);
-                        }
                         resolvedTypeCandidate = type;
                         resolvedClassTypeCandidate = typeValue;
-                    } else if (type){
+                    } else if (type) {
                         if (names[i+1]) {
                             return {
                                 resolvedClassType: resolvedClassType,
@@ -140,12 +137,8 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                                 map: isMap,
                             }
                         }
-                    } else {
-                        return;
                     }
                 }
-            } else {
-                throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} has no class defined. Use Circular decorator if that class really exists.`);
             }
         }
     }
