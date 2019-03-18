@@ -41,6 +41,11 @@ test('test invalid usage', async () => {
         getEntitySchema(Base).getProperty('ohwe').getResolvedClassType();
     }).toThrowError('ForwardRef returns no value');
 
+
+    expect(() => {
+        getReflectionType(Base, 'ohwe');
+    }).toThrowError('Base::ohwe: Error: ForwardRef returns no value. () => undefined');
+
     expect(getEntitySchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
 
     //second call uses cached one
