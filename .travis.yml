@@ -16,7 +16,7 @@ before_script:
 script:
 - "./node_modules/.bin/jest --coverage --forceExit --detectOpenHandles"
 - cat ./coverage/lcov.info | coveralls
-- cd packages/benchmark && ../../node_modules/.bin/jest
+- cd packages/benchmark && ../../node_modules/.bin/jest && cd -
 deploy:
   provider: heroku
   api_key:
