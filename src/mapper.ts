@@ -194,16 +194,20 @@ export function getReflectionType<T>(classType: ClassType<T>, propertyName: stri
     if (undefined === value) {
         const schema = getEntitySchema(classType).getPropertyOrUndefined(propertyName);
 
-        if (schema) {
-            value = {
-                type: schema.type,
-                typeValue: schema.getResolvedClassTypeForValidType()
-            };
-        } else {
-            value = {
-                type: undefined,
-                typeValue: undefined
+        try {
+            if (schema) {
+                value = {
+                    type: schema.type,
+                    typeValue: schema.getResolvedClassTypeForValidType()
+                };
+            } else {
+                value = {
+                    type: undefined,
+                    typeValue: undefined
+                }
             }
+        } catch (error) {
+            throw new Error(`${getClassPropertyName(classType, propertyName)}: ${error}`);
         }
 
         valueMap.set('getReflectionType::' + propertyName, value);
