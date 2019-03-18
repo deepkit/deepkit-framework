@@ -45,6 +45,7 @@
       "!**/lib/**/*",
       "!**/tests/**/*",
       "!**/*.d.ts",
+      "!packages/benchmark/**/*",
       "!index.ts"
     ],
     "testPathIgnorePatterns": [
