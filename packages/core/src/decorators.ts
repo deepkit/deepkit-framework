@@ -81,7 +81,7 @@ export class PropertySchema {
         }
 
         if (!this.classType) {
-            throw new Error(`No classType given for ${this.name}.`);
+            throw new Error(`No classType given for ${this.name}. Use @Field(forwardRef(() => MyClass)) for circular dependencies.`);
         }
 
         return this.classType;
@@ -234,6 +234,60 @@ export function DatabaseName<T>(name: string) {
 }
 
 /**
+ * Helper for decorators that are allowed to be placed in property declaration and constructor property declaration.
+ * We detect the name by reading the constructor' signature, which would be otherwise lost.
+ */
+function FieldDecoratorWrapper(
+    cb: (target: Object, property: string, returnType?: any) => void
+): (target: Object, property?: string, parameterIndexOrDescriptor?: any) => void {
+    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
+        let returnType;
+
+        if (property) {
+            returnType = Reflect.getMetadata('design:type', target, property);
+        }
+
+        if (isNumber(parameterIndexOrDescriptor)) {
+            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
+            property = constructorParamNames[parameterIndexOrDescriptor];
+
+            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
+            returnType = returnTypes[parameterIndexOrDescriptor];
+            target = target['prototype'];
+        }
+
+        if (!property) {
+            throw new Error(`Could not detect property in ${getClassName(target)}`);
+        }
+
+        cb(target, property, returnType)
+    };
+}
+
+function FieldAndClassDecoratorWrapper(
+    cb: (target: Object, property?: string, returnType?: any) => void
+): (target: Object, property?: string, parameterIndexOrDescriptor?: any) => void {
+    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
+        let returnType;
+
+        if (property) {
+            returnType = Reflect.getMetadata('design:type', target, property);
+        }
+
+        if (isNumber(parameterIndexOrDescriptor)) {
+            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
+            property = constructorParamNames[parameterIndexOrDescriptor];
+
+            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
+            returnType = returnTypes[parameterIndexOrDescriptor];
+            target = target['prototype'];
+        }
+
+        cb(target, property, returnType)
+    };
+}
+
+/**
  * Used to define a field as decorated.
  * This is necessary if you want to wrap a field value in the class instance using
  * a own class, like for example for Array manipulations, but keep the JSON and Database value
@@ -282,11 +336,11 @@ export function DatabaseName<T>(name: string) {
  * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
  * `PageCollection.pages` (always the field where @Decorator() is applied to), here a array of PagesClass `PageClass[]`.
  */
-export function Decorated<T>() {
-    return (target: T, property: string) => {
+export function Decorated() {
+    return FieldDecoratorWrapper((target: Object, property: string) => {
         getOrCreateEntitySchema(target).decorator = property;
         getOrCreateEntitySchema(target).getOrCreateProperty(property).isDecorated = true;
-    };
+    });
 }
 
 /**
@@ -298,11 +352,11 @@ export function Decorated<T>() {
  *
  * @category Decorator
  */
-export function IDField<T>() {
-    return (target: T, property: string) => {
+export function IDField() {
+    return FieldDecoratorWrapper((target: Object, property: string) => {
         getOrCreateEntitySchema(target).idField = property;
         getOrCreateEntitySchema(target).getOrCreateProperty(property).isId = true;
-    };
+    });
 }
 
 /**
@@ -348,10 +402,10 @@ export function IDField<T>() {
  *     }
  * ```
  */
-export function ParentReference<T>() {
-    return (target: T, property: string) => {
+export function ParentReference() {
+    return FieldDecoratorWrapper((target: Object, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).isParentReference = true;
-    };
+    });
 }
 
 /**
@@ -394,10 +448,10 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
  *
  * @category Decorator
  */
-export function Exclude<T>() {
-    return (target: T, property: string) => {
+export function Exclude() {
+    return FieldDecoratorWrapper((target: Object, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'all';
-    };
+    });
 }
 
 /**
@@ -406,10 +460,10 @@ export function Exclude<T>() {
  *
  * @category Decorator
  */
-export function ExcludeToMongo<T>() {
-    return (target: T, property: string) => {
+export function ExcludeToMongo() {
+    return FieldDecoratorWrapper((target: Object, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'mongo';
-    };
+    });
 }
 
 /**
@@ -418,10 +472,10 @@ export function ExcludeToMongo<T>() {
  *
  * @category Decorator
  */
-export function ExcludeToPlain<T>() {
-    return (target: T, property: string) => {
+export function ExcludeToPlain() {
+    return FieldDecoratorWrapper((target: Object, property: string) => {
         getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'plain';
-    };
+    });
 }
 
 type FieldTypes = String | Number | Date | ClassType<any> | ForwardedRef<any>;
@@ -465,33 +519,6 @@ class ForwardedRef<T> {
  */
 export function forwardRef<T>(forward: ForwardRefFn<T>): ForwardedRef<T> {
     return new ForwardedRef(forward);
-}
-
-/**
- * Helper for decorators that are allowed to be placed in property declaration and constructor property declaration.
- * We detect the name by reading the constructor' signature, which would be otherwise lost.
- */
-function FieldDecoratorWrapper(
-    cb: (target: Object, property?: string, returnType?: any) => void
-): (target: Object, property?: string, parameterIndexOrDescriptor?: any) => void {
-    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
-        let returnType;
-
-        if (property) {
-            returnType = Reflect.getMetadata('design:type', target, property);
-        }
-
-        if (isNumber(parameterIndexOrDescriptor)) {
-            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
-            property = constructorParamNames[parameterIndexOrDescriptor];
-
-            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
-            returnType = returnTypes[parameterIndexOrDescriptor];
-            target = target['prototype'];
-        }
-
-        cb(target, property, returnType)
-    };
 }
 
 interface FieldOptions {
@@ -573,9 +600,7 @@ interface FieldOptions {
  * @category Decorator
  */
 export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }, options?: FieldOptions) {
-    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
-        if (!property) return;
-
+    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any) => {
         options = options || {};
 
         const id = getClassName(target) + '::' + property;
@@ -792,8 +817,8 @@ export function FieldArray(type: FieldTypes) {
  * @hidden
  */
 function Type<T>(type: Types) {
-    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property!).type = type;
+    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any) => {
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).type = type;
     });
 }
 
@@ -838,7 +863,7 @@ export function UUIDField() {
  * @category Decorator
  */
 export function Index(options?: IndexOptions, fields?: string | string[], name?: string) {
-    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
+    return FieldAndClassDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
         const schema = getOrCreateEntitySchema(target);
 
         if (isArray(fields)) {
@@ -854,10 +879,12 @@ export function Index(options?: IndexOptions, fields?: string | string[], name?:
 /**
  * Used to define a field as Enum.
  *
+ * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
+ *
  * @category Decorator
  */
 export function EnumType<T>(type: any, allowLabelsAsValue = false) {
-    return FieldDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
+    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any) => {
         if (property) {
             Type('enum')(target, property);
             getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = type;

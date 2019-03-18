@@ -20,6 +20,9 @@ import {
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
+import {PageClass} from "./document-scenario/PageClass";
+import {DocumentClass} from "./document-scenario/DocumentClass";
+import {PageCollection} from "./document-scenario/PageCollection";
 
 test('test invalid usage', async () => {
     class Config {}
@@ -50,6 +53,12 @@ test('test invalid usage', async () => {
     expect(() => {
         getEntitySchema(Base).getProperty('bla');
     }).toThrowError('Property bla not found');
+});
+
+test('test circular', async () => {
+    expect(getEntitySchema(PageClass).getProperty('children').getResolvedClassType()).toBe(PageCollection);
+    expect(getEntitySchema(PageClass).getProperty('parent').getResolvedClassType()).toBe(PageClass);
+    expect(getEntitySchema(PageClass).getProperty('document').getResolvedClassType()).toBe(DocumentClass);
 });
 
 test('test inheritance', async () => {

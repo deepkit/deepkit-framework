@@ -10,25 +10,25 @@ export class PageClass {
     @UUIDField()
     id: string = uuid();
 
-    @Field()
-    name?: string;
-
     @Field(forwardRef(() => PageCollection))
     children: PageCollection = new PageCollection;
 
     @Field(Buffer)
     picture?: Buffer;
 
-    @Field(PageClass)
+    @Field()
     @ParentReference()
     @Optional()
     parent?: PageClass;
 
-    @Field(forwardRef(() => DocumentClass))
-    @ParentReference()
-    document: DocumentClass;
+    constructor(
+        @Field(forwardRef(() => DocumentClass))
+        @ParentReference()
+        public readonly document: DocumentClass,
 
-    constructor(document: DocumentClass, name: string) {
+        @Field()
+        public readonly name: string
+    ) {
         this.document = document;
         this.name = name;
     }
