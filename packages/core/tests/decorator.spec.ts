@@ -24,6 +24,15 @@ import {PageClass} from "./document-scenario/PageClass";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 
+test('test invalid usage decorator', async () => {
+    expect(() => {
+        @Field()
+        class Base {
+            ohwe: any;
+        }
+    }).toThrow('Could not detect property in Base');
+});
+
 test('test invalid usage', async () => {
     class Config {}
 
@@ -40,7 +49,6 @@ test('test invalid usage', async () => {
     expect(() => {
         getEntitySchema(Base).getProperty('ohwe').getResolvedClassType();
     }).toThrowError('ForwardRef returns no value');
-
 
     expect(() => {
         getReflectionType(Base, 'ohwe');
