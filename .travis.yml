@@ -15,6 +15,7 @@ before_script:
 - sleep 2
 script:
 - "./node_modules/.bin/jest --coverage --detectOpenHandles"
+- cd packages/benchmark && ../../node_modules/.bin/jest
 - cat ./coverage/lcov.info | coveralls
 deploy:
   provider: heroku

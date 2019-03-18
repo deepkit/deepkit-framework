@@ -1,0 +1,44 @@
+{
+  "name": "@marcj/benchmark",
+  "version": "0.7.0",
+  "description": "Benchmark stuff.",
+  "sideEffects": false,
+  "private": true,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc"
+  },
+  "repository": "https://github.com/marcj/marshal",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "dependencies": {
+    "buffer": "^5.2.1",
+    "class-transformer": "^0.2.0",
+    "@marcj/marshal": "^0.7.0"
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "collectCoverageFrom": [
+      "**/*.{ts}",
+      "!**/node_modules/**",
+      "!**/lib/**/*",
+      "!**/*.d.ts",
+      "!index.ts"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/*.spec.ts"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -8,7 +8,7 @@ your MongoDB or somewhere else. With Marshal this scenario is super
 simple and you do not need any manual transformations.
 
 ```
-npm install @marcj/marshal-nest
+npm install @marcj/marshal-nest typeorm
 ```
 
 ```typescript
@@ -19,7 +19,7 @@ import {
 import {SimpleModel} from "@marcj/marshal/tests/entities";
 import {plainToClass, Database, classToPlain} from "@marcj/marshal";
 import {ValidationPipe} from "@marcj/marshal-nest";
-import {MongoClient} from "mongodb";
+import {createConnection} from "typeorm";
 
 @Controller()
 class MyController {
@@ -28,11 +28,13 @@ class MyController {
     
     private async getDatabase() {
         if (!this.database) {
-            const connection = await MongoClient.connect(
-                'mongodb://localhost:27017',
-                {useNewUrlParser: true}
-            );
-            await connection.db('testing').dropDatabase();
+            const connection = await createConnection({
+                type: "mongodb",
+                host: "localhost",
+                port: 27017,
+                database: "testing",
+                useNewUrlParser: true,
+            });
             this.database = new Database(connection, 'testing');
         }
         
@@ -44,7 +46,8 @@ class MyController {
         @Body(ValidationPipe({transform: true})) body: SimpleModel,
     ) {
         body instanceof SimpleModel; // true;
-        const versionNumber = await (await this.getDatabase()).save(SimpleModel, body);
+
+        await (await this.getDatabase()).save(SimpleModel, body);
         
         return body.id;
     }
