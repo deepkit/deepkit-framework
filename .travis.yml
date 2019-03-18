@@ -14,9 +14,9 @@ before_script:
 - lerna bootstrap --hoist --no-ci
 - sleep 2
 script:
-- "./node_modules/.bin/jest --coverage --detectOpenHandles"
-- cd packages/benchmark && ../../node_modules/.bin/jest
+- "./node_modules/.bin/jest --coverage --forceExit --detectOpenHandles"
 - cat ./coverage/lcov.info | coveralls
+- cd packages/benchmark && ../../node_modules/.bin/jest
 deploy:
   provider: heroku
   api_key:
