@@ -108,6 +108,14 @@ export class StringValidator implements PropertyValidator {
  */
 export class DateValidator implements PropertyValidator {
     async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
+        if (value instanceof Date) {
+            if (isNaN(new Date(value).getTime())) {
+                return new PropertyValidatorError('No valid Date given');
+            }
+
+            return;
+        }
+
         if ('string' !== typeof value || !value) {
             return new PropertyValidatorError('No Date string given');
         }
