@@ -10,6 +10,7 @@ import {
     validate, validatedPlainToClass,
     ValidationError, ValidationFailed
 } from "../";
+import {CustomError} from '@marcj/estdlib';
 
 test('test simple', async () => {
     class Page {
@@ -50,16 +51,16 @@ test('test required', async () => {
 
     const instance = new Model;
     expect(validate(Model, instance)).toBeArrayOfSize(1);
-    expect(validate(Model, instance)).toEqual([{message: "Required value is undefined", path: 'name'}]);
+    expect(validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined", path: 'name'}]);
 
     expect(validate(Model, {
         name: 'foo',
         map: true
-    })).toEqual([{message: "Invalid type. Expected object, but got boolean", path: 'map'}]);
+    })).toEqual([{code: 'invalid_type', message: "Invalid type. Expected object, but got boolean", path: 'map'}]);
     expect(validate(Model, {
         name: 'foo',
         array: 233
-    })).toEqual([{message: "Invalid type. Expected array, but got number", path: 'array'}]);
+    })).toEqual([{code: 'invalid_type', message: "Invalid type. Expected array, but got number", path: 'array'}]);
 
     instance.name = 'Pete';
     expect(validate(Model, instance)).toEqual([]);
@@ -89,14 +90,15 @@ test('test deep', async () => {
 
     const instance = new Model;
     expect(validate(Model, instance)).toBeArrayOfSize(1);
-    expect(validate(Model, instance)).toEqual([{message: "Required value is undefined", path: 'deep'}]);
+    expect(validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined", path: 'deep'}]);
 
     instance.deep = new Deep();
-    expect(validate(Model, instance)).toEqual([{message: "Required value is undefined", path: 'deep.name'}]);
+    expect(validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined", path: 'deep.name'}]);
 
     instance.deep.name = 'defined';
     instance.deepArray.push(new Deep());
     expect(validate(Model, instance)).toEqual([{
+        code: 'required',
         message: "Required value is undefined",
         path: 'deepArray.0.name'
     }]);
@@ -104,6 +106,7 @@ test('test deep', async () => {
     instance.deepArray[0].name = 'defined';
     instance.deepMap.foo = new Deep();
     expect(validate(Model, instance)).toEqual([{
+        code: 'required',
         message: "Required value is undefined",
         path: 'deepMap.foo.name'
     }]);
@@ -116,7 +119,7 @@ test('test AddValidator', async () => {
     class MyValidator implements PropertyValidator {
         validate<T>(value: any): PropertyValidatorError | void {
             if (value.length > 5) {
-                return new PropertyValidatorError('Too long');
+                return new PropertyValidatorError('too_long', 'Too long');
             }
         }
     }
@@ -128,22 +131,45 @@ test('test AddValidator', async () => {
     }
 
     expect(validate(Model, {id: '2'})).toEqual([]);
-    expect(validate(Model, {id: '123456'})).toEqual([{message: 'Too long', path: 'id'}]);
+    expect(validate(Model, {id: '123456'})).toEqual([{code: 'too_long', message: 'Too long', path: 'id'}]);
 });
 
-test('test inline validator', async () => {
+test('test inline validator throw', async () => {
+    class MyError extends CustomError {
+        constructor() {
+            super('Too long');
+        }
+    }
+
     class Model {
         @Field()
         @InlineValidator((value: string) => {
             if (value.length > 5) {
-                throw new Error('Too long');
+                throw new MyError();
             }
         })
         id: string = '2';
     }
 
     expect(validate(Model, {id: '2'})).toEqual([]);
-    expect(validate(Model, {id: '123456'})).toEqual([{message: 'Too long', path: 'id'}]);
+    expect(validate(Model, {id: '123456'})).toEqual([{code: 'MyError', message: 'Too long', path: 'id'}]);
+});
+
+test('test inline validator', async () => {
+    class MyError extends Error {};
+
+    class Model {
+        @Field()
+        @InlineValidator((value: string) => {
+            if (value.length > 5) {
+                return new PropertyValidatorError('too_long', 'Too long');
+            }
+        })
+        id: string = '2';
+    }
+
+    expect(validate(Model, {id: '2'})).toEqual([]);
+    expect(validate(Model, {id: '123456'})).toEqual([{code: 'too_long', message: 'Too long', path: 'id'}]);
 });
 
 test('test Date', async () => {
@@ -159,11 +185,11 @@ test('test Date', async () => {
     expect(validate(Model, {endTime: "Tue Mar 19 2019 11:39:10 GMT+0100 (Central European Standard Time)"})).toEqual([]);
     expect(validate(Model, {endTime: date.toString()})).toEqual([]);
     expect(validate(Model, {endTime: new Date()})).toEqual([]);
-    expect(validate(Model, {endTime: ''})).toEqual([{message: 'No Date string given', path: 'endTime'}]);
-    expect(validate(Model, {endTime: new Date('asdf')})).toEqual([{message: 'No valid Date given', path: 'endTime'}]);
-    expect(validate(Model, {endTime: 'asdf'})).toEqual([{message: 'No valid Date string given', path: 'endTime'}]);
-    expect(validate(Model, {endTime: null})).toEqual([{message: 'Required value is null', path: 'endTime'}]);
-    expect(validate(Model, {endTime: undefined})).toEqual([{message: 'Required value is undefined', path: 'endTime'}]);
+    expect(validate(Model, {endTime: ''})).toEqual([{code: 'invalid_date', message: 'No Date string given', path: 'endTime'}]);
+    expect(validate(Model, {endTime: new Date('asdf')})).toEqual([{code: 'invalid_date', message: 'No valid Date given', path: 'endTime'}]);
+    expect(validate(Model, {endTime: 'asdf'})).toEqual([{code: 'invalid_date', message: 'No valid Date string given', path: 'endTime'}]);
+    expect(validate(Model, {endTime: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'endTime'}]);
+    expect(validate(Model, {endTime: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'endTime'}]);
 
     {
         const o = plainToClass(Model, {endTime: date.toString()});
@@ -231,8 +257,8 @@ test('test string', async () => {
     }
 
     expect(validate(Model, {id: '2'})).toEqual([]);
-    expect(validate(Model, {id: 2})).toEqual([{message: "No String given", path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{message: "Required value is null", path: 'id'}]);
+    expect(validate(Model, {id: 2})).toEqual([{code: 'invalid_string', message: "No String given", path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]);
     expect(validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
@@ -243,8 +269,8 @@ test('test string', async () => {
     }
 
     expect(validate(ModelOptional, {id: '2'})).toEqual([]);
-    expect(validate(ModelOptional, {id: 2})).toEqual([{message: "No String given", path: 'id'}]);
-    expect(validate(ModelOptional, {id: null})).toEqual([{message: "No String given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: 2})).toEqual([{code: 'invalid_string', message: "No String given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'invalid_string', message: "No String given", path: 'id'}]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
 });
@@ -257,8 +283,8 @@ test('test number', async () => {
 
     expect(validate(Model, {id: 3})).toEqual([]);
     expect(validate(Model, {id: '3'})).toEqual([]);
-    expect(validate(Model, {id: 'a'})).toEqual([{message: "No Number given", path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{message: "Required value is null", path: 'id'}]);
+    expect(validate(Model, {id: 'a'})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]);
     expect(validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
@@ -270,8 +296,8 @@ test('test number', async () => {
 
     expect(validate(ModelOptional, {id: 3})).toEqual([]);
     expect(validate(ModelOptional, {id: '3'})).toEqual([]);
-    expect(validate(ModelOptional, {id: 'a'})).toEqual([{message: "No Number given", path: 'id'}]);
-    expect(validate(ModelOptional, {id: null})).toEqual([{message: "No Number given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: 'a'})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
 });
@@ -300,9 +326,9 @@ test('test nested validation', async () => {
     expect(validate(B, {
         type: "test type",
     })).toEqual([
-        {'message': 'Required value is undefined', 'path': 'nested'},
-        {'message': 'Required value is undefined', 'path': 'nestedMap'},
-        {'message': 'Required value is undefined', 'path': 'nesteds'},
+        {'message': 'Required value is undefined', code: 'required', 'path': 'nested'},
+        {'message': 'Required value is undefined', code: 'required', 'path': 'nestedMap'},
+        {'message': 'Required value is undefined', code: 'required', 'path': 'nesteds'},
     ]);
 
     expect(validate(B, {
@@ -311,9 +337,9 @@ test('test nested validation', async () => {
         nestedMap: [{x: "test x"}],
         nesteds: {x: "test x"},
     })).toEqual([
-        {'message': 'Invalid type. Expected object, but got array', 'path': 'nested'},
-        {'message': 'Invalid type. Expected object, but got array', 'path': 'nestedMap'},
-        {'message': 'Invalid type. Expected array, but got object', 'path': 'nesteds'},
+        {'message': 'Invalid type. Expected object, but got array', code: 'invalid_type', 'path': 'nested'},
+        {'message': 'Invalid type. Expected object, but got array', code: 'invalid_type', 'path': 'nestedMap'},
+        {'message': 'Invalid type. Expected array, but got object', code: 'invalid_type', 'path': 'nesteds'},
     ]);
 
     class BOptional {
@@ -333,7 +359,7 @@ test('test nested validation', async () => {
         type: "test type",
         nested: false,
     })).toEqual([
-        {'message': 'Invalid type. Expected object, but got boolean', 'path': 'nested'},
+        {'message': 'Invalid type. Expected object, but got boolean', code: 'invalid_type', 'path': 'nested'},
     ]);
 
 });

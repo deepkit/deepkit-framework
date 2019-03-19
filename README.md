@@ -216,13 +216,13 @@ class Entity {
 or inline validators
 
 ```typescript
-import {Field, AddValidator, InlineValidator, ClassType} from '@marcj/marshal';
+import {Field, AddValidator, InlineValidator, ClassType, PropertyValidatorError} from '@marcj/marshal';
 
 class Entity {
     @Field()
     @InlineValidator(async (value: any) => {
         if (value.length > 10) {
-             throw new Error('Too long :()');
+            return new PropertyValidatorError('too_long', 'Too long :()');
         }
     })
     name: string;
