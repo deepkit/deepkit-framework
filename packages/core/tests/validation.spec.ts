@@ -4,11 +4,11 @@ import {
     AddValidator,
     Field,
     InlineValidator,
-    Optional,
+    Optional, plainToClass,
     PropertyValidator,
     PropertyValidatorError,
-    validate,
-    ValidationError
+    validate, validatedPlainToClass,
+    ValidationError, ValidationFailed
 } from "../";
 
 test('test simple', async () => {
@@ -146,6 +146,82 @@ test('test inline validator', async () => {
     expect(await validate(Model, {id: '123456'})).toEqual([{message: 'Too long', path: 'id'}]);
 });
 
+test('test Date', async () => {
+    class Model {
+        @Field(Date)
+        public endTime!: Date;
+    }
+
+    const date = new Date("2019-03-19T10:41:45.000Z");
+
+    expect(await validate(Model, {endTime: "2019-03-19T10:38:59.072Z"})).toEqual([]);
+    expect(await validate(Model, {endTime: date.toJSON()})).toEqual([]);
+    expect(await validate(Model, {endTime: "Tue Mar 19 2019 11:39:10 GMT+0100 (Central European Standard Time)"})).toEqual([]);
+    expect(await validate(Model, {endTime: date.toString()})).toEqual([]);
+    expect(await validate(Model, {endTime: ''})).toEqual([{message: 'No Date string given', path: 'endTime'}]);
+    expect(await validate(Model, {endTime: 'asdf'})).toEqual([{message: 'No valid Date string given', path: 'endTime'}]);
+    expect(await validate(Model, {endTime: null})).toEqual([{message: 'Required value is null', path: 'endTime'}]);
+    expect(await validate(Model, {endTime: undefined})).toEqual([{message: 'Required value is undefined', path: 'endTime'}]);
+
+    {
+        const o = plainToClass(Model, {endTime: date.toString()});
+        expect(o.endTime).toEqual(date);
+    }
+
+    {
+        const o = plainToClass(Model, {endTime: date.toJSON()});
+        expect(o.endTime).toEqual(date);
+    }
+
+    {
+        const o = plainToClass(Model, {endTime: null});
+        expect(o.endTime).toBe(null);
+    }
+
+    {
+        const o = plainToClass(Model, {endTime: undefined});
+        expect(o.endTime).toBe(undefined);
+    }
+
+    {
+        const o = await validatedPlainToClass(Model, {endTime: '2019-03-19T10:41:45.000Z'});
+        expect(o.endTime).toEqual(date);
+    }
+
+    try {
+        await validatedPlainToClass(Model, {endTime: 'asd'});
+        fail('should throw error');
+    } catch (error) {
+        expect(error).toBeInstanceOf(ValidationFailed);
+        expect(error.errors[0].message).toBe('No valid Date string given');
+    }
+
+    try {
+        await validatedPlainToClass(Model, {endTime: ''});
+        fail('should throw error');
+    } catch (error) {
+        expect(error).toBeInstanceOf(ValidationFailed);
+        expect(error.errors[0].message).toBe('No Date string given');
+    }
+
+    try {
+        await validatedPlainToClass(Model, {endTime: null});
+        fail('should throw error');
+    } catch (error) {
+        expect(error).toBeInstanceOf(ValidationFailed);
+        expect(error.errors[0].message).toBe('Required value is null');
+    }
+
+    try {
+        await validatedPlainToClass(Model, {endTime: undefined});
+        fail('should throw error');
+    } catch (error) {
+        expect(error).toBeInstanceOf(ValidationFailed);
+        expect(error.errors[0].message).toBe('Required value is undefined');
+    }
+
+});
+
 test('test string', async () => {
     class Model {
         @Field()
@@ -154,7 +230,7 @@ test('test string', async () => {
 
     expect(await validate(Model, {id: '2'})).toEqual([]);
     expect(await validate(Model, {id: 2})).toEqual([{message: "No String given", path: 'id'}]);
-    expect(await validate(Model, {id: null})).toEqual([{message: "No String given", path: 'id'}]);
+    expect(await validate(Model, {id: null})).toEqual([{message: "Required value is null", path: 'id'}]);
     expect(await validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
     expect(await validate(Model, {})).toEqual([]); //because defaults are applied
 
@@ -180,7 +256,7 @@ test('test number', async () => {
     expect(await validate(Model, {id: 3})).toEqual([]);
     expect(await validate(Model, {id: '3'})).toEqual([]);
     expect(await validate(Model, {id: 'a'})).toEqual([{message: "No Number given", path: 'id'}]);
-    expect(await validate(Model, {id: null})).toEqual([{message: "No Number given", path: 'id'}]);
+    expect(await validate(Model, {id: null})).toEqual([{message: "Required value is null", path: 'id'}]);
     expect(await validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
     expect(await validate(Model, {})).toEqual([]); //because defaults are applied
 

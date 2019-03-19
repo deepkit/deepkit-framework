@@ -1,4 +1,4 @@
-import {isOptional} from "./validation";
+import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
@@ -604,18 +604,59 @@ export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T
 
 
 /**
- * Take a regular object with all fields default (missing default to class property default or undefined)
- * and returns an instance of classType.
+ * Take a regular object literal and returns an instance of classType.
+ * Missing data is either replaced by the default value of that property or undefined.
+ *
+ * This method does not validate the given data. Use either [validatedPlainToClass] to validate beforehand
+ * or use [validate] on your newly created instance.
+ *
+ * ```typescript
+ * const entity = plainToClass(MyEntity, {field1: 'value'});
+ * entity instanceof MyEntity; //true
+ * ```
  */
-export function plainToClass<T>(classType: ClassType<T>, target: object, parents?: any[]): T {
+export function plainToClass<T>(
+    classType: ClassType<T>,
+    data: object,
+    parents?: any[]
+): T {
     const state = new ToClassState();
-    const item = toClass(classType, target, propertyPlainToClass, parents || [], 1, state);
+    const item = toClass(classType, data, propertyPlainToClass, parents || [], 1, state);
 
     for (const callback of state.onFullLoadCallbacks) {
         callback();
     }
 
     return item;
+}
+
+/**
+ * Same as [plainToClass] but with validation before creating the class instance.
+ *
+ * Note: this is a async function since validators are async per default.
+ *
+ * ```typescript
+ * try {
+ *     const entity = await validatedPlainToClass(MyEntity, {field1: 'value'});
+ *     entity instanceof MyEntity; //true
+ * } catch (error) {
+ *     if (error instanceof ValidationFailed) {
+ *         //handle that case.
+ *     }
+ * }
+ * ```
+ */
+export async function validatedPlainToClass<T>(
+    classType: ClassType<T>,
+    data: object,
+    parents?: any[]
+): Promise<T> {
+    const errors = await validate(classType, data);
+    if (errors.length) {
+        throw new ValidationFailed(errors);
+    }
+
+    return plainToClass(classType, data, parents);
 }
 
 /**

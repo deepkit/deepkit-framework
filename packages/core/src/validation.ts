@@ -106,10 +106,30 @@ export class StringValidator implements PropertyValidator {
 /**
  * @hidden
  */
+export class DateValidator implements PropertyValidator {
+    async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
+        if ('string' !== typeof value || !value) {
+            return new PropertyValidatorError('No Date string given');
+        }
+
+        if (isNaN(new Date(value).getTime())) {
+            return new PropertyValidatorError('No valid Date string given');
+        }
+    }
+}
+
+/**
+ * @hidden
+ */
 export class RequiredValidator implements PropertyValidator {
     async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
         if (undefined === value) {
             return new PropertyValidatorError('Required value is undefined');
+        }
+
+        if (null === value) {
+            //todo, we should add a decorator that allows to place null values.
+            return new PropertyValidatorError('Required value is null');
         }
     }
 }
@@ -153,6 +173,13 @@ export class ValidationError {
 }
 
 /**
+ *
+ */
+export class ValidationFailed {
+    constructor(public readonly errors: ValidationError[]) {}
+}
+
+/**
  * Validates a object or class instance and returns all errors.
  *
  * @example
@@ -193,7 +220,10 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
         const propertyValue: any = item[propertyName];
 
         if (!isOptional(classType, propertyName)) {
-            await handleValidator(RequiredValidator, propertyValue, propertyName, propertyPath);
+            if (await handleValidator(RequiredValidator, propertyValue, propertyName, propertyPath)) {
+                //there's no need to continue validation without a value.
+                continue;
+            }
         }
 
         if (undefined === propertyValue) {
