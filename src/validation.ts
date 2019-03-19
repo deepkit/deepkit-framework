@@ -1,4 +1,4 @@
-import {ClassType, isArray, isObject, typeOf} from "@marcj/estdlib";
+import {ClassType, isArray, isObject, typeOf, getClassName} from "@marcj/estdlib";
 import {applyDefaultValues, getRegisteredProperties} from "./mapper";
 import {getEntitySchema, getOrCreateEntitySchema, PropertyValidator} from "./decorators";
 
@@ -7,10 +7,10 @@ function addValidator<T extends PropertyValidator>(target: Object, property: str
 }
 
 export class PropertyValidatorError {
-    message: string;
-
-    constructor(message: string) {
-        this.message = message;
+    constructor(
+        public readonly code: string,
+        public readonly message: string,
+    ) {
     }
 }
 
@@ -24,7 +24,7 @@ export class PropertyValidatorError {
  * class MyCustomValidator implements PropertyValidator {
  *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
  *          if (value.length > 10) {
- *              return new PropertyValidatorError('Too long :()');
+ *              return new PropertyValidatorError('too_long', 'Too long :()');
  *          }
  *      };
  * }
@@ -54,7 +54,7 @@ export function AddValidator<T extends PropertyValidator>(validator: ClassType<T
  *     @Field()
  *     @InlineValidator(async (value: any) => {
  *          if (value.length > 10) {
- *              throw new Error('TooLong');
+ *              return new PropertyValidatorError('too_long', 'Too long :()');
  *          }
  *     }))
  *     name: string;
@@ -69,7 +69,11 @@ export function InlineValidator<T extends PropertyValidator>(cb: (value: any, ta
                 try {
                     return cb(value, target, propertyName);
                 } catch (error) {
-                    return new PropertyValidatorError(error.message ? error.message : error);
+                    if (error instanceof Error) {
+                        return new PropertyValidatorError(error.name, error.message);
+                    }
+
+                    return new PropertyValidatorError('error', error.message ? error.message : error);
                 }
             }
         });
@@ -84,7 +88,7 @@ export class NumberValidator implements PropertyValidator {
         value = parseFloat(value);
 
         if (!Number.isFinite(value)) {
-            return new PropertyValidatorError('No Number given');
+            return new PropertyValidatorError('invalid_number', 'No Number given');
         }
     }
 }
@@ -95,7 +99,7 @@ export class NumberValidator implements PropertyValidator {
 export class StringValidator implements PropertyValidator {
     validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
         if ('string' !== typeof value) {
-            return new PropertyValidatorError('No String given');
+            return new PropertyValidatorError('invalid_string', 'No String given');
         }
     }
 }
@@ -107,18 +111,18 @@ export class DateValidator implements PropertyValidator {
     validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
         if (value instanceof Date) {
             if (isNaN(new Date(value).getTime())) {
-                return new PropertyValidatorError('No valid Date given');
+                return new PropertyValidatorError('invalid_date', 'No valid Date given');
             }
 
             return;
         }
 
         if ('string' !== typeof value || !value) {
-            return new PropertyValidatorError('No Date string given');
+            return new PropertyValidatorError('invalid_date', 'No Date string given');
         }
 
         if (isNaN(new Date(value).getTime())) {
-            return new PropertyValidatorError('No valid Date string given');
+            return new PropertyValidatorError('invalid_date', 'No valid Date string given');
         }
     }
 }
@@ -129,12 +133,12 @@ export class DateValidator implements PropertyValidator {
 export class RequiredValidator implements PropertyValidator {
     validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
         if (undefined === value) {
-            return new PropertyValidatorError('Required value is undefined');
+            return new PropertyValidatorError('required', 'Required value is undefined');
         }
 
         if (null === value) {
             //todo, we should add a decorator that allows to place null values.
-            return new PropertyValidatorError('Required value is null');
+            return new PropertyValidatorError('required', 'Required value is null');
         }
     }
 }
@@ -164,16 +168,24 @@ export function isOptional<T>(classType: ClassType<T>, propertyName: string): bo
  * Message is an arbitrary message in english.
  */
 export class ValidationError {
-    path: string;
-    message: string;
-
-    constructor(path: string, message: string) {
-        this.path = path;
-        this.message = message;
+    constructor(
+        /**
+         * The path to the property. May be a deep path separated by dot.
+         */
+        public readonly path: string,
+        /**
+         * A lower cased error code that can be used to identify this error and translate.
+         */
+        public readonly code: string,
+        /**
+         * Free text of the error.
+         */
+        public readonly message: string,
+    ) {
     }
 
     static createInvalidType(path: string, expectedType: string, actual: any) {
-        return new ValidationError(path, `Invalid type. Expected ${expectedType}, but got ${typeOf(actual)}`);
+        return new ValidationError(path, 'invalid_type', `Invalid type. Expected ${expectedType}, but got ${typeOf(actual)}`);
     }
 }
 
@@ -210,7 +222,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
         const instance = new validatorType;
         const result = instance.validate(value, classType, propertyName);
         if (result instanceof PropertyValidatorError) {
-            errors.push(new ValidationError(propertyPath, result.message));
+            errors.push(new ValidationError(propertyPath, result.code, result.message));
             return true;
         }
 
