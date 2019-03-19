@@ -1,6 +1,6 @@
 import {Injectable, Injector} from "injection-js";
 import {ClassType} from "@marcj/estdlib";
-import {File} from "@marcj/glut-core";
+import {GlutFile} from "@marcj/glut-core";
 
 export class Session {
     constructor(
@@ -34,7 +34,7 @@ export class SessionStack {
 @Injectable()
 export class Application {
     public readonly controllers: { [name: string]: ClassType<any> } = {};
-    public readonly entityChangeFeeds: ClassType<any>[] = [File];
+    public readonly entityChangeFeeds: ClassType<any>[] = [GlutFile];
 
     /**
      * Method executed in the master process, right before workers are forked.

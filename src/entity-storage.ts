@@ -4,7 +4,7 @@ import {plainToClass, getEntityName} from "@marcj/marshal";
 import {Observable, Subscription} from "rxjs";
 import {convertPlainQueryToMongo, partialMongoToPlain} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
-import {Collection, EntitySubject, ExchangeEntity, File, FilterQuery, IdInterface} from "@marcj/glut-core";
+import {Collection, EntitySubject, ExchangeEntity, GlutFile, FilterQuery, IdInterface} from "@marcj/glut-core";
 import {ClassType} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
@@ -480,9 +480,9 @@ export class EntityStorage {
         return collection;
     }
 
-    async fileContent(path: string, additionalFilter?: FilterQuery<File>): Promise<StreamBehaviorSubject<string | undefined>> {
+    async fileContent(path: string, additionalFilter?: FilterQuery<GlutFile>): Promise<StreamBehaviorSubject<string | undefined>> {
         const subject = new StreamBehaviorSubject<string | undefined>('');
-        const file = await this.findOne(File, {path: path, ...additionalFilter});
+        const file = await this.findOne(GlutFile, {path: path, ...additionalFilter});
         let exchangeSubscription: Subscription | undefined;
         let fileSubscription: Subscription | undefined;
 

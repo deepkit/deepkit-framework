@@ -34,7 +34,7 @@ export class ExchangeDatabase {
     public async get<T extends IdInterface>(
         classType: ClassType<T>,
         filter: FilterQuery<T>
-    ): Promise<T | null> {
+    ): Promise<T | undefined> {
         return await this.database.get(classType, filter);
     }
 
@@ -227,7 +227,6 @@ export class ExchangeDatabase {
             returnOriginal: false
         });
 
-        console.log('patch done', response);
         const doc = response.value;
 
         if (!doc) {

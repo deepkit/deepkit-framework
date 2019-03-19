@@ -1,12 +1,12 @@
 import {dirname, join} from "path";
 import {appendFile, ensureDir, pathExists, readFile, remove, unlink, writeFile} from "fs-extra";
 import {Exchange} from "./exchange";
-import {uuid4Binary} from "@marcj/marshal-mongo";
-import {Binary} from "bson";
 import {ExchangeDatabase} from "./exchange-database";
-import {File, FileMode, FilterQuery} from "@marcj/glut-core";
-import {eachPair} from "@marcj/estdlib";
+import {GlutFile, FileMode, FileType, FilterQuery} from "@marcj/glut-core";
+import {eachPair, eachKey} from "@marcj/estdlib";
 import * as crypto from "crypto";
+import {Inject, Injectable} from "injection-js";
+
 
 export function getMd5(content: string | Buffer): string {
     const buffer: Buffer = 'string' === typeof content ? new Buffer(content, 'utf8') : new Buffer(content);
@@ -19,16 +19,17 @@ export function getMd5(content: string | Buffer): string {
     return md5;
 }
 
-
 export interface FileMetaData {
     [k: string]: any;
 }
 
-export class FS {
+@Injectable()
+export class FS<T extends GlutFile> {
     constructor(
+        private fileType: FileType<T>,
         private exchange: Exchange,
         private database: ExchangeDatabase,
-        private fileDir: string /* .glut/data/files/ */,
+        @Inject('fs.path') private fileDir: string /* .glut/data/files/ */,
     ) {
     }
 
@@ -36,12 +37,12 @@ export class FS {
         this.fileDir = dir;
     }
 
-    public async removeAll(filter: FilterQuery<File>): Promise<boolean> {
-        const files = await this.database.find(File, filter);
+    public async removeAll(filter: FilterQuery<T>): Promise<boolean> {
+        const files = await this.database.find(this.fileType.classType, filter);
         return this.removeFiles(files);
     }
 
-    public async remove(path: string, filter: FilterQuery<File>): Promise<boolean> {
+    public async remove(path: string, filter: FilterQuery<T>): Promise<boolean> {
         const file = await this.findOne(path, filter);
         if (file) {
             return this.removeFile(file);
@@ -50,11 +51,11 @@ export class FS {
         return false;
     }
 
-    public async removeFile(file: File): Promise<boolean> {
+    public async removeFile(file: T): Promise<boolean> {
         return this.removeFiles([file]);
     }
 
-    public async removeFiles(files: File[]): Promise<boolean> {
+    public async removeFiles(files: T[]): Promise<boolean> {
         const md5ToCheckMap: { [k: string]: number } = {};
         const fileIds: string[] = [];
 
@@ -76,14 +77,15 @@ export class FS {
             });
         }
 
-        await this.database.deleteMany(File, {
+        await this.database.deleteMany(this.fileType.classType, {
             $and: [{
                 id: {$in: fileIds}
             }]
-        });
+        } as unknown as FilterQuery<T>);
 
         //found which md5s are still linked
-        const fileCollection = await this.database.collection(File);
+        const fileCollection = await this.database.collection(this.fileType.classType);
+
         const foundMd5s = await fileCollection.find({
             md5: {$in: Object.keys(md5ToCheckMap)}
         }, {
@@ -112,16 +114,16 @@ export class FS {
         return true;
     }
 
-    public async ls(filter: FilterQuery<File>): Promise<File[]> {
-        return await this.database.find(File, filter);
+    public async ls(filter: FilterQuery<T>): Promise<T[]> {
+        return await this.database.find(this.fileType.classType, filter);
     }
 
-    public async findOne(path: string, filter?: FilterQuery<File>): Promise<File | null> {
-        return await this.database.get(File, {...filter, path});
+    public async findOne(path: string, filter: FilterQuery<T> = {}): Promise<T | undefined> {
+        return await this.database.get(this.fileType.classType, {path: path, ...filter} as T);
     }
 
-    public async registerFile(md5: string, path: string, metaData?: FileMetaData): Promise<File> {
-        const file = await this.database.get(File, {md5: md5});
+    public async registerFile(md5: string, path: string, metaData?: FileMetaData): Promise<T> {
+        const file = await this.database.get(this.fileType.classType, {md5: md5} as T);
 
         if (!file || !file.md5) {
             throw new Error(`File with md5 '${md5}' not found.`);
@@ -130,9 +132,9 @@ export class FS {
         const localPath = this.getLocalPathForMd5(file.md5);
 
         if (await pathExists(localPath)) {
-            const newFile = file.fork(path);
+            const newFile = this.fileType.fork(file, path);
             newFile.meta = metaData;
-            await this.database.add(File, newFile);
+            await this.database.add(this.fileType.classType, newFile);
             return newFile;
         } else {
             throw new Error(`File with md5 '${md5}' not found (content deleted).`);
@@ -140,12 +142,12 @@ export class FS {
     }
 
     public async hasMd5InDb(md5: string): Promise<boolean> {
-        const collection = await this.database.collection(File);
+        const collection = await this.database.collection(this.fileType.classType);
         return 0 < await collection.countDocuments({md5: md5});
     }
 
     public async hasMd5(md5: string) {
-        const file = await this.database.get(File, {md5: md5});
+        const file = await this.database.get(this.fileType.classType, {md5: md5} as T);
 
         if (file && file.md5) {
             const localPath = this.getLocalPathForMd5(md5);
@@ -155,8 +157,8 @@ export class FS {
         return false;
     }
 
-    public async read(path: string, filter?: FilterQuery<File>): Promise<Buffer | undefined> {
-        const file = await this.findOne(path, filter);
+    public async read(path: string, filter?: FilterQuery<T>): Promise<Buffer | undefined> {
+        const file = await this.findOne(path, filter || {});
         // console.log('Read file ' + path, filter, file ? file.id : undefined);
 
         if (!file) {
@@ -192,7 +194,7 @@ export class FS {
         return join(this.fileDir, 'closed', this.getMd5Split(md5));
     }
 
-    public getLocalPath(file: File) {
+    public getLocalPath(file: T) {
         if (file.mode === FileMode.closed) {
             if (!file.md5) {
                 throw new Error(`Closed file has no md5 value: ${file.id} ${file.path}`);
@@ -210,8 +212,8 @@ export class FS {
     /**
      * Adds a new file or updates an existing one.
      */
-    public async write(path: string, data: string | Buffer, metaData?: FileMetaData): Promise<File> {
-        let file = await this.findOne(path, metaData ? {meta: metaData} : {});
+    public async write(path: string, data: string | Buffer, fields: Partial<T> = {}): Promise<T> {
+        let file = await this.findOne(path, fields as T);
 
         if ('string' === typeof data) {
             data = Buffer.from(data, 'utf8');
@@ -224,11 +226,13 @@ export class FS {
         const md5 = getMd5(data);
 
         if (!file) {
-            file = new File(path);
-            file.meta = metaData;
+            file = new this.fileType.classType(path);
             file.md5 = getMd5(data);
+            for (const i of eachKey(fields)) {
+                file[i] = fields[i];
+            }
             file.size = data.byteLength;
-            await this.database.add(File, file);
+            await this.database.add(this.fileType.classType, file);
         } else {
             if (file.md5 && file.md5 !== md5) {
                 const oldMd5 = file.md5;
@@ -236,7 +240,7 @@ export class FS {
                 file.md5 = md5;
                 file.size = data.byteLength;
 
-                await this.database.patch(File, file.id, {md5: file.md5, size: file.size});
+                await this.database.patch(this.fileType.classType, file.id, {md5: file.md5, size: file.size} as T);
 
                 //we need to check whether the local file needs to be removed
                 if (!await this.hasMd5InDb(oldMd5)) {
@@ -266,14 +270,16 @@ export class FS {
     /**
      * Streams content by always appending data to the file's content.
      */
-    public async stream(path: string, data: Buffer, metaData?: FileMetaData) {
-        let file = await this.findOne(path, metaData ? {meta: metaData} : {});
+    public async stream(path: string, data: Buffer, fields: Partial<T> = {}) {
+        let file = await this.findOne(path, fields as T);
 
         if (!file) {
-            file = new File(path);
+            file = new this.fileType.classType(path);
+            for (const i of eachKey(fields)) {
+                file[i] = fields[i];
+            }
             file.mode = FileMode.streaming;
-            file.meta = metaData;
-            await this.database.add(File, file);
+            await this.database.add(this.fileType.classType, file);
         }
 
         const localPath = this.getLocalPath(file);

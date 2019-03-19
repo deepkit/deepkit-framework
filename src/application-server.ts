@@ -12,6 +12,7 @@ import {applyDefaults, each, eachPair} from "@marcj/estdlib";
 import {Server} from "http";
 import {ServerOptions} from "ws";
 import {createConnection, Connection} from "typeorm";
+import {FileType} from "@marcj/glut-core";
 
 export class ApplicationServerConfig {
     server?: Server = undefined;
@@ -140,12 +141,8 @@ export class ApplicationServer {
             {provide: 'redis.prefix', useValue: this.config.redisPrefix},
             {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
             {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
+            {provide: FileType, useValue: FileType.forDefault()},
             {provide: Connection, useValue: this.connection},
-            {
-                provide: FS,
-                deps: [Exchange, ExchangeDatabase, 'fs.path'],
-                useFactory: (exchange: Exchange, database: ExchangeDatabase, fsPath: string) => new FS(exchange, database, fsPath)
-            },
             {
                 provide: Exchange,
                 deps: ['redis.host', 'redis.port', 'redis.prefix'],
@@ -166,6 +163,7 @@ export class ApplicationServer {
                     }, d, e);
                 }
             },
+            FS,
         ];
 
         baseInjectors.push(...this.serverProvider);

@@ -7,10 +7,11 @@ import {ExchangeDatabase, ExchangeNotifyPolicy} from "..";
 import {ClassType} from '@marcj/estdlib';
 import {Database} from '@marcj/marshal-mongo';
 import {createConnection} from 'typeorm';
+import {FileType, GlutFile} from "@marcj/glut-core";
 
 let fs = 0;
 
-async function createFs(): Promise<[FS, Function]> {
+async function createFs(): Promise<[FS<GlutFile>, Function]> {
     fs++;
     const connection = await createConnection({
         type: "mongodb",
@@ -38,7 +39,7 @@ async function createFs(): Promise<[FS, Function]> {
     await database.dropDatabase('fs-test-' + fs);
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 
-    return [new FS(exchange, accountDb, localDir), async function () {
+    return [new FS(FileType.forDefault(), exchange, accountDb, localDir), async function () {
         await exchange.disconnect();
         await database.close();
     }];
@@ -112,7 +113,7 @@ test('test fs single deletion', async () => {
 
     await fs.removeFile(file1);
 
-    expect(await fs.findOne('file1.txt')).toBeNull();
+    expect(await fs.findOne('file1.txt')).toBeUndefined();
     expect(await pathExists(path1)).toBeFalse();
 
     await disconnect();
@@ -140,8 +141,8 @@ test('test fs fork', async () => {
 
     await fs.removeFile(file1);
 
-    expect(await fs.findOne('file1.txt')).toBeNull();
     expect(await pathExists(path1)).toBeFalse();
+    expect(await fs.findOne('file1.txt')).toBeUndefined();
 
     await disconnect();
 });
