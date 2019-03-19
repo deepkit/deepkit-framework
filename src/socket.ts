@@ -57,8 +57,10 @@ export class MessageSubject<T> extends Subject<T> {
     }
 }
 
-//todo, add better argument inference for U
-export type Promisify<T> = { [P in keyof T]: T[P] extends (...args: infer U) => infer RT ? RT extends Promise<any> ? T[P] : (...args: U) => Promise<RT> : T[P] };
+type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>) => ReturnType<T> extends Promise<any> ? ReturnType<T>  : Promise<ReturnType<T> >;
+type Promisify<T> = {
+    [P in keyof T]: T[P] extends (...args: any[]) => any ? PromisifyFn<T[P]> : never
+};
 
 export class SocketClient {
     public socket?: WebSocket;
@@ -303,13 +305,13 @@ export class SocketClient {
                                     throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                                 }
 
-                                if (this.entityState.hasEntitySubject(classType, reply.item.id)) {
-                                    const subject = this.entityState.handleEntity(classType, reply.item);
+                                if (this.entityState.hasEntitySubject(classType, reply.item!.id)) {
+                                    const subject = this.entityState.handleEntity(classType, reply.item!);
                                     resolve(subject);
                                 } else {
                                     //it got created, so we subscribe only once to notify server about
                                     //unused EntitySubject when completed.
-                                    const subject = this.entityState.handleEntity(classType, reply.item);
+                                    const subject = this.entityState.handleEntity(classType, reply.item!);
                                     subject.addTearDown(() => {
                                         //user unsubscribed the entity subject, so we stop syncing changes
                                         self.send({
