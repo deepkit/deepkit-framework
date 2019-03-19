@@ -158,7 +158,9 @@ test('test Date', async () => {
     expect(await validate(Model, {endTime: date.toJSON()})).toEqual([]);
     expect(await validate(Model, {endTime: "Tue Mar 19 2019 11:39:10 GMT+0100 (Central European Standard Time)"})).toEqual([]);
     expect(await validate(Model, {endTime: date.toString()})).toEqual([]);
+    expect(await validate(Model, {endTime: new Date()})).toEqual([]);
     expect(await validate(Model, {endTime: ''})).toEqual([{message: 'No Date string given', path: 'endTime'}]);
+    expect(await validate(Model, {endTime: new Date('asdf')})).toEqual([{message: 'No valid Date given', path: 'endTime'}]);
     expect(await validate(Model, {endTime: 'asdf'})).toEqual([{message: 'No valid Date string given', path: 'endTime'}]);
     expect(await validate(Model, {endTime: null})).toEqual([{message: 'Required value is null', path: 'endTime'}]);
     expect(await validate(Model, {endTime: undefined})).toEqual([{message: 'Required value is undefined', path: 'endTime'}]);
