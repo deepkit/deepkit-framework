@@ -1,6 +1,6 @@
 import 'jest';
 import {Action, Controller, EntityStorage, ExchangeDatabase, FS} from "@marcj/glut-server";
-import {File} from "@marcj/glut-core";
+import {GlutFile} from "@marcj/glut-core";
 import {createServerClientPair} from "./util";
 
 global['WebSocket'] = require('ws');
@@ -30,7 +30,7 @@ test('test file list', async () => {
             await this.fs.write('test2.txt', 'Nix');
             await this.fs.write('test2-doppelt.txt', 'Nix');
 
-            return this.storage.find(File, {
+            return this.storage.find(GlutFile, {
                 path: {$regex: /^test2/}
             });
         }

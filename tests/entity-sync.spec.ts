@@ -1,7 +1,7 @@
 import 'jest';
 import {Action, ClientConnection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
-import {Entity, NumberType, StringType, ID} from '@marcj/marshal';
+import {Entity, IDField, Field} from '@marcj/marshal';
 import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
 import uuid = require("uuid");
 import {Observable, BehaviorSubject} from 'rxjs';
@@ -16,17 +16,14 @@ global.Promise = Promise;
 
 @Entity('user')
 class User implements IdInterface {
-    @ID()
-    @StringType()
+    @IDField()
+    @Field()
     id: string = uuid();
 
-    @NumberType()
+    @Field()
     version: number = 1;
 
-    @StringType()
-    public name: string;
-
-    constructor(name: string) {
+    constructor(@Field() public name: string) {
         this.name = name;
     }
 }

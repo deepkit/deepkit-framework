@@ -3,16 +3,13 @@ import {Action, Controller, PartialEntityReturnType, PartialParamType, ReturnTyp
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
-import {Entity, StringType, DateType} from '@marcj/marshal';
+import {Entity, Field} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
 global['WebSocket'] = require('ws');
 
 @Entity('user')
 class User {
-    @StringType()
-    public name: string;
-
-    constructor(name: string) {
+    constructor(@Field() public name: string) {
         this.name = name;
     }
 }
@@ -173,16 +170,13 @@ test('test basic serialisation param: entity', async () => {
 test('test basic serialisation partial param: entity', async () => {
     @Entity('user3')
     class User {
-        @StringType()
-        name: string;
+        @Field()
+        defaultVar: string = 'yes';
 
-        @StringType()
-        defaultVar = 'yes';
-
-        @DateType()
+        @Field()
         birthdate?: Date;
 
-        constructor(name: string) {
+        constructor(@Field() public name: string) {
             this.name = name;
         }
     }
