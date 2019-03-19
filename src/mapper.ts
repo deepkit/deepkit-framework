@@ -633,8 +633,6 @@ export function plainToClass<T>(
 /**
  * Same as [plainToClass] but with validation before creating the class instance.
  *
- * Note: this is a async function since validators are async per default.
- *
  * ```typescript
  * try {
  *     const entity = await validatedPlainToClass(MyEntity, {field1: 'value'});
@@ -646,12 +644,12 @@ export function plainToClass<T>(
  * }
  * ```
  */
-export async function validatedPlainToClass<T>(
+export function validatedPlainToClass<T>(
     classType: ClassType<T>,
     data: object,
     parents?: any[]
-): Promise<T> {
-    const errors = await validate(classType, data);
+): T {
+    const errors = validate(classType, data);
     if (errors.length) {
         throw new ValidationFailed(errors);
     }
