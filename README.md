@@ -199,7 +199,7 @@ You can also custom validators
 import {Field, AddValidator, PropertyValidator, PropertyValidatorError, ClassType} from '@marcj/marshal';
 
 class MyCustomValidator implements PropertyValidator {
-     async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
+     validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError {
          if (value.length > 10) {
              return new PropertyValidatorError('Too long :()');
          }

@@ -22,7 +22,7 @@ export class PropertyValidatorError {
  * import {PropertyValidator} from '@marcj/marshal';
  *
  * class MyCustomValidator implements PropertyValidator {
- *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
+ *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
  *          if (value.length > 10) {
  *              return new PropertyValidatorError('Too long :()');
  *          }
@@ -62,15 +62,12 @@ export function AddValidator<T extends PropertyValidator>(validator: ClassType<T
  * ```
  * @category Decorator
  */
-export function InlineValidator<T extends PropertyValidator>(cb: (value: any, target: ClassType<any>, propertyName: string) => void | Promise<void>) {
+export function InlineValidator<T extends PropertyValidator>(cb: (value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void) {
     return (target: Object, property: string) => {
         addValidator(target, property, class implements PropertyValidator {
-            async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
+            validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
                 try {
-                    const res = cb(value, target, propertyName);
-                    if (res['then']) {
-                        await res;
-                    }
+                    return cb(value, target, propertyName);
                 } catch (error) {
                     return new PropertyValidatorError(error.message ? error.message : error);
                 }
@@ -83,7 +80,7 @@ export function InlineValidator<T extends PropertyValidator>(cb: (value: any, ta
  * @hidden
  */
 export class NumberValidator implements PropertyValidator {
-    async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
+    validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
         value = parseFloat(value);
 
         if (!Number.isFinite(value)) {
@@ -96,7 +93,7 @@ export class NumberValidator implements PropertyValidator {
  * @hidden
  */
 export class StringValidator implements PropertyValidator {
-    async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
+    validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
         if ('string' !== typeof value) {
             return new PropertyValidatorError('No String given');
         }
@@ -107,7 +104,7 @@ export class StringValidator implements PropertyValidator {
  * @hidden
  */
 export class DateValidator implements PropertyValidator {
-    async validate<T>(value: any, target: Object, property: string): Promise<PropertyValidatorError | void> {
+    validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
         if (value instanceof Date) {
             if (isNaN(new Date(value).getTime())) {
                 return new PropertyValidatorError('No valid Date given');
@@ -130,7 +127,7 @@ export class DateValidator implements PropertyValidator {
  * @hidden
  */
 export class RequiredValidator implements PropertyValidator {
-    async validate<T>(value: any, target: ClassType<T>, propertyName: string): Promise<PropertyValidatorError | void> {
+    validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
         if (undefined === value) {
             return new PropertyValidatorError('Required value is undefined');
         }
@@ -195,7 +192,7 @@ export class ValidationFailed {
  * validate(SimpleModel, {id: false});
  * ```
  */
-export async function validate<T>(classType: ClassType<T>, item: { [name: string]: any } | T, path?: string): Promise<ValidationError[]> {
+export function validate<T>(classType: ClassType<T>, item: { [name: string]: any } | T, path?: string): ValidationError[] {
     const properties = getRegisteredProperties(classType);
     const errors: ValidationError[] = [];
     const schema = getEntitySchema(classType);
@@ -204,14 +201,14 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
         item = applyDefaultValues(classType, item as object);
     }
 
-    async function handleValidator(
+    function handleValidator(
         validatorType: ClassType<PropertyValidator>,
         value: any,
         propertyName: string,
         propertyPath: string
-    ): Promise<boolean> {
+    ): boolean {
         const instance = new validatorType;
-        const result = await instance.validate(value, classType, propertyName);
+        const result = instance.validate(value, classType, propertyName);
         if (result instanceof PropertyValidatorError) {
             errors.push(new ValidationError(propertyPath, result.message));
             return true;
@@ -228,7 +225,7 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
         const propertyValue: any = item[propertyName];
 
         if (!isOptional(classType, propertyName)) {
-            if (await handleValidator(RequiredValidator, propertyValue, propertyName, propertyPath)) {
+            if (handleValidator(RequiredValidator, propertyValue, propertyName, propertyPath)) {
                 //there's no need to continue validation without a value.
                 continue;
             }
@@ -254,7 +251,7 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
         }
 
         for (const validatorType of validators) {
-            await handleValidator(validatorType, propertyValue, propertyName, propertyPath);
+            handleValidator(validatorType, propertyValue, propertyName, propertyPath);
         }
 
         if (propSchema.type === 'class') {
@@ -264,11 +261,11 @@ export async function validate<T>(classType: ClassType<T>, item: { [name: string
 
                 for (const i in propertyValue) {
                     const deepPropertyPath = propertyPath + '.' + i;
-                    errors.push(...await validate(propSchema.getResolvedClassType(), propertyValue[i], deepPropertyPath));
+                    errors.push(...validate(propSchema.getResolvedClassType(), propertyValue[i], deepPropertyPath));
                 }
             } else {
                 //deep validation
-                errors.push(...await validate(propSchema.getResolvedClassType(), propertyValue, propertyPath));
+                errors.push(...validate(propSchema.getResolvedClassType(), propertyValue, propertyPath));
             }
         }
     }
