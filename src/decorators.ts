@@ -1,5 +1,5 @@
 import {getCachedParameterNames, Types} from "./mapper";
-import {NumberValidator, PropertyValidatorError, StringValidator} from "./validation";
+import {DateValidator, NumberValidator, PropertyValidatorError, StringValidator} from "./validation";
 import * as clone from 'clone';
 import {ClassType, getClassName, isArray, isNumber, isObject, isPlainObject, isString} from '@marcj/estdlib';
 import {Buffer} from "buffer";
@@ -52,6 +52,10 @@ export class PropertySchema {
     getValidators(): ClassType<PropertyValidator>[] {
         if (this.type === 'string') {
             return [...[StringValidator], ...this.validators];
+        }
+
+        if (this.type === 'date') {
+            return [...[DateValidator], ...this.validators];
         }
 
         if (this.type === 'number') {
