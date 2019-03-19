@@ -607,8 +607,8 @@ export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T
  * Take a regular object literal and returns an instance of classType.
  * Missing data is either replaced by the default value of that property or undefined.
  *
- * This method does not validate the given data. Use either [validatedPlainToClass] to validate beforehand
- * or use [validate] on your newly created instance.
+ * This method does not validate the given data. Use either [[validatedPlainToClass]] to validate beforehand
+ * or use [[validate]] on your newly created instance.
  *
  * ```typescript
  * const entity = plainToClass(MyEntity, {field1: 'value'});
