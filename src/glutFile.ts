@@ -1,9 +1,6 @@
 import {IdInterface} from "./contract";
-import {AnyType, DateType, Entity, EnumType, ID, NumberType, StringType, uuid, UUIDType} from "@marcj/marshal";
-
-export interface FileContext {
-    [name: string]: any;
-}
+import {Entity, EnumType, uuid, IDField, UUIDField, Field, FieldAny} from "@marcj/marshal";
+import {ClassType, eachKey} from "@marcj/estdlib";
 
 export enum FileMode {
     closed,
@@ -11,12 +8,12 @@ export enum FileMode {
 }
 
 @Entity('file', 'files')
-export class File implements IdInterface {
-    @ID()
-    @UUIDType()
+export class GlutFile implements IdInterface {
+    @IDField()
+    @UUIDField()
     id: string = uuid();
 
-    @NumberType()
+    @Field()
     version: number = 0;
 
     /**
@@ -26,25 +23,25 @@ export class File implements IdInterface {
      *    model.py
      *    .deepkit/log/master.txt
      */
-    @StringType()
+    @Field()
     path: string;
 
     @EnumType(FileMode)
     mode: FileMode = FileMode.closed;
 
-    @StringType()
+    @Field()
     md5?: string; //undefined in case of file is in mode=streaming
 
-    @NumberType()
+    @Field()
     size: number = 0;
 
-    @DateType()
+    @Field()
     created: Date = new Date();
 
-    @DateType()
+    @Field()
     updated: Date = new Date();
 
-    @AnyType()
+    @FieldAny()
     meta?: { [k: string]: any } = {};
 
     constructor(path: string) {
@@ -60,19 +57,6 @@ export class File implements IdInterface {
         }
 
         return this.md5;
-    }
-
-    public fork(newPath: string): File {
-        const newFile = new File(newPath);
-        newFile.size = this.size;
-        newFile.version = 0;
-        newFile.id = uuid();
-        newFile.mode = this.mode;
-        newFile.md5 = this.md5;
-        newFile.created = new Date;
-        newFile.updated = new Date;
-
-        return newFile;
     }
 
     public getFullPath(): string {
@@ -111,5 +95,33 @@ export class File implements IdInterface {
      */
     public inDirectory(dir: string = '/'): boolean {
         return this.getDirectory() === dir;
+    }
+}
+
+export class FileType<T extends GlutFile> {
+    constructor(public readonly classType: ClassType<T>) {}
+
+    static forDefault() {
+        return new FileType(GlutFile);
+    }
+
+    static forCustomType<T extends GlutFile>(classType: ClassType<T>) {
+        return new FileType(classType);
+    }
+
+    public fork(file: T, newPath: string): T {
+        const newFile = new this.classType(newPath);
+
+        for (const i of eachKey(file)) {
+            newFile[i] = file[i];
+        }
+
+        newFile.path = newPath;
+        newFile.version = 0;
+        newFile.created = new Date;
+        newFile.updated = new Date;
+        newFile.id = uuid();
+
+        return newFile;
     }
 }

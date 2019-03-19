@@ -1,11 +1,11 @@
-import {File} from '../src/file';
+import {GlutFile} from '../src/glutFile';
 
 test('file', () => {
-    const files: File[] = [
-        new File('root.txt'),
-        new File('dir/text1.txt'),
-        new File('dir/text2.txt'),
-        new File('anotherone/text1.txt'),
+    const files: GlutFile[] = [
+        new GlutFile('root.txt'),
+        new GlutFile('dir/text1.txt'),
+        new GlutFile('dir/text2.txt'),
+        new GlutFile('anotherone/text1.txt'),
     ];
 
     expect(files[0].getDirectory()).toBe('/');
