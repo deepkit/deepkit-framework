@@ -170,7 +170,7 @@ export class ClientConnection {
                 const type = types.parameters[i];
                 if (type.type === 'Entity' && type.entityName) {
                     if (!RegisteredEntities[type.entityName]) {
-                        throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
+                        throw new Error(`Action's parameter ${controller}::${methodName}:${i} has invalid entity referenced ${type.entityName}.`);
                     }
 
                     //todo, validate also partial objects, but @marcj/marshal needs an adjustments for the `validation` method to avoid Required() validator
@@ -206,27 +206,27 @@ export class ClientConnection {
                     return result;
                 }
 
-                const converter = {
-                    'Entity': (v) => {
+                const converter: {[name: string]: (v: any) => any} = {
+                    'Entity': (v: any) => {
                         if (types.returnType.partial) {
                             return partialClassToPlain(RegisteredEntities[types.returnType.entityName!], v);
                         } else {
                             return classToPlain(RegisteredEntities[types.returnType.entityName!], v);
                         }
                     },
-                    'Boolean': (v) => {
+                    'Boolean': (v: any) => {
                         return Boolean(v);
                     },
-                    'Number': (v) => {
+                    'Number': (v: any) => {
                         return Number(v);
                     },
-                    'Date': (v) => {
+                    'Date': (v: any) => {
                         return v;
                     },
-                    'String': (v) => {
+                    'String': (v: any) => {
                         return String(v);
                     },
-                    'Object': (v) => {
+                    'Object': (v: any) => {
                         return v;
                     }
                 };
@@ -254,7 +254,7 @@ export class ClientConnection {
                         }
 
                         if (isArray(v)) {
-                            return v.map(j => converter[types.returnType.type](j));
+                            return v.map((j: any) => converter[types.returnType.type](j));
                         }
 
                         return converter[types.returnType.type](v);
@@ -274,7 +274,7 @@ export class ClientConnection {
                 }
 
                 if (isArray(result)) {
-                    return result.map(v => converter[types.returnType.type](v));
+                    return result.map((v: any) => converter[types.returnType.type](v));
                 }
 
                 return converter[types.returnType.type](result);

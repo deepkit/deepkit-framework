@@ -475,7 +475,7 @@ export class EntityStorage {
 
             collection.set(items);
             collection.loaded();
-        });
+        }, 0);
 
         return collection;
     }

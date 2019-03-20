@@ -134,7 +134,7 @@ export class FS<T extends GlutFile> {
         if (await pathExists(localPath)) {
             const newFile = this.fileType.fork(file, path);
             for (const i of eachKey(file)) {
-                newFile[i] = file[i];
+                (newFile as any)[i] = (file as any)[i];
             }
             await this.database.add(this.fileType.classType, newFile);
             return newFile;
@@ -231,7 +231,7 @@ export class FS<T extends GlutFile> {
             file = new this.fileType.classType(path);
             file.md5 = getMd5(data);
             for (const i of eachKey(fields)) {
-                file[i] = fields[i];
+                (file as any)[i] = (fields as any)[i];
             }
             file.size = data.byteLength;
             await this.database.add(this.fileType.classType, file);
@@ -278,7 +278,7 @@ export class FS<T extends GlutFile> {
         if (!file) {
             file = new this.fileType.classType(path);
             for (const i of eachKey(fields)) {
-                file[i] = fields[i];
+                (file as any)[i] = (fields as any)[i];
             }
             file.mode = FileMode.streaming;
             await this.database.add(this.fileType.classType, file);

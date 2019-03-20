@@ -150,7 +150,7 @@ export class ApplicationServer {
                 useFactory: (host: string, port: number, prefix: string) => new Exchange(host, port, prefix)
             },
             {
-                provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection, dbName) => {
+                provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {
                     return new Database(connection, dbName);
                 }
             },
