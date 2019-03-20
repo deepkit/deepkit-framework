@@ -4,7 +4,6 @@
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
 import {Observable, ReplaySubject, Subject, TeardownLogic} from "rxjs";
-import {getEntityName} from "@marcj/marshal";
 import {first, map} from "rxjs/operators";
 import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";

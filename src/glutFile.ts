@@ -1,5 +1,5 @@
 import {IdInterface} from "./contract";
-import {Entity, EnumType, uuid, IDField, UUIDField, Field, FieldAny} from "@marcj/marshal";
+import {Entity, EnumType, uuid, IDField, UUIDField, Field} from "@marcj/marshal";
 import {ClassType, eachKey} from "@marcj/estdlib";
 
 export enum FileMode {
@@ -40,9 +40,6 @@ export class GlutFile implements IdInterface {
 
     @Field()
     updated: Date = new Date();
-
-    @FieldAny()
-    meta?: { [k: string]: any } = {};
 
     constructor(path: string) {
         this.path = path;
