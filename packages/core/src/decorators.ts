@@ -887,7 +887,7 @@ export function Index(options?: IndexOptions, fields?: string | string[], name?:
  *
  * @category Decorator
  */
-export function EnumType<T>(type: any, allowLabelsAsValue = false) {
+export function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return FieldDecoratorWrapper((target: Object, property: string, returnType?: any) => {
         if (property) {
             Type('enum')(target, property);

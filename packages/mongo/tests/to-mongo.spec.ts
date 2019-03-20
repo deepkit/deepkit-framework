@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
-    EnumType,
+    EnumField,
     Field,
     forwardRef,
     getResolvedReflection,
@@ -74,7 +74,7 @@ test('convert IDs and invalid values', () => {
         @UUIDField()
         uuid?: string;
 
-        @EnumType(Enum)
+        @EnumField(Enum)
         enum?: Enum;
     }
 

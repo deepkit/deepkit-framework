@@ -259,6 +259,13 @@ import {getTypeOrmEntity} from "@marcj/marshal-mongo";
 const TypeOrmSchema = getTypeOrmEntity(MyEntity);
 ```
 
+Marshal.ts uses only TypeORM for connection abstraction and to generate a `EntitySchema` for your typeOrm use-cases.
+You need in most cases only to use the @Field decorator with some other Marshal decorators (like @EnumField, @IDField, @UUIDField, @Index)
+on your entity.
+
+You can generate a schema for Typeorm using  `getTypeOrmEntity` and then pass this to your `createConnection` call,
+which makes it possible to sync the schema defined only with Marshal decorators with your database managed by Typeorm.
+
 ### Exclude
 
 `@Exclude()` lets you exclude properties from a class in a certain

@@ -1,12 +1,12 @@
 import {
     Entity,
-    EnumType,
+    EnumField,
     Field,
     FieldAny,
     IDField,
     Optional,
     UUIDField
-} from "../";
+} from "../index";
 
 export class JobConfigDocker {
     @Field([String])
@@ -292,7 +292,7 @@ export class JobAssignedResources {
 }
 
 export class JobTaskInstance {
-    @EnumType(JobTaskInstanceStatus)
+    @EnumField(JobTaskInstanceStatus)
     status: JobTaskInstanceStatus = JobTaskInstanceStatus.pending;
 
     @Field(JobEnvironment)
@@ -335,7 +335,7 @@ export class JobTask {
     @Field(JobDockerImage)
     dockerImage: JobDockerImage = new JobDockerImage;
 
-    @EnumType(JobTaskStatus)
+    @EnumField(JobTaskStatus)
     status: JobTaskStatus = JobTaskStatus.pending;
 
     @Field()
@@ -391,7 +391,7 @@ export class Job {
     @Field()
     configFile?: string;
 
-    @EnumType(JobStatus)
+    @EnumField(JobStatus)
     status: JobStatus = JobStatus.creating;
 
     @Field()

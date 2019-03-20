@@ -1,7 +1,7 @@
 import {
     Decorated,
     Entity,
-    EnumType,
+    EnumField,
     Exclude,
     ExcludeToMongo,
     ExcludeToPlain,
@@ -11,7 +11,7 @@ import {
     MongoIdField, Optional,
     uuid,
     UUIDField
-} from '..';
+} from '../index';
 
 @Entity('sub')
 export class SubModel {
@@ -83,7 +83,7 @@ export class SimpleModel {
     @Field()
     yesNo: boolean = false;
 
-    @EnumType(Plan)
+    @EnumField(Plan)
     plan: Plan = Plan.DEFAULT;
 
     @Field()
