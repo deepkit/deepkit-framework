@@ -1,5 +1,5 @@
 import 'jest';
-import {classToPlain, EnumType, Exclude, ExcludeToPlain, Field, plainToClass} from "../core";
+import {classToPlain, EnumField, Exclude, ExcludeToPlain, Field, plainToClass} from "../core";
 import {plainToClass as classTransformerPlainToClass, classToPlain as classTransformerClassToPlain, Exclude as ctExclude, Transform, Type} from "class-transformer";
 import {bench} from "./util";
 import {Plan, SubModel} from "@marcj/marshal/tests/entities";
@@ -14,7 +14,7 @@ export class SimpleModel {
     @Field()
     yesNo: boolean = false;
 
-    @EnumType(Plan)
+    @EnumField(Plan)
     plan: Plan = Plan.DEFAULT;
 
     @Field()
