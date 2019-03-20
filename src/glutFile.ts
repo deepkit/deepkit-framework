@@ -110,7 +110,7 @@ export class FileType<T extends GlutFile> {
         const newFile = new this.classType(newPath);
 
         for (const i of eachKey(file)) {
-            newFile[i] = file[i];
+            (newFile as any)[i] = (file as any)[i];
         }
 
         newFile.path = newPath;
