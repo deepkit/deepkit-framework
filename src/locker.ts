@@ -2,6 +2,7 @@ import {Collection} from 'typeorm';
 import {Database} from "@marcj/marshal-mongo";
 import {sleep} from "@marcj/estdlib";
 import {Entity, Field, Index, IDField, MongoIdField} from "@marcj/marshal";
+import {Injectable} from 'injection-js';
 
 @Entity('__lock')
 export class Lock {
@@ -127,6 +128,7 @@ export class MongoLock {
     }
 }
 
+@Injectable()
 export class Locker {
     constructor(protected database: Database) {
     }

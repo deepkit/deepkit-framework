@@ -142,7 +142,11 @@ export class ApplicationServer {
             {provide: 'redis.prefix', useValue: this.config.redisPrefix},
             {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
             {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
-            {provide: FileType, useValue: FileType.forDefault()},
+            {
+                provide: FileType, deps: [], useFactory: () => {
+                    return FileType.forDefault();
+                }
+            },
             {provide: Connection, useValue: this.connection},
             {
                 provide: Exchange,
@@ -168,7 +172,7 @@ export class ApplicationServer {
             Locker,
         ];
 
-        baseInjectors.push(...this.serverProvider);
+        // baseInjectors.push(...this.serverProvider);
 
         this.injector = ReflectiveInjector.resolveAndCreate(baseInjectors);
         const app: Application = this.injector.get(Application);
