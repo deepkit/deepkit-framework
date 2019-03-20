@@ -11,7 +11,7 @@ export class ValidationPipe implements PipeTransform<any> {
         }
 
         const valueWithDefaults = applyDefaultValues(metadata.metatype, value);
-        const errors = await validate(metadata.metatype, valueWithDefaults);
+        const errors = validate(metadata.metatype, valueWithDefaults);
 
         if (errors.length > 0) {
             throw new BadRequestException(this.options && this.options.disableErrorMessages ? undefined : errors);
