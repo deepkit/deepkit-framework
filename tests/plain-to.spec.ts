@@ -9,7 +9,7 @@ import {
     partialPlainToClass,
     plainToClass
 } from "../src/mapper";
-import {EnumType, Field, forwardRef, Optional, ParentReference} from "..";
+import {EnumField, Field, forwardRef, Optional, ParentReference} from "..";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from "./document-scenario/PageClass";
 import {PageCollection} from "./document-scenario/PageCollection";
@@ -253,7 +253,7 @@ test('test enum labels', () => {
     }
 
     class Model {
-        @EnumType(MyEnum)
+        @EnumField(MyEnum)
         enum: MyEnum = MyEnum.third;
     }
 
@@ -269,7 +269,7 @@ test('test enum labels', () => {
 
 
     class ModelWithLabels {
-        @EnumType(MyEnum, true)
+        @EnumField(MyEnum, true)
         enum: MyEnum = MyEnum.third;
     }
 
