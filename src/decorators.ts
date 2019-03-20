@@ -338,7 +338,7 @@ function FieldAndClassDecoratorWrapper(
  * ```
  *
  * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
- * `PageCollection.pages` (always the field where @Decorator() is applied to), here a array of PagesClass `PageClass[]`.
+ * `PageCollection.pages` (always the field where @Decorated() is applied to), here a array of PagesClass `PageClass[]`.
  */
 export function Decorated() {
     return FieldDecoratorWrapper((target: Object, property: string) => {
