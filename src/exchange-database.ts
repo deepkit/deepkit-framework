@@ -104,21 +104,21 @@ export class ExchangeDatabase {
         }
     }
 
-    public async count<T>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<number> {
+    public async count<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<number> {
         return await this.database.count(classType, filter);
     }
 
-    public async cursor<T>(classType: ClassType<T>, filter?: FilterQuery<T>, toClass = false): Promise<Cursor<T>> {
+    public async cursor<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>, toClass = false): Promise<Cursor<T>> {
         return (await this.database.cursor(classType, filter, toClass)) as Cursor<T>;
     }
 
-    public async plainCursor<T>(classType: ClassType<T>, filter: FilterQuery<T>): Promise<Cursor<T>> {
+    public async plainCursor<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Promise<Cursor<T>> {
         const collection = await this.collection(classType);
 
         return collection.find(convertPlainQueryToMongo(classType, filter));
     }
 
-    public async update<T>(classType: ClassType<T>, item: T): Promise<number> {
+    public async update<T extends IdInterface>(classType: ClassType<T>, item: T): Promise<number> {
         const version = await this.database.update(classType, item);
 
         if (!version) {
@@ -141,7 +141,7 @@ export class ExchangeDatabase {
      * Increases one or multiple fields atomic and returns the new value.
      * This does not send patches to the exchange.
      */
-    public async increase<T, F extends { [field: string]: number }>(
+    public async increase<T extends IdInterface, F extends { [field: string]: number }>(
         classType: ClassType<T>,
         id: string,
         fields: F
@@ -166,7 +166,7 @@ export class ExchangeDatabase {
         return response.value;
     }
 
-    public async patchPlain<T>(
+    public async patchPlain<T extends IdInterface>(
         classType: ClassType<T>,
         id: string,
         patches: { [path: string]: any },
@@ -181,7 +181,7 @@ export class ExchangeDatabase {
         );
     }
 
-    public async patch<T>(
+    public async patch<T extends IdInterface>(
         classType: ClassType<T>,
         id: string,
         patches: Partial<T> | { [path: string]: any },

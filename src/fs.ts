@@ -122,7 +122,7 @@ export class FS<T extends GlutFile> {
         return await this.database.get(this.fileType.classType, {path: path, ...filter} as T);
     }
 
-    public async registerFile(md5: string, path: string, metaData?: FileMetaData): Promise<T> {
+    public async registerFile(md5: string, path: string, fields: Partial<T> = {}): Promise<T> {
         const file = await this.database.get(this.fileType.classType, {md5: md5} as T);
 
         if (!file || !file.md5) {
@@ -133,7 +133,9 @@ export class FS<T extends GlutFile> {
 
         if (await pathExists(localPath)) {
             const newFile = this.fileType.fork(file, path);
-            newFile.meta = metaData;
+            for (const i of eachKey(file)) {
+                newFile[i] = file[i];
+            }
             await this.database.add(this.fileType.classType, newFile);
             return newFile;
         } else {

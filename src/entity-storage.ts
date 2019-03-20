@@ -31,7 +31,7 @@ export class EntityStorage {
         protected readonly writer: ConnectionWriter,
         protected readonly exchange: Exchange,
         protected readonly database: ExchangeDatabase,
-        protected readonly fs: FS,
+        protected readonly fs: FS<GlutFile>, //todo, refactor: exclude that dependency and move fileContent to own class
     ) {
     }
 

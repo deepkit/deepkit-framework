@@ -7,3 +7,4 @@ export * from './src/exchange-database';
 export * from './src/exchange';
 export * from './src/fs';
 export * from './src/worker';
+export * from './src/locker';
