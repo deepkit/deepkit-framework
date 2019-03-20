@@ -172,7 +172,7 @@ export class ApplicationServer {
             Locker,
         ];
 
-        // baseInjectors.push(...this.serverProvider);
+        baseInjectors.push(...this.serverProvider);
 
         this.injector = ReflectiveInjector.resolveAndCreate(baseInjectors);
         const app: Application = this.injector.get(Application);
