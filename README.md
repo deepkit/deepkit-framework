@@ -327,14 +327,14 @@ are fully initialised.
 
 ### Decorator
 
-`@Decorator` lets you transform the actual class into something
+`@Decorated` lets you transform the actual class into something
 different. This is useful if you have in the actual class instance
 (plainToClass or mongoToClass) a wrapper for a certain property, for
 example `string[]` => `ChildrenCollection`.
 
 ```typescript
 class ChildrenCollection {
-    @Decorator()
+    @Decorated()
     @Field([String])
     items: string[];
     

@@ -237,7 +237,7 @@ test('test simple model with not mapped fields', () => {
     expect(plainObject.excludedForMongo).toBe('excludedForMongo');
 });
 
-test('test @decorator', async () => {
+test('test @Decorated', async () => {
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(SimpleModel, {
             name: 'myName',
@@ -453,7 +453,7 @@ test('test decorator complex', async () => {
     }
 });
 
-test('test @decorator with parent', async () => {
+test('test @Decorated with parent', async () => {
     expect(getReflectionType(DocumentClass, 'pages')).toEqual({type: 'class', typeValue: PageCollection});
     expect(getReflectionType(PageCollection, 'pages')).toEqual({type: 'class', typeValue: PageClass});
     expect(getReflectionType(PageClass, 'parent')).toEqual({type: 'class', typeValue: PageClass});
