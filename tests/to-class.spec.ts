@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import {
     classToPlain,
     cloneClass,
-    EnumType,
+    EnumField,
     Exclude,
     getEntityName,
     getIdField,
@@ -723,19 +723,19 @@ test('enums', () => {
     }
 
     class Model {
-        @EnumType(Enum1)
+        @EnumField(Enum1)
         enum1?: Enum1;
 
-        @EnumType(Enum2)
+        @EnumField(Enum2)
         enum2?: Enum2;
 
-        @EnumType(Enum3)
+        @EnumField(Enum3)
         enum3?: Enum3;
 
-        @EnumType(Enum4)
+        @EnumField(Enum4)
         enum4?: Enum4;
 
-        @EnumType(Enum4, true)
+        @EnumField(Enum4, true)
         enumLabels?: Enum4;
     }
 
