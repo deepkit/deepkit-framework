@@ -69,10 +69,6 @@ export function InlineValidator<T extends PropertyValidator>(cb: (value: any, ta
                 try {
                     return cb(value, target, propertyName);
                 } catch (error) {
-                    if (error instanceof Error) {
-                        return new PropertyValidatorError(error.name, error.message);
-                    }
-
                     return new PropertyValidatorError('error', error.message ? error.message : error);
                 }
             }
