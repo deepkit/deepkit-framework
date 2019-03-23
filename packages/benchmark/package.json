@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "test": "jest --coverage",
-    "tsc": "tsc"
+    "tsc": ""
   },
   "repository": "https://github.com/marcj/marshal",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",

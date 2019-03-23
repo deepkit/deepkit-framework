@@ -7,9 +7,10 @@
 Marshal is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
 JSON-representable data from JSON to class instance to Database and vice versa.
 
-If you have data models in your frontend, Node backend, and Database,
-then Marshal helps you to convert and validate between all those correctly.
-The result is having only one entity and validation definition for all sides at once.
+Marshal introduces the concept of decorating your entity class once with all
+necessary annotations like type declaration, indices, and relations agnostic
+to any storage engine, and then use it everywhere:
+frontend, backend, http-transport, validation, and database.
 
 ## Features
 

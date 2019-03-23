@@ -1,18 +1,14 @@
 {
+  "compileOnSave": true,
   "compilerOptions": {
-    "declaration": true,
-    "stripInternal": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "strictNullChecks": true,
-    "noImplicitAny": false,
-    "strict": true,
     "sourceMap": true,
-    "inlineSources": true,
-    "preserveSymlinks": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "declaration": true,
     "module": "commonjs",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "target": "es2017",
-    "skipLibCheck": true,
     "types": [
       "reflect-metadata"
     ],
@@ -23,6 +19,7 @@
     ]
   },
   "exclude": [
+    "dist",
     "node_modules",
     "**/*.spec.ts"
   ]
