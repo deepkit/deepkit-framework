@@ -12,6 +12,7 @@ export interface ApplicationDecoratorOptions {
     serverProviders: Provider[],
     connectionProviders: Provider[],
     controllers: ClassType<any>[];
+    entitiesForTypeOrm: ClassType<any>[];
     notifyEntities: ClassType<any>[];
 }
 

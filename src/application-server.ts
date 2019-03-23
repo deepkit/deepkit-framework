@@ -75,6 +75,7 @@ export class ApplicationServer {
             options.serverProviders || [],
             options.connectionProviders || [],
             options.controllers,
+            options.entitiesForTypeOrm,
             options.notifyEntities,
         );
     }

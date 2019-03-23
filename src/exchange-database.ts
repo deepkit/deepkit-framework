@@ -30,7 +30,6 @@ export class ExchangeDatabase {
         return this.exchangeNotifyPolicy.notifyChanges(classType);
     }
 
-
     public async get<T extends IdInterface>(
         classType: ClassType<T>,
         filter: FilterQuery<T>
