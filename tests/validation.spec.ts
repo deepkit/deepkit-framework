@@ -317,6 +317,26 @@ test('test number', async () => {
     expect(validate(ModelOptional, {})).toEqual([]);
 });
 
+test('test array', async () => {
+    class AClass {
+        @Field([String])
+        public tags: string[] = [];
+    }
+
+    expect(validate(AClass, {tags: ['Hi']})).toEqual([]);
+    expect(validate(AClass, {tags: ['hi', 2]})).toEqual([{code: 'invalid_string', message: "No String given", path: 'tags.1'}]);
+});
+
+test('test map', async () => {
+    class AClass {
+        @Field({String})
+        public tags: {[k: string]: string} = {};
+    }
+
+    expect(validate(AClass, {tags: {'nix': 'yes'}})).toEqual([]);
+    expect(validate(AClass, {tags: {'nix': 2}})).toEqual([{code: 'invalid_string', message: "No String given", path: 'tags.nix'}]);
+});
+
 test('test nested validation', async () => {
     // Class definition with validation rules
     class A {

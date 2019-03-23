@@ -1,6 +1,6 @@
-import {ClassType, isArray, isObject, typeOf, getClassName} from "@marcj/estdlib";
+import {ClassType, isArray, isObject, typeOf, eachKey} from "@marcj/estdlib";
 import {applyDefaultValues, getRegisteredProperties} from "./mapper";
-import {getEntitySchema, getOrCreateEntitySchema, PropertyValidator} from "./decorators";
+import {getEntitySchema, getOrCreateEntitySchema, PropertySchema, PropertyValidator} from "./decorators";
 
 function addValidator<T extends PropertyValidator>(target: Object, property: string, validator: ClassType<T>) {
     getOrCreateEntitySchema(target).getOrCreateProperty(property).validators.push(validator);
@@ -80,7 +80,7 @@ export function InlineValidator<T extends PropertyValidator>(cb: (value: any, ta
  * @hidden
  */
 export class NumberValidator implements PropertyValidator {
-    validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
+    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
         value = parseFloat(value);
 
         if (!Number.isFinite(value)) {
@@ -93,7 +93,7 @@ export class NumberValidator implements PropertyValidator {
  * @hidden
  */
 export class StringValidator implements PropertyValidator {
-    validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
+    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
         if ('string' !== typeof value) {
             return new PropertyValidatorError('invalid_string', 'No String given');
         }
@@ -104,7 +104,7 @@ export class StringValidator implements PropertyValidator {
  * @hidden
  */
 export class DateValidator implements PropertyValidator {
-    validate<T>(value: any, target: Object, property: string): PropertyValidatorError | void {
+    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
         if (value instanceof Date) {
             if (isNaN(new Date(value).getTime())) {
                 return new PropertyValidatorError('invalid_date', 'No valid Date given');
@@ -210,16 +210,30 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
     }
 
     function handleValidator(
+        propSchema: PropertySchema,
         validatorType: ClassType<PropertyValidator>,
         value: any,
         propertyName: string,
         propertyPath: string
     ): boolean {
         const instance = new validatorType;
-        const result = instance.validate(value, classType, propertyName);
-        if (result instanceof PropertyValidatorError) {
-            errors.push(new ValidationError(propertyPath, result.code, result.message));
-            return true;
+
+        if (propSchema.isArray && isArray(value) || (propSchema.isMap && isObject(value))) {
+            for (const i of eachKey(value)) {
+                if ('string' !== typeof value[i]) {
+                    const result = instance.validate(value[i], classType, propertyName, propSchema);
+
+                    if (result instanceof PropertyValidatorError) {
+                        errors.push(new ValidationError(propertyPath + '.' + i, result.code, result.message));
+                    }
+                }
+            }
+        } else {
+            const result = instance.validate(value, classType, propertyName, propSchema);
+            if (result instanceof PropertyValidatorError) {
+                errors.push(new ValidationError(propertyPath, result.code, result.message));
+                return true;
+            }
         }
 
         return false;
@@ -233,7 +247,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
         const propertyValue: any = item[propertyName];
 
         if (!isOptional(classType, propertyName)) {
-            if (handleValidator(RequiredValidator, propertyValue, propertyName, propertyPath)) {
+            if (handleValidator(propSchema, RequiredValidator, propertyValue, propertyName, propertyPath)) {
                 //there's no need to continue validation without a value.
                 continue;
             }
@@ -259,7 +273,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
         }
 
         for (const validatorType of validators) {
-            handleValidator(validatorType, propertyValue, propertyName, propertyPath);
+            handleValidator(propSchema, validatorType, propertyValue, propertyName, propertyPath);
         }
 
         if (propSchema.type === 'class') {
