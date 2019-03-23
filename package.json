@@ -7,24 +7,26 @@
   "sideEffects": false,
   "scripts": {
     "test": "jest --coverage",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "repository": "https://github.com/marcj/marshal",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "mongodb": "^3.1.13"
+    "mongodb": "^3.1.13",
+    "typeorm": "^0.2.14"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.6",
     "@marcj/marshal": "^0.8.1",
-    "mongo-uuid": "^1.0.0",
-    "typeorm": "^0.2.14"
+    "mongo-uuid": "^1.0.0"
   },
   "devDependencies": {
     "@types/mongodb": "^3.1.12",
     "buffer": "^5.2.1",
-    "mongodb": "^3.1.13"
+    "mongodb": "^3.1.13",
+    "typeorm": "^0.2.14"
   },
   "jest": {
     "testURL": "http://localhost/",

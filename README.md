@@ -8,7 +8,7 @@ data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
 
 ```
-npm install @marcj/marshal-mongo reflect-metadata typeorm
+npm install @marcj/marshal-mongo reflect-metadata mongodb typeorm
 ```
 
 Install `buffer` as well if you want binary support.
