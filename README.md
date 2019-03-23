@@ -8,7 +8,7 @@ your MongoDB or somewhere else. With Marshal this scenario is super
 simple and you do not need any manual transformations.
 
 ```
-npm install @marcj/marshal-nest typeorm
+npm install @marcj/marshal @marcj/marshal-mongo @marcj/marshal-nest
 ```
 
 ```typescript
