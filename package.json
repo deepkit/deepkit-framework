@@ -1,7 +1,8 @@
 {
   "name": "@marcj/glut-client",
   "version": "0.0.6",
-  "main": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "author": "Kamille Team",
   "license": "MIT",
   "publishConfig": {
@@ -9,12 +10,12 @@
   },
   "scripts": {
     "test": "jest --coverage",
-    "tsc": "rm -rf dist && tsc",
+    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
     "@marcj/glut-core": "0.0.2",
-    "@marcj/marshal": "^0.8.1",
+    "@marcj/marshal": "^0.8.3",
     "reflect-metadata": "^0.1.12",
     "rxjs": "6.3.3"
   },
@@ -25,7 +26,7 @@
   },
   "devDependencies": {
     "@marcj/glut-core": "^0.0.6",
-    "@marcj/marshal": "^0.8.1",
+    "@marcj/marshal": "^0.8.3",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
     "reflect-metadata": "^0.1.13"

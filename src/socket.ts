@@ -152,22 +152,14 @@ export class SocketClient {
                 }
 
                 this.connected = false;
-                if (this.connectionTries === 1) {
-                    reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message}`));
-                }
+                reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message}`));
             };
 
             socket.onopen = async () => {
-                if (this.config.token) {
-                    if (!await this.authenticate()) {
-                        reject(new AuthorizationError());
-                        return;
-                    }
-                }
-
                 await this.onConnected();
                 this.connected = true;
                 this.connectionTries = 0;
+
                 // this.emit('online');
                 resolve();
             };
@@ -192,6 +184,12 @@ export class SocketClient {
             await this.connectionPromise;
         } finally {
             delete this.connectionPromise;
+        }
+
+        if (this.connected && this.config.token) {
+            if (!await this.authenticate()) {
+                throw new AuthorizationError();
+            }
         }
     }
 
@@ -290,7 +288,7 @@ export class SocketClient {
                     return next;
                 }
 
-                subject.subscribe((reply) => {
+                subject.subscribe((reply: ServerMessageResult) => {
                     if (reply.type === 'type') {
                         if (reply.returnType === 'subject') {
                             streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
@@ -482,10 +480,14 @@ export class SocketClient {
     }
 
     private async authenticate(): Promise<boolean> {
+        console.log('authenticate send', this.config.token);
+
         const reply = await this.sendMessage({
             name: 'authenticate',
             token: this.config.token,
         }).firstAndClose();
+
+        console.log('authenticate reply', reply);
 
         if (reply.type === 'authenticate/result') {
             this.loggedIn = reply.result;
