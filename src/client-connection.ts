@@ -13,7 +13,7 @@ type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMe
 
 @Injectable()
 export class ClientConnection {
-    protected timeoutTimers: NodeJS.Timeout[] = [];
+    protected timeoutTimers: any[] = [];
     protected destroyed = false;
     protected usedControllers: { [path: string]: any } = {};
 
@@ -52,7 +52,7 @@ export class ClientConnection {
     /**
      * Creates a regular timer using setTimeout() and automatically cancel it once the connection breaks or server stops.
      */
-    public setTimeout(cb: () => void, timeout: number): NodeJS.Timeout {
+    public setTimeout(cb: () => void, timeout: number): any {
         const timer = setTimeout(() => {
             cb();
             arrayRemoveItem(this.timeoutTimers, timer);
@@ -115,8 +115,8 @@ export class ClientConnection {
             if (!controllerClass) {
                 throw new Error(`Controller not found for ${controller}`);
             }
-
-            const access = await this.app.hasAccess(this.injector, this.sessionStack.getSession(), controllerClass, action);
+0
+            const access = await this.app.hasAccess(this.injector, this.sessionStack.getSessionOrUndefined(), controllerClass, action);
             if (!access) {
                 throw new Error(`Access denied`);
             }
@@ -144,7 +144,7 @@ export class ClientConnection {
             throw new Error(`Controller not found for ${controller}`);
         }
 
-        const access = await this.app.hasAccess(this.injector, this.sessionStack.getSession(), controllerClass, action);
+        const access = await this.app.hasAccess(this.injector, this.sessionStack.getSessionOrUndefined(), controllerClass, action);
         if (!access) {
             throw new Error(`Access denied`);
         }
@@ -280,6 +280,7 @@ export class ClientConnection {
                 return converter[types.returnType.type](result);
             } catch (error) {
                 // possible security whole, when we send all errors.
+                console.error(error);
                 throw new Error(`Action ${fullName} failed: ${error}`);
             }
         }

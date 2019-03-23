@@ -26,7 +26,15 @@ export class SessionStack {
         return this.session !== undefined;
     }
 
-    public getSession(): Session | undefined {
+    public getSessionOrUndefined(): Session | undefined {
+        return this.session;
+    }
+
+    public getSession(): Session {
+        if (!this.session) {
+            throw new Error('No session given.');
+        }
+
         return this.session;
     }
 }

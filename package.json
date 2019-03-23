@@ -1,7 +1,8 @@
 {
   "name": "@marcj/glut-server",
   "version": "0.0.6",
-  "main": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "license": "MIT",
   "author": "Kamille Team",
   "sideEffects": false,
@@ -10,33 +11,33 @@
   },
   "scripts": {
     "test": "jest --coverage",
-    "tsc": "rm -rf dist && tsc",
+    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
     "@marcj/glut-core": "0.0.1",
-    "@marcj/marshal": "^0.8.1",
+    "@marcj/marshal": "^0.8.2",
     "buffer": "^5.2.1",
     "reflect-metadata": "^0.1.12",
-    "rxjs": "6.3.3"
+    "rxjs": "6.3.3",
+    "typeorm": "0.2.14",
+    "mongodb": "^3.1.10",
+    "@marcj/marshal-mongo": "^0.8.2"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.7",
     "@marcj/estdlib-rxjs": "^0.1.7",
-    "@marcj/marshal-mongo": "^0.8.1",
     "clone": "^2.1.1",
     "fs-extra": "^6.0.1",
     "injection-js": "^2.2.1",
     "md5": "^2.2.1",
-    "mongodb": "^3.1.10",
     "redis": "^2.8.0",
     "sift": "^7.0.1",
-    "typeorm": "^0.2.14",
     "ws": "^6.1.2"
   },
   "devDependencies": {
     "@marcj/glut-core": "^0.0.6",
-    "@marcj/marshal": "^0.8.1",
+    "@marcj/marshal": "^0.8.2",
     "@types/clone": "^0.1.30",
     "@types/fs-extra": "^5.0.2",
     "@types/mongodb": "^3.1.14",
@@ -47,6 +48,9 @@
     "cache-loader": "^1.2.2",
     "reflect-metadata": "^0.1.12",
     "rxjs": "6.3.3",
+    "mongodb": "^3.1.10",
+    "@marcj/marshal-mongo": "^0.8.2",
+    "typeorm": "0.2.14",
     "source-map": "^0.7.3",
     "source-map-support": "^0.5.9"
   },

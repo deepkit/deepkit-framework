@@ -133,7 +133,7 @@ export class Locker {
     constructor(protected database: Database) {
     }
 
-    public getLocks() {
+    public getLocks(): Collection<Lock> {
         return this.database.getCollection(Lock);
     }
 

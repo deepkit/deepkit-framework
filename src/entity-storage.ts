@@ -10,7 +10,7 @@ import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";
-import {StreamBehaviorSubject} from "@marcj/glut-core/src/core";
+import {StreamBehaviorSubject} from "@marcj/glut-core";
 
 interface SentState {
     lastSentVersion: number;
