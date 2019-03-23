@@ -19,7 +19,7 @@
   "devDependencies": {
     "@types/jest": "^24.0.11",
     "@types/node": "^11.11.6",
-    "coveralls": "^3.0.2",
+    "coveralls": "^3.0.3",
     "jest": "^24.5.0",
     "jest-extended": "^0.11.1",
     "lerna": "^3.13.1",
@@ -41,11 +41,10 @@
       "js"
     ],
     "collectCoverageFrom": [
-      "**/*.{ts}",
+      "**/*.ts",
       "!**/node_modules/**",
-      "!**/lib/**/*",
+      "!**/dist/**/*",
       "!**/tests/**/*",
-      "!**/*.d.ts",
       "!packages/benchmark/**/*",
       "!index.ts"
     ],
@@ -57,7 +56,6 @@
     },
     "testMatch": [
       "**/*.spec.ts"
-    ],
-    "setupTestFrameworkScriptFile": "jest-extended"
+    ]
   }
 }

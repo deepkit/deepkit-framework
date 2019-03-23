@@ -45,8 +45,7 @@
     },
     "testMatch": [
       "**/*.spec.ts"
-    ],
-    "setupTestFrameworkScriptFile": "jest-extended"
+    ]
   },
   "publishConfig": {
     "access": "public"

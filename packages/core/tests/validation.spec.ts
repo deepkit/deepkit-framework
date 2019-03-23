@@ -134,7 +134,7 @@ test('test AddValidator', async () => {
     expect(validate(Model, {id: '123456'})).toEqual([{code: 'too_long', message: 'Too long', path: 'id'}]);
 });
 
-test('test inline validator throw', async () => {
+test('test inline validator throw Error', async () => {
     class MyError extends CustomError {
         constructor() {
             super('Too long');
@@ -152,7 +152,22 @@ test('test inline validator throw', async () => {
     }
 
     expect(validate(Model, {id: '2'})).toEqual([]);
-    expect(validate(Model, {id: '123456'})).toEqual([{code: 'MyError', message: 'Too long', path: 'id'}]);
+    expect(validate(Model, {id: '123456'})).toEqual([{code: 'error', message: 'Too long', path: 'id'}]);
+});
+
+test('test inline validator throw string', async () => {
+    class Model {
+        @Field()
+        @InlineValidator((value: string) => {
+            if (value.length > 5) {
+                throw 'Too long';
+            }
+        })
+        id: string = '2';
+    }
+
+    expect(validate(Model, {id: '2'})).toEqual([]);
+    expect(validate(Model, {id: '123456'})).toEqual([{code: 'error', message: 'Too long', path: 'id'}]);
 });
 
 test('test inline validator', async () => {

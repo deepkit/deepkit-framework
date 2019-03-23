@@ -10,12 +10,12 @@ cache:
   - node_modules
 before_script:
 - npm install
-- npm install -g coveralls lerna
+- npm install -g lerna
 - lerna bootstrap --hoist --no-ci
 - sleep 2
 script:
-- "./node_modules/.bin/jest --coverage --forceExit --detectOpenHandles"
-- cat ./coverage/lcov.info | coveralls
+- ./node_modules/.bin/jest --coverage --forceExit --detectOpenHandles
+- cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
 - cd packages/benchmark && ../../node_modules/.bin/jest && cd -
 deploy:
   provider: heroku
