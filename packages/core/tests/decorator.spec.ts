@@ -357,6 +357,18 @@ test('test decorator ParentReference without class', () => {
     }).toThrowError('Model::sub has @ParentReference but no @Class defined.');
 });
 
+test('test same name', () => {
+    expect(() => {
+        @Entity('same-name')
+        class Sub1 {
+        }
+
+        @Entity('same-name')
+        class Sub2 {
+        }
+    }).toThrowError('Marshal entity with name \'same-name\' already registered.');
+});
+
 test('test decorator circular', () => {
     class Sub {
     }

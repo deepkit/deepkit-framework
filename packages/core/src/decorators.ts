@@ -210,7 +210,7 @@ export function getEntitySchema<T>(classType: ClassType<T>): EntitySchema {
 /**
  * Used to define a entity name for an entity.
  *
- * The name is used for an internal registry, so you should be the name unique.
+ * The name is used for an internal registry, so ot should be a unique one.
  *
  * Marshal's database abstraction uses this name to generate the collection name / table name.
  *
@@ -218,6 +218,12 @@ export function getEntitySchema<T>(classType: ClassType<T>): EntitySchema {
  */
 export function Entity<T>(name: string, collectionName?: string) {
     return (target: ClassType<T>) => {
+        if (RegisteredEntities[name]) {
+            throw new Error(`Marshal entity with name '${name}' already registered. 
+            This could be caused by the fact that you used a name twice or that you loaded the entity 
+            via different imports.`)
+        }
+
         RegisteredEntities[name] = target;
         getOrCreateEntitySchema(target).name = name;
         getOrCreateEntitySchema(target).collectionName = collectionName;
@@ -225,7 +231,6 @@ export function Entity<T>(name: string, collectionName?: string) {
 }
 
 /**
- *
  * Used to define a database name for an entity. Per default marshal's database abstraction
  * uses the default database, but you can change that using this decorator.
  *

@@ -9,7 +9,7 @@ JSON-representable data from JSON to class instance to Database and vice versa.
 
 Marshal introduces the concept of decorating your entity class once with all
 necessary annotations like type declaration, indices, and relations agnostic
-to any storage engine, and then use it everywhere:
+to any serialization target, and then use it everywhere:
 frontend, backend, http-transport, validation, and database.
 
 ## Features
@@ -22,7 +22,7 @@ frontend, backend, http-transport, validation, and database.
 * Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/))
 * Complex models with parent references
 * Supports getter as fields
-* Entity definition export to TypeORM (currently only columns + indices)
+* Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
 * Validation: Built-in, custom class and inline validators
 * NestJS validation pipe
 * MongoDB database abstraction
