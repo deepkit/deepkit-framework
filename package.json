@@ -11,7 +11,7 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@marcj/marshal": "^0.8.1",
+    "@marcj/marshal": "^0.8.3",
     "@nestjs/common": "^5.0.0",
     "rxjs": "^6.0.0"
   },
