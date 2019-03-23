@@ -10,7 +10,7 @@ import {Buffer} from "buffer";
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
 
 export interface PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void;
+    validate<T>(value: any, target: ClassType<T>, propertyName: string, propertySchema: PropertySchema): PropertyValidatorError | void;
 }
 
 type IndexOptions = Partial<{
