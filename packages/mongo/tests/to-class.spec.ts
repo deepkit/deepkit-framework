@@ -56,6 +56,12 @@ test('test simple model', () => {
     }
 });
 
+test('test getIdFieldValue', () => {
+    class ModelNoId {}
+
+    expect(getIdFieldValue(ModelNoId, new ModelNoId())).toBeUndefined();
+});
+
 test('test simple model all fields', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
     expect(getIdField(SimpleModel)).toBe('id');

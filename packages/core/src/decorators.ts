@@ -1,5 +1,13 @@
 import {getCachedParameterNames, Types} from "./mapper";
-import {DateValidator, NumberValidator, PropertyValidatorError, StringValidator} from "./validation";
+import {
+    BooleanValidator,
+    DateValidator,
+    NumberValidator,
+    ObjectIdValidator,
+    PropertyValidatorError,
+    StringValidator,
+    UUIDValidator
+} from "./validation";
 import * as clone from 'clone';
 import {ClassType, getClassName, isArray, isNumber, isObject, isPlainObject, isString} from '@marcj/estdlib';
 import {Buffer} from "buffer";
@@ -49,17 +57,38 @@ export class PropertySchema {
         this.name = name;
     }
 
+    getForeignClassDecorator(): PropertySchema | undefined {
+        if (this.type === 'class') {
+            const targetClass = this.getResolvedClassType();
+            if (getEntitySchema(targetClass).decorator) {
+                return getEntitySchema(targetClass).getDecoratedPropertySchema();
+            }
+        }
+    }
+
     getValidators(): ClassType<PropertyValidator>[] {
         if (this.type === 'string') {
-            return [...[StringValidator], ...this.validators];
+            return [StringValidator, ...this.validators];
         }
 
         if (this.type === 'date') {
-            return [...[DateValidator], ...this.validators];
+            return [DateValidator, ...this.validators];
         }
 
         if (this.type === 'number') {
-            return [...[NumberValidator], ...this.validators];
+            return [NumberValidator, ...this.validators];
+        }
+
+        if (this.type === 'uuid') {
+            return [UUIDValidator, ...this.validators];
+        }
+
+        if (this.type === 'objectId') {
+            return [ObjectIdValidator, ...this.validators];
+        }
+
+        if (this.type === 'boolean') {
+            return [BooleanValidator, ...this.validators];
         }
 
         return this.validators;
@@ -110,6 +139,14 @@ export class EntitySchema {
 
     constructor(proto: Object) {
         this.proto = proto;
+    }
+
+    public getDecoratedPropertySchema(): PropertySchema {
+        if (!this.decorator) {
+            throw new Error(`No decorated property found`);
+        }
+
+        return this.getProperty(this.decorator);
     }
 
     public getIndex(name: string): EntityIndex | undefined {

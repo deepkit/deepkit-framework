@@ -37,14 +37,10 @@ export function uuid4Stringify(u: Binary): string {
 
 export function partialClassToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
-    target?: { [path: string]: any },
+    target: { [path: string]: any },
 ): { [path: string]: any } {
-    if (!target) return {};
-
     const result = {};
-    for (const i in target) {
-        if (!target.hasOwnProperty(i)) continue;
-
+    for (const i of eachKey(target)) {
         result[i] = propertyClassToMongo(classType, i, target[i]);
     }
 
@@ -53,10 +49,8 @@ export function partialClassToMongo<T, K extends keyof T>(
 
 export function partialPlainToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
-    target?: { [path: string]: any },
+    target: { [path: string]: any },
 ): { [path: string]: any } {
-    if (!target) return {};
-
     const result = {};
     for (const i of eachKey(target)) {
         result[i] = propertyPlainToMongo(classType, i, target[i]);
@@ -67,14 +61,10 @@ export function partialPlainToMongo<T, K extends keyof T>(
 
 export function partialMongoToPlain<T, K extends keyof T>(
     classType: ClassType<T>,
-    target?: { [path: string]: any },
+    target: { [path: string]: any },
 ): { [path: string]: any } {
-    if (!target) return {};
-
     const result = {};
     for (const i of eachKey(target)) {
-        if (!target.hasOwnProperty(i)) continue;
-
         result[i] = propertyMongoToPlain(classType, i, target[i]);
     }
 
@@ -296,7 +286,6 @@ export function propertyPlainToMongo<T>(
         const result: { [name: string]: any } = {};
         if (isObject(propertyValue)) {
             for (const i of eachKey(propertyValue)) {
-                if (!propertyValue.hasOwnProperty(i)) continue;
                 result[i] = convert((<any>propertyValue)[i]);
             }
         }
@@ -396,7 +385,6 @@ export function propertyMongoToClass<T>(
         const result: any = {};
         if (isObject(propertyValue)) {
                 for (const i of eachKey(propertyValue)) {
-                if (!propertyValue.hasOwnProperty(i)) continue;
                 result[i] = convert((propertyValue as any)[i]);
             }
         }
@@ -512,9 +500,7 @@ export function convertQueryToMongo<T, K extends keyof T>(
         }
 
         if (isPlainObject(fieldValue)) {
-            for (const j in fieldValue) {
-                if (!fieldValue.hasOwnProperty(j)) continue;
-
+            for (const j of eachKey(fieldValue)) {
                 const queryValue: any = (fieldValue as any)[j];
 
                 if (j[0] !== '$') {
