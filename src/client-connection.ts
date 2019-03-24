@@ -66,7 +66,11 @@ export class ClientConnection {
             const message = JSON.parse(raw) as ClientMessageAll;
 
             if (message.name === 'action') {
-                this.actionSend(message, () => this.action(message.controller, message.action, message.args));
+                try {
+                    await this.actionSend(message, () => this.action(message.controller, message.action, message.args));
+                } catch (error) {
+                    console.error(`Error in ${message.controller}.${message.action}`, error);
+                }
                 return;
             }
 
@@ -115,7 +119,7 @@ export class ClientConnection {
             if (!controllerClass) {
                 throw new Error(`Controller not found for ${controller}`);
             }
-0
+
             const access = await this.app.hasAccess(this.injector, this.sessionStack.getSessionOrUndefined(), controllerClass, action);
             if (!access) {
                 throw new Error(`Access denied`);
@@ -179,7 +183,7 @@ export class ClientConnection {
                         const errors = await validate(RegisteredEntities[type.entityName], args[i]);
                         if (errors.length) {
                             //todo, wrap in own ValidationError so we can serialise it better when send to the client
-                            throw new Error(`${fullName} validation failed: ` + JSON.stringify(errors));
+                            throw new Error(`${fullName} validation for arg ${i} failed\n` + JSON.stringify(errors) + '\nGot: ' + JSON.stringify(args[i]));
                         }
                     }
                     if (type.partial) {
@@ -206,7 +210,11 @@ export class ClientConnection {
                     return result;
                 }
 
-                const converter: {[name: string]: (v: any) => any} = {
+                if (result === undefined) {
+                    return result;
+                }
+
+                const converter: { [name: string]: (v: any) => any } = {
                     'Entity': (v: any) => {
                         if (types.returnType.partial) {
                             return partialClassToPlain(RegisteredEntities[types.returnType.entityName!], v);
@@ -293,6 +301,7 @@ export class ClientConnection {
             await this.connectionMiddleware.actionMessageOut(message, await exec());
         } catch (error) {
             await this.writer.sendError(message.id, error);
+            throw error;
         }
     }
 }

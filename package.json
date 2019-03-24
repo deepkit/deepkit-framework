@@ -16,13 +16,13 @@
   },
   "peerDependencies": {
     "@marcj/glut-core": "0.0.1",
-    "@marcj/marshal": "^0.8.2",
+    "@marcj/marshal": "^0.8.4",
     "buffer": "^5.2.1",
     "reflect-metadata": "^0.1.12",
     "rxjs": "6.3.3",
     "typeorm": "0.2.14",
     "mongodb": "^3.1.10",
-    "@marcj/marshal-mongo": "^0.8.2"
+    "@marcj/marshal-mongo": "^0.8.4"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.7",
@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@marcj/glut-core": "^0.0.6",
-    "@marcj/marshal": "^0.8.2",
+    "@marcj/marshal": "^0.8.4",
     "@types/clone": "^0.1.30",
     "@types/fs-extra": "^5.0.2",
     "@types/mongodb": "^3.1.14",
@@ -49,7 +49,7 @@
     "reflect-metadata": "^0.1.12",
     "rxjs": "6.3.3",
     "mongodb": "^3.1.10",
-    "@marcj/marshal-mongo": "^0.8.2",
+    "@marcj/marshal-mongo": "^0.8.4",
     "typeorm": "0.2.14",
     "source-map": "^0.7.3",
     "source-map-support": "^0.5.9"
