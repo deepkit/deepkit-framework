@@ -13,7 +13,9 @@ import {
     isArray,
     isObject,
     isUndefined,
-    isValidEnumValue
+    isValidEnumValue,
+    eachPair,
+    eachKey
 } from "@marcj/estdlib";
 
 export type Types = 'objectId' | 'uuid' | 'binary' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
@@ -246,10 +248,8 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     if (null === propertyValue) {
         return null;
     }
-    const reflection = getResolvedReflection(classType, propertyName);
-    if (!reflection) return propertyValue;
-
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+    const reflection = getResolvedReflection(classType, propertyName)!;
+    const {type, typeValue, array, map} = reflection;
 
     function convert(value: any) {
         if ('date' === type && value instanceof Date) {
@@ -297,8 +297,7 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     if (map) {
         const result: { [name: string]: any } = {};
         if (isObject(propertyValue)) {
-            for (const i in propertyValue) {
-                if (!propertyValue.hasOwnProperty(i)) continue;
+            for (const i of eachKey(propertyValue)) {
                 result[i] = convert((<any>propertyValue)[i]);
             }
         }
@@ -398,8 +397,7 @@ export function propertyPlainToClass<T>(
     if (map) {
         const result: { [name: string]: any } = {};
         if (isObject(propertyValue)) {
-            for (const i in propertyValue) {
-                if (!propertyValue.hasOwnProperty(i)) continue;
+            for (const i of eachKey(propertyValue)) {
                 result[i] = convert((<any>propertyValue)[i]);
             }
         }
@@ -577,8 +575,7 @@ export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T
     const result: Partial<{[F in K]: any}> = {};
     const state = new ToClassState();
 
-    for (const i in target) {
-        if (!target.hasOwnProperty(i)) continue;
+    for (const i of eachKey(target)) {
         result[i] = propertyPlainToClass(classType, i, target[i], parents || [], 1, state);
     }
 
@@ -594,8 +591,7 @@ export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T
 export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T>, target: {[path: string]: any}): Partial<{[F in K]: any}> {
     const result: Partial<{[F in K]: any}> = {};
 
-    for (const i in target) {
-        if (!target.hasOwnProperty(i)) continue;
+    for (const i of eachKey(target)) {
         result[i] = propertyClassToPlain(classType, i, target[i]);
     }
 
@@ -661,8 +657,7 @@ export function validatedPlainToClass<T>(
  * @hidden
  */
 export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: any, target: 'mongo' | 'plain') {
-    for (const propertyName in item) {
-        if (!item.hasOwnProperty(propertyName)) continue;
+    for (const propertyName of eachKey(item)) {
         if (isExcluded(classType, propertyName, target)) {
             delete item[propertyName];
         }
@@ -764,10 +759,16 @@ export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: s
 
     const valueWithDefaults = value;
     const instance = plainToClass(classType, value);
+    const entitySchema = getEntitySchema(classType);
 
-    for (const i of getRegisteredProperties(classType)) {
+    for (const [i, v] of eachPair(entitySchema.properties)) {
         if (undefined === value[i]) {
-            valueWithDefaults[i] = (instance as any)[i];
+            const decoratedProp = v.getForeignClassDecorator();
+            if (decoratedProp) {
+                valueWithDefaults[i] = (instance as any)[i][decoratedProp.name];
+            } else {
+                valueWithDefaults[i] = (instance as any)[i];
+            }
         }
     }
 
