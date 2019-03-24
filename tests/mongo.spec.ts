@@ -101,7 +101,9 @@ test('test save model', async () => {
     expect(await database.has(SimpleModel, {name: 'New Name'})).toBeTrue();
 
     instance.name = 'New Name 2';
-    await database.update(SimpleModel, instance, {noResult: '2132'});
+
+    await database.update(SimpleModel, instance, {yesNo: true});
+
     expect(await database.has(SimpleModel, {name: 'MyName'})).toBeFalse();
     expect(await database.has(SimpleModel, {name: 'MyName 2'})).toBeFalse();
     expect(await database.has(SimpleModel, {name: 'New Name'})).toBeTrue();
