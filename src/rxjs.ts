@@ -93,10 +93,10 @@ export function promiseToObservable<T>(o: () => Promise<T>): Observable<T> {
     });
 }
 
-export function tearDown(teardown: TeardownLogic) {
+export async function tearDown(teardown: TeardownLogic) {
     if ('function' === typeof teardown) {
-        teardown();
+        await teardown();
     } else if ('object' === typeof teardown && teardown.unsubscribe) {
-        teardown.unsubscribe();
+        await teardown.unsubscribe();
     }
 }
