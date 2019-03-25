@@ -82,7 +82,7 @@ test('test basic serialisation: primitives', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+    const {client, close} = await createServerClientPair('test basic setup primitives', [TestController]);
 
     const test = client.controller<TestController>('test');
     const names = await test.names(16 as any as string);
