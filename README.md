@@ -19,18 +19,22 @@ Marshal shines particularly when you have an application written in Typescript e
 This allows you to save tons of time by moving your entities, DTO, query parameter signature, etc all as Marshal decorated classes in a `common`
 package (super simple with [Lerna](https://github.com/lerna/lerna)). You then use and import these classes in your frontend, cli, backend, or whatever you develop.
 
+By using a new client-server framework entirely written in and for TypeScript like [glut.ts](https://github.com/marcj/glut.ts) which is based on Marshal.ts
+you enter a new world of developing web applications by not caring anymore at all about hand-made serialization and validation.
+However Marshal.ts helps also for traditional REST APIs
+
 ## Features
 
 * Supported types: String, Number, Boolean, Date, Binary, custom classes, Array, object maps, any.
 * Fast marshalling of class instance from and to JSON object
 * Fast marshalling of class instance from and to MongoDB record
 * Constructor support (required property can be placed in constructor)
+* Validation: Built-in, custom class and inline validators
 * Decorated property value (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
 * Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/) and the like)
 * Complex models with parent references
-* Supports getter as fields
+* Supports getters
 * Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
-* Validation: Built-in, custom class and inline validators
 * NestJS validation pipe
 * MongoDB database abstraction
 
