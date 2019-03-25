@@ -148,8 +148,6 @@ test('test entity sync list: remove', async () => {
     const testController = client.controller<TestController>('test');
 
     const users: Collection<User> = await testController.users();
-    console.log('wait collection');
-    await users.readyState;
 
     expect(users.count()).toBe(2);
     expect(users.all()[0].name).toBe('Peter 1');
@@ -423,6 +421,11 @@ test('test entity collection unsubscribe + findOne', async () => {
         }
 
         @Action()
+        async addJob(name: string): Promise<void> {
+            return await this.database.add(Job, new Job(name));
+        }
+
+        @Action()
         async getJob(id: string): Promise<EntitySubject<Job>> {
             return await this.storage.findOne(Job, {
                 id: id
@@ -435,12 +438,19 @@ test('test entity collection unsubscribe + findOne', async () => {
                 name: name
             });
         }
+        @Action()
+        async rmJobByName(name: string): Promise<void> {
+            await this.database.deleteOne(Job, {
+                name: name
+            });
+        }
     }
 
     const {client, close} = await createServerClientPair('test entity sync count', [TestController], [Job]);
     const test = client.controller<TestController>('test');
 
     await test.init();
+
     try {
         expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
 
@@ -522,6 +532,14 @@ test('test entity collection unsubscribe + findOne', async () => {
 
         expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(4);
         expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+
+        test.addJob('Peter 10');
+        await jobs.nextStateChange;
+        expect(jobs.count()).toBe(4);
+
+        test.rmJobByName('Peter 10');
+        await jobs.nextStateChange;
+        expect(jobs.count()).toBe(3);
 
         await jobs.unsubscribe();
         expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(0);
