@@ -23,7 +23,7 @@ class EntitySubjectStore<T extends IdInterface> {
         }
         this.consumers[id].count--;
 
-        if (this.consumers[id].count === 0) {
+        if (this.consumers[id].count === 0 && this.subjects[id]) {
             const subject = this.subjects[id];
             delete this.subjects[id];
             await subject.unsubscribe();
@@ -213,6 +213,7 @@ export class EntityState {
         const classType = collection.classType;
         const store = this.getStore(classType);
 
+        console.log('collection next', stream);
         const forks = this.getOrCreateCollectionSubjectsForks(collection);
 
         if (stream.type === 'set') {
@@ -226,23 +227,15 @@ export class EntityState {
 
                 subject.subscribe((i) => {
                     collection.deepChange.next(i);
-                    if (collection.isLoaded) {
-                        collection.loaded();
-                    }
+                    collection.loaded();
                 });
             }
-        }
-
-        if (stream.type === 'ready') {
-            collection.loaded();
         }
 
         if (stream.type === 'removeMany') {
             collection.removeMany(stream.ids);
 
-            if (collection.isLoaded) {
-                collection.loaded();
-            }
+            collection.loaded();
         }
 
         if (stream.type === 'remove') {
@@ -252,9 +245,7 @@ export class EntityState {
                 forks[stream.id].unsubscribe();
             }
 
-            if (collection.isLoaded) {
-                collection.loaded();
-            }
+            collection.loaded();
         }
 
         if (stream.type === 'add') {
@@ -267,9 +258,7 @@ export class EntityState {
             subject.subscribe((i) => {
                 collection.deepChange.next(i);
 
-                if (collection.isLoaded) {
-                    collection.loaded();
-                }
+                collection.loaded();
             });
         }
     }
