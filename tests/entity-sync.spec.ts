@@ -1,18 +1,17 @@
 import 'jest';
 import {Action, ClientConnection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
-import {Entity, IDField, Field} from '@marcj/marshal';
+import {Entity, IDField, Field, UUIDField, uuid, getEntitySchema} from '@marcj/marshal';
 import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
-import uuid = require("uuid");
 import {Observable, BehaviorSubject} from 'rxjs';
 import {nextValue} from '@marcj/estdlib-rxjs';
 import {sleep} from '@marcj/estdlib';
 
 global['WebSocket'] = require('ws');
 
-const Promise = require('bluebird');
-Promise.longStackTraces(); //needs to be disabled in production since it leaks memory
-global.Promise = Promise;
+// const Promise = require('bluebird');
+// Promise.longStackTraces(); //needs to be disabled in production since it leaks memory
+// global.Promise = Promise;
 
 @Entity('user')
 class User implements IdInterface {
@@ -375,6 +374,164 @@ test('test entity sync count', async () => {
     expect(userCount.getValue()).toBe(1);
 
     expect(i).toBe(4);
+
+    await close();
+});
+
+
+test('test entity collection unsubscribe + findOne', async () => {
+
+    @Entity('jobTest')
+    class Job implements IdInterface {
+        @UUIDField()
+        id: string = uuid();
+
+        @Field()
+        version: number = 0;
+
+        constructor(@Field() public name: string) {
+        }
+    }
+
+    expect(getEntitySchema(Job).name).toBe('jobTest');
+
+    @Controller('test')
+    class TestController {
+        constructor(
+            private connection: ClientConnection,
+            private storage: EntityStorage,
+            private database: ExchangeDatabase,
+        ) {
+        }
+
+        @Action()
+        async init() {
+            await this.database.deleteMany(Job, {});
+            await this.database.add(Job, new Job('Peter 1'));
+            await this.database.add(Job, new Job('Peter 2'));
+            await this.database.add(Job, new Job('Peter 3'));
+
+            await this.database.add(Job, new Job('Marie 1'));
+            await this.database.add(Job, new Job('Marie 2'));
+        }
+
+        @Action()
+        async getJobs(): Promise<Collection<Job>> {
+            return await this.storage.find(Job, {
+                name: {$regex: /Peter/}
+            });
+        }
+
+        @Action()
+        async getJob(id: string): Promise<EntitySubject<Job>> {
+            return await this.storage.findOne(Job, {
+                id: id
+            });
+        }
+
+        @Action()
+        async getJobByName(name: string): Promise<EntitySubject<Job>> {
+            return await this.storage.findOne(Job, {
+                name: name
+            });
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test entity sync count', [TestController], [Job]);
+    const test = client.controller<TestController>('test');
+
+    await test.init();
+    try {
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+
+        const jobs = await test.getJobs();
+
+        expect(jobs.count()).toBe(3);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+
+        const firstId = jobs.all()[0].id;
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+
+        const firstJob = await test.getJob(firstId);
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(2);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+
+        expect(firstJob.getValue()).toBeInstanceOf(Job);
+        expect(jobs.get(firstId) === jobs.all()[0]).toBe(true);
+
+        await firstJob.unsubscribe();
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+
+        await jobs.unsubscribe();
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(0);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+    } catch (e) {
+        fail(e);
+    }
+
+    try {
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+        const jobs = await test.getJobs();
+
+        expect(jobs.count()).toBe(3);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+
+        const firstId = jobs.all()[0].id;
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+
+        const firstJob = await test.getJob(firstId);
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(2);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+
+        expect(firstJob.getValue()).toBeInstanceOf(Job);
+        expect(jobs.get(firstId) === jobs.all()[0]).toBe(true);
+
+        await jobs.unsubscribe();
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+
+        await firstJob.unsubscribe();
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(0);
+    } catch (e) {
+        fail(e);
+    }
+
+    try {
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+        const jobs = await test.getJobs();
+
+        expect(jobs.count()).toBe(3);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+
+        const firstId = jobs.all()[0].id;
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+
+        const firstJob1 = await test.getJob(firstId);
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(2);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+
+        const firstJob2 = await test.getJob(firstId);
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(3);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+
+        const firstJob3 = await test.getJobByName('Marie 1');
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(3);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(4);
+
+        await firstJob1.unsubscribe();
+        await firstJob2.unsubscribe();
+
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(4);
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+
+        await jobs.unsubscribe();
+        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(0);
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(1);
+
+        await firstJob3.unsubscribe();
+        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+    } catch (e) {
+        fail(e);
+    }
 
     await close();
 });
