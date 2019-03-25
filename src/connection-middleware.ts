@@ -51,12 +51,14 @@ export class ConnectionMiddleware {
         // console.log('messageIn', message);
 
         if (message.name === 'entity/unsubscribe') {
-            const sent = this.entitySent[message.id];
+            const sent = this.entitySent[message.forId];
             if (!sent) {
                 throw new Error(`Entity not sent for message ${message.id}`);
             }
 
             this.entityStorage.decreaseUsage(sent.classType, sent.id);
+            this.writer.ack(message.id);
+            return;
         }
 
         if (message.name === 'subject/unsubscribe') {
@@ -69,9 +71,11 @@ export class ConnectionMiddleware {
         }
 
         if (message.name === 'collection/unsubscribe') {
-            if (this.collectionSubscriptions[message.id]) {
-                this.collectionSubscriptions[message.id].unsubscribe();
+            if (this.collectionSubscriptions[message.forId]) {
+                this.collectionSubscriptions[message.forId].unsubscribe();
             }
+            this.writer.ack(message.id);
+            return;
         }
 
         if (message.name === 'observable/subscribe') {
@@ -214,14 +218,12 @@ export class ConnectionMiddleware {
             });
             let nextValue: CollectionStream | undefined;
 
-            if (collection.count() > 0) {
-                nextValue = {
-                    type: 'set',
-                    total: collection.count(),
-                    items: collection.all().map(v => classToPlain(collection.classType, v))
-                };
-                this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
-            }
+            nextValue = {
+                type: 'set',
+                total: collection.count(),
+                items: collection.all().map(v => classToPlain(collection.classType, v))
+            };
+            this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
 
             collection.ready.toPromise().then(() => {
                 nextValue = {type: 'ready'};

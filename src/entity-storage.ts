@@ -41,7 +41,7 @@ export class EntityStorage {
         }
     }
 
-    protected getSentStateStore<T>(classType: ClassType<T>): { [id: string]: SentState } {
+    public getSentStateStore<T>(classType: ClassType<T>): { [id: string]: SentState } {
         let store = this.sentEntities.get(classType);
         if (!store) {
             store = {};
@@ -464,18 +464,16 @@ export class EntityStorage {
             fieldSub.unsubscribe();
         });
 
-        setTimeout(async () => {
-            //todo, here again, we convert mongo to class and from class back to plain.
-            // not necessary, so add option to same with plain values.
-            const items = await this.database.find(classType, mongoFilter, true);
-            for (const item of items) {
-                KnownIDs[item.id] = true;
-                this.increaseUsage(classType, item.id);
-            }
+        //todo, here again, we convert mongo to class and from class back to plain.
+        // not necessary, so add option to same with plain values.
+        const items = await this.database.find(classType, mongoFilter, true);
 
-            collection.set(items);
-            collection.loaded();
-        }, 0);
+        for (const item of items) {
+            KnownIDs[item.id] = true;
+            this.increaseUsage(classType, item.id);
+        }
+
+        collection.set(items);
 
         return collection;
     }

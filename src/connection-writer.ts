@@ -20,6 +20,10 @@ export class ConnectionWriter {
         this.write({type: 'complete', id: id});
     }
 
+    public ack(id: number) {
+        this.write({type: 'ack', id: id});
+    }
+
     public sendError(id: number, error: any) {
         this.write({type: 'error', id: id, error: error instanceof Error ? error.message : error});
     }
