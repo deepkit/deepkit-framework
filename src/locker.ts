@@ -99,7 +99,7 @@ export class MongoLock {
                 //expire is used to automatically clear expired locks
                 //in case the creator crashed without the ability to delete its acquired lock.
                 //so we add here a buffer of 1sec, so in worst case (when process crashes) further locks need to wait a bit
-                expire: (now + timeout) + 1,
+                expire: (now + timeout) + 0.1,
                 inserted: now
             });
             this.holding = true;

@@ -225,11 +225,6 @@ export class ConnectionMiddleware {
             };
             this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
 
-            collection.ready.toPromise().then(() => {
-                nextValue = {type: 'ready'};
-                this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
-            });
-
             if (this.collectionSubscriptions[message.id]) {
                 throw new Error('Collection already subscribed');
             }
