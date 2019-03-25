@@ -4,13 +4,20 @@
 [![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
-Marshal is a library to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
-JSON-representable data from JSON to class instance to Database and vice versa.
+Marshal is a library written in and for TypeScript to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
+JSON-representable data from JSON object to class instance to database records and vice versa.
 
-Marshal introduces the concept of decorating your entity class once with all
-necessary annotations like type declaration, indices, and relations agnostic
-to any serialization target, and then use it everywhere:
-frontend, backend, http-transport, validation, and database.
+Marshal introduces the concept of decorating your entity class *once* with all
+necessary annotations (like type declaration, indices, and relations) using only Marshal's TypeScript decorators
+agnostic to any serialization target by saving only the meta data,
+and then use it everywhere: frontend, backend, http-transport, query parameter, DTOs, and database, including validations.
+
+The goal is to support all types of structures/use-cases where you need to serialize and validate data in a very user-friendly
+way while providing the fastest possible serializer for all platforms, NodeJS and browsers.
+
+Marshal shines particularly when you have an application written in Typescript entirely, frontend, CLI, and backend.
+This allows you to save tons of time by moving your entities, DTO, query parameter signature, etc all as Marshal decorated classes in a `common`
+package (super simple with [Lerna](https://github.com/lerna/lerna)). You then use and import these classes in your frontend, cli, backend, or whatever you develop.
 
 ## Features
 
@@ -18,8 +25,8 @@ frontend, backend, http-transport, validation, and database.
 * Fast marshalling of class instance from and to JSON object
 * Fast marshalling of class instance from and to MongoDB record
 * Constructor support (required property can be placed in constructor)
-* Decorators support (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
-* Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/))
+* Decorated property value (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
+* Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/) and the like)
 * Complex models with parent references
 * Supports getter as fields
 * Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
@@ -27,14 +34,15 @@ frontend, backend, http-transport, validation, and database.
 * NestJS validation pipe
 * MongoDB database abstraction
 
-
 ## Todo
 
 * Add type support for: Map<T, K>, Set<T> (WeakMap<T, K>, and Set<T>)
-* Add type support for: BigInt, Big*Array, Float*Array, Int*Array, Uint*Array,
+* Add type support for: BigInt, Big?Array, Float?Array, Int?Array, Uint?Array,
 * Add more built-in validators
 * Support discriminators (union class types)
-* Add support for TypeORM types completely (so we support MySQL, Postgres, SQLiTe, etc.), currently we use TypeOrm's Connection abstraction.
+* Add support for TypeORM types completely (so we support MySQL, Postgres, SQLiTe, etc.) including relations.
+* Further performance boost by creating JIT serialization functions
+* Add automatic tests IE11+ (help is welcome)
 
 ![Diagram](https://raw.github.com/marcj/marshal.ts/master/assets/diagram.png)
 
@@ -146,11 +154,11 @@ Make sure you have `experimentalDecorators` and `emitDecoratorMetadata` enabled 
 }
 ```
 
-If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle: false`), which is the default.
+If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle: false`), which is the default. This is important to support constructor assignment.
 
 ### Definition
 
-Once your have defined your entity (see above) using the [@Field decorators](modules/_marcj_marshal.html#field) you can use one of Marshal's core methods
+Once your have defined your entity (see above) using the [@Field decorators](https://marshal.marcj.dev/modules/_marcj_marshal.html#field) you can use one of Marshal's core methods
 to transform data.
 
 Note: Class fields that aren't annotated either by @Field() or any other decorator
@@ -177,7 +185,7 @@ You can validate incoming object literals or an class instance.
 First make sure you have some validators attached to your fields you want to validate.
 
 ```typescript
-import {Field, validate, ValidationError} from '@marcj/marshal';
+import {Field, validate, ValidationError, validatedPlainToClass, plainToClass} from '@marcj/marshal';
 
 class Page {
     @Field()
@@ -192,6 +200,12 @@ expect(errors.length).toBe(1);
 expect(errors[0]).toBeInstanceOf(ValidationError);
 expect(errors[0].path).toBe('age');
 expect(errors[0].message).toBe('Required value is undefined');
+if (errors.length === 0) {
+    const page = plainToClass(Page, {name: 'peter'});
+}
+
+//or do both at the same time and throw error if validations fails
+const page = validatedPlainToClass(Page, {name: 'peter'});
 ````
 
 You can also custom validators
@@ -221,7 +235,7 @@ import {Field, AddValidator, InlineValidator, ClassType, PropertyValidatorError}
 
 class Entity {
     @Field()
-    @InlineValidator(async (value: any) => {
+    @InlineValidator((value: any) => {
         if (value.length > 10) {
             return new PropertyValidatorError('too_long', 'Too long :()');
         }
@@ -243,21 +257,70 @@ you might have the need to serialize only one field.
 * partialPlainToMongo
 * partialMongoToPlain
 
-## Types
+## Types / Decorators
 
-Class fields are annotated using mainly [@Field decorators](modules/_marcj_marshal.html#field).
+Class fields are annotated using mainly [@Field decorators](https://marshal.marcj.dev/modules/_marcj_marshal.html#field).
 You can define primitives, class mappings, relations between parents, and indices for the database (currently MongoDB).
 
-See [documentation of @marcj/marshal](./modules/_marcj_marshal.html) for all available decorators. (Search for "Category: Decorator")
+Most of the time @Field is able to detect the primitive type by reading the emitted meta data from TypeScript when you declared
+the type correctly in Typescript.
+
+Example valid decoration:
+
+```typescript
+class Page {
+    @Field() //will be detected as String
+    name?: string;
+    
+    @Field([String]) //will be detected as String array
+    name: string[] = [];
+    
+    @Field({String}) //will be detected as String map
+    name: {[name: string]: string} = {};
+}
+````
+
+Example *not* valid decorators:
+```typescript
+class Page {
+    @Field() //can't be detected, you get an error with further instructions
+    name;
+}
+````
+
+See [documentation of @marcj/marshal](https://marshal.marcj.dev/modules/_marcj_marshal.html) for all available decorators. (Search for "Category: Decorator")
+
+Available type decorators:
+
+```typescript
+@Field()
+@FieldMap() //alternative to @Field({Type})
+@FieldArray() //alternative to @Field([Type])
+@EnumField(MyEnumClass) //implicitly calls @Field()
+@UUIDField() //implicitly calls @Field()
+@IDField() //necessary entities that should be stored in database, implicitly calls @Field()
+@MongoIdField() //for database only, implicitly calls @Field()
+@Index() //for database only. Can be used at class and class property.
+```
 
 ## TypeORM
 
 The meta information about your entity can be exported to TypeORM EntitySchema.
 
 ```typescript
+// typeorm.js
 import {getTypeOrmEntity} from "@marcj/marshal-mongo";
 
 const TypeOrmSchema = getTypeOrmEntity(MyEntity);
+module.exports = {
+    type: "mongodb",
+    host: "localhost",
+    port: 27017,
+    database: "test",
+    useNewUrlParser: true,
+    synchronize: true,
+    entities: [TypeOrmSchema]
+}
 ```
 
 Marshal.ts uses only TypeORM for connection abstraction and to generate a `EntitySchema` for your typeOrm use-cases.
@@ -273,13 +336,15 @@ which makes it possible to sync the schema defined only with Marshal decorators 
 direction. Per default it excludes to export to `*toPlain` and
 `*toMongo`. You can also use `@ExcludeToMongo` or `@ExcludeToPlain` to
 have more control.
+Note: Fields that are not decorated with `@Field`, `@MongoIdField`, `@EnumField` or `@UUIDField` are not mapped and will be omitted.
 
 ```typescript
 class MyEntity {
-    @IDType()
+    @IDField()
     @MongoIdField()
     id: string;
     
+    @Field()
     @Exclude()
     internalState: string;
 }
@@ -326,7 +391,19 @@ If `fullLoad` is true, the callback is called when the whole chain
 of objects has been created, which means when all parents and siblings
 are fully initialised.
 
-### Decorator
+```typescript
+class Page {
+    @Field()
+    name: string;
+    
+    @OnLoad()
+    onLoad() {
+        console.log('initialised')
+    }
+}
+````
+
+### Value decorator
 
 `@Decorated` lets you transform the actual class into something
 different. This is useful if you have in the actual class instance
@@ -446,7 +523,7 @@ retrieve and store data from and into your MongoDB. We make sure the
 data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
 
-See [documentation](./modules/_marcj_marshal.html) for more information;
+See [documentation](https://marshal.marcj.dev/modules/_marcj_marshal.html) for more information;
 
 ```
 npm install @marcj/marshal-mongo
@@ -467,10 +544,7 @@ const connection = await createConnection({
 });
 const database = new Database(connection, 'testing');
 
-const instance: SimpleModel = plainToClass(SimpleModel, {
-    id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038',
-    name: 'myName',
-});
+const instance = new SimpleModel('My model');
 
 await database.save(SimpleModel, instance);
 
