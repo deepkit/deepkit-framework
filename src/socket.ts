@@ -57,8 +57,8 @@ export class MessageSubject<T> extends Subject<T> {
     }
 }
 
-type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>) => ReturnType<T> extends Promise<any> ? ReturnType<T>  : Promise<ReturnType<T> >;
-type Promisify<T> = {
+export type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>) => ReturnType<T> extends Promise<any> ? ReturnType<T>  : Promise<ReturnType<T> >;
+export type Promisify<T> = {
     [P in keyof T]: T[P] extends (...args: any[]) => any ? PromisifyFn<T[P]> : never
 };
 
@@ -77,7 +77,7 @@ export class SocketClient {
 
     private connectionPromise?: Promise<void>;
 
-    private entityState = new EntityState();
+    public readonly entityState = new EntityState();
     private config: SocketClientConfig;
 
     private cachedActionsTypes: {
@@ -303,23 +303,16 @@ export class SocketClient {
                                     throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                                 }
 
-                                if (this.entityState.hasEntitySubject(classType, reply.item!.id)) {
-                                    const subject = this.entityState.handleEntity(classType, reply.item!);
-                                    resolve(subject);
-                                } else {
-                                    //it got created, so we subscribe only once to notify server about
-                                    //unused EntitySubject when completed.
-                                    const subject = this.entityState.handleEntity(classType, reply.item!);
-                                    subject.addTearDown(() => {
-                                        //user unsubscribed the entity subject, so we stop syncing changes
-                                        self.send({
-                                            id: reply.id,
-                                            name: 'entity/unsubscribe'
-                                        });
-                                    });
+                                const subject = this.entityState.handleEntity(classType, reply.item!);
+                                subject.addTearDown(async () => {
+                                    //user unsubscribed the entity subject, so we stop syncing changes
+                                    await self.sendMessage({
+                                        name: 'entity/unsubscribe',
+                                        forId: reply.id,
+                                    }).firstAndClose();
+                                });
 
-                                    resolve(subject);
-                                }
+                                resolve(subject);
                             } else {
                                 resolve(new EntitySubject(undefined));
                             }
@@ -359,16 +352,16 @@ export class SocketClient {
                             const collection = new Collection<any>(classType);
                             returnValue = collection;
 
-                            collection.addTeardown(() => {
-                                this.entityState.unsubscribeCollection(collection);
+                            collection.addTeardown(async () => {
+                                await this.entityState.unsubscribeCollection(collection);
 
                                 //collection unsubscribed, so we stop syncing changes
-                                self.send({
-                                    id: reply.id,
+                                self.sendMessage({
+                                    forId: reply.id,
                                     name: 'collection/unsubscribe'
                                 });
                             });
-                            resolve(collection);
+                            //do not resolve yet, since we want to wait until the collection has bee populated.
                         }
                     }
 
@@ -391,6 +384,7 @@ export class SocketClient {
 
                     if (reply.type === 'next/collection') {
                         this.entityState.handleCollectionNext(returnValue, reply.next);
+                        resolve(returnValue);
                     }
 
                     if (reply.type === 'complete') {
