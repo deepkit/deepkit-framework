@@ -113,7 +113,6 @@ export function getActionReturnType<T>(target: ClassType<T>, method: string): Se
             partial: false
         };
     } catch (error) {
-        console.error(error);
         throw new Error(`Error in parsing returnType of ${getClassName(target)}::${method}: ${error}`);
     }
 }
