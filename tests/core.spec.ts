@@ -38,7 +38,7 @@ test('test StreamBehaviorSubject', async () => {
         teardownCalled = true;
     });
 
-    subject.unsubscribe();
+    await subject.unsubscribe();
 
     expect(teardownCalled).toBe(true);
 });

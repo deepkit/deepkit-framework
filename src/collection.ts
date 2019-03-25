@@ -40,9 +40,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     protected items: T[] = [];
     protected itemsMapped: { [id: string]: T } = {};
 
-    public readonly ready: Observable<void>;
-    public isLoaded: boolean = false;
-
     public readonly deepChange = new Subject<T>();
     protected nextChange?: Subject<void>;
 
@@ -50,7 +47,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         public readonly classType: ClassType<T>,
     ) {
         super(1);
-        this.ready = this.pipe(first(), map(() => undefined));
     }
 
     public has(id: string) {
@@ -59,14 +55,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public get(id: string): T | undefined {
         return this.itemsMapped[id];
-    }
-
-    /**
-     * Once the collection has completely loaded for the first time, this
-     * promise is resolved.
-     */
-    get readyState(): Promise<void> {
-        return this.ready.toPromise();
     }
 
     /**
@@ -142,8 +130,8 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     public loaded() {
-        this.isLoaded = true;
         this.next(this.items);
+
         if (this.nextChange) {
             this.nextChange.complete();
             delete this.nextChange;
@@ -160,9 +148,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
         if (withEvent) {
             this.event.next({type: 'set', items: items});
-            if (this.isLoaded) {
-                this.loaded();
-            }
+            this.loaded();
         }
     }
 
@@ -197,9 +183,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         if (withEvent) {
             this.event.next({type: 'add', item: item});
 
-            if (this.isLoaded) {
-                this.loaded();
-            }
+            this.loaded();
         }
     }
 
@@ -212,9 +196,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
                 if (withEvent) {
                     this.event.next({type: 'remove', id: item.id});
-                    if (this.isLoaded) {
-                        this.loaded();
-                    }
+                    this.loaded();
                 }
             }
         }
