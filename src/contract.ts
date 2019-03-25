@@ -65,6 +65,7 @@ export interface ClientMessageAction {
 
 export interface ClientMessageEntityUnsubscribe {
     name: 'entity/unsubscribe';
+    forId: number;
 }
 
 export interface ClientMessageSubjectUnsubscribe {
@@ -73,6 +74,7 @@ export interface ClientMessageSubjectUnsubscribe {
 
 export interface ClientMessageCollectionUnsubscribe {
     name: 'collection/unsubscribe';
+    forId: number;
 }
 
 export interface ClientMessageObservableSubscribe {
@@ -246,6 +248,11 @@ export interface ServerMessageNextCollection {
 
 export type ServerMessageNext = ServerMessageNextJson | ServerMessageNextObservable | ServerMessageNextCollection | ServerMessageNextSubject;
 
+export interface ServerMessageAck {
+    type: 'ack';
+    id: number;
+}
+
 export interface ServerMessageCompleteGeneral {
     type: 'complete';
     id: number;
@@ -257,7 +264,7 @@ export interface ServerMessageCompleteObservable {
     subscribeId: number;
 }
 
-export type ServerMessageComplete = ServerMessageCompleteGeneral | ServerMessageCompleteObservable;
+export type ServerMessageComplete = ServerMessageAck | ServerMessageCompleteGeneral | ServerMessageCompleteObservable;
 
 export interface ServerMessageErrorGeneral {
     type: 'error';

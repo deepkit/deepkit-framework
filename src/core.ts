@@ -64,10 +64,11 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         }
     }
 
-    unsubscribe(): void {
-        super.unsubscribe();
+    async unsubscribe(): Promise<void> {
+        await super.unsubscribe();
+
         for (const teardown of this.teardowns) {
-            tearDown(teardown);
+            await tearDown(teardown);
         }
     }
 }

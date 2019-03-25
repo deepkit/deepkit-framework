@@ -20,8 +20,8 @@
     "rxjs": "6.3.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.7",
-    "@marcj/estdlib-rxjs": "^0.1.7"
+    "@marcj/estdlib": "^0.1.8",
+    "@marcj/estdlib-rxjs": "^0.1.8"
   },
   "devDependencies": {
     "@marcj/marshal": "^0.8.4",

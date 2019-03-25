@@ -82,11 +82,11 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     /**
      * Unsubscribe from the backend stream.
      */
-    public unsubscribe() {
-        super.unsubscribe();
+    public async unsubscribe() {
+        await super.unsubscribe();
 
         for (const teardown of this.teardowns) {
-            tearDown(teardown);
+            await tearDown(teardown);
         }
 
         this.teardowns.splice(0, this.teardowns.length);
