@@ -8,15 +8,6 @@ class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T | undefined> } = {};
     consumers: { [id: string]: { count: number } } = {};
 
-    public getSubject(id: string): EntitySubject<any> {
-        if (!this.subjects[id]) {
-            throw new Error(`No Entitysubject found for ${id}`);
-        }
-
-        return this.subjects[id];
-    }
-
-
     public async forkUnsubscribed(id: string) {
         if (!this.consumers[id]) {
             return;
@@ -36,7 +27,7 @@ class EntitySubjectStore<T extends IdInterface> {
      *  so we fork it. The fork can be unsubscribed without touching the origin.
      */
     public createFork(id: string, item?: T): EntitySubject<T | undefined> {
-        this.getOrCreateSubject(id, item);
+        const originSubject = this.getOrCreateSubject(id, item);
 
         if (!this.consumers[id]) {
             this.consumers[id] = {count: 0};
@@ -153,7 +144,11 @@ export class EntityState {
                     }
 
                     item.version = toVersion;
-                    store.notifyForks(stream.id);
+                    try {
+                        store.notifyForks(stream.id);
+                    } catch (error) {
+                        console.log(`Could not notify EntitySubject #${stream.id} forks, due to ${error}`);
+                    }
                 }
             } else {
                 throw new Error(`${getClassName(classType)} item not found in store for ${stream.id}. Patch not possible`);
@@ -213,7 +208,7 @@ export class EntityState {
         const classType = collection.classType;
         const store = this.getStore(classType);
 
-        console.log('collection next', stream);
+        // console.log('collection next', stream);
         const forks = this.getOrCreateCollectionSubjectsForks(collection);
 
         if (stream.type === 'set') {

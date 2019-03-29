@@ -236,6 +236,11 @@ export class SocketClient {
 
                 for (const i of eachKey(args)) {
                     const type = types.parameters[i];
+                    if (undefined === args[i]) {
+                        continue;
+                    }
+
+
                     if (type.type === 'Entity' && type.entityName) {
                         if (!RegisteredEntities[type.entityName]) {
                             throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
@@ -246,6 +251,18 @@ export class SocketClient {
                         } else {
                             args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
                         }
+                    }
+
+                    if (type.type === 'String') {
+                        args[i] = type.array ? args[i].map((v: any) => String(v)) : String(args[i]);
+                    }
+
+                    if (type.type === 'Number') {
+                        args[i] = type.array ? args[i].map((v: any) => Number(v)) : Number(args[i]);
+                    }
+
+                    if (type.type === 'Boolean') {
+                        args[i] = type.array ? args[i].map((v: any) => Boolean(v)) : Boolean(args[i]);
                     }
                 }
 
@@ -303,6 +320,10 @@ export class SocketClient {
                                     throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                                 }
 
+                                //todo, in the GUI we receive some ObjectUnsubscribedError errors. I guess because
+                                //either the root subject gets somehow unubscribed OR all listener are dropped and we get immediately after
+                                //still updates, we can safely drop. Question is, is this common behavior and OK to drop, or
+                                //do we have an error somewhere.
                                 const subject = this.entityState.handleEntity(classType, reply.item!);
                                 subject.addTearDown(async () => {
                                     //user unsubscribed the entity subject, so we stop syncing changes
@@ -379,6 +400,13 @@ export class SocketClient {
                     if (reply.type === 'next/subject') {
                         if (streamBehaviorSubject) {
                             streamBehaviorSubject.next(deserializeResult(reply.next));
+                        }
+                    }
+
+                    if (reply.type === 'append/subject') {
+                        if (streamBehaviorSubject) {
+                            const append = deserializeResult(reply.append);
+                            streamBehaviorSubject.append(append);
                         }
                     }
 
