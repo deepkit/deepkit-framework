@@ -160,26 +160,23 @@ export interface CountUpdateResult {
 export interface StreamFileSet {
     type: 'set';
     path: string;
-    // meta: { [k: string]: any };
+    version: number;
     content: any;
 }
 
 export interface StreamFileAppend {
     type: 'append';
     path: string;
-    // meta: { [k: string]: any };
+    version: number;
     content: any;
 }
 
 export interface StreamFileRemove {
     type: 'remove';
     path: string;
-    // meta: { [k: string]: any };
 }
 
 export type CollectionStream = CollectionStreamSet | CollectionStreamAdd | CollectionStreamRemove | CollectionStreamRemoveMany | CollectionStreamReady;
-
-export type CountResult = CountUpdateResult;
 
 export type StreamFileResult = StreamFileSet | StreamFileAppend | StreamFileRemove;
 
@@ -240,13 +237,19 @@ export interface ServerMessageNextSubject {
     next: any;
 }
 
+export interface ServerMessageAppendSubject {
+    type: 'append/subject';
+    id: number;
+    append: any;
+}
+
 export interface ServerMessageNextCollection {
     type: 'next/collection';
     id: number;
     next: CollectionStream;
 }
 
-export type ServerMessageNext = ServerMessageNextJson | ServerMessageNextObservable | ServerMessageNextCollection | ServerMessageNextSubject;
+export type ServerMessageNext = ServerMessageNextJson | ServerMessageNextObservable | ServerMessageNextCollection | ServerMessageNextSubject | ServerMessageAppendSubject;
 
 export interface ServerMessageAck {
     type: 'ack';
@@ -287,7 +290,7 @@ export interface ServerMessageAuthorize {
     result: boolean;
 }
 
-export type ServerMessageActionTypeNames = 'Entity' | 'Object' | 'String' | 'Date' | 'Number' | 'Boolean' | 'undefined';
+export type ServerMessageActionTypeNames = 'Entity' | 'Object' | 'Any' | 'String' | 'Date' | 'Number' | 'Boolean' | 'undefined';
 
 export type ServerMessageActionType = {
     partial: boolean,

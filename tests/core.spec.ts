@@ -42,3 +42,28 @@ test('test StreamBehaviorSubject', async () => {
 
     expect(teardownCalled).toBe(true);
 });
+
+test('test StreamBehaviorSubject fork', async () => {
+    let rootTeardownCalled = false;
+
+    const subject = new StreamBehaviorSubject(undefined, () => {
+        rootTeardownCalled = true;
+    });
+
+    let forkTeardownCalled = false;
+    const fork = new StreamBehaviorSubject(undefined, () => {
+        forkTeardownCalled = true;
+    });
+    subject.subscribe(fork);
+
+    expect(rootTeardownCalled).toBe(false);
+    expect(forkTeardownCalled).toBe(false);
+
+    await fork.unsubscribe();
+    expect(rootTeardownCalled).toBe(false);
+    expect(forkTeardownCalled).toBe(true);
+
+    await subject.unsubscribe();
+    expect(rootTeardownCalled).toBe(true);
+    expect(forkTeardownCalled).toBe(true);
+});

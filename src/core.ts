@@ -30,7 +30,11 @@ export type FilterQuery<T> = {
 
 
 export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
+    public readonly appendSubject = new Subject<T>();
     protected nextChange?: Subject<void>;
+
+    protected nextOnAppend = false;
+    protected unsubscribed = false;
 
     protected teardowns: TeardownLogic[] = [];
 
@@ -64,7 +68,22 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         }
     }
 
+    activateNextOnAppend() {
+        this.nextOnAppend = true;
+    }
+
+    append(value: T): void {
+        this.appendSubject.next(value);
+
+        if (this.nextOnAppend) {
+            this.next(this.getValue() as any + value);
+        }
+    }
+
     async unsubscribe(): Promise<void> {
+        if (this.unsubscribed) return;
+        this.unsubscribed = true;
+
         await super.unsubscribe();
 
         for (const teardown of this.teardowns) {
