@@ -1,7 +1,7 @@
 import {Injectable, Injector} from "injection-js";
 import {Observable} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ClientMessageAll, Collection, EntitySubject, ServerMessageActionType} from "@marcj/glut-core";
+import {ClientMessageAll, Collection, EntitySubject, ServerMessageActionType, StreamBehaviorSubject} from "@marcj/glut-core";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
 import {arrayRemoveItem, each, eachKey, isArray, isObject, isPlainObject, getClassName} from "@marcj/estdlib";
@@ -203,6 +203,10 @@ export class ClientConnection {
                 }
 
                 if (result instanceof EntitySubject) {
+                    return result;
+                }
+
+                if (result instanceof StreamBehaviorSubject) {
                     return result;
                 }
 

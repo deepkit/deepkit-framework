@@ -1,7 +1,7 @@
 import {EntityStorage} from "./entity-storage";
 import {ClientMessageAll, Collection, CollectionStream, EntitySubject, StreamBehaviorSubject} from "@marcj/glut-core";
-import {classToPlain, getEntityName, RegisteredEntities} from "@marcj/marshal";
-import {ClassType, each, isObject, isPlainObject, getClassName} from "@marcj/estdlib";
+import {classToPlain, getEntityName} from "@marcj/marshal";
+import {ClassType, each, getClassName, isObject, isPlainObject} from "@marcj/estdlib";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {Injectable} from "injection-js";
@@ -176,7 +176,7 @@ export class ConnectionMiddleware {
         } else if (result instanceof StreamBehaviorSubject) {
             const item = result.getValue();
 
-            const entityName = item ? getEntityName(item.constructor) : undefined;
+            const entityName = item ? getSafeEntityName(item.constructor) : undefined;
 
             this.writer.write({
                 type: 'type',
@@ -191,8 +191,16 @@ export class ConnectionMiddleware {
                 delete this.subjectSubscriptions[message.id];
             });
 
+            this.subjectSubscriptions[message.id].add = result.appendSubject.subscribe((append: any) => {
+                this.writer.write({
+                    type: 'append/subject',
+                    id: message.id,
+                    append: append
+                });
+            });
+
             this.subjectSubscriptions[message.id].add = result.subscribe((next) => {
-                const entityName = next ? getEntityName(next.constructor) : undefined;
+                const entityName = next ? getSafeEntityName(next.constructor) : undefined;
 
                 this.writer.write({
                     type: 'next/subject',

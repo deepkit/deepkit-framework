@@ -68,13 +68,13 @@ test('test fs storage based on md5', async () => {
 
     expect((await readFile(path1)).toString()).toBe(content.toString());
 
-    await fs.removeFile(file1);
+    await fs.remove(file1.path);
     expect(await pathExists(path1)).toBeTrue();
 
     expect(await fs.hasMd5InDb(md5)).toBeTrue();
     expect(await fs.hasMd5(md5)).toBeTrue();
 
-    await fs.removeFile(file2);
+    await fs.remove(file2.path);
     //now after we have no files anymore with that md5, we are going to remove it from the disk
     expect(await pathExists(path1)).toBeFalse();
 
@@ -96,6 +96,7 @@ test('test fs storage change content of files with same md5', async () => {
     const content2 = new Buffer('TestString 222 ' + Math.random());
     file1 = await fs.write('file1.txt', content2);
 
+    expect(file1.md5).not.toBeUndefined();
     expect(file1.md5).not.toBe(file2.md5);
     expect(await fs.hasMd5(file1.md5!)).toBeTrue();
     expect(await fs.hasMd5(file2.md5!)).toBeTrue();
@@ -111,7 +112,7 @@ test('test fs single deletion', async () => {
     const path1 = fs.getLocalPath(file1);
     expect(await pathExists(path1)).toBeTrue();
 
-    await fs.removeFile(file1);
+    await fs.remove(file1.path);
 
     expect(await fs.findOne('file1.txt')).toBeUndefined();
     expect(await pathExists(path1)).toBeFalse();
@@ -136,10 +137,10 @@ test('test fs fork', async () => {
     expect(file2Changed.md5).not.toBe(file2.md5);
     expect(fs.getLocalPath(file2Changed)).not.toBe(path1); //changed since new md5
 
-    await fs.removeFile(file2Changed);
+    await fs.remove(file2Changed.path);
     expect(await pathExists(path1)).toBeTrue();
 
-    await fs.removeFile(file1);
+    await fs.remove(file1.path);
 
     expect(await pathExists(path1)).toBeFalse();
     expect(await fs.findOne('file1.txt')).toBeUndefined();

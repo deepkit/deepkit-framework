@@ -2,11 +2,13 @@ import {dirname, join} from "path";
 import {appendFile, ensureDir, pathExists, readFile, remove, unlink, writeFile} from "fs-extra";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
-import {GlutFile, FileMode, FileType, FilterQuery} from "@marcj/glut-core";
+import {GlutFile, FileMode, FileType, FilterQuery, StreamBehaviorSubject} from "@marcj/glut-core";
 import {eachPair, eachKey} from "@marcj/estdlib";
 import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
+import {Subscription} from "rxjs";
 
+export type PartialFile = {id: string, path: string, mode: FileMode, md5?: string, version: number};
 
 export function getMd5(content: string | Buffer): string {
     const buffer: Buffer = 'string' === typeof content ? new Buffer(content, 'utf8') : new Buffer(content);
@@ -42,7 +44,7 @@ export class FS<T extends GlutFile> {
         return this.removeFiles(files);
     }
 
-    public async remove(path: string, filter: FilterQuery<T>): Promise<boolean> {
+    public async remove(path: string, filter: FilterQuery<T> = {}): Promise<boolean> {
         const file = await this.findOne(path, filter);
         if (file) {
             return this.removeFile(file);
@@ -125,15 +127,19 @@ export class FS<T extends GlutFile> {
     public async registerFile(md5: string, path: string, fields: Partial<T> = {}): Promise<T> {
         const file = await this.database.get(this.fileType.classType, {md5: md5} as T);
 
-        if (!file || !file.md5) {
-            throw new Error(`File with md5 '${md5}' not found.`);
+        if (!file) {
+            throw new Error(`No file with '${md5}' found.`);
         }
 
-        const localPath = this.getLocalPathForMd5(file.md5);
+        if (!file.md5) {
+            throw new Error(`File ${file.id} has no md5 '${md5}'.`);
+        }
+
+        const localPath = this.getLocalPathForMd5(file.md5!);
 
         if (await pathExists(localPath)) {
             const newFile = this.fileType.fork(file, path);
-            for (const i of eachKey(file)) {
+            for (const i of eachKey(fields)) {
                 (newFile as any)[i] = (file as any)[i];
             }
             await this.database.add(this.fileType.classType, newFile);
@@ -196,7 +202,11 @@ export class FS<T extends GlutFile> {
         return join(this.fileDir, 'closed', this.getMd5Split(md5));
     }
 
-    public getLocalPath(file: T) {
+    public getLocalPathForId(id: string): string {
+        return join(this.fileDir, 'streaming', this.getIdSplit(id));
+    }
+
+    public getLocalPath(file: PartialFile) {
         if (file.mode === FileMode.closed) {
             if (!file.md5) {
                 throw new Error(`Closed file has no md5 value: ${file.id} ${file.path}`);
@@ -208,46 +218,48 @@ export class FS<T extends GlutFile> {
             throw new Error(`File has no id ${file.path}`);
         }
 
-        return join(this.fileDir, 'streaming', this.getIdSplit(file.id));
+        return this.getLocalPathForId(file.id);
     }
 
     /**
      * Adds a new file or updates an existing one.
      */
-    public async write(path: string, data: string | Buffer, fields: Partial<T> = {}): Promise<T> {
-        let file = await this.findOne(path, fields as T);
+    public async write(path: string, data: string | Buffer, fields: Partial<T> = {}): Promise<PartialFile> {
+        let {id, md5, version} = await this.database.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id', 'md5']);
 
         if ('string' === typeof data) {
             data = Buffer.from(data, 'utf8');
         }
 
-        if (file && !file.id) {
-            throw new Error(`File has no id ${path} from DB`);
-        }
+        const newMd5 = getMd5(data);
 
-        const md5 = getMd5(data);
-
-        if (!file) {
-            file = new this.fileType.classType(path);
+        if (!id) {
+            const file = new this.fileType.classType(path);
             file.md5 = getMd5(data);
             for (const i of eachKey(fields)) {
                 (file as any)[i] = (fields as any)[i];
             }
             file.size = data.byteLength;
+            id = file.id;
+            version = 0;
             await this.database.add(this.fileType.classType, file);
         } else {
-            if (file.md5 && file.md5 !== md5) {
-                const oldMd5 = file.md5;
+            //when md5 changes, it's important to move
+            //the local file as well, since local path is based on md5.
+            //when there is still an file with that md5 in the database, do not remove the old one.
+            if (md5 && md5 !== newMd5) {
+                // file.md5 = md5;
+                // file.size = data.byteLength;
 
-                file.md5 = md5;
-                file.size = data.byteLength;
-
-                await this.database.patch(this.fileType.classType, file.id, {md5: file.md5, size: file.size} as T);
+                //todo, there might be a race condition between .increase and .patch in high-load scenarios.
+                // How to solve that?
+                // and changed updated field
+                await this.database.patch(this.fileType.classType, id, {md5: newMd5, size: data.byteLength} as T);
 
                 //we need to check whether the local file needs to be removed
-                if (!await this.hasMd5InDb(oldMd5)) {
+                if (!await this.hasMd5InDb(md5)) {
                     //there's no db-file anymore linking using this local file, so remove it
-                    const localPath = this.getLocalPathForMd5(oldMd5);
+                    const localPath = this.getLocalPathForMd5(md5);
                     if (await pathExists(localPath)) {
                         await unlink(localPath);
                     }
@@ -255,45 +267,99 @@ export class FS<T extends GlutFile> {
             }
         }
 
-        const localPath = this.getLocalPath(file);
+        const localPath = this.getLocalPathForMd5(newMd5);
         const localDir = dirname(localPath);
         await ensureDir(localDir);
         await writeFile(localPath, data);
 
-        this.exchange.publishFile(file.id, {
+        this.exchange.publishFile(id, {
             type: 'set',
+            version: version,
             path: path,
             content: data.toString('utf8')
         });
 
-        return file;
+        return {
+            id: id,
+            mode: FileMode.closed,
+            path: path,
+            version: version,
+            md5: newMd5
+        };
     }
 
     /**
      * Streams content by always appending data to the file's content.
      */
     public async stream(path: string, data: Buffer, fields: Partial<T> = {}) {
-        let file = await this.findOne(path, fields as T);
+        let {id, version} = await this.database.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id']);
 
-        if (!file) {
-            file = new this.fileType.classType(path);
+        if (!id) {
+            const file = new this.fileType.classType(path);
             for (const i of eachKey(fields)) {
                 (file as any)[i] = (fields as any)[i];
             }
             file.mode = FileMode.streaming;
+            id = file.id;
+            if (!id) {
+                console.log('fields', fields);
+                console.log('file', file);
+                throw new Error('New file got no id? wtf');
+            }
+            version = 0;
             await this.database.add(this.fileType.classType, file);
         }
 
-        const localPath = this.getLocalPath(file);
+        const localPath = this.getLocalPathForId(id);
         const localDir = dirname(localPath);
         await ensureDir(localDir);
 
         await appendFile(localPath, data);
 
-        this.exchange.publishFile(file.id, {
+        this.exchange.publishFile(id, {
             type: 'append',
+            version: version,
             path: path,
             content: data.toString(),
         });
+    }
+
+    public async subscribe(path: string, fields: Partial<T> = {}): Promise<StreamBehaviorSubject<string | undefined>> {
+        const subject = new StreamBehaviorSubject<string | undefined>('');
+        const file = await this.findOne(path, fields);
+        if (!file) {
+            throw new Error(`File not found for ${path}`);
+        }
+
+        let exchangeSubscription: Subscription | undefined;
+
+        //todo find a to mitigate race conditions between subscribing and reading initial content,
+        // introduce a versioning on the file, which is set to the File and sent via file stream, so we
+        // see whether we got old messages from the stream.
+
+        exchangeSubscription = this.exchange.subscribeFile(file.id, (message) => {
+            console.log('file message', message);
+            if (message.type === 'set') {
+                subject.next(message.content);
+            } else if (message.type === 'append') {
+                subject.append(message.content);
+            } else if (message.type === 'remove') {
+                subject.next(undefined);
+            }
+        });
+
+        subject.addTearDown(() => {
+            if (exchangeSubscription) {
+                exchangeSubscription.unsubscribe();
+            }
+        });
+
+        //read initial content
+        const data = await this.read(path, fields);
+
+        //todo, support binary
+        subject.next(data ? data.toString('utf8') : undefined);
+
+        return subject;
     }
 }

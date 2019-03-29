@@ -16,7 +16,7 @@ export interface ApplicationDecoratorOptions {
     notifyEntities: ClassType<any>[];
 }
 
-type TYPES = ClassType<any> | Object | String | Number | Boolean | undefined;
+type TYPES = ClassType<any> | 'any' | Object | String | Number | Boolean | undefined;
 
 export interface ControllerOptions {
     name: string;
@@ -42,6 +42,7 @@ function typeNameOf(type: TYPES): ServerMessageActionTypeNames {
     if (type === Number) return 'Number';
     if (type === Date) return 'Date';
     if (type === Boolean) return 'Boolean';
+    if (type === 'any') return 'Any';
     if (type === undefined) return 'undefined';
 
     return 'Entity';

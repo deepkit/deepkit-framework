@@ -10,7 +10,6 @@ import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";
-import {StreamBehaviorSubject} from "@marcj/glut-core";
 
 interface SentState {
     lastSentVersion: number;
@@ -412,7 +411,6 @@ export class EntityStorage {
 
             if (!KnownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, filter)) {
                 KnownIDs[message.id] = true;
-                // addToLastValues(message.id, message.item);
                 this.increaseUsage(classType, message.id);
 
                 //todo, we double convert here. first to class and when we do it again to plain
@@ -436,7 +434,6 @@ export class EntityStorage {
                 } else if (!KnownIDs[message.id] && querySatisfied) {
                     //got valid after updates?
                     KnownIDs[message.id] = true;
-                    // addToLastValues(message.id, message.item);
                     this.increaseUsage(classType, message.id);
 
                     let itemToSend = message.item;
@@ -476,53 +473,5 @@ export class EntityStorage {
         collection.set(items);
 
         return collection;
-    }
-
-    async fileContent(path: string, additionalFilter?: FilterQuery<GlutFile>): Promise<StreamBehaviorSubject<string | undefined>> {
-        const subject = new StreamBehaviorSubject<string | undefined>('');
-        const file = await this.findOne(GlutFile, {path: path, ...additionalFilter});
-        let exchangeSubscription: Subscription | undefined;
-        let fileSubscription: Subscription | undefined;
-
-        fileSubscription = file.subscribe(() => {
-            //file changed, but we don't care. we care about content
-        }, (error) => {
-            subject.error(error);
-        }, () => {
-            //file has been deleted or filter doesn't match anymore
-            subject.complete();
-
-            if (exchangeSubscription) {
-                exchangeSubscription.unsubscribe();
-            }
-        });
-
-        exchangeSubscription = this.exchange.subscribeFile(file.getValue().id, (message) => {
-            if (message.type === 'set') {
-                subject.next(message.content);
-            } else if (message.type === 'append') {
-                subject.next(subject.getValue() + message.content);
-            } else if (message.type === 'remove') {
-                subject.next(undefined);
-            }
-        });
-
-        subject.addTearDown(() => {
-            if (exchangeSubscription) {
-                exchangeSubscription.unsubscribe();
-            }
-
-            if (fileSubscription) {
-                fileSubscription.unsubscribe();
-            }
-        });
-
-        //read initial content
-        const data = await this.fs.read(path, additionalFilter);
-
-        //todo, support binary
-        subject.next(data ? data.toString('utf8') : undefined);
-
-        return subject;
     }
 }

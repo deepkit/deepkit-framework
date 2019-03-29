@@ -1,5 +1,5 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, getIdFieldValue, partialClassToPlain, getEntityName} from '@marcj/marshal';
+import {classToPlain, getIdFieldValue, partialClassToPlain, getEntityName, partialPlainToClass} from '@marcj/marshal';
 import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, convertPlainQueryToMongo, Database, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
@@ -142,12 +142,12 @@ export class ExchangeDatabase {
      */
     public async increase<T extends IdInterface, F extends { [field: string]: number }>(
         classType: ClassType<T>,
-        id: string,
-        fields: F
-    ): Promise<F> {
+        filter: FilterQuery<T>,
+        fields: F,
+        additionalProjection: string[] = []
+    ): Promise<{ [k: string]: any }> {
         const collection = await this.collection(classType);
         const projection: { [key: string]: number } = {};
-        const filter = {id: id};
         const statement: { [name: string]: any } = {
             $inc: {}
         };
@@ -157,12 +157,16 @@ export class ExchangeDatabase {
             projection[i] = 1;
         }
 
+        for (const field of additionalProjection) {
+            projection[field] = 1;
+        }
+
         const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), statement, {
             projection: projection,
             returnOriginal: false
         });
 
-        return response.value;
+        return partialPlainToClass(classType, partialMongoToPlain(classType, response.value || {}));
     }
 
     public async patchPlain<T extends IdInterface>(
@@ -250,6 +254,6 @@ export class ExchangeDatabase {
             });
         }
 
-        return (<any>doc);
+        return partialPlainToClass(classType, partialMongoToPlain(classType, doc || {}));
     }
 }
