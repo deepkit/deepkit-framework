@@ -1,6 +1,6 @@
 import 'jest';
-import {Action, Controller, EntityStorage, ExchangeDatabase, FS} from "@marcj/glut-server";
-import {GlutFile} from "@marcj/glut-core";
+import {Action, Controller, EntityStorage, FS} from "@marcj/glut-server";
+import {GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
 import {createServerClientPair} from "./util";
 
 global['WebSocket'] = require('ws');
@@ -10,9 +10,18 @@ test('test file list', async () => {
     class TestController {
         constructor(
             private storage: EntityStorage,
-            private fs: FS,
+            private fs: FS<GlutFile>,
         ) {
 
+        }
+
+        @Action()
+        async init() {
+            await this.fs.removeAll({});
+
+            await this.fs.write('test1.txt', 'Was geht?');
+            await this.fs.write('test2.txt', 'Nix');
+            await this.fs.write('test2-doppelt.txt', 'Nix');
         }
 
         @Action()
@@ -23,13 +32,17 @@ test('test file list', async () => {
         }
 
         @Action()
+        async content(path: string): Promise<StreamBehaviorSubject<string | undefined>> {
+            return await this.fs.subscribe(path);
+        }
+
+        @Action()
+        async write(path: string, content: string) {
+            await this.fs.write(path, content);
+        }
+
+        @Action()
         async files() {
-            await this.fs.removeAll({});
-
-            await this.fs.write('test1.txt', 'Was geht?');
-            await this.fs.write('test2.txt', 'Nix');
-            await this.fs.write('test2-doppelt.txt', 'Nix');
-
             return this.storage.find(GlutFile, {
                 path: {$regex: /^test2/}
             });
@@ -38,15 +51,68 @@ test('test file list', async () => {
 
     const {client, close} = await createServerClientPair('test file list', [TestController], []);
     const test = client.controller<TestController>('test');
+    await test.init();
 
     const files = await test.files();
-    await files.readyState;
 
     expect(files.count()).toBe(2);
 
     test.deleteTest2();
     await files.nextStateChange;
     expect(files.count()).toBe(1);
+
+    const fileContent = await test.content('test1.txt');
+    expect(fileContent).toBeInstanceOf(StreamBehaviorSubject);
+    expect(fileContent.getValue()).toBe('Was geht?');
+
+    test.write('test1.txt', 'updated');
+    await fileContent.nextStateChange;
+    expect(fileContent.getValue()).toBe('Was geht?');
+
+    await close();
+});
+
+test('test file stream', async () => {
+    @Controller('test')
+    class TestController {
+        constructor(
+            private storage: EntityStorage,
+            private fs: FS<GlutFile>,
+        ) {
+
+        }
+
+        @Action()
+        async init() {
+            await this.fs.removeAll({});
+        }
+
+        @Action()
+        async stream(path: string, content: string) {
+            await this.fs.stream(path, Buffer.from(content, 'utf8'));
+        }
+
+        @Action()
+        async content(path: string): Promise<StreamBehaviorSubject<string | undefined>> {
+            return await this.fs.subscribe(path);
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test file stream', [TestController], []);
+    const test = client.controller<TestController>('test');
+    await test.init();
+
+    await test.stream('stream.txt', 'init');
+
+    const fileContent = await test.content('stream.txt');
+    fileContent.activateNextOnAppend();
+
+    expect(fileContent).toBeInstanceOf(StreamBehaviorSubject);
+    expect(fileContent.getValue()).toBe('init');
+
+    test.stream('stream.txt', '\nupdated');
+    await fileContent.nextStateChange;
+    expect(fileContent.getValue()).toBe('init\nupdated');
 
     await close();
 });

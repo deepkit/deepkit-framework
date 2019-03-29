@@ -1,10 +1,12 @@
 import 'jest';
-import {Action, Controller, PartialEntityReturnType, PartialParamType, ReturnType} from "@marcj/glut-server";
+import {Action, Controller, ParamType, PartialEntityReturnType, PartialParamType, ReturnType} from "@marcj/glut-server";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
 import {Entity, Field} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
+import {isArray} from '@marcj/estdlib';
+
 global['WebSocket'] = require('ws');
 
 @Entity('user')
@@ -324,6 +326,28 @@ test('test observable', async () => {
         expect(next[0].name).toEqual('first');
         expect(next[1].name).toEqual('pete');
     });
+
+    await close();
+});
+
+test('test param serialization', async () => {
+    @Controller('test')
+    class TestController {
+        @Action()
+        actionString(@ParamType(String) array: string): boolean {
+            return 'string' === typeof array;
+        }
+
+        @Action()
+        actionArray(@ParamType(String) array: string[]): boolean {
+            return isArray(array) && 'string' === typeof array[0];
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test param serialization', [TestController]);
+    const test = client.controller<TestController>('test');
+
+    expect(await test.actionArray(['b'])).toBe(true);
 
     await close();
 });
