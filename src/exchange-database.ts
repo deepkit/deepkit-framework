@@ -1,5 +1,5 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, getIdFieldValue, partialClassToPlain, getEntityName, partialPlainToClass} from '@marcj/marshal';
+import {classToPlain, getIdFieldValue, partialClassToPlain, partialPlainToClass} from '@marcj/marshal';
 import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, convertPlainQueryToMongo, Database, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";

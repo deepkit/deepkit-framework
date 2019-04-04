@@ -3,11 +3,12 @@ import 'jest-extended';
 import {FS, getMd5} from "../src/fs";
 import {Exchange} from "../src/exchange";
 import {readFile, pathExists, remove} from 'fs-extra';
-import {ExchangeDatabase, ExchangeNotifyPolicy} from "..";
+import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
 import {ClassType} from '@marcj/estdlib';
 import {Database} from '@marcj/marshal-mongo';
 import {createConnection} from 'typeorm';
 import {FileType, GlutFile} from "@marcj/glut-core";
+import {Locker} from "../src/locker";
 
 let fs = 0;
 
@@ -39,7 +40,7 @@ async function createFs(): Promise<[FS<GlutFile>, Function]> {
     await database.dropDatabase('fs-test-' + fs);
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 
-    return [new FS(FileType.forDefault(), exchange, accountDb, localDir), async function () {
+    return [new FS(FileType.forDefault(), exchange, accountDb, new Locker(), localDir), async function () {
         await exchange.disconnect();
         await database.close();
     }];

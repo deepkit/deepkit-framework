@@ -109,6 +109,9 @@ export class ApplicationServer {
                 const exchange: Exchange = this.getInjector().get(Exchange);
                 await exchange.disconnect();
 
+                const locker: Locker = this.getInjector().get(Locker);
+                await locker.disconnect();
+
                 this.masterWorker.close();
             }
         }
@@ -155,6 +158,11 @@ export class ApplicationServer {
                 useFactory: (host: string, port: number, prefix: string) => new Exchange(host, port, prefix)
             },
             {
+                provide: Locker,
+                deps: ['redis.host', 'redis.port'],
+                useFactory: (host: string, port: number,) => new Locker(host, port)
+            },
+            {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {
                     return new Database(connection, dbName);
                 }
@@ -170,7 +178,6 @@ export class ApplicationServer {
                 }
             },
             FS,
-            Locker,
         ];
 
         baseInjectors.push(...this.serverProvider);

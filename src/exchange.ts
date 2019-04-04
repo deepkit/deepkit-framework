@@ -18,8 +18,15 @@ export class Exchange {
 
     private subscribedChannelMessages = false;
 
-    constructor(protected host: string = 'localhost', protected port: number = 6379, protected prefix: string = '') {
-        this.redis = createClient();
+    constructor(
+        protected host: string = 'localhost',
+        protected port: number = 6379,
+        protected prefix: string = ''
+    ) {
+        this.redis = createClient({
+            host: host,
+            port: port,
+        });
     }
 
     public async disconnect() {

@@ -2,11 +2,11 @@ import {dirname, join} from "path";
 import {appendFile, ensureDir, pathExists, readFile, remove, unlink, writeFile} from "fs-extra";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
-import {GlutFile, FileMode, FileType, FilterQuery, StreamBehaviorSubject} from "@marcj/glut-core";
-import {eachPair, eachKey} from "@marcj/estdlib";
+import {FileMode, FileType, FilterQuery, GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
+import {eachKey, eachPair} from "@marcj/estdlib";
 import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
-import {Subscription} from "rxjs";
+import {Locker} from "./locker";
 
 export type PartialFile = {id: string, path: string, mode: FileMode, md5?: string, version: number};
 
@@ -31,6 +31,7 @@ export class FS<T extends GlutFile> {
         private fileType: FileType<T>,
         private exchange: Exchange,
         private database: ExchangeDatabase,
+        private locker: Locker,
         @Inject('fs.path') private fileDir: string /* .glut/data/files/ */,
     ) {
     }
@@ -199,6 +200,11 @@ export class FS<T extends GlutFile> {
     }
 
     public getLocalPathForMd5(md5: string): string {
+        if (!md5) {
+            console.error('md5', md5);
+            throw new Error('No md5 given.');
+        }
+
         return join(this.fileDir, 'closed', this.getMd5Split(md5));
     }
 
@@ -270,14 +276,20 @@ export class FS<T extends GlutFile> {
         const localPath = this.getLocalPathForMd5(newMd5);
         const localDir = dirname(localPath);
         await ensureDir(localDir);
-        await writeFile(localPath, data);
 
-        this.exchange.publishFile(id, {
-            type: 'set',
-            version: version,
-            path: path,
-            content: data.toString('utf8')
-        });
+        const lock = await this.locker.acquireLock('file:' + path);
+        try {
+            await writeFile(localPath, data);
+
+            this.exchange.publishFile(id, {
+                type: 'set',
+                version: version,
+                path: path,
+                content: data.toString('utf8')
+            });
+        } finally {
+            await lock.unlock();
+        }
 
         return {
             id: id,
@@ -302,8 +314,6 @@ export class FS<T extends GlutFile> {
             file.mode = FileMode.streaming;
             id = file.id;
             if (!id) {
-                console.log('fields', fields);
-                console.log('file', file);
                 throw new Error('New file got no id? wtf');
             }
             version = 0;
@@ -314,51 +324,74 @@ export class FS<T extends GlutFile> {
         const localDir = dirname(localPath);
         await ensureDir(localDir);
 
-        await appendFile(localPath, data);
+        const lock = await this.locker.acquireLock('file:' + path);
+        try {
+            await appendFile(localPath, data);
 
-        this.exchange.publishFile(id, {
-            type: 'append',
-            version: version,
-            path: path,
-            content: data.toString(),
-        });
+            this.exchange.publishFile(id, {
+                type: 'append',
+                version: version,
+                path: path,
+                content: data.toString(), //todo, support binary
+            });
+        } finally {
+            await lock.unlock();
+        }
     }
 
     public async subscribe(path: string, fields: Partial<T> = {}): Promise<StreamBehaviorSubject<string | undefined>> {
         const subject = new StreamBehaviorSubject<string | undefined>('');
+
         const file = await this.findOne(path, fields);
+
         if (!file) {
             throw new Error(`File not found for ${path}`);
         }
 
-        let exchangeSubscription: Subscription | undefined;
+        // let exchangeSubscription: Subscription | undefined;
 
-        //todo find a to mitigate race conditions between subscribing and reading initial content,
+        //todo find a way to mitigate race conditions between subscribing and reading initial content,
         // introduce a versioning on the file, which is set to the File and sent via file stream, so we
         // see whether we got old messages from the stream.
 
-        exchangeSubscription = this.exchange.subscribeFile(file.id, (message) => {
-            console.log('file message', message);
-            if (message.type === 'set') {
-                subject.next(message.content);
-            } else if (message.type === 'append') {
-                subject.append(message.content);
-            } else if (message.type === 'remove') {
-                subject.next(undefined);
-            }
-        });
+        //todo problem is that between reading the version number and the actual file content we have still
+        // a race condition. How to fix that?
+        // there must be a way to read both at the same time?
+        // - lock for that path?
 
-        subject.addTearDown(() => {
-            if (exchangeSubscription) {
-                exchangeSubscription.unsubscribe();
-            }
-        });
+        //it's important to stop writing/appending when we read initially the file
+        //and then subscribe, otherwise we are hit by a race condition where it can happen
+        //that we get older subscribeFile messages
+        const lock = await this.locker.acquireLock('file:' + path);
 
-        //read initial content
-        const data = await this.read(path, fields);
+        try {
+            //read initial content
+            const data = await this.read(path, fields);
 
-        //todo, support binary
-        subject.next(data ? data.toString('utf8') : undefined);
+            //todo, support binary
+            subject.next(data ? data.toString('utf8') : undefined);
+
+            //it's important that this callback is called right after we returned the subject,
+            //and subscribed to the subject, otherwise append won't work correctly and might be hit by a race-condition.
+            const exchangeSubscription = this.exchange.subscribeFile(file.id, (message) => {
+                if (message.type === 'set') {
+                    subject.next(message.content);
+                } else if (message.type === 'append') {
+                    subject.append(message.content);
+                } else if (message.type === 'remove') {
+                    subject.next(undefined);
+                }
+            });
+
+            subject.addTearDown(() => {
+                if (exchangeSubscription) {
+                    exchangeSubscription.unsubscribe();
+                }
+            });
+
+        } finally {
+            await lock.unlock();
+        }
 
         return subject;
     }

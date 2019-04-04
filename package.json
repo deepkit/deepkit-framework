@@ -32,6 +32,7 @@
     "injection-js": "^2.2.1",
     "md5": "^2.2.1",
     "redis": "^2.8.0",
+    "redlock": "^3.1.2",
     "sift": "^7.0.1",
     "ws": "^6.1.2"
   },
@@ -43,6 +44,7 @@
     "@types/mongodb": "^3.1.14",
     "@types/redis": "^2.8.8",
     "@types/ws": "^6.0.1",
+    "@types/redlock": "^3.0.2",
     "awesome-typescript-loader": "^5.2.1",
     "buffer": "^5.2.1",
     "cache-loader": "^1.2.2",
