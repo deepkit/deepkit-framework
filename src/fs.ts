@@ -348,17 +348,6 @@ export class FS<T extends GlutFile> {
             throw new Error(`File not found for ${path}`);
         }
 
-        // let exchangeSubscription: Subscription | undefined;
-
-        //todo find a way to mitigate race conditions between subscribing and reading initial content,
-        // introduce a versioning on the file, which is set to the File and sent via file stream, so we
-        // see whether we got old messages from the stream.
-
-        //todo problem is that between reading the version number and the actual file content we have still
-        // a race condition. How to fix that?
-        // there must be a way to read both at the same time?
-        // - lock for that path?
-
         //it's important to stop writing/appending when we read initially the file
         //and then subscribe, otherwise we are hit by a race condition where it can happen
         //that we get older subscribeFile messages
