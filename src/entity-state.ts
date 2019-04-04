@@ -35,7 +35,6 @@ class EntitySubjectStore<T extends IdInterface> {
 
         this.consumers[id].count++;
 
-        const originSubject = this.getSubject(id);
         const forkedSubject = new EntitySubject(originSubject.getValue(), async () => {
             await this.forkUnsubscribed(id);
         });
