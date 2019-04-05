@@ -248,7 +248,6 @@ test('test entity sync item', async () => {
         await sleep(0.1);
 
         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(false);
-        expect(() => user.getValue()).toThrow('object unsubscribed');
     }
 
     await close();
