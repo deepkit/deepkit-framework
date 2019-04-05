@@ -5,7 +5,7 @@ import {Observable, Subscription} from "rxjs";
 import {convertPlainQueryToMongo, partialMongoToPlain} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
 import {Collection, EntitySubject, ExchangeEntity, GlutFile, FilterQuery, IdInterface} from "@marcj/glut-core";
-import {ClassType} from "@marcj/estdlib";
+import {ClassType, eachKey} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
@@ -96,6 +96,7 @@ export class EntityStorage {
             const entitySubscription = this.entitySubscription.get(classType);
             if (entitySubscription) {
                 entitySubscription.unsubscribe();
+                this.entitySubscription.delete(classType);
             }
             delete store[id];
         }
@@ -107,7 +108,6 @@ export class EntityStorage {
     }
 
     subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
-
         if (this.entitySubscription.has(classType)) {
             //already subscribed, nothing to do here
             return;
@@ -128,6 +128,10 @@ export class EntityStorage {
                 });
                 return;
             }
+
+            // useful debugging lines
+            // const state = this.getSentState(classType, message.id);
+            // console.log('subscribeEntity message', message.id, state);
 
             if (this.needsToBeSend(classType, message.id, message.version)) {
                 this.setSent(classType, message.id, message.version);
@@ -383,7 +387,7 @@ export class EntityStorage {
     async find<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<Collection<T>> {
         const collection = new Collection<T>(classType);
 
-        const KnownIDs: { [id: string]: boolean } = {};
+        const knownIDs: { [id: string]: boolean } = {};
         const filterFields: { [name: string]: boolean } = {};
         const mongoFilter = convertPlainQueryToMongo(classType, filter, filterFields);
 
@@ -393,24 +397,26 @@ export class EntityStorage {
 
         const sub: Subscription = this.exchange.subscribeEntity(classType, async (message: ExchangeEntity) => {
             // console.log(
-            //     'subscribeEntity',
-            //     IDsInThisList[message.id],
+            //     'subscribeEntity message', getEntityName(classType), (message as any)['id'],
+            //     knownIDs[(message as any)['id']],
             //     (message as any).item ? findQuerySatisfied((message as any).item, filter) : undefined,
             //     filter,
             //     message
             // );
 
             if (message.type === 'removeMany') {
+                //this.subscribeEntity handles already decreasing usage
                 collection.removeMany(message.ids);
+
                 for (const id of message.ids) {
-                    delete KnownIDs[id];
+                    delete knownIDs[id];
                 }
 
                 return;
             }
 
-            if (!KnownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, filter)) {
-                KnownIDs[message.id] = true;
+            if (!knownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, filter)) {
+                knownIDs[message.id] = true;
                 this.increaseUsage(classType, message.id);
 
                 //todo, we double convert here. first to class and when we do it again to plain
@@ -421,9 +427,9 @@ export class EntityStorage {
             if ((message.type === 'update' || message.type === 'patch') && message.item) {
                 const querySatisfied = findQuerySatisfied(message.item, filter);
 
-                if (KnownIDs[message.id] && !querySatisfied) {
+                if (knownIDs[message.id] && !querySatisfied) {
                     //got invalid after updates?
-                    delete KnownIDs[message.id];
+                    delete knownIDs[message.id];
                     this.decreaseUsage(classType, message.id);
                     // console.log('send removal because filter doesnt fit anymore',
                     //     filter,
@@ -431,9 +437,9 @@ export class EntityStorage {
                     // );
                     collection.remove(message.id);
 
-                } else if (!KnownIDs[message.id] && querySatisfied) {
+                } else if (!knownIDs[message.id] && querySatisfied) {
                     //got valid after updates?
-                    KnownIDs[message.id] = true;
+                    knownIDs[message.id] = true;
                     this.increaseUsage(classType, message.id);
 
                     let itemToSend = message.item;
@@ -448,17 +454,20 @@ export class EntityStorage {
                 }
             }
 
-            if (message.type === 'remove' && KnownIDs[message.id]) {
-                delete KnownIDs[message.id];
+            if (message.type === 'remove' && knownIDs[message.id]) {
+                delete knownIDs[message.id];
                 this.decreaseUsage(classType, message.id);
                 collection.remove(message.id);
                 // console.log('Removed entity', entityName, message.id);
             }
         });
 
-        collection.addTeardown(() => {
+        collection.addTeardown(async () => {
+            for (const id of eachKey(knownIDs)) {
+                this.decreaseUsage(classType, id);
+            }
             sub.unsubscribe();
-            fieldSub.unsubscribe();
+            await fieldSub.unsubscribe();
         });
 
         //todo, here again, we convert mongo to class and from class back to plain.
@@ -466,7 +475,7 @@ export class EntityStorage {
         const items = await this.database.find(classType, mongoFilter, true);
 
         for (const item of items) {
-            KnownIDs[item.id] = true;
+            knownIDs[item.id] = true;
             this.increaseUsage(classType, item.id);
         }
 

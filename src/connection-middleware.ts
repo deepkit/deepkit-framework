@@ -62,12 +62,14 @@ export class ConnectionMiddleware {
         }
 
         if (message.name === 'subject/unsubscribe') {
-            const sent = this.subjectSubscriptions[message.id];
+            const sent = this.subjectSubscriptions[message.forId];
             if (!sent) {
-                throw new Error(`Subject not subscribed ${message.id}`);
+                throw new Error(`Subject not subscribed ${message.forId}`);
             }
 
-            sent.unsubscribe();
+            await sent.unsubscribe();
+            this.writer.ack(message.id);
+            return;
         }
 
         if (message.name === 'collection/unsubscribe') {
@@ -186,8 +188,8 @@ export class ConnectionMiddleware {
                 data: entityName ? classToPlain(item.constructor, item) : item
             });
 
-            this.subjectSubscriptions[message.id] = new Subscriptions(() => {
-                result.unsubscribe();
+            this.subjectSubscriptions[message.id] = new Subscriptions(async () => {
+                await result.unsubscribe();
                 delete this.subjectSubscriptions[message.id];
             });
 
@@ -207,12 +209,12 @@ export class ConnectionMiddleware {
                     id: message.id,
                     next: entityName ? classToPlain(item.constructor, item) : item
                 });
-            }, (error) => {
+            }, async (error) => {
                 this.writer.sendError(message.id, error);
-                this.subjectSubscriptions[message.id].unsubscribe();
-            }, () => {
+                await this.subjectSubscriptions[message.id].unsubscribe();
+            }, async () => {
                 this.writer.complete(message.id);
-                this.subjectSubscriptions[message.id].unsubscribe();
+                await this.subjectSubscriptions[message.id].unsubscribe();
             });
 
         } else if (result instanceof Collection) {
