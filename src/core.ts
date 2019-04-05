@@ -36,6 +36,8 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     protected nextOnAppend = false;
     protected unsubscribed = false;
 
+    protected lastValue: T;
+
     protected teardowns: TeardownLogic[] = [];
 
     constructor(
@@ -43,9 +45,14 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         teardown?: TeardownLogic,
     ) {
         super(item);
+        this.lastValue = item;
         if (teardown) {
             this.teardowns.push(teardown);
         }
+    }
+
+    public isUnsubscribed(): boolean {
+        return this.unsubscribed;
     }
 
     get nextStateChange() {
@@ -59,8 +66,25 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         this.teardowns.push(teardown);
     }
 
+    get value(): T {
+        return this.lastValue;
+    }
+
+    /**
+     * This method differs to BehaviorSubject in the way that this does not throw an error
+     * when the subject is closed/unsubscribed.
+     */
+    getValue(): T {
+        if (this.hasError) {
+            throw this.thrownError;
+        } else {
+            return this.lastValue;
+        }
+    }
+
     next(value: T): void {
         super.next(value);
+        this.lastValue = value;
 
         if (this.nextChange) {
             this.nextChange.complete();
@@ -82,13 +106,13 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
 
     async unsubscribe(): Promise<void> {
         if (this.unsubscribed) return;
-        this.unsubscribed = true;
-
-        await super.unsubscribe();
 
         for (const teardown of this.teardowns) {
             await tearDown(teardown);
         }
+
+        await super.unsubscribe();
+        this.unsubscribed = true;
     }
 }
 

@@ -70,6 +70,7 @@ export interface ClientMessageEntityUnsubscribe {
 
 export interface ClientMessageSubjectUnsubscribe {
     name: 'subject/unsubscribe';
+    forId: number;
 }
 
 export interface ClientMessageCollectionUnsubscribe {
