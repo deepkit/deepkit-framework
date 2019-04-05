@@ -309,6 +309,13 @@ export class SocketClient {
                     if (reply.type === 'type') {
                         if (reply.returnType === 'subject') {
                             streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
+                            streamBehaviorSubject.addTearDown(async () => {
+                                //user unsubscribed the entity subject, so we stop syncing changes
+                                await self.sendMessage({
+                                    name: 'subject/unsubscribe',
+                                    forId: reply.id,
+                                }).firstAndClose();
+                            });
                             resolve(streamBehaviorSubject);
                         }
 
@@ -399,12 +406,18 @@ export class SocketClient {
 
                     if (reply.type === 'next/subject') {
                         if (streamBehaviorSubject) {
+                            if (streamBehaviorSubject.isUnsubscribed()) {
+                                throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
+                            }
                             streamBehaviorSubject.next(deserializeResult(reply.next));
                         }
                     }
 
                     if (reply.type === 'append/subject') {
                         if (streamBehaviorSubject) {
+                            if (streamBehaviorSubject.isUnsubscribed()) {
+                                throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
+                            }
                             const append = deserializeResult(reply.append);
                             streamBehaviorSubject.append(append);
                         }
