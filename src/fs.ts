@@ -141,7 +141,7 @@ export class FS<T extends GlutFile> {
         if (await pathExists(localPath)) {
             const newFile = this.fileType.fork(file, path);
             for (const i of eachKey(fields)) {
-                (newFile as any)[i] = (file as any)[i];
+                (newFile as any)[i] = (fields as any)[i];
             }
             await this.database.add(this.fileType.classType, newFile);
             return newFile;
