@@ -1,6 +1,8 @@
 {
-  "name": "root",
+  "name": "marshal.ts",
+  "version": "0.0.1",
   "repository": "https://github.com/marcj/marshal",
+  "homepage": "https://github.com/marcj/marshal#readme",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "scripts": {
@@ -49,7 +51,7 @@
       "!index.ts"
     ],
     "testPathIgnorePatterns": [
-        "packages/benchmark"
+      "packages/benchmark"
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
