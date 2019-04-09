@@ -6,6 +6,7 @@ import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";
+import {skip} from "rxjs/operators";
 
 
 function getSafeEntityName(object: any): string | undefined {
@@ -201,7 +202,8 @@ export class ConnectionMiddleware {
                 });
             });
 
-            this.subjectSubscriptions[message.id].add = result.subscribe((next) => {
+            //we sent already the first initial value, since its a BehaviorSubject we skip the first
+            this.subjectSubscriptions[message.id].add = result.pipe(skip(1)).subscribe((next) => {
                 const entityName = next ? getSafeEntityName(next.constructor) : undefined;
 
                 this.writer.write({
