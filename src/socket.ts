@@ -9,9 +9,15 @@ import {
     ServerMessageActionType,
     ServerMessageAll,
     ServerMessageResult,
-    StreamBehaviorSubject
+    StreamBehaviorSubject,
+    ServerMessageComplete,
+    ServerMessageError,
+    ServerMessageAuthorize,
+    ServerMessageActionTypes,
+    ServerMessagePeerChannelMessage,
+    getActionReturnType, getActionParameters, executeActionAndSerialize
 } from "@marcj/glut-core";
-import {applyDefaults, eachKey, isArray} from "@marcj/estdlib";
+import {applyDefaults, eachKey, isArray, ClassType} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 import {tearDown} from "@marcj/estdlib-rxjs";
 
@@ -90,7 +96,101 @@ export class SocketClient {
         this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
     }
 
-    //todo, add better argument inference for U
+    protected registeredControllers: {[name: string]: ClassType<any>} = {};
+
+    public async registerController<T>(name: string, controllerClass: ClassType<any>) {
+        if (this.registeredControllers[name]) {
+            throw new Error(`Controller with name ${name} already registered.`);
+        }
+
+        this.registeredControllers[name] = controllerClass;
+        const controllerInstance = new controllerClass();
+
+        const peerActionTypes: {[name: string]: {
+            parameters: ServerMessageActionType[],
+            returnType: ServerMessageActionType
+        }} = {};
+
+        return new Promise(async (resolve, reject) => {
+            const reply = await this.sendMessage<ServerMessagePeerChannelMessage>({
+                name: 'peerController/register',
+                controllerName: name,
+            }).subscribe(async (message) => {
+                if (message.type === 'error') {
+                    reject(message.error);
+                }
+
+                if (message.type === 'ack') {
+                    resolve();
+                }
+
+                if (message.type === 'peerController/message') {
+                    const data = message.data as {
+                        name: 'actionTypes',
+                        action: string,
+                    } | {
+                        name: 'action'
+                        action: string,
+                        args: any[],
+                    };
+
+                    if (data.name === 'actionTypes') {
+                        peerActionTypes[data.action] = {
+                            parameters: getActionParameters(controllerClass, data.action),
+                            returnType: getActionReturnType(controllerClass, data.action),
+                        };
+
+                        const result: ServerMessageActionTypes = {
+                            type: 'actionTypes/result',
+                            id: 0, //will be overwritten
+                            parameters: peerActionTypes[data.action].parameters,
+                            returnType: peerActionTypes[data.action].returnType,
+                        };
+
+                        this.sendMessage({
+                            name: 'peerController/message',
+                            controllerName: name,
+                            replyId: message.replyId,
+                            data: result
+                        });
+                    }
+
+                    if (data.name === 'action') {
+                        let actionResult = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
+
+                        if (actionResult && actionResult.then) {
+                            actionResult = await actionResult;
+                        }
+
+                        this.sendMessage({
+                            name: 'peerController/message',
+                            controllerName: name,
+                            replyId: message.replyId,
+                            data: {type: 'next/json', id: message.id, next: actionResult}
+                        });
+                    }
+                }
+            });
+        });
+    }
+
+    public peerController<T>(name: string): Promisify<T> {
+        const t = this;
+
+        const o = new Proxy(this, {
+            get: (target, propertyName) => {
+                return function () {
+                    const actionName = String(propertyName);
+                    const args = Array.prototype.slice.call(arguments);
+
+                    return t.stream('_peer/' + name, actionName, ...args);
+                };
+            }
+        });
+
+        return (o as any) as Promisify<T>;
+    }
+
     public controller<T>(name: string): Promisify<T> {
         const t = this;
 
@@ -119,6 +219,8 @@ export class SocketClient {
         if (message.type === 'entity/remove' || message.type === 'entity/patch' || message.type === 'entity/update' || message.type === 'entity/removeMany') {
             this.entityState.handleEntityMessage(message);
             return;
+        } else if (message.type === 'push-message') {
+            //handle shizzle
         } else if (message.type === 'channel') {
             //not built in yet
         } else {
@@ -199,7 +301,7 @@ export class SocketClient {
         }
 
         if (!this.cachedActionsTypes[controller][actionName]) {
-            const reply = await this.sendMessage({
+            const reply = await this.sendMessage<ServerMessageActionTypes>({
                 name: 'actionTypes',
                 controller: controller,
                 action: actionName
@@ -240,7 +342,6 @@ export class SocketClient {
                         continue;
                     }
 
-
                     if (type.type === 'Entity' && type.entityName) {
                         if (!RegisteredEntities[type.entityName]) {
                             throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
@@ -266,7 +367,7 @@ export class SocketClient {
                     }
                 }
 
-                const subject = this.sendMessage({
+                const subject = this.sendMessage<ServerMessageResult>({
                     name: 'action',
                     controller: controller,
                     action: name,
@@ -327,10 +428,6 @@ export class SocketClient {
                                     throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                                 }
 
-                                //todo, in the GUI we receive some ObjectUnsubscribedError errors. I guess because
-                                //either the root subject gets somehow unubscribed OR all listener are dropped and we get immediately after
-                                //still updates, we can safely drop. Question is, is this common behavior and OK to drop, or
-                                //do we have an error somewhere.
                                 const subject = this.entityState.handleEntity(classType, reply.item!);
                                 subject.addTearDown(async () => {
                                     //user unsubscribed the entity subject, so we stop syncing changes
@@ -395,6 +492,7 @@ export class SocketClient {
 
                     if (reply.type === 'next/json') {
                         resolve(deserializeResult(reply.next));
+                        subject.close();
                     }
 
                     if (reply.type === 'next/observable') {
@@ -489,9 +587,9 @@ export class SocketClient {
         this.socket.send(JSON.stringify(message));
     }
 
-    private sendMessage<T extends ServerMessageResult>(
+    private sendMessage<T = {type: ''}, K = T | ServerMessageComplete | ServerMessageError>(
         messageWithoutId: ClientMessageWithoutId
-    ): MessageSubject<T> {
+    ): MessageSubject<K> {
         this.messageId++;
         const messageId = this.messageId;
 
@@ -499,11 +597,11 @@ export class SocketClient {
             id: messageId, ...messageWithoutId
         };
 
-        const subject = new MessageSubject<T>(() => {
+        const subject = new MessageSubject<K>(() => {
             delete this.replies[messageId];
         });
 
-        this.replies[messageId] = (reply: T) => {
+        this.replies[messageId] = (reply: K) => {
             subject.next(reply);
         };
 
@@ -517,7 +615,7 @@ export class SocketClient {
     private async authenticate(): Promise<boolean> {
         console.log('authenticate send', this.config.token);
 
-        const reply = await this.sendMessage({
+        const reply = await this.sendMessage<ServerMessageAuthorize>({
             name: 'authenticate',
             token: this.config.token,
         }).firstAndClose();
