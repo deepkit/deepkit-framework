@@ -1,3 +1,5 @@
+import 'jest';
+import 'reflect-metadata';
 import {GlutFile} from '../src/glutFile';
 
 test('file', () => {

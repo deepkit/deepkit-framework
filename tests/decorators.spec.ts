@@ -1,4 +1,5 @@
 import 'jest';
+import 'reflect-metadata';
 import {
     Action,
     getActionParameters,

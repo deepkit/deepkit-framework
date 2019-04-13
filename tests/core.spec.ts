@@ -1,4 +1,5 @@
 import 'jest';
+import 'reflect-metadata';
 import {FilterQuery, IdInterface, StreamBehaviorSubject} from "..";
 import {ClassType} from '@marcj/estdlib';
 
