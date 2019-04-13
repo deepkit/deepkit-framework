@@ -1,6 +1,6 @@
 import 'jest';
-import {Action, Controller, EntityStorage, FS} from "@marcj/glut-server";
-import {GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
+import {Action, Controller, GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
+import {EntityStorage, FS} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
 import {sleep} from '@marcj/estdlib';
 

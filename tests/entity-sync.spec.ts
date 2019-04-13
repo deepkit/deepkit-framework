@@ -1,9 +1,9 @@
 import 'jest';
-import {Action, ClientConnection, Controller, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
+import {Action, Collection, Controller, EntitySubject, IdInterface} from "@marcj/glut-core";
+import {ClientConnection, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
-import {Entity, IDField, Field, UUIDField, uuid, getEntitySchema} from '@marcj/marshal';
-import {Collection, EntitySubject, IdInterface} from "@marcj/glut-core";
-import {Observable, BehaviorSubject} from 'rxjs';
+import {Entity, Field, getEntitySchema, IDField, uuid, UUIDField} from '@marcj/marshal';
+import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@marcj/estdlib-rxjs';
 import {sleep} from '@marcj/estdlib';
 
@@ -71,8 +71,6 @@ test('test entity sync list', async () => {
     const testController = client.controller<TestController>('test');
 
     const users: Collection<User> = await testController.users();
-    await users.readyState;
-    console.log('readyState done');
 
     expect(users.count()).toBe(2);
     expect(users.all()[0].name).toBe('Peter 1');

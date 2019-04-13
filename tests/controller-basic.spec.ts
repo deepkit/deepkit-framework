@@ -1,5 +1,5 @@
 import 'jest';
-import {Action, Controller, ParamType, PartialEntityReturnType, PartialParamType, ReturnType} from "@marcj/glut-server";
+import {Action, Controller, ParamType, PartialEntityReturnType, PartialParamType, ReturnType} from "@marcj/glut-core";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
@@ -136,7 +136,7 @@ test('test basic serialisation return: entity', async () => {
         await test.failUser('peter');
         fail('Should fail');
     } catch (e) {
-        expect(e.message).toMatch('Action test::failUser failed: Error: Result returns an not annotated custom class instance (User) that can not be serialized.\n' +
+        expect(e.message).toMatch('Action TestController.failUser failed: Error: Result returns an not annotated custom class instance (User) that can not be serialized.\n' +
             'Use e.g. @ReturnType(MyClass) at your action.');
     }
 
@@ -144,7 +144,7 @@ test('test basic serialisation return: entity', async () => {
         await (await test.failObservable('peter')).toPromise();
         fail('Should fail');
     } catch (e) {
-        expect(e.message).toMatch('Action test::failObservable failed: Observable returns an not annotated custom class instance (User) that can not be serialized.\n' +
+        expect(e.message).toMatch('Action TestController.failObservable failed: Observable returns an not annotated custom class instance (User) that can not be serialized.\n' +
             'Use e.g. @ReturnType(MyClass) at your action.');
     }
 
@@ -229,7 +229,7 @@ test('test basic serialisation partial param: entity', async () => {
         await test.failPartialUser('asd', date);
         fail('Should fail');
     } catch (e) {
-        expect(e.message).toMatch('Action test::failPartialUser failed: Error: Result returns an not annotated object literal that can not be serialized.\n' +
+        expect(e.message).toMatch('Action TestController.failPartialUser failed: Error: Result returns an not annotated object literal that can not be serialized.\n' +
             'Use either @ReturnPlainObject() to avoid serialisation, or (better) create an entity and use @ReturnType(MyEntity) at your action.');
     }
 
