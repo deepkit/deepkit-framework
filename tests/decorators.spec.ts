@@ -1,4 +1,5 @@
 import 'jest';
+import 'reflect-metadata';
 import {Controller} from "@marcj/glut-core";
 import {getControllerOptions} from "../src/decorators";
 

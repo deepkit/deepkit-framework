@@ -1,5 +1,6 @@
 import 'jest';
 import 'jest-extended';
+import 'reflect-metadata';
 import {FS, getMd5} from "../src/fs";
 import {Exchange} from "../src/exchange";
 import {readFile, pathExists, remove} from 'fs-extra';
