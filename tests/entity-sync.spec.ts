@@ -8,6 +8,7 @@ import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@marcj/estdlib-rxjs';
 import {sleep} from '@marcj/estdlib';
 
+// @ts-ignore
 global['WebSocket'] = require('ws');
 
 // const Promise = require('bluebird');

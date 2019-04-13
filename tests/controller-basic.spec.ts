@@ -8,6 +8,7 @@ import {Entity, Field} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
 import {isArray} from '@marcj/estdlib';
 
+// @ts-ignore
 global['WebSocket'] = require('ws');
 
 @Entity('user')
