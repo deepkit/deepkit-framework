@@ -1,3 +1,6 @@
+import 'jest';
+import 'jest-extended';
+import 'reflect-metadata';
 import {MessageSubject} from "../src/socket";
 
 test('test MessageSubject', () => {
