@@ -91,12 +91,10 @@ export class ConnectionMiddleware {
             }
 
             this.observables[message.id].subscriber[message.subscribeId] = this.observables[message.id].observable.subscribe((next) => {
-                //todo, redo with types.returnType
-                // const entityName = getSafeEntityName(next);
-                // if (entityName && RegisteredEntities[entityName]) {
-                //     next = classToPlain(RegisteredEntities[entityName], next);
-                // }
-
+                /**
+                 * `next` is automatically mapped.
+                 * @see ClientConnection.action.
+                 */
                 if (isObject(next) && !isPlainObject(next)) {
                     console.warn(`Warning: you are sending an object (${getClassName(next)}) without serialising it using @Entity.`);
                 }
@@ -173,8 +171,8 @@ export class ConnectionMiddleware {
                 item: entityName ? classToPlain(item.constructor, item) : item
             });
             this.writer.complete(message.id);
-            //no further subscribes/messages necessary since the 'entity' channel handles updates of it.
-            //this means, once this entity is registered in entity-storage, we automatically push changed of this entity.
+            //no further subscribes/messages necessary since the 'entity' channel handles updating.
+            //this means, once this entity is registered in entity-storage, we automatically push changes of this entity.
 
         } else if (result instanceof StreamBehaviorSubject) {
             const item = result.getValue();
@@ -285,9 +283,7 @@ export class ConnectionMiddleware {
             this.writer.write({type: 'type', id: message.id, returnType: 'observable'});
             this.observables[message.id] = {observable: result, subscriber: {}};
         } else {
-            this.writer.write({type: 'type', id: message.id, returnType: 'json'});
             this.writer.write({type: 'next/json', id: message.id, next: result});
-            this.writer.complete(message.id);
         }
     }
 }

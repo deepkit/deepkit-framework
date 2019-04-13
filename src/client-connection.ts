@@ -1,15 +1,13 @@
 import {Injectable, Injector} from "injection-js";
-import {Observable} from "rxjs";
+import {Observable, Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ClientMessageAll, Collection, EntitySubject, ServerMessageActionType, StreamBehaviorSubject} from "@marcj/glut-core";
+import {ActionTypes, ClientMessageAll, executeActionAndSerialize, getActionParameters, getActionReturnType, getActions} from "@marcj/glut-core";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
-import {arrayRemoveItem, each, eachKey, isArray, isObject, isPlainObject, getClassName} from "@marcj/estdlib";
-import {getActionParameters, getActionReturnType, getActions} from "./decorators";
-import {plainToClass, RegisteredEntities, validate, classToPlain, partialPlainToClass, partialClassToPlain} from "@marcj/marshal";
-import {map} from "rxjs/operators";
+import {arrayRemoveItem, each} from "@marcj/estdlib";
+import {uuid} from "@marcj/marshal";
+import {Exchange} from "./exchange";
 
-type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMessageActionType };
 
 @Injectable()
 export class ClientConnection {
@@ -21,10 +19,16 @@ export class ClientConnection {
         [controllerName: string]: { [actionName: string]: ActionTypes }
     } = {};
 
+    private registeredControllers: { [name: string]: { sub: Subscription } } = {};
+
+    protected pushMessageReplyId = 0;
+    protected pushMessageReplies: { [id: string]: (data: any) => void } = {};
+
     constructor(
         protected app: Application,
         protected sessionStack: SessionStack,
         protected injector: Injector,
+        protected exchange: Exchange,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
     ) {
@@ -61,13 +65,96 @@ export class ClientConnection {
         return timer;
     }
 
+    public async sendPushMessage(data: any): Promise<any> {
+        const replyId = ++this.pushMessageReplyId;
+
+        return new Promise<any>((resolve, reject) => {
+            this.pushMessageReplies[replyId] = (data: any) => {
+                resolve(data);
+                delete this.pushMessageReplies[replyId];
+            };
+
+            this.writer.write({
+                type: 'push-message',
+                replyId: replyId,
+                next: data
+            });
+        });
+    }
+
     public async onMessage(raw: string) {
         if ('string' === typeof raw) {
             const message = JSON.parse(raw) as ClientMessageAll;
+            // console.log('server onMessage', message);
+
+            if (message.name === 'push-message/reply') {
+                if (!this.pushMessageReplies[message.replyId]) {
+                    throw new Error(`No reply callback for push-message ${message.replyId}`);
+                }
+
+                this.pushMessageReplies[message.replyId](message.data);
+            }
+
+            if (message.name === 'peerController/unregister') {
+                if (!this.registeredControllers[message.controllerName]) {
+                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
+                    return;
+                }
+
+                console.log('unsubscribe', 'peerController/' + message.controllerName);
+                this.registeredControllers[message.controllerName].sub.unsubscribe();
+                delete this.registeredControllers[message.controllerName];
+            }
+
+            if (message.name === 'peerController/message') {
+                this.exchange.publish('peerController/' + message.controllerName + '/reply/' + message.replyId, message.data);
+                return;
+            }
+
+            if (message.name === 'peerController/register') {
+                if (this.registeredControllers[message.controllerName]) {
+                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
+                    return;
+                }
+
+                const sub = await this.exchange.subscribe('peerController/' + message.controllerName, (controllerMessage: { replyId: string, data: any }) => {
+                    this.writer.write({
+                        id: message.id,
+                        type: 'peerController/message',
+                        replyId: controllerMessage.replyId,
+                        data: controllerMessage.data
+                    });
+                });
+
+                this.registeredControllers[message.controllerName] = {sub: sub};
+                // await sleep(0.1);
+                this.writer.ack(message.id);
+                return;
+            }
 
             if (message.name === 'action') {
                 try {
-                    await this.actionSend(message, () => this.action(message.controller, message.action, message.args));
+                    if (message.controller.startsWith('_peer/')) {
+                        const controllerName = message.controller.substr('_peer/'.length);
+                        const replyId = uuid();
+
+                        //todo, check access
+
+                        const sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
+                            this.writer.write({...reply, id: message.id});
+                            sub.unsubscribe();
+                        });
+
+                        this.exchange.publish('peerController/' + controllerName, {
+                            replyId: replyId,
+                            data: {
+                                ...message,
+                                controller: controllerName
+                            }
+                        });
+                    } else {
+                        await this.actionSend(message, () => this.action(message.controller, message.action, message.args));
+                    }
                 } catch (error) {
                     console.error(`Error in ${message.controller}.${message.action}`, error);
                 }
@@ -76,14 +163,34 @@ export class ClientConnection {
 
             if (message.name === 'actionTypes') {
                 try {
-                    const {parameters, returnType} = await this.getActionTypes(message.controller, message.action);
+                    if (message.controller.startsWith('_peer/')) {
+                        const controllerName = message.controller.substr('_peer/'.length);
+                        const replyId = uuid();
 
-                    this.writer.write({
-                        type: 'actionTypes/result',
-                        id: message.id,
-                        returnType: returnType,
-                        parameters: parameters,
-                    });
+                        //todo, check access
+
+                        const sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
+                            this.writer.write({...reply, id: message.id});
+                            sub.unsubscribe();
+                        });
+
+                        this.exchange.publish('peerController/' + controllerName, {
+                            replyId: replyId,
+                            data: {
+                                ...message,
+                                controller: controllerName
+                            }
+                        });
+                    } else {
+                        const {parameters, returnType} = await this.getActionTypes(message.controller, message.action);
+
+                        this.writer.write({
+                            type: 'actionTypes/result',
+                            id: message.id,
+                            returnType: returnType,
+                            parameters: parameters,
+                        });
+                    }
                 } catch (error) {
                     this.writer.sendError(message.id, error);
                 }
@@ -170,131 +277,7 @@ export class ClientConnection {
 
             const types = await this.getActionTypes(controller, action);
 
-            for (const i of eachKey(args)) {
-                const type = types.parameters[i];
-                if (type.type === 'Entity' && type.entityName) {
-                    if (!RegisteredEntities[type.entityName]) {
-                        throw new Error(`Action's parameter ${controller}::${methodName}:${i} has invalid entity referenced ${type.entityName}.`);
-                    }
-
-                    //todo, validate also partial objects, but @marcj/marshal needs an adjustments for the `validation` method to avoid Required() validator
-                    // otherwise it fails always.
-                    if (!type.partial) {
-                        const errors = await validate(RegisteredEntities[type.entityName], args[i]);
-                        if (errors.length) {
-                            //todo, wrap in own ValidationError so we can serialise it better when send to the client
-                            throw new Error(`${fullName} validation for arg ${i} failed\n` + JSON.stringify(errors) + '\nGot: ' + JSON.stringify(args[i]));
-                        }
-                    }
-                    if (type.partial) {
-                        args[i] = partialPlainToClass(RegisteredEntities[type.entityName], args[i]);
-                    } else {
-                        args[i] = plainToClass(RegisteredEntities[type.entityName], args[i]);
-                    }
-                }
-            }
-
-            try {
-                let result = (controllerInstance as any)[methodName](...args);
-
-                if (typeof (result as any)['then'] === 'function') {
-                    // console.log('its an Promise');
-                    result = await result;
-                }
-
-                if (result instanceof EntitySubject) {
-                    return result;
-                }
-
-                if (result instanceof StreamBehaviorSubject) {
-                    return result;
-                }
-
-                if (result instanceof Collection) {
-                    return result;
-                }
-
-                if (result === undefined) {
-                    return result;
-                }
-
-                const converter: { [name: string]: (v: any) => any } = {
-                    'Entity': (v: any) => {
-                        if (types.returnType.partial) {
-                            return partialClassToPlain(RegisteredEntities[types.returnType.entityName!], v);
-                        } else {
-                            return classToPlain(RegisteredEntities[types.returnType.entityName!], v);
-                        }
-                    },
-                    'Boolean': (v: any) => {
-                        return Boolean(v);
-                    },
-                    'Number': (v: any) => {
-                        return Number(v);
-                    },
-                    'Date': (v: any) => {
-                        return v;
-                    },
-                    'String': (v: any) => {
-                        return String(v);
-                    },
-                    'Object': (v: any) => {
-                        return v;
-                    }
-                };
-
-                function checkForNonObjects(v: any, prefix: string = 'Result') {
-                    if (isArray(v) && v[0]) {
-                        v = v[0];
-                    }
-
-                    if (isObject(v) && !isPlainObject(v)) {
-                        throw new Error(`${prefix} returns an not annotated custom class instance (${getClassName(v)}) that can not be serialized.\n` +
-                            `Use e.g. @ReturnType(MyClass) at your action.`);
-                    } else if (isObject(v)) {
-                        throw new Error(`${prefix} returns an not annotated object literal that can not be serialized.\n` +
-                            `Use either @ReturnPlainObject() to avoid serialisation, or (better) create an entity and use @ReturnType(MyEntity) at your action.`);
-                    }
-                }
-
-                if (result instanceof Observable) {
-                    return result.pipe(map((v) => {
-                        if (types.returnType.type === 'undefined') {
-                            checkForNonObjects(v, `Action ${fullName} failed: Observable`);
-
-                            return v;
-                        }
-
-                        if (isArray(v)) {
-                            return v.map((j: any) => converter[types.returnType.type](j));
-                        }
-
-                        return converter[types.returnType.type](v);
-                    }));
-                }
-
-                if (types.returnType.type === 'undefined') {
-                    checkForNonObjects(result);
-
-                    return result;
-                }
-
-                if (types.returnType.type === 'Object') {
-                    checkForNonObjects(result);
-
-                    return result;
-                }
-
-                if (isArray(result)) {
-                    return result.map((v: any) => converter[types.returnType.type](v));
-                }
-
-                return converter[types.returnType.type](result);
-            } catch (error) {
-                // possible security whole, when we send all errors.
-                console.error(error);
-                throw new Error(`Action ${fullName} failed: ${error}`);
-            }
+            return executeActionAndSerialize(types, controllerInstance, methodName, args);
         }
 
         throw new Error(`Action unknown ${fullName}`);

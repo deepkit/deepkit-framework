@@ -6,7 +6,6 @@ import {ClassType, eachPair} from '@marcj/estdlib';
 import {AsyncSubscription} from '@marcj/estdlib-rxjs';
 import {Injectable} from "injection-js";
 
-
 type Callback<T> = (message: T) => void;
 
 @Injectable()
@@ -15,7 +14,6 @@ export class Exchange {
     private subscriberRedis?: RedisClient;
 
     private subscriptions: { [channelName: string]: Callback<any>[] } = {};
-
     private subscribedChannelMessages = false;
 
     constructor(
@@ -30,14 +28,11 @@ export class Exchange {
     }
 
     public async disconnect() {
-        await new Promise((resolve, reject) => this.redis.quit((err) => err ? reject(err) : resolve()));
-        await new Promise((resolve, reject) => {
-            if (this.subscriberRedis) {
-                this.subscriberRedis.quit((err) => err ? reject(err) : resolve());
-            } else {
-                resolve();
-            }
-        });
+        await this.command(this.redis, 'quit');
+
+        if (this.subscriberRedis) {
+            await this.command(this.subscriberRedis, 'quit');
+        }
     }
 
     public async flush() {
@@ -49,6 +44,18 @@ export class Exchange {
             this.subscriberRedis = this.redis.duplicate();
         }
         return this.subscriberRedis;
+    }
+
+    public async command<T extends RedisClient, K extends keyof RedisClient>(redis: T, command: K, ...args: any[]): Promise<any> {
+        return new Promise((resolve, reject) => {
+            (redis as any)[command](...args, (error: any, v: any) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(v);
+                }
+            });
+        });
     }
 
     public async getSubscribedEntityFields<T>(classType: ClassType<T>): Promise<string[]> {
@@ -124,12 +131,12 @@ export class Exchange {
         this.publish(channelName, message);
     }
 
-    public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
+    public async subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Promise<Subscription> {
         const channelName = this.prefix + '/entity/' + getEntityName(classType);
         return this.subscribe(channelName, cb);
     }
 
-    public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>) {
+    public async subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>): Promise<Subscription> {
         const channelName = this.prefix + '/file/' + fileId;
         return this.subscribe(channelName, cb);
     }
@@ -150,24 +157,70 @@ export class Exchange {
         this.subscribedChannelMessages = true;
 
         this.getSubscriberConnection().on('message', (messageChannel: string, message: string) => {
+            if (message === '{}') {
+                //todo only when debug is on
+                console.warn('Exchange got empty message for ' + messageChannel);
+                return;
+            }
+
             const data = JSON.parse(message);
+            // console.log('exchange message', messageChannel, message);
 
             if (this.subscriptions[messageChannel]) {
                 for (const cb of this.subscriptions[messageChannel]) {
                     cb(data);
                 }
+            } else {
+                console.warn('Exchange got message without active subscriptions for ' + messageChannel);
             }
         });
     }
 
-    public subscribe(channelName: string, callback: Callback<any>): Subscription {
-        if (!this.subscriptions[channelName]) {
-            //first time subscribes to the redis channel
-            this.subscribeToMessages();
+    // public controller<T>(controllerName: string, controller: T) {
+    //     return this.subscribe(controllerName, async (message: { id: string, action: string, args: any[] }) => {
+    //         const replyChannelName = controllerName + '/reply/' + message.id;
+    //
+    //         try {
+    //             let result = (controller as any)[message.action](...message.args);
+    //
+    //             if (result && result.then) {
+    //                 result = await result;
+    //             }
+    //
+    //             this.publish(replyChannelName, {id: message.id, type: 'complete', data: result});
+    //         } catch (error) {
+    //             this.publish(replyChannelName, {id: message.id, type: 'error', data: error});
+    //         }
+    //     });
+    // }
+    //
+    // public controllerAction(controllerName: string, action: string, ...args: any[]): Promise<any> {
+    //     const id = uuid();
+    //
+    //     return new Promise((resolve, reject) => {
+    //         const sub = this.subscribe(controllerName + '/reply/' + id, (message: { type: 'error' | 'complete', data: any }) => {
+    //             sub.unsubscribe();
+    //
+    //             if (message.type === 'error') {
+    //                 reject(message.data);
+    //             }
+    //
+    //             if (message.type === 'complete') {
+    //                 resolve(message.data);
+    //             }
+    //         });
+    //
+    //         this.publish(name, {id: id, action: action, args: args});
+    //     });
+    // }
 
+    public async subscribe(channelName: string, callback: Callback<any>): Promise<Subscription> {
+        this.subscribeToMessages();
+
+        if (!this.subscriptions[channelName]) {
             this.subscriptions[channelName] = [];
             this.subscriptions[channelName].push(callback);
-            this.getSubscriberConnection().subscribe(channelName);
+            await this.command(this.getSubscriberConnection(), 'subscribe', channelName);
         } else {
             this.subscriptions[channelName].push(callback);
         }
@@ -179,8 +232,8 @@ export class Exchange {
             }
 
             if (this.subscriptions[channelName].length === 0) {
-                this.getSubscriberConnection().unsubscribe(channelName);
                 delete this.subscriptions[channelName];
+                this.getSubscriberConnection().unsubscribe(channelName);
             }
         });
     }

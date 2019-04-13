@@ -362,7 +362,7 @@ export class FS<T extends GlutFile> {
 
             //it's important that this callback is called right after we returned the subject,
             //and subscribed to the subject, otherwise append won't work correctly and might be hit by a race-condition.
-            const exchangeSubscription = this.exchange.subscribeFile(file.id, (message) => {
+            const exchangeSubscription = await this.exchange.subscribeFile(file.id, (message) => {
                 if (message.type === 'set') {
                     subject.next(message.content);
                 } else if (message.type === 'append') {

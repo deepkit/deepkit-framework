@@ -107,7 +107,7 @@ export class EntityStorage {
         state.listeners++;
     }
 
-    subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
+    async subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
         if (this.entitySubscription.has(classType)) {
             //already subscribed, nothing to do here
             return;
@@ -115,7 +115,7 @@ export class EntityStorage {
 
         const entityName = getEntityName(classType);
 
-        const sub = this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
+        const sub = await this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
             if (message.type === 'removeMany') {
                 for (const id of message.ids) {
                     this.rmSentState(classType, id);
@@ -293,7 +293,7 @@ export class EntityStorage {
 
                 fieldSub = await this.exchange.subscribeEntityFields(classType, Object.keys(filterFields));
 
-                sub = this.exchange.subscribeEntity(classType, (message) => {
+                sub = await this.exchange.subscribeEntity(classType, (message) => {
                     if (message.type === 'add') {
                         if (!knownIDs[message.id] && findQuerySatisfied(message.item, filter)) {
                             counter++;
@@ -395,7 +395,7 @@ export class EntityStorage {
 
         const fieldSub: AsyncSubscription = await this.exchange.subscribeEntityFields(classType, Object.keys(filterFields));
 
-        const sub: Subscription = this.exchange.subscribeEntity(classType, async (message: ExchangeEntity) => {
+        const sub: Subscription = await this.exchange.subscribeEntity(classType, async (message: ExchangeEntity) => {
             // console.log(
             //     'subscribeEntity message', getEntityName(classType), (message as any)['id'],
             //     knownIDs[(message as any)['id']],
