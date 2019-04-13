@@ -41,8 +41,45 @@ export interface ExchangeEntityPatch extends ExchangeEntityBase {
 
 export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityUpdate | ExchangeEntityPatch | ExchangeEntityRemoveMany;
 
+
+export interface PeerClientControllerAction {
+    name: 'controller/actionTypes';
+    action: string;
+}
+
+export interface PeerClientControllerActionTypes {
+    name: 'controller/action';
+    action: string;
+    args: any[];
+}
+
+export type PeerClientControllerMessage = PeerClientControllerActionTypes | PeerClientControllerAction;
+
+export interface ClientPushMessage {
+    name: 'push-message/reply';
+    replyId: number;
+    data: any;
+}
+
 export interface ClientMessageId {
     id: number;
+}
+
+export interface ClientMessagePeerRegisterController {
+    name: 'peerController/register';
+    controllerName: string;
+}
+
+export interface ClientMessagePeerMessage {
+    name: 'peerController/message';
+    controllerName: string;
+    replyId: string;
+    data: any;
+}
+
+export interface ClientMessagePeerUnRegisterController {
+    name: 'peerController/unregister';
+    controllerName: string;
 }
 
 export interface ClientMessageActionTypes {
@@ -88,9 +125,18 @@ export interface ClientMessageObservableUnsubscribe {
     subscribeId: number;
 }
 
-export type ClientMessageWithoutId = ClientMessageActionTypes | ClientMessageAuthorize | ClientMessageAction | ClientMessageEntityUnsubscribe
-    | ClientMessageObservableSubscribe | ClientMessageObservableUnsubscribe
-    | ClientMessageCollectionUnsubscribe | ClientMessageSubjectUnsubscribe;
+export type ClientMessageWithoutId = ClientPushMessage
+    | ClientMessagePeerUnRegisterController
+    | ClientMessagePeerRegisterController
+    | ClientMessagePeerMessage
+    | ClientMessageActionTypes
+    | ClientMessageAuthorize
+    | ClientMessageAction
+    | ClientMessageEntityUnsubscribe
+    | ClientMessageObservableSubscribe
+    | ClientMessageObservableUnsubscribe
+    | ClientMessageCollectionUnsubscribe
+    | ClientMessageSubjectUnsubscribe;
 
 export type ClientMessageAll = ClientMessageWithoutId & ClientMessageId;
 
@@ -145,17 +191,6 @@ export interface CollectionStreamRemove {
 export interface CollectionStreamRemoveMany {
     type: 'removeMany';
     ids: string[];
-}
-
-export interface FindOneResult {
-    type: 'item';
-    item?: IdInterface;
-}
-
-export interface CountUpdateResult {
-    type: 'count';
-    index: number;
-    count: number;
 }
 
 export interface StreamFileSet {
@@ -225,6 +260,12 @@ export interface ServerMessageNextJson {
     next: any;
 }
 
+export interface ServerPushMessageMessage {
+    type: 'push-message';
+    replyId: number;
+    next: any;
+}
+
 export interface ServerMessageNextObservable {
     type: 'next/observable';
     id: number;
@@ -250,7 +291,12 @@ export interface ServerMessageNextCollection {
     next: CollectionStream;
 }
 
-export type ServerMessageNext = ServerMessageNextJson | ServerMessageNextObservable | ServerMessageNextCollection | ServerMessageNextSubject | ServerMessageAppendSubject;
+export type ServerMessageNext = ServerPushMessageMessage
+    | ServerMessageNextJson
+    | ServerMessageNextObservable
+    | ServerMessageNextCollection
+    | ServerMessageNextSubject
+    | ServerMessageAppendSubject;
 
 export interface ServerMessageAck {
     type: 'ack';
@@ -308,7 +354,7 @@ export interface ServerMessageActionTypes {
 }
 
 export type ServerMessageResult = ServerMessageActionTypes | ServerMessageAuthorize | ServerMessageType
-                                | ServerMessageNext | ServerMessageComplete | ServerMessageError;
+    | ServerMessageNext | ServerMessageComplete | ServerMessageError;
 
 export interface ServerMessageChannel {
     type: 'channel';
@@ -316,4 +362,12 @@ export interface ServerMessageChannel {
     data: any;
 }
 
-export type ServerMessageAll = ServerMessageResult | ServerMessageChannel | ServerMessageEntity;
+export interface ServerMessagePeerChannelMessage {
+    id: number;
+    type: 'peerController/message';
+    replyId: string;
+    data: any;
+}
+
+
+export type ServerMessageAll = ServerMessageResult | ServerMessagePeerChannelMessage | ServerMessageChannel | ServerMessageEntity;
