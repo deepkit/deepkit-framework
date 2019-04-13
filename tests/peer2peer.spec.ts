@@ -1,5 +1,5 @@
 import 'jest';
-
+import 'reflect-metadata';
 import {Action, Controller, ReturnType} from "@marcj/glut-core";
 import {Entity, Field} from '@marcj/marshal';
 import {createServerClientPair} from "./util";

@@ -1,4 +1,5 @@
 import 'jest';
+import 'reflect-metadata';
 import {Action, Controller, ParamType, PartialEntityReturnType, PartialParamType, ReturnType} from "@marcj/glut-core";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";

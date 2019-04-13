@@ -1,4 +1,5 @@
 import 'jest';
+import 'reflect-metadata';
 import {Action, Collection, Controller, EntitySubject, IdInterface} from "@marcj/glut-core";
 import {ClientConnection, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
