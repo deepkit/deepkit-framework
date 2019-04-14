@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-client",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Kamille Team",
@@ -25,7 +25,7 @@
     "ws": "^6.1.2"
   },
   "devDependencies": {
-    "@marcj/glut-core": "^0.0.7",
+    "@marcj/glut-core": "^0.0.8",
     "@marcj/marshal": "^0.8.4",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
