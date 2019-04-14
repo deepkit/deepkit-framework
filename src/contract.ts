@@ -41,20 +41,6 @@ export interface ExchangeEntityPatch extends ExchangeEntityBase {
 
 export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityUpdate | ExchangeEntityPatch | ExchangeEntityRemoveMany;
 
-
-export interface PeerClientControllerAction {
-    name: 'controller/actionTypes';
-    action: string;
-}
-
-export interface PeerClientControllerActionTypes {
-    name: 'controller/action';
-    action: string;
-    args: any[];
-}
-
-export type PeerClientControllerMessage = PeerClientControllerActionTypes | PeerClientControllerAction;
-
 export interface ClientPushMessage {
     name: 'push-message/reply';
     replyId: number;
@@ -74,7 +60,7 @@ export interface ClientMessagePeerMessage {
     name: 'peerController/message';
     controllerName: string;
     replyId: string;
-    data: any;
+    data: ServerMessageResult;
 }
 
 export interface ClientMessagePeerUnRegisterController {
