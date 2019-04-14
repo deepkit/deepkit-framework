@@ -58,6 +58,20 @@ export class Application {
     }
 
     /**
+     * Method to check whether given session (created by authenticate) is allowed to register peer controller of name `controllerName`.
+     */
+    public async isAllowedToRegisterPeerController<T>(injector: Injector, session: Session | undefined, controllerName: string): Promise<boolean> {
+        return true;
+    }
+
+    /**
+     * Method to check whether given session (created by authenticate) is allowed to send messages to peer controller of name `controllerName`.
+     */
+    public async isAllowedToSendToPeerController<T>(injector: Injector, session: Session | undefined, controllerName: string): Promise<boolean> {
+        return true;
+    }
+
+    /**
      * Resolves a name to a controller.
      */
     public async resolveController(name: string): Promise<ClassType<any> | undefined> {

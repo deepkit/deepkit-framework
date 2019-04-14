@@ -101,7 +101,6 @@ export class ClientConnection {
                     return;
                 }
 
-                console.log('unsubscribe', 'peerController/' + message.controllerName);
                 this.registeredControllers[message.controllerName].sub.unsubscribe();
                 delete this.registeredControllers[message.controllerName];
             }
@@ -112,6 +111,12 @@ export class ClientConnection {
             }
 
             if (message.name === 'peerController/register') {
+                const access = await this.app.isAllowedToRegisterPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), message.controllerName);
+                if (!access) {
+                    this.writer.sendError(message.id, 'Access denied');
+                    return;
+                }
+
                 if (this.registeredControllers[message.controllerName]) {
                     this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
                     return;
@@ -136,10 +141,15 @@ export class ClientConnection {
                 try {
                     if (message.controller.startsWith('_peer/')) {
                         const controllerName = message.controller.substr('_peer/'.length);
+
+                        const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
+
+                        if (!access) {
+                            this.writer.sendError(message.id, 'Access denied');
+                            return;
+                        }
+
                         const replyId = uuid();
-
-                        //todo, check access
-
                         const sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
                             this.writer.write({...reply, id: message.id});
                             sub.unsubscribe();
@@ -165,10 +175,15 @@ export class ClientConnection {
                 try {
                     if (message.controller.startsWith('_peer/')) {
                         const controllerName = message.controller.substr('_peer/'.length);
-                        const replyId = uuid();
 
                         //todo, check access
+                        const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
 
+                        if (!access) {
+                            throw new Error(`Access denied`);
+                        }
+
+                        const replyId = uuid();
                         const sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
                             this.writer.write({...reply, id: message.id});
                             sub.unsubscribe();
