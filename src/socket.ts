@@ -117,7 +117,7 @@ export class SocketClient {
                 controllerName: name,
             }).subscribe(async (message) => {
                 if (message.type === 'error') {
-                    reject(message.error);
+                    reject(new Error(message.error));
                 }
 
                 if (message.type === 'ack') {
