@@ -50,6 +50,7 @@ export async function createServerClientPair(
     dbTestName: string,
     controllers: ClassType<any>[],
     entityChangeFeeds: ClassType<any>[] = [],
+    appController: ClassType<any> = MyApp
 ): Promise<{
     server: ApplicationServer,
     client: SocketClient,
@@ -68,7 +69,7 @@ export async function createServerClientPair(
         });
     });
 
-    const app = new ApplicationServer(MyApp, {
+    const app = new ApplicationServer(appController, {
         server: server,
         mongoDbName: dbName,
         mongoConnectionName: dbName,
