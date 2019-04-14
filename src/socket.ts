@@ -1,23 +1,26 @@
 import {Observable, Subject, Subscriber, TeardownLogic} from "rxjs";
 import {first} from "rxjs/operators";
-import {classToPlain, plainToClass, RegisteredEntities, partialClassToPlain, partialPlainToClass} from "@marcj/marshal";
+import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection,
     EntitySubject,
+    executeActionAndSerialize,
+    getActionParameters,
+    getActionReturnType,
+    getActions,
     ServerMessageActionType,
+    ServerMessageActionTypes,
     ServerMessageAll,
-    ServerMessageResult,
-    StreamBehaviorSubject,
+    ServerMessageAuthorize,
     ServerMessageComplete,
     ServerMessageError,
-    ServerMessageAuthorize,
-    ServerMessageActionTypes,
     ServerMessagePeerChannelMessage,
-    getActionReturnType, getActionParameters, executeActionAndSerialize
+    ServerMessageResult,
+    StreamBehaviorSubject
 } from "@marcj/glut-core";
-import {applyDefaults, eachKey, isArray, ClassType} from "@marcj/estdlib";
+import {applyDefaults, ClassType, eachKey, isArray} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 import {tearDown} from "@marcj/estdlib-rxjs";
 
@@ -133,6 +136,18 @@ export class SocketClient {
                         args: any[],
                     };
 
+                    const actions = getActions(controllerInstance.constructor as ClassType<T>);
+
+                    if (!actions[data.action]) {
+                        this.sendMessage({
+                            name: 'peerController/message',
+                            controllerName: name,
+                            replyId: message.replyId,
+                            data: {type: 'error', id: 0, error: `Action ${data.action} does not exist.`}
+                        });
+                        return;
+                    }
+
                     if (data.name === 'actionTypes') {
                         peerActionTypes[data.action] = {
                             parameters: getActionParameters(controllerInstance.constructor as ClassType<T>, data.action),
@@ -155,10 +170,21 @@ export class SocketClient {
                     }
 
                     if (data.name === 'action') {
-                        let actionResult = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
+                        let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
+
 
                         if (actionResult && actionResult.then) {
                             actionResult = await actionResult;
+                        }
+
+                        if (actionResult instanceof Observable) {
+                            this.sendMessage({
+                                name: 'peerController/message',
+                                controllerName: name,
+                                replyId: message.replyId,
+                                data: {type: 'error', id: 0, error: `Action ${data.action} returned Observable, which is not supported.`}
+                            });
+                            console.warn(`Action ${data.action} returned Observable, which is not supported.`);
                         }
 
                         this.sendMessage({
