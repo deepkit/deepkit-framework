@@ -47,7 +47,7 @@ test('test peer2peer', async () => {
 
     const {client, createClient, close} = await createServerClientPair('test basic setup', [], [], MyAppController);
 
-    await client.registerController('test', TestController);
+    await client.registerController('test', new TestController);
 
     const client2 = createClient();
     const peerController = client2.peerController<TestController>('test');
@@ -60,13 +60,13 @@ test('test peer2peer', async () => {
     expect(user.name).toBe('Peter');
 
     try {
-        await client.registerController('forbiddenToRegister', TestController);
+        await client.registerController('forbiddenToRegister', new TestController);
         fail('should error');
     } catch (error) {
         expect(error.message).toBe('Access denied');
     }
 
-    await client.registerController('forbiddenToSend', TestController);
+    await client.registerController('forbiddenToSend', new TestController);
     try {
         const controller2 = client2.peerController<TestController>('forbiddenToSend');
         await controller2.names('asd');
