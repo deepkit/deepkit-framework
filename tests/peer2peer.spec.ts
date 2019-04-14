@@ -6,6 +6,7 @@ import {createServerClientPair} from "./util";
 import {Application} from "@marcj/glut-server";
 import {Session} from "@marcj/glut-server";
 import {Injector} from 'injection-js';
+import {Observable} from 'rxjs';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -29,6 +30,11 @@ test('test peer2peer', async () => {
         @Action()
         user(name: string): User {
             return new User(name);
+        }
+
+        @Action()
+        ob(): Observable<string> {
+            return new Observable(() => {});
         }
     }
 
@@ -58,6 +64,20 @@ test('test peer2peer', async () => {
     const user = await peerController.user('Peter');
     expect(user).toBeInstanceOf(User);
     expect(user.name).toBe('Peter');
+
+    try {
+        await peerController.ob();
+        fail('should error');
+    } catch (error) {
+        expect(error.message).toBe('Action ob returned Observable, which is not supported.');
+    }
+
+    try {
+        await (peerController as any).nothing();
+        fail('should error');
+    } catch (error) {
+        expect(error.message).toBe('Action nothing does not exist.');
+    }
 
     try {
         await client.registerController('forbiddenToRegister', new TestController);
