@@ -96,15 +96,14 @@ export class SocketClient {
         this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
     }
 
-    protected registeredControllers: {[name: string]: ClassType<any>} = {};
+    protected registeredControllers = new Set<string>();
 
-    public async registerController<T>(name: string, controllerClass: ClassType<any>) {
-        if (this.registeredControllers[name]) {
+    public async registerController<T>(name: string, controllerInstance: T) {
+        if (this.registeredControllers.has(name)) {
             throw new Error(`Controller with name ${name} already registered.`);
         }
 
-        this.registeredControllers[name] = controllerClass;
-        const controllerInstance = new controllerClass();
+        this.registeredControllers.add(name);
 
         const peerActionTypes: {[name: string]: {
             parameters: ServerMessageActionType[],
@@ -136,8 +135,8 @@ export class SocketClient {
 
                     if (data.name === 'actionTypes') {
                         peerActionTypes[data.action] = {
-                            parameters: getActionParameters(controllerClass, data.action),
-                            returnType: getActionReturnType(controllerClass, data.action),
+                            parameters: getActionParameters(controllerInstance.constructor as ClassType<T>, data.action),
+                            returnType: getActionReturnType(controllerInstance.constructor as ClassType<T>, data.action),
                         };
 
                         const result: ServerMessageActionTypes = {
