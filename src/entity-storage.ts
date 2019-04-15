@@ -472,7 +472,7 @@ export class EntityStorage {
 
         //todo, here again, we convert mongo to class and from class back to plain.
         // not necessary, so add option to same with plain values.
-        const items = await this.database.find(classType, mongoFilter, true);
+        const items = await this.database.find(classType, mongoFilter);
 
         for (const item of items) {
             knownIDs[item.id] = true;

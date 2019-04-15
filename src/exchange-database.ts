@@ -40,7 +40,7 @@ export class ExchangeDatabase {
     public async find<T extends IdInterface>(
         classType: ClassType<T>,
         filter: FilterQuery<T>,
-        toClass = false
+        toClass = true
     ): Promise<T[]> {
         return await this.database.find(classType, filter, toClass) as T[];
     }
