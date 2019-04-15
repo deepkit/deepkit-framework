@@ -170,29 +170,37 @@ export class SocketClient {
                     }
 
                     if (data.name === 'action') {
-                        let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
+                        try {
+                            let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
 
+                            if (actionResult && actionResult.then) {
+                                actionResult = await actionResult;
+                            }
 
-                        if (actionResult && actionResult.then) {
-                            actionResult = await actionResult;
-                        }
+                            if (actionResult instanceof Observable) {
+                                this.sendMessage({
+                                    name: 'peerController/message',
+                                    controllerName: name,
+                                    replyId: message.replyId,
+                                    data: {type: 'error', id: 0, error: `Action ${data.action} returned Observable, which is not supported.`}
+                                });
+                                console.warn(`Action ${data.action} returned Observable, which is not supported.`);
+                            }
 
-                        if (actionResult instanceof Observable) {
                             this.sendMessage({
                                 name: 'peerController/message',
                                 controllerName: name,
                                 replyId: message.replyId,
-                                data: {type: 'error', id: 0, error: `Action ${data.action} returned Observable, which is not supported.`}
+                                data: {type: 'next/json', id: message.id, next: actionResult}
                             });
-                            console.warn(`Action ${data.action} returned Observable, which is not supported.`);
+                        } catch (error) {
+                            this.sendMessage({
+                                name: 'peerController/message',
+                                controllerName: name,
+                                replyId: message.replyId,
+                                data: {type: 'error', id: 0, error: error instanceof Error ? error.message : error.toString() }
+                            });
                         }
-
-                        this.sendMessage({
-                            name: 'peerController/message',
-                            controllerName: name,
-                            replyId: message.replyId,
-                            data: {type: 'next/json', id: message.id, next: actionResult}
-                        });
                     }
                 }
             });

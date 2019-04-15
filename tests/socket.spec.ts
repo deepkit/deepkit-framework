@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {MessageSubject} from "../src/socket";
+import {MessageSubject} from "../src/client";
 
 test('test MessageSubject', () => {
     let closeCalled = false;
