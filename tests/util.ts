@@ -1,7 +1,8 @@
 import 'jest';
 import {ClassType} from "@marcj/estdlib";
 import {Application, ApplicationServer, Session} from "@marcj/glut-server";
-import {SocketClient, Promisify} from "@marcj/glut-client";
+import {SocketClient} from "@marcj/glut-client";
+import {RemoteController} from "@marcj/glut-core";
 import {createServer} from "http";
 import {Observable} from "rxjs";
 import {sleep} from "@marcj/estdlib";
@@ -56,7 +57,7 @@ export async function createServerClientPair(
     client: SocketClient,
     close: () => Promise<void>,
     createClient: () => SocketClient,
-    createControllerClient: <T>(controllerName: string) => Promisify<T>,
+    createControllerClient: <T>(controllerName: string) => RemoteController<T>,
     app: MyApp
 }> {
     const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
@@ -113,7 +114,7 @@ export async function createServerClientPair(
                 host: 'ws+unix://' + socketPath
             });
         },
-        createControllerClient: <T>(controllerName: string): Promisify<T> => {
+        createControllerClient: <T>(controllerName: string): RemoteController<T> => {
             const client = new SocketClient({
                 host: 'ws+unix://' + socketPath
             });
