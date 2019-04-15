@@ -164,7 +164,6 @@ export class Exchange {
             }
 
             const data = JSON.parse(message);
-            // console.log('exchange message', messageChannel, message);
 
             if (this.subscriptions[messageChannel]) {
                 for (const cb of this.subscriptions[messageChannel]) {

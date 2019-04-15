@@ -14,6 +14,7 @@ import {ServerOptions} from "ws";
 import {createConnection, Connection} from "typeorm";
 import {FileType} from "@marcj/glut-core";
 import {Locker} from "./locker";
+import {InternalClient} from "./internal-client";
 
 export class ApplicationServerConfig {
     server?: Server = undefined;
@@ -178,6 +179,7 @@ export class ApplicationServer {
                 }
             },
             FS,
+            InternalClient,
         ];
 
         baseInjectors.push(...this.serverProvider);
