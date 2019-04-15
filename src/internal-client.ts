@@ -1,7 +1,15 @@
-import {MessageSubject, Promisify} from "../../client";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities, uuid} from "@marcj/marshal";
 import {Exchange} from "./exchange";
-import {ActionTypes, ClientMessageWithoutId, ServerMessageActionTypes, ServerMessageComplete, ServerMessageError, ServerMessageResult} from "@marcj/glut-core";
+import {
+    ActionTypes,
+    ClientMessageWithoutId,
+    MessageSubject,
+    RemoteController,
+    ServerMessageActionTypes,
+    ServerMessageComplete,
+    ServerMessageError,
+    ServerMessageResult
+} from "@marcj/glut-core";
 import {Subscription} from "rxjs";
 import {eachKey, isArray} from "@marcj/estdlib";
 import {Injectable} from "injection-js";
@@ -17,7 +25,7 @@ export class InternalClient {
     ) {
     }
 
-    public peerController<T>(name: string): Promisify<T> {
+    public peerController<T>(name: string): RemoteController<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -31,7 +39,7 @@ export class InternalClient {
             }
         });
 
-        return (o as any) as Promisify<T>;
+        return (o as any) as RemoteController<T>;
     }
 
     protected sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
