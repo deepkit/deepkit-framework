@@ -4,3 +4,4 @@ export * from './src/core';
 export * from './src/glutFile';
 export * from './src/decorators';
 export * from './src/action';
+export * from './src/client';
