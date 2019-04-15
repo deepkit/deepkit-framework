@@ -7,6 +7,7 @@ import {Application} from "@marcj/glut-server";
 import {Session} from "@marcj/glut-server";
 import {Injector} from 'injection-js';
 import {Observable} from 'rxjs';
+import {InternalClient} from "@marcj/glut-server/src/internal-client";
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -36,10 +37,14 @@ test('test peer2peer', async () => {
         ob(): Observable<string> {
             return new Observable(() => {});
         }
+
+        @Action()
+        throwError(): void {
+            throw new Error('Errored.');
+        }
     }
 
     class MyAppController extends Application {
-
         async isAllowedToRegisterPeerController<T>(injector: Injector, session: Session | undefined, controllerName: string): Promise<boolean> {
             if (controllerName === 'forbiddenToRegister') return false;
             return true;
@@ -51,7 +56,7 @@ test('test peer2peer', async () => {
         }
     }
 
-    const {client, createClient, close} = await createServerClientPair('test basic setup', [], [], MyAppController);
+    const {client, server, createClient, close} = await createServerClientPair('test basic setup', [], [], MyAppController);
 
     await client.registerController('test', new TestController);
 
@@ -70,6 +75,13 @@ test('test peer2peer', async () => {
         fail('should error');
     } catch (error) {
         expect(error.message).toBe('Action ob returned Observable, which is not supported.');
+    }
+
+    try {
+        await peerController.throwError();
+        fail('should error');
+    } catch (error) {
+        expect(error.message).toBe('Errored.');
     }
 
     try {
@@ -95,6 +107,23 @@ test('test peer2peer', async () => {
         expect(error.message).toBe('Access denied');
     }
 
+    const internalClient: InternalClient = server.getInjector().get(InternalClient);
+    const internalPeerController = internalClient.peerController<TestController>('test');
+    {
+        const result = await internalPeerController.names('myName');
+        expect(result).toEqual(['a', 'b', 'c', 'myName']);
+
+        const user = await internalPeerController.user('Peter');
+        expect(user).toBeInstanceOf(User);
+        expect(user.name).toBe('Peter');
+
+        try {
+            await internalPeerController.throwError();
+            fail('should error');
+        } catch (error) {
+            expect(error.message).toBe('Errored.');
+        }
+    }
 
     await close();
 });
