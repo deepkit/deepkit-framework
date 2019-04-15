@@ -1,5 +1,4 @@
-import {Observable, Subject, Subscriber, TeardownLogic} from "rxjs";
-import {first} from "rxjs/operators";
+import {Observable, Subscriber} from "rxjs";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {
     ClientMessageAll,
@@ -10,6 +9,8 @@ import {
     getActionParameters,
     getActionReturnType,
     getActions,
+    MessageSubject,
+    RemoteController,
     ServerMessageActionType,
     ServerMessageActionTypes,
     ServerMessageAll,
@@ -22,7 +23,6 @@ import {
 } from "@marcj/glut-core";
 import {applyDefaults, ClassType, eachKey, isArray} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
-import {tearDown} from "@marcj/estdlib-rxjs";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';
@@ -36,40 +36,6 @@ type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMe
 
 export class AuthorizationError extends Error {
 }
-
-export class MessageSubject<T> extends Subject<T> {
-    constructor(private teardown: TeardownLogic) {
-        super();
-    }
-
-    /**
-     * Used to unsubscribe from replies regarding this message and closing (completing) the subject.
-     * Necessary to avoid memory leaks.
-     */
-    close() {
-        tearDown(this.teardown);
-        this.complete();
-    }
-
-    async firstAndClose(): Promise<T> {
-        return new Promise<T>((resolve, reject) => {
-            this.pipe(first()).subscribe((next) => {
-                resolve(next);
-            }, (error) => {
-                reject(error);
-            }, () => {
-                //complete
-            }).add(() => {
-                this.close();
-            });
-        });
-    }
-}
-
-export type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>) => ReturnType<T> extends Promise<any> ? ReturnType<T>  : Promise<ReturnType<T> >;
-export type Promisify<T> = {
-    [P in keyof T]: T[P] extends (...args: any[]) => any ? PromisifyFn<T[P]> : never
-};
 
 export class SocketClient {
     public socket?: WebSocket;
@@ -108,10 +74,12 @@ export class SocketClient {
 
         this.registeredControllers.add(name);
 
-        const peerActionTypes: {[name: string]: {
-            parameters: ServerMessageActionType[],
-            returnType: ServerMessageActionType
-        }} = {};
+        const peerActionTypes: {
+            [name: string]: {
+                parameters: ServerMessageActionType[],
+                returnType: ServerMessageActionType
+            }
+        } = {};
 
         return new Promise(async (resolve, reject) => {
             const reply = await this.sendMessage<ServerMessagePeerChannelMessage>({
@@ -198,7 +166,7 @@ export class SocketClient {
                                 name: 'peerController/message',
                                 controllerName: name,
                                 replyId: message.replyId,
-                                data: {type: 'error', id: 0, error: error instanceof Error ? error.message : error.toString() }
+                                data: {type: 'error', id: 0, error: error instanceof Error ? error.message : error.toString()}
                             });
                         }
                     }
@@ -207,7 +175,7 @@ export class SocketClient {
         });
     }
 
-    public peerController<T>(name: string): Promisify<T> {
+    public peerController<T>(name: string): RemoteController<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -221,10 +189,10 @@ export class SocketClient {
             }
         });
 
-        return (o as any) as Promisify<T>;
+        return (o as any) as RemoteController<T>;
     }
 
-    public controller<T>(name: string): Promisify<T> {
+    public controller<T>(name: string): RemoteController<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -238,7 +206,7 @@ export class SocketClient {
             }
         });
 
-        return (o as any) as Promisify<T>;
+        return (o as any) as RemoteController<T>;
     }
 
     protected onMessage(event: MessageEvent) {
@@ -620,7 +588,7 @@ export class SocketClient {
         this.socket.send(JSON.stringify(message));
     }
 
-    private sendMessage<T = {type: ''}, K = T | ServerMessageComplete | ServerMessageError>(
+    private sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
         messageWithoutId: ClientMessageWithoutId
     ): MessageSubject<K> {
         this.messageId++;
