@@ -1,4 +1,5 @@
 import 'jest';
+import 'reflect-metadata';
 import {classToPlain, EnumField, Exclude, ExcludeToPlain, Field, plainToClass} from "../core";
 import {plainToClass as classTransformerPlainToClass, classToPlain as classTransformerClassToPlain, Exclude as ctExclude, Transform, Type} from "class-transformer";
 import {bench} from "./util";
