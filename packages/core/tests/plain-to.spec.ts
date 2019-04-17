@@ -1,6 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
+import {JobTaskQueue, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {
     classToPlain,
     getReflectionType,
@@ -59,7 +59,23 @@ test('getResolvedReflection deep', () => {
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.array).toBe(false);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.map).toBe(false);
 
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.added')).not.toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.added')!.resolvedClassType).toBe(JobTaskQueue);
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.added')!.type).toBe('date');
+
+    expect(getResolvedReflection(SimpleModel, '')).toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'unknown.unknown')).toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'childrenMap')).not.toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'selfChild.childrenMap')).not.toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'yesNo.unknown')).toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'types.index')).not.toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'selfChild.unknown')).toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')).not.toBeUndefined();
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.unknown')).toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.unknown')).toBeUndefined();
+
+    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.unknown')).toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'child.unknown')).toBeUndefined();
 
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.resolvedClassType).toBe(SimpleModel);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.resolvedPropertyName).toBe('childrenMap');
@@ -67,6 +83,14 @@ test('getResolvedReflection deep', () => {
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.typeValue).toBe(SubModel);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.array).toBe(false);
     expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.map).toBe(false);
+
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')).not.toBeUndefined();
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.resolvedClassType).toBe(SimpleModel);
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.resolvedPropertyName).toBe('childrenCollection');
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.type).toBe('class');
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.typeValue).toBe(SubModel);
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.array).toBe(false);
+    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.map).toBe(false);
 });
 
 

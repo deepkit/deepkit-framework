@@ -50,3 +50,11 @@ test('partial 2', () => {
     expect(plain['childrenCollection.1']).toEqual({label: 'Bar4'});
     expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 });
+
+test('partial unknown', () => {
+    expect(() => {
+        partialClassToPlain(SimpleModel, {
+            'unknown': 'asd',
+        });
+    }).toThrow('No reflection available for SimpleModel::unknown');
+});

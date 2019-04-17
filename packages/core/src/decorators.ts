@@ -35,7 +35,12 @@ export class PropertySchema {
     type: Types = 'any';
     isArray: boolean = false;
     isMap: boolean = false;
+
+    /**
+     * Whether this property is decorated.
+     */
     isDecorated: boolean = false;
+
     isParentReference: boolean = false;
     isOptional: boolean = false;
     isId: boolean = false;
@@ -98,6 +103,15 @@ export class PropertySchema {
         if (this.type === 'class' || this.type === 'enum') {
             return this.getResolvedClassType();
         }
+    }
+
+    isResolvedClassTypeIsDecorated(): boolean {
+        if (this.type === 'class') {
+            const foreignSchema = getEntitySchema(this.getResolvedClassType());
+            return Boolean(foreignSchema.decorator);
+        }
+
+        return false;
     }
 
     getResolvedClassType(): ClassType<any> {
@@ -171,6 +185,10 @@ export class EntitySchema {
         if (this.properties[name]) {
             return this.properties[name];
         }
+    }
+
+    public hasProperty(name: string): boolean {
+        return Boolean(this.properties[name]);
     }
 
     public getProperty(name: string): PropertySchema {
