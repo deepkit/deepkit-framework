@@ -13,6 +13,21 @@ import {
     UUIDField
 } from '../index';
 
+export class JobTaskQueue {
+    @Field()
+    position: number = 0;
+
+    @Field()
+    tries: number = 0;
+
+    @Field()
+    result: string = '';
+
+    @Field()
+    added: Date = new Date();
+}
+
+
 @Entity('sub')
 export class SubModel {
     @Field()
@@ -21,6 +36,10 @@ export class SubModel {
     @Field()
     @Optional()
     age?: number;
+
+    @Field(JobTaskQueue)
+    @Optional()
+    queue?: JobTaskQueue;
 
     constructorUsed = false;
 
@@ -91,6 +110,14 @@ export class SimpleModel {
 
     @Field([String])
     types: string[] = [];
+
+    @Field()
+    @Optional()
+    child?: SubModel;
+
+    @Field()
+    @Optional()
+    selfChild?: SimpleModel;
 
     @Field([SubModel])
     children: SubModel[] = [];

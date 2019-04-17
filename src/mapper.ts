@@ -18,7 +18,17 @@ import {
     eachKey
 } from "@marcj/estdlib";
 
-export type Types = 'objectId' | 'uuid' | 'binary' | 'class' | 'date' | 'string' | 'boolean' | 'number' | 'enum' | 'any';
+export type Types =
+    'objectId'
+    | 'uuid'
+    | 'binary'
+    | 'class'
+    | 'date'
+    | 'string'
+    | 'boolean'
+    | 'number'
+    | 'enum'
+    | 'any';
 
 const cache = new Map<Object, Map<string, any>>();
 
@@ -60,118 +70,96 @@ export interface ResolvedReflectionFound {
  */
 export type ResolvedReflection = ResolvedReflectionFound | undefined;
 
+type ResolvedReflectionCaches = {[path: string]: ResolvedReflection};
+const resolvedReflectionCaches = new Map<ClassType<any>, ResolvedReflectionCaches>();
+
 /**
  * @hidden
  */
 export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: string): ResolvedReflection {
-    const names = propertyPath.split('.');
-    let resolvedClassType: ClassType<any> = classType;
-    let resolvedTypeCandidate: Types | undefined;
-    let resolvedClassTypeCandidate: ClassType<any> | undefined = undefined;
-    let resolvedPropertyName: string = '';
-    let inArrayOrMap = false;
-    let inClassField = false;
-    let isArray = false;
-    let isMap = false;
+    let cache = resolvedReflectionCaches.get(classType);
+    if (!cache) {
+        cache = {};
+        resolvedReflectionCaches.set(classType, cache);
+    }
+
+    if (cache[propertyPath]) {
+        return cache[propertyPath];
+    }
+
+    const names = propertyPath === '' ? [] : propertyPath.split('.');
+    const schema = getEntitySchema(classType);
+
+    if (names.length === 1) {
+        if (!schema.hasProperty(names[0])) {
+            return;
+        }
+
+        const prop = schema.getProperty(names[0]);
+
+        return cache[propertyPath] = {
+            resolvedClassType: classType,
+            resolvedPropertyName: names[0],
+            type: prop.type,
+            typeValue: prop.getResolvedClassTypeForValidType(),
+            array: prop.isArray,
+            map: prop.isMap,
+        }
+    }
 
     for (let i = 0; i < names.length; i++) {
         const name = names[i];
 
-        if (inArrayOrMap) {
-            if (inClassField && resolvedClassTypeCandidate) {
-                const {type} = getReflectionType(resolvedClassTypeCandidate, name);
-                if (!type) {
-                    return;
-                }
-                inClassField = false;
-                inArrayOrMap = false;
-                resolvedClassType = resolvedClassTypeCandidate;
-            } else {
-                inClassField = true;
-                continue;
-            }
-        }
-
-        const {type, typeValue} = getReflectionType(resolvedClassType, name);
-
-        if (!type) {
+        if (!schema.hasProperty(name)) {
             return;
         }
 
-        resolvedPropertyName = name;
-        isArray = isArrayType(resolvedClassType, resolvedPropertyName);
-        isMap = isMapType(resolvedClassType, resolvedPropertyName);
-        if (isArray || isMap) {
-            inArrayOrMap = true;
+        let prop = schema.getProperty(name);
+
+        if (prop.type === 'class' && prop.isResolvedClassTypeIsDecorated()) {
+            const foreignSchema = getEntitySchema(prop.getResolvedClassType());
+            prop = foreignSchema.getProperty(foreignSchema.decorator!);
         }
 
-        if (type === 'class') {
-            resolvedClassTypeCandidate = typeValue;
-            if (resolvedClassTypeCandidate) {
-                const decorator = getDecorator(resolvedClassTypeCandidate);
-                if (decorator) {
-                    const {type, typeValue} = getReflectionType(resolvedClassTypeCandidate, decorator);
-
-                    if (isArrayType(resolvedClassTypeCandidate, decorator) || isMapType(resolvedClassTypeCandidate, decorator)) {
-                        inArrayOrMap = true;
-                    }
-
-                    if (type === 'class') {
-                        resolvedTypeCandidate = type;
-                        resolvedClassTypeCandidate = typeValue;
-                    } else if (type) {
-                        if (names[i+1]) {
-                            return {
-                                resolvedClassType: resolvedClassType,
-                                resolvedPropertyName: resolvedPropertyName,
-                                type: type,
-                                typeValue: typeValue,
-                                array: false,
-                                map: false,
-                            }
-                        } else {
-                            return {
-                                resolvedClassType: resolvedClassType,
-                                resolvedPropertyName: resolvedPropertyName,
-                                type: 'class',
-                                typeValue: resolvedClassTypeCandidate,
-                                array: isArray,
-                                map: isMap,
-                            }
-                        }
+        if (prop.isMap || prop.isArray) {
+            if (prop.type === 'class') {
+                if (names[i + 2]) {
+                    return getResolvedReflection(prop.getResolvedClassType(), names.slice(i + 2).join('.'));
+                } else if (names[i + 1]) {
+                    //we got a name or array index
+                    return cache[propertyPath] = {
+                        resolvedClassType: classType,
+                        resolvedPropertyName: name,
+                        type: prop.type,
+                        typeValue: prop.getResolvedClassTypeForValidType(),
+                        array: false,
+                        map: false,
                     }
                 }
+            } else {
+                if (names[i + 1]) {
+                    //we got a name or array index
+                    return cache[propertyPath] = {
+                        resolvedClassType: classType,
+                        resolvedPropertyName: name,
+                        type: prop.type,
+                        typeValue: prop.getResolvedClassTypeForValidType(),
+                        array: false,
+                        map: false,
+                    }
+                }
+            }
+        } else {
+            if (prop.type === 'class') {
+                return getResolvedReflection(prop.getResolvedClassType(), names.slice(i + 1).join('.'));
+            } else {
+                //`Property ${getClassPropertyName(classType, name)} is not an array or map, so can not resolve ${propertyPath}.`
+                return;
             }
         }
     }
 
-    if (inClassField) {
-        isArray = false;
-        isMap = false;
-
-        if (resolvedTypeCandidate) {
-            return {
-                resolvedClassType: resolvedClassType,
-                resolvedPropertyName: resolvedPropertyName,
-                type: resolvedTypeCandidate,
-                typeValue: resolvedClassTypeCandidate,
-                array: isArray,
-                map: isMap,
-            };
-        }
-    }
-
-    const {type, typeValue} = getReflectionType(resolvedClassType, resolvedPropertyName);
-    if (type) {
-        return {
-            resolvedClassType: resolvedClassType,
-            resolvedPropertyName: resolvedPropertyName,
-            type: type,
-            typeValue: typeValue,
-            array: isArray,
-            map: isMap,
-        }
-    }
+    return;
 }
 
 /**
@@ -248,7 +236,11 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     if (null === propertyValue) {
         return null;
     }
-    const reflection = getResolvedReflection(classType, propertyName)!;
+    const reflection = getResolvedReflection(classType, propertyName);
+    if (!reflection) {
+        throw new Error(`No reflection available for ${getClassPropertyName(classType, propertyName)}`);
+    }
+
     const {type, typeValue, array, map} = reflection;
 
     function convert(value: any) {
@@ -276,7 +268,7 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         if (type === 'class') {
             if (!(value instanceof typeValue)) {
                 throw new Error(
-                    `Could not convert ${getClassPropertyName(classType, propertyName)} since target is not a `+
+                    `Could not convert ${getClassPropertyName(classType, propertyName)} since target is not a ` +
                     `class instance of ${getClassName(typeValue)}. Got ${getClassName(value)}`);
             }
 
@@ -455,7 +447,7 @@ export class ToClassState {
 }
 
 const propertyNamesCache = new Map<ClassType<any>, string[]>();
-const parentReferencesCache = new Map<ClassType<any>, {[propertyName: string]: any}>();
+const parentReferencesCache = new Map<ClassType<any>, { [propertyName: string]: any }>();
 
 /**
  * @hidden
@@ -545,7 +537,7 @@ export function toClass<T>(
             if (parent) {
                 item[propertyName] = parent;
             } else if (!isOptional(classType, propertyName)) {
-                throw new Error(`${getClassPropertyName(classType, propertyName)} is defined as @ParentReference() and `+
+                throw new Error(`${getClassPropertyName(classType, propertyName)} is defined as @ParentReference() and ` +
                     `NOT @Optional(), but no parent found. Add @Optional() or provide ${propertyName} in parents to fix that.`);
             }
         } else if (undefined !== cloned[propertyName]) {
@@ -571,8 +563,8 @@ export function toClass<T>(
  *
  * Returns a new regular object again.
  */
-export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: {[path: string]: any}, parents?: any[]): Partial<{[F in K]: any}> {
-    const result: Partial<{[F in K]: any}> = {};
+export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: { [path: string]: any }, parents?: any[]): Partial<{ [F in K]: any }> {
+    const result: Partial<{ [F in K]: any }> = {};
     const state = new ToClassState();
 
     for (const i of eachKey(target)) {
@@ -588,8 +580,8 @@ export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T
  *
  * Returns a new regular object again.
  */
-export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T>, target: {[path: string]: any}): Partial<{[F in K]: any}> {
-    const result: Partial<{[F in K]: any}> = {};
+export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T>, target: { [path: string]: any }): Partial<{ [F in K]: any }> {
+    const result: Partial<{ [F in K]: any }> = {};
 
     for (const i of eachKey(target)) {
         result[i] = propertyClassToPlain(classType, i, target[i]);
