@@ -1,5 +1,5 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, getIdFieldValue, partialClassToPlain, partialPlainToClass} from '@marcj/marshal';
+import {classToPlain, getIdFieldValue, partialClassToPlain, partialPlainToClass, plainToClass} from '@marcj/marshal';
 import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, convertPlainQueryToMongo, Database, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
@@ -90,15 +90,28 @@ export class ExchangeDatabase {
         return this.database.deleteMany(classType, {id: {$in: ids}});
     }
 
-    public async add<T extends IdInterface>(classType: ClassType<T>, item: T) {
+    public async add<T extends IdInterface>(
+        classType: ClassType<T>,
+        item: T,
+        options?: {
+            advertiseAs?: ClassType<T>,
+        }
+    ) {
         await this.database.add(classType, item);
 
-        if (this.notifyChanges(classType)) {
-            this.exchange.publishEntity(classType, {
+        const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
+
+        if (this.notifyChanges(advertiseAs)) {
+            this.exchange.publishEntity(advertiseAs, {
                 type: 'add',
                 id: item.id,
                 version: 1,
-                item: classToPlain(classType, item)
+                item:
+                    advertiseAs === classType ?
+                        classToPlain(advertiseAs, item) :
+
+                        //make sure only the registered fields are published
+                        classToPlain(advertiseAs, plainToClass(advertiseAs, classToPlain(classType, item)))
             });
         }
     }
@@ -117,19 +130,32 @@ export class ExchangeDatabase {
         return collection.find(convertPlainQueryToMongo(classType, filter));
     }
 
-    public async update<T extends IdInterface>(classType: ClassType<T>, item: T): Promise<number> {
+    public async update<T extends IdInterface>(
+        classType: ClassType<T>,
+        item: T,
+        options?: {
+            advertiseAs?: ClassType<T>,
+        }
+    ): Promise<number> {
         const version = await this.database.update(classType, item);
 
         if (!version) {
             throw new Error('Could not update entity');
         }
 
-        if (this.notifyChanges(classType)) {
-            this.exchange.publishEntity(classType, {
+        const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
+
+        if (this.notifyChanges(advertiseAs)) {
+            this.exchange.publishEntity(advertiseAs, {
                 type: 'update',
-                id: getIdFieldValue(classType, item),
+                id: getIdFieldValue(advertiseAs, item),
                 version: version, //this is the new version in the db, which we end up having when `data` is applied.
-                item: classToPlain(classType, item),
+                item:
+                    advertiseAs === classType ?
+                        classToPlain(advertiseAs, item) :
+
+                        //make sure only the registered fields are published
+                        classToPlain(advertiseAs, plainToClass(advertiseAs, classToPlain(classType, item)))
             });
         }
 
@@ -169,27 +195,15 @@ export class ExchangeDatabase {
         return partialPlainToClass(classType, partialMongoToPlain(classType, response.value || {}));
     }
 
-    public async patchPlain<T extends IdInterface>(
-        classType: ClassType<T>,
-        id: string,
-        patches: { [path: string]: any },
-        additionalProjection: string[] = []
-    ): Promise<{ [field: string]: any }> {
-        return this.patch(
-            classType,
-            id,
-            patches,
-            additionalProjection,
-            true
-        );
-    }
-
     public async patch<T extends IdInterface>(
         classType: ClassType<T>,
         id: string,
         patches: Partial<T> | { [path: string]: any },
-        additionalProjection: string[] = [],
-        plain = false
+        options?: {
+            additionalProjection?: string[],
+            plain?: boolean,
+            advertiseAs?: ClassType<T>,
+        }
     ): Promise<{ [field: string]: any }> {
         const collection = await this.collection(classType);
 
@@ -201,7 +215,7 @@ export class ExchangeDatabase {
         delete (<any>patches)['_id'];
         delete (<any>patches)['version'];
 
-        if (plain) {
+        if (options && options.plain) {
             patchStatement['$set'] = partialPlainToMongo(classType, patches);
         } else {
             patchStatement['$set'] = partialClassToMongo(classType, patches);
@@ -221,10 +235,13 @@ export class ExchangeDatabase {
             projection[field] = 1;
         }
 
-        for (const field of additionalProjection) {
-            projection[field] = 1;
+        if (options && options.additionalProjection) {
+            for (const field of options.additionalProjection) {
+                projection[field] = 1;
+            }
         }
 
+        // console.log('Glut patch', filter, patchStatement);
         const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), patchStatement, {
             projection: projection,
             returnOriginal: false
@@ -244,12 +261,14 @@ export class ExchangeDatabase {
 
         const jsonPatches: EntityPatches = partialClassToPlain(classType, patches);
 
-        if (this.notifyChanges(classType)) {
-            this.exchange.publishEntity(classType, {
+        const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
+
+        if (this.notifyChanges(advertiseAs)) {
+            this.exchange.publishEntity(advertiseAs, {
                 type: 'patch',
                 id: id,
                 version: newVersion, //this is the new version in the db, which we end up having when `data` is applied.
-                item: partialMongoToPlain(classType, doc),
+                item: partialMongoToPlain(advertiseAs, doc),
                 patch: jsonPatches,
             });
         }
