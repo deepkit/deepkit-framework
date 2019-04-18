@@ -7,7 +7,7 @@ import {Application} from "@marcj/glut-server";
 import {Session} from "@marcj/glut-server";
 import {Injector} from 'injection-js';
 import {Observable} from 'rxjs';
-import {InternalClient} from "@marcj/glut-server/src/internal-client";
+import {InternalClient} from "@marcj/glut-server";
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
