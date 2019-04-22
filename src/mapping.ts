@@ -454,6 +454,9 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
     return result;
 }
 
+export type Converter = (convertClassType: ClassType<any>, path: string, value: any) => any;
+export type QueryFieldNames = { [name: string]: boolean };
+export type QueryCustomFields = { [name: string]: (name: string, value: any, fieldNames: QueryFieldNames, converter: Converter) => any };
 
 /**
  * Takes a mongo filter query and converts its class values to classType's mongo types, so you
@@ -462,11 +465,12 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
 export function convertClassQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    fieldNamesMap: { [name: string]: boolean } = {},
+    fieldNamesMap: QueryFieldNames = {},
+    customMapping: { [name: string]: (name: string, value: any, fieldNamesMap: { [name: string]: boolean }) => any } = {},
 ): { [path: string]: any } {
     return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
         return propertyClassToMongo(convertClassType, path, value);
-    }, fieldNamesMap);
+    }, fieldNamesMap, customMapping);
 }
 
 /**
@@ -476,38 +480,51 @@ export function convertClassQueryToMongo<T, K extends keyof T>(
 export function convertPlainQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    fieldNamesMap: { [name: string]: boolean } = {}
+    fieldNamesMap: QueryFieldNames = {},
+    customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
     return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
         return propertyPlainToMongo(convertClassType, path, value);
-    }, fieldNamesMap);
+    }, fieldNamesMap, customMapping);
 }
 
 export function convertQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    converter: (convertClassType: ClassType<any>, path: string, value: any) => any,
-    fieldNamesMap: { [name: string]: boolean } = {}
+    converter: Converter,
+    fieldNamesMap: QueryFieldNames = {},
+    customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
     const result: { [i: string]: any } = {};
 
     for (const i of eachKey(target)) {
-        const fieldValue: any = target[i];
+        let fieldValue: any = target[i];
 
         if (i[0] === '$') {
-            result[i] = (fieldValue as any[]).map(v => convertQueryToMongo(classType, v, converter, fieldNamesMap));
+            result[i] = (fieldValue as any[]).map(v => convertQueryToMongo(classType, v, converter, fieldNamesMap, customMapping));
             continue;
         }
 
         if (isPlainObject(fieldValue)) {
+            fieldValue = {...target[i]};
+
             for (const j of eachKey(fieldValue)) {
                 const queryValue: any = (fieldValue as any)[j];
 
                 if (j[0] !== '$') {
-                    result[i] = converter(classType, i, fieldValue);
+                    fieldValue = converter(classType, i, fieldValue);
                     break;
                 } else {
-                    if (j === '$in' || j === '$nin' || j === '$all') {
+                    if (customMapping[j]) {
+                        const mappingResult = customMapping[j](i, queryValue, fieldNamesMap, converter);
+                        if (mappingResult) {
+                            fieldValue = mappingResult;
+                            break;
+                        } else {
+                            fieldValue = undefined;
+                            break;
+                        }
+                    } else if (j === '$in' || j === '$nin' || j === '$all') {
                         fieldNamesMap[i] = true;
                         (fieldValue as any)[j] = (queryValue as any[]).map(v => converter(classType, i, v));
                     } else if (j === '$text' || j === '$exists' || j === '$mod' || j === '$size' || j === '$type' || j === '$regex' || j === '$where') {
@@ -519,11 +536,13 @@ export function convertQueryToMongo<T, K extends keyof T>(
                     }
                 }
             }
-
-            result[i] = fieldValue;
         } else {
             fieldNamesMap[i] = true;
-            result[i] = converter(classType, i, fieldValue);
+            fieldValue = converter(classType, i, fieldValue);
+        }
+
+        if (fieldValue !== undefined) {
+            result[i] = fieldValue;
         }
     }
 

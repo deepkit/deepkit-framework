@@ -69,9 +69,59 @@ test('simple class query array', () => {
     expect(m['$not'][0]['id']['$qt']).toBe(1);
 });
 
+test('convertClassQueryToMongo customMapping', () => {
+    {
+        const fieldNames = {};
+        const m = convertClassQueryToMongo(Simple, {
+            $and: [{id: {$join: '1,2,3,4'}}],
+        }, fieldNames, {
+            '$join': (name, value, fieldNamesMap) => {
+                return value.split(',').map(v => Number(v));
+            }
+        });
+        expect(fieldNames['id']).toBeUndefined();
+        expect(m['$and'][0]['id']).toEqual([1, 2, 3, 4]);
+    }
+
+    {
+        const fieldNames = {};
+        const m = convertClassQueryToMongo(Simple, {
+            $and: [{id: {$join: '1,2,3,4'}}],
+        }, fieldNames, {
+            '$join': (name, value, fieldNamesMap) => {
+                fieldNamesMap[name] = true;
+                return value.split(',').map(v => Number(v));
+            }
+        });
+        expect(fieldNames['id']).toBe(true);
+    }
+
+    {
+        const m = convertClassQueryToMongo(Simple, {
+            id: {$join: '1,2,3,4'},
+        }, {}, {
+            '$join': (name, value) => {
+                return value.split(',').map(v => Number(v));
+            }
+        });
+        expect(m['id']).toEqual([1, 2, 3, 4]);
+    }
+
+    {
+        const m = convertClassQueryToMongo(Simple, {
+            id: {$join: '1,2,3,4'},
+        }, {}, {
+            '$join': (name, value) => {
+                return undefined;
+            }
+        });
+        expect(m['id']).toBeUndefined();
+    }
+});
+
 test('simple 2', () => {
     const m = convertPlainQueryToMongo(Simple, {id: {dif: 1}});
-    expect(m).toEqual({id: {dif: 1}});
+    expect(m).toEqual({id: NaN});
 });
 
 test('regex', () => {
@@ -116,8 +166,8 @@ test('$or', () => {
 });
 
 test('nested $or', () => {
-    const m = convertPlainQueryToMongo(Simple, { $or: [ { id: { $lt: 20 } }, { price: 10 } ] } );
-    expect(m).toEqual({ $or: [ { id: { $lt: 20 } }, { price: 10 } ] } );
+    const m = convertPlainQueryToMongo(Simple, {$or: [{id: {$lt: 20}}, {price: 10}]});
+    expect(m).toEqual({$or: [{id: {$lt: 20}}, {price: 10}]});
 });
 
 test('not', () => {
