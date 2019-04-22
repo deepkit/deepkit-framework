@@ -106,17 +106,18 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
 
     async unsubscribe(): Promise<void> {
         if (this.unsubscribed) return;
+        this.unsubscribed = true;
 
         for (const teardown of this.teardowns) {
             await tearDown(teardown);
         }
 
         await super.unsubscribe();
-        this.unsubscribed = true;
     }
 }
 
 export class EntitySubject<T extends IdInterface | undefined> extends StreamBehaviorSubject<T> {
+    public readonly patches = new Subject<{[path: string]: any}>();
 }
 
 export type JSONEntity<T> = {
