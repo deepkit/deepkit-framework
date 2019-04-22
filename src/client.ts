@@ -29,6 +29,8 @@ export class SocketClientConfig {
 
     port: number = 8080;
 
+    ssl: boolean = false;
+
     token: any = undefined;
 }
 
@@ -240,7 +242,9 @@ export class SocketClient {
     protected async doConnect(): Promise<void> {
         const port = this.config.port;
         this.connectionTries++;
-        const url = this.config.host.startsWith('ws+unix') ? this.config.host : 'ws://' + this.config.host + ':' + port;
+        const url = this.config.host.startsWith('ws+unix') ?
+            this.config.host :
+            ((this.config.ssl ? 'wss://' : 'ws://') + this.config.host + ':' + port);
 
         const socket = this.socket = new WebSocket(url);
         socket.onmessage = (event: MessageEvent) => {

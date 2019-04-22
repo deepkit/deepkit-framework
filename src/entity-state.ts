@@ -1,5 +1,4 @@
 import {plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
-import {Subscription} from "rxjs";
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "@marcj/glut-core";
 import {set} from 'dot-prop';
 import {ClassType, eachPair, each, getClassName} from "@marcj/estdlib";
@@ -39,6 +38,7 @@ class EntitySubjectStore<T extends IdInterface> {
             await this.forkUnsubscribed(id);
         });
         originSubject.subscribe(forkedSubject);
+        originSubject.patches.subscribe(forkedSubject.patches);
 
         return forkedSubject;
     }
@@ -88,6 +88,10 @@ class EntitySubjectStore<T extends IdInterface> {
         this.subjects[id].next(this.subjects[id].getValue());
     }
 
+    public notifyForksAboutPatches(id: string, patches: {[path: string]: any}) {
+        this.subjects[id].patches.next(patches);
+    }
+
     public setItemAndNotifyForks(id: string, item: T) {
         if (!this.subjects[id]) {
             throw new Error(`Item not found in store for $id}`);
@@ -124,6 +128,7 @@ export class EntityState {
         if (stream.type === 'entity/update') {
             if (store.hasStoreItem(stream.id)) {
                 const item = plainToClass(classType, stream.data);
+                //todo, we should not overwrite it, but modify the item in-place. This prevents bugs mis-expectations.
                 store.setItemAndNotifyForks(stream.id, item);
             } else {
                 throw new Error(`${getClassName(classType)} item not found in store for ${stream.id}. Update not possible`);
@@ -136,14 +141,20 @@ export class EntityState {
                 const item = store.getItem(stream.id);
 
                 if (item && (toVersion === 0 || item.version < toVersion)) {
+
+                    const patches: {[path: string]: any} = {};
+
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(stream.patch)) {
                         const vc = propertyPlainToClass(classType, i, v, [], 0, {onFullLoadCallbacks: []});
+                        patches[i] = vc;
                         set(item, i, vc);
                     }
 
                     item.version = toVersion;
+
                     try {
+                        store.notifyForksAboutPatches(stream.id, patches);
                         store.notifyForks(stream.id);
                     } catch (error) {
                         console.log(`Could not notify EntitySubject #${stream.id} forks, due to ${error}`);
