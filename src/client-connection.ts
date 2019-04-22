@@ -1,4 +1,4 @@
-import {Injectable, Injector} from "injection-js";
+import {Injectable, Injector, Inject} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
 import {ActionTypes, ClientMessageAll, executeActionAndSerialize, getActionParameters, getActionReturnType, getActions} from "@marcj/glut-core";
@@ -31,6 +31,7 @@ export class ClientConnection {
         protected exchange: Exchange,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
+        @Inject('remoteAddress') public readonly remoteAddress: string,
     ) {
     }
 
@@ -51,6 +52,11 @@ export class ClientConnection {
 
     public isActive(): boolean {
         return !this.destroyed;
+    }
+
+    public isLocal(): boolean {
+        return this.remoteAddress === '127.0.0.1'
+            || this.remoteAddress === '::1';
     }
 
     /**

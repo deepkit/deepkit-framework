@@ -225,8 +225,10 @@ export class ExchangeDatabase {
             throw new Error('No patches given. ' + JSON.stringify(patches));
         }
 
+        const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
+
         const filter = {id: id};
-        const subscribedFields = await this.exchange.getSubscribedEntityFields(classType);
+        const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
         const projection: { [key: string]: number } = {
             version: 1,
         };
@@ -261,7 +263,6 @@ export class ExchangeDatabase {
 
         const jsonPatches: EntityPatches = partialClassToPlain(classType, patches);
 
-        const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
 
         if (this.notifyChanges(advertiseAs)) {
             this.exchange.publishEntity(advertiseAs, {

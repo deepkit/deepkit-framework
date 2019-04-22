@@ -26,11 +26,12 @@ export class Worker {
     run() {
         this.wss = new WebSocket.Server(this.options);
 
-        this.wss.on('connection', (socket: WebSocket) => {
+        this.wss.on('connection', (socket: WebSocket, req) => {
             let injector: ReflectiveInjector | undefined;
 
             const provider: Provider[] = [
                 {provide: 'socket', useValue: socket},
+                {provide: 'remoteAddress', useValue: req.connection.remoteAddress},
                 EntityStorage,
                 SessionStack,
                 ClientConnection,
