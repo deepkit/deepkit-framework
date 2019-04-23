@@ -1,15 +1,16 @@
 import {Exchange} from "./exchange";
 import {FS} from "./fs";
-import {getEntityName, plainToClass} from "@marcj/marshal";
+import {getEntityName} from "@marcj/marshal";
 import {Observable, Subject, Subscription} from "rxjs";
-import {convertClassQueryToMongo, convertPlainQueryToMongo, convertQueryToMongo, partialMongoToPlain} from "@marcj/marshal-mongo";
+import {convertClassQueryToMongo, convertPlainQueryToMongo, convertQueryToMongo, mongoToPlain, partialMongoToPlain} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
-import {Collection, EntitySubject, ExchangeEntity, FilterQuery, GlutFile, IdInterface, ReactiveJoin} from "@marcj/glut-core";
+import {EntitySubject, ExchangeEntity, FilterQuery, GlutFile, IdInterface, JSONObjectCollection, ReactiveJoin, Collection, CollectionSort} from "@marcj/glut-core";
 import {ClassType, eachKey} from "@marcj/estdlib";
 import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";
+import {Cursor} from "typeorm";
 
 interface SentState {
     lastSentVersion?: number;
@@ -18,6 +19,67 @@ interface SentState {
 
 function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index: string]: any }, query: FilterQuery<T>): boolean {
     return sift(query as SiftQuery<T[]>, [target]).length > 0;
+}
+
+class FindBuilder<T extends IdInterface> {
+    public _filter: FilterQuery<T> | ReactiveQuery<T> = {};
+    public _fields: (keyof T | string)[] = [];
+    public _pagination: boolean = false;
+    public _page: number = 1;
+    public _itemsPerPage: number = 50;
+    public _sorts: CollectionSort[] = [];
+
+    constructor(
+        public readonly classType: ClassType<T>,
+        public readonly entityStorage: EntityStorage,
+
+    ) {}
+
+    public filter(filter: FilterQuery<T> | ReactiveQuery<T> = {}): FindBuilder<T> {
+        this._filter = filter;
+        return this;
+    }
+
+    public fields(fields: (keyof T | string)[]): FindBuilder<T> {
+        this._fields = fields;
+        return this;
+    }
+
+    public enablePagination(): FindBuilder<T> {
+        this._pagination = true;
+        return this;
+    }
+
+    public page(page: number): FindBuilder<T> {
+        this._page = page;
+        this._pagination = true;
+        return this;
+    }
+
+    public itemsPerPage(items: number): FindBuilder<T> {
+        this._itemsPerPage = items;
+        this._pagination = true;
+        return this;
+    }
+
+    public orderBy(field: keyof T | string, direction: 'asc' | 'desc' = 'asc'): FindBuilder<T> {
+        this._sorts.push({field: field as string, direction: direction});
+        return this;
+    }
+
+    public find(): Promise<Collection<T>> {
+        return this.entityStorage.find(
+            this.classType,
+            this._filter,
+            {
+                fields: this._fields,
+                sort: this._sorts,
+                pagination: this._pagination,
+                itemsPerPage: this._itemsPerPage,
+                page: this._page,
+            }
+        );
+    }
 }
 
 export class ReactiveQuery<T> {
@@ -93,10 +155,12 @@ export class ReactiveQuery<T> {
 
     public async setupProviders(storage: EntityStorage) {
         for (const provider of this.providers) {
-            const result = await storage.find(provider.classType, provider.filter, [provider.field], {disableEntityChangeFeed: true});
+            const result = await storage.find(provider.classType, provider.filter, {fields: [provider.field], disableEntityChangeFeed: true});
             this.subs.add = result.subscribe((v: any) => {
                 //change, propagate
                 // console.log('change', provider.name, provider.field, v.map((i: any) => i[provider.field]));
+
+                //WARNING: usually `filter` is class values based, but we pass here json values (since find() return json values). we should probably convert that here
                 this.change(provider.name, v.map((i: any) => i[provider.field]));
             });
         }
@@ -132,7 +196,7 @@ export class EntityStorage {
     constructor(
         protected readonly writer: ConnectionWriter,
         protected readonly exchange: Exchange,
-        protected readonly database: ExchangeDatabase,
+        protected readonly exchangeDatabase: ExchangeDatabase,
         protected readonly fs: FS<GlutFile>, //todo, refactor: exclude that dependency and move fileContent to own class
     ) {
     }
@@ -234,7 +298,7 @@ export class EntityStorage {
 
             // useful debugging lines
             // const state = this.getSentState(classType, message.id);
-            console.log('subscribeEntity message', entityName, this.needsToBeSend(classType, message.id, message.version), message);
+            // console.log('subscribeEntity message', entityName, this.needsToBeSend(classType, message.id, message.version), message);
 
             if (this.needsToBeSend(classType, message.id, message.version)) {
                 this.setSent(classType, message.id, message.version);
@@ -253,8 +317,6 @@ export class EntityStorage {
                     //no the same connection. If a different connection calls findOne()
                     //it also calls subscribeEntity.
 
-                    const store = this.getSentStateStore(classType);
-                    console.log('store', store);
                     this.rmSentState(classType, message.id);
 
                     this.writer.write({
@@ -355,11 +417,11 @@ export class EntityStorage {
     //             });
     //
     //             for (const [i, filter] of eachPair(filters)) {
-    //                 const cursor = await this.database.cursor(classType, filter);
-    //                 cursor.project({id: 1}).batchSize(64);
+    //                 const rawPlainCursor = await this.exchangeDatabase.rawPlainCursor(classType, filter);
+    //                 rawPlainCursor.project({id: 1}).batchSize(64);
     //
-    //                 while (running && await cursor.hasNext()) {
-    //                     const next = await cursor.next();
+    //                 while (running && await rawPlainCursor.hasNext()) {
+    //                     const next = await rawPlainCursor.next();
     //                     if (!next) continue;
     //                     const item = partialMongoToPlain(classType, next);
     //                     counters[i]++;
@@ -394,6 +456,7 @@ export class EntityStorage {
             (async () => {
                 const knownIDs: { [id: string]: boolean } = {};
                 const filterFields: { [name: string]: boolean } = {};
+                //todo, we expect filter to have class instance as values (Date, etc), so we need to convert it to JSON values first, or whatever findQuerySatisfied needs.
                 convertPlainQueryToMongo(classType, filter, filterFields);
                 let counter = 0;
 
@@ -429,8 +492,10 @@ export class EntityStorage {
                     }
                 });
 
-                const cursor = await this.database.cursor(classType, filter, false);
-                cursor.project({id: 1}).batchSize(64);
+                const cursor = (await this.exchangeDatabase.rawPlainCursor(classType, filter))
+                    .project({id: 1})
+                    .map((v: any) => mongoToPlain(classType, v))
+                    .batchSize(64);
 
                 while (running && await cursor.hasNext()) {
                     const next = await cursor.next();
@@ -455,7 +520,7 @@ export class EntityStorage {
     }
 
     public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T | undefined>> {
-        const item = await this.database.get(classType, filter);
+        const item = await this.exchangeDatabase.get(classType, filter);
 
         if (item) {
             const foundId = item.id;
@@ -473,7 +538,7 @@ export class EntityStorage {
     }
 
     public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T>> {
-        const item = await this.database.get(classType, filter);
+        const item = await this.exchangeDatabase.get(classType, filter);
 
         if (item) {
             const foundId = item.id;
@@ -491,15 +556,39 @@ export class EntityStorage {
         }
     }
 
-    async find<T extends IdInterface, K extends keyof T>(
+    collection<T extends IdInterface>(classType: ClassType<T>) {
+        return new FindBuilder(classType, this);
+    }
+
+    /**
+     * For performance reasons, this returns a JSONObjectCollection. Use plainToClass() if you want to work with the result. TODO add option to support regular Collection as well.
+     */
+    async find<T extends IdInterface, K extends keyof T & string>(
         classType: ClassType<T>,
         filter: FilterQuery<T> | ReactiveQuery<T> = {},
-        fields?: K[] | K,
         options: {
-            disableEntityChangeFeed?: true
+            fields?: (keyof T | string)[],
+            disableEntityChangeFeed?: true,
+            pagination?: boolean,
+            page?: number,
+            itemsPerPage?: number,
+            sort?: CollectionSort[],
         } = {}
-    ): Promise<Collection<T>> {
-        const collection = new Collection<T>(classType);
+    ): Promise<JSONObjectCollection<T>> {
+        const jsonCollection = new JSONObjectCollection<T>(classType);
+
+        if (options.pagination) {
+            jsonCollection.pagination.activate();
+            if (options.page) {
+                jsonCollection.pagination.setPage(options.page);
+            }
+            if (options.itemsPerPage) {
+                jsonCollection.pagination.setItemsPerPage(options.itemsPerPage);
+            }
+            if (options.sort) {
+                jsonCollection.pagination.setOrder(options.sort);
+            }
+        }
 
         const reactiveQuery = filter instanceof ReactiveQuery ? filter : ReactiveQuery.create(classType, filter);
         const knownIDs: { [id: string]: boolean } = {};
@@ -508,39 +597,103 @@ export class EntityStorage {
 
         const initialClassQuery = reactiveQuery.getClassQuery();
         let currentQuery: any = initialClassQuery.query;
-        // console.log('initialClassQuery', initialClassQuery.query);
 
-        reactiveQuery.next.subscribe(async (nextQuery: {query: any}) => {
-            currentQuery = nextQuery.query;
-            // console.log('reactiveQuery.next', getEntityName(classType), JSON.stringify(nextQuery.query));
+        const getCursor = async (fields?: (keyof T | string)[]): Promise<Cursor<T>> => {
+            if (!fields) {
+                fields = options.fields;
+            }
 
-            const items = await (await this.database.cursor(classType, convertClassQueryToMongo(classType, nextQuery.query), false)).project({id: 1}).toArray();
-            const copiedKnownIds = {...knownIDs};
+            if (fields && fields.length > 0) {
+                return await this.exchangeDatabase.rawPlainCursor(classType, currentQuery, [...fields, 'id', 'version']);
+            }
 
-            for (const item of items) {
-                delete copiedKnownIds[item.id];
+            return await this.exchangeDatabase.rawPlainCursor(classType, currentQuery);
+        };
 
-                if (!knownIDs[item.id]) {
-                    knownIDs[item.id] = true;
-                    this.increaseUsage(classType, item.id);
+        const getItem = async (id: string) => {
+            const cursor = await this.exchangeDatabase.rawPlainCursor(classType, {id: id} as FilterQuery<T>);
+            return (await cursor.limit(1).toArray())[0];
+        };
 
-                    const fullItem = await this.database.get(classType, {id: item.id} as any);
+        const applyPagination = (cursor: Cursor<any>) => {
+            if (jsonCollection.pagination.isActive()) {
+                cursor.limit(jsonCollection.pagination.getItemsPerPage());
+                cursor.skip((jsonCollection.pagination.getPage() * jsonCollection.pagination.getItemsPerPage()) - jsonCollection.pagination.getItemsPerPage());
 
-                    //todo, we double convert here. first to class and when we do it again to plain
-                    // this unnecessary when the controller doesn't do anything with that entity.
-                    if (fullItem) {
-                        collection.add(fullItem);
+                if (jsonCollection.pagination.hasOrder()) {
+                    const sort: { [path: string]: 1 | -1 } = {};
+                    for (const order of jsonCollection.pagination.getOrder()) {
+                        sort[order.field] = order.direction === 'asc' ? 1 : -1;
                     }
+                    cursor.sort(sort);
                 }
             }
+        };
 
-            //items left in copiedKnownIds have been deleted or filter doesn't match anylonger.
-            for (const id of eachKey(copiedKnownIds)) {
-                delete knownIDs[id];
-                this.decreaseUsage(classType, id);
+        const updateCollection = async () => {
+            const cursor = await getCursor(['id']);
+            const total = await cursor.count(false);
+
+            applyPagination(cursor);
+            const items = await cursor.toArray();
+            const copiedKnownIds = {...knownIDs};
+
+            jsonCollection.batchStart();
+            try {
+                for (const item of items) {
+                    delete copiedKnownIds[item.id];
+
+                    if (!knownIDs[item.id]) {
+                        knownIDs[item.id] = true;
+                        this.increaseUsage(classType, item.id);
+
+                        const fullItem = await getItem(item.id);
+
+                        //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
+                        if (fullItem) {
+                            jsonCollection.add(fullItem);
+                        } else {
+                            console.warn('ID not found anymore', item.id);
+                        }
+                    }
+                }
+
+                //items left in copiedKnownIds have been deleted or filter doesn't match anylonger.
+                for (const id of eachKey(copiedKnownIds)) {
+                    delete knownIDs[id];
+                    this.decreaseUsage(classType, id);
+                }
+
+                const idsToRemove = Object.keys(copiedKnownIds);
+                if (idsToRemove.length > 0) {
+                    jsonCollection.removeMany(idsToRemove);
+                }
+
+                jsonCollection.setSort(items.map(v => v.id));
+
+                //todo, when total decreases and current page doesn't fit anymore, what to do?
+                if (jsonCollection.pagination.getTotal() !== total) {
+                    jsonCollection.pagination.setTotal(total);
+                    jsonCollection.pagination.serverChangesSubject.next();
+                }
+
+                //todo, update jsonCollection.pagination
+            } finally {
+                jsonCollection.batchEnd();
             }
+        };
 
-            collection.removeMany(Object.keys(copiedKnownIds));
+        jsonCollection.pagination.clientApplySubject.subscribe(async () => {
+            await updateCollection();
+        });
+
+        jsonCollection.pagination.applySubject.subscribe(async () => {
+            await updateCollection();
+        });
+
+        reactiveQuery.next.subscribe(async (nextQuery: { query: any }) => {
+            currentQuery = nextQuery.query;
+            await updateCollection();
         });
 
         if (!options.disableEntityChangeFeed) {
@@ -559,59 +712,75 @@ export class EntityStorage {
             // );
 
             if (message.type === 'removeMany') {
-                //this.subscribeEntity handles already decreasing usage
-                collection.removeMany(message.ids);
+                if (jsonCollection.pagination.isActive()) {
+                    updateCollection();
+                } else {
+                    for (const id of message.ids) {
+                        delete knownIDs[id];
+                        this.decreaseUsage(classType, id);
+                    }
 
-                for (const id of message.ids) {
-                    delete knownIDs[id];
+                    jsonCollection.removeMany(message.ids);
                 }
 
                 return;
             }
 
             if (!knownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, currentQuery)) {
-                knownIDs[message.id] = true;
-                this.increaseUsage(classType, message.id);
-
-                //todo, we double convert here. first to class and when we do it again to plain
-                // this unnecessary when the controller doesn't do anything with that entity.
-                collection.add(plainToClass(classType, message.item));
+                if (jsonCollection.pagination.isActive()) {
+                    updateCollection();
+                } else {
+                    knownIDs[message.id] = true;
+                    this.increaseUsage(classType, message.id);
+                    //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
+                    jsonCollection.add(message.item);
+                }
             }
 
             if ((message.type === 'update' || message.type === 'patch') && message.item) {
                 const querySatisfied = findQuerySatisfied(message.item, currentQuery);
 
                 if (knownIDs[message.id] && !querySatisfied) {
-                    //got invalid after updates?
-                    delete knownIDs[message.id];
-                    this.decreaseUsage(classType, message.id);
-                    collection.remove(message.id);
-
-                } else if (!knownIDs[message.id] && querySatisfied) {
-                    //got valid after updates?
-                    knownIDs[message.id] = true;
-                    this.increaseUsage(classType, message.id);
-
-                    let itemToSend = message.item;
-                    if (message.type === 'patch') {
-                        //message.item is not complete when message.type === 'patch', so load it
-                        itemToSend = await this.database.get(classType, {id: message.id} as T);
+                    if (jsonCollection.pagination.isActive()) {
+                        updateCollection();
+                    } else {
+                        //got invalid after updates?
+                        delete knownIDs[message.id];
+                        this.decreaseUsage(classType, message.id);
+                        jsonCollection.remove(message.id);
                     }
+                } else if (!knownIDs[message.id] && querySatisfied) {
+                    if (jsonCollection.pagination.isActive()) {
+                        updateCollection();
+                    } else {
+                        //got valid after updates?
+                        knownIDs[message.id] = true;
+                        this.increaseUsage(classType, message.id);
 
-                    //todo, we double convert here. first to class and when we do it again to plain
-                    // this unnecessary when the controller doesn't do anything with that entity.
-                    collection.add(plainToClass(classType, itemToSend));
+                        let itemToSend = message.item;
+                        if (message.type === 'patch') {
+                            //message.item is not complete when message.type === 'patch', so load it
+                            itemToSend = await getItem(message.id);
+                        }
+
+                        //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
+                        jsonCollection.add(itemToSend);
+                    }
                 }
             }
 
             if (message.type === 'remove' && knownIDs[message.id]) {
-                delete knownIDs[message.id];
-                this.decreaseUsage(classType, message.id);
-                collection.remove(message.id);
+                if (jsonCollection.pagination.isActive()) {
+                    updateCollection();
+                } else {
+                    delete knownIDs[message.id];
+                    this.decreaseUsage(classType, message.id);
+                    jsonCollection.remove(message.id);
+                }
             }
         });
 
-        collection.addTeardown(async () => {
+        jsonCollection.addTeardown(async () => {
             reactiveQuery.unsubscribe();
             for (const id of eachKey(knownIDs)) {
                 this.decreaseUsage(classType, id);
@@ -620,39 +789,51 @@ export class EntityStorage {
             await fieldSub.unsubscribe();
         });
 
-        //todo, here again, we convert mongo to class and from class back to plain.
-        // not necessary, so add option to do same with plain values.
-        if (fields) {
-            const project: { [field: string]: number } = {};
-            if ('string' === typeof fields) {
-                project[fields as string] = 1;
-            } else {
-                for (const i of fields as string[]) {
-                    project[i] = 1;
-                }
-            }
-            project['id'] = 1;
-            project['version'] = 1;
+        const cursor = await getCursor();
+        const total = await cursor.count(false);
+        jsonCollection.pagination.setTotal(total);
+        applyPagination(cursor);
 
-            const items = await (await this.database.cursor(classType, convertClassQueryToMongo(classType, initialClassQuery.query), false)).project(project).toArray();
-            for (const item of items) {
-                knownIDs[item.id] = true;
-                this.increaseUsage(classType, item.id);
-            }
+        const items = await cursor.toArray();
 
-            //warning: properties are not class instances, since we passed toClass=false. Fix that.
-            collection.set(items);
-        } else {
-            const items = await this.database.find(classType, convertClassQueryToMongo(classType, initialClassQuery.query));
-
-            for (const item of items) {
-                knownIDs[item.id] = true;
-                this.increaseUsage(classType, item.id);
-            }
-
-            collection.set(items);
+        for (const item of items) {
+            knownIDs[item.id] = true;
+            this.increaseUsage(classType, item.id);
         }
 
-        return collection;
+        jsonCollection.set(items);
+
+        // if (options.fields) {
+        //     const project: { [field: string]: number } = {};
+        //     if ('string' === typeof options.fields) {
+        //         project[options.fields as string] = 1;
+        //     } else {
+        //         for (const i of options.fields as string[]) {
+        //             project[i] = 1;
+        //         }
+        //     }
+        //     project['id'] = 1;
+        //     project['version'] = 1;
+        //
+        //     const items = await cursor.project(project).toArray();
+        //     for (const item of items) {
+        //         knownIDs[item.id] = true;
+        //         this.increaseUsage(classType, item.id);
+        //     }
+        //
+        //     //warning: properties are not class instances, since we passed toClass=false. Fix that.
+        //     jsonCollection.set(items);
+        // } else {
+        //     const items = await cursor.toArray();
+        //
+        //     for (const item of items) {
+        //         knownIDs[item.id] = true;
+        //         this.increaseUsage(classType, item.id);
+        //     }
+        //
+        //     jsonCollection.set(items);
+        // }
+
+        return jsonCollection;
     }
 }

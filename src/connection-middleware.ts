@@ -1,5 +1,5 @@
 import {EntityStorage} from "./entity-storage";
-import {ClientMessageAll, Collection, CollectionStream, EntitySubject, StreamBehaviorSubject} from "@marcj/glut-core";
+import {ClientMessageAll, Collection, CollectionStream, EntitySubject, JSONObjectCollection, StreamBehaviorSubject} from "@marcj/glut-core";
 import {classToPlain, getEntityName} from "@marcj/marshal";
 import {ClassType, each, getClassName, isObject, isPlainObject} from "@marcj/estdlib";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
@@ -20,6 +20,7 @@ function getSafeEntityName(object: any): string | undefined {
 @Injectable()
 export class ConnectionMiddleware {
     protected collectionSubscriptions: { [messageId: string]: Subscriptions } = {};
+    protected collections: { [messageId: string]: Collection<any> } = {};
     protected subjectSubscriptions: { [messageId: string]: Subscriptions } = {};
     protected observables: { [messageId: string]: { observable: Observable<any>, subscriber: { [subscriberId: string]: Subscription } } } = {};
     protected entitySent: { [messageId: string]: { classType: ClassType<any>, id: string } } = {};
@@ -76,6 +77,17 @@ export class ConnectionMiddleware {
         if (message.name === 'collection/unsubscribe') {
             if (this.collectionSubscriptions[message.forId]) {
                 this.collectionSubscriptions[message.forId].unsubscribe();
+            }
+            this.writer.ack(message.id);
+            return;
+        }
+
+        if (message.name === 'collection/pagination') {
+            if (this.collections[message.forId]) {
+                this.collections[message.forId].pagination.setOrder(message.order);
+                this.collections[message.forId].pagination.setPage(message.page);
+                this.collections[message.forId].pagination.setItemsPerPage(message.itemsPerPage);
+                this.collections[message.forId].pagination.clientApplySubject.next();
             }
             this.writer.ack(message.id);
             return;
@@ -224,14 +236,24 @@ export class ConnectionMiddleware {
                 type: 'type',
                 id: message.id,
                 returnType: 'collection',
+                pagination: {
+                    active: collection.pagination.isActive(),
+                    itemsPerPage: collection.pagination.getItemsPerPage(),
+                    page: collection.pagination.getPage(),
+                    total: collection.pagination.getTotal(),
+                },
                 entityName: getEntityName(collection.classType)
             });
             let nextValue: CollectionStream | undefined;
 
+            const items = collection instanceof JSONObjectCollection
+                ? collection.all()
+                : collection.all().map(v => classToPlain(collection.classType, v));
+
             nextValue = {
                 type: 'set',
                 total: collection.count(),
-                items: collection.all().map(v => classToPlain(collection.classType, v))
+                items: items
             };
             this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
 
@@ -241,8 +263,11 @@ export class ConnectionMiddleware {
 
             this.collectionSubscriptions[message.id] = new Subscriptions(() => {
                 collection.unsubscribe();
+                delete this.collections[message.id];
                 delete this.collectionSubscriptions[message.id];
             });
+
+            this.collections[message.id] = collection;
 
             this.collectionSubscriptions[message.id].add = collection.subscribe(() => {
 
@@ -252,9 +277,34 @@ export class ConnectionMiddleware {
                 this.writer.complete(message.id);
             });
 
+            if (collection.pagination.isActive()) {
+                const sendPagination = () => {
+                    nextValue = {
+                        type: 'pagination',
+                        order: collection.pagination.getOrder(),
+                        itemsPerPage: collection.pagination.getItemsPerPage(),
+                        page: collection.pagination.getPage(),
+                        total: collection.pagination.getTotal(),
+                    };
+                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                };
+
+                this.collectionSubscriptions[message.id].add = collection.pagination.applySubject.subscribe(() => {
+                    sendPagination();
+                });
+
+                this.collectionSubscriptions[message.id].add = collection.pagination.serverChangesSubject.subscribe(() => {
+                    sendPagination();
+                });
+            }
+
             this.collectionSubscriptions[message.id].add = collection.event.subscribe((event) => {
                 if (event.type === 'add') {
-                    nextValue = {type: 'add', item: classToPlain(collection.classType, event.item)};
+                    const item = collection instanceof JSONObjectCollection
+                        ? event.item
+                        : classToPlain(collection.classType, event.item);
+
+                    nextValue = {type: 'add', item: item};
                     this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 
@@ -268,13 +318,26 @@ export class ConnectionMiddleware {
                     this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 
+                if (event.type === 'batch/start' || event.type === 'batch/end') {
+                    this.writer.write({type: 'next/collection', id: message.id, next: event});
+                }
+
+                if (event.type === 'sort') {
+                    nextValue = {type: 'sort', ids: event.ids};
+                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                }
+
                 if (event.type === 'set') {
                     //consider batching the items, so we don't block the connection stack
                     //when we have thousand of items
+                    const items = collection instanceof JSONObjectCollection
+                        ? event.items
+                        : event.items.map(v => classToPlain(collection.classType, v));
+
                     nextValue = {
                         type: 'set',
                         total: event.items.length,
-                        items: event.items.map(v => classToPlain(collection.classType, v))
+                        items: items
                     };
                     this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }

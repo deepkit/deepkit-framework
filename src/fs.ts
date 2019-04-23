@@ -21,10 +21,6 @@ export function getMd5(content: string | Buffer): string {
     return md5;
 }
 
-export interface FileMetaData {
-    [k: string]: any;
-}
-
 @Injectable()
 export class FS<T extends GlutFile> {
     constructor(

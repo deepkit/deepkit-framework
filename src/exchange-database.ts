@@ -2,7 +2,7 @@ import {Injectable} from 'injection-js';
 import {classToPlain, getIdFieldValue, partialClassToPlain, partialPlainToClass, plainToClass} from '@marcj/marshal';
 import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
-import {convertClassQueryToMongo, convertPlainQueryToMongo, Database, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
+import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
 import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
 import {ClassType, eachPair} from '@marcj/estdlib';
 
@@ -11,7 +11,7 @@ export interface ExchangeNotifyPolicy {
 }
 
 /**
- * A database that also publishes change feeds to the exchange.
+ * A exchangeDatabase that also publishes change feeds to the exchange.
  */
 @Injectable()
 export class ExchangeDatabase {
@@ -67,8 +67,8 @@ export class ExchangeDatabase {
     }
 
     public async getIds<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<string[]> {
-        const cursor = await this.cursor(classType, filter, false);
-        return (await cursor.project({id: 1}).toArray()).map(v => v.id);
+        const cursor = await this.rawPlainCursor(classType, filter || {}, ['id']);
+        return (await cursor.toArray()).map(v => v.id);
     }
 
     public async deleteOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
@@ -120,14 +120,35 @@ export class ExchangeDatabase {
         return await this.database.count(classType, filter);
     }
 
-    public async cursor<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>, toClass = true): Promise<Cursor<T>> {
-        return (await this.database.cursor(classType, filter, toClass)) as Cursor<T>;
-    }
+    /**
+     * Returns a find cursor of MongoDB with map to mongoToPlain, or partialMongoToPlain if fields are given.
+     *
+     * `filter` needs to be a FilterQuery of class values. convertClassQueryToMongo() is applied accordingly.
+     */
+    public async rawPlainCursor<T extends IdInterface>(
+        classType: ClassType<T>,
+        filter: FilterQuery<T>,
+        fields: (keyof T | string)[] = []
+    ): Promise<Cursor<T>> {
+        const hasProjection = fields.length > 0;
+        const projection: any = {};
 
-    public async plainCursor<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Promise<Cursor<T>> {
-        const collection = await this.collection(classType);
+        if (hasProjection) {
+            for (const field of fields) {
+                projection[field] = 1;
+            }
+        }
 
-        return collection.find(convertPlainQueryToMongo(classType, filter));
+        const cursor = this.database
+            .getCollection(classType)
+            .find(filter ? convertClassQueryToMongo(classType, filter) : undefined)
+            .map((v: any) => hasProjection ? partialMongoToPlain(classType, v) : mongoToPlain(classType, v));
+
+        if (hasProjection) {
+            cursor.project(projection);
+        }
+
+        return cursor;
     }
 
     public async update<T extends IdInterface>(
