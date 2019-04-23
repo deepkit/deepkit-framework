@@ -3,11 +3,18 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import {Observable, ReplaySubject, Subject, TeardownLogic} from "rxjs";
-import {first, map} from "rxjs/operators";
+import {ReplaySubject, Subject, TeardownLogic} from "rxjs";
 import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {ClassType, getClassName} from "@marcj/estdlib";
+
+export interface CollectionBatchStart {
+    type: 'batch/start';
+}
+
+export interface CollectionBatchEnd {
+    type: 'batch/end';
+}
 
 export interface CollectionAdd {
     type: 'add';
@@ -19,6 +26,10 @@ export interface CollectionRemove {
     id: string;
 }
 
+export interface CollectionSetSort {
+    type: 'sort';
+    ids: string[];
+}
 
 export interface CollectionRemoveMany {
     type: 'removeMany';
@@ -30,7 +41,82 @@ export interface CollectionSet {
     items: any[];
 }
 
-export type CollectionEvent = CollectionAdd | CollectionRemove | CollectionRemoveMany | CollectionSet;
+export type CollectionEvent = CollectionBatchStart | CollectionBatchEnd | CollectionAdd | CollectionSetSort | CollectionRemove | CollectionRemoveMany | CollectionSet;
+
+export type CollectionSortDirection = 'asc' | 'desc';
+
+export interface CollectionSort {
+    field: string;
+    direction: CollectionSortDirection;
+}
+
+//todo, refactor this to be part of the Collection directly. Makes life easier.
+export class CollectionPagination {
+    public readonly applySubject = new Subject();
+    public readonly clientApplySubject = new Subject();
+    public readonly serverChangesSubject = new Subject();
+
+    protected page = 1;
+
+    protected total = 0;
+    protected itemsPerPage = 50;
+
+    protected order: CollectionSort[] = [];
+
+    protected active = false;
+
+    public setPage(page: number) {
+        this.page = page;
+    }
+
+    public hasOrder(): boolean {
+        return this.order.length > 0;
+    }
+
+    public getOrder(): CollectionSort[] {
+        return this.order;
+    }
+
+    public setOrder(order: CollectionSort[]) {
+        this.order = order;
+    }
+
+    public orderByField(field: string, direction: CollectionSortDirection = 'asc') {
+        this.order = [{field: field, direction: direction}];
+    }
+
+    public apply() {
+        this.applySubject.next();
+    }
+
+    public setTotal(total: number) {
+        this.total = total;
+    }
+
+    public setItemsPerPage(items: number) {
+        this.itemsPerPage = items;
+    }
+
+    public isActive(): boolean {
+        return this.active;
+    }
+
+    public activate() {
+        this.active = true;
+    }
+
+    public getPage(): number {
+        return this.page;
+    }
+
+    public getItemsPerPage(): number {
+        return this.itemsPerPage;
+    }
+
+    public getTotal(): number {
+        return this.total;
+    }
+}
 
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent> = new Subject;
@@ -42,6 +128,11 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public readonly deepChange = new Subject<T>();
     protected nextChange?: Subject<void>;
+
+    public readonly pagination = new CollectionPagination();
+
+    protected batchActive = false;
+    protected batchNeedLoaded = false;
 
     constructor(
         public readonly classType: ClassType<T>,
@@ -55,6 +146,20 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public get(id: string): T | undefined {
         return this.itemsMapped[id];
+    }
+
+    public batchStart() {
+        this.batchActive = true;
+        this.event.next({type: 'batch/start'});
+    }
+
+    public batchEnd() {
+        this.batchActive = false;
+        if (this.batchNeedLoaded) {
+            this.loaded();
+        }
+        this.batchNeedLoaded = false;
+        this.event.next({type: 'batch/end'});
     }
 
     /**
@@ -72,6 +177,9 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
      */
     public async unsubscribe() {
         await super.unsubscribe();
+        this.pagination.applySubject.unsubscribe();
+        this.pagination.serverChangesSubject.unsubscribe();
+        this.pagination.clientApplySubject.unsubscribe();
 
         for (const teardown of this.teardowns) {
             await tearDown(teardown);
@@ -130,6 +238,12 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     public loaded() {
+        if (this.batchActive) {
+            this.batchNeedLoaded = true;
+            return;
+        }
+
+        this.batchNeedLoaded = false;
         this.next(this.items);
 
         if (this.nextChange) {
@@ -152,6 +266,16 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
     }
 
+    public setSort(ids: string[]) {
+        this.items.splice(0, this.items.length);
+        for (const id of ids) {
+            this.items.push(this.itemsMapped[id]);
+        }
+
+        this.event.next({type: 'sort', ids: ids});
+        this.loaded();
+    }
+
     public removeMany(ids: string[], withEvent = true) {
         for (const id of ids) {
             const item = this.itemsMapped[id];
@@ -165,7 +289,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
         if (withEvent) {
             this.event.next({type: 'removeMany', ids: ids});
-
             this.loaded();
         }
     }
@@ -186,7 +309,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
         if (withEvent) {
             this.event.next({type: 'add', item: item});
-
             this.loaded();
         }
     }
@@ -195,15 +317,22 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         if (this.itemsMapped[id]) {
             const item = this.itemsMapped[id];
             delete this.itemsMapped[id];
+
             const index = this.items.indexOf(item);
             if (-1 !== index) {
                 this.items.splice(index, 1);
+            }
 
-                if (withEvent) {
-                    this.event.next({type: 'remove', id: item.id});
-                    this.loaded();
-                }
+            if (withEvent) {
+                this.event.next({type: 'remove', id: item.id});
+                this.loaded();
             }
         }
     }
+}
+
+type JSONObject<T> = Partial<T> & IdInterface;
+
+export class JSONObjectCollection<T extends JSONObject<T>> extends Collection<T> {
+
 }

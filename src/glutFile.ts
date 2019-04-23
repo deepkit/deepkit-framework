@@ -42,6 +42,9 @@ export class GlutFile implements IdInterface {
     updated: Date = new Date();
 
     constructor(path: string) {
+        if (undefined === path) {
+            throw new Error('new GlutFile undefined path.');
+        }
         this.path = path;
         if (this.path.substr(0, 1) === '/') {
             this.path = this.path.substr(1);

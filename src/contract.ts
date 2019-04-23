@@ -102,6 +102,14 @@ export interface ClientMessageCollectionUnsubscribe {
     forId: number;
 }
 
+export interface ClientMessageCollectionPagination {
+    name: 'collection/pagination';
+    forId: number;
+    page: number;
+    itemsPerPage: number;
+    order: {field: string, direction: 'asc' | 'desc'}[];
+}
+
 export interface ClientMessageObservableSubscribe {
     name: 'observable/subscribe';
     subscribeId: number;
@@ -115,6 +123,7 @@ export interface ClientMessageObservableUnsubscribe {
 export type ClientMessageWithoutId = ClientPushMessage
     | ClientMessagePeerUnRegisterController
     | ClientMessagePeerRegisterController
+    | ClientMessageCollectionPagination
     | ClientMessagePeerMessage
     | ClientMessageActionTypes
     | ClientMessageAuthorize
@@ -161,9 +170,30 @@ export interface CollectionStreamSet {
     total: number;
 }
 
+export interface CollectionStreamSort {
+    type: 'sort';
+    ids: string[];
+}
+
 export interface CollectionStreamAdd {
     type: 'add';
     item: IdInterface;
+}
+
+export interface CollectionStreamBatchStart {
+    type: 'batch/start';
+}
+
+export interface CollectionStreamBatchEnd {
+    type: 'batch/end';
+}
+
+export interface CollectionStreamPaginationChange {
+    type: 'pagination';
+    order: {field: string, direction: 'asc' | 'desc'}[];
+    itemsPerPage: number;
+    total: number;
+    page: number;
 }
 
 export interface CollectionStreamReady {
@@ -199,7 +229,16 @@ export interface StreamFileRemove {
     path: string;
 }
 
-export type CollectionStream = CollectionStreamSet | CollectionStreamAdd | CollectionStreamRemove | CollectionStreamRemoveMany | CollectionStreamReady;
+export type CollectionStream =
+    CollectionStreamBatchStart
+    | CollectionStreamBatchEnd
+    | CollectionStreamPaginationChange
+    | CollectionStreamSet
+    | CollectionStreamSort
+    | CollectionStreamAdd
+    | CollectionStreamRemove
+    | CollectionStreamRemoveMany
+    | CollectionStreamReady;
 
 export type StreamFileResult = StreamFileSet | StreamFileAppend | StreamFileRemove;
 
@@ -213,6 +252,12 @@ export interface ServerMessageTypeCollection {
     type: 'type';
     id: number;
     returnType: 'collection';
+    pagination: {
+        active: boolean,
+        itemsPerPage: number,
+        page: number,
+        total: number,
+    },
     entityName: string;
 }
 
