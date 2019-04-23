@@ -2,6 +2,7 @@ import {plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/mar
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "@marcj/glut-core";
 import {set} from 'dot-prop';
 import {ClassType, eachPair, each, getClassName} from "@marcj/estdlib";
+import {skip} from "rxjs/operators";
 
 class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T | undefined> } = {};
@@ -222,25 +223,59 @@ export class EntityState {
         const forks = this.getOrCreateCollectionSubjectsForks(collection);
 
         if (stream.type === 'set') {
+            const setItems: T[] = [];
             for (const itemRaw of stream.items) {
+                if (!forks[itemRaw.id]) {
+                    const item = plainToClass(classType, itemRaw);
+                    setItems.push(item);
+                    const subject = store.createFork(item.id, item);
+                    forks[itemRaw.id] = subject;
 
-                const item = plainToClass(classType, itemRaw);
-                collection.add(item, false);
-
-                const subject = store.createFork(item.id, item);
-                forks[itemRaw.id] = subject;
-
-                subject.subscribe((i) => {
-                    collection.deepChange.next(i);
-                    collection.loaded();
-                });
+                    subject.pipe(skip(1)).subscribe((i) => {
+                        if (i) {
+                            collection.deepChange.next(i);
+                            //when item is removed, we get that signal before the collection gets that information. Which means we trigger loaded() twice
+                            collection.loaded();
+                        } else {
+                            //item is removed. we get that information with stream.type='remove, so don't do anything here.
+                        }
+                    });
+                } else {
+                    setItems.push(forks[itemRaw.id].value);
+                }
             }
+            collection.set(setItems);
         }
 
         if (stream.type === 'removeMany') {
+            for (const id of stream.ids) {
+                if (forks[id]) {
+                    forks[id].unsubscribe();
+                    delete forks[id];
+                }
+            }
             collection.removeMany(stream.ids);
+        }
 
-            collection.loaded();
+        if (stream.type === 'sort') {
+            collection.setSort(stream.ids);
+        }
+
+        if (stream.type === 'batch/start') {
+            collection.batchStart();
+        }
+
+        if (stream.type === 'batch/end') {
+            collection.batchEnd();
+        }
+
+        if (stream.type === 'pagination') {
+            //when controller/entity-storage detected changes in those values, we set it without triggering an event.
+            //triggering an event using setPage() etc would reload the current page.
+            collection.pagination.setItemsPerPage(stream.itemsPerPage);
+            collection.pagination.setPage(stream.page);
+            collection.pagination.setTotal(stream.total);
+            collection.pagination.setOrder(stream.order);
         }
 
         if (stream.type === 'remove') {
@@ -248,23 +283,30 @@ export class EntityState {
 
             if (forks[stream.id]) {
                 forks[stream.id].unsubscribe();
+                delete forks[stream.id];
             }
-
-            collection.loaded();
         }
 
         if (stream.type === 'add') {
             const item = plainToClass(classType, stream.item);
-            collection.add(item, false);
+            collection.add(item);
 
-            const subject = store.createFork(item.id, item);
-            forks[item.id] = subject;
+            if (!forks[item.id]) {
+                const subject = store.createFork(item.id, item);
+                forks[item.id] = subject;
 
-            subject.subscribe((i) => {
-                collection.deepChange.next(i);
-
-                collection.loaded();
-            });
+                subject.pipe(skip(1)).subscribe((i) => {
+                    if (i) {
+                        collection.deepChange.next(i);
+                        //when item is removed, we get that signal before the collection gets that information. Which means we trigger loaded() twice
+                        collection.loaded();
+                    } else {
+                        //item is removed. we get that information with stream.type='remove, so don't do anything here.
+                    }
+                });
+            } else {
+                console.warn('collection added although we have already fork of it holding', item);
+            }
         }
     }
 }

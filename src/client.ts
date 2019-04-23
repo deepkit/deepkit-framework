@@ -480,6 +480,23 @@ export class SocketClient {
                             }
 
                             const collection = new Collection<any>(classType);
+                            if (reply.pagination.active) {
+                                collection.pagination.activate();
+                                collection.pagination.setItemsPerPage(reply.pagination.itemsPerPage);
+                                collection.pagination.setTotal(reply.pagination.total);
+                                collection.pagination.setPage(reply.pagination.page);
+
+                                collection.pagination.applySubject.subscribe(() => {
+                                    self.sendMessage({
+                                        forId: reply.id,
+                                        name: 'collection/pagination',
+                                        order: collection.pagination.getOrder(),
+                                        page: collection.pagination.getPage(),
+                                        itemsPerPage: collection.pagination.getItemsPerPage(),
+                                    });
+                                });
+                            }
+
                             returnValue = collection;
 
                             collection.addTeardown(async () => {
