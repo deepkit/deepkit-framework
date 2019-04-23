@@ -17,7 +17,7 @@
     "@marcj/glut-core": "^0.0.9",
     "@marcj/glut-server": "^0.0.9",
     "@marcj/marshal": "^0.8.7",
-    "@marcj/marshal-mongo": "^0.8.7",
+    "@marcj/marshal-mongo": "^0.8.8",
     "bluebird": "^3.5.1",
     "buffer": "^5.2.1",
     "clone": "^2.1.1",

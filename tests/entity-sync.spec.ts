@@ -1,12 +1,13 @@
 import 'jest';
 import 'reflect-metadata';
-import {Action, Collection, Controller, EntitySubject, IdInterface} from "@marcj/glut-core";
+import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveJoin} from "@marcj/glut-core";
 import {ClientConnection, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
 import {Entity, Field, getEntitySchema, IDField, uuid, UUIDField} from '@marcj/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@marcj/estdlib-rxjs';
 import {sleep} from '@marcj/estdlib';
+import {Database} from '@marcj/marshal-mongo';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -15,8 +16,7 @@ global['WebSocket'] = require('ws');
 // Promise.longStackTraces(); //needs to be disabled in production since it leaks memory
 // global.Promise = Promise;
 
-@Entity('user')
-class User implements IdInterface {
+class UserBase implements IdInterface {
     @IDField()
     @Field()
     id: string = uuid();
@@ -30,6 +30,9 @@ class User implements IdInterface {
 }
 
 test('test entity sync list', async () => {
+    @Entity('user1')
+    class User extends UserBase {}
+
     @Controller('test')
     class TestController {
         constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
@@ -51,11 +54,11 @@ test('test entity sync list', async () => {
 
             setTimeout(async () => {
                 await this.database.add(User, new User('Peter 3'));
-            }, 250);
+            }, 500);
 
             setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
-            }, 500);
+            }, 1000);
 
             return await this.storage.find(User, {
                 name: {$regex: /Peter/}
@@ -109,6 +112,9 @@ test('test entity sync list', async () => {
 });
 
 test('test entity sync list: remove', async () => {
+    @Entity('user2')
+    class User extends UserBase {}
+
     @Controller('test')
     class TestController {
         constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
@@ -178,6 +184,9 @@ test('test entity sync list: remove', async () => {
 });
 
 test('test entity sync item', async () => {
+    @Entity('user3')
+    class User extends UserBase {}
+
     @Controller('test')
     class TestController {
         constructor(
@@ -254,6 +263,9 @@ test('test entity sync item', async () => {
 });
 
 test('test entity sync item undefined', async () => {
+    @Entity('user4')
+    class User extends UserBase {}
+
     @Controller('test')
     class TestController {
         constructor(
@@ -289,6 +301,9 @@ test('test entity sync item undefined', async () => {
 
 
 test('test entity sync count', async () => {
+    @Entity('user5')
+    class User extends UserBase {}
+
     @Controller('test')
     class TestController {
         constructor(
@@ -437,6 +452,7 @@ test('test entity collection unsubscribe + findOne', async () => {
                 name: name
             });
         }
+
         @Action()
         async rmJobByName(name: string): Promise<void> {
             await this.database.deleteOne(Job, {
@@ -549,6 +565,171 @@ test('test entity collection unsubscribe + findOne', async () => {
     } catch (e) {
         fail(e);
     }
+
+    await close();
+});
+
+
+test('test entity collection reactive find', async () => {
+    @Entity('entitySyncTeam')
+    class Team implements IdInterface {
+        @UUIDField()
+        @IDField()
+        id: string = uuid();
+
+        @Field()
+        version: number = 0;
+
+        constructor(@Field() public name: string) {
+        }
+    }
+
+    @Entity('entitySyncUserTeam')
+    class UserTeam {
+        @UUIDField()
+        @IDField()
+        id: string = uuid();
+
+        @Field()
+        version: number = 0;
+
+        constructor(
+            @UUIDField() public teamId: string,
+            @UUIDField() public userId: string,
+        ) {
+        }
+    }
+
+    @Entity('entitySyncUser')
+    class User implements IdInterface {
+        @UUIDField()
+        @IDField()
+        id: string = uuid();
+
+        @Field()
+        version: number = 0;
+
+        constructor(@Field() public name: string) {
+        }
+    }
+
+    @Controller('test')
+    class TestController {
+        constructor(
+            private connection: ClientConnection,
+            private storage: EntityStorage,
+            private database: Database,
+            private exchangeDatabase: ExchangeDatabase,
+        ) {
+        }
+
+        @Action()
+        async init() {
+            await this.exchangeDatabase.deleteMany(User, {});
+            await this.exchangeDatabase.deleteMany(Team, {});
+            await this.database.deleteMany(UserTeam, {});
+
+            const teamA = new Team('Team a');
+            const teamB = new Team('Team b');
+
+            await this.database.add(Team, teamA);
+            await this.database.add(Team, teamB);
+
+            const addUser = async (name: string, team: Team) => {
+                const user = new User(name);
+                await this.database.add(User, user);
+                await this.database.add(UserTeam, new UserTeam(team.id, user.id));
+            };
+
+            await addUser('Peter 1', teamA);
+            await addUser('Peter 2', teamA);
+            await addUser('Marc 1', teamA);
+
+            await addUser('Marie', teamB);
+        }
+
+        @Action()
+        async unAssignUser(userName: string, teamName: string) {
+            const user = await this.database.get(User, {name: userName});
+            const team = await this.database.get(Team, {name: teamName});
+
+            if (!user) throw new Error(`User ${userName} not found`);
+            if (!team) throw new Error(`Team ${teamName} not found`);
+
+            await this.exchangeDatabase.deleteMany(UserTeam, {userId: user.id, teamId: team.id});
+        }
+
+        @Action()
+        async getUserId(userName: string): Promise<string> {
+            const user = await this.database.get(User, {name: userName});
+            if (!user) throw new Error(`User ${userName} not found`);
+
+            return user.id;
+        }
+
+        @Action()
+        async assignUser(userName: string, teamName: string) {
+            const user = await this.database.get(User, {name: userName});
+            const team = await this.database.get(Team, {name: teamName});
+
+            if (!user) throw new Error(`User ${userName} not found`);
+            if (!team) throw new Error(`Team ${teamName} not found`);
+
+            await this.exchangeDatabase.add(UserTeam, new UserTeam(team.id, user.id));
+        }
+
+        @Action()
+        async removeTeam(teamName: string) {
+            const team = await this.database.get(Team, {name: teamName});
+            if (!team) throw new Error(`Team ${teamName} not found`);
+
+            await this.exchangeDatabase.deleteOne(Team, {id: team.id});
+        }
+
+        @Action()
+        async find(teamName: string): Promise<Collection<User>> {
+            return this.storage.find(User, {
+                id: {
+                    $join: ReactiveJoin.createField(UserTeam, 'userId', {
+                        teamId: {
+                            $join: ReactiveJoin.create(Team, {name: teamName})
+                        }
+                    }
+                )}
+            });
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test entity collection reactive find', [TestController], [Team, UserTeam, User]);
+    const test = client.controller<TestController>('test');
+
+    await test.init();
+
+    const marieId = await test.getUserId('Marie');
+
+    const teamMembers = await test.find('Team a');
+    console.log('members loaded');
+    expect(teamMembers.count()).toBe(3);
+    expect(teamMembers.get(marieId)).toBeUndefined();
+
+    test.assignUser('Marie', 'Team a');
+    await teamMembers.nextStateChange;
+    console.log('marie assigned');
+    expect(teamMembers.count()).toBe(4);
+    expect(teamMembers.get(marieId)).toBeInstanceOf(User);
+    expect(teamMembers.get(marieId)!.name).toBe('Marie');
+
+    test.unAssignUser('Marie', 'Team a');
+    await teamMembers.nextStateChange;
+    console.log('marie unassigned');
+    expect(teamMembers.count()).toBe(3);
+    expect(teamMembers.get(marieId)).toBeUndefined();
+
+    test.removeTeam('Team a');
+    await teamMembers.nextStateChange;
+    console.log('Team deleted');
+    expect(teamMembers.count()).toBe(0);
+    expect(teamMembers.get(marieId)).toBeUndefined();
 
     await close();
 });
