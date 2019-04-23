@@ -120,7 +120,7 @@ export class ExchangeDatabase {
         return await this.database.count(classType, filter);
     }
 
-    public async cursor<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>, toClass = false): Promise<Cursor<T>> {
+    public async cursor<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>, toClass = true): Promise<Cursor<T>> {
         return (await this.database.cursor(classType, filter, toClass)) as Cursor<T>;
     }
 
