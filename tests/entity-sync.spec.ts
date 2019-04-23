@@ -31,7 +31,8 @@ class UserBase implements IdInterface {
 
 test('test entity sync list', async () => {
     @Entity('user1')
-    class User extends UserBase {}
+    class User extends UserBase {
+    }
 
     @Controller('test')
     class TestController {
@@ -113,7 +114,8 @@ test('test entity sync list', async () => {
 
 test('test entity sync list: remove', async () => {
     @Entity('user2')
-    class User extends UserBase {}
+    class User extends UserBase {
+    }
 
     @Controller('test')
     class TestController {
@@ -185,7 +187,8 @@ test('test entity sync list: remove', async () => {
 
 test('test entity sync item', async () => {
     @Entity('user3')
-    class User extends UserBase {}
+    class User extends UserBase {
+    }
 
     @Controller('test')
     class TestController {
@@ -264,7 +267,8 @@ test('test entity sync item', async () => {
 
 test('test entity sync item undefined', async () => {
     @Entity('user4')
-    class User extends UserBase {}
+    class User extends UserBase {
+    }
 
     @Controller('test')
     class TestController {
@@ -302,7 +306,8 @@ test('test entity sync item undefined', async () => {
 
 test('test entity sync count', async () => {
     @Entity('user5')
-    class User extends UserBase {}
+    class User extends UserBase {
+    }
 
     @Controller('test')
     class TestController {
@@ -346,7 +351,7 @@ test('test entity sync count', async () => {
     const result = await test.userCount();
 
     let i: number = 0;
-    result.subscribe((next) => {
+    result.subscribe((next: any) => {
         console.log('next', next);
         if (i === 0) {
             //first count is not found
@@ -691,11 +696,12 @@ test('test entity collection reactive find', async () => {
             return this.storage.find(User, {
                 id: {
                     $join: ReactiveJoin.createField(UserTeam, 'userId', {
-                        teamId: {
-                            $join: ReactiveJoin.create(Team, {name: teamName})
+                            teamId: {
+                                $join: ReactiveJoin.create(Team, {name: teamName})
+                            }
                         }
-                    }
-                )}
+                    )
+                }
             });
         }
     }
@@ -730,6 +736,145 @@ test('test entity collection reactive find', async () => {
     console.log('Team deleted');
     expect(teamMembers.count()).toBe(0);
     expect(teamMembers.get(marieId)).toBeUndefined();
+
+    await close();
+});
+
+test('test entity collection sort/paginate', async () => {
+    @Entity('paginate/item')
+    class Item implements IdInterface {
+        @UUIDField()
+        @IDField()
+        id: string = uuid();
+
+        @Field()
+        version: number = 0;
+
+        constructor(
+            @Field() public name: string,
+            @Field() public nr: number = 0,
+            @Field() public clazz: string = 'a',
+        ) {
+        }
+    }
+
+    @Controller('test')
+    class TestController {
+        constructor(
+            private connection: ClientConnection,
+            private storage: EntityStorage,
+            private database: Database,
+            private exchangeDatabase: ExchangeDatabase,
+        ) {
+        }
+
+        @Action()
+        async init() {
+            await this.database.deleteMany(Item, {});
+
+            const promises: Promise<any>[] = [];
+            const clazzes = ['a', 'b', 'c'];
+
+            for (let i = 0; i < 100; i++) {
+                promises.push(this.database.add(Item, new Item('name_' + i, i, clazzes[i % 3])));
+            }
+
+            await Promise.all(promises);
+        }
+
+        @Action()
+        async add(clazz: string, nr: number): Promise<void> {
+            const item = new Item('name_' + nr, nr, clazz);
+            await this.exchangeDatabase.add(Item, item);
+        }
+
+        @Action()
+        async remove(name: string): Promise<void> {
+            await this.exchangeDatabase.deleteOne(Item, {name: name});
+        }
+
+        @Action()
+        async findByClass(clazz: string): Promise<Collection<Item>> {
+            return this.storage.collection(Item)
+                .filter({clazz: clazz})
+                .enablePagination()
+                .itemsPerPage(10)
+                .orderBy('nr')
+                .find();
+
+            // //todo, add sorting. How? Maybe a more functional way
+            // /*
+            //   this.storage.createFind(Item)
+            //     .filter({clazz: clazz})
+            //     .page(1)
+            //     .itemsPerPage(50)
+            //     .sort('nr');
+            //  */
+            // return this.storage.find(Item, {
+            //     clazz: clazz
+            // }, {paged: 10});
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test entity collection sort/paginate', [TestController], [Item]);
+    const test = client.controller<TestController>('test');
+
+    await test.init();
+
+    {
+        const items = await test.findByClass('a');
+
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(27);
+        expect(items.count()).toBe(10);
+        expect(items.pagination.getTotal()).toBe(34);
+
+        //swap order
+        items.pagination.orderByField('nr', 'desc');
+        items.pagination.apply();
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(99);
+        expect(items.all()[9].nr).toBe(72);
+        expect(items.count()).toBe(10);
+        expect(items.pagination.getTotal()).toBe(34);
+
+        //swap order back
+        items.pagination.orderByField('nr');
+        items.pagination.apply();
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(27);
+        expect(items.count()).toBe(10);
+        expect(items.pagination.getTotal()).toBe(34);
+
+        test.remove('name_27');
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(30);
+        expect(items.pagination.getTotal()).toBe(33);
+
+        test.remove('name_0');
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(3);
+        expect(items.all()[9].nr).toBe(33);
+        expect(items.pagination.getTotal()).toBe(32);
+
+        //shouldn't change anything
+        test.add('a', 101);
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(3);
+        expect(items.all()[9].nr).toBe(33);
+        expect(items.count()).toBe(10);
+        expect(items.pagination.getTotal()).toBe(33);
+
+        //should change a lot
+        test.add('a', -1);
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(-1);
+        expect(items.all()[9].nr).toBe(30);
+        expect(items.count()).toBe(10);
+        expect(items.pagination.getTotal()).toBe(34);
+    }
 
     await close();
 });
