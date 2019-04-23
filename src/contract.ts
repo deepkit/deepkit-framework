@@ -2,6 +2,7 @@ import {JSONEntity} from "./core";
 
 export interface IdInterface {
     id: string;
+
     version: number;
 }
 

@@ -1,6 +1,21 @@
 import {BehaviorSubject, TeardownLogic, Subject} from "rxjs";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {IdInterface} from "./contract";
+import {ClassType} from "@marcj/estdlib";
+
+
+export class ReactiveJoin<T> {
+    constructor(public classType: ClassType<T>, public query: FilterQuery<T>, public field: string) {
+    }
+
+    static create<T>(classType: ClassType<T>, query: FilterQuery<T>): ReactiveJoin<T> {
+        return new ReactiveJoin(classType, query, 'id');
+    }
+
+    static createField<T>(classType: ClassType<T>, field: string, query: FilterQuery<T>) {
+        return new ReactiveJoin(classType, query, field);
+    }
+}
 
 export type Query<T> = {
     $eq?: T;
@@ -17,6 +32,7 @@ export type Query<T> = {
     $type?: any;
     $all?: Array<Partial<T>>;
     $size?: number;
+    $join?: ReactiveJoin<any>;
     $nor?: Array<FilterQuery<T>>;
     $and?: Array<FilterQuery<T>>;
     $regex?: RegExp | string;

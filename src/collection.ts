@@ -155,14 +155,18 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public removeMany(ids: string[], withEvent = true) {
         for (const id of ids) {
             const item = this.itemsMapped[id];
+            delete this.itemsMapped[id];
             const index = this.items.indexOf(item);
             if (-1 !== index) {
                 this.items.splice(index, 1);
             }
+
         }
 
         if (withEvent) {
             this.event.next({type: 'removeMany', ids: ids});
+
+            this.loaded();
         }
     }
 
@@ -190,6 +194,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public remove(id: string, withEvent = true) {
         if (this.itemsMapped[id]) {
             const item = this.itemsMapped[id];
+            delete this.itemsMapped[id];
             const index = this.items.indexOf(item);
             if (-1 !== index) {
                 this.items.splice(index, 1);
