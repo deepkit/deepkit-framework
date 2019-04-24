@@ -84,10 +84,11 @@ export class ConnectionMiddleware {
 
         if (message.name === 'collection/pagination') {
             if (this.collections[message.forId]) {
+                //happens when the client sent pagination changes.
                 this.collections[message.forId].pagination.setOrder(message.order);
                 this.collections[message.forId].pagination.setPage(message.page);
                 this.collections[message.forId].pagination.setItemsPerPage(message.itemsPerPage);
-                this.collections[message.forId].pagination.clientApplySubject.next();
+                this.collections[message.forId].pagination.event.next({type: 'client:apply'});
             }
             this.writer.ack(message.id);
             return;
@@ -277,26 +278,38 @@ export class ConnectionMiddleware {
                 this.writer.complete(message.id);
             });
 
-            if (collection.pagination.isActive()) {
-                const sendPagination = () => {
-                    nextValue = {
-                        type: 'pagination',
+            const sendPagination = () => {
+                nextValue = {
+                    type: 'pagination',
+                    event: {
+                        type: 'server:change',
                         order: collection.pagination.getOrder(),
                         itemsPerPage: collection.pagination.getItemsPerPage(),
                         page: collection.pagination.getPage(),
                         total: collection.pagination.getTotal(),
-                    };
-                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                    }
                 };
+                this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+            };
 
-                this.collectionSubscriptions[message.id].add = collection.pagination.applySubject.subscribe(() => {
-                    sendPagination();
-                });
+            this.collectionSubscriptions[message.id].add = collection.pagination.event.subscribe((event) => {
 
-                this.collectionSubscriptions[message.id].add = collection.pagination.serverChangesSubject.subscribe(() => {
+                if (event.type.startsWith('server:')) {
+                    this.writer.write({type: 'next/collection', id: message.id, next: {type: 'pagination', event: event}});
+                }
+
+                //happens when a query change or external (client) pagination change resulted in some pagination parameter changes (like total)
+                //so we send again the current state to the client.
+                if (event.type === 'internal_server_change') {
                     sendPagination();
-                });
-            }
+                }
+
+                //happens when the controller which created the collection changed the pagination. we then send the current state to the client.
+                if (event.type === 'apply') {
+                    sendPagination();
+                }
+
+            });
 
             this.collectionSubscriptions[message.id].add = collection.event.subscribe((event) => {
                 if (event.type === 'add') {

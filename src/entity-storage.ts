@@ -578,7 +578,7 @@ export class EntityStorage {
         const jsonCollection = new JSONObjectCollection<T>(classType);
 
         if (options.pagination) {
-            jsonCollection.pagination.activate();
+            jsonCollection.pagination._activate();
             if (options.page) {
                 jsonCollection.pagination.setPage(options.page);
             }
@@ -674,7 +674,7 @@ export class EntityStorage {
                 //todo, when total decreases and current page doesn't fit anymore, what to do?
                 if (jsonCollection.pagination.getTotal() !== total) {
                     jsonCollection.pagination.setTotal(total);
-                    jsonCollection.pagination.serverChangesSubject.next();
+                    jsonCollection.pagination.event.next({type: 'internal_server_change'});
                 }
 
                 //todo, update jsonCollection.pagination
@@ -683,12 +683,14 @@ export class EntityStorage {
             }
         };
 
-        jsonCollection.pagination.clientApplySubject.subscribe(async () => {
-            await updateCollection();
-        });
+        jsonCollection.pagination.event.subscribe(async (event) => {
+            if (event.type === 'client:apply' || event.type === 'apply') {
+                await updateCollection();
 
-        jsonCollection.pagination.applySubject.subscribe(async () => {
-            await updateCollection();
+                if (event.type === 'client:apply') {
+                    jsonCollection.pagination.event.next({type: 'server:apply/finished'});
+                }
+            }
         });
 
         reactiveQuery.next.subscribe(async (nextQuery: { query: any }) => {
@@ -713,6 +715,7 @@ export class EntityStorage {
 
             if (message.type === 'removeMany') {
                 if (jsonCollection.pagination.isActive()) {
+                    //todo, we should probablt throttle that, so this is max every second called
                     updateCollection();
                 } else {
                     for (const id of message.ids) {
@@ -728,6 +731,7 @@ export class EntityStorage {
 
             if (!knownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, currentQuery)) {
                 if (jsonCollection.pagination.isActive()) {
+                    //todo, we should probablt throttle that, so this is max every second called
                     updateCollection();
                 } else {
                     knownIDs[message.id] = true;
@@ -742,6 +746,7 @@ export class EntityStorage {
 
                 if (knownIDs[message.id] && !querySatisfied) {
                     if (jsonCollection.pagination.isActive()) {
+                        //todo, we should probablt throttle that, so this is max every second called
                         updateCollection();
                     } else {
                         //got invalid after updates?
@@ -751,6 +756,7 @@ export class EntityStorage {
                     }
                 } else if (!knownIDs[message.id] && querySatisfied) {
                     if (jsonCollection.pagination.isActive()) {
+                        //todo, we should probablt throttle that, so this is max every second called
                         updateCollection();
                     } else {
                         //got valid after updates?
@@ -771,6 +777,7 @@ export class EntityStorage {
 
             if (message.type === 'remove' && knownIDs[message.id]) {
                 if (jsonCollection.pagination.isActive()) {
+                    //todo, we should probablt throttle that, so this is max every second called
                     updateCollection();
                 } else {
                     delete knownIDs[message.id];
