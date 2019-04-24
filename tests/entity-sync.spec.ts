@@ -801,18 +801,6 @@ test('test entity collection sort/paginate', async () => {
                 .itemsPerPage(10)
                 .orderBy('nr')
                 .find();
-
-            // //todo, add sorting. How? Maybe a more functional way
-            // /*
-            //   this.storage.createFind(Item)
-            //     .filter({clazz: clazz})
-            //     .page(1)
-            //     .itemsPerPage(50)
-            //     .sort('nr');
-            //  */
-            // return this.storage.find(Item, {
-            //     clazz: clazz
-            // }, {paged: 10});
         }
     }
 
@@ -828,36 +816,39 @@ test('test entity collection sort/paginate', async () => {
         expect(items.all()[9].nr).toBe(27);
         expect(items.count()).toBe(10);
         expect(items.pagination.getTotal()).toBe(34);
+        expect(items.pagination.getPages()).toBe(4);
 
         //swap order
         items.pagination.orderByField('nr', 'desc');
-        items.pagination.apply();
-        await items.nextStateChange;
+        await items.pagination.apply();
         expect(items.all()[0].nr).toBe(99);
         expect(items.all()[9].nr).toBe(72);
         expect(items.count()).toBe(10);
         expect(items.pagination.getTotal()).toBe(34);
+        expect(items.pagination.getPages()).toBe(4);
 
         //swap order back
         items.pagination.orderByField('nr');
-        items.pagination.apply();
-        await items.nextStateChange;
+        await items.pagination.apply();
         expect(items.all()[0].nr).toBe(0);
         expect(items.all()[9].nr).toBe(27);
         expect(items.count()).toBe(10);
         expect(items.pagination.getTotal()).toBe(34);
+        expect(items.pagination.getPages()).toBe(4);
 
         test.remove('name_27');
         await items.nextStateChange;
         expect(items.all()[0].nr).toBe(0);
         expect(items.all()[9].nr).toBe(30);
         expect(items.pagination.getTotal()).toBe(33);
+        expect(items.pagination.getPages()).toBe(4);
 
         test.remove('name_0');
         await items.nextStateChange;
         expect(items.all()[0].nr).toBe(3);
         expect(items.all()[9].nr).toBe(33);
         expect(items.pagination.getTotal()).toBe(32);
+        expect(items.pagination.getPages()).toBe(4);
 
         //shouldn't change anything
         test.add('a', 101);
@@ -866,14 +857,24 @@ test('test entity collection sort/paginate', async () => {
         expect(items.all()[9].nr).toBe(33);
         expect(items.count()).toBe(10);
         expect(items.pagination.getTotal()).toBe(33);
+        expect(items.pagination.getPages()).toBe(4);
 
         //should change a lot
         test.add('a', -1);
         await items.nextStateChange;
         expect(items.all()[0].nr).toBe(-1);
         expect(items.all()[9].nr).toBe(30);
-        expect(items.count()).toBe(10);
         expect(items.pagination.getTotal()).toBe(34);
+        expect(items.pagination.getPages()).toBe(4);
+
+        items.pagination.setPage(2);
+        items.pagination.apply();
+        await items.nextStateChange;
+        expect(items.count()).toBe(10);
+        expect(items.all()[0].nr).toBe(33);
+        expect(items.all()[9].nr).toBe(60);
+        expect(items.pagination.getTotal()).toBe(34);
+        expect(items.pagination.getPages()).toBe(4);
     }
 
     await close();
