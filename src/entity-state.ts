@@ -272,10 +272,16 @@ export class EntityState {
         if (stream.type === 'pagination') {
             //when controller/entity-storage detected changes in those values, we set it without triggering an event.
             //triggering an event using setPage() etc would reload the current page.
-            collection.pagination.setItemsPerPage(stream.itemsPerPage);
-            collection.pagination.setPage(stream.page);
-            collection.pagination.setTotal(stream.total);
-            collection.pagination.setOrder(stream.order);
+            if (stream.event.type === 'server:change') {
+                collection.pagination.setItemsPerPage(stream.event.itemsPerPage);
+                collection.pagination.setPage(stream.event.page);
+                collection.pagination.setTotal(stream.event.total);
+                collection.pagination.setOrder(stream.event.order);
+            }
+
+            if (stream.event.type === 'server:apply/finished') {
+                collection.pagination._applyFinished();
+            }
         }
 
         if (stream.type === 'remove') {
