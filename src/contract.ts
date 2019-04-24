@@ -1,4 +1,5 @@
 import {JSONEntity} from "./core";
+import {CollectionPaginationEvent} from "./collection";
 
 export interface IdInterface {
     id: string;
@@ -188,14 +189,6 @@ export interface CollectionStreamBatchEnd {
     type: 'batch/end';
 }
 
-export interface CollectionStreamPaginationChange {
-    type: 'pagination';
-    order: {field: string, direction: 'asc' | 'desc'}[];
-    itemsPerPage: number;
-    total: number;
-    page: number;
-}
-
 export interface CollectionStreamReady {
     type: 'ready';
 }
@@ -229,10 +222,15 @@ export interface StreamFileRemove {
     path: string;
 }
 
+export interface CollectionStreamPagination {
+    type: 'pagination';
+    event: CollectionPaginationEvent;
+}
+
 export type CollectionStream =
     CollectionStreamBatchStart
     | CollectionStreamBatchEnd
-    | CollectionStreamPaginationChange
+    | CollectionStreamPagination
     | CollectionStreamSet
     | CollectionStreamSort
     | CollectionStreamAdd
@@ -257,7 +255,7 @@ export interface ServerMessageTypeCollection {
         itemsPerPage: number,
         page: number,
         total: number,
-    },
+    };
     entityName: string;
 }
 

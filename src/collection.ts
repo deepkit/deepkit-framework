@@ -50,11 +50,45 @@ export interface CollectionSort {
     direction: CollectionSortDirection;
 }
 
-//todo, refactor this to be part of the Collection directly. Makes life easier.
-export class CollectionPagination {
-    public readonly applySubject = new Subject();
-    public readonly clientApplySubject = new Subject();
-    public readonly serverChangesSubject = new Subject();
+export interface CollectionPaginationEventApplyFinished {
+    type: 'server:apply/finished';
+}
+
+export interface CollectionPaginationEventInternalChange {
+    type: 'internal_server_change';
+}
+
+export interface CollectionPaginationEventChange {
+    type: 'server:change';
+    order: { field: string, direction: 'asc' | 'desc' }[];
+    itemsPerPage: number;
+    total: number;
+    page: number;
+}
+
+export interface CollectionPaginationEventApply {
+    type: 'apply';
+}
+
+export interface CollectionPaginationEventClientApply {
+    type: 'client:apply';
+}
+
+export type CollectionPaginationEvent = CollectionPaginationEventApplyFinished
+    | CollectionPaginationEventChange
+    | CollectionPaginationEventInternalChange
+    | CollectionPaginationEventClientApply
+    | CollectionPaginationEventApply;
+
+export class CollectionPagination<T extends IdInterface> {
+    // public readonly applySubject = new Subject();
+    // public readonly clientApplySubject = new Subject();
+    // public readonly serverChangesSubject = new Subject();
+
+    public readonly event = new Subject<CollectionPaginationEvent>();
+
+    constructor(private collection: Collection<T>) {
+    }
 
     protected page = 1;
 
@@ -64,6 +98,9 @@ export class CollectionPagination {
     protected order: CollectionSort[] = [];
 
     protected active = false;
+
+    protected applyPromise?: Promise<void>;
+    protected applyPromiseResolver?: () => void;
 
     public setPage(page: number) {
         this.page = page;
@@ -77,32 +114,63 @@ export class CollectionPagination {
         return this.order;
     }
 
-    public setOrder(order: CollectionSort[]) {
+    public setOrder(order: CollectionSort[]): CollectionPagination<T> {
         this.order = order;
+        return this;
     }
 
-    public orderByField(field: string, direction: CollectionSortDirection = 'asc') {
+    public orderByField(field: string, direction: CollectionSortDirection = 'asc'): CollectionPagination<T> {
         this.order = [{field: field, direction: direction}];
+        return this;
     }
 
-    public apply() {
-        this.applySubject.next();
+    /**
+     * Sends current pagination setting to the server and refreshes the collection if necessary.
+     */
+    public apply(): Promise<void> {
+        this.applyPromise = new Promise((resolve, reject) => {
+            this.applyPromiseResolver = resolve;
+            this.event.next({type: 'apply'});
+        });
+
+        return this.applyPromise;
     }
 
-    public setTotal(total: number) {
+    /**
+     * Triggered from the server when the apply() finished. Doesn't matter if we got actual updates or not. It's important
+     * to distinguish because collection.nextStateChange is not reliable enough
+     * (as entity updates could happen between apply and applyFinish, which would trigger nextStateChange).
+     *
+     * @private
+     */
+    public _applyFinished() {
+        if (this.applyPromiseResolver) {
+            this.applyPromiseResolver();
+            delete this.applyPromise;
+            delete this.applyPromiseResolver;
+        }
+    }
+
+    public setTotal(total: number): CollectionPagination<T> {
         this.total = total;
+        return this;
     }
 
-    public setItemsPerPage(items: number) {
+    public setItemsPerPage(items: number): CollectionPagination<T> {
         this.itemsPerPage = items;
+        return this;
     }
 
     public isActive(): boolean {
         return this.active;
     }
 
-    public activate() {
+    /**
+     * It's not possible to activate this later on. This is set on the server side only.
+     */
+    public _activate(): CollectionPagination<T> {
         this.active = true;
+        return this;
     }
 
     public getPage(): number {
@@ -115,6 +183,14 @@ export class CollectionPagination {
 
     public getTotal(): number {
         return this.total;
+    }
+
+    public getPages(): number {
+        return Math.ceil(this.getTotal() / this.getItemsPerPage());
+    }
+
+    public isPageValid(): boolean {
+        return this.page > this.getPages();
     }
 }
 
@@ -129,7 +205,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly deepChange = new Subject<T>();
     protected nextChange?: Subject<void>;
 
-    public readonly pagination = new CollectionPagination();
+    public readonly pagination: CollectionPagination<T> = new CollectionPagination(this);
 
     protected batchActive = false;
     protected batchNeedLoaded = false;
@@ -177,9 +253,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
      */
     public async unsubscribe() {
         await super.unsubscribe();
-        this.pagination.applySubject.unsubscribe();
-        this.pagination.serverChangesSubject.unsubscribe();
-        this.pagination.clientApplySubject.unsubscribe();
+        this.pagination.event.unsubscribe();
 
         for (const teardown of this.teardowns) {
             await tearDown(teardown);
