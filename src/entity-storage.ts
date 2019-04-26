@@ -4,8 +4,19 @@ import {getEntityName} from "@marcj/marshal";
 import {Observable, Subject, Subscription} from "rxjs";
 import {convertClassQueryToMongo, convertPlainQueryToMongo, convertQueryToMongo, mongoToPlain, partialMongoToPlain} from "@marcj/marshal-mongo";
 import sift, {SiftQuery} from "sift";
-import {EntitySubject, ExchangeEntity, FilterQuery, GlutFile, IdInterface, JSONObjectCollection, ReactiveJoin, Collection, CollectionSort} from "@marcj/glut-core";
-import {ClassType, eachKey} from "@marcj/estdlib";
+import {
+    Collection,
+    CollectionSort,
+    EntitySubject,
+    ExchangeEntity,
+    FilterQuery,
+    FilterParameters,
+    GlutFile,
+    IdInterface,
+    JSONObjectCollection,
+    ReactiveSubQuery
+} from "@marcj/glut-core";
+import {ClassType, eachKey, each, eachPair, getClassName, sleep} from "@marcj/estdlib";
 import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
@@ -21,74 +32,107 @@ function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index
     return sift(query as SiftQuery<T[]>, [target]).length > 0;
 }
 
-class FindBuilder<T extends IdInterface> {
-    public _filter: FilterQuery<T> | ReactiveQuery<T> = {};
+class FindOptions<T extends IdInterface> {
+    public _filter: ReactiveQuery<T>;
+    public _filterParameters: FilterParameters = {};
+
     public _fields: (keyof T | string)[] = [];
     public _pagination: boolean = false;
     public _page: number = 1;
     public _itemsPerPage: number = 50;
     public _sorts: CollectionSort[] = [];
 
+    public _disableEntityChangeFeed = false;
+
     constructor(
         public readonly classType: ClassType<T>,
         public readonly entityStorage: EntityStorage,
-
-    ) {}
-
-    public filter(filter: FilterQuery<T> | ReactiveQuery<T> = {}): FindBuilder<T> {
-        this._filter = filter;
-        return this;
+    ) {
+        this._filter = ReactiveQuery.create(classType, {});
     }
 
-    public fields(fields: (keyof T | string)[]): FindBuilder<T> {
-        this._fields = fields;
-        return this;
-    }
-
-    public enablePagination(): FindBuilder<T> {
+    /**
+     * Filters the collection to a fix mongo query compatible filter.
+     */
+    public filter(filter: FilterQuery<T> | ReactiveQuery<T> = {}): FindOptions<T> {
+        this._filter = ReactiveQuery.create(this.classType, filter);
         this._pagination = true;
         return this;
     }
 
-    public page(page: number): FindBuilder<T> {
+    public isPartial(): boolean {
+        return this._fields.length > 0;
+    }
+
+    public disableEntityChangeFeed(): FindOptions<T> {
+        this._disableEntityChangeFeed = true;
+        return this;
+    }
+
+    public parameter(name: string, value?: any): FindOptions<T> {
+        this._filterParameters[name] = value;
+        return this;
+    }
+
+    public parameters(values: FilterParameters = {}): FindOptions<T> {
+        this._filterParameters = values;
+        return this;
+    }
+
+    public hasSort() {
+        return this._sorts && this._sorts.length > 0;
+    }
+
+    /**
+     * Limits the returned entity to given fields.
+     */
+    public fields(fields: (keyof T | string)[]): FindOptions<T> {
+        this._fields = fields;
+        return this;
+    }
+
+    public enablePagination(): FindOptions<T> {
+        this._pagination = true;
+        return this;
+    }
+
+    public isPaginationEnabled(): boolean {
+        return this._pagination;
+    }
+
+    public page(page: number): FindOptions<T> {
         this._page = page;
         this._pagination = true;
         return this;
     }
 
-    public itemsPerPage(items: number): FindBuilder<T> {
+    public itemsPerPage(items: number): FindOptions<T> {
         this._itemsPerPage = items;
         this._pagination = true;
         return this;
     }
 
-    public orderBy(field: keyof T | string, direction: 'asc' | 'desc' = 'asc'): FindBuilder<T> {
+    public orderBy(field: keyof T | string, direction: 'asc' | 'desc' = 'asc'): FindOptions<T> {
         this._sorts.push({field: field as string, direction: direction});
+        this._pagination = true;
         return this;
     }
 
     public find(): Promise<Collection<T>> {
-        return this.entityStorage.find(
-            this.classType,
-            this._filter,
-            {
-                fields: this._fields,
-                sort: this._sorts,
-                pagination: this._pagination,
-                itemsPerPage: this._itemsPerPage,
-                page: this._page,
-            }
-        );
+        return this.entityStorage.find(this);
     }
 }
 
 export class ReactiveQuery<T> {
-    public providers: any[] = [];
+    public providers: { name: string, classType: ClassType<any>, filter: ReactiveQuery<any>, field: string }[] = [];
+    public providerCollections: { [name: string]: Collection<any> } = {};
     public providersSet = new Set<string>();
-    public values: { [name: string]: any } = {};
+    public parameters: { [name: string]: any } = {};
     public didSetup = false;
+    public fieldNames: string[] = [];
+    public lastUsedParameterValues: FilterParameters = {};
 
-    public readonly next = new Subject<any>();
+    public readonly internalParameterChange = new Subject<any>();
 
     protected subs = new Subscriptions();
 
@@ -96,27 +140,32 @@ export class ReactiveQuery<T> {
         public classType: ClassType<T>,
         public query: FilterQuery<T>
     ) {
-        //read $join
+        //read $sub
         this.query = convertQueryToMongo(this.classType, this.query, (convertClassType, path, value) => {
             return value;
         }, {}, {
-            '$join': (name, value: any) => {
-                if (value instanceof ReactiveJoin) {
+            '$sub': (name, value: any) => {
+                if (value instanceof ReactiveSubQuery) {
                     const reactiveName = name + '_' + value.field;
+                    //we need to link parameters here
                     this.provide(reactiveName, value.classType, value.query, value.field);
-                    return {'$reactive': reactiveName};
+                    return {'$parameter': reactiveName};
                 }
 
-                throw new Error('$join needs to be ReactiveJoin.');
+                throw new Error('$sub needs to be ReactiveSubQuery.');
             }
         });
     }
 
-    static create<T>(classType: ClassType<T>, query: FilterQuery<T>) {
+    static create<U>(classType: ClassType<U>, query: FilterQuery<U> | ReactiveQuery<U>): ReactiveQuery<U> {
+        if (query instanceof ReactiveQuery) {
+            return query;
+        }
+
         return new ReactiveQuery(classType, query);
     }
 
-    public provide<T, K extends keyof T>(name: string, classType: ClassType<T>, filter: any, field?: K | 'id') {
+    public provide<T extends IdInterface, K extends keyof T & string>(name: string, classType: ClassType<T>, filter: any, field?: K | 'id') {
         if (this.didSetup) {
             throw new Error('Can not add provider while already activated.');
         }
@@ -138,47 +187,90 @@ export class ReactiveQuery<T> {
         return this;
     }
 
-    public change(name: string, value: any) {
+    /**
+     * Triggered when internal parameters changed (like join values)
+     */
+    public _changeParameter(name: string, value: any) {
         //rebuild filter and re-query, to see what changed.
-        this.values[name] = value;
+        this.parameters[name] = value;
 
         if (this.didSetup) {
             //throttle?
-            this.next.next(this.getClassQuery());
+            this.internalParameterChange.next();
         }
     }
 
     public unsubscribe() {
         this.subs.unsubscribe();
-        this.next.unsubscribe();
+        for (const collection of each(this.providerCollections)) {
+            collection.unsubscribe();
+        }
+
+        this.internalParameterChange.unsubscribe();
+    }
+
+    public async setAndApplyParameters(parameters: FilterParameters) {
+        this.parameters = parameters;
+
+        //trigger deep
+        for (const collection of each(this.providerCollections)) {
+            collection.pagination.setParameters(this.parameters);
+            await collection.pagination.apply();
+        }
     }
 
     public async setupProviders(storage: EntityStorage) {
         for (const provider of this.providers) {
-            const result = await storage.find(provider.classType, provider.filter, {fields: [provider.field], disableEntityChangeFeed: true});
-            this.subs.add = result.subscribe((v: any) => {
-                //change, propagate
+
+            const filter = ReactiveQuery.create(provider.classType, provider.filter);
+
+            const jsonCollection = await storage
+                .collection(provider.classType)
+                .filter(filter)
+                .parameters(this.parameters)
+                .fields([provider.field])
+                .disableEntityChangeFeed()
+                .find();
+
+            if (this.providerCollections[provider.name]) {
+                throw new Error(`Provider for name ${provider.name} already exists.`);
+            }
+
+            this.providerCollections[provider.name] = jsonCollection;
+
+            // const result = await storage.find(provider.classType, provider.filter, {fields: [provider.field], disableEntityChangeFeed: true});
+            this.subs.add = jsonCollection.subscribe((v: any) => {
                 // console.log('change', provider.name, provider.field, v.map((i: any) => i[provider.field]));
 
-                //WARNING: usually `filter` is class values based, but we pass here json values (since find() return json values). we should probably convert that here
-                this.change(provider.name, v.map((i: any) => i[provider.field]));
+                //WARNING: usually `filter` is class parameters based, but we pass here json parameters (since find() return json parameters). we should probably convert that here
+                this._changeParameter(provider.name, {$in: v.map((i: any) => i[provider.field])});
             });
         }
 
         this.didSetup = true;
     }
 
+    public haveParametersChanged(): boolean {
+        for (const [i, v] of eachPair(this.lastUsedParameterValues)) {
+            //poor man's comparison check
+            if (JSON.stringify(this.parameters[i]) !== JSON.stringify(v)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public getClassQuery(): { query: any, fieldNames: string[] } {
         const fieldNames = {};
         const query = convertClassQueryToMongo(this.classType, this.query, fieldNames, {
-            '$reactive': (name, value) => {
-                if (undefined === this.values[value]) {
-                    throw new Error(`ReactiveQuery missing provider for '${value}'.`);
-                }
-
-                return {$in: this.values[value]};
+            '$parameter': (name, value) => {
+                this.lastUsedParameterValues[value] = this.parameters[value];
+                return this.parameters[value];
             }
         });
+
+        this.fieldNames = Object.keys(fieldNames);
 
         return {
             query: query,
@@ -456,7 +548,7 @@ export class EntityStorage {
             (async () => {
                 const knownIDs: { [id: string]: boolean } = {};
                 const filterFields: { [name: string]: boolean } = {};
-                //todo, we expect filter to have class instance as values (Date, etc), so we need to convert it to JSON values first, or whatever findQuerySatisfied needs.
+                //todo, we expect filter to have class instance as parameters (Date, etc), so we need to convert it to JSON parameters first, or whatever findQuerySatisfied needs.
                 convertPlainQueryToMongo(classType, filter, filterFields);
                 let counter = 0;
 
@@ -504,6 +596,8 @@ export class EntityStorage {
                     counter++;
                     knownIDs[item.id] = true;
                 }
+
+                await cursor.close();
 
                 observer.next(counter);
             })();
@@ -557,61 +651,59 @@ export class EntityStorage {
     }
 
     collection<T extends IdInterface>(classType: ClassType<T>) {
-        return new FindBuilder(classType, this);
+        return new FindOptions(classType, this);
     }
 
     /**
      * For performance reasons, this returns a JSONObjectCollection. Use plainToClass() if you want to work with the result. TODO add option to support regular Collection as well.
      */
     async find<T extends IdInterface, K extends keyof T & string>(
-        classType: ClassType<T>,
-        filter: FilterQuery<T> | ReactiveQuery<T> = {},
-        options: {
-            fields?: (keyof T | string)[],
-            disableEntityChangeFeed?: true,
-            pagination?: boolean,
-            page?: number,
-            itemsPerPage?: number,
-            sort?: CollectionSort[],
-        } = {}
+        options: FindOptions<T>
     ): Promise<JSONObjectCollection<T>> {
-        const jsonCollection = new JSONObjectCollection<T>(classType);
+        const jsonCollection = new JSONObjectCollection<T>(options.classType);
 
-        if (options.pagination) {
+        if (options.isPaginationEnabled()) {
             jsonCollection.pagination._activate();
-            if (options.page) {
-                jsonCollection.pagination.setPage(options.page);
+            if (options._page) {
+                jsonCollection.pagination.setPage(options._page);
             }
-            if (options.itemsPerPage) {
-                jsonCollection.pagination.setItemsPerPage(options.itemsPerPage);
+            if (options._itemsPerPage) {
+                jsonCollection.pagination.setItemsPerPage(options._itemsPerPage);
             }
-            if (options.sort) {
-                jsonCollection.pagination.setOrder(options.sort);
+            if (options.hasSort()) {
+                jsonCollection.pagination.setSort(options._sorts);
             }
+
+            jsonCollection.pagination.setParameters(options._filterParameters);
         }
 
-        const reactiveQuery = filter instanceof ReactiveQuery ? filter : ReactiveQuery.create(classType, filter);
+        //todo, that doesnt work with parameters
+        const reactiveQuery = options._filter;
+        reactiveQuery.parameters = options._filterParameters;
+
         const knownIDs: { [id: string]: boolean } = {};
 
         await reactiveQuery.setupProviders(this);
 
         const initialClassQuery = reactiveQuery.getClassQuery();
-        let currentQuery: any = initialClassQuery.query;
+
+        let currentQuery = initialClassQuery.query;
 
         const getCursor = async (fields?: (keyof T | string)[]): Promise<Cursor<T>> => {
             if (!fields) {
-                fields = options.fields;
+                fields = options._fields;
             }
 
             if (fields && fields.length > 0) {
-                return await this.exchangeDatabase.rawPlainCursor(classType, currentQuery, [...fields, 'id', 'version']);
+                return await this.exchangeDatabase.rawPlainCursor(options.classType, currentQuery, [...fields, 'id', 'version']);
             }
 
-            return await this.exchangeDatabase.rawPlainCursor(classType, currentQuery);
+            return await this.exchangeDatabase.rawPlainCursor(options.classType, currentQuery);
         };
 
         const getItem = async (id: string) => {
-            const cursor = await this.exchangeDatabase.rawPlainCursor(classType, {id: id} as FilterQuery<T>);
+            const cursor = await this.exchangeDatabase
+                .rawPlainCursor(options.classType, {id: id} as FilterQuery<T>, options.isPartial() ? [...options._fields, 'id', 'version'] : []);
             return (await cursor.limit(1).toArray())[0];
         };
 
@@ -620,9 +712,9 @@ export class EntityStorage {
                 cursor.limit(jsonCollection.pagination.getItemsPerPage());
                 cursor.skip((jsonCollection.pagination.getPage() * jsonCollection.pagination.getItemsPerPage()) - jsonCollection.pagination.getItemsPerPage());
 
-                if (jsonCollection.pagination.hasOrder()) {
+                if (jsonCollection.pagination.hasSort()) {
                     const sort: { [path: string]: 1 | -1 } = {};
-                    for (const order of jsonCollection.pagination.getOrder()) {
+                    for (const order of jsonCollection.pagination.getSort()) {
                         sort[order.field] = order.direction === 'asc' ? 1 : -1;
                     }
                     cursor.sort(sort);
@@ -630,83 +722,147 @@ export class EntityStorage {
             }
         };
 
-        const updateCollection = async () => {
-            const cursor = await getCursor(['id']);
-            const total = await cursor.count(false);
+        let updateCollectionPromise: Promise<void> | undefined;
+        let pagingHash = '';
+        let parametersHash = '';
 
-            applyPagination(cursor);
-            const items = await cursor.toArray();
-            const copiedKnownIds = {...knownIDs};
+        //todo, throttle to max 1 times per second
+        const updateCollection = async (databaseChanged: boolean = false) => {
+            while (updateCollectionPromise) {
+                await sleep(0.01);
+                await updateCollectionPromise;
+            }
 
-            jsonCollection.batchStart();
-            try {
-                for (const item of items) {
-                    delete copiedKnownIds[item.id];
+            return updateCollectionPromise = new Promise<void>(async (resolve, reject) => {
+                try {
 
-                    if (!knownIDs[item.id]) {
-                        knownIDs[item.id] = true;
-                        this.increaseUsage(classType, item.id);
+                    //when database is changed during entityFeed events, we don't check that stuff
+                    if (databaseChanged) {
+                        pagingHash = jsonCollection.pagination.getPagingHash();
+                        parametersHash = jsonCollection.pagination.getParametersHash();
+                    } else {
+                        const newPagingHash = jsonCollection.pagination.getPagingHash();
+                        const newParametersHash = jsonCollection.pagination.getParametersHash();
+                        let needUpdate = false;
 
-                        const fullItem = await getItem(item.id);
+                        if (pagingHash !== newPagingHash) {
+                            pagingHash = newPagingHash;
+                            needUpdate = true;
+                        }
 
-                        //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
-                        if (fullItem) {
-                            jsonCollection.add(fullItem);
-                        } else {
-                            console.warn('ID not found anymore', item.id);
+                        if (parametersHash !== newParametersHash) {
+                            parametersHash = newParametersHash;
+                            if (reactiveQuery.haveParametersChanged()) {
+                                needUpdate = true;
+                            }
+                        }
+
+                        if (!needUpdate) {
+                            // console.log('updateCollection needUpdate=false', getClassName(reactiveQuery.classType), newPagingHash, newParametersHash);
+                            return;
                         }
                     }
+
+                    currentQuery = reactiveQuery.getClassQuery().query;
+
+
+                    const cursor = await getCursor(['id']);
+                    const total = await cursor.count(false);
+
+                    applyPagination(cursor);
+
+                    const items = await cursor.toArray();
+                    await cursor.close();
+
+                    // console.log('updateCollection needUpdate=true', getClassName(reactiveQuery.classType), currentQuery, items);
+
+                    const copiedKnownIds = {...knownIDs};
+
+                    jsonCollection.batchStart();
+                    try {
+                        //todo, detect when whole page changed, so we can load&add all new items at once, instead of one-by-one.
+                        for (const item of items) {
+                            delete copiedKnownIds[item.id];
+
+                            if (!knownIDs[item.id]) {
+                                knownIDs[item.id] = true;
+                                this.increaseUsage(options.classType, item.id);
+
+                                const fullItem = await getItem(item.id);
+
+                                //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
+                                if (fullItem) {
+                                    jsonCollection.add(fullItem);
+                                } else {
+                                    console.warn('ID not found anymore', item.id);
+                                }
+                            }
+                        }
+
+                        //items left in copiedKnownIds have been deleted or filter doesn't match anymore.
+                        for (const id of eachKey(copiedKnownIds)) {
+                            delete knownIDs[id];
+                            this.decreaseUsage(options.classType, id);
+                        }
+
+                        const idsToRemove = Object.keys(copiedKnownIds);
+                        if (idsToRemove.length > 0) {
+                            jsonCollection.removeMany(idsToRemove);
+                        }
+
+                        //todo, call it only when really changed
+                        jsonCollection.setSort(items.map(v => v.id));
+
+                        if (jsonCollection.pagination.getTotal() !== total) {
+                            jsonCollection.pagination.setTotal(total);
+                            jsonCollection.pagination.event.next({type: 'internal_server_change'});
+                        }
+                    } finally {
+                        jsonCollection.batchEnd();
+                    }
+                } catch (error) {
+                    console.error('updateCollection error', getClassName(reactiveQuery.classType), error);
+                    updateCollectionPromise = undefined;
+                    reject(error);
+                } finally {
+                    updateCollectionPromise = undefined;
+                    resolve();
                 }
-
-                //items left in copiedKnownIds have been deleted or filter doesn't match anylonger.
-                for (const id of eachKey(copiedKnownIds)) {
-                    delete knownIDs[id];
-                    this.decreaseUsage(classType, id);
-                }
-
-                const idsToRemove = Object.keys(copiedKnownIds);
-                if (idsToRemove.length > 0) {
-                    jsonCollection.removeMany(idsToRemove);
-                }
-
-                jsonCollection.setSort(items.map(v => v.id));
-
-                //todo, when total decreases and current page doesn't fit anymore, what to do?
-                if (jsonCollection.pagination.getTotal() !== total) {
-                    jsonCollection.pagination.setTotal(total);
-                    jsonCollection.pagination.event.next({type: 'internal_server_change'});
-                }
-
-                //todo, update jsonCollection.pagination
-            } finally {
-                jsonCollection.batchEnd();
-            }
+            });
         };
 
         jsonCollection.pagination.event.subscribe(async (event) => {
             if (event.type === 'client:apply' || event.type === 'apply') {
+                console.log(event.type, getClassName(reactiveQuery.classType));
+
+                await reactiveQuery.setAndApplyParameters(jsonCollection.pagination.getParameters());
+
                 await updateCollection();
 
                 if (event.type === 'client:apply') {
                     jsonCollection.pagination.event.next({type: 'server:apply/finished'});
                 }
+
+                if (event.type === 'apply') {
+                    jsonCollection.pagination._applyFinished();
+                }
             }
         });
 
-        reactiveQuery.next.subscribe(async (nextQuery: { query: any }) => {
-            currentQuery = nextQuery.query;
+        //triggered when a sub query changed its values. It changed our parameters basically.
+        reactiveQuery.internalParameterChange.subscribe(async () => {
             await updateCollection();
         });
 
-        if (!options.disableEntityChangeFeed) {
-            this.subscribeEntity(classType);
+        if (!options._disableEntityChangeFeed) {
+            this.subscribeEntity(options.classType);
         }
 
-        const fieldSub: AsyncSubscription = await this.exchange.subscribeEntityFields(classType, initialClassQuery.fieldNames);
+        const fieldSub: AsyncSubscription = await this.exchange.subscribeEntityFields(options.classType, initialClassQuery.fieldNames);
 
-        const sub: Subscription = await this.exchange.subscribeEntity(classType, async (message: ExchangeEntity) => {
+        const sub: Subscription = await this.exchange.subscribeEntity(options.classType, async (message: ExchangeEntity) => {
             // console.log(
-            //     'subscribeEntity message', getEntityName(classType), (message as any)['id'],
+            //     'subscribeEntity message', getEntityName(options.classType), (message as any)['id'],
             //     knownIDs[(message as any)['id']],
             //     (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : undefined,
             //     currentQuery,
@@ -715,12 +871,11 @@ export class EntityStorage {
 
             if (message.type === 'removeMany') {
                 if (jsonCollection.pagination.isActive()) {
-                    //todo, we should probablt throttle that, so this is max every second called
-                    updateCollection();
+                    updateCollection(true);
                 } else {
                     for (const id of message.ids) {
                         delete knownIDs[id];
-                        this.decreaseUsage(classType, id);
+                        this.decreaseUsage(options.classType, id);
                     }
 
                     jsonCollection.removeMany(message.ids);
@@ -731,11 +886,10 @@ export class EntityStorage {
 
             if (!knownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, currentQuery)) {
                 if (jsonCollection.pagination.isActive()) {
-                    //todo, we should probablt throttle that, so this is max every second called
-                    updateCollection();
+                    updateCollection(true);
                 } else {
                     knownIDs[message.id] = true;
-                    this.increaseUsage(classType, message.id);
+                    this.increaseUsage(options.classType, message.id);
                     //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
                     jsonCollection.add(message.item);
                 }
@@ -746,22 +900,20 @@ export class EntityStorage {
 
                 if (knownIDs[message.id] && !querySatisfied) {
                     if (jsonCollection.pagination.isActive()) {
-                        //todo, we should probablt throttle that, so this is max every second called
-                        updateCollection();
+                        updateCollection(true);
                     } else {
                         //got invalid after updates?
                         delete knownIDs[message.id];
-                        this.decreaseUsage(classType, message.id);
+                        this.decreaseUsage(options.classType, message.id);
                         jsonCollection.remove(message.id);
                     }
                 } else if (!knownIDs[message.id] && querySatisfied) {
                     if (jsonCollection.pagination.isActive()) {
-                        //todo, we should probablt throttle that, so this is max every second called
-                        updateCollection();
+                        updateCollection(true);
                     } else {
                         //got valid after updates?
                         knownIDs[message.id] = true;
-                        this.increaseUsage(classType, message.id);
+                        this.increaseUsage(options.classType, message.id);
 
                         let itemToSend = message.item;
                         if (message.type === 'patch') {
@@ -778,10 +930,10 @@ export class EntityStorage {
             if (message.type === 'remove' && knownIDs[message.id]) {
                 if (jsonCollection.pagination.isActive()) {
                     //todo, we should probablt throttle that, so this is max every second called
-                    updateCollection();
+                    updateCollection(true);
                 } else {
                     delete knownIDs[message.id];
-                    this.decreaseUsage(classType, message.id);
+                    this.decreaseUsage(options.classType, message.id);
                     jsonCollection.remove(message.id);
                 }
             }
@@ -790,7 +942,7 @@ export class EntityStorage {
         jsonCollection.addTeardown(async () => {
             reactiveQuery.unsubscribe();
             for (const id of eachKey(knownIDs)) {
-                this.decreaseUsage(classType, id);
+                this.decreaseUsage(options.classType, id);
             }
             sub.unsubscribe();
             await fieldSub.unsubscribe();
@@ -802,44 +954,14 @@ export class EntityStorage {
         applyPagination(cursor);
 
         const items = await cursor.toArray();
+        await cursor.close();
 
         for (const item of items) {
             knownIDs[item.id] = true;
-            this.increaseUsage(classType, item.id);
+            this.increaseUsage(options.classType, item.id);
         }
 
         jsonCollection.set(items);
-
-        // if (options.fields) {
-        //     const project: { [field: string]: number } = {};
-        //     if ('string' === typeof options.fields) {
-        //         project[options.fields as string] = 1;
-        //     } else {
-        //         for (const i of options.fields as string[]) {
-        //             project[i] = 1;
-        //         }
-        //     }
-        //     project['id'] = 1;
-        //     project['version'] = 1;
-        //
-        //     const items = await cursor.project(project).toArray();
-        //     for (const item of items) {
-        //         knownIDs[item.id] = true;
-        //         this.increaseUsage(classType, item.id);
-        //     }
-        //
-        //     //warning: properties are not class instances, since we passed toClass=false. Fix that.
-        //     jsonCollection.set(items);
-        // } else {
-        //     const items = await cursor.toArray();
-        //
-        //     for (const item of items) {
-        //         knownIDs[item.id] = true;
-        //         this.increaseUsage(classType, item.id);
-        //     }
-        //
-        //     jsonCollection.set(items);
-        // }
 
         return jsonCollection;
     }

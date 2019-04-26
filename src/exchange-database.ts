@@ -53,7 +53,7 @@ export class ExchangeDatabase {
     }
 
     public async remove<T extends IdInterface>(classType: ClassType<T>, id: string) {
-        const removed = this.database.remove(classType, id);
+        await this.database.deleteOne(classType, {id: id});
 
         if (this.notifyChanges(classType)) {
             this.exchange.publishEntity(classType, {
@@ -62,8 +62,6 @@ export class ExchangeDatabase {
                 version: 0, //0 means it overwrites always, no matter what previous version was
             });
         }
-
-        return removed;
     }
 
     public async getIds<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<string[]> {
@@ -123,7 +121,7 @@ export class ExchangeDatabase {
     /**
      * Returns a find cursor of MongoDB with map to mongoToPlain, or partialMongoToPlain if fields are given.
      *
-     * `filter` needs to be a FilterQuery of class values. convertClassQueryToMongo() is applied accordingly.
+     * `filter` needs to be a FilterQuery of class parameters. convertClassQueryToMongo() is applied accordingly.
      */
     public async rawPlainCursor<T extends IdInterface>(
         classType: ClassType<T>,

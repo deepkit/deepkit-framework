@@ -85,9 +85,11 @@ export class ConnectionMiddleware {
         if (message.name === 'collection/pagination') {
             if (this.collections[message.forId]) {
                 //happens when the client sent pagination changes.
-                this.collections[message.forId].pagination.setOrder(message.order);
+                // console.log('client send pagination updates', message);
+                this.collections[message.forId].pagination.setSort(message.sort);
                 this.collections[message.forId].pagination.setPage(message.page);
                 this.collections[message.forId].pagination.setItemsPerPage(message.itemsPerPage);
+                this.collections[message.forId].pagination.setParameters(message.parameters);
                 this.collections[message.forId].pagination.event.next({type: 'client:apply'});
             }
             this.writer.ack(message.id);
@@ -242,6 +244,8 @@ export class ConnectionMiddleware {
                     itemsPerPage: collection.pagination.getItemsPerPage(),
                     page: collection.pagination.getPage(),
                     total: collection.pagination.getTotal(),
+                    sort: collection.pagination.getSort(),
+                    parameters: collection.pagination.getParameters(),
                 },
                 entityName: getEntityName(collection.classType)
             });
@@ -283,10 +287,11 @@ export class ConnectionMiddleware {
                     type: 'pagination',
                     event: {
                         type: 'server:change',
-                        order: collection.pagination.getOrder(),
+                        order: collection.pagination.getSort(),
                         itemsPerPage: collection.pagination.getItemsPerPage(),
                         page: collection.pagination.getPage(),
                         total: collection.pagination.getTotal(),
+                        parameters: collection.pagination.getParameters(),
                     }
                 };
                 this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
