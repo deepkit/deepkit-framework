@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-server",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
@@ -37,7 +37,7 @@
     "ws": "^6.1.2"
   },
   "devDependencies": {
-    "@marcj/glut-core": "^0.0.9",
+    "@marcj/glut-core": "^0.0.10",
     "@marcj/marshal": "^0.8.7",
     "@marcj/marshal-mongo": "^0.8.8",
     "@types/clone": "^0.1.30",
