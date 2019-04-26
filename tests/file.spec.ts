@@ -46,9 +46,9 @@ test('test file list', async () => {
 
         @Action()
         async files() {
-            return this.storage.find(GlutFile, {
+            return this.storage.collection(GlutFile).filter({
                 path: {$regex: /^test2/}
-            });
+            }).find();
         }
     }
 

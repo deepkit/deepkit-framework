@@ -1,6 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
-import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveJoin} from "@marcj/glut-core";
+import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@marcj/glut-core";
 import {ClientConnection, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {createServerClientPair} from "./util";
 import {Entity, Field, getEntitySchema, IDField, uuid, UUIDField} from '@marcj/marshal';
@@ -54,16 +54,18 @@ test('test entity sync list', async () => {
             expect(ids.length).toBe(4);
 
             setTimeout(async () => {
+                console.log('Peter 3 added');
                 await this.database.add(User, new User('Peter 3'));
             }, 500);
 
             setTimeout(async () => {
+                console.log('Peter 1 patched');
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
             }, 1000);
 
-            return await this.storage.find(User, {
+            return await this.storage.collection(User).filter({
                 name: {$regex: /Peter/}
-            });
+            }).find();
         }
 
         @Action()
@@ -129,9 +131,9 @@ test('test entity sync list: remove', async () => {
             await this.database.add(User, new User('Peter 1'));
             await this.database.add(User, new User('Peter 2'));
 
-            return await this.storage.find(User, {
+            return await this.storage.collection(User).filter({
                 name: {$regex: /Peter/}
-            });
+            }).find();
         }
 
         @Action()
@@ -417,31 +419,31 @@ test('test entity collection unsubscribe + findOne', async () => {
         constructor(
             private connection: ClientConnection,
             private storage: EntityStorage,
-            private database: ExchangeDatabase,
+            private exchangeDatabase: ExchangeDatabase,
         ) {
         }
 
         @Action()
         async init() {
-            await this.database.deleteMany(Job, {});
-            await this.database.add(Job, new Job('Peter 1'));
-            await this.database.add(Job, new Job('Peter 2'));
-            await this.database.add(Job, new Job('Peter 3'));
+            await this.exchangeDatabase.deleteMany(Job, {});
+            await this.exchangeDatabase.add(Job, new Job('Peter 1'));
+            await this.exchangeDatabase.add(Job, new Job('Peter 2'));
+            await this.exchangeDatabase.add(Job, new Job('Peter 3'));
 
-            await this.database.add(Job, new Job('Marie 1'));
-            await this.database.add(Job, new Job('Marie 2'));
+            await this.exchangeDatabase.add(Job, new Job('Marie 1'));
+            await this.exchangeDatabase.add(Job, new Job('Marie 2'));
         }
 
         @Action()
         async getJobs(): Promise<Collection<Job>> {
-            return await this.storage.find(Job, {
+            return await this.storage.collection(Job).filter({
                 name: {$regex: /Peter/}
-            });
+            }).find();
         }
 
         @Action()
         async addJob(name: string): Promise<void> {
-            return await this.database.add(Job, new Job(name));
+            return await this.exchangeDatabase.add(Job, new Job(name));
         }
 
         @Action()
@@ -460,13 +462,13 @@ test('test entity collection unsubscribe + findOne', async () => {
 
         @Action()
         async rmJobByName(name: string): Promise<void> {
-            await this.database.deleteOne(Job, {
+            await this.exchangeDatabase.deleteOne(Job, {
                 name: name
             });
         }
     }
 
-    const {client, close} = await createServerClientPair('test entity sync count', [TestController], [Job]);
+    const {client, close} = await createServerClientPair('test entity collection unsubscribe + findOne', [TestController], [Job]);
     const test = client.controller<TestController>('test');
 
     await test.init();
@@ -693,16 +695,18 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async find(teamName: string): Promise<Collection<User>> {
-            return this.storage.find(User, {
+            return this.storage.collection(User).filter({
                 id: {
-                    $join: ReactiveJoin.createField(UserTeam, 'userId', {
+                    $sub: ReactiveSubQuery.createField(UserTeam, 'userId', {
                             teamId: {
-                                $join: ReactiveJoin.create(Team, {name: teamName})
+                                $sub: ReactiveSubQuery.create(Team, {name: {$parameter: 'teamName'}})
                             }
                         }
                     )
                 }
-            });
+            })
+                .parameter('teamName', teamName)
+                .find();
         }
     }
 
@@ -713,34 +717,59 @@ test('test entity collection reactive find', async () => {
 
     const marieId = await test.getUserId('Marie');
 
-    const teamMembers = await test.find('Team a');
-    console.log('members loaded');
-    expect(teamMembers.count()).toBe(3);
-    expect(teamMembers.get(marieId)).toBeUndefined();
+    {
+        for (let i = 0; i < 50; i++) {
+            console.log('load team A', i);
+            const teamMembers = await test.find('Team a');
+            console.log('loaded');
+            expect(teamMembers.count()).toBe(3);
+            await teamMembers.unsubscribe();
+        }
+    }
 
-    test.assignUser('Marie', 'Team a');
-    await teamMembers.nextStateChange;
-    console.log('marie assigned');
-    expect(teamMembers.count()).toBe(4);
-    expect(teamMembers.get(marieId)).toBeInstanceOf(User);
-    expect(teamMembers.get(marieId)!.name).toBe('Marie');
+    {
+        const teamMembers = await test.find('Team a');
+        expect(teamMembers.count()).toBe(3);
+        console.log('members loaded');
 
-    test.unAssignUser('Marie', 'Team a');
-    await teamMembers.nextStateChange;
-    console.log('marie unassigned');
-    expect(teamMembers.count()).toBe(3);
-    expect(teamMembers.get(marieId)).toBeUndefined();
+        console.log('apply Team B');
+        await teamMembers.pagination.setParameter('teamName', 'Team b').apply();
+        console.log('Team B loaded');
+        expect(teamMembers.count()).toBe(1);
+        expect(teamMembers.all()[0].id).toBe(marieId);
+    }
 
-    test.removeTeam('Team a');
-    await teamMembers.nextStateChange;
-    console.log('Team deleted');
-    expect(teamMembers.count()).toBe(0);
-    expect(teamMembers.get(marieId)).toBeUndefined();
+    {
+        const teamMembers = await test.find('Team a');
+        console.log('members loaded');
+        expect(teamMembers.count()).toBe(3);
+        expect(teamMembers.get(marieId)).toBeUndefined();
+
+        test.assignUser('Marie', 'Team a');
+        await teamMembers.nextStateChange;
+        console.log('marie assigned');
+        expect(teamMembers.count()).toBe(4);
+        expect(teamMembers.get(marieId)).toBeInstanceOf(User);
+        expect(teamMembers.get(marieId)!.name).toBe('Marie');
+
+        console.log('marie unassign ...');
+        test.unAssignUser('Marie', 'Team a');
+        await teamMembers.nextStateChange;
+        console.log('marie unassigned');
+        expect(teamMembers.count()).toBe(3);
+        expect(teamMembers.get(marieId)).toBeUndefined();
+
+        test.removeTeam('Team a');
+        await teamMembers.nextStateChange;
+        console.log('Team deleted');
+        expect(teamMembers.count()).toBe(0);
+        expect(teamMembers.get(marieId)).toBeUndefined();
+    }
 
     await close();
 });
 
-test('test entity collection sort/paginate', async () => {
+test('test entity collection pagination', async () => {
     @Entity('paginate/item')
     class Item implements IdInterface {
         @UUIDField()
@@ -796,7 +825,8 @@ test('test entity collection sort/paginate', async () => {
         @Action()
         async findByClass(clazz: string): Promise<Collection<Item>> {
             return this.storage.collection(Item)
-                .filter({clazz: clazz})
+                .filter({clazz: {$parameter: 'clazz'}})
+                .parameter('clazz', clazz)
                 .enablePagination()
                 .itemsPerPage(10)
                 .orderBy('nr')
@@ -804,10 +834,36 @@ test('test entity collection sort/paginate', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test entity collection sort/paginate', [TestController], [Item]);
+    const {client, close} = await createServerClientPair('test entity collection pagination', [TestController], [Item]);
     const test = client.controller<TestController>('test');
 
     await test.init();
+
+    {
+        const items = await test.findByClass('a');
+        expect(items.pagination.getTotal()).toBe(34);
+        expect(items.pagination.getItemsPerPage()).toBe(10);
+        expect(items.pagination.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
+        expect(items.pagination.getParameter('clazz')).toBe('a');
+
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(27);
+        expect(items.count()).toBe(10);
+        expect(items.pagination.getTotal()).toBe(34);
+        expect(items.pagination.getPages()).toBe(4);
+
+        await items.pagination.setParameter('clazz', 'b').apply();
+        expect(items.pagination.getTotal()).toBe(33);
+        expect(items.pagination.getItemsPerPage()).toBe(10);
+        expect(items.pagination.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
+        expect(items.pagination.getParameter('clazz')).toBe('b');
+
+        expect(items.all()[0].nr).toBe(1);
+        expect(items.all()[9].nr).toBe(28);
+        expect(items.count()).toBe(10);
+        expect(items.pagination.getTotal()).toBe(33);
+        expect(items.pagination.getPages()).toBe(4);
+    }
 
     {
         const items = await test.findByClass('a');
