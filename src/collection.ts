@@ -8,6 +8,8 @@ import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {ClassType, getClassName} from "@marcj/estdlib";
 
+export type FilterParameters = {[name: string]: any | undefined};
+
 export interface CollectionBatchStart {
     type: 'batch/start';
 }
@@ -61,6 +63,7 @@ export interface CollectionPaginationEventInternalChange {
 export interface CollectionPaginationEventChange {
     type: 'server:change';
     order: { field: string, direction: 'asc' | 'desc' }[];
+    parameters: FilterParameters;
     itemsPerPage: number;
     total: number;
     page: number;
@@ -81,11 +84,9 @@ export type CollectionPaginationEvent = CollectionPaginationEventApplyFinished
     | CollectionPaginationEventApply;
 
 export class CollectionPagination<T extends IdInterface> {
-    // public readonly applySubject = new Subject();
-    // public readonly clientApplySubject = new Subject();
-    // public readonly serverChangesSubject = new Subject();
-
     public readonly event = new Subject<CollectionPaginationEvent>();
+
+    public _parameters: FilterParameters = {};
 
     constructor(private collection: Collection<T>) {
     }
@@ -95,32 +96,74 @@ export class CollectionPagination<T extends IdInterface> {
     protected total = 0;
     protected itemsPerPage = 50;
 
-    protected order: CollectionSort[] = [];
+    protected sort: CollectionSort[] = [];
 
     protected active = false;
 
     protected applyPromise?: Promise<void>;
     protected applyPromiseResolver?: () => void;
 
-    public setPage(page: number) {
+    public setParameters(values?: FilterParameters): CollectionPagination<T> {
+        this._parameters = values || {};
+        return this;
+    }
+
+    public resetParameters(): CollectionPagination<T> {
+        this._parameters = {};
+        return this;
+    }
+
+    public setParameter(name: string, value?: any): CollectionPagination<T> {
+        this._parameters[name] = value;
+        return this;
+    }
+
+    public getParameter(name: string): any {
+        return this._parameters[name];
+    }
+
+    public getParameters(): FilterParameters {
+        return this._parameters;
+    }
+
+    public getHash(): string {
+        return JSON.stringify([
+            this.page, this.itemsPerPage, this.sort, this._parameters
+        ]);
+    }
+
+    public getPagingHash(): string {
+        return JSON.stringify([
+            this.page, this.itemsPerPage, this.sort
+        ]);
+    }
+
+    public getParametersHash(): string {
+        return JSON.stringify([
+            this._parameters
+        ]);
+    }
+
+    public setPage(page: number): CollectionPagination<T> {
         this.page = page;
+        return this;
     }
 
-    public hasOrder(): boolean {
-        return this.order.length > 0;
+    public hasSort(): boolean {
+        return this.sort.length > 0;
     }
 
-    public getOrder(): CollectionSort[] {
-        return this.order;
+    public getSort(): CollectionSort[] {
+        return this.sort;
     }
 
-    public setOrder(order: CollectionSort[]): CollectionPagination<T> {
-        this.order = order;
+    public setSort(order: CollectionSort[]): CollectionPagination<T> {
+        this.sort = order;
         return this;
     }
 
     public orderByField(field: string, direction: CollectionSortDirection = 'asc'): CollectionPagination<T> {
-        this.order = [{field: field, direction: direction}];
+        this.sort = [{field: field, direction: direction}];
         return this;
     }
 
@@ -358,7 +401,6 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
             if (-1 !== index) {
                 this.items.splice(index, 1);
             }
-
         }
 
         if (withEvent) {

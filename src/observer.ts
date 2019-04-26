@@ -102,7 +102,7 @@ export class ItemObserver<T> {
 }
 
 /**
- * Returns patches in plain values.
+ * Returns patches in plain parameters.
  */
 export function observeItem<T>(valueOrSubject: T | EntitySubject<any>, ignore: string[] = ['version']): ItemObserver<T> {
     return new ItemObserver(valueOrSubject, ignore);

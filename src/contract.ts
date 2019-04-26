@@ -1,5 +1,5 @@
 import {JSONEntity} from "./core";
-import {CollectionPaginationEvent} from "./collection";
+import {CollectionPaginationEvent, CollectionSort, FilterParameters} from "./collection";
 
 export interface IdInterface {
     id: string;
@@ -108,7 +108,8 @@ export interface ClientMessageCollectionPagination {
     forId: number;
     page: number;
     itemsPerPage: number;
-    order: {field: string, direction: 'asc' | 'desc'}[];
+    parameters: FilterParameters;
+    sort: {field: string, direction: 'asc' | 'desc'}[];
 }
 
 export interface ClientMessageObservableSubscribe {
@@ -255,6 +256,8 @@ export interface ServerMessageTypeCollection {
         itemsPerPage: number,
         page: number,
         total: number,
+        sort: CollectionSort[],
+        parameters: FilterParameters,
     };
     entityName: string;
 }
