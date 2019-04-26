@@ -485,13 +485,16 @@ export class SocketClient {
                                 collection.pagination.setItemsPerPage(reply.pagination.itemsPerPage);
                                 collection.pagination.setTotal(reply.pagination.total);
                                 collection.pagination.setPage(reply.pagination.page);
+                                collection.pagination.setSort(reply.pagination.sort);
+                                collection.pagination.setParameters(reply.pagination.parameters);
 
                                 collection.pagination.event.subscribe((event) => {
                                     if (event.type === 'apply') {
                                         self.sendMessage({
                                             forId: reply.id,
                                             name: 'collection/pagination',
-                                            order: collection.pagination.getOrder(),
+                                            sort: collection.pagination.getSort(),
+                                            parameters: collection.pagination.getParameters(),
                                             page: collection.pagination.getPage(),
                                             itemsPerPage: collection.pagination.getItemsPerPage(),
                                         });
