@@ -783,6 +783,7 @@ test('test entity collection pagination', async () => {
             @Field() public name: string,
             @Field() public nr: number = 0,
             @Field() public clazz: string = 'a',
+            @UUIDField() public owner: string
         ) {
         }
     }
@@ -803,9 +804,10 @@ test('test entity collection pagination', async () => {
 
             const promises: Promise<any>[] = [];
             const clazzes = ['a', 'b', 'c'];
+            const owners = ['3f63154d-4121-4f5c-a297-afc1f8f453fd', '4c349fe0-fa33-4e10-bb17-e25f13e4740e'];
 
             for (let i = 0; i < 100; i++) {
-                promises.push(this.database.add(Item, new Item('name_' + i, i, clazzes[i % 3])));
+                promises.push(this.database.add(Item, new Item('name_' + i, i, clazzes[i % 3], owners[i % 2])));
             }
 
             await Promise.all(promises);
@@ -813,7 +815,7 @@ test('test entity collection pagination', async () => {
 
         @Action()
         async add(clazz: string, nr: number): Promise<void> {
-            const item = new Item('name_' + nr, nr, clazz);
+            const item = new Item('name_' + nr, nr, clazz, '3f63154d-4121-4f5c-a297-afc1f8f453fd');
             await this.exchangeDatabase.add(Item, item);
         }
 
@@ -832,12 +834,57 @@ test('test entity collection pagination', async () => {
                 .orderBy('nr')
                 .find();
         }
+
+        @Action()
+        async findByOwner(owner: string): Promise<Collection<Item>> {
+            return this.storage.collection(Item)
+                .filter({owner: owner})
+                .find();
+        }
+
+        @Action()
+        async findByOwnerPaged(owner: string): Promise<Collection<Item>> {
+            return this.storage.collection(Item)
+                .filter({owner: owner})
+                .itemsPerPage(30)
+                .page(2)
+                .find();
+        }
     }
 
     const {client, close} = await createServerClientPair('test entity collection pagination', [TestController], [Item]);
     const test = client.controller<TestController>('test');
 
     await test.init();
+
+    {
+        const items = await test.findByOwner('3f63154d-4121-4f5c-a297-afc1f8f453fd');
+        expect(items.count()).toBe(50);
+
+        test.add('a', 1000);
+        await items.nextStateChange;
+        expect(items.count()).toBe(51);
+
+        test.remove('name_1000');
+        await items.nextStateChange;
+        expect(items.count()).toBe(50);
+    }
+
+    {
+        const items = await test.findByOwnerPaged('3f63154d-4121-4f5c-a297-afc1f8f453fd');
+        expect(items.pagination.getPage()).toBe(2);
+        expect(items.pagination.getTotal()).toBe(50);
+        expect(items.pagination.getItemsPerPage()).toBe(30);
+        expect(items.count()).toBe(20); //we got 50 total, 30 per page. 30,20, we are at second page.
+
+        test.add('a', 1001);
+        await items.nextStateChange;
+        expect(items.count()).toBe(21);
+
+        test.remove('name_1001');
+        await items.nextStateChange;
+        expect(items.count()).toBe(20);
+    }
 
     {
         const items = await test.findByClass('a');
