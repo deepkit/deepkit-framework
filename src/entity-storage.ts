@@ -56,7 +56,6 @@ class FindOptions<T extends IdInterface> {
      */
     public filter(filter: FilterQuery<T> | ReactiveQuery<T> = {}): FindOptions<T> {
         this._filter = ReactiveQuery.create(this.classType, filter);
-        this._pagination = true;
         return this;
     }
 
@@ -71,11 +70,13 @@ class FindOptions<T extends IdInterface> {
 
     public parameter(name: string, value?: any): FindOptions<T> {
         this._filterParameters[name] = value;
+        this._pagination = true;
         return this;
     }
 
     public parameters(values: FilterParameters = {}): FindOptions<T> {
         this._filterParameters = values;
+        this._pagination = true;
         return this;
     }
 
@@ -263,7 +264,9 @@ export class ReactiveQuery<T> {
 
     public getClassQuery(): { query: any, fieldNames: string[] } {
         const fieldNames = {};
-        const query = convertClassQueryToMongo(this.classType, this.query, fieldNames, {
+        const query = convertQueryToMongo(this.classType, this.query, (convertClassType: ClassType<any>, path: string, value: any) => {
+            return value;
+        }, fieldNames, {
             '$parameter': (name, value) => {
                 this.lastUsedParameterValues[value] = this.parameters[value];
                 return this.parameters[value];
@@ -765,7 +768,6 @@ export class EntityStorage {
 
                     currentQuery = reactiveQuery.getClassQuery().query;
 
-
                     const cursor = await getCursor(['id']);
                     const total = await cursor.count(false);
 
@@ -833,7 +835,7 @@ export class EntityStorage {
 
         jsonCollection.pagination.event.subscribe(async (event) => {
             if (event.type === 'client:apply' || event.type === 'apply') {
-                console.log(event.type, getClassName(reactiveQuery.classType));
+                // console.log(event.type, getClassName(reactiveQuery.classType));
 
                 await reactiveQuery.setAndApplyParameters(jsonCollection.pagination.getParameters());
 
@@ -863,8 +865,11 @@ export class EntityStorage {
         const sub: Subscription = await this.exchange.subscribeEntity(options.classType, async (message: ExchangeEntity) => {
             // console.log(
             //     'subscribeEntity message', getEntityName(options.classType), (message as any)['id'],
-            //     knownIDs[(message as any)['id']],
-            //     (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : undefined,
+            //     {
+            //         known: knownIDs[(message as any)['id']],
+            //         querySatisfied: (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : undefined,
+            //         paginationActive: jsonCollection.pagination.isActive()
+            //     },
             //     currentQuery,
             //     message
             // );

@@ -4,7 +4,7 @@ import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
 import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
-import {ClassType, eachPair} from '@marcj/estdlib';
+import {ClassType, eachPair, getClassName} from '@marcj/estdlib';
 
 export interface ExchangeNotifyPolicy {
     notifyChanges<T>(classType: ClassType<T>): boolean;
