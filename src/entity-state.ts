@@ -3,6 +3,7 @@ import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, Se
 import {set} from 'dot-prop';
 import {ClassType, eachPair, each, getClassName} from "@marcj/estdlib";
 import {skip} from "rxjs/operators";
+import {ObjectUnsubscribedError} from "rxjs";
 
 class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T | undefined> } = {};
@@ -23,7 +24,7 @@ class EntitySubjectStore<T extends IdInterface> {
 
     /**
      *  If we would return the original EntitySubject and one of the consumers unsubscribes()
-     *  it would be it unsubscribes for ALL subscribers of that particular entity item.
+     *  it would unsubscribe for ALL subscribers of that particular entity item.
      *  so we fork it. The fork can be unsubscribed without touching the origin.
      */
     public createFork(id: string, item?: T): EntitySubject<T | undefined> {
@@ -38,8 +39,33 @@ class EntitySubjectStore<T extends IdInterface> {
         const forkedSubject = new EntitySubject(originSubject.getValue(), async () => {
             await this.forkUnsubscribed(id);
         });
-        originSubject.subscribe(forkedSubject);
-        originSubject.patches.subscribe(forkedSubject.patches);
+
+        const sub = originSubject.subscribe((next) => {
+            try {
+                forkedSubject.next(next);
+            } catch (error) {
+                if (error instanceof ObjectUnsubscribedError) {
+                    sub.unsubscribe();
+                }
+            }
+        }, error => {
+           forkedSubject.error(error);
+        }, () => {
+           forkedSubject.complete();
+        });
+
+        // originSubject.subscribe(forkedSubject);
+        const patchSub = originSubject.patches.subscribe((next) => {
+            forkedSubject.patches.next(next);
+        }, (error) => {
+            forkedSubject.patches.error(error);
+        }, () => {
+            forkedSubject.patches.complete();
+        });
+
+        sub.add(() => {
+            patchSub.unsubscribe();
+        });
 
         return forkedSubject;
     }
@@ -78,8 +104,12 @@ class EntitySubjectStore<T extends IdInterface> {
 
     public removeItemAndNotifyObservers(id: string) {
         if (this.subjects[id]) {
-            this.subjects[id].next(undefined);
-            this.subjects[id].complete();
+            try {
+                this.subjects[id].next(undefined);
+                this.subjects[id].complete();
+            } catch (error) {
+                console.error('Could not next subject for', id);
+            }
 
             delete this.subjects[id];
         }
