@@ -282,7 +282,6 @@ export class ExchangeDatabase {
 
         const jsonPatches: EntityPatches = partialClassToPlain(classType, patches);
 
-
         if (this.notifyChanges(advertiseAs)) {
             this.exchange.publishEntity(advertiseAs, {
                 type: 'patch',

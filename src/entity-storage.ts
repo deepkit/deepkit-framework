@@ -323,6 +323,14 @@ export class EntityStorage {
         const store = this.getSentStateStore(classType);
 
         delete store[id];
+
+        if (Object.keys(store).length === 0) {
+            const entitySubscription = this.entitySubscription.get(classType);
+            if (entitySubscription) {
+                entitySubscription.unsubscribe();
+                this.entitySubscription.delete(classType);
+            }
+        }
     }
 
     protected getSentState<T>(classType: ClassType<T>, id: string): SentState {
@@ -354,19 +362,15 @@ export class EntityStorage {
         state.listeners--;
 
         if (state.listeners <= 0) {
-            const store = this.getSentStateStore(classType);
-            const entitySubscription = this.entitySubscription.get(classType);
-            if (entitySubscription) {
-                entitySubscription.unsubscribe();
-                this.entitySubscription.delete(classType);
-            }
-            delete store[id];
+            this.rmSentState(classType, id);
         }
     }
 
-    private increaseUsage<T>(classType: ClassType<T>, id: string) {
+    private increaseUsage<T extends IdInterface>(classType: ClassType<T>, id: string) {
         const state = this.getSentState(classType, id);
         state.listeners++;
+
+        this.subscribeEntity(classType);
     }
 
     async subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
