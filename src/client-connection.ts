@@ -119,7 +119,7 @@ export class ClientConnection {
             if (message.name === 'peerController/register') {
                 const access = await this.app.isAllowedToRegisterPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), message.controllerName);
                 if (!access) {
-                    this.writer.sendError(message.id, 'Access denied');
+                    this.writer.sendError(message.id, 'Access denied to register controller ' + message.controllerName);
                     return;
                 }
 
@@ -151,7 +151,7 @@ export class ClientConnection {
                         const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
 
                         if (!access) {
-                            this.writer.sendError(message.id, 'Access denied');
+                            this.writer.sendError(message.id, 'Access denied to peer controller ' + controllerName);
                             return;
                         }
 
@@ -186,7 +186,7 @@ export class ClientConnection {
                         const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
 
                         if (!access) {
-                            throw new Error(`Access denied`);
+                            throw new Error(`Access denied to peer controller ` + controllerName);
                         }
 
                         const replyId = uuid();
@@ -250,7 +250,7 @@ export class ClientConnection {
 
             const access = await this.app.hasAccess(this.injector, this.sessionStack.getSessionOrUndefined(), controllerClass, action);
             if (!access) {
-                throw new Error(`Access denied`);
+                throw new Error(`Access denied to action ` + action);
             }
 
             const actions = getActions(controllerClass);
@@ -278,7 +278,7 @@ export class ClientConnection {
 
         const access = await this.app.hasAccess(this.injector, this.sessionStack.getSessionOrUndefined(), controllerClass, action);
         if (!access) {
-            throw new Error(`Access denied`);
+            throw new Error(`Access denied to action ` + action);
         }
 
         const controllerInstance = this.injector.get(controllerClass);
