@@ -59,6 +59,10 @@ class FindOptions<T extends IdInterface> {
         return this;
     }
 
+    public isChangeFeedActive(): boolean {
+        return !this._disableEntityChangeFeed;
+    }
+
     public isPartial(): boolean {
         return this._fields.length > 0;
     }
@@ -792,7 +796,9 @@ export class EntityStorage {
 
                             if (!knownIDs[item.id]) {
                                 knownIDs[item.id] = true;
-                                this.increaseUsage(options.classType, item.id);
+                                if (options.isChangeFeedActive()) {
+                                    this.increaseUsage(options.classType, item.id);
+                                }
 
                                 const fullItem = await getItem(item.id);
 
@@ -808,7 +814,9 @@ export class EntityStorage {
                         //items left in copiedKnownIds have been deleted or filter doesn't match anymore.
                         for (const id of eachKey(copiedKnownIds)) {
                             delete knownIDs[id];
-                            this.decreaseUsage(options.classType, id);
+                            if (options.isChangeFeedActive()) {
+                                this.decreaseUsage(options.classType, id);
+                            }
                         }
 
                         const idsToRemove = Object.keys(copiedKnownIds);
@@ -860,7 +868,7 @@ export class EntityStorage {
             await updateCollection();
         });
 
-        if (!options._disableEntityChangeFeed) {
+        if (options.isChangeFeedActive()) {
             this.subscribeEntity(options.classType);
         }
 
@@ -884,7 +892,10 @@ export class EntityStorage {
                 } else {
                     for (const id of message.ids) {
                         delete knownIDs[id];
-                        this.decreaseUsage(options.classType, id);
+
+                        if (options.isChangeFeedActive()) {
+                            this.decreaseUsage(options.classType, id);
+                        }
                     }
 
                     jsonCollection.removeMany(message.ids);
@@ -898,7 +909,9 @@ export class EntityStorage {
                     updateCollection(true);
                 } else {
                     knownIDs[message.id] = true;
-                    this.increaseUsage(options.classType, message.id);
+                    if (options.isChangeFeedActive()) {
+                        this.increaseUsage(options.classType, message.id);
+                    }
                     //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
                     jsonCollection.add(message.item);
                 }
@@ -913,7 +926,9 @@ export class EntityStorage {
                     } else {
                         //got invalid after updates?
                         delete knownIDs[message.id];
-                        this.decreaseUsage(options.classType, message.id);
+                        if (options.isChangeFeedActive()) {
+                            this.decreaseUsage(options.classType, message.id);
+                        }
                         jsonCollection.remove(message.id);
                     }
                 } else if (!knownIDs[message.id] && querySatisfied) {
@@ -922,7 +937,9 @@ export class EntityStorage {
                     } else {
                         //got valid after updates?
                         knownIDs[message.id] = true;
-                        this.increaseUsage(options.classType, message.id);
+                        if (options.isChangeFeedActive()) {
+                            this.increaseUsage(options.classType, message.id);
+                        }
 
                         let itemToSend = message.item;
                         if (message.type === 'patch') {
@@ -942,7 +959,9 @@ export class EntityStorage {
                     updateCollection(true);
                 } else {
                     delete knownIDs[message.id];
-                    this.decreaseUsage(options.classType, message.id);
+                    if (options.isChangeFeedActive()) {
+                        this.decreaseUsage(options.classType, message.id);
+                    }
                     jsonCollection.remove(message.id);
                 }
             }
@@ -967,7 +986,9 @@ export class EntityStorage {
 
         for (const item of items) {
             knownIDs[item.id] = true;
-            this.increaseUsage(options.classType, item.id);
+            if (options.isChangeFeedActive()) {
+                this.increaseUsage(options.classType, item.id);
+            }
         }
 
         jsonCollection.set(items);

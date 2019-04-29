@@ -78,14 +78,14 @@ export class ExchangeDatabase {
     public async deleteMany<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
         const ids = await this.getIds(classType, filter);
 
+        await this.database.deleteMany(classType, {id: {$in: ids}});
+
         if (this.notifyChanges(classType)) {
             this.exchange.publishEntity(classType, {
                 type: 'removeMany',
                 ids: ids
             });
         }
-
-        return this.database.deleteMany(classType, {id: {$in: ids}});
     }
 
     public async add<T extends IdInterface>(

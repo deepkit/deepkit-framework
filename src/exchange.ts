@@ -166,7 +166,8 @@ export class Exchange {
             const data = JSON.parse(message);
 
             if (this.subscriptions[messageChannel]) {
-                for (const cb of this.subscriptions[messageChannel]) {
+                //it's important to work with an array copy, otherwise unsubscribing from withing a callback results in a wrong iteration
+                for (const cb of this.subscriptions[messageChannel].slice(0)) {
                     cb(data);
                 }
             } else {
@@ -226,6 +227,7 @@ export class Exchange {
 
         return new Subscription(() => {
             const index = this.subscriptions[channelName].indexOf(callback);
+
             if (-1 !== index) {
                 this.subscriptions[channelName].splice(index, 1);
             }
