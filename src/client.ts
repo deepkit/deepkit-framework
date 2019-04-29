@@ -21,7 +21,7 @@ import {
     ServerMessageResult,
     StreamBehaviorSubject
 } from "@marcj/glut-core";
-import {applyDefaults, ClassType, eachKey, isArray, sleep} from "@marcj/estdlib";
+import {applyDefaults, ClassType, eachKey, isArray, sleep, getClassName} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
@@ -164,6 +164,9 @@ export class SocketClient {
                                 data: {type: 'next/json', id: message.id, next: actionResult}
                             });
                         } catch (error) {
+                            console.log('Error in peer controller', getClassName(controllerInstance.constructor), data.action);
+                            console.warn(error);
+
                             this.sendMessage({
                                 name: 'peerController/message',
                                 controllerName: name,
@@ -242,6 +245,10 @@ export class SocketClient {
     protected async doConnect(): Promise<void> {
         const port = this.config.port;
         this.connectionTries++;
+        if (!this.config.host) {
+            throw new Error('No host configured');
+        }
+
         const url = this.config.host.startsWith('ws+unix') ?
             this.config.host :
             ((this.config.ssl ? 'wss://' : 'ws://') + this.config.host + ':' + port);
@@ -349,6 +356,9 @@ export class SocketClient {
 
                 for (const i of eachKey(args)) {
                     const type = types.parameters[i];
+
+                    if (!type) continue;
+
                     if (undefined === args[i]) {
                         continue;
                     }
