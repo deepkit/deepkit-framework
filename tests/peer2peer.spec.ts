@@ -95,7 +95,7 @@ test('test peer2peer', async () => {
         await client.registerController('forbiddenToRegister', new TestController);
         fail('should error');
     } catch (error) {
-        expect(error.message).toBe('Access denied');
+        expect(error.message).toBe('Access denied to register controller forbiddenToRegister');
     }
 
     await client.registerController('forbiddenToSend', new TestController);
@@ -104,7 +104,7 @@ test('test peer2peer', async () => {
         await controller2.names('asd');
         fail('should error');
     } catch (error) {
-        expect(error.message).toBe('Access denied');
+        expect(error.message).toBe('Access denied to peer controller forbiddenToSend');
     }
 
     const internalClient: InternalClient = server.getInjector().get(InternalClient);
