@@ -83,9 +83,13 @@ export async function createServerClientPair(
     const db: Database = app.getInjector().get(Database);
     await db.dropDatabase(dbName);
 
+    const createdClients: SocketClient[] = [];
+
     const socket = new SocketClient({
         host: 'ws+unix://' + socketPath
     });
+
+    createdClients.push(socket);
 
     let closed = false;
 
@@ -97,7 +101,9 @@ export async function createServerClientPair(
         await db.dropDatabase(dbName);
         closed = true;
 
-        socket.disconnect();
+        for (const client of createdClients) {
+            client.disconnect();
+        }
 
         await sleep(0.1); //let the server read the disconnect
         console.log('server close');
@@ -110,14 +116,17 @@ export async function createServerClientPair(
         server: app,
         client: socket,
         createClient: () => {
-            return new SocketClient({
+            const client = new SocketClient({
                 host: 'ws+unix://' + socketPath
             });
+            createdClients.push(client);
+            return client;
         },
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
             const client = new SocketClient({
                 host: 'ws+unix://' + socketPath
             });
+            createdClients.push(client);
             return client.controller<T>(controllerName);
         },
         close: close,

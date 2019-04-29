@@ -109,6 +109,7 @@ test('test peer2peer', async () => {
 
     const internalClient: InternalClient = server.getInjector().get(InternalClient);
     const internalPeerController = internalClient.peerController<TestController>('test');
+
     {
         const result = await internalPeerController.names('myName');
         expect(result).toEqual(['a', 'b', 'c', 'myName']);
