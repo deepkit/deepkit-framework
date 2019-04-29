@@ -21,7 +21,7 @@ import {
     ServerMessageResult,
     StreamBehaviorSubject
 } from "@marcj/glut-core";
-import {applyDefaults, ClassType, eachKey, isArray} from "@marcj/estdlib";
+import {applyDefaults, ClassType, eachKey, isArray, sleep} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
@@ -263,11 +263,18 @@ export class SocketClient {
             };
 
             socket.onopen = async () => {
-                await this.onConnected();
                 this.connected = true;
                 this.connectionTries = 0;
 
+                if (this.config.token) {
+                    if (!await this.authenticate()) {
+                        throw new AuthorizationError();
+                    }
+                }
+
+                await this.onConnected();
                 // this.emit('online');
+
                 resolve();
             };
         });
@@ -277,7 +284,12 @@ export class SocketClient {
      * Simply connect with login using the token, without auto re-connect.
      */
     public async connect(): Promise<void> {
+        if (this.connected) {
+            return;
+        }
+
         while (this.connectionPromise) {
+            await sleep(0.01);
             await this.connectionPromise;
         }
 
@@ -291,12 +303,6 @@ export class SocketClient {
             await this.connectionPromise;
         } finally {
             delete this.connectionPromise;
-        }
-
-        if (this.connected && this.config.token) {
-            if (!await this.authenticate()) {
-                throw new AuthorizationError();
-            }
         }
     }
 
