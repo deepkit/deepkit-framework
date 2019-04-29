@@ -15,6 +15,7 @@ import {createConnection, Connection} from "typeorm";
 import {FileType} from "@marcj/glut-core";
 import {Locker} from "./locker";
 import {InternalClient} from "./internal-client";
+import {homedir} from "os";
 
 export class ApplicationServerConfig {
     server?: Server = undefined;
@@ -66,6 +67,7 @@ export class ApplicationServer {
         protected entityChangeFeeds: ClassType<any>[] = [],
     ) {
         this.config = config instanceof ApplicationServerConfig ? config : applyDefaults(ApplicationServerConfig, config);
+        this.config.fsPath = this.config.fsPath.replace('~', homedir());
     }
 
     public static createForModule<T extends Application>(application: ClassType<T>) {
