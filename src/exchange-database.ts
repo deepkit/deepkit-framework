@@ -1,5 +1,5 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, getIdFieldValue, partialClassToPlain, partialPlainToClass, plainToClass} from '@marcj/marshal';
+import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from '@marcj/marshal';
 import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
@@ -72,19 +72,23 @@ export class ExchangeDatabase {
     public async deleteOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
         const ids = await this.getIds(classType, filter);
 
-        return this.remove(classType, ids[0]);
+        if (ids.length > 0) {
+            return this.remove(classType, ids[0]);
+        }
     }
 
     public async deleteMany<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
         const ids = await this.getIds(classType, filter);
 
-        await this.database.deleteMany(classType, {id: {$in: ids}});
+        if (ids.length > 0) {
+            await this.database.deleteMany(classType, {id: {$in: ids}});
 
-        if (this.notifyChanges(classType)) {
-            this.exchange.publishEntity(classType, {
-                type: 'removeMany',
-                ids: ids
-            });
+            if (this.notifyChanges(classType)) {
+                this.exchange.publishEntity(classType, {
+                    type: 'removeMany',
+                    ids: ids
+                });
+            }
         }
     }
 
@@ -167,7 +171,7 @@ export class ExchangeDatabase {
         if (this.notifyChanges(advertiseAs)) {
             this.exchange.publishEntity(advertiseAs, {
                 type: 'update',
-                id: getIdFieldValue(advertiseAs, item),
+                id: item.id,
                 version: version, //this is the new version in the db, which we end up having when `data` is applied.
                 item:
                     advertiseAs === classType ?

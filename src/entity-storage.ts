@@ -865,7 +865,7 @@ export class EntityStorage {
 
         //triggered when a sub query changed its values. It changed our parameters basically.
         reactiveQuery.internalParameterChange.subscribe(async () => {
-            await updateCollection();
+            await updateCollection(true);
         });
 
         if (options.isChangeFeedActive()) {
@@ -879,7 +879,7 @@ export class EntityStorage {
             //     'subscribeEntity message', getEntityName(options.classType), (message as any)['id'],
             //     {
             //         known: knownIDs[(message as any)['id']],
-            //         querySatisfied: (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : undefined,
+            //         querySatisfied: (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : 'no .item',
             //         paginationActive: jsonCollection.pagination.isActive()
             //     },
             //     currentQuery,
