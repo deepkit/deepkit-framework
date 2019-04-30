@@ -1,22 +1,57 @@
-import {Subject, TeardownLogic} from "rxjs";
-import {tearDown} from "@marcj/estdlib-rxjs";
+import {Subject} from "rxjs";
 import {first} from "rxjs/operators";
+import {ClientMessageWithoutId, ServerMessageComplete, ServerMessageError} from "./contract";
 
 export class MessageSubject<T> extends Subject<T> {
-    constructor(private teardown: TeardownLogic) {
+    public readonly disconnected = new Subject<number>();
+    public readonly reconnected = new Subject<void>();
+
+    constructor(
+        public readonly connectionId: number,
+        private onReply?: (message: ClientMessageWithoutId) => MessageSubject<any>,
+    ) {
         super();
     }
 
     /**
-     * Used to unsubscribe from replies regarding this message and closing (completing) the subject.
-     * Necessary to avoid memory leaks.
+     * Sends a message to the server and returns a new MessageSubject.
+     * If the connection meanwhile has been reconnected, and completed MessageSubject.
      */
-    close() {
-        tearDown(this.teardown);
-        this.complete();
+    public sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
+        messageWithoutId: ClientMessageWithoutId
+    ): MessageSubject<K> {
+        if (!this.onReply) {
+            throw new Error('No replier set');
+        }
+
+        return this.onReply(messageWithoutId);
     }
 
-    async firstAndClose(): Promise<T> {
+    error(err: any): void {
+        this.disconnected.complete();
+        super.error(err);
+    }
+
+    complete(): void {
+        this.disconnected.complete();
+        super.complete();
+    }
+
+    async firstOrUndefinedThenClose(): Promise<T | undefined> {
+        return new Promise<T>((resolve) => {
+            this.pipe(first()).subscribe((next) => {
+                resolve(next);
+            }, (error) => {
+                resolve();
+            }, () => {
+                //complete
+            }).add(() => {
+                this.complete();
+            });
+        });
+    }
+
+    async firstThenClose(): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             this.pipe(first()).subscribe((next) => {
                 resolve(next);
@@ -25,7 +60,7 @@ export class MessageSubject<T> extends Subject<T> {
             }, () => {
                 //complete
             }).add(() => {
-                this.close();
+                this.complete();
             });
         });
     }

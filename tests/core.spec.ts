@@ -2,10 +2,36 @@ import 'jest';
 import 'reflect-metadata';
 import {FilterQuery, IdInterface, StreamBehaviorSubject} from "..";
 import {ClassType} from '@marcj/estdlib';
-import {BehaviorSubject} from 'rxjs';
+import {BehaviorSubject, Subject} from 'rxjs';
 
 function assert<T, U extends T>() {
 }
+
+test('test teardown', async () => {
+    {
+        let tearDownCalled = false;
+
+        const subject = new Subject();
+        subject.subscribe().add(() => {
+            tearDownCalled = true;
+        });
+
+        subject.complete();
+        expect(tearDownCalled).toBe(true);
+    }
+
+    {
+        let tearDownCalled = false;
+
+        const subject = new Subject();
+        subject.subscribe().add(() => {
+            tearDownCalled = true;
+        });
+
+        subject.error('asd');
+        expect(tearDownCalled).toBe(true);
+    }
+});
 
 test('test root/child', async () => {
     const root = new BehaviorSubject<string>('');

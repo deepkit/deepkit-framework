@@ -114,11 +114,13 @@ export interface ClientMessageCollectionPagination {
 
 export interface ClientMessageObservableSubscribe {
     name: 'observable/subscribe';
+    forId: number;
     subscribeId: number;
 }
 
 export interface ClientMessageObservableUnsubscribe {
     name: 'observable/unsubscribe';
+    forId: number;
     subscribeId: number;
 }
 
