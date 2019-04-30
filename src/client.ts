@@ -1,4 +1,4 @@
-import {Observable, Subscriber} from "rxjs";
+import {Observable, Subscriber, Subject, BehaviorSubject} from "rxjs";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {
     ClientMessageAll,
@@ -19,7 +19,8 @@ import {
     ServerMessageError,
     ServerMessagePeerChannelMessage,
     ServerMessageResult,
-    StreamBehaviorSubject
+    StreamBehaviorSubject,
+    CollectionPaginationEvent
 } from "@marcj/glut-core";
 import {applyDefaults, ClassType, eachKey, isArray, sleep, getClassName} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
@@ -48,6 +49,8 @@ export class SocketClient {
     private messageId: number = 0;
     private connectionTries = 0;
 
+    private currentConnectionId: number = 0;
+
     private replies: {
         [messageId: string]: (data: any) => void
     } = {};
@@ -56,6 +59,10 @@ export class SocketClient {
 
     public readonly entityState = new EntityState();
     private config: SocketClientConfig;
+
+    public readonly disconnected = new Subject<number>();
+    public readonly reconnected = new Subject<number>();
+    public readonly connection = new BehaviorSubject<boolean>(false);
 
     private cachedActionsTypes: {
         [controllerName: string]: { [actionName: string]: ActionTypes }
@@ -68,6 +75,10 @@ export class SocketClient {
     }
 
     protected registeredControllers = new Set<string>();
+
+    public isConnected(): boolean {
+        return this.connected;
+    }
 
     public async registerController<T>(name: string, controllerInstance: T) {
         if (this.registeredControllers.has(name)) {
@@ -84,10 +95,12 @@ export class SocketClient {
         } = {};
 
         return new Promise(async (resolve, reject) => {
-            const reply = await this.sendMessage<ServerMessagePeerChannelMessage>({
+            const activeSubject = await this.sendMessage<ServerMessagePeerChannelMessage>({
                 name: 'peerController/register',
                 controllerName: name,
-            }).subscribe(async (message) => {
+            });
+
+            activeSubject.subscribe(async (message) => {
                 if (message.type === 'error') {
                     reject(new Error(message.error));
                 }
@@ -109,7 +122,7 @@ export class SocketClient {
                     const actions = getActions(controllerInstance.constructor as ClassType<T>);
 
                     if (!actions[data.action]) {
-                        this.sendMessage({
+                        activeSubject.sendMessage({
                             name: 'peerController/message',
                             controllerName: name,
                             replyId: message.replyId,
@@ -131,7 +144,7 @@ export class SocketClient {
                             returnType: peerActionTypes[data.action].returnType,
                         };
 
-                        this.sendMessage({
+                        activeSubject.sendMessage({
                             name: 'peerController/message',
                             controllerName: name,
                             replyId: message.replyId,
@@ -148,7 +161,7 @@ export class SocketClient {
                             }
 
                             if (actionResult instanceof Observable) {
-                                this.sendMessage({
+                                activeSubject.sendMessage({
                                     name: 'peerController/message',
                                     controllerName: name,
                                     replyId: message.replyId,
@@ -157,17 +170,16 @@ export class SocketClient {
                                 console.warn(`Action ${data.action} returned Observable, which is not supported.`);
                             }
 
-                            this.sendMessage({
+                            activeSubject.sendMessage({
                                 name: 'peerController/message',
                                 controllerName: name,
                                 replyId: message.replyId,
                                 data: {type: 'next/json', id: message.id, next: actionResult}
                             });
                         } catch (error) {
-                            console.log('Error in peer controller', getClassName(controllerInstance.constructor), data.action);
-                            console.warn(error);
+                            console.warn('Error in peer controller', getClassName(controllerInstance.constructor), data.action, error);
 
-                            this.sendMessage({
+                            activeSubject.sendMessage({
                                 name: 'peerController/message',
                                 controllerName: name,
                                 replyId: message.replyId,
@@ -189,7 +201,7 @@ export class SocketClient {
                     const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    return t.stream('_peer/' + name, actionName, ...args);
+                    return t.stream('_peer/' + name, actionName, args);
                 };
             }
         });
@@ -206,7 +218,7 @@ export class SocketClient {
                     const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    return t.stream(name, actionName, ...args);
+                    return t.stream(name, actionName, args);
                 };
             }
         });
@@ -244,6 +256,7 @@ export class SocketClient {
 
     protected async doConnect(): Promise<void> {
         const port = this.config.port;
+
         this.connectionTries++;
         if (!this.config.host) {
             throw new Error('No host configured');
@@ -257,19 +270,34 @@ export class SocketClient {
         socket.onmessage = (event: MessageEvent) => {
             this.onMessage(event);
         };
-        // socket.onmessage = (event: { data: WebSocket.Data; type: string; target: WebSocket }) => this.onMessage(event);
 
         return new Promise<void>((resolve, reject) => {
+            socket.onclose = () => {
+                if (this.connected) {
+                    this.connection.next(false);
+                }
+                this.connected = false;
+                this.loggedIn = false;
+
+                this.disconnected.next(this.currentConnectionId);
+                this.currentConnectionId++;
+            };
+
             socket.onerror = (error: any) => {
                 if (this.connected) {
-                    // this.emit('offline');
+                    this.connection.next(false);
                 }
-
                 this.connected = false;
+                this.loggedIn = false;
+
+                this.disconnected.next(this.currentConnectionId);
+                this.currentConnectionId++;
+
                 reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message}`));
             };
 
             socket.onopen = async () => {
+                //it's important to place it here, since authenticate() sends messages and checks this.connected.
                 this.connected = true;
                 this.connectionTries = 0;
 
@@ -279,8 +307,8 @@ export class SocketClient {
                     }
                 }
 
+                this.connection.next(true);
                 await this.onConnected();
-                // this.emit('online');
 
                 resolve();
             };
@@ -311,6 +339,10 @@ export class SocketClient {
         } finally {
             delete this.connectionPromise;
         }
+
+        if (this.connected && this.currentConnectionId > 0) {
+            this.reconnected.next(this.currentConnectionId);
+        }
     }
 
     public async getActionTypes(controller: string, actionName: string): Promise<ActionTypes> {
@@ -323,7 +355,7 @@ export class SocketClient {
                 name: 'actionTypes',
                 controller: controller,
                 action: actionName
-            }).firstAndClose();
+            }).firstThenClose();
 
             if (reply.type === 'error') {
                 throw new Error(reply.error);
@@ -340,14 +372,16 @@ export class SocketClient {
         return this.cachedActionsTypes[controller][actionName];
     }
 
-    public async stream(controller: string, name: string, ...args: any[]): Promise<any> {
+    public async stream(controller: string, name: string, args: any[], options?: {
+        useThisCollection?: Collection<any>,
+        useThisStreamBehaviorSubject?: StreamBehaviorSubject<any>,
+    }): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
             try {
                 //todo, handle reject when we sending message fails
 
                 let returnValue: any;
 
-                const self = this;
                 const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
                 let subscriberIdCounter = 0;
                 let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
@@ -388,7 +422,7 @@ export class SocketClient {
                     }
                 }
 
-                const subject = this.sendMessage<ServerMessageResult>({
+                const activeSubject = this.sendMessage<ServerMessageResult>({
                     name: 'action',
                     controller: controller,
                     action: name,
@@ -405,7 +439,7 @@ export class SocketClient {
 
                         if (!classType) {
                             reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                            subject.close();
+                            activeSubject.complete();
                             return;
                         }
 
@@ -427,16 +461,28 @@ export class SocketClient {
                     return next;
                 }
 
-                subject.subscribe((reply: ServerMessageResult) => {
+                activeSubject.subscribe((reply: ServerMessageResult) => {
                     if (reply.type === 'type') {
                         if (reply.returnType === 'subject') {
-                            streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
+                            if (options && options.useThisStreamBehaviorSubject) {
+                                streamBehaviorSubject = options.useThisStreamBehaviorSubject;
+                                streamBehaviorSubject.next(reply.data);
+                            } else {
+                                streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
+                            }
+
+                            const reconnectionSub = activeSubject.reconnected.subscribe(() => {
+                                reconnectionSub.unsubscribe();
+                                this.stream(controller, name, args, {useThisStreamBehaviorSubject: streamBehaviorSubject});
+                            });
+
                             streamBehaviorSubject.addTearDown(async () => {
+                                reconnectionSub.unsubscribe();
                                 //user unsubscribed the entity subject, so we stop syncing changes
-                                await self.sendMessage({
+                                await activeSubject.sendMessage({
                                     name: 'subject/unsubscribe',
                                     forId: reply.id,
-                                }).firstAndClose();
+                                }).firstOrUndefinedThenClose();
                             });
                             resolve(streamBehaviorSubject);
                         }
@@ -452,10 +498,10 @@ export class SocketClient {
                                 const subject = this.entityState.handleEntity(classType, reply.item!);
                                 subject.addTearDown(async () => {
                                     //user unsubscribed the entity subject, so we stop syncing changes
-                                    await self.sendMessage({
+                                    await activeSubject.sendMessage({
                                         name: 'entity/unsubscribe',
                                         forId: reply.id,
-                                    }).firstAndClose();
+                                    }).firstOrUndefinedThenClose();
                                 });
 
                                 resolve(subject);
@@ -470,19 +516,19 @@ export class SocketClient {
 
                                 subscribers[subscriberId] = observer;
 
-                                self.send({
-                                    id: reply.id,
+                                activeSubject.sendMessage({
+                                    forId: reply.id,
                                     name: 'observable/subscribe',
                                     subscribeId: subscriberId
-                                });
+                                }).firstOrUndefinedThenClose();
 
                                 return {
                                     unsubscribe(): void {
-                                        self.send({
-                                            id: reply.id,
+                                        activeSubject.sendMessage({
+                                            forId: reply.id,
                                             name: 'observable/unsubscribe',
                                             subscribeId: subscriberId
-                                        });
+                                        }).firstOrUndefinedThenClose();
                                     }
                                 };
                             });
@@ -496,6 +542,7 @@ export class SocketClient {
                             }
 
                             const collection = new Collection<any>(classType);
+
                             if (reply.pagination.active) {
                                 collection.pagination._activate();
                                 collection.pagination.setItemsPerPage(reply.pagination.itemsPerPage);
@@ -504,16 +551,16 @@ export class SocketClient {
                                 collection.pagination.setSort(reply.pagination.sort);
                                 collection.pagination.setParameters(reply.pagination.parameters);
 
-                                collection.pagination.event.subscribe((event) => {
+                                collection.pagination.event.subscribe((event: CollectionPaginationEvent) => {
                                     if (event.type === 'apply') {
-                                        self.sendMessage({
+                                        activeSubject.sendMessage({
                                             forId: reply.id,
                                             name: 'collection/pagination',
                                             sort: collection.pagination.getSort(),
                                             parameters: collection.pagination.getParameters(),
                                             page: collection.pagination.getPage(),
                                             itemsPerPage: collection.pagination.getItemsPerPage(),
-                                        });
+                                        }).firstOrUndefinedThenClose();
                                     }
                                 });
                             }
@@ -524,10 +571,10 @@ export class SocketClient {
                                 await this.entityState.unsubscribeCollection(collection);
 
                                 //collection unsubscribed, so we stop syncing changes
-                                self.sendMessage({
+                                activeSubject.sendMessage({
                                     forId: reply.id,
                                     name: 'collection/unsubscribe'
-                                });
+                                }).firstOrUndefinedThenClose();
                             });
                             //do not resolve yet, since we want to wait until the collection has bee populated.
                         }
@@ -535,7 +582,7 @@ export class SocketClient {
 
                     if (reply.type === 'next/json') {
                         resolve(deserializeResult(reply.next));
-                        subject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'next/observable') {
@@ -578,7 +625,7 @@ export class SocketClient {
                             streamBehaviorSubject.complete();
                         }
 
-                        subject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'error') {
@@ -593,7 +640,7 @@ export class SocketClient {
                             reject(error);
                         }
 
-                        subject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'error/observable') {
@@ -604,7 +651,7 @@ export class SocketClient {
                         }
 
                         delete subscribers[reply.subscribeId];
-                        subject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'complete/observable') {
@@ -613,7 +660,7 @@ export class SocketClient {
                         }
 
                         delete subscribers[reply.subscribeId];
-                        subject.close();
+                        activeSubject.complete();
                     }
                 });
             } catch (error) {
@@ -622,7 +669,7 @@ export class SocketClient {
         });
     }
 
-    public send(message: ClientMessageAll) {
+    public send(message: ClientMessageAll, onlyForConnectionId?: string) {
         if (!this.socket) {
             throw new Error('Socket not created yet');
         }
@@ -631,7 +678,8 @@ export class SocketClient {
     }
 
     private sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
-        messageWithoutId: ClientMessageWithoutId
+        messageWithoutId: ClientMessageWithoutId,
+        connectionId: number = this.currentConnectionId
     ): MessageSubject<K> {
         this.messageId++;
         const messageId = this.messageId;
@@ -640,8 +688,29 @@ export class SocketClient {
             id: messageId, ...messageWithoutId
         };
 
-        const subject = new MessageSubject<K>(() => {
+        const reply = (message: ClientMessageWithoutId): MessageSubject<any> => {
+            if (connectionId === this.currentConnectionId) {
+                return this.sendMessage(message, connectionId);
+            }
+
+            console.warn('Connection meanwhile dropped.', connectionId, this.currentConnectionId);
+            const nextSubject = new MessageSubject(connectionId, reply);
+            nextSubject.complete();
+
+            return nextSubject;
+        };
+
+        const subject = new MessageSubject<K>(connectionId, reply);
+
+        const sub = this.disconnected.subscribe((disconnectedConnectionId: number) => {
+            if (disconnectedConnectionId === connectionId) {
+
+            }
+        });
+
+        subject.subscribe().add(() => {
             delete this.replies[messageId];
+            sub.unsubscribe();
         });
 
         this.replies[messageId] = (reply: K) => {
@@ -656,14 +725,14 @@ export class SocketClient {
     }
 
     private async authenticate(): Promise<boolean> {
-        console.log('authenticate send', this.config.token);
+        // console.log('authenticate send', this.config.token);
 
         const reply = await this.sendMessage<ServerMessageAuthorize>({
             name: 'authenticate',
             token: this.config.token,
-        }).firstAndClose();
+        }).firstThenClose();
 
-        console.log('authenticate reply', reply);
+        // console.log('authenticate reply', reply);
 
         if (reply.type === 'authenticate/result') {
             this.loggedIn = reply.result;
@@ -679,6 +748,10 @@ export class SocketClient {
     public disconnect() {
         this.connected = false;
         this.loggedIn = false;
+        this.currentConnectionId++;
+
+        this.disconnected.next(this.currentConnectionId);
+        this.connection.next(false);
 
         if (this.socket) {
             this.socket.close();
