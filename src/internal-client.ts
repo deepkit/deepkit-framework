@@ -63,7 +63,8 @@ export class InternalClient {
             });
         })();
 
-        const subject = new MessageSubject<K>(() => {
+        const subject = new MessageSubject<K>(0);
+        subject.subscribe().add(() => {
             if (sub) {
                 sub.unsubscribe();
             }
@@ -82,7 +83,7 @@ export class InternalClient {
                 name: 'actionTypes',
                 controller: controller,
                 action: actionName
-            }).firstAndClose();
+            }).firstThenClose();
 
             if (reply.type === 'error') {
                 throw new Error(reply.error);
@@ -153,7 +154,7 @@ export class InternalClient {
 
                         if (!classType) {
                             reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                            subject.close();
+                            subject.complete();
                             return;
                         }
 
@@ -178,7 +179,7 @@ export class InternalClient {
                 subject.subscribe((reply: ServerMessageResult) => {
                     if (reply.type === 'next/json') {
                         resolve(deserializeResult(reply.next));
-                        subject.close();
+                        subject.complete();
                     }
 
                     if (reply.type === 'error') {
@@ -186,7 +187,7 @@ export class InternalClient {
                         const error = new Error(reply.error);
                         reject(error);
 
-                        subject.close();
+                        subject.complete();
                     }
                 });
             } catch (error) {

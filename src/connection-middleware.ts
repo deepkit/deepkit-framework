@@ -97,15 +97,15 @@ export class ConnectionMiddleware {
         }
 
         if (message.name === 'observable/subscribe') {
-            if (!this.observables[message.id]) {
+            if (!this.observables[message.forId]) {
                 throw new Error('No observable registered.');
             }
 
-            if (this.observables[message.id].subscriber[message.subscribeId]) {
+            if (this.observables[message.forId].subscriber[message.subscribeId]) {
                 throw new Error('Subscriber already registered.');
             }
 
-            this.observables[message.id].subscriber[message.subscribeId] = this.observables[message.id].observable.subscribe((next) => {
+            this.observables[message.forId].subscriber[message.subscribeId] = this.observables[message.forId].observable.subscribe((next) => {
                 /**
                  * `next` is automatically mapped.
                  * @see ClientConnection.action.
@@ -116,36 +116,38 @@ export class ConnectionMiddleware {
 
                 this.writer.write({
                     type: 'next/observable',
-                    id: message.id,
+                    id: message.forId,
                     subscribeId: message.subscribeId,
                     next: next
                 });
             }, (error) => {
                 this.writer.write({
                     type: 'error/observable',
-                    id: message.id,
+                    id: message.forId,
                     error: error.message || error,
                     subscribeId: message.subscribeId
                 });
             }, () => {
                 this.writer.write({
                     type: 'complete/observable',
-                    id: message.id,
+                    id: message.forId,
                     subscribeId: message.subscribeId
                 });
             });
+            this.writer.ack(message.id);
         }
 
         if (message.name === 'observable/unsubscribe') {
-            if (!this.observables[message.id]) {
+            if (!this.observables[message.forId]) {
                 throw new Error('No observable registered.');
             }
 
-            if (!this.observables[message.id].subscriber[message.subscribeId]) {
+            if (!this.observables[message.forId].subscriber[message.subscribeId]) {
                 throw new Error('Subscriber already unsubscribed.');
             }
 
-            this.observables[message.id].subscriber[message.subscribeId].unsubscribe();
+            this.observables[message.forId].subscriber[message.subscribeId].unsubscribe();
+            this.writer.ack(message.id);
         }
     }
 
