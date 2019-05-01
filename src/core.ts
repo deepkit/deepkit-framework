@@ -322,7 +322,6 @@ export function average(array: number[]): number {
     return sum / array.length;
 }
 
-
 /**
  * @public
  */
@@ -344,7 +343,6 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
         origin[i] = v;
     }
 }
-
 
 /**
  * @public
