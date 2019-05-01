@@ -4,9 +4,11 @@ import {Application, SessionStack} from "./application";
 import {ActionTypes, ClientMessageAll, executeActionAndSerialize, getActionParameters, getActionReturnType, getActions} from "@marcj/glut-core";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
-import {arrayRemoveItem, each} from "@marcj/estdlib";
+import {arrayRemoveItem, each, sleep} from "@marcj/estdlib";
 import {uuid} from "@marcj/marshal";
 import {Exchange} from "./exchange";
+import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
+import {Locker} from "./locker";
 
 
 @Injectable()
@@ -19,15 +21,18 @@ export class ClientConnection {
         [controllerName: string]: { [actionName: string]: ActionTypes }
     } = {};
 
-    private registeredControllers: { [name: string]: { sub: Subscription } } = {};
+    private registeredPeerControllers: { [name: string]: { sub: Subscription, lock: AsyncSubscription } } = {};
 
     protected pushMessageReplyId = 0;
     protected pushMessageReplies: { [id: string]: (data: any) => void } = {};
+
+    protected unsubscribeOnDisconnectSubscriptions = new Subscriptions();
 
     constructor(
         protected app: Application,
         protected sessionStack: SessionStack,
         protected injector: Injector,
+        protected locker: Locker,
         protected exchange: Exchange,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
@@ -35,6 +40,9 @@ export class ClientConnection {
     ) {
     }
 
+    /**
+     * Is called when connection breaks or client disconnects.
+     */
     public destroy() {
         this.connectionMiddleware.destroy();
         this.destroyed = true;
@@ -43,10 +51,17 @@ export class ClientConnection {
             clearTimeout(timeout);
         }
 
+        this.unsubscribeOnDisconnectSubscriptions.unsubscribe();
+
         for (const usedController of each(this.usedControllers)) {
             if (usedController.destroy) {
                 usedController.destroy();
             }
+        }
+
+        for (const peer of each(this.registeredPeerControllers)) {
+            peer.sub.unsubscribe();
+            peer.lock.unsubscribe();
         }
     }
 
@@ -102,13 +117,14 @@ export class ClientConnection {
             }
 
             if (message.name === 'peerController/unregister') {
-                if (!this.registeredControllers[message.controllerName]) {
+                if (!this.registeredPeerControllers[message.controllerName]) {
                     this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
                     return;
                 }
 
-                this.registeredControllers[message.controllerName].sub.unsubscribe();
-                delete this.registeredControllers[message.controllerName];
+                this.registeredPeerControllers[message.controllerName].sub.unsubscribe();
+                await this.registeredPeerControllers[message.controllerName].lock.unsubscribe();
+                delete this.registeredPeerControllers[message.controllerName];
             }
 
             if (message.name === 'peerController/message') {
@@ -118,28 +134,45 @@ export class ClientConnection {
 
             if (message.name === 'peerController/register') {
                 const access = await this.app.isAllowedToRegisterPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), message.controllerName);
+
                 if (!access) {
                     this.writer.sendError(message.id, 'Access denied to register controller ' + message.controllerName);
                     return;
                 }
 
-                if (this.registeredControllers[message.controllerName]) {
-                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
-                    return;
-                }
+                try {
+                    if (this.registeredPeerControllers[message.controllerName]) {
+                        this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
+                        return;
+                    }
 
-                const sub = await this.exchange.subscribe('peerController/' + message.controllerName, (controllerMessage: { replyId: string, data: any }) => {
-                    this.writer.write({
-                        id: message.id,
-                        type: 'peerController/message',
-                        replyId: controllerMessage.replyId,
-                        data: controllerMessage.data
+                    //check if registered
+                    const locked = await this.locker.isLocked('peerController/' + message.controllerName);
+                    if (locked) {
+                        this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
+                        return;
+                    }
+
+                    const lock = await this.locker.acquireLockWithAutoExtending('peerController/' + message.controllerName, 10);
+
+                    const sub = await this.exchange.subscribe('peerController/' + message.controllerName, (controllerMessage: { replyId: string, data: any }) => {
+                        this.writer.write({
+                            id: message.id,
+                            type: 'peerController/message',
+                            replyId: controllerMessage.replyId,
+                            data: controllerMessage.data
+                        });
                     });
-                });
 
-                this.registeredControllers[message.controllerName] = {sub: sub};
-                // await sleep(0.1);
-                this.writer.ack(message.id);
+                    this.registeredPeerControllers[message.controllerName] = {
+                        sub: sub,
+                        lock: lock,
+                    };
+
+                    this.writer.ack(message.id);
+                } catch (error) {
+                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered. ` + error);
+                }
                 return;
             }
 
@@ -151,7 +184,15 @@ export class ClientConnection {
                         const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
 
                         if (!access) {
-                            this.writer.sendError(message.id, 'Access denied to peer controller ' + controllerName);
+                            this.writer.sendError(message.id, `Access denied to peer controller ` + controllerName, 'access_denied');
+                            return;
+                        }
+
+                        //check if registered
+                        const locked = await this.locker.isLocked('peerController/' + controllerName);
+
+                        if (!locked) {
+                            this.writer.sendError(message.id, `Peer controller ${controllerName} not registered`, 'peer_not_registered');
                             return;
                         }
 
@@ -160,6 +201,15 @@ export class ClientConnection {
                             this.writer.write({...reply, id: message.id});
                             sub.unsubscribe();
                         });
+
+                        this.unsubscribeOnDisconnectSubscriptions.add = sub;
+
+                        setTimeout(() => {
+                            if (!sub.closed) {
+                                sub.unsubscribe();
+                                this.writer.sendError(message.id, `Peer timed out ` + controllerName, 'peer_timeout');
+                            }
+                        }, message.timeout * 1000);
 
                         this.exchange.publish('peerController/' + controllerName, {
                             replyId: replyId,
@@ -186,7 +236,16 @@ export class ClientConnection {
                         const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
 
                         if (!access) {
-                            throw new Error(`Access denied to peer controller ` + controllerName);
+                            this.writer.sendError(message.id, `Access denied to peer controller ` + controllerName, 'access_denied');
+                            return;
+                        }
+
+                        //check if registered
+                        const locked = await this.locker.isLocked('peerController/' + controllerName);
+
+                        if (!locked) {
+                            this.writer.sendError(message.id, `Peer controller ${controllerName} not registered`, 'peer_not_registered');
+                            return;
                         }
 
                         const replyId = uuid();
@@ -194,6 +253,15 @@ export class ClientConnection {
                             this.writer.write({...reply, id: message.id});
                             sub.unsubscribe();
                         });
+
+                        setTimeout(() => {
+                            if (!sub.closed) {
+                                sub.unsubscribe();
+                                this.writer.sendError(message.id, `Peer timed out ` + controllerName, 'peer_timeout');
+                            }
+                        }, message.timeout * 1000);
+
+                        this.unsubscribeOnDisconnectSubscriptions.add = sub;
 
                         this.exchange.publish('peerController/' + controllerName, {
                             replyId: replyId,

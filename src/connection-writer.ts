@@ -24,7 +24,7 @@ export class ConnectionWriter {
         this.write({type: 'ack', id: id});
     }
 
-    public sendError(id: number, error: any) {
-        this.write({type: 'error', id: id, error: error instanceof Error ? error.message : error});
+    public sendError(id: number, error: any, code?: string) {
+        this.write({type: 'error', id: id, error: error instanceof Error ? error.message : error, code: error.code || code});
     }
 }

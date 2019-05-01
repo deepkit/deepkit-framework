@@ -8,11 +8,13 @@ import {
     ServerMessageActionTypes,
     ServerMessageComplete,
     ServerMessageError,
-    ServerMessageResult
+    ServerMessageResult,
+    ServerMessageErrorGeneral
 } from "@marcj/glut-core";
 import {Subscription} from "rxjs";
 import {eachKey, isArray} from "@marcj/estdlib";
 import {Injectable} from "injection-js";
+import {Locker} from "./locker";
 
 @Injectable()
 export class InternalClient {
@@ -21,11 +23,12 @@ export class InternalClient {
     } = {};
 
     constructor(
+        private locker: Locker,
         private exchange: Exchange,
     ) {
     }
 
-    public peerController<T>(name: string): RemoteController<T> {
+    public peerController<T>(name: string, timeoutInSeconds = 60): RemoteController<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -34,7 +37,7 @@ export class InternalClient {
                     const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    return t.stream(name, actionName, ...args);
+                    return t.stream(name, actionName, args, timeoutInSeconds);
                 };
             }
         });
@@ -42,14 +45,25 @@ export class InternalClient {
         return (o as any) as RemoteController<T>;
     }
 
-    protected sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
+    protected sendMessage<T = { type: '' }>(
         controllerName: string,
-        messageWithoutId: ClientMessageWithoutId
-    ): MessageSubject<K> {
+        messageWithoutId: ClientMessageWithoutId,
+        timeoutInSeconds = 30
+    ): MessageSubject<T | ServerMessageComplete | ServerMessageError> {
         const replyId = uuid();
         let sub: Subscription | undefined;
+        const subject = new MessageSubject<T | ServerMessageComplete | ServerMessageError>(0);
 
         (async () => {
+            //check if registered
+            const locked = await this.locker.isLocked('peerController/' + controllerName);
+
+            if (!locked) {
+                const next = {type: 'error', id: 0, error: `Peer controller ${controllerName} not registered`, code: 'peer_not_registered'} as ServerMessageErrorGeneral;
+                subject.next(next);
+                return;
+            }
+
             sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
                 subject.next(reply);
                 if (sub) {
@@ -57,14 +71,21 @@ export class InternalClient {
                 }
             });
 
+            setTimeout(() => {
+                if (sub) {
+                    sub.unsubscribe();
+                }
+
+                subject.error('Timed out.');
+            }, timeoutInSeconds * 1000);
+
             this.exchange.publish('peerController/' + controllerName, {
                 replyId: replyId,
                 data: messageWithoutId
             });
         })();
 
-        const subject = new MessageSubject<K>(0);
-        subject.subscribe().add(() => {
+        subject.subscribe({error: () => {}}).add(() => {
             if (sub) {
                 sub.unsubscribe();
             }
@@ -73,7 +94,7 @@ export class InternalClient {
         return subject;
     }
 
-    public async getActionTypes(controller: string, actionName: string): Promise<ActionTypes> {
+    public async getActionTypes(controller: string, actionName: string, timeoutInSeconds = 60): Promise<ActionTypes> {
         if (!this.cachedActionsTypes[controller]) {
             this.cachedActionsTypes[controller] = {};
         }
@@ -82,7 +103,8 @@ export class InternalClient {
             const reply = await this.sendMessage<ServerMessageActionTypes>(controller, {
                 name: 'actionTypes',
                 controller: controller,
-                action: actionName
+                action: actionName,
+                timeout: timeoutInSeconds
             }).firstThenClose();
 
             if (reply.type === 'error') {
@@ -100,7 +122,7 @@ export class InternalClient {
         return this.cachedActionsTypes[controller][actionName];
     }
 
-    public async stream(controller: string, name: string, ...args: any[]): Promise<any> {
+    public async stream(controller: string, name: string, args: any[], timeoutInSeconds = 60): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
             try {
                 //todo, handle reject when we sending message fails
@@ -141,8 +163,9 @@ export class InternalClient {
                     name: 'action',
                     controller: controller,
                     action: name,
-                    args: args
-                });
+                    args: args,
+                    timeout: timeoutInSeconds,
+                }, timeoutInSeconds);
 
                 function deserializeResult(next: any): any {
                     if (types.returnType.type === 'Date') {
@@ -189,6 +212,8 @@ export class InternalClient {
 
                         subject.complete();
                     }
+                }, (error) => {
+                    reject(error);
                 });
             } catch (error) {
                 reject(error);

@@ -2,6 +2,10 @@ import {Injectable} from 'injection-js';
 import {createClient, RedisClient} from "redis";
 import * as Redlock from 'redlock';
 import {Lock} from 'redlock';
+import {Subscription} from 'rxjs';
+import {AsyncSubscription} from '@marcj/estdlib-rxjs';
+
+export {Lock} from 'redlock';
 
 @Injectable()
 export class Locker {
@@ -18,8 +22,8 @@ export class Locker {
         });
 
         this.redlock = new Redlock([this.redis], {
-           retryCount: 10000,
-           retryDelay: 100,
+            retryCount: 10000,
+            retryDelay: 100,
             //max wait-time is 0.1s * 10000 = 1000.0 sec = 16min.
         });
     }
@@ -28,7 +32,48 @@ export class Locker {
         await new Promise((resolve, reject) => this.redis.quit((err) => err ? reject(err) : resolve()));
     }
 
-    public async acquireLock(id: string, timeout?: number): Promise<Lock> {
-        return this.redlock.acquire(id, (timeout || 0.1) * 1000);
+    public async acquireLock(id: string, timeoutInSeconds?: number): Promise<Lock> {
+        return this.redlock.acquire(id, (timeoutInSeconds || 0.1) * 1000);
+    }
+
+    public async acquireLockWithAutoExtending(id: string, timeoutInSeconds?: number): Promise<AsyncSubscription> {
+        const lock = await this.redlock.acquire(id, (timeoutInSeconds || 0.1) * 1000);
+
+        const interval = setInterval(async () => {
+            await lock.extend((timeoutInSeconds || 0.1) * 1000);
+        }, ((timeoutInSeconds || 0.1) * 1000) * 0.8);
+
+        return new AsyncSubscription(async () => {
+            clearInterval(interval);
+            await lock.unlock();
+        });
+    }
+
+    public async tryLock(id: string, timeoutInSeconds?: number): Promise<Lock | undefined> {
+        const redlockTryer = new Redlock([this.redis], {
+            retryCount: 1,
+            retryDelay: 1,
+        });
+
+        try {
+            return await redlockTryer.acquire(id, (timeoutInSeconds || 0.1) * 1000);
+        } catch (error) {
+            return undefined;
+        }
+    }
+
+    public async isLocked(id: string): Promise<boolean> {
+        const redlockTryer = new Redlock([this.redis], {
+            retryCount: 1,
+            retryDelay: 1,
+        });
+
+        try {
+            const lock = await redlockTryer.acquire(id, 10);
+            await lock.unlock();
+            return false;
+        } catch (error) {
+            return true;
+        }
     }
 }
