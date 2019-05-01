@@ -16,7 +16,12 @@ export async function executeActionAndSerialize(
     const fullName = `${getClassName(controllerInstance)}.${methodName}`;
 
     for (const i of eachKey(args)) {
+        if (!actionTypes.parameters[i]) {
+            continue;
+        }
+
         const type = actionTypes.parameters[i];
+
         if (type.type === 'Entity' && type.entityName) {
             if (!RegisteredEntities[type.entityName]) {
                 throw new Error(`Action's parameter ${fullName}:${i} has invalid entity referenced ${type.entityName}.`);
@@ -41,7 +46,7 @@ export async function executeActionAndSerialize(
 
     let result = (controllerInstance as any)[methodName](...args);
 
-    if (typeof (result as any)['then'] === 'function') {
+    if (result && typeof (result as any)['then'] === 'function') {
         // console.log('its an Promise');
         result = await result;
     }
