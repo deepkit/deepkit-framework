@@ -1,4 +1,4 @@
-import {Observable, Subscriber, Subject, BehaviorSubject} from "rxjs";
+import {Observable, Subscriber, Subject, BehaviorSubject, Subscription} from "rxjs";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {
     ClientMessageAll,
@@ -20,9 +20,9 @@ import {
     ServerMessagePeerChannelMessage,
     ServerMessageResult,
     StreamBehaviorSubject,
-    CollectionPaginationEvent
+    CollectionPaginationEvent,
 } from "@marcj/glut-core";
-import {applyDefaults, ClassType, eachKey, isArray, sleep, getClassName} from "@marcj/estdlib";
+import {applyDefaults, ClassType, eachKey, isArray, sleep, getClassName, each} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
@@ -40,9 +40,14 @@ type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMe
 export class AuthorizationError extends Error {
 }
 
+let _clientId = 0;
+
 export class SocketClient {
     public socket?: WebSocket;
 
+    /**
+     * True when the connection established (without authentication)
+     */
     private connected: boolean = false;
     private loggedIn: boolean = false;
 
@@ -62,6 +67,12 @@ export class SocketClient {
 
     public readonly disconnected = new Subject<number>();
     public readonly reconnected = new Subject<number>();
+
+    public readonly clientId = _clientId++;
+
+    /**
+     * true when the connection fully established (after authentication)
+     */
     public readonly connection = new BehaviorSubject<boolean>(false);
 
     private cachedActionsTypes: {
@@ -74,18 +85,20 @@ export class SocketClient {
         this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
     }
 
-    protected registeredControllers = new Set<string>();
+    protected registeredControllers: {[name: string]: {controllerInstance: any, sub: Subscription}} = {};
 
     public isConnected(): boolean {
         return this.connected;
     }
 
-    public async registerController<T>(name: string, controllerInstance: T) {
-        if (this.registeredControllers.has(name)) {
+    public isLoggedIn(): boolean {
+        return this.loggedIn;
+    }
+
+    public async registerController<T>(name: string, controllerInstance: T): Promise<Subscription> {
+        if (this.registeredControllers[name]) {
             throw new Error(`Controller with name ${name} already registered.`);
         }
-
-        this.registeredControllers.add(name);
 
         const peerActionTypes: {
             [name: string]: {
@@ -106,7 +119,16 @@ export class SocketClient {
                 }
 
                 if (message.type === 'ack') {
-                    resolve();
+                    const sub = new Subscription(() => {
+                        activeSubject.sendMessage({
+                            name: 'peerController/unregister',
+                            controllerName: name,
+                        }).firstOrUndefinedThenClose();
+                    });
+
+                    this.registeredControllers[name] = {controllerInstance, sub};
+
+                    resolve(sub);
                 }
 
                 if (message.type === 'peerController/message') {
@@ -188,11 +210,13 @@ export class SocketClient {
                         }
                     }
                 }
+            }, (error) => {
+                console.warn('peer action error', name, error);
             });
         });
     }
 
-    public peerController<T>(name: string): RemoteController<T> {
+    public peerController<T>(name: string, timeoutInSeconds = 60): RemoteController<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -201,7 +225,7 @@ export class SocketClient {
                     const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    return t.stream('_peer/' + name, actionName, args);
+                    return t.stream('_peer/' + name, actionName, args, {timeoutInSeconds: timeoutInSeconds});
                 };
             }
         });
@@ -209,7 +233,7 @@ export class SocketClient {
         return (o as any) as RemoteController<T>;
     }
 
-    public controller<T>(name: string): RemoteController<T> {
+    public controller<T>(name: string, timeoutInSeconds = 60): RemoteController<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -218,7 +242,7 @@ export class SocketClient {
                     const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    return t.stream(name, actionName, args);
+                    return t.stream(name, actionName, args, {timeoutInSeconds: timeoutInSeconds});
                 };
             }
         });
@@ -244,8 +268,6 @@ export class SocketClient {
         } else {
             if (this.replies[message.id]) {
                 this.replies[message.id](message);
-            } else {
-                console.error(`No replies callback for message ${message.id}: ` + JSON.stringify(message));
             }
         }
     }
@@ -266,52 +288,65 @@ export class SocketClient {
             this.config.host :
             ((this.config.ssl ? 'wss://' : 'ws://') + this.config.host + ':' + port);
 
-        const socket = this.socket = new WebSocket(url);
-        socket.onmessage = (event: MessageEvent) => {
-            this.onMessage(event);
-        };
+        this.socket = undefined;
 
         return new Promise<void>((resolve, reject) => {
-            socket.onclose = () => {
-                if (this.connected) {
-                    this.connection.next(false);
-                }
-                this.connected = false;
-                this.loggedIn = false;
+            try {
+                const socket = this.socket = new WebSocket(url);
 
-                this.disconnected.next(this.currentConnectionId);
-                this.currentConnectionId++;
-            };
+                socket.onmessage = (event: MessageEvent) => {
+                    this.onMessage(event);
+                };
 
-            socket.onerror = (error: any) => {
-                if (this.connected) {
-                    this.connection.next(false);
-                }
-                this.connected = false;
-                this.loggedIn = false;
-
-                this.disconnected.next(this.currentConnectionId);
-                this.currentConnectionId++;
-
-                reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message}`));
-            };
-
-            socket.onopen = async () => {
-                //it's important to place it here, since authenticate() sends messages and checks this.connected.
-                this.connected = true;
-                this.connectionTries = 0;
-
-                if (this.config.token) {
-                    if (!await this.authenticate()) {
-                        throw new AuthorizationError();
+                socket.onclose = () => {
+                    if (this.connected) {
+                        this.connection.next(false);
+                        this.onDisconnect();
                     }
-                }
+                    this.connected = false;
+                    this.loggedIn = false;
 
-                this.connection.next(true);
-                await this.onConnected();
+                    this.disconnected.next(this.currentConnectionId);
+                    this.currentConnectionId++;
+                };
 
-                resolve();
-            };
+                socket.onerror = (error: any) => {
+                    if (this.connected) {
+                        this.connection.next(false);
+                        this.onDisconnect();
+                    }
+                    this.connected = false;
+                    this.loggedIn = false;
+
+                    this.disconnected.next(this.currentConnectionId);
+                    this.currentConnectionId++;
+
+                    reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error}`));
+                };
+
+                socket.onopen = async () => {
+                    //it's important to place it here, since authenticate() sends messages and checks this.connected.
+                    this.connected = true;
+                    this.connectionTries = 0;
+
+                    if (this.config.token) {
+                        if (!await this.authenticate()) {
+                            this.connected = false;
+                            this.connectionTries = 0;
+                            socket.close();
+                            reject(new AuthorizationError());
+                            return;
+                        }
+                    }
+
+                    this.connection.next(true);
+                    await this.onConnected();
+
+                    resolve();
+                };
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -319,16 +354,12 @@ export class SocketClient {
      * Simply connect with login using the token, without auto re-connect.
      */
     public async connect(): Promise<void> {
-        if (this.connected) {
-            return;
-        }
-
         while (this.connectionPromise) {
             await sleep(0.01);
             await this.connectionPromise;
         }
 
-        if (this.connected) {
+        if (this.connection.value) {
             return;
         }
 
@@ -340,12 +371,12 @@ export class SocketClient {
             delete this.connectionPromise;
         }
 
-        if (this.connected && this.currentConnectionId > 0) {
+        if (this.connection.value && this.currentConnectionId > 0) {
             this.reconnected.next(this.currentConnectionId);
         }
     }
 
-    public async getActionTypes(controller: string, actionName: string): Promise<ActionTypes> {
+    public async getActionTypes(controller: string, actionName: string, timeoutInSeconds = 60): Promise<ActionTypes> {
         if (!this.cachedActionsTypes[controller]) {
             this.cachedActionsTypes[controller] = {};
         }
@@ -354,8 +385,9 @@ export class SocketClient {
             const reply = await this.sendMessage<ServerMessageActionTypes>({
                 name: 'actionTypes',
                 controller: controller,
-                action: actionName
-            }).firstThenClose();
+                action: actionName,
+                timeout: timeoutInSeconds,
+            }, {timeout: timeoutInSeconds}).firstThenClose();
 
             if (reply.type === 'error') {
                 throw new Error(reply.error);
@@ -374,6 +406,7 @@ export class SocketClient {
 
     public async stream(controller: string, name: string, args: any[], options?: {
         useThisCollection?: Collection<any>,
+        timeoutInSeconds?: number,
         useThisStreamBehaviorSubject?: StreamBehaviorSubject<any>,
     }): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
@@ -382,11 +415,13 @@ export class SocketClient {
 
                 let returnValue: any;
 
+                const timeoutInSeconds = options && options.timeoutInSeconds ? options.timeoutInSeconds : 60;
+
                 const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
                 let subscriberIdCounter = 0;
                 let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
-                const types = await this.getActionTypes(controller, name);
+                const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
                 for (const i of eachKey(args)) {
                     const type = types.parameters[i];
@@ -426,8 +461,9 @@ export class SocketClient {
                     name: 'action',
                     controller: controller,
                     action: name,
-                    args: args
-                });
+                    args: args,
+                    timeout: timeoutInSeconds
+                }, {timeout: timeoutInSeconds});
 
                 function deserializeResult(next: any): any {
                     if (types.returnType.type === 'Date') {
@@ -439,7 +475,7 @@ export class SocketClient {
 
                         if (!classType) {
                             reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                            activeSubject.complete();
+                            activeSubject.close();
                             return;
                         }
 
@@ -582,7 +618,7 @@ export class SocketClient {
 
                     if (reply.type === 'next/json') {
                         resolve(deserializeResult(reply.next));
-                        activeSubject.complete();
+                        activeSubject.close();
                     }
 
                     if (reply.type === 'next/observable') {
@@ -625,7 +661,7 @@ export class SocketClient {
                             streamBehaviorSubject.complete();
                         }
 
-                        activeSubject.complete();
+                        activeSubject.close();
                     }
 
                     if (reply.type === 'error') {
@@ -640,7 +676,7 @@ export class SocketClient {
                             reject(error);
                         }
 
-                        activeSubject.complete();
+                        activeSubject.close();
                     }
 
                     if (reply.type === 'error/observable') {
@@ -651,7 +687,7 @@ export class SocketClient {
                         }
 
                         delete subscribers[reply.subscribeId];
-                        activeSubject.complete();
+                        activeSubject.close();
                     }
 
                     if (reply.type === 'complete/observable') {
@@ -660,8 +696,12 @@ export class SocketClient {
                         }
 
                         delete subscribers[reply.subscribeId];
-                        activeSubject.complete();
+                        activeSubject.close();
                     }
+                }, (error) => {
+                    reject(error);
+                }, () => {
+
                 });
             } catch (error) {
                 reject(error);
@@ -669,20 +709,27 @@ export class SocketClient {
         });
     }
 
-    public send(message: ClientMessageAll, onlyForConnectionId?: string) {
-        if (!this.socket) {
+    public send(message: ClientMessageAll) {
+        if (this.socket === undefined) {
             throw new Error('Socket not created yet');
         }
 
         this.socket.send(JSON.stringify(message));
     }
 
-    private sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
+    public sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
         messageWithoutId: ClientMessageWithoutId,
-        connectionId: number = this.currentConnectionId
+        options?: {
+            dontWaitForConnection?: boolean,
+            connectionId?: number,
+            timeout?: number
+        }
     ): MessageSubject<K> {
         this.messageId++;
         const messageId = this.messageId;
+        const dontWaitForConnection = !!(options && options.dontWaitForConnection);
+        const timeout = options && options.timeout ? options.timeout : 30;
+        const connectionId = options && options.connectionId ? options.connectionId : this.currentConnectionId;
 
         const message = {
             id: messageId, ...messageWithoutId
@@ -690,36 +737,52 @@ export class SocketClient {
 
         const reply = (message: ClientMessageWithoutId): MessageSubject<any> => {
             if (connectionId === this.currentConnectionId) {
-                return this.sendMessage(message, connectionId);
+                return this.sendMessage(message, {dontWaitForConnection, connectionId});
             }
 
             console.warn('Connection meanwhile dropped.', connectionId, this.currentConnectionId);
             const nextSubject = new MessageSubject(connectionId, reply);
             nextSubject.complete();
+            nextSubject.unsubscribe();
 
             return nextSubject;
         };
 
         const subject = new MessageSubject<K>(connectionId, reply);
 
+        setTimeout(() => {
+            if (!subject.closed) {
+                subject.error('Server timed out');
+                subject.unsubscribe();
+            }
+        }, timeout * 1000);
+
         const sub = this.disconnected.subscribe((disconnectedConnectionId: number) => {
             if (disconnectedConnectionId === connectionId) {
-
+                subject.complete();
+                subject.unsubscribe();
             }
         });
 
-        subject.subscribe().add(() => {
+        subject.subscribe({error: () => {}}).add(() => {
             delete this.replies[messageId];
             sub.unsubscribe();
         });
 
         this.replies[messageId] = (reply: K) => {
-            subject.next(reply);
+            if (!subject.closed) {
+                subject.next(reply);
+            }
         };
 
-        this.connect().then(() => this.send(message), (error) => {
-            subject.error(error);
-        });
+        if (dontWaitForConnection) {
+            this.send(message);
+        } else {
+            this.connect().then(() => this.send(message), (error) => {
+                subject.error(error);
+                subject.unsubscribe();
+            });
+        }
 
         return subject;
     }
@@ -730,7 +793,7 @@ export class SocketClient {
         const reply = await this.sendMessage<ServerMessageAuthorize>({
             name: 'authenticate',
             token: this.config.token,
-        }).firstThenClose();
+        }, {dontWaitForConnection: true}).firstThenClose();
 
         // console.log('authenticate reply', reply);
 
@@ -745,6 +808,15 @@ export class SocketClient {
         return this.loggedIn;
     }
 
+    protected onDisconnect() {
+        for (const con of each(this.registeredControllers)) {
+            con.sub.unsubscribe();
+        }
+
+        this.registeredControllers = {};
+        this.cachedActionsTypes = {};
+    }
+
     public disconnect() {
         this.connected = false;
         this.loggedIn = false;
@@ -752,6 +824,8 @@ export class SocketClient {
 
         this.disconnected.next(this.currentConnectionId);
         this.connection.next(false);
+
+        this.onDisconnect();
 
         if (this.socket) {
             this.socket.close();
