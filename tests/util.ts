@@ -98,17 +98,23 @@ export async function createServerClientPair(
             return;
         }
 
+        console.log('server close ...');
         await db.dropDatabase(dbName);
         closed = true;
 
         for (const client of createdClients) {
-            client.disconnect();
+            try {
+                client.disconnect();
+            } catch (error) {
+                console.error('failed disconnecting client');
+                throw error;
+            }
         }
 
         await sleep(0.1); //let the server read the disconnect
-        console.log('server close');
         server.close();
         await app.close();
+        console.log('server closed');
     };
 
     closer.push(close);

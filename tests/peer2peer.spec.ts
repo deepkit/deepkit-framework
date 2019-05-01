@@ -8,6 +8,7 @@ import {Session} from "@marcj/glut-server";
 import {Injector} from 'injection-js';
 import {Observable} from 'rxjs';
 import {InternalClient} from "@marcj/glut-server";
+import {sleep} from '@marcj/estdlib';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -35,7 +36,8 @@ test('test peer2peer', async () => {
 
         @Action()
         ob(): Observable<string> {
-            return new Observable(() => {});
+            return new Observable(() => {
+            });
         }
 
         @Action()
@@ -56,7 +58,7 @@ test('test peer2peer', async () => {
         }
     }
 
-    const {client, server, createClient, close} = await createServerClientPair('test basic setup', [], [], MyAppController);
+    const {client, server, createClient, close} = await createServerClientPair('test peer2peer', [], [], MyAppController);
 
     await client.registerController('test', new TestController);
 
@@ -124,6 +126,86 @@ test('test peer2peer', async () => {
         } catch (error) {
             expect(error.message).toBe('Errored.');
         }
+    }
+
+    await close();
+});
+
+test('test peer2peer offline', async () => {
+    @Controller('test')
+    class TestController {
+        @Action()
+        ping(): Boolean {
+            return true;
+        }
+
+        @Action()
+        async timeout(): Promise<void> {
+            await sleep(2);
+        }
+    }
+
+    const {client, server, createClient, close} = await createServerClientPair('test peer2peer offline', [TestController], []);
+
+    const client2 = createClient();
+
+    const peerController = client2.peerController<TestController>('test', 1);
+    const internalClient: InternalClient = server.getInjector().get(InternalClient);
+
+    const controller = client.controller<TestController>('test', 1);
+
+    try {
+        const result = await controller.timeout();
+        fail('Should not work');
+    } catch (error) {
+        expect(error).toContain('Server timed out');
+    }
+
+    try {
+        const result = await peerController.ping();
+        fail('Should not work');
+    } catch (error) {
+        expect(error.message).toContain('Peer controller test not registered');
+    }
+
+    try {
+        const peerController = internalClient.peerController<TestController>('test');
+        const result = await peerController.ping();
+        fail('Should not work');
+    } catch (error) {
+        expect(error.message).toContain('Peer controller test not registered');
+    }
+
+    await client.registerController('test', new TestController);
+
+    try {
+        const result = await peerController.ping();
+        expect(result).toBe(true);
+    } catch (error) {
+        fail('Should  work');
+    }
+
+    try {
+        const result = await peerController.timeout();
+        fail('Should not work');
+    } catch (error) {
+        expect(error).toContain('Server timed out');
+    }
+
+    try {
+        const peerController = internalClient.peerController<TestController>('test', 1);
+        const result = await peerController.ping();
+        expect(result).toBe(true);
+    } catch (error) {
+        fail('Should  work');
+    }
+
+    try {
+        const peerController = internalClient.peerController<TestController>('test', 1);
+        const result = await peerController.timeout();
+        fail('Should not work');
+    } catch (error) {
+        expect(error).toContain('Timed out');
     }
 
     await close();
