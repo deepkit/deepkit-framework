@@ -37,7 +37,17 @@ export class MessageSubject<T> extends Subject<T> {
         super.complete();
     }
 
+    close(): void {
+        this.disconnected.complete();
+        super.complete();
+        this.unsubscribe();
+    }
+
     async firstOrUndefinedThenClose(): Promise<T | undefined> {
+        if (this.closed) {
+            return undefined;
+        }
+
         return new Promise<T>((resolve) => {
             this.pipe(first()).subscribe((next) => {
                 resolve(next);
@@ -46,7 +56,7 @@ export class MessageSubject<T> extends Subject<T> {
             }, () => {
                 //complete
             }).add(() => {
-                this.complete();
+                this.close();
             });
         });
     }
@@ -60,7 +70,7 @@ export class MessageSubject<T> extends Subject<T> {
             }, () => {
                 //complete
             }).add(() => {
-                this.complete();
+                this.close();
             });
         });
     }

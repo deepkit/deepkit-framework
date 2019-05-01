@@ -7,7 +7,7 @@ test('test MessageSubject', () => {
     let closeCalled = false;
 
     const subject = new MessageSubject(0);
-    subject.subscribe().add(() => {
+    subject.subscribe({error: () => {}}).add(() => {
         closeCalled = true;
     });
 
@@ -19,7 +19,7 @@ test('test MessageSubject first', async () => {
     let closeCalled = false;
 
     const subject = new MessageSubject(0);
-    subject.subscribe().add(() => {
+    subject.subscribe({error: () => {}}).add(() => {
         closeCalled = true;
     });
 

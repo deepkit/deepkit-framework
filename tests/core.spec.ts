@@ -1,7 +1,7 @@
 import 'jest';
 import 'reflect-metadata';
 import {FilterQuery, IdInterface, StreamBehaviorSubject} from "..";
-import {ClassType} from '@marcj/estdlib';
+import {ClassType, sleep} from '@marcj/estdlib';
 import {BehaviorSubject, Subject} from 'rxjs';
 
 function assert<T, U extends T>() {
@@ -12,24 +12,70 @@ test('test teardown', async () => {
         let tearDownCalled = false;
 
         const subject = new Subject();
-        subject.subscribe().add(() => {
+        subject.subscribe({error: () => {}}).add(() => {
             tearDownCalled = true;
         });
 
         subject.complete();
         expect(tearDownCalled).toBe(true);
+        expect(subject.closed).toBe(false);
+
+        subject.unsubscribe();
+        expect(subject.closed).toBe(true);
     }
 
     {
         let tearDownCalled = false;
 
         const subject = new Subject();
-        subject.subscribe().add(() => {
+        subject.subscribe({error: () => {}}).add(() => {
             tearDownCalled = true;
         });
 
         subject.error('asd');
+        expect(subject.closed).toBe(false);
         expect(tearDownCalled).toBe(true);
+
+        subject.unsubscribe();
+        expect(subject.closed).toBe(true);
+
+        await sleep(1);
+    }
+});
+
+test('test decayed error', async () => {
+
+    async function doIt() {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                reject('Ciao');
+            }, 100);
+        });
+    }
+
+    doIt().catch(() => {});
+    await sleep(0.2);
+});
+
+
+test('test error subject', async () => {
+    {
+        let gotError: string | undefined;
+
+        try {
+            const subject = new Subject();
+
+            subject.subscribe(() => {
+            }, (error) => {
+                gotError = error;
+            });
+            subject.subscribe({error: () => {}});
+
+            subject.error('My Error');
+            subject.unsubscribe();
+
+            await sleep(1);
+        } catch (error) {}
     }
 });
 

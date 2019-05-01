@@ -20,8 +20,8 @@
     "rxjs": "6.3.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.8",
-    "@marcj/estdlib-rxjs": "^0.1.8",
+    "@marcj/estdlib": "^0.1.9",
+    "@marcj/estdlib-rxjs": "^0.1.9",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {

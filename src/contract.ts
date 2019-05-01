@@ -74,6 +74,7 @@ export interface ClientMessageActionTypes {
     name: 'actionTypes';
     controller: string;
     action: string;
+    timeout: number;
 }
 
 export interface ClientMessageAuthorize {
@@ -86,6 +87,7 @@ export interface ClientMessageAction {
     controller: string;
     action: string;
     args: any[];
+    timeout: number;
 }
 
 export interface ClientMessageEntityUnsubscribe {
@@ -355,6 +357,7 @@ export interface ServerMessageErrorGeneral {
     type: 'error';
     id: number;
     error: any;
+    code?: string;
 }
 
 export interface ServerMessageErrorObservable {
