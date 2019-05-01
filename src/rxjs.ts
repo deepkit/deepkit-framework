@@ -1,6 +1,7 @@
 import {Observable, Subscription, Subscriber, TeardownLogic, BehaviorSubject} from "rxjs";
 import {createStack, mergePromiseStack, mergeStack} from "@marcj/estdlib";
 import {skip, first} from 'rxjs/operators';
+import {arrayRemoveItem} from "@marcj/estdlib";
 
 export class AsyncSubscription {
     constructor(private cb: () => Promise<void>) {
@@ -12,24 +13,36 @@ export class AsyncSubscription {
 }
 
 /**
- * RXJS subscription collection, to easily collection multiple subscriptions and unsubscribe all at once.
+ * RXJS subscription collection, to easily collect multiple subscriptions and unsubscribe all at once.
+ * Added subscriptions are automatically removed when they get unsubscribed.
+ *
+ * @example
+ * ```typescript
+ * const subs = new Subscriptions();
+ *
+ * subs.add = new Subscription(() => {});
+ * subs.add = observeable.subscribe((next) => {});
+ *
+ * subs.unsubscribe();
+ * ```
  */
 export class Subscriptions {
-    protected subscription: Subscription[] = [];
+    public readonly list: Subscription[] = [];
 
     constructor(protected teardown?: () => void | Promise<void>) {
     }
 
-    public subscribe<T>(observable: Observable<T>, callback: (next: T) => any) {
-        this.subscription.push(observable.subscribe(callback));
-    }
-
     public set add(v: Subscription) {
-        this.subscription.push(v);
+        this.list.push(v);
+
+        v.add(() => {
+            arrayRemoveItem(this.list, v);
+        });
     }
 
     public unsubscribe() {
-        for (const sub of this.subscription) {
+        //it's important to work on a array copy, since unsubscribe() modifies directly this.list
+        for (const sub of this.list.slice(0)) {
             sub.unsubscribe();
         }
 
@@ -37,7 +50,7 @@ export class Subscriptions {
             this.teardown();
         }
 
-        this.subscription = [];
+        this.list.splice(0, this.list.length);
     }
 }
 
