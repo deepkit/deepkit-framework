@@ -53,6 +53,7 @@ export class InternalClient {
         const replyId = uuid();
         let sub: Subscription | undefined;
         const subject = new MessageSubject<T | ServerMessageComplete | ServerMessageError>(0);
+        let timer: any;
 
         (async () => {
             //check if registered
@@ -65,18 +66,24 @@ export class InternalClient {
             }
 
             sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
-                subject.next(reply);
                 if (sub) {
                     sub.unsubscribe();
+                }
+
+                if (!subject.closed) {
+                    subject.next(reply);
                 }
             });
 
-            setTimeout(() => {
+            timer = setTimeout(() => {
                 if (sub) {
                     sub.unsubscribe();
                 }
 
-                subject.error('Timed out.');
+                if (!subject.closed) {
+                    subject.error('Timed out.');
+                    subject.unsubscribe();
+                }
             }, timeoutInSeconds * 1000);
 
             this.exchange.publish('peerController/' + controllerName, {
@@ -85,7 +92,14 @@ export class InternalClient {
             });
         })();
 
-        subject.subscribe({error: () => {}}).add(() => {
+        subject.subscribe({
+            next: () => {
+                clearTimeout(timer);
+            }, complete: () => {
+                clearTimeout(timer);
+            }, error: () => {
+                clearTimeout(timer);
+            }}).add(() => {
             if (sub) {
                 sub.unsubscribe();
             }
