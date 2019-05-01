@@ -85,7 +85,7 @@ export class SocketClient {
         this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
     }
 
-    protected registeredControllers: {[name: string]: {controllerInstance: any, sub: Subscription}} = {};
+    protected registeredControllers: { [name: string]: { controllerInstance: any, sub: Subscription } } = {};
 
     public isConnected(): boolean {
         return this.connected;
@@ -112,6 +112,8 @@ export class SocketClient {
                 name: 'peerController/register',
                 controllerName: name,
             });
+
+            const actions = getActions(controllerInstance.constructor as ClassType<T>);
 
             activeSubject.subscribe(async (message) => {
                 if (message.type === 'error') {
@@ -140,8 +142,6 @@ export class SocketClient {
                         action: string,
                         args: any[],
                     };
-
-                    const actions = getActions(controllerInstance.constructor as ClassType<T>);
 
                     if (!actions[data.action]) {
                         activeSubject.sendMessage({
@@ -176,6 +176,10 @@ export class SocketClient {
 
                     if (data.name === 'action') {
                         try {
+                            if (!peerActionTypes[data.action]) {
+                                throw new Error(`Could not execute peer controller ${data.action} since actionTypes is not set.`);
+                            }
+
                             let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
 
                             if (actionResult && actionResult.then) {
@@ -211,7 +215,7 @@ export class SocketClient {
                     }
                 }
             }, (error) => {
-                console.warn('peer action error', name, error);
+                console.warn('registerController error', name, error);
             });
         });
     }
@@ -740,7 +744,7 @@ export class SocketClient {
                 return this.sendMessage(message, {dontWaitForConnection, connectionId});
             }
 
-            console.warn('Connection meanwhile dropped.', connectionId, this.currentConnectionId);
+            // console.warn('Connection meanwhile dropped.', connectionId, this.currentConnectionId);
             const nextSubject = new MessageSubject(connectionId, reply);
             nextSubject.complete();
             nextSubject.unsubscribe();
@@ -750,7 +754,7 @@ export class SocketClient {
 
         const subject = new MessageSubject<K>(connectionId, reply);
 
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             if (!subject.closed) {
                 subject.error('Server timed out');
                 subject.unsubscribe();
@@ -759,12 +763,22 @@ export class SocketClient {
 
         const sub = this.disconnected.subscribe((disconnectedConnectionId: number) => {
             if (disconnectedConnectionId === connectionId) {
-                subject.complete();
-                subject.unsubscribe();
+                if (!subject.closed) {
+                    subject.complete();
+                    subject.unsubscribe();
+                }
             }
         });
 
-        subject.subscribe({error: () => {}}).add(() => {
+        subject.subscribe({
+            next: () => {
+                clearTimeout(timer);
+            }, complete: () => {
+                clearTimeout(timer);
+            }, error: () => {
+                clearTimeout(timer);
+            }
+        }).add(() => {
             delete this.replies[messageId];
             sub.unsubscribe();
         });
