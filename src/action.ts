@@ -84,6 +84,9 @@ export async function executeActionAndSerialize(
         'Date': (v: any) => {
             return v;
         },
+        'Plain': (v: any) => {
+            return v;
+        },
         'String': (v: any) => {
             return String(v);
         },
@@ -100,9 +103,9 @@ export async function executeActionAndSerialize(
         if (isObject(v) && !isPlainObject(v)) {
             throw new Error(`${prefix} returns an not annotated custom class instance (${getClassName(v)}) that can not be serialized.\n` +
                 `Use e.g. @ReturnType(MyClass) at your action.`);
-        } else if (isObject(v)) {
+        } else if (isObject(v) && actionTypes.returnType.type !== 'Plain') {
             throw new Error(`${prefix} returns an not annotated object literal that can not be serialized.\n` +
-                `Use either @ReturnPlainObject() to avoid serialisation, or (better) create an entity and use @ReturnType(MyEntity) at your action.`);
+                `Use either @ReturnPlainObject() to avoid serialisation using Marshal.ts, or (better) create an Marshal.ts entity and use @ReturnType(MyEntity) at your action.`);
         }
     }
 

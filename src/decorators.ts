@@ -10,6 +10,7 @@ function typeNameOf(type: TYPES): ServerMessageActionTypeNames {
     if (type === String) return 'String';
     if (type === Number) return 'Number';
     if (type === Date) return 'Date';
+    if (type === 'Plain') return 'Plain';
     if (type === Boolean) return 'Boolean';
     if (type === 'any') return 'Any';
     if (type === undefined) return 'undefined';
@@ -25,6 +26,7 @@ function getSafeEntityName(classType: any): string | undefined {
         || classType === Boolean
         || classType === Array
         || classType === Date
+        || classType === 'Plain'
         || classType === undefined
         || classType === Promise
         || classType === Observable
@@ -56,8 +58,7 @@ export function getActionReturnType<T>(target: ClassType<T>, method: string): Se
                 partial: meta.partial
             };
         } catch (error) {
-            console.error(error);
-            throw new Error(`Error in parsing @ReturnType of ${getClassName(target)}::${method}: ${error}`);
+            throw new Error(`Error in parsing return type of ${getClassName(target)}::${method}: ${error}`);
         }
     }
 
@@ -165,6 +166,15 @@ export function ReturnType<T>(returnType: ClassType<T> | String | Number | Boole
     return (target: Object, property: string) => {
         return Reflect.defineMetadata('glut:returnType', {
             type: returnType,
+            partial: false
+        }, target, property);
+    };
+}
+
+export function ReturnPlainObject<T>() {
+    return (target: Object, property: string) => {
+        return Reflect.defineMetadata('glut:returnType', {
+            type: 'Plain',
             partial: false
         }, target, property);
     };
