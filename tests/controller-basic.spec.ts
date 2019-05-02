@@ -1,6 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
-import {Action, Controller, ParamType, PartialEntityReturnType, PartialParamType, ReturnType} from "@marcj/glut-core";
+import {Action, Controller, ParamType, PartialEntityReturnType, PartialParamType, ReturnType, ReturnPlainObject} from "@marcj/glut-core";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
@@ -117,6 +117,12 @@ test('test basic serialisation return: entity', async () => {
         }
 
         @Action()
+        @ReturnPlainObject()
+        async allowPlainObject(name: string): Promise<{mowla: boolean, name: string, date: Date}> {
+            return {mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z')};
+        }
+
+        @Action()
         async failObservable(name: string): Promise<Observable<User>> {
             return new Observable((observer) => {
                 observer.next(new User(name));
@@ -133,6 +139,12 @@ test('test basic serialisation return: entity', async () => {
     const users = await test.users('peter');
     expect(users.length).toBe(1);
     expect(users[0]).toBeInstanceOf(User);
+
+    const struct = await test.allowPlainObject('peter');
+    expect(struct.mowla).toBe(true);
+    expect(struct.name).toBe('peter');
+    expect(struct.date).toBeInstanceOf(Date);
+    expect(struct.date).toEqual(new Date('1987-12-12T11:00:00.000Z'));
 
     try {
         await test.failUser('peter');
@@ -232,7 +244,7 @@ test('test basic serialisation partial param: entity', async () => {
         fail('Should fail');
     } catch (e) {
         expect(e.message).toMatch('Result returns an not annotated object literal that can not be serialized.\n' +
-            'Use either @ReturnPlainObject() to avoid serialisation, or (better) create an entity and use @ReturnType(MyEntity) at your action.');
+            'Use either @ReturnPlainObject() to avoid serialisation using Marshal.ts, or (better) create an Marshal.ts entity and use @ReturnType(MyEntity) at your action.');
     }
 
     const a = await test.user({name: 'peter2'});
