@@ -222,7 +222,7 @@ export class ClientConnection {
                         await this.actionSend(message, () => this.action(message.controller, message.action, message.args));
                     }
                 } catch (error) {
-                    console.error(`Error in ${message.controller}.${message.action}`, error);
+                    console.debug(`Error in ${message.controller}.${message.action}`, error);
                 }
                 return;
             }

@@ -70,7 +70,7 @@ export class InternalClient {
                     sub.unsubscribe();
                 }
 
-                if (!subject.closed) {
+                if (!subject.isStopped) {
                     subject.next(reply);
                 }
             });
@@ -80,9 +80,8 @@ export class InternalClient {
                     sub.unsubscribe();
                 }
 
-                if (!subject.closed) {
+                if (!subject.isStopped) {
                     subject.error('Timed out.');
-                    subject.unsubscribe();
                 }
             }, timeoutInSeconds * 1000);
 
