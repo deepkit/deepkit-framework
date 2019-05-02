@@ -42,6 +42,18 @@ export class AuthorizationError extends Error {
 
 let _clientId = 0;
 
+export function jsonParser(key: string, value: any) {
+    if (typeof value === 'string' && value[10] === 'T') {
+        const a = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(value);
+
+        if (a) {
+            return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4], +a[5], +a[6]));
+        }
+    }
+
+    return value;
+}
+
 export class SocketClient {
     public socket?: WebSocket;
 
@@ -255,7 +267,7 @@ export class SocketClient {
     }
 
     protected onMessage(event: MessageEvent) {
-        const message = JSON.parse(event.data.toString()) as ServerMessageAll;
+        const message = JSON.parse(event.data.toString(), jsonParser) as ServerMessageAll;
         // console.log('onMessage', message);
 
         if (!message) {
@@ -479,7 +491,7 @@ export class SocketClient {
 
                         if (!classType) {
                             reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                            activeSubject.close();
+                            activeSubject.complete();
                             return;
                         }
 
@@ -622,7 +634,7 @@ export class SocketClient {
 
                     if (reply.type === 'next/json') {
                         resolve(deserializeResult(reply.next));
-                        activeSubject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'next/observable') {
@@ -665,7 +677,7 @@ export class SocketClient {
                             streamBehaviorSubject.complete();
                         }
 
-                        activeSubject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'error') {
@@ -680,7 +692,7 @@ export class SocketClient {
                             reject(error);
                         }
 
-                        activeSubject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'error/observable') {
@@ -691,7 +703,7 @@ export class SocketClient {
                         }
 
                         delete subscribers[reply.subscribeId];
-                        activeSubject.close();
+                        activeSubject.complete();
                     }
 
                     if (reply.type === 'complete/observable') {
@@ -700,7 +712,7 @@ export class SocketClient {
                         }
 
                         delete subscribers[reply.subscribeId];
-                        activeSubject.close();
+                        activeSubject.complete();
                     }
                 }, (error) => {
                     reject(error);
@@ -747,7 +759,6 @@ export class SocketClient {
             // console.warn('Connection meanwhile dropped.', connectionId, this.currentConnectionId);
             const nextSubject = new MessageSubject(connectionId, reply);
             nextSubject.complete();
-            nextSubject.unsubscribe();
 
             return nextSubject;
         };
@@ -755,17 +766,16 @@ export class SocketClient {
         const subject = new MessageSubject<K>(connectionId, reply);
 
         const timer = setTimeout(() => {
-            if (!subject.closed) {
+            if (!subject.isStopped) {
                 subject.error('Server timed out');
-                subject.unsubscribe();
             }
         }, timeout * 1000);
 
         const sub = this.disconnected.subscribe((disconnectedConnectionId: number) => {
             if (disconnectedConnectionId === connectionId) {
-                if (!subject.closed) {
-                    subject.complete();
-                    subject.unsubscribe();
+                console.log('MessageSubject disconnected', messageWithoutId);
+                if (!subject.isStopped) {
+                    subject.error('Connection broke');
                 }
             }
         });
@@ -784,7 +794,7 @@ export class SocketClient {
         });
 
         this.replies[messageId] = (reply: K) => {
-            if (!subject.closed) {
+            if (!subject.isStopped) {
                 subject.next(reply);
             }
         };
@@ -794,7 +804,6 @@ export class SocketClient {
         } else {
             this.connect().then(() => this.send(message), (error) => {
                 subject.error(error);
-                subject.unsubscribe();
             });
         }
 
@@ -834,9 +843,10 @@ export class SocketClient {
     public disconnect() {
         this.connected = false;
         this.loggedIn = false;
-        this.currentConnectionId++;
 
         this.disconnected.next(this.currentConnectionId);
+
+        this.currentConnectionId++;
         this.connection.next(false);
 
         this.onDisconnect();
