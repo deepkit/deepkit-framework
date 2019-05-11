@@ -3,7 +3,6 @@ import {log, stack} from "../src/decorators";
 import {sleep} from "../src/core";
 
 test('test decorators @sync', async () => {
-
     class Test {
         public i = 0;
         public j = 0;
@@ -24,7 +23,7 @@ test('test decorators @sync', async () => {
                     console.log('timeout done');
                     this.j++;
                     this.running = false;
-                    resolve();
+                    resolve(this.j);
                 }, 100);
             });
         }
@@ -34,11 +33,11 @@ test('test decorators @sync', async () => {
         const test = new Test();
 
         expect(test.i).toBe(0);
-        await test.increase();
+        expect(await test.increase()).toBe(1);
         expect(test.i).toBe(1);
         expect(test.j).toBe(1);
 
-        await test.increase();
+        expect(await test.increase()).toBe(2);
         expect(test.i).toBe(2);
         expect(test.j).toBe(2);
     }
@@ -55,9 +54,9 @@ test('test decorators @sync', async () => {
         const test = new Test();
 
         expect(test.i).toBe(0);
-        test.increase();
-        test.increase();
-        test.increase();
+        test.increase().then((j) => {expect(j).toBe(1)});
+        test.increase().then((j) => {expect(j).toBe(2)});
+        test.increase().then((j) => {expect(j).toBe(3)});
         expect(test.i).toBe(1);
         expect(test.j).toBe(0);
 

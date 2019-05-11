@@ -53,12 +53,10 @@ export function stack() {
             calls[propertyKey] = (orig as any).apply(this, args);
 
             try {
-                await calls[propertyKey];
+                return await calls[propertyKey];
             } finally {
                 delete calls[propertyKey];
             }
-
-            return calls[propertyKey];
         };
     };
 }
@@ -83,12 +81,10 @@ export function singleStack() {
             calls[propertyKey] = (orig as any).apply(this, args);
 
             try {
-                await calls[propertyKey];
+                return await calls[propertyKey];
             } finally {
                 delete calls[propertyKey];
             }
-
-            return calls[propertyKey];
         };
     };
 }
