@@ -107,6 +107,12 @@ test('test basic serialisation return: entity', async () => {
 
         @Action()
         @ReturnType(User)
+        async optionalUser(): Promise<User | undefined> {
+            return undefined;
+        }
+
+        @Action()
+        @ReturnType(User)
         async users(name: string): Promise<User[]> {
             return [new User(name)];
         }
@@ -139,6 +145,9 @@ test('test basic serialisation return: entity', async () => {
     const users = await test.users('peter');
     expect(users.length).toBe(1);
     expect(users[0]).toBeInstanceOf(User);
+
+    const optionalUser = await test.optionalUser();
+    expect(optionalUser).toBeUndefined();
 
     const struct = await test.allowPlainObject('peter');
     expect(struct.mowla).toBe(true);
