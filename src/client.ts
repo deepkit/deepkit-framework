@@ -187,11 +187,15 @@ export class SocketClient {
                     }
 
                     if (data.name === 'action') {
-                        try {
-                            if (!peerActionTypes[data.action]) {
-                                throw new Error(`Could not execute peer controller ${data.action} since actionTypes is not set.`);
-                            }
+                        if (!peerActionTypes[data.action]) {
+                            //when the client cached the parameters, it won't execute actionTypes again
+                            peerActionTypes[data.action] = {
+                                parameters: getActionParameters(controllerInstance.constructor as ClassType<T>, data.action),
+                                returnType: getActionReturnType(controllerInstance.constructor as ClassType<T>, data.action),
+                            };
+                        }
 
+                        try {
                             let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
 
                             if (actionResult && actionResult.then) {
@@ -487,6 +491,10 @@ export class SocketClient {
                     }
 
                     if (types.returnType.type === 'Entity') {
+                        if (next === null || next === undefined) {
+                            return next;
+                        }
+
                         const classType = RegisteredEntities[types.returnType.entityName!];
 
                         if (!classType) {
