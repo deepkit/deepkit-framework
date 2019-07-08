@@ -146,6 +146,7 @@ export class EntitySchema {
     properties: { [name: string]: PropertySchema } = {};
     idField?: string;
     propertyNames: string[] = [];
+    constructorParamNames?: string[];
 
     indices: EntityIndex[] = [];
 
@@ -294,6 +295,37 @@ export function Entity<T>(name: string, collectionName?: string) {
 export function DatabaseName<T>(name: string) {
     return (target: ClassType<T>) => {
         getOrCreateEntitySchema(target).databaseName = name;
+    };
+}
+
+/**
+ * Used to define the constructor argument names. This is required
+ * if you have @Fields or other annotations used in the constructor and your build target
+ * does not support reading the definition code of the given class (Class.toString() === [native code]) or
+ * when you strip constructor argument names (names mangling). Typescript's reflection does
+ * not support constructor names, so we need the source from toString() and parse the constructor parameters
+ * manually. This fails if there is minimized or no source code any more (zeit/pkg).
+ * You have to basically duplicate the constructor names in the @ConstructorParamNames decorator
+ * to make sure the runtime gets this information correctly.
+ *
+ * ```typescript
+ * @ConstructorParamNames('username', 'created')
+ * class User {
+ *
+ *
+ *     constructor(
+ *       @Field() public username: string,
+ *       @Field() public created: Date,
+ *     ) {}
+ * }
+ *
+ * ```
+ *
+ * @category Decorator
+ */
+export function ConstructorParamNames<T>(...names: string[]) {
+    return (target: ClassType<T>) => {
+        getOrCreateEntitySchema(target).constructorParamNames = names;
     };
 }
 

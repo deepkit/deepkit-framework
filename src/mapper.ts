@@ -2,7 +2,7 @@ import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
-import {getEntitySchema} from "./decorators";
+import {getEntitySchema, getOrCreateEntitySchema} from "./decorators";
 import {
     ClassType,
     getClassName,
@@ -38,6 +38,11 @@ const cache = new Map<Object, Map<string, any>>();
  * @hidden
  */
 export function getCachedParameterNames<T>(classType: ClassType<T>): string[] {
+    const cpn = getEntitySchema(classType).constructorParamNames;
+    if (cpn) {
+        return cpn;
+    }
+
     let valueMap = cache.get(classType.prototype);
     if (!valueMap) {
         valueMap = new Map();

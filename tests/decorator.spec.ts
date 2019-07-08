@@ -17,7 +17,7 @@ import {
     ParentReference,
     plainToClass,
     RegisteredEntities,
-    FieldAny, FieldMap, forwardRef, FieldArray, Index,
+    FieldAny, FieldMap, forwardRef, FieldArray, Index, ConstructorParamNames,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
@@ -179,6 +179,28 @@ test('test binary', () => {
     }
     const schema = getEntitySchema(User);
     expect(schema.getProperty('picture').type).toBe('binary');
+});
+
+
+test('test ConstructorParamNames', () => {
+    @ConstructorParamNames('name1', 'name2')
+    class User {
+        constructor(
+            @Field() public parent: string,
+            @Field() public neighbor: string,
+        ) {}
+    }
+
+    const schema = getEntitySchema(User);
+    expect(schema.constructorParamNames).toEqual(['name1', 'name2']);
+
+    const user = plainToClass(User, {
+        name1: 'a',
+        name2: 'b'
+    });
+
+    expect(user['parent']).toBe('a');
+    expect(user['neighbor']).toBe('b');
 });
 
 test('test @Field', () => {
