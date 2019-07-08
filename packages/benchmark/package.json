@@ -1,6 +1,6 @@
 {
   "name": "@marcj/benchmark",
-  "version": "0.8.7",
+  "version": "0.8.9",
   "description": "Benchmark stuff.",
   "sideEffects": false,
   "private": true,
@@ -12,7 +12,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@marcj/marshal": "^0.8.7",
+    "@marcj/marshal": "^0.8.9",
     "buffer": "^5.2.1",
     "class-transformer": "^0.2.0"
   },
