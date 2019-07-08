@@ -408,7 +408,7 @@ export function propertyPlainToClass<T>(
  * Clones a class instance deeply.
  */
 export function cloneClass<T>(target: T, parents?: any[]): T {
-    return plainToClass(target.constructor as ClassType<T>, classToPlain(target.constructor as ClassType<T>, target), parents);
+    return plainToClass(target['constructor'] as ClassType<T>, classToPlain(target['constructor'] as ClassType<T>, target), parents);
 }
 
 /**
