@@ -17,7 +17,7 @@ import {
     ParentReference,
     plainToClass,
     RegisteredEntities,
-    FieldAny, FieldMap, forwardRef, FieldArray, Index, ConstructorParamNames,
+    FieldAny, FieldMap, forwardRef, FieldArray, Index, UUIDField, isOptional,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
@@ -35,7 +35,8 @@ test('test invalid usage decorator', async () => {
 });
 
 test('test invalid usage', async () => {
-    class Config {}
+    class Config {
+    }
 
     class Base {
         @Field(forwardRef(() => undefined))
@@ -44,7 +45,8 @@ test('test invalid usage', async () => {
         @Field(forwardRef(() => Config))
         config?: any;
 
-        constructor(@Field() public id: string) {}
+        constructor(@Field() public id: string) {
+        }
     }
 
     expect(() => {
@@ -81,7 +83,8 @@ test('test inheritance', async () => {
             @Field()
             @Index({}, 'id2')
             public id: string,
-        ) {}
+        ) {
+        }
     }
 
     class Page extends Base {
@@ -99,8 +102,11 @@ test('test inheritance', async () => {
         super?: number
     }
 
-    class Super2 extends SuperPage {}
-    class Super3 extends Super2 {}
+    class Super2 extends SuperPage {
+    }
+
+    class Super3 extends Super2 {
+    }
 
     expect(getEntitySchema(Base).getProperty('id').type).toBe('string');
     expect(getEntitySchema(Base).getIndex('id2')!.name).toBe('id2');
@@ -177,30 +183,30 @@ test('test binary', () => {
         @Field(Buffer)
         picture?: Buffer
     }
+
     const schema = getEntitySchema(User);
     expect(schema.getProperty('picture').type).toBe('binary');
 });
 
-
-test('test ConstructorParamNames', () => {
-    @ConstructorParamNames('name1', 'name2')
+test('test asName', () => {
     class User {
         constructor(
-            @Field() public parent: string,
-            @Field() public neighbor: string,
-        ) {}
+            @Field().asName('fieldA')
+            public parent: string,
+            @UUIDField().asName('fieldB').optional()
+            public neighbor?: string,
+        ) {
+        }
     }
 
-    const schema = getEntitySchema(User);
-    expect(schema.constructorParamNames).toEqual(['name1', 'name2']);
-
     const user = plainToClass(User, {
-        name1: 'a',
-        name2: 'b'
+        fieldA: 'a',
+        fieldB: 'b'
     });
 
-    expect(user['parent']).toBe('a');
-    expect(user['neighbor']).toBe('b');
+    expect(user.parent).toBe('a');
+    expect(user.neighbor).toBe('b');
+    expect(isOptional(User, 'fieldB')).toBe(true);
 });
 
 test('test @Field', () => {
@@ -558,7 +564,7 @@ test('more array/map', () => {
         whatever?: any[];
 
         @FieldAny({})
-        whatevermap?: {[k: string]: any};
+        whatevermap?: { [k: string]: any };
     }
 
     expect(isArrayType(Model, 'bools')).toBeTrue();

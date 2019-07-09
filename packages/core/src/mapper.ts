@@ -39,7 +39,7 @@ const cache = new Map<Object, Map<string, any>>();
  */
 export function getCachedParameterNames<T>(classType: ClassType<T>): string[] {
     const cpn = getEntitySchema(classType).constructorParamNames;
-    if (cpn) {
+    if (cpn.length > 0) {
         return cpn;
     }
 
