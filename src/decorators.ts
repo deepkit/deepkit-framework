@@ -4,6 +4,7 @@ import {
     DateValidator,
     NumberValidator,
     ObjectIdValidator,
+    Optional,
     PropertyValidatorError,
     StringValidator,
     UUIDValidator
@@ -135,7 +136,11 @@ export class PropertySchema {
     }
 }
 
-export interface EntityIndex { name?: string, fields: string[], options: IndexOptions }
+export interface EntityIndex {
+    name?: string,
+    fields: string[],
+    options: IndexOptions
+}
 
 export class EntitySchema {
     proto: Object;
@@ -146,7 +151,7 @@ export class EntitySchema {
     properties: { [name: string]: PropertySchema } = {};
     idField?: string;
     propertyNames: string[] = [];
-    constructorParamNames?: string[];
+    constructorParamNames: string[] = [];
 
     indices: EntityIndex[] = [];
 
@@ -298,35 +303,39 @@ export function DatabaseName<T>(name: string) {
     };
 }
 
-/**
- * Used to define the constructor argument names. This is required
- * if you have @Fields or other annotations used in the constructor and your build target
- * does not support reading the definition code of the given class (Class.toString() === [native code]) or
- * when you strip constructor argument names (names mangling). Typescript's reflection does
- * not support constructor names, so we need the source from toString() and parse the constructor parameters
- * manually. This fails if there is minimized or no source code any more (zeit/pkg).
- * You have to basically duplicate the constructor names in the @ConstructorParamNames decorator
- * to make sure the runtime gets this information correctly.
- *
- * ```typescript
- * @ConstructorParamNames('username', 'created')
- * class User {
- *
- *
- *     constructor(
- *       @Field() public username: string,
- *       @Field() public created: Date,
- *     ) {}
- * }
- *
- * ```
- *
- * @category Decorator
- */
-export function ConstructorParamNames<T>(...names: string[]) {
-    return (target: ClassType<T>) => {
-        getOrCreateEntitySchema(target).constructorParamNames = names;
-    };
+interface FieldDecoratorResult {
+    (target: Object, property?: string, parameterIndexOrDescriptor?: any): void;
+
+    /**
+     * Sets the name of this property. Important for cases where the actual name is lost during compilation.
+     * @param name
+     */
+    asName(name: string): FieldDecoratorResult;
+
+    /**
+     * @see Optional
+     */
+    optional(): FieldDecoratorResult;
+
+    /**
+     * @see IDField
+     */
+    asId(): FieldDecoratorResult;
+
+    /**
+     * @see Index
+     */
+    index(options?: IndexOptions): FieldDecoratorResult;
+
+    /**
+     * @see FieldArray
+     */
+    asArray(): FieldDecoratorResult;
+
+    /**
+     * @see FieldMap
+     */
+    asMap(): FieldDecoratorResult;
 }
 
 /**
@@ -334,9 +343,14 @@ export function ConstructorParamNames<T>(...names: string[]) {
  * We detect the name by reading the constructor' signature, which would be otherwise lost.
  */
 function FieldDecoratorWrapper(
-    cb: (target: Object, property: string, returnType?: any) => void
-): (target: Object, property?: string, parameterIndexOrDescriptor?: any) => void {
-    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
+    cb: (target: Object, property: string, returnType?: any, modifiedOptions?: FieldOptions) => void
+): FieldDecoratorResult {
+    let givenPropertyName = '';
+
+    const modifier: ((target: Object, property: string) => void)[] = [];
+    const modifiedOptions: FieldOptions = {};
+
+    const fn = (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
         let returnType;
 
         if (property) {
@@ -344,8 +358,13 @@ function FieldDecoratorWrapper(
         }
 
         if (isNumber(parameterIndexOrDescriptor)) {
-            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
-            property = constructorParamNames[parameterIndexOrDescriptor];
+            if (givenPropertyName) {
+                property = givenPropertyName;
+                getOrCreateEntitySchema(target).constructorParamNames[parameterIndexOrDescriptor] = property;
+            } else {
+                const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
+                property = constructorParamNames[parameterIndexOrDescriptor];
+            }
 
             const returnTypes = Reflect.getMetadata('design:paramtypes', target);
             returnType = returnTypes[parameterIndexOrDescriptor];
@@ -356,14 +375,55 @@ function FieldDecoratorWrapper(
             throw new Error(`Could not detect property in ${getClassName(target)}`);
         }
 
-        cb(target, property, returnType)
+        for (const mod of modifier) {
+            mod(target, property);
+        }
+
+        cb(target, property, returnType, modifiedOptions)
     };
+
+    fn.asName = (name: string) => {
+        givenPropertyName = name;
+        return fn;
+    };
+
+    fn.optional = () => {
+        modifier.push(Optional());
+        return fn;
+    };
+
+    fn.asId = () => {
+        modifier.push(IDField());
+        return fn;
+    };
+
+    fn.index = (options?: IndexOptions) => {
+        modifier.push(Index(options));
+        return fn;
+    };
+
+    fn.asArray = () => {
+        modifiedOptions.array = true;
+        return fn;
+    };
+
+    fn.asMap = () => {
+        modifiedOptions.map = true;
+        return fn;
+    };
+
+    return fn;
 }
 
 function FieldAndClassDecoratorWrapper(
-    cb: (target: Object, property?: string, returnType?: any) => void
-): (target: Object, property?: string, parameterIndexOrDescriptor?: any) => void {
-    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
+    cb: (target: Object, property?: string, returnType?: any, modifiedOptions?: FieldOptions) => void
+): FieldDecoratorResult {
+    let givenPropertyName = '';
+
+    const modifier: ((target: Object, property: string) => void)[] = [];
+    const modifiedOptions: FieldOptions = {};
+
+    const fn = (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
         let returnType;
 
         if (property) {
@@ -371,16 +431,58 @@ function FieldAndClassDecoratorWrapper(
         }
 
         if (isNumber(parameterIndexOrDescriptor)) {
-            const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
-            property = constructorParamNames[parameterIndexOrDescriptor];
+            if (givenPropertyName) {
+                property = givenPropertyName;
+            } else {
+                const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
+                property = constructorParamNames[parameterIndexOrDescriptor];
+            }
 
             const returnTypes = Reflect.getMetadata('design:paramtypes', target);
             returnType = returnTypes[parameterIndexOrDescriptor];
             target = target['prototype'];
         }
 
-        cb(target, property, returnType)
+        if (property) {
+            for (const mod of modifier) {
+                mod(target, property);
+            }
+        }
+
+        cb(target, property, returnType, modifiedOptions)
     };
+
+    fn.asName = (name: string) => {
+        givenPropertyName = name;
+        return fn;
+    };
+
+    fn.asId = () => {
+        modifier.push(IDField());
+        return fn;
+    };
+
+    fn.index = (options?: IndexOptions) => {
+        modifier.push(Index(options));
+        return fn;
+    };
+
+    fn.optional = () => {
+        modifier.push(Optional());
+        return fn;
+    };
+
+    fn.asArray = () => {
+        modifiedOptions.array = true;
+        return fn;
+    };
+
+    fn.asMap = () => {
+        modifiedOptions.map = true;
+        return fn;
+    };
+
+    return fn;
 }
 
 /**
@@ -414,7 +516,7 @@ function FieldAndClassDecoratorWrapper(
  * }
  *
  * export class PageClass {
- *     @UUIDType()
+ *     @UUIDField()
  *     id: string = uuid();
  *
  *     @Field()
@@ -478,7 +580,7 @@ export function IDField() {
  * Example circular parent-child setup.
  * ```typescript
  * export class PageClass {
- *     @UUIDType()
+ *     @UUIDField()
  *     id: string = uuid();
  *
  *     @Field()
@@ -655,12 +757,10 @@ interface FieldOptions {
  *
  * ```typescript
  * class User {
- *     @Field()
- *     @Optional()
+ *     @Field().optional()
  *     num?: number;
  *
- *     @Field()
- *     @Optional()
+ *     @Field().optional()
  *     birthdate?: Date;
  *
  *     @Field()
@@ -668,26 +768,42 @@ interface FieldOptions {
  *     yes?: Boolean;
  *
  *     @Field([String])
+ *     //or ...
+ *     @Field(String).asArray()
  *     tags: string[] = [];
  *
  *     @Field({String})
+ *     //or ...
+ *     @Field(String).asMap()
  *     flatStringConfigs: {[name: string]: String} = {}};
  *
  *     @FieldAny({})
+ *     //or ...
+ *     @Field({}).asMap()
  *     flatConfig: {[name: string]: any} = {}};
  *
  *     @Field(MyClass)
  *     config: MyClass = new wMyClass;
  *
  *     @Field([MyClass])
+ *     //or ...
+ *     @Field(MyClass).asArray()
  *     configArray: MyClass[] = []];
  *
  *     @Field({MyClass})
+ *     //or ...
+ *     @Field(MyClass).asMap()
  *     configMap: {[name: string]: MyClass} = {}};
  *
  *     constrcutor(
  *         @Field()
  *         @Index({unique: true})
+ *         //or
+ *         @Field().index({unique: true})
+ *         //if minified using bundled and names are removed, use asName() as as first argument
+ *         //the exact same property name as string. During compilation/bundling this information
+ *         //is otherwise lost and transformations fails.
+ *         @Field().asName('name').index({unique: true})
  *         public name: string
  *     ) {}
  * }
@@ -696,8 +812,11 @@ interface FieldOptions {
  * @category Decorator
  */
 export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }, options?: FieldOptions) {
-    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any) => {
+    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any, modifiedOptions?: FieldOptions) => {
         options = options || {};
+        if (modifiedOptions) {
+            options = {...options, ...modifiedOptions};
+        }
 
         const id = getClassName(target) + '::' + property;
 
@@ -959,7 +1078,7 @@ export function UUIDField() {
  * @category Decorator
  */
 export function Index(options?: IndexOptions, fields?: string | string[], name?: string) {
-    return FieldAndClassDecoratorWrapper((target: Object, property?: string, returnType?: any) => {
+    return FieldAndClassDecoratorWrapper((target: Object, property?: string, returnType?: any, modifiedOptions?: FieldOptions) => {
         const schema = getOrCreateEntitySchema(target);
 
         if (isArray(fields)) {
