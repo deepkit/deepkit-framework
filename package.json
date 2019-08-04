@@ -14,7 +14,7 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@marcj/marshal": "^0.8.7",
+    "@marcj/marshal": "^0.8.10",
     "buffer": "^5.2.1",
     "reflect-metadata": "^0.1.12",
     "rxjs": "6.3.3"
@@ -25,7 +25,7 @@
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {
-    "@marcj/marshal": "^0.8.7",
+    "@marcj/marshal": "^0.8.10",
     "@types/fs-extra": "^5.0.4",
     "buffer": "^5.2.1",
     "rxjs": "6.3.3"

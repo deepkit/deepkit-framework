@@ -6,7 +6,7 @@
 import {ReplaySubject, Subject, TeardownLogic} from "rxjs";
 import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";
-import {ClassType, getClassName} from "@marcj/estdlib";
+import {ClassType, getClassName, each} from "@marcj/estdlib";
 
 export type FilterParameters = {[name: string]: any | undefined};
 
@@ -240,6 +240,9 @@ export class CollectionPagination<T extends IdInterface> {
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent> = new Subject;
 
+    public readonly removed = new Subject<T>();
+    public readonly added = new Subject<T>();
+
     protected readonly teardowns: TeardownLogic[] = [];
 
     protected items: T[] = [];
@@ -370,6 +373,18 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     public set(items: T[], withEvent = true) {
+
+        for (const item of items) {
+            if (!this.itemsMapped[item.id]) {
+                this.added.next(item);
+            }
+            delete this.itemsMapped[item.id];
+        }
+
+        for (const deleted of each(this.itemsMapped)) {
+            this.removed.next(deleted);
+        }
+
         this.itemsMapped = {};
         this.items = items;
 
@@ -399,6 +414,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
             delete this.itemsMapped[id];
             const index = this.items.indexOf(item);
             if (-1 !== index) {
+                this.removed.next(this.items[index]);
                 this.items.splice(index, 1);
             }
         }
@@ -413,6 +429,8 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         if (!item) {
             throw new Error(`Trying to insert a ${getClassName(this.classType)} collection item without value`);
         }
+
+        this.added.next(item);
 
         if (this.itemsMapped[item.id]) {
             const index = this.items.indexOf(this.itemsMapped[item.id]);
@@ -441,6 +459,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
             if (withEvent) {
                 this.event.next({type: 'remove', id: item.id});
+                this.removed.next(item);
                 this.loaded();
             }
         }

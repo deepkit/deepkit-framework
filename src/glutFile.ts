@@ -16,16 +16,6 @@ export class GlutFile implements IdInterface {
     @Field()
     version: number = 0;
 
-    /**
-     * Path WITHOUT starting slash /;
-     * e.g.
-     *
-     *    model.py
-     *    .deepkit/log/master.txt
-     */
-    @Field()
-    path: string;
-
     @EnumField(FileMode)
     mode: FileMode = FileMode.closed;
 
@@ -41,11 +31,20 @@ export class GlutFile implements IdInterface {
     @Field()
     updated: Date = new Date();
 
-    constructor(path: string) {
-        if (undefined === path) {
+    constructor(
+        /**
+         * Path WITHOUT starting slash /;
+         * e.g.
+         *
+         *    model.py
+         *    .deepkit/log/master.txt
+         */
+        @Field().asName('path')
+        public path: string,
+    ) {
+        if (undefined === this.path) {
             throw new Error('new GlutFile undefined path.');
         }
-        this.path = path;
         if (this.path.substr(0, 1) === '/') {
             this.path = this.path.substr(1);
         }

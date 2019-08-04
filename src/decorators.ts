@@ -108,7 +108,7 @@ export function getActionParameters<T>(target: ClassType<T>, method: string): Se
         const meta = Reflect.getMetadata('glut:parameters:' + i, target.prototype, method) as {
             type: ClassType<any> | String | Number | Boolean | undefined,
             partial: true
-        };
+        } | undefined;
 
         if (!meta && returnType === Array) {
             throw Error(`${getClassName(target)}::${method} argument ${i} is an Array. You need to specify it's content using e.g. @ParamType(String).`);
@@ -189,7 +189,7 @@ export function PartialEntityReturnType<T>(returnType: ClassType<T> | String | N
     };
 }
 
-export function ParamType<T>(paramType: ClassType<T> | String | Number | Boolean | undefined) {
+export function ParamType<T>(paramType: ClassType<T> | String | Number | Boolean | undefined | 'any') {
     return (target: Object, property: string, parameterIndex: number) => {
         return Reflect.defineMetadata('glut:parameters:' + parameterIndex, {
             type: paramType,
@@ -198,7 +198,7 @@ export function ParamType<T>(paramType: ClassType<T> | String | Number | Boolean
     };
 }
 
-export function PartialParamType<T>(paramType: ClassType<T> | String | Number | Boolean | undefined) {
+export function PartialParamType<T>(paramType: ClassType<T> | String | Number | Boolean | undefined | 'any') {
     return (target: Object, property: string, parameterIndex: number) => {
         return Reflect.defineMetadata('glut:parameters:' + parameterIndex, {
             type: paramType,

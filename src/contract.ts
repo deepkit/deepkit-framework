@@ -220,6 +220,7 @@ export interface StreamFileAppend {
     path: string;
     version: number;
     content: any;
+    size: number;
 }
 
 export interface StreamFileRemove {
