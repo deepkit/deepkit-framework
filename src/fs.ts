@@ -1,5 +1,5 @@
 import {dirname, join} from "path";
-import {appendFile, ensureDir, pathExists, readFile, remove, unlink, writeFile} from "fs-extra";
+import {stat, appendFile, ensureDir, pathExists, readFile, remove, unlink, writeFile} from "fs-extra";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
 import {FileMode, FileType, FilterQuery, GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
@@ -24,7 +24,7 @@ export function getMd5(content: string | Buffer): string {
 @Injectable()
 export class FS<T extends GlutFile> {
     constructor(
-        private fileType: FileType<T>,
+        public readonly fileType: FileType<T>,
         private exchange: Exchange,
         private database: ExchangeDatabase,
         private locker: Locker,
@@ -177,11 +177,9 @@ export class FS<T extends GlutFile> {
                     if (err) {
                         reject(err);
                     }
-                    // console.log('Read file content', data);
                     resolve(data);
                 });
             } else {
-                console.error('path does not exist', localPath);
                 resolve();
             }
         });
@@ -302,8 +300,11 @@ export class FS<T extends GlutFile> {
     public async stream(path: string, data: Buffer, fields: Partial<T> = {}) {
         let {id, version} = await this.database.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id']);
 
+        const lock = await this.locker.acquireLock('file:' + path);
+        let file: T | undefined;
+
         if (!id) {
-            const file = new this.fileType.classType(path);
+            file = new this.fileType.classType(path);
             for (const i of eachKey(fields)) {
                 (file as any)[i] = (fields as any)[i];
             }
@@ -313,21 +314,27 @@ export class FS<T extends GlutFile> {
                 throw new Error('New file got no id? wtf');
             }
             version = 0;
-            await this.database.add(this.fileType.classType, file);
         }
 
         const localPath = this.getLocalPathForId(id);
         const localDir = dirname(localPath);
         await ensureDir(localDir);
 
-        const lock = await this.locker.acquireLock('file:' + path);
         try {
             await appendFile(localPath, data);
+            const stats = await stat(localPath);
+
+            if (file) {
+                //when a subscribes is listening to this file,
+                //we publish this only when the file is written to disk.
+                await this.database.add(this.fileType.classType, file);
+            }
 
             this.exchange.publishFile(id, {
                 type: 'append',
                 version: version,
                 path: path,
+                size: stats.size,
                 content: data.toString(), //todo, support binary
             });
         } finally {
@@ -362,6 +369,10 @@ export class FS<T extends GlutFile> {
                 if (message.type === 'set') {
                     subject.next(message.content);
                 } else if (message.type === 'append') {
+                    //message.size contains the new size after this append has been applied.
+                    //this means we could track to avoid race conditions, but for the moment we use a lock.
+                    //lock is acquired in stream() and makes sure we don't get file appends during
+                    //reading and subscribing
                     subject.append(message.content);
                 } else if (message.type === 'remove') {
                     subject.next(undefined);

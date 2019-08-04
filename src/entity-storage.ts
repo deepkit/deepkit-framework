@@ -32,7 +32,7 @@ function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index
     return sift(query as SiftQuery<T[]>, [target]).length > 0;
 }
 
-class FindOptions<T extends IdInterface> {
+export class FindOptions<T extends IdInterface> {
     public _filter: ReactiveQuery<T>;
     public _filterParameters: FilterParameters = {};
 

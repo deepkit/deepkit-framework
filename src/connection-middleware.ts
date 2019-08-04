@@ -224,7 +224,7 @@ export class ConnectionMiddleware {
                 this.writer.write({
                     type: 'next/subject',
                     id: message.id,
-                    next: entityName ? classToPlain(item.constructor, item) : item
+                    next: entityName ? classToPlain(next.constructor, next) : next
                 });
             }, async (error) => {
                 this.writer.sendError(message.id, error);
