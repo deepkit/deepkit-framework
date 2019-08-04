@@ -40,6 +40,9 @@ type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMe
 export class AuthorizationError extends Error {
 }
 
+export class OfflineError extends Error {
+}
+
 let _clientId = 0;
 
 export function jsonParser(key: string, value: any) {
@@ -230,7 +233,7 @@ export class SocketClient {
                         }
                     }
                 }
-            }, (error) => {
+            }, (error: any) => {
                 console.warn('registerController error', name, error);
             });
         });
@@ -738,7 +741,11 @@ export class SocketClient {
             throw new Error('Socket not created yet');
         }
 
-        this.socket.send(JSON.stringify(message));
+        try {
+            this.socket.send(JSON.stringify(message));
+        } catch (error) {
+            throw new OfflineError(error);
+        }
     }
 
     public sendMessage<T = { type: '' }, K = T | ServerMessageComplete | ServerMessageError>(
@@ -811,7 +818,7 @@ export class SocketClient {
             this.send(message);
         } else {
             this.connect().then(() => this.send(message), (error) => {
-                subject.error(error);
+                subject.error(new OfflineError(error));
             });
         }
 
