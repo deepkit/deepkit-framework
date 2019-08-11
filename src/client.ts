@@ -637,10 +637,11 @@ export class SocketClient {
                                 await this.entityState.unsubscribeCollection(collection);
 
                                 //collection unsubscribed, so we stop syncing changes
-                                activeSubject.sendMessage({
+                                await activeSubject.sendMessage({
                                     forId: reply.id,
                                     name: 'collection/unsubscribe'
                                 }).firstOrUndefinedThenClose();
+                                activeSubject.complete();
                             });
                             //do not resolve yet, since we want to wait until the collection has bee populated.
                         }
