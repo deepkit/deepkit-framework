@@ -100,7 +100,7 @@ test('test entity sync list', async () => {
 
     await users.nextStateChange;
     expect(users.count()).toBe(4);
-    users.unsubscribe();
+    await users.unsubscribe();
 
     //unsubscribe is sent async, so we wait a bit.
     await sleep(0.1);
@@ -183,6 +183,7 @@ test('test entity sync list: remove', async () => {
     await users.nextStateChange;
     expect(users.count()).toBe(0);
 
+    await users.unsubscribe();
     console.log('done');
     await close();
 });
@@ -719,9 +720,7 @@ test('test entity collection reactive find', async () => {
 
     {
         for (let i = 0; i < 50; i++) {
-            console.log('load team A', i);
             const teamMembers = await test.find('Team a');
-            console.log('loaded');
             expect(teamMembers.count()).toBe(3);
             await teamMembers.unsubscribe();
         }
@@ -737,6 +736,7 @@ test('test entity collection reactive find', async () => {
         console.log('Team B loaded');
         expect(teamMembers.count()).toBe(1);
         expect(teamMembers.all()[0].id).toBe(marieId);
+        await teamMembers.unsubscribe();
     }
 
     {
@@ -764,6 +764,7 @@ test('test entity collection reactive find', async () => {
         console.log('Team deleted');
         expect(teamMembers.count()).toBe(0);
         expect(teamMembers.get(marieId)).toBeUndefined();
+        await teamMembers.unsubscribe();
     }
 
     await close();
@@ -884,6 +885,7 @@ test('test entity collection pagination', async () => {
         test.remove('name_1001');
         await items.nextStateChange;
         expect(items.count()).toBe(20);
+        await items.unsubscribe();
     }
 
     {
@@ -910,6 +912,7 @@ test('test entity collection pagination', async () => {
         expect(items.count()).toBe(10);
         expect(items.pagination.getTotal()).toBe(33);
         expect(items.pagination.getPages()).toBe(4);
+        await items.unsubscribe();
     }
 
     {
@@ -978,6 +981,7 @@ test('test entity collection pagination', async () => {
         expect(items.all()[9].nr).toBe(60);
         expect(items.pagination.getTotal()).toBe(34);
         expect(items.pagination.getPages()).toBe(4);
+        await items.unsubscribe();
     }
 
     await close();
