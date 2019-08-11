@@ -23,6 +23,7 @@ import {
     CollectionPaginationEvent,
 } from "@marcj/glut-core";
 import {applyDefaults, ClassType, eachKey, isArray, sleep, getClassName, each} from "@marcj/estdlib";
+import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
@@ -100,7 +101,7 @@ export class SocketClient {
         this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
     }
 
-    protected registeredControllers: { [name: string]: { controllerInstance: any, sub: Subscription } } = {};
+    protected registeredControllers: { [name: string]: { controllerInstance: any, sub: AsyncSubscription } } = {};
 
     public isConnected(): boolean {
         return this.connected;
@@ -110,7 +111,7 @@ export class SocketClient {
         return this.loggedIn;
     }
 
-    public async registerController<T>(name: string, controllerInstance: T): Promise<Subscription> {
+    public async registerController<T>(name: string, controllerInstance: T): Promise<AsyncSubscription> {
         if (this.registeredControllers[name]) {
             throw new Error(`Controller with name ${name} already registered.`);
         }
@@ -136,11 +137,13 @@ export class SocketClient {
                 }
 
                 if (message.type === 'ack') {
-                    const sub = new Subscription(() => {
-                        activeSubject.sendMessage({
+                    const sub = new AsyncSubscription(async () => {
+                        console.log('closed peerController', name);
+                        await activeSubject.sendMessage({
                             name: 'peerController/unregister',
                             controllerName: name,
-                        }).firstOrUndefinedThenClose();
+                        });
+                        activeSubject.complete();
                     });
 
                     this.registeredControllers[name] = {controllerInstance, sub};
@@ -788,8 +791,8 @@ export class SocketClient {
 
         const sub = this.disconnected.subscribe((disconnectedConnectionId: number) => {
             if (disconnectedConnectionId === connectionId) {
-                console.log('MessageSubject disconnected', messageWithoutId);
                 if (!subject.isStopped) {
+                    console.debug('MessageSubject: connection disconnected before closing', {message: messageWithoutId, isStopped: subject.isStopped});
                     subject.error('Connection broke');
                 }
             }
@@ -846,16 +849,18 @@ export class SocketClient {
         return this.loggedIn;
     }
 
-    protected onDisconnect() {
+    protected async onDisconnect() {
         for (const con of each(this.registeredControllers)) {
-            con.sub.unsubscribe();
+            await con.sub.unsubscribe();
         }
 
         this.registeredControllers = {};
         this.cachedActionsTypes = {};
     }
 
-    public disconnect() {
+    public async disconnect() {
+        await this.onDisconnect();
+
         this.connected = false;
         this.loggedIn = false;
 
@@ -863,8 +868,6 @@ export class SocketClient {
 
         this.currentConnectionId++;
         this.connection.next(false);
-
-        this.onDisconnect();
 
         if (this.socket) {
             this.socket.close();

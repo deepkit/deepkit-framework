@@ -342,7 +342,7 @@ export class EntityState {
                     }
                 });
             } else {
-                console.warn('collection added although we have already fork of it holding', item);
+                forks[item.id].next(item);
             }
         }
     }

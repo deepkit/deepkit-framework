@@ -20,7 +20,8 @@
     "rxjs": "6.3.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.9",
+    "@marcj/estdlib": "^0.1.10",
+    "@marcj/estdlib-rxjs": "^0.1.10",
     "dot-prop": "^4.2.0",
     "ws": "^6.1.2"
   },
