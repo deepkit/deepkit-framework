@@ -70,7 +70,7 @@ test('test file list', async () => {
 
     test.write('test1.txt', 'updated');
     await fileContent.nextStateChange;
-    expect(fileContent.getValue()).toBe('Was geht?');
+    expect(fileContent.getValue()).toBe('updated');
 
     await close();
 });
