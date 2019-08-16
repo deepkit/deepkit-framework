@@ -793,7 +793,7 @@ export class SocketClient {
         const sub = this.disconnected.subscribe((disconnectedConnectionId: number) => {
             if (disconnectedConnectionId === connectionId) {
                 if (!subject.isStopped) {
-                    console.debug('MessageSubject: connection disconnected before closing', {message: messageWithoutId, isStopped: subject.isStopped});
+                    // console.debug('MessageSubject: connection disconnected before closing', {message: messageWithoutId, isStopped: subject.isStopped});
                     subject.error('Connection broke');
                 }
             }
