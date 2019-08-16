@@ -63,6 +63,8 @@ export class ClientConnection {
             peer.sub.unsubscribe();
             peer.lock.unsubscribe();
         }
+
+        this.registeredPeerControllers = {};
     }
 
     public isActive(): boolean {
@@ -149,7 +151,7 @@ export class ClientConnection {
                     //check if registered
                     const locked = await this.locker.isLocked('peerController/' + message.controllerName);
                     if (locked) {
-                        this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
+                        this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered in exchange.`);
                         return;
                     }
 
@@ -171,7 +173,7 @@ export class ClientConnection {
 
                     this.writer.ack(message.id);
                 } catch (error) {
-                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered. ` + error);
+                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} could not register. ` + error);
                 }
                 return;
             }

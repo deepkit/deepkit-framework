@@ -140,6 +140,7 @@ export class ApplicationServer {
             entities: this.entities.map(v => getTypeOrmEntity(v))
         });
 
+        const self = this;
         const baseInjectors: Provider[] = [
             {provide: Application, useClass: this.application},
             {provide: ApplicationServerConfig, useValue: this.config},
@@ -171,11 +172,11 @@ export class ApplicationServer {
                 }
             },
             {
-                provide: ExchangeDatabase, deps: [Application, Database, Exchange],
-                useFactory: (a: Application, d: Database, e: Exchange) => {
+                provide: ExchangeDatabase, deps: [Database, Exchange],
+                useFactory: (d: Database, e: Exchange) => {
                     return new ExchangeDatabase(new class implements ExchangeNotifyPolicy {
                         notifyChanges<T>(classType: ClassType<T>): boolean {
-                            return a.notifyChanges(classType);
+                            return self.injector!.get(Application).notifyChanges(classType);
                         }
                     }, d, e);
                 }

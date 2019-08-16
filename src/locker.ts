@@ -37,14 +37,20 @@ export class Locker {
     }
 
     public async acquireLockWithAutoExtending(id: string, timeoutInSeconds?: number): Promise<AsyncSubscription> {
-        const lock = await this.redlock.acquire(id, (timeoutInSeconds || 0.1) * 1000);
+        const timeoutInMS = (timeoutInSeconds || 0.25) * 1000;
+        const lock = await this.redlock.acquire(id, timeoutInMS);
 
-        const interval = setInterval(async () => {
-            await lock.extend((timeoutInSeconds || 0.1) * 1000);
-        }, ((timeoutInSeconds || 0.1) * 1000) * 0.8);
+        let lastTimeout: any;
+
+        const extend = async () => {
+            await lock.extend((timeoutInSeconds || 0.25) * 1000);
+            lastTimeout = setTimeout(extend, (timeoutInMS) * 0.5);
+        };
+
+        lastTimeout = setTimeout(extend, (timeoutInMS) * 0.5);
 
         return new AsyncSubscription(async () => {
-            clearInterval(interval);
+            clearTimeout(lastTimeout);
             await lock.unlock();
         });
     }
