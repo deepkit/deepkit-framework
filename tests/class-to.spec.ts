@@ -6,7 +6,7 @@ import {classToPlain, partialClassToPlain} from "../src/mapper";
 test('class-to test simple model', () => {
 
     expect(() => {
-        const instance = classToPlain(SimpleModel, {
+        const instance = classToPlain(SimpleModel as any, {
             id: '21313',
             name: 'Hi'
         });
