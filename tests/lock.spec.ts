@@ -79,6 +79,10 @@ test('test mongo lock timeout', async () => {
 
 
 test('test mongo lock competing', async () => {
+    //typeOrm createConnection.synchronize syncs the indices
+    const indices = await db.getCollection(LockItem).indexes();
+    expect(indices.length).toBe(2); //_id_ and name
+
     const lock1 = await locker.acquireLock('test-lock1', 2);
     expect(lock1.isLocked()).toBeTrue();
 
