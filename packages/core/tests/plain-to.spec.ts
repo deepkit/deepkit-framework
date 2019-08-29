@@ -268,6 +268,27 @@ test('partial document', () => {
     });
 });
 
+test('test enum string', () => {
+    enum MyEnum {
+        waiting = 'waiting',
+        downloading = 'downloading',
+        extracting = 'extracting',
+        verifying = 'verifying',
+        done = 'done',
+    }
+
+    class Model {
+        @EnumField(MyEnum)
+        enum: MyEnum = MyEnum.waiting;
+    }
+
+    expect(plainToClass(Model, {enum: MyEnum.waiting}).enum).toBe(MyEnum.waiting);
+    expect(plainToClass(Model, {enum: MyEnum.downloading}).enum).toBe(MyEnum.downloading);
+    expect(plainToClass(Model, {enum: 'waiting'}).enum).toBe(MyEnum.waiting);
+    expect(plainToClass(Model, {enum: 'extracting'}).enum).toBe(MyEnum.extracting);
+    expect(plainToClass(Model, {enum: 'verifying'}).enum).toBe(MyEnum.verifying);
+});
+
 test('test enum labels', () => {
 
     enum MyEnum {

@@ -18,7 +18,7 @@
     "typeorm": "^0.2.14"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.6",
+    "@marcj/estdlib": "^0.1.11",
     "@marcj/marshal": "^0.8.10",
     "mongo-uuid": "^1.0.0"
   },
