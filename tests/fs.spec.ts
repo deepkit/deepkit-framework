@@ -41,7 +41,7 @@ async function createFs(): Promise<[FS<GlutFile>, Function]> {
     await database.dropDatabase('fs-test-' + fs);
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 
-    return [new FS(FileType.forDefault(), exchange, accountDb, new Locker(), localDir), async function () {
+    return [new FS(FileType.forDefault(), exchange, accountDb, new Locker(database), localDir), async function () {
         await exchange.disconnect();
         await database.close();
     }];
