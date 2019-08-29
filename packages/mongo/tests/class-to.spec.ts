@@ -5,7 +5,7 @@ import {SimpleModel} from "@marcj/marshal/tests/entities";
 
 test('class-to test simple model', () => {
     expect(() => {
-        const instance = classToMongo(SimpleModel, {
+        const instance = classToMongo(SimpleModel as any, {
             id: '21313',
             name: 'Hi'
         });
