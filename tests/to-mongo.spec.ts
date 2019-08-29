@@ -61,6 +61,47 @@ test('test simple model all fields', () => {
     expect(mongo['childrenMap'].foo2.label).toBe('bar2');
 });
 
+test('make sure undefined is undefined', () => {
+    expect(undefined).toBeUndefined();
+    expect(null).not.toBeUndefined();
+
+    class Model {
+        constructor(
+        @Field().optional()
+        public name?: string){}
+    }
+
+    {
+        const mongo = classToMongo(Model, new Model('peter'));
+        expect(mongo.name).toBe('peter');
+    }
+
+    {
+        const mongo = classToMongo(Model, new Model(undefined));
+        expect(mongo.name).toBeUndefined();
+    }
+
+    {
+        const mongo = classToMongo(Model, new Model());
+        expect(mongo.name).toBeUndefined();
+    }
+
+    {
+        const mongo = plainToMongo(Model, {name: 'peter'});
+        expect(mongo.name).toBe('peter');
+    }
+
+    {
+        const mongo = plainToMongo(Model, {name: undefined});
+        expect(mongo.name).toBeUndefined();
+    }
+
+    {
+        const mongo = plainToMongo(Model, {});
+        expect(mongo.name).toBeUndefined();
+    }
+});
+
 test('convert IDs and invalid values', () => {
     enum Enum {
         first,
