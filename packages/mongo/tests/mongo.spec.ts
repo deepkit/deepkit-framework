@@ -36,6 +36,32 @@ afterEach(async () => {
     await database.close();
 });
 
+test('test save undefined values', async () => {
+    const database = await createDatabase('testing');
+
+    @Entity('undefined-model-value')
+    class Model {
+        constructor(
+            @Field().optional()
+            public name?: string){}
+    }
+    const collection = database.getCollection(Model);
+
+    {
+        await collection.deleteMany({});
+        await database.add(Model, new Model(undefined));
+        const mongoItem = await collection.find().toArray();
+        expect(mongoItem[0].name).toBeUndefined();
+    }
+
+    {
+        await collection.deleteMany({});
+        await database.add(Model, new Model('peter'));
+        const mongoItem = await collection.find().toArray();
+        expect(mongoItem[0].name).toBe('peter')
+    }
+});
+
 test('test save model', async () => {
     const database = await createDatabase('testing');
 

@@ -447,7 +447,13 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
             continue;
         }
 
-        result[propertyName] = propertyClassToMongo(classType, propertyName, (target as any)[propertyName]);
+        const value = propertyClassToMongo(classType, propertyName, (target as any)[propertyName]);
+        //since mongo driver doesn't support undefined value, we need to make sure the property doesn't exist at all
+        //when used undefined. This results in not having the property in the database at all, which is equivalent to
+        //undefined.
+        if (value !== undefined) {
+            result[propertyName] = value;
+        }
     }
 
     deleteExcludedPropertiesFor(classType, result, 'mongo');
