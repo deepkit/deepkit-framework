@@ -1,5 +1,5 @@
 import {dirname, join} from "path";
-import {stat, appendFile, ensureDir, pathExists, readFile, remove, unlink, writeFile} from "fs-extra";
+import {appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, writeFile} from "fs-extra";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
 import {FileMode, FileType, FilterQuery, GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
@@ -26,7 +26,7 @@ export class FS<T extends GlutFile> {
     constructor(
         public readonly fileType: FileType<T>,
         private exchange: Exchange,
-        private database: ExchangeDatabase,
+        private exchangeDatabase: ExchangeDatabase,
         private locker: Locker,
         @Inject('fs.path') private fileDir: string /* .glut/data/files/ */,
     ) {
@@ -37,7 +37,7 @@ export class FS<T extends GlutFile> {
     }
 
     public async removeAll(filter: FilterQuery<T>): Promise<boolean> {
-        const files = await this.database.find(this.fileType.classType, filter);
+        const files = await this.exchangeDatabase.find(this.fileType.classType, filter);
         return this.removeFiles(files);
     }
 
@@ -76,14 +76,14 @@ export class FS<T extends GlutFile> {
             });
         }
 
-        await this.database.deleteMany(this.fileType.classType, {
+        await this.exchangeDatabase.deleteMany(this.fileType.classType, {
             $and: [{
                 id: {$in: fileIds}
             }]
         } as unknown as FilterQuery<T>);
 
         //found which md5s are still linked
-        const fileCollection = await this.database.collection(this.fileType.classType);
+        const fileCollection = await this.exchangeDatabase.collection(this.fileType.classType);
 
         const foundMd5s = await fileCollection.find({
             md5: {$in: Object.keys(md5ToCheckMap)}
@@ -114,15 +114,15 @@ export class FS<T extends GlutFile> {
     }
 
     public async ls(filter: FilterQuery<T>): Promise<T[]> {
-        return await this.database.find(this.fileType.classType, filter);
+        return await this.exchangeDatabase.find(this.fileType.classType, filter);
     }
 
     public async findOne(path: string, filter: FilterQuery<T> = {}): Promise<T | undefined> {
-        return await this.database.get(this.fileType.classType, {path: path, ...filter} as T);
+        return await this.exchangeDatabase.get(this.fileType.classType, {path: path, ...filter} as T);
     }
 
     public async registerFile(md5: string, path: string, fields: Partial<T> = {}): Promise<T> {
-        const file = await this.database.get(this.fileType.classType, {md5: md5} as T);
+        const file = await this.exchangeDatabase.get(this.fileType.classType, {md5: md5} as T);
 
         if (!file) {
             throw new Error(`No file with '${md5}' found.`);
@@ -139,7 +139,7 @@ export class FS<T extends GlutFile> {
             for (const i of eachKey(fields)) {
                 (newFile as any)[i] = (fields as any)[i];
             }
-            await this.database.add(this.fileType.classType, newFile);
+            await this.exchangeDatabase.add(this.fileType.classType, newFile);
             return newFile;
         } else {
             throw new Error(`File with md5 '${md5}' not found (content deleted).`);
@@ -147,12 +147,12 @@ export class FS<T extends GlutFile> {
     }
 
     public async hasMd5InDb(md5: string): Promise<boolean> {
-        const collection = await this.database.collection(this.fileType.classType);
+        const collection = await this.exchangeDatabase.collection(this.fileType.classType);
         return 0 < await collection.countDocuments({md5: md5});
     }
 
     public async hasMd5(md5: string) {
-        const file = await this.database.get(this.fileType.classType, {md5: md5} as T);
+        const file = await this.exchangeDatabase.get(this.fileType.classType, {md5: md5} as T);
 
         if (file && file.md5) {
             const localPath = this.getLocalPathForMd5(md5);
@@ -225,7 +225,7 @@ export class FS<T extends GlutFile> {
      * Adds a new file or updates an existing one.
      */
     public async write(path: string, data: string | Buffer, fields: Partial<T> = {}): Promise<PartialFile> {
-        let {id, md5, version} = await this.database.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id', 'md5']);
+        let {id, md5, version} = await this.exchangeDatabase.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id', 'md5']);
 
         if ('string' === typeof data) {
             data = Buffer.from(data, 'utf8');
@@ -242,7 +242,7 @@ export class FS<T extends GlutFile> {
             file.size = data.byteLength;
             id = file.id;
             version = 0;
-            await this.database.add(this.fileType.classType, file);
+            await this.exchangeDatabase.add(this.fileType.classType, file);
         } else {
             //when md5 changes, it's important to move
             //the local file as well, since local path is based on md5.
@@ -254,7 +254,7 @@ export class FS<T extends GlutFile> {
                 //todo, there might be a race condition between .increase and .patch in high-load scenarios.
                 // How to solve that?
                 // and changed updated field
-                await this.database.patch(this.fileType.classType, id, {md5: newMd5, size: data.byteLength} as T);
+                await this.exchangeDatabase.patch(this.fileType.classType, id, {md5: newMd5, size: data.byteLength} as T);
 
                 //we need to check whether the local file needs to be removed
                 if (!await this.hasMd5InDb(md5)) {
@@ -282,7 +282,7 @@ export class FS<T extends GlutFile> {
                 content: data.toString('utf8')
             });
         } finally {
-            await lock.unlock();
+            await lock.release();
         }
 
         return {
@@ -297,8 +297,16 @@ export class FS<T extends GlutFile> {
     /**
      * Streams content by always appending data to the file's content.
      */
-    public async stream(path: string, data: Buffer, fields: Partial<T> = {}) {
-        let {id, version} = await this.database.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id']);
+    public async stream(
+        path: string,
+        data: Buffer,
+        fields: Partial<T> = {},
+        options: {
+            cropSizeAt?: number
+            cropSizeAtTo?: number
+        } = {}
+    ) {
+        let {id, version} = await this.exchangeDatabase.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id']);
 
         const lock = await this.locker.acquireLock('file:' + path);
         let file: T | undefined;
@@ -324,10 +332,18 @@ export class FS<T extends GlutFile> {
             await appendFile(localPath, data);
             const stats = await stat(localPath);
 
+            if (options.cropSizeAt && options.cropSizeAtTo && stats.size > options.cropSizeAt) {
+                if (options.cropSizeAtTo >= options.cropSizeAt) {
+                    throw new Error('cropSizeAtTo is not allowed to be bigger than cropSizeAt.');
+                }
+                const content = await readFile(localPath);
+                await writeFile(localPath, content.slice(stats.size - options.cropSizeAtTo));
+            }
+
             if (file) {
                 //when a subscribes is listening to this file,
                 //we publish this only when the file is written to disk.
-                await this.database.add(this.fileType.classType, file);
+                await this.exchangeDatabase.add(this.fileType.classType, file);
             }
 
             this.exchange.publishFile(id, {
@@ -338,7 +354,7 @@ export class FS<T extends GlutFile> {
                 content: data.toString(), //todo, support binary
             });
         } finally {
-            await lock.unlock();
+            await lock.release();
         }
     }
 
@@ -347,47 +363,66 @@ export class FS<T extends GlutFile> {
 
         const file = await this.findOne(path, fields);
 
-        if (!file) {
-            throw new Error(`File not found for ${path}`);
-        }
+        const streamContent = async (id: string) => {
+            //it's important to stop writing/appending when we read initially the file
+            //and then subscribe, otherwise we are hit by a race condition where it can happen
+            //that we get older subscribeFile messages
+            const lock = await this.locker.acquireLock('file:' + path);
 
-        //it's important to stop writing/appending when we read initially the file
-        //and then subscribe, otherwise we are hit by a race condition where it can happen
-        //that we get older subscribeFile messages
-        const lock = await this.locker.acquireLock('file:' + path);
+            try {
+                //read initial content
+                const data = await this.read(path, fields);
 
-        try {
-            //read initial content
-            const data = await this.read(path, fields);
+                if (subject.isStopped) {
+                    return;
+                }
 
-            //todo, support binary
-            subject.next(data ? data.toString('utf8') : undefined);
+                //todo, support binary
+                subject.next(data ? data.toString('utf8') : undefined);
 
-            //it's important that this callback is called right after we returned the subject,
-            //and subscribed to the subject, otherwise append won't work correctly and might be hit by a race-condition.
-            const exchangeSubscription = await this.exchange.subscribeFile(file.id, (message) => {
-                if (message.type === 'set') {
-                    subject.next(message.content);
-                } else if (message.type === 'append') {
-                    //message.size contains the new size after this append has been applied.
-                    //this means we could track to avoid race conditions, but for the moment we use a lock.
-                    //lock is acquired in stream() and makes sure we don't get file appends during
-                    //reading and subscribing
-                    subject.append(message.content);
-                } else if (message.type === 'remove') {
-                    subject.next(undefined);
+                //it's important that this callback is called right after we returned the subject,
+                //and subscribed to the subject, otherwise append won't work correctly and might be hit by a race-condition.
+                const exchangeSubscription = await this.exchange.subscribeFile(id, (message) => {
+                    if (message.type === 'set') {
+                        subject.next(message.content);
+                    } else if (message.type === 'append') {
+                        //message.size contains the new size after this append has been applied.
+                        //this means we could track to avoid race conditions, but for the moment we use a lock.
+                        //lock is acquired in stream() and makes sure we don't get file appends during
+                        //reading and subscribing
+
+                        subject.append(message.content);
+                    } else if (message.type === 'remove') {
+                        subject.next(undefined);
+                    }
+                });
+
+                subject.addTearDown(() => {
+                    if (exchangeSubscription && exchangeSubscription) {
+                        exchangeSubscription.unsubscribe();
+                    }
+                });
+
+            } finally {
+                await lock.release();
+            }
+        };
+
+        if (file) {
+            await streamContent(file.id);
+        } else {
+            subject.next(undefined);
+
+            this.exchangeDatabase.onCreation(this.fileType.classType, {
+                path: path,
+                ...fields
+            }).subscribe((id) => {
+                if (!subject.isStopped) {
+                    streamContent(id);
                 }
             });
-
-            subject.addTearDown(() => {
-                if (exchangeSubscription) {
-                    exchangeSubscription.unsubscribe();
-                }
-            });
-
-        } finally {
-            await lock.unlock();
         }
+
 
         return subject;
     }

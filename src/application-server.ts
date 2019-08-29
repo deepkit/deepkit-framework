@@ -13,7 +13,7 @@ import {Server} from "http";
 import {ServerOptions} from "ws";
 import {createConnection, Connection} from "typeorm";
 import {FileType} from "@marcj/glut-core";
-import {Locker} from "./locker";
+import {Locker, LockItem} from "./locker";
 import {InternalClient} from "./internal-client";
 import {homedir} from "os";
 
@@ -66,6 +66,7 @@ export class ApplicationServer {
         protected entities: ClassType<any>[] = [],
         protected entityChangeFeeds: ClassType<any>[] = [],
     ) {
+        this.entities.push(LockItem);
         this.config = config instanceof ApplicationServerConfig ? config : applyDefaults(ApplicationServerConfig, config);
         this.config.fsPath = this.config.fsPath.replace('~', homedir());
     }
@@ -111,9 +112,6 @@ export class ApplicationServer {
 
                 const exchange: Exchange = this.getInjector().get(Exchange);
                 await exchange.disconnect();
-
-                const locker: Locker = this.getInjector().get(Locker);
-                await locker.disconnect();
 
                 this.masterWorker.close();
             }
@@ -162,11 +160,6 @@ export class ApplicationServer {
                 useFactory: (host: string, port: number, prefix: string) => new Exchange(host, port, prefix)
             },
             {
-                provide: Locker,
-                deps: ['redis.host', 'redis.port'],
-                useFactory: (host: string, port: number,) => new Locker(host, port)
-            },
-            {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {
                     return new Database(connection, dbName);
                 }
@@ -181,6 +174,7 @@ export class ApplicationServer {
                     }, d, e);
                 }
             },
+            Locker,
             FS,
             InternalClient,
         ];

@@ -1,35 +1,19 @@
 import {Exchange} from "./exchange";
-import {FS} from "./fs";
 import {getEntityName} from "@marcj/marshal";
 import {Observable, Subject, Subscription} from "rxjs";
-import {convertClassQueryToMongo, convertPlainQueryToMongo, convertQueryToMongo, mongoToPlain, partialMongoToPlain} from "@marcj/marshal-mongo";
-import sift, {SiftQuery} from "sift";
-import {
-    Collection,
-    CollectionSort,
-    EntitySubject,
-    ExchangeEntity,
-    FilterQuery,
-    FilterParameters,
-    GlutFile,
-    IdInterface,
-    JSONObjectCollection,
-    ReactiveSubQuery
-} from "@marcj/glut-core";
-import {ClassType, eachKey, each, eachPair, getClassName, sleep} from "@marcj/estdlib";
+import {convertPlainQueryToMongo, convertQueryToMongo, mongoToPlain, partialMongoToPlain} from "@marcj/marshal-mongo";
+import {Collection, CollectionSort, EntitySubject, ExchangeEntity, FilterParameters, FilterQuery, IdInterface, JSONObjectCollection, ReactiveSubQuery} from "@marcj/glut-core";
+import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@marcj/estdlib";
 import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
 import {ConnectionWriter} from "./connection-writer";
 import {Cursor} from "typeorm";
+import { findQuerySatisfied } from "./utils";
 
 interface SentState {
     lastSentVersion?: number;
     listeners: number;
-}
-
-function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index: string]: any }, query: FilterQuery<T>): boolean {
-    return sift(query as SiftQuery<T[]>, [target]).length > 0;
 }
 
 export class FindOptions<T extends IdInterface> {
@@ -296,7 +280,6 @@ export class EntityStorage {
         protected readonly writer: ConnectionWriter,
         protected readonly exchange: Exchange,
         protected readonly exchangeDatabase: ExchangeDatabase,
-        protected readonly fs: FS<GlutFile>, //todo, refactor: exclude that dependency and move fileContent to own class
     ) {
     }
 

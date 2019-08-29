@@ -94,6 +94,9 @@ export class Exchange {
         return this.del(this.prefix + '/entity-field-subscription/' + getEntityName(classType));
     }
 
+    /**
+     * This tells the ExchangeDatabase which field values you additionally need in a patch-message.
+     */
     public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
         const key = this.prefix + '/entity-field-subscription/' + getEntityName(classType);
 

@@ -4,7 +4,9 @@ import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
 import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
-import {ClassType, eachPair, getClassName} from '@marcj/estdlib';
+import {ClassType, eachPair} from '@marcj/estdlib';
+import {Observable} from 'rxjs';
+import {findQuerySatisfied} from './utils';
 
 export interface ExchangeNotifyPolicy {
     notifyChanges<T>(classType: ClassType<T>): boolean;
@@ -120,6 +122,29 @@ export class ExchangeDatabase {
 
     public async count<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<number> {
         return await this.database.count(classType, filter);
+    }
+
+    /**
+     * Returns a new Observable that resolves the id as soon as and item in the database of given filter criteria is found.
+     */
+    public onCreation<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Observable<string> {
+        return new Observable((observer) => {
+            (async () => {
+                const sub = await this.exchange.subscribeEntity(classType, (message) => {
+                    if (message.type === 'add' && findQuerySatisfied(message.item, filter)) {
+                        observer.next(message.id);
+                        sub.unsubscribe();
+                    }
+                });
+
+                const items = await (await this.rawPlainCursor(classType, filter, ['id'])).toArray();
+                if (items.length) {
+                    observer.next(items[0].id);
+                    sub.unsubscribe();
+                }
+            })();
+
+        });
     }
 
     /**

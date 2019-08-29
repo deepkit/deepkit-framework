@@ -1,85 +1,197 @@
+import {Collection} from 'typeorm';
+import {Database} from "@marcj/marshal-mongo";
+import {sleep} from "@marcj/estdlib";
+import {Entity, Field, Index, IDField, MongoIdField} from "@marcj/marshal";
 import {Injectable} from 'injection-js';
-import {createClient, RedisClient} from "redis";
-import * as Redlock from 'redlock';
-import {Lock} from 'redlock';
-import {Subscription} from 'rxjs';
-import {AsyncSubscription} from '@marcj/estdlib-rxjs';
+import { AsyncSubscription } from '@marcj/estdlib-rxjs';
 
-export {Lock} from 'redlock';
+@Entity('__lock')
+export class LockItem {
+    @IDField()
+    @MongoIdField()
+    _id?: string;
+
+    constructor(
+        @Index({unique: true})
+        @Field()
+        public readonly name: string,
+
+        @Field()
+        public readonly expire: number,
+
+        @Field()
+        public readonly inserted: number,
+    ) {
+    }
+}
+
+export class Lock {
+    private holding = false;
+    private safeGuardOnExitUnsubscribe?: Function;
+    private timeoutTimer?: any;
+
+    constructor(
+        public readonly id: string,
+        public readonly locks: Collection<LockItem>
+    ) {
+    }
+
+    /**
+     * @param timeout in seconds
+     */
+    public async acquire(timeout: number = 30) {
+        if (this.holding) {
+            throw new Error('Lock already acquired');
+        }
+
+        while (!await this.tryLock(timeout)) {
+            await sleep(0.01);
+        }
+
+        if (this.timeoutTimer) {
+            clearTimeout(this.timeoutTimer);
+        }
+
+        this.timeoutTimer = setTimeout(async () => {
+            await this.release();
+        }, timeout * 1000);
+
+        //make 99% sure we delete the lock even when process dies.
+        // this.safeGuardOnExitUnsubscribe = onProcessExit(async () => {
+        //     await this.release();
+        // });
+    }
+
+    public async prolong(seconds: number) {
+        if (!this.holding) {
+            throw new Error('Lock already expired, could not prolong.');
+        }
+
+        if (this.timeoutTimer) {
+            clearTimeout(this.timeoutTimer);
+        }
+
+        this.timeoutTimer = setTimeout(async () => {
+            await this.release();
+        }, seconds * 1000);
+
+        await this.locks.updateOne({
+            name: this.id
+        }, {
+            $set: {
+                //expire is used to automatically clear expired locks
+                //in case the creator crashed without the ability to delete its acquired lock.
+                expire: (Date.now() / 1000 + seconds)
+            }
+        });
+    }
+
+    public isLocked() {
+        return this.holding;
+    }
+
+    public async tryLock(timeout: number) {
+        const now = Date.now() / 1000;
+
+        try {
+            await this.locks.deleteMany({
+                expire: {$lt: now}
+            });
+
+            await this.locks.insertOne({
+                name: this.id,
+                //expire is used to automatically clear expired locks
+                //in case the creator crashed without the ability to delete its acquired lock.
+                expire: (now + timeout),
+                inserted: now
+            });
+            this.holding = true;
+        } catch (error) {
+            if (error.code === 11000) {
+                //unique clash, means lock already acquired.
+            }
+
+            this.holding = false;
+            return false;
+        }
+
+        return true;
+    }
+
+    public async release() {
+        this.holding = false;
+
+        if (this.safeGuardOnExitUnsubscribe) {
+            this.safeGuardOnExitUnsubscribe();
+        }
+
+        await this.locks.deleteMany({
+            name: this.id
+        });
+    }
+}
 
 @Injectable()
 export class Locker {
-    private redis: RedisClient;
-    private redlock: Redlock;
-
-    constructor(
-        protected host: string = 'localhost',
-        protected port: number = 6379
-    ) {
-        this.redis = createClient({
-            host: host,
-            port: port,
-        });
-
-        this.redlock = new Redlock([this.redis], {
-            retryCount: 10000,
-            retryDelay: 100,
-            //max wait-time is 0.1s * 10000 = 1000.0 sec = 16min.
-        });
+    constructor(protected database: Database) {
     }
 
-    public async disconnect() {
-        await new Promise((resolve, reject) => this.redis.quit((err) => err ? reject(err) : resolve()));
+    public getLocks(): Collection<LockItem> {
+        return this.database.getCollection(LockItem);
     }
 
-    public async acquireLock(id: string, timeoutInSeconds?: number): Promise<Lock> {
-        return this.redlock.acquire(id, (timeoutInSeconds || 0.1) * 1000);
+    public async count(filter: Partial<LockItem> = {}): Promise<number> {
+        return await this.database.getCollection(LockItem).countDocuments(filter);
     }
 
-    public async acquireLockWithAutoExtending(id: string, timeoutInSeconds?: number): Promise<AsyncSubscription> {
-        const timeoutInMS = (timeoutInSeconds || 0.25) * 1000;
-        const lock = await this.redlock.acquire(id, timeoutInMS);
+    public async acquireLock(id: string, timeout?: number): Promise<Lock> {
+        const lock = new Lock(id, this.getLocks());
+        await lock.acquire(timeout);
 
-        let lastTimeout: any;
+        return lock;
+    }
 
-        const extend = async () => {
-            await lock.extend((timeoutInSeconds || 0.25) * 1000);
-            lastTimeout = setTimeout(extend, (timeoutInMS) * 0.5);
+
+    public async acquireLockWithAutoExtending(id: string, timeout: number = 0.1): Promise<AsyncSubscription> {
+        const lock = await this.acquireLock(id, timeout);
+
+        let t: any;
+
+        const extend = () => {
+            if (lock.isLocked()) {
+                lock.prolong(timeout);
+
+                t = setTimeout(extend, (timeout / 2) * 1000);
+            }
         };
 
-        lastTimeout = setTimeout(extend, (timeoutInMS) * 0.5);
+        t = setTimeout(extend, (timeout / 2) * 1000);
 
         return new AsyncSubscription(async () => {
-            clearTimeout(lastTimeout);
-            await lock.unlock();
+            clearTimeout(timeout);
+            await lock.release();
         });
     }
 
-    public async tryLock(id: string, timeoutInSeconds?: number): Promise<Lock | undefined> {
-        const redlockTryer = new Redlock([this.redis], {
-            retryCount: 1,
-            retryDelay: 1,
-        });
+    public async tryLock(id: string,  timeout: number = 0.1): Promise<Lock | undefined> {
+        const lock = new Lock(id, this.getLocks());
 
-        try {
-            return await redlockTryer.acquire(id, (timeoutInSeconds || 0.1) * 1000);
-        } catch (error) {
-            return undefined;
+        if (await lock.tryLock(timeout)) {
+            return lock;
         }
+
+        return;
     }
 
     public async isLocked(id: string): Promise<boolean> {
-        const redlockTryer = new Redlock([this.redis], {
-            retryCount: 1,
-            retryDelay: 1,
+        const now = Date.now() / 1000;
+
+        await this.getLocks().deleteMany({
+            expire: {$lt: now}
         });
 
-        try {
-            const lock = await redlockTryer.acquire(id, 10);
-            await lock.unlock();
-            return false;
-        } catch (error) {
-            return true;
-        }
+        return await this.getLocks().countDocuments({
+            name: id
+        }) > 0;
     }
 }
