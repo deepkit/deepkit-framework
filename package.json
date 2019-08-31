@@ -25,7 +25,7 @@
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {
-    "@marcj/marshal": "^0.8.11",
+    "@marcj/marshal": "^0.8.12",
     "@types/fs-extra": "^5.0.4",
     "buffer": "^5.2.1",
     "rxjs": "6.3.3"
