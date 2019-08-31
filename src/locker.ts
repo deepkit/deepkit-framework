@@ -1,38 +1,25 @@
-import {Collection} from 'typeorm';
-import {Database} from "@marcj/marshal-mongo";
-import {sleep} from "@marcj/estdlib";
-import {Entity, Field, Index, IDField, MongoIdField} from "@marcj/marshal";
 import {Injectable} from 'injection-js';
-import { AsyncSubscription } from '@marcj/estdlib-rxjs';
+import {AsyncSubscription} from '@marcj/estdlib-rxjs';
 
-@Entity('__lock')
-export class LockItem {
-    @IDField()
-    @MongoIdField()
-    _id?: string;
+const LOCKS: { [id: string]: { expire: number, done: Promise<void> } } = {};
 
-    constructor(
-        @Index({unique: true})
-        @Field()
-        public readonly name: string,
-
-        @Field()
-        public readonly expire: number,
-
-        @Field()
-        public readonly inserted: number,
-    ) {
-    }
-}
-
+/**
+ * This lock mechanism works only for one process.
+ * @todo implement a small ws server that can be used a centralized lock server.
+ *
+ * live-mutex: has horrible API and doesn't allow to check if an key is currently locked.
+ * proper-filelock: No way to do a correct mutex locking with event-driven blocking acquire() method.
+ * redislock: Very bad performance on high-load (when multiple locks on the same key `wait`, since it loops)
+ * mongodb lock: even worse performance than redis. Jesus.
+ */
 export class Lock {
     private holding = false;
     private safeGuardOnExitUnsubscribe?: Function;
     private timeoutTimer?: any;
+    private resolve?: Function;
 
     constructor(
         public readonly id: string,
-        public readonly locks: Collection<LockItem>
     ) {
     }
 
@@ -43,9 +30,23 @@ export class Lock {
         if (this.holding) {
             throw new Error('Lock already acquired');
         }
+        const now = Date.now() / 1000;
 
-        while (!await this.tryLock(timeout)) {
-            await sleep(0.01);
+        if (LOCKS[this.id] && LOCKS[this.id].expire <= now) {
+            delete LOCKS[this.id];
+        }
+
+        while (LOCKS[this.id]) {
+            await LOCKS[this.id].done;
+        }
+
+        if (!LOCKS[this.id]) {
+            LOCKS[this.id] = {
+                expire: ((Date.now() / 1000) + timeout), done: new Promise<void>((resolve) => {
+                    this.resolve = resolve;
+                })
+            };
+            this.holding = true;
         }
 
         if (this.timeoutTimer) {
@@ -53,13 +54,8 @@ export class Lock {
         }
 
         this.timeoutTimer = setTimeout(async () => {
-            await this.release();
+            await this.unlock();
         }, timeout * 1000);
-
-        //make 99% sure we delete the lock even when process dies.
-        // this.safeGuardOnExitUnsubscribe = onProcessExit(async () => {
-        //     await this.release();
-        // });
     }
 
     public async prolong(seconds: number) {
@@ -72,18 +68,10 @@ export class Lock {
         }
 
         this.timeoutTimer = setTimeout(async () => {
-            await this.release();
+            await this.unlock();
         }, seconds * 1000);
 
-        await this.locks.updateOne({
-            name: this.id
-        }, {
-            $set: {
-                //expire is used to automatically clear expired locks
-                //in case the creator crashed without the ability to delete its acquired lock.
-                expire: (Date.now() / 1000 + seconds)
-            }
-        });
+        LOCKS[this.id].expire = (Date.now() / 1000 + seconds);
     }
 
     public isLocked() {
@@ -93,64 +81,50 @@ export class Lock {
     public async tryLock(timeout: number) {
         const now = Date.now() / 1000;
 
-        try {
-            await this.locks.deleteMany({
-                expire: {$lt: now}
-            });
+        this.holding = false;
 
-            await this.locks.insertOne({
-                name: this.id,
-                //expire is used to automatically clear expired locks
-                //in case the creator crashed without the ability to delete its acquired lock.
-                expire: (now + timeout),
-                inserted: now
-            });
-            this.holding = true;
-        } catch (error) {
-            if (error.code === 11000) {
-                //unique clash, means lock already acquired.
-            }
-
-            this.holding = false;
-            return false;
+        if (LOCKS[this.id] && LOCKS[this.id].expire <= now) {
+            delete LOCKS[this.id];
         }
 
-        return true;
+        if (!LOCKS[this.id]) {
+            LOCKS[this.id] = {
+                expire: (now + timeout), done: new Promise<void>((resolve) => {
+                    this.resolve = resolve;
+                })
+            };
+            this.holding = true;
+        }
+
+        return this.holding;
     }
 
-    public async release() {
+    public async unlock() {
         this.holding = false;
+
+        delete LOCKS[this.id];
+        if (this.resolve) {
+            this.resolve();
+        }
 
         if (this.safeGuardOnExitUnsubscribe) {
             this.safeGuardOnExitUnsubscribe();
         }
 
-        await this.locks.deleteMany({
-            name: this.id
-        });
     }
 }
 
 @Injectable()
 export class Locker {
-    constructor(protected database: Database) {
-    }
-
-    public getLocks(): Collection<LockItem> {
-        return this.database.getCollection(LockItem);
-    }
-
-    public async count(filter: Partial<LockItem> = {}): Promise<number> {
-        return await this.database.getCollection(LockItem).countDocuments(filter);
+    constructor() {
     }
 
     public async acquireLock(id: string, timeout?: number): Promise<Lock> {
-        const lock = new Lock(id, this.getLocks());
+        const lock = new Lock(id);
         await lock.acquire(timeout);
 
         return lock;
     }
-
 
     public async acquireLockWithAutoExtending(id: string, timeout: number = 0.1): Promise<AsyncSubscription> {
         const lock = await this.acquireLock(id, timeout);
@@ -169,12 +143,12 @@ export class Locker {
 
         return new AsyncSubscription(async () => {
             clearTimeout(timeout);
-            await lock.release();
+            await lock.unlock();
         });
     }
 
-    public async tryLock(id: string,  timeout: number = 0.1): Promise<Lock | undefined> {
-        const lock = new Lock(id, this.getLocks());
+    public async tryLock(id: string, timeout: number = 0.1): Promise<Lock | undefined> {
+        const lock = new Lock(id);
 
         if (await lock.tryLock(timeout)) {
             return lock;
@@ -186,12 +160,10 @@ export class Locker {
     public async isLocked(id: string): Promise<boolean> {
         const now = Date.now() / 1000;
 
-        await this.getLocks().deleteMany({
-            expire: {$lt: now}
-        });
+        if (LOCKS[id] && LOCKS[id].expire <= now) {
+            delete LOCKS[id];
+        }
 
-        return await this.getLocks().countDocuments({
-            name: id
-        }) > 0;
+        return !!LOCKS[id];
     }
 }

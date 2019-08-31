@@ -13,7 +13,7 @@ import {Server} from "http";
 import {ServerOptions} from "ws";
 import {createConnection, Connection} from "typeorm";
 import {FileType} from "@marcj/glut-core";
-import {Locker, LockItem} from "./locker";
+import {Locker} from "./locker";
 import {InternalClient} from "./internal-client";
 import {homedir} from "os";
 
@@ -66,7 +66,6 @@ export class ApplicationServer {
         protected entities: ClassType<any>[] = [],
         protected entityChangeFeeds: ClassType<any>[] = [],
     ) {
-        this.entities.push(LockItem);
         this.config = config instanceof ApplicationServerConfig ? config : applyDefaults(ApplicationServerConfig, config);
         this.config.fsPath = this.config.fsPath.replace('~', homedir());
     }
@@ -206,6 +205,7 @@ export class ApplicationServer {
         });
 
         if (this.config.workers > 1) {
+            throw new Error('No supported due to poor-mans Lock implementation. Soon available.');
             if (cluster.isMaster) {
                 const app: Application = this.getInjector().get(Application);
                 await app.bootstrap();

@@ -5,11 +5,13 @@ import {FS, getMd5} from "../src/fs";
 import {Exchange} from "../src/exchange";
 import {readFile, pathExists, remove} from 'fs-extra';
 import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
-import {ClassType} from '@marcj/estdlib';
+import {ClassType, sleep} from '@marcj/estdlib';
 import {Database} from '@marcj/marshal-mongo';
 import {createConnection} from 'typeorm';
 import {FileType, GlutFile} from "@marcj/glut-core";
 import {Locker} from "../src/locker";
+
+jest.setTimeout(100_000);
 
 let fs = 0;
 
@@ -41,11 +43,27 @@ async function createFs(): Promise<[FS<GlutFile>, Function]> {
     await database.dropDatabase('fs-test-' + fs);
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 
-    return [new FS(FileType.forDefault(), exchange, accountDb, new Locker(database), localDir), async function () {
+    return [new FS(FileType.forDefault(), exchange, accountDb, new Locker(), localDir), async function () {
         await exchange.disconnect();
         await database.close();
     }];
 }
+
+test('performance', async () => {
+    const [fs, disconnect] = await createFs();
+    await fs.remove('logfile.txt');
+
+    const start = performance.now();
+    const times = 1_000;
+    const all: Promise<any>[] = [];
+    for (let i = 0; i < times; i++) {
+        all.push(fs.stream('logfile.txt', Buffer.from('Hiiii wahhat uupppp', 'utf8')));
+    }
+
+    await Promise.all(all);
+    console.log('fs took for ', times, performance.now() - start, 'ms', ', per item=', (performance.now() - start) / times, 'ms');
+    disconnect();
+});
 
 test('test fs storage based on md5', async () => {
     const [fs, disconnect] = await createFs();

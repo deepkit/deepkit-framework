@@ -1,117 +1,63 @@
+import 'reflect-metadata';
 import 'jest';
 import 'jest-extended';
-import {sleep} from "@marcj/estdlib";
-import {createConnection} from "typeorm";
-import {Lock, LockItem, Locker} from "../src/locker";
-import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
-import {EntitySchema} from 'typeorm';
-import { AsyncSubscription } from '@marcj/estdlib-rxjs';
+import {Locker, Lock} from "../src/locker";
+import {AsyncSubscription} from '@marcj/estdlib-rxjs';
 
-jest.setTimeout(10000);
+jest.setTimeout(20000);
 
-let db: Database;
 let locker: Locker;
 
 beforeAll(async () => {
-    const lockSchema = getTypeOrmEntity(LockItem);
-    if (!(lockSchema instanceof EntitySchema)) {
-        throw new Error('EntitySchema from getTypeOrmEntity is not from typeorm root package.');
-    }
-    const connection = await createConnection({
-        type: "mongodb",
-        host: '127.0.0.1',
-        port: 27017,
-        database: 'glut-locks',
-        name: 'connectionTest',
-        useNewUrlParser: true,
-        entities: [lockSchema]
-    });
-    db = new Database(connection, 'glut-locks');
-    await connection.synchronize(true);
-    locker = new Locker(db);
+    locker = new Locker();
 });
 
-afterAll(async () => {
-    await db!.close();
-});
 
-test('test mongo lock indices', async () => {
-    expect(getTypeOrmEntity(LockItem).options.indices!.length).toBe(1); //name
-
-    //typeOrm createConnection.synchronize syncs the indices
-    const indices = await db.getCollection(LockItem).indexes();
-    expect(indices.length).toBe(2); //_id_ and name
-});
-
-test('test mongo lock', async () => {
-    const lock = await locker.acquireLock('test-lock');
-    expect(lock.isLocked()).toBeTrue();
-    expect(await locker.count()).toBe(1);
-
-    await lock.release();
-    expect(lock.isLocked()).toBeFalse();
-    expect(await locker.count()).toBe(0);
-});
-
-test('test mongo lock multiple', async () => {
-    const lock1 = await locker.acquireLock('test-lock1');
-    const lock2 = await locker.acquireLock('test-lock2');
-
-    expect(lock1.isLocked()).toBeTrue();
-    expect(lock2.isLocked()).toBeTrue();
-    expect(await locker.count({})).toBe(2);
-
-    await lock1.release();
-    expect(lock1.isLocked()).toBeFalse();
-    expect(await locker.count({})).toBe(1);
-
-    await lock2.release();
-    expect(lock2.isLocked()).toBeFalse();
-    expect(await locker.count({})).toBe(0);
-});
-
-test('test mongo lock timeout', async () => {
+test('test lock competing', async () => {
+    const started = +new Date;
     const lock1 = await locker.acquireLock('test-lock1', 2);
-    expect(lock1.isLocked()).toBeTrue();
-    await sleep(2);
-    expect(lock1.isLocked()).toBeFalse();
-});
-
-
-test('test mongo lock competing', async () => {
-    //typeOrm createConnection.synchronize syncs the indices
-    const indices = await db.getCollection(LockItem).indexes();
-    expect(indices.length).toBe(2); //_id_ and name
-
-    const lock1 = await locker.acquireLock('test-lock1', 2);
-    expect(lock1.isLocked()).toBeTrue();
-
-    let lock2Locked = false;
-    setTimeout(() => {
-        expect(lock2Locked).toBeTrue();
-    }, 2500);
-
-    setTimeout(() => {
-        expect(lock2Locked).toBeFalse();
-    }, 1000);
 
     const lock2 = await locker.acquireLock('test-lock1', 1);
-    lock2Locked = true;
-    expect(lock2.isLocked()).toBeTrue();
-
-    //when this is false, it's probably because indices haven't been synced to mongodb
-    expect(lock1.isLocked()).toBeFalse();
+    expect(+new Date - started).toBeGreaterThan(2000);
 });
 
+test('test lock early release', async () => {
+    const started = +new Date;
+    const lock1 = await locker.acquireLock('test-early-lock1', 2);
+    setTimeout(async () => {
+        await lock1.unlock();
+    }, 500);
 
-test('test mongo lock timeout accum', async () => {
-    const lock1 = await locker.acquireLock('test-timeout-lock1', 2);
+    const lock2 = await locker.acquireLock('test-early-lock1', 1);
+    expect(+new Date - started).toBeLessThan(1000);
+    expect(+new Date - started).toBeGreaterThan(500);
+});
 
+test('test lock timeout accum', async () => {
     const start = Date.now();
-    const lock2 = await locker.acquireLock('test-timeout-lock1', 2);
+    const lock1 = await locker.acquireLock('test-timeout-lock1', 1);
+    // console.log('took', (Date.now() - start));
+
+    const lock2 = await locker.acquireLock('test-timeout-lock1', 1);
+    console.log('took', (Date.now() - start));
+    expect((Date.now() - start) / 1000).toBeGreaterThan(0.9);
+
+    const lock3 = await locker.acquireLock('test-timeout-lock1', 1);
+    console.log('took', (Date.now() - start));
     expect((Date.now() - start) / 1000).toBeGreaterThan(1.9);
-    const lock3 = await locker.acquireLock('test-timeout-lock1', 2);
-    expect((Date.now() - start) / 1000).toBeGreaterThan(3.9);
+});
+
+test('test performance', async () => {
+    const start = performance.now();
+
+    for (let i = 0; i < 2000; i++) {
+        const lock1 = await locker.acquireLock('test-perf', 0.01);
+        await lock1.unlock();
+    }
+
+    console.log('2000 locks took', performance.now() - start);
+
+    expect(performance.now() - start).toBeLessThan(100);
 });
 
 test('test tryLock', async () => {
@@ -141,7 +87,7 @@ test('test tryLock', async () => {
                 const lock5 = await locker.acquireLock('trylock', 1);
                 expect(lock5).toBeInstanceOf(Lock);
                 expect(await locker.isLocked('trylock')).toBeTrue();
-                await lock5.release();
+                await lock5.unlock();
                 resolve();
             }, 1000);
         }, 1000);
@@ -173,7 +119,7 @@ test('test auto extending', async () => {
                 const lock5 = await locker.acquireLock('autoextend', 1);
                 expect(lock5).toBeInstanceOf(Lock);
                 expect(await locker.isLocked('autoextend')).toBeTrue();
-                await lock5.release();
+                await lock5.unlock();
                 expect(await locker.isLocked('autoextend')).toBeFalse();
                 resolve();
             }, 1000);

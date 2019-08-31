@@ -282,7 +282,7 @@ export class FS<T extends GlutFile> {
                 content: data.toString('utf8')
             });
         } finally {
-            await lock.release();
+            await lock.unlock();
         }
 
         return {
@@ -306,29 +306,32 @@ export class FS<T extends GlutFile> {
             cropSizeAtTo?: number
         } = {}
     ) {
+        const lock = await this.locker.acquireLock('file:' + path);
+
         let {id, version} = await this.exchangeDatabase.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id']);
 
-        const lock = await this.locker.acquireLock('file:' + path);
-        let file: T | undefined;
-
-        if (!id) {
-            file = new this.fileType.classType(path);
-            for (const i of eachKey(fields)) {
-                (file as any)[i] = (fields as any)[i];
-            }
-            file.mode = FileMode.streaming;
-            id = file.id;
-            if (!id) {
-                throw new Error('New file got no id? wtf');
-            }
-            version = 0;
-        }
-
-        const localPath = this.getLocalPathForId(id);
-        const localDir = dirname(localPath);
-        await ensureDir(localDir);
-
         try {
+            let file: T | undefined;
+
+            if (!id) {
+                file = new this.fileType.classType(path);
+                for (const i of eachKey(fields)) {
+                    (file as any)[i] = (fields as any)[i];
+                }
+                file.mode = FileMode.streaming;
+                id = file.id;
+                if (!id) {
+                    throw new Error('New file got no id? wtf');
+                }
+                version = 0;
+            }
+
+            const localPath = this.getLocalPathForId(id);
+            const localDir = dirname(localPath);
+            if (!await pathExists(localDir)) {
+                await ensureDir(localDir);
+            }
+
             await appendFile(localPath, data);
             const stats = await stat(localPath);
 
@@ -354,7 +357,7 @@ export class FS<T extends GlutFile> {
                 content: data.toString(), //todo, support binary
             });
         } finally {
-            await lock.release();
+            await lock.unlock();
         }
     }
 
@@ -404,7 +407,7 @@ export class FS<T extends GlutFile> {
                 });
 
             } finally {
-                await lock.release();
+                await lock.unlock();
             }
         };
 
