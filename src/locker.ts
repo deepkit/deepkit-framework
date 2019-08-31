@@ -30,11 +30,6 @@ export class Lock {
         if (this.holding) {
             throw new Error('Lock already acquired');
         }
-        const now = Date.now() / 1000;
-
-        if (LOCKS[this.id] && LOCKS[this.id].expire <= now) {
-            delete LOCKS[this.id];
-        }
 
         while (LOCKS[this.id]) {
             await LOCKS[this.id].done;
@@ -82,10 +77,6 @@ export class Lock {
         const now = Date.now() / 1000;
 
         this.holding = false;
-
-        if (LOCKS[this.id] && LOCKS[this.id].expire <= now) {
-            delete LOCKS[this.id];
-        }
 
         if (!LOCKS[this.id]) {
             LOCKS[this.id] = {
