@@ -252,7 +252,7 @@ test('test basic serialisation partial param: entity', async () => {
         await test.failPartialUser('asd', date);
         fail('Should fail');
     } catch (e) {
-        expect(e.message).toMatch('Result returns an not annotated object literal that can not be serialized.\n' +
+        expect(e.message).toMatch('returns an not annotated object literal that can not be serialized.\n' +
             'Use either @ReturnPlainObject() to avoid serialisation using Marshal.ts, or (better) create an Marshal.ts entity and use @ReturnType(MyEntity) at your action.');
     }
 
