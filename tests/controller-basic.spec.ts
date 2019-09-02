@@ -159,7 +159,7 @@ test('test basic serialisation return: entity', async () => {
         await test.failUser('peter');
         fail('Should fail');
     } catch (e) {
-        expect(e.message).toMatch('Result returns an not annotated custom class instance (User) that can not be serialized.\n' +
+        expect(e.message).toMatch('returns an not annotated custom class instance (User) that can not be serialized.\n' +
             'Use e.g. @ReturnType(MyClass) at your action.');
     }
 
