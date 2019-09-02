@@ -275,6 +275,7 @@ export class EntityStorage {
     protected sentEntities = new Map<ClassType<any>, { [id: string]: SentState }>();
 
     protected entitySubscription = new Map<ClassType<any>, Subscription>();
+    protected entitySubscribed = new Set<ClassType<any>>();
 
     constructor(
         protected readonly writer: ConnectionWriter,
@@ -287,6 +288,7 @@ export class EntityStorage {
         for (const sub of this.entitySubscription.values()) {
             sub.unsubscribe();
         }
+        this.entitySubscribed.clear();
     }
 
     public getSentStateStore<T>(classType: ClassType<T>): { [id: string]: SentState } {
@@ -316,6 +318,7 @@ export class EntityStorage {
             if (entitySubscription) {
                 entitySubscription.unsubscribe();
                 this.entitySubscription.delete(classType);
+                this.entitySubscribed.delete(classType);
             }
         }
     }
@@ -360,15 +363,16 @@ export class EntityStorage {
         this.subscribeEntity(classType);
     }
 
-    async subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
-        if (this.entitySubscription.has(classType)) {
+    subscribeEntity<T extends IdInterface>(classType: ClassType<T>) {
+        if (this.entitySubscribed.has(classType)) {
             //already subscribed, nothing to do here
             return;
         }
+        this.entitySubscribed.add(classType);
 
         const entityName = getEntityName(classType);
 
-        const sub = await this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
+        this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
             if (message.type === 'removeMany') {
                 for (const id of message.ids) {
                     this.rmSentState(classType, id);
@@ -423,9 +427,9 @@ export class EntityStorage {
                     //nothing to do.
                 }
             }
+        }).then((sub) => {
+            this.entitySubscription.set(classType, sub);
         });
-
-        this.entitySubscription.set(classType, sub);
     }
 
     // multiCount<T extends IdInterface>(classType: ClassType<T>, filters: { [p: string]: any }[] = []): Observable<CountResult> {
@@ -634,8 +638,6 @@ export class EntityStorage {
             this.setSent(classType, item.id, item.version);
             this.subscribeEntity(classType);
 
-            //todo, teardown is not called when item has been removed. mh
-            // 22.4. really?
             return new EntitySubject(item, () => {
                 this.decreaseUsage(classType, foundId);
             });

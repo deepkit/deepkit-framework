@@ -115,6 +115,7 @@ test('test fs storage change content of files with same md5', async () => {
 
     const content2 = new Buffer('TestString 222 ' + Math.random());
     file1 = await fs.write('file1.txt', content2);
+    expect(file1.version).toBeGreaterThan(0);
 
     expect(file1.md5).not.toBeUndefined();
     expect(file1.md5).not.toBe(file2.md5);

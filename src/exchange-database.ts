@@ -4,7 +4,7 @@ import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
 import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
-import {ClassType, eachPair} from '@marcj/estdlib';
+import {ClassType, eachPair, eachKey} from '@marcj/estdlib';
 import {Observable} from 'rxjs';
 import {findQuerySatisfied} from './utils';
 
@@ -79,7 +79,7 @@ export class ExchangeDatabase {
         }
     }
 
-    public async deleteMany<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
+    public async deleteMany<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Promise<void> {
         const ids = await this.getIds(classType, filter);
 
         if (ids.length > 0) {
@@ -100,7 +100,7 @@ export class ExchangeDatabase {
         options?: {
             advertiseAs?: ClassType<T>,
         }
-    ) {
+    ): Promise<void> {
         await this.database.add(classType, item);
 
         const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
@@ -211,14 +211,17 @@ export class ExchangeDatabase {
     }
 
     /**
-     * Increases one or multiple fields atomic and returns the new value.
+     * Increases one or multiple fields atomic and returns the new value. Only changes on item in the collection.
      * This does not send patches to the exchange.
      */
     public async increase<T extends IdInterface, F extends { [field: string]: number }>(
         classType: ClassType<T>,
         filter: FilterQuery<T>,
         fields: F,
-        additionalProjection: string[] = []
+        additionalProjection: string[] = [],
+        options?: {
+            advertiseAs?: ClassType<T>,
+        }
     ): Promise<{ [k: string]: any }> {
         const collection = await this.collection(classType);
         const projection: { [key: string]: number } = {};
@@ -235,10 +238,45 @@ export class ExchangeDatabase {
             projection[field] = 1;
         }
 
+        statement.$inc['version'] = 1;
+        projection['id'] = 1;
+        projection['version'] = 1;
+
+        const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
+        const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
+        for (const field of subscribedFields) {
+            projection[field] = 1;
+        }
+
         const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), statement, {
             projection: projection,
             returnOriginal: false
         });
+
+        const doc = response.value;
+
+        if (!doc) {
+            return {};
+        }
+
+        delete doc._id;
+
+        if (this.notifyChanges(advertiseAs)) {
+            const plain = partialMongoToPlain(classType, response.value || {});
+
+            const jsonPatches: any = {};
+            for (const i of eachKey(fields)) {
+                jsonPatches[i] = plain[i];
+            }
+
+            this.exchange.publishEntity(advertiseAs, {
+                type: 'patch',
+                id: plain.id,
+                version: plain.version, //this is the new version in the db, which we end up having when `patch` is applied.
+                item: partialMongoToPlain(advertiseAs, doc),
+                patch: jsonPatches,
+            });
+        }
 
         return partialPlainToClass(classType, partialMongoToPlain(classType, response.value || {}));
     }
@@ -315,7 +353,7 @@ export class ExchangeDatabase {
             this.exchange.publishEntity(advertiseAs, {
                 type: 'patch',
                 id: id,
-                version: newVersion, //this is the new version in the db, which we end up having when `data` is applied.
+                version: newVersion, //this is the new version in the db, which we end up having when `patch` is applied.
                 item: partialMongoToPlain(advertiseAs, doc),
                 patch: jsonPatches,
             });
