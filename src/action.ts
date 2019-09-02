@@ -95,15 +95,17 @@ export async function executeActionAndSerialize(
         }
     };
 
-    function checkForNonObjects(v: any, prefix: string = 'Result') {
+    function checkForNonObjects(v: any) {
         if (isArray(v) && v[0]) {
             v = v[0];
         }
 
+        const prefix = `Action ${fullName}`;
+
         if (isObject(v) && !isPlainObject(v)) {
             throw new Error(`${prefix} returns an not annotated custom class instance (${getClassName(v)}) that can not be serialized.\n` +
                 `Use e.g. @ReturnType(MyClass) at your action.`);
-        } else if (isObject(v) && actionTypes.returnType.type !== 'Plain') {
+        } else if (isObject(v) && actionTypes.returnType.type !== 'Plain' && actionTypes.returnType.type !== 'Any') {
             throw new Error(`${prefix} returns an not annotated object literal that can not be serialized.\n` +
                 `Use either @ReturnPlainObject() to avoid serialisation using Marshal.ts, or (better) create an Marshal.ts entity and use @ReturnType(MyEntity) at your action.`);
         }
@@ -112,7 +114,7 @@ export async function executeActionAndSerialize(
     if (result instanceof Observable) {
         return result.pipe(map((v) => {
             if (actionTypes.returnType.type === 'undefined') {
-                checkForNonObjects(v, `Action ${fullName} failed: Observable`);
+                checkForNonObjects(v);
 
                 return v;
             }
@@ -126,7 +128,7 @@ export async function executeActionAndSerialize(
     }
 
     if (actionTypes.returnType.type === 'undefined') {
-        checkForNonObjects(result);
+        checkForNonObjects(result, );
 
         return result;
     }

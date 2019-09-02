@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
-    "@marcj/estdlib-rxjs": "^0.1.11",
+    "@marcj/estdlib-rxjs": "^0.1.12",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {

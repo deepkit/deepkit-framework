@@ -119,6 +119,11 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
 
         if (this.nextOnAppend) {
             this.next(this.getValue() as any + value);
+        } else {
+            if ('string' === typeof value) {
+                if (!this.lastValue) (this.lastValue as any) = '';
+                (this.lastValue as any) = (this.lastValue as any) + value;
+            }
         }
     }
 
