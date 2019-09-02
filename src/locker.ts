@@ -55,7 +55,11 @@ export class Lock {
 
     public async prolong(seconds: number) {
         if (!this.holding) {
-            throw new Error('Lock already expired, could not prolong.');
+            throw new Error(`Lock ${this.id} already expired, could not prolong.`);
+        }
+
+        if (!LOCKS[this.id]) {
+            throw new Error(`Lock ${this.id} already deleted, could not prolong.`);
         }
 
         if (this.timeoutTimer) {
@@ -91,9 +95,14 @@ export class Lock {
     }
 
     public async unlock() {
+        if (!this.holding) {
+            return;
+        }
+
         this.holding = false;
 
         delete LOCKS[this.id];
+
         if (this.resolve) {
             this.resolve();
         }
@@ -101,7 +110,6 @@ export class Lock {
         if (this.safeGuardOnExitUnsubscribe) {
             this.safeGuardOnExitUnsubscribe();
         }
-
     }
 }
 
@@ -123,17 +131,15 @@ export class Locker {
         let t: any;
 
         const extend = () => {
-            if (lock.isLocked()) {
-                lock.prolong(timeout);
+            lock.prolong(timeout);
 
-                t = setTimeout(extend, (timeout / 2) * 1000);
-            }
+            t = setTimeout(extend, (timeout / 2) * 1000);
         };
 
         t = setTimeout(extend, (timeout / 2) * 1000);
 
         return new AsyncSubscription(async () => {
-            clearTimeout(timeout);
+            clearTimeout(t);
             await lock.unlock();
         });
     }
@@ -149,12 +155,6 @@ export class Locker {
     }
 
     public async isLocked(id: string): Promise<boolean> {
-        const now = Date.now() / 1000;
-
-        if (LOCKS[id] && LOCKS[id].expire <= now) {
-            delete LOCKS[id];
-        }
-
         return !!LOCKS[id];
     }
 }

@@ -157,19 +157,24 @@ export class ClientConnection {
 
                     const lock = await this.locker.acquireLockWithAutoExtending('peerController/' + message.controllerName, 10);
 
-                    const sub = await this.exchange.subscribe('peerController/' + message.controllerName, (controllerMessage: { replyId: string, data: any }) => {
-                        this.writer.write({
-                            id: message.id,
-                            type: 'peerController/message',
-                            replyId: controllerMessage.replyId,
-                            data: controllerMessage.data
+                    try {
+                        const sub = await this.exchange.subscribe('peerController/' + message.controllerName, (controllerMessage: { replyId: string, data: any }) => {
+                            this.writer.write({
+                                id: message.id,
+                                type: 'peerController/message',
+                                replyId: controllerMessage.replyId,
+                                data: controllerMessage.data
+                            });
                         });
-                    });
 
-                    this.registeredPeerControllers[message.controllerName] = {
-                        sub: sub,
-                        lock: lock,
-                    };
+                        this.registeredPeerControllers[message.controllerName] = {
+                            sub: sub,
+                            lock: lock,
+                        };
+                    } catch (error) {
+                        await lock.unsubscribe();
+                        throw error;
+                    }
 
                     this.writer.ack(message.id);
                 } catch (error) {
@@ -234,7 +239,6 @@ export class ClientConnection {
                     if (message.controller.startsWith('_peer/')) {
                         const controllerName = message.controller.substr('_peer/'.length);
 
-                        //todo, check access
                         const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
 
                         if (!access) {
