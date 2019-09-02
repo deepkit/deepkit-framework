@@ -29,6 +29,64 @@ class UserBase implements IdInterface {
     }
 }
 
+test('test increase', async () => {
+    @Entity('user_increase')
+    class User extends UserBase {
+        @Field()
+        connections: number = 0;
+    }
+
+    @Controller('test')
+    class TestController {
+        constructor(private storage: EntityStorage, private exchangeDatabase: ExchangeDatabase) {
+        }
+
+        @Action()
+        async start() {
+            await this.exchangeDatabase.deleteMany(User, {});
+            const user = new User('peter');
+            await this.exchangeDatabase.add(User, user);
+        }
+
+        @Action()
+        async increase(i: number) {
+            await this.exchangeDatabase.increase(User, {}, {connections: i});
+        }
+
+        @Action()
+        async user(): Promise<EntitySubject<User>> {
+            return await this.storage.findOne(User, {});
+        }
+    }
+
+    const {client} = await createServerClientPair('test increase', [TestController], [User]);
+    const testController = client.controller<TestController>('test');
+
+    await testController.start();
+
+    const user = await testController.user();
+    expect(user.value.name).toBe('peter');
+    expect(user.value.connections).toBe(0);
+
+    testController.increase(1);
+    console.log('wait');
+    await user.nextStateChange;
+    expect(user.value.name).toBe('peter');
+    expect(user.value.connections).toBe(1);
+
+    testController.increase(-5);
+    console.log('wait');
+    await user.nextStateChange;
+    expect(user.value.name).toBe('peter');
+    expect(user.value.connections).toBe(-4);
+
+    testController.increase(1);
+    await user.nextStateChange;
+
+    expect(user.value.name).toBe('peter');
+    expect(user.value.connections).toBe(-3);
+});
+
 test('test entity sync list', async () => {
     @Entity('user1')
     class User extends UserBase {
