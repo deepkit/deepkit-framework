@@ -1,6 +1,6 @@
 {
   "name": "@marcj/estdlib-rxjs",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "engineering stdlib for typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
