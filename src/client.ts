@@ -138,12 +138,12 @@ export class SocketClient {
 
                 if (message.type === 'ack') {
                     const sub = new AsyncSubscription(async () => {
-                        console.log('closed peerController', name);
                         await activeSubject.sendMessage({
                             name: 'peerController/unregister',
                             controllerName: name,
                         });
-                        activeSubject.complete();
+                        delete this.registeredControllers[name];
+                        await activeSubject.complete();
                     });
 
                     this.registeredControllers[name] = {controllerInstance, sub};
@@ -237,7 +237,8 @@ export class SocketClient {
                     }
                 }
             }, (error: any) => {
-                console.warn('registerController error', name, error);
+                delete this.registeredControllers[name];
+                activeSubject.error(error);
             });
         });
     }
@@ -347,7 +348,7 @@ export class SocketClient {
                     this.disconnected.next(this.currentConnectionId);
                     this.currentConnectionId++;
 
-                    reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error}`));
+                    reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message || error}`));
                 };
 
                 socket.onopen = async () => {

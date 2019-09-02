@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
-    "@marcj/estdlib-rxjs": "^0.1.11",
+    "@marcj/estdlib-rxjs": "^0.1.12",
     "dot-prop": "^4.2.0",
     "ws": "^6.1.2"
   },
