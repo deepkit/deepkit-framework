@@ -4,10 +4,16 @@ import {skip, first} from 'rxjs/operators';
 import {arrayRemoveItem} from "@marcj/estdlib";
 
 export class AsyncSubscription {
+    protected unsubscribed = false;
+
     constructor(private cb: () => Promise<void>) {
     }
 
     async unsubscribe(): Promise<void> {
+        if (this.unsubscribed) return;
+
+        this.unsubscribed = true;
+
         await this.cb();
     }
 }
