@@ -1,9 +1,10 @@
-import {Observable, Subscriber, Subject, BehaviorSubject, Subscription} from "rxjs";
+import {BehaviorSubject, Observable, Subject, Subscriber} from "rxjs";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection,
+    CollectionPaginationEvent,
     EntitySubject,
     executeActionAndSerialize,
     getActionParameters,
@@ -20,9 +21,8 @@ import {
     ServerMessagePeerChannelMessage,
     ServerMessageResult,
     StreamBehaviorSubject,
-    CollectionPaginationEvent,
 } from "@marcj/glut-core";
-import {applyDefaults, ClassType, eachKey, isArray, sleep, getClassName, each} from "@marcj/estdlib";
+import {applyDefaults, ClassType, each, eachKey, getClassName, isArray, sleep} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {EntityState} from "./entity-state";
 
@@ -222,6 +222,7 @@ export class SocketClient {
                                     data: {type: 'error', id: 0, error: `Action ${data.action} returned Observable, which is not supported.`}
                                 });
                                 console.warn(`Action ${data.action} returned Observable, which is not supported.`);
+                                return;
                             }
 
                             activeSubject.sendMessage({
