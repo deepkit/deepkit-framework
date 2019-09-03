@@ -132,6 +132,11 @@ export class ClientConnection {
             }
 
             if (message.name === 'peerController/message') {
+                if (!this.registeredPeerControllers[message.controllerName]) {
+                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
+                    return;
+                }
+
                 this.exchange.publish('peerController/' + message.controllerName + '/reply/' + message.replyId, message.data);
                 return;
             }
@@ -173,8 +178,9 @@ export class ClientConnection {
                             sub: sub,
                             lock: lock,
                         };
-                    } finally {
+                    } catch (error) {
                         await lock.unlock();
+                        throw error;
                     }
 
                     this.writer.ack(message.id);
@@ -261,14 +267,14 @@ export class ClientConnection {
                             sub.unsubscribe();
                         });
 
+                        this.unsubscribeOnDisconnectSubscriptions.add = sub;
+
                         setTimeout(() => {
                             if (!sub.closed) {
                                 sub.unsubscribe();
                                 this.writer.sendError(message.id, `Peer timed out ` + controllerName, 'peer_timeout');
                             }
                         }, message.timeout * 1000);
-
-                        this.unsubscribeOnDisconnectSubscriptions.add = sub;
 
                         this.exchange.publish('peerController/' + controllerName, {
                             replyId: replyId,

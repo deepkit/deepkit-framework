@@ -174,7 +174,7 @@ export class Exchange {
                     cb(data);
                 }
             } else {
-                console.warn('Exchange got message without active subscriptions for ' + messageChannel);
+                console.warn('Exchange got message without active subscriptions for ' + messageChannel, message);
             }
         });
     }

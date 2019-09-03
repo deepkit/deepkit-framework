@@ -44,9 +44,7 @@ export class Lock {
 
         if (timeout) {
             setTimeout(() => {
-                if (this.holding) {
-                    delete LOCKS[this.id];
-                }
+                this.unlock();
             }, timeout * 1000);
         }
     }
@@ -69,9 +67,7 @@ export class Lock {
 
             if (timeout) {
                 setTimeout(() => {
-                    if (this.holding) {
-                        delete LOCKS[this.id];
-                    }
+                    this.unlock();
                 }, timeout * 1000);
             }
         }
