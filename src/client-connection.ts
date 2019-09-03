@@ -1,14 +1,14 @@
-import {Injectable, Injector, Inject} from "injection-js";
+import {Inject, Injectable, Injector} from "injection-js";
 import {Observable, Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
 import {ActionTypes, ClientMessageAll, executeActionAndSerialize, getActionParameters, getActionReturnType, getActions} from "@marcj/glut-core";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
-import {arrayRemoveItem, each, sleep} from "@marcj/estdlib";
+import {arrayRemoveItem, each} from "@marcj/estdlib";
 import {uuid} from "@marcj/marshal";
 import {Exchange} from "./exchange";
-import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
-import {Locker} from "./locker";
+import {Subscriptions} from "@marcj/estdlib-rxjs";
+import {Lock, Locker} from "./locker";
 
 
 @Injectable()
@@ -21,7 +21,7 @@ export class ClientConnection {
         [controllerName: string]: { [actionName: string]: ActionTypes }
     } = {};
 
-    private registeredPeerControllers: { [name: string]: { sub: Subscription, lock: AsyncSubscription } } = {};
+    private registeredPeerControllers: { [name: string]: { sub: Subscription, lock: Lock } } = {};
 
     protected pushMessageReplyId = 0;
     protected pushMessageReplies: { [id: string]: (data: any) => void } = {};
@@ -44,6 +44,8 @@ export class ClientConnection {
      * Is called when connection breaks or client disconnects.
      */
     public destroy() {
+        if (this.destroyed) return;
+
         this.connectionMiddleware.destroy();
         this.destroyed = true;
 
@@ -61,7 +63,7 @@ export class ClientConnection {
 
         for (const peer of each(this.registeredPeerControllers)) {
             peer.sub.unsubscribe();
-            peer.lock.unsubscribe();
+            peer.lock.unlock();
         }
 
         this.registeredPeerControllers = {};
@@ -125,7 +127,7 @@ export class ClientConnection {
                 }
 
                 this.registeredPeerControllers[message.controllerName].sub.unsubscribe();
-                await this.registeredPeerControllers[message.controllerName].lock.unsubscribe();
+                await this.registeredPeerControllers[message.controllerName].lock.unlock();
                 delete this.registeredPeerControllers[message.controllerName];
             }
 
@@ -155,7 +157,7 @@ export class ClientConnection {
                         return;
                     }
 
-                    const lock = await this.locker.acquireLockWithAutoExtending('peerController/' + message.controllerName, 10);
+                    const lock = await this.locker.acquireLock('peerController/' + message.controllerName);
 
                     try {
                         const sub = await this.exchange.subscribe('peerController/' + message.controllerName, (controllerMessage: { replyId: string, data: any }) => {
@@ -171,9 +173,8 @@ export class ClientConnection {
                             sub: sub,
                             lock: lock,
                         };
-                    } catch (error) {
-                        await lock.unsubscribe();
-                        throw error;
+                    } finally {
+                        await lock.unlock();
                     }
 
                     this.writer.ack(message.id);
@@ -293,7 +294,11 @@ export class ClientConnection {
             }
 
             if (message.name === 'authenticate') {
-                this.sessionStack.setSession(await this.app.authenticate(this.injector, message.token));
+                try {
+                    this.sessionStack.setSession(await this.app.authenticate(this.injector, message.token));
+                } catch (error) {
+                    console.error('authentication error', error);
+                }
 
                 this.writer.write({
                     type: 'authenticate/result',

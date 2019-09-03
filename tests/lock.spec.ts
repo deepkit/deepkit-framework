@@ -2,7 +2,6 @@ import 'reflect-metadata';
 import 'jest';
 import 'jest-extended';
 import {Locker, Lock} from "../src/locker";
-import {AsyncSubscription} from '@marcj/estdlib-rxjs';
 
 jest.setTimeout(20000);
 
@@ -90,40 +89,6 @@ test('test tryLock', async () => {
                 await lock5.unlock();
                 resolve();
             }, 1000);
-        }, 1000);
-    });
-});
-
-test('test auto extending', async () => {
-    const lock1 = await locker.acquireLockWithAutoExtending('autoextend', 1);
-    expect(lock1).toBeInstanceOf(AsyncSubscription);
-
-    const lock2 = await locker.tryLock('autoextend', 1);
-    expect(lock2).toBeUndefined();
-    expect(await locker.isLocked('autoextend')).toBeTrue();
-
-    await new Promise((resolve) => {
-        setTimeout(async () => {
-            const lock3 = await locker.tryLock('autoextend', 1);
-            expect(lock3).toBeUndefined();
-            expect(await locker.isLocked('autoextend')).toBeTrue();
-
-            setTimeout(async () => {
-                const lock4 = await locker.tryLock('autoextend', 1);
-                expect(lock4).toBeUndefined();
-                expect(await locker.isLocked('autoextend')).toBeTrue();
-
-                await lock1.unsubscribe();
-
-                expect(await locker.isLocked('autoextend')).toBeFalse();
-                const lock5 = await locker.acquireLock('autoextend', 1);
-                expect(lock5).toBeInstanceOf(Lock);
-                expect(await locker.isLocked('autoextend')).toBeTrue();
-                await lock5.unlock();
-                expect(await locker.isLocked('autoextend')).toBeFalse();
-                resolve();
-            }, 1000);
-
         }, 1000);
     });
 });

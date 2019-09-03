@@ -1,7 +1,7 @@
 import {Injectable} from 'injection-js';
 import {AsyncSubscription} from '@marcj/estdlib-rxjs';
 
-const LOCKS: { [id: string]: { expire: number, done: Promise<void> } } = {};
+const LOCKS: { [id: string]: { time: number, done: Promise<void> } } = {};
 
 /**
  * This lock mechanism works only for one process.
@@ -23,10 +23,7 @@ export class Lock {
     ) {
     }
 
-    /**
-     * @param timeout in seconds
-     */
-    public async acquire(timeout: number = 30) {
+    public async acquire(timeout?: number) {
         if (this.holding) {
             throw new Error('Lock already acquired');
         }
@@ -37,58 +34,46 @@ export class Lock {
 
         if (!LOCKS[this.id]) {
             LOCKS[this.id] = {
-                expire: ((Date.now() / 1000) + timeout), done: new Promise<void>((resolve) => {
+                time: Date.now() / 1000,
+                done: new Promise<void>((resolve) => {
                     this.resolve = resolve;
                 })
             };
             this.holding = true;
         }
 
-        if (this.timeoutTimer) {
-            clearTimeout(this.timeoutTimer);
+        if (timeout) {
+            setTimeout(() => {
+                if (this.holding) {
+                    delete LOCKS[this.id];
+                }
+            }, timeout * 1000);
         }
-
-        this.timeoutTimer = setTimeout(async () => {
-            await this.unlock();
-        }, timeout * 1000);
-    }
-
-    public async prolong(seconds: number) {
-        if (!this.holding) {
-            throw new Error(`Lock ${this.id} already expired, could not prolong.`);
-        }
-
-        if (!LOCKS[this.id]) {
-            throw new Error(`Lock ${this.id} already deleted, could not prolong.`);
-        }
-
-        if (this.timeoutTimer) {
-            clearTimeout(this.timeoutTimer);
-        }
-
-        this.timeoutTimer = setTimeout(async () => {
-            await this.unlock();
-        }, seconds * 1000);
-
-        LOCKS[this.id].expire = (Date.now() / 1000 + seconds);
     }
 
     public isLocked() {
         return this.holding;
     }
 
-    public async tryLock(timeout: number) {
-        const now = Date.now() / 1000;
-
+    public async tryLock(timeout?: number) {
         this.holding = false;
 
         if (!LOCKS[this.id]) {
             LOCKS[this.id] = {
-                expire: (now + timeout), done: new Promise<void>((resolve) => {
+                time: Date.now() / 1000,
+                done: new Promise<void>((resolve) => {
                     this.resolve = resolve;
                 })
             };
             this.holding = true;
+
+            if (timeout) {
+                setTimeout(() => {
+                    if (this.holding) {
+                        delete LOCKS[this.id];
+                    }
+                }, timeout * 1000);
+            }
         }
 
         return this.holding;
@@ -118,6 +103,11 @@ export class Locker {
     constructor() {
     }
 
+    /**
+     *
+     * @param id
+     * @param timeout optional defines when the times automatically unlocks.
+     */
     public async acquireLock(id: string, timeout?: number): Promise<Lock> {
         const lock = new Lock(id);
         await lock.acquire(timeout);
@@ -125,26 +115,7 @@ export class Locker {
         return lock;
     }
 
-    public async acquireLockWithAutoExtending(id: string, timeout: number = 0.1): Promise<AsyncSubscription> {
-        const lock = await this.acquireLock(id, timeout);
-
-        let t: any;
-
-        const extend = () => {
-            lock.prolong(timeout);
-
-            t = setTimeout(extend, (timeout / 2) * 1000);
-        };
-
-        t = setTimeout(extend, (timeout / 2) * 1000);
-
-        return new AsyncSubscription(async () => {
-            clearTimeout(t);
-            await lock.unlock();
-        });
-    }
-
-    public async tryLock(id: string, timeout: number = 0.1): Promise<Lock | undefined> {
+    public async tryLock(id: string, timeout?: number): Promise<Lock | undefined> {
         const lock = new Lock(id);
 
         if (await lock.tryLock(timeout)) {

@@ -60,10 +60,10 @@ export class Worker {
             });
 
             socket.on('error', (error: any) => {
+                connection.destroy();
                 console.log('error');
                 console.log('error from client: ', error);
             });
-
         });
     }
 }
