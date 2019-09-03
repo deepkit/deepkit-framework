@@ -38,10 +38,16 @@ export class SocketClientConfig {
 
 type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMessageActionType };
 
-export class AuthorizationError extends Error {
+export class AuthenticationError extends Error {
+    constructor(message: string = 'Authentication failed') {
+        super(message);
+    }
 }
 
 export class OfflineError extends Error {
+    constructor(message: string = 'Offline') {
+        super(message);
+    }
 }
 
 let _clientId = 0;
@@ -361,7 +367,7 @@ export class SocketClient {
                             this.connected = false;
                             this.connectionTries = 0;
                             socket.close();
-                            reject(new AuthorizationError());
+                            reject(new AuthenticationError());
                             return;
                         }
                     }
