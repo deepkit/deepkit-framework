@@ -140,6 +140,9 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
 }
 
 export class EntitySubject<T extends IdInterface | undefined> extends StreamBehaviorSubject<T> {
+    /**
+     * Patches are in class format.
+     */
     public readonly patches = new Subject<{[path: string]: any}>();
 }
 

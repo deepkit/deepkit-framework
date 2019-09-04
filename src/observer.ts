@@ -1,68 +1,120 @@
-import {EntitySubject} from "./core";
-import {classToPlain, partialClassToPlain} from "@marcj/marshal";
+import {classToPlain, cloneClass, partialClassToPlain, partialPlainToClass} from "@marcj/marshal";
 import {eachPair, getPathValue, size} from "@marcj/estdlib";
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';
+import { BehaviorSubject } from "rxjs";
+import {EntitySubject} from "./core";
 
-export class ItemObserver<T> {
-    protected old: { [path: string]: any };
+export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
+    /**
+     * The older snapshot at against we test for changes. reset() resets that.
+     */
+    protected old?: { [path: string]: any };
 
-    constructor(
-        private valueOrSubject: T | EntitySubject<any>,
-        private ignore: string[] = ['version']
-    ) {
+    /**
+     * The user operates on this object, which is a snapshot of the version upon initialisation.
+     */
+    protected _snapshot?: T;
 
-        if (this.valueOrSubject instanceof EntitySubject) {
+    protected valueOrSubject?: T | BehaviorSubject<any>;
+    public readonly ignore: string[] = ['version'];
+
+    constructor(value?: T | BehaviorSubject<any>) {
+        super(undefined);
+        if (value) {
+            this.start(value);
+        }
+    }
+
+    static fromValueOrSubject<T>(valueOrSubject: T | BehaviorSubject<T>, ignore: string[] = []): ItemObserver<T> {
+        const observer = new ItemObserver<T>(undefined);
+        observer.ignore.push(...ignore);
+        observer.start(valueOrSubject);
+        return observer;
+    }
+
+    get snapshot(): T {
+        if (!this._snapshot) {
+            throw new Error('Observer not started');
+        }
+        return this._snapshot;
+    }
+
+    public start(valueOrSubject: T | BehaviorSubject<T>) {
+        if (!valueOrSubject) {
+            throw new Error('No value given for observer');
+        }
+
+        this.valueOrSubject = valueOrSubject;
+
+        if (this.valueOrSubject instanceof BehaviorSubject) {
             //this should not produce memory leaks, as the EntitySubject should always be unsubscribed when done,
             // so this Subscription will be automatically removed as well.
-            this.valueOrSubject.patches.subscribe((patches) => {
-                if (!this.old) return;
+            this._snapshot = cloneClass(this.valueOrSubject.getValue());
 
-                if (this.valueOrSubject instanceof EntitySubject) {
-                    const plainPatches = partialClassToPlain(Object.getPrototypeOf(this.valueOrSubject.value).constructor, patches);
-                    for (const [i, v] of eachPair(plainPatches)) {
-                        set(this.old, i, v);
+            if (this.valueOrSubject instanceof EntitySubject) {
+                this.valueOrSubject.patches.subscribe((patches) => {
+                    if (this.valueOrSubject instanceof EntitySubject) {
+
+                        if (this.old) {
+                            const plainPatches = partialClassToPlain(Object.getPrototypeOf(this.valueOrSubject.value).constructor, patches);
+                            for (const [i, v] of eachPair(plainPatches)) {
+                                set(this.old, i, v);
+                            }
+                        }
+
+                        for (const [i, v] of eachPair(patches)) {
+                            set(this._snapshot as any, i, v);
+                        }
+
+                        this.next(this._snapshot);
                     }
-                }
-            });
+                });
+            }
+        } else {
+            this._snapshot = cloneClass(this.valueOrSubject);
         }
 
         this.old = this.createState();
+        this.next(this._snapshot);
+    }
+
+    get original(): T | undefined {
+        if (this.valueOrSubject) {
+            return this.valueOrSubject instanceof EntitySubject ? this.valueOrSubject.getValue() : this.valueOrSubject;
+        }
     }
 
     createState(): { [path: string]: any } {
-        if (this.valueOrSubject instanceof EntitySubject) {
-            if (this.valueOrSubject.value) {
-                const item = classToPlain(Object.getPrototypeOf(this.valueOrSubject.value).constructor, this.valueOrSubject.value);
-                for (const p of this.ignore) {
-                    delete item[p];
-                }
-                return item;
-            } else {
-                return {};
+        if (this._snapshot && this.original) {
+            const item = classToPlain(Object.getPrototypeOf(this.original).constructor, this._snapshot);
+            for (const p of this.ignore) {
+                delete item[p];
             }
+            return item;
         } else {
-            if (this.valueOrSubject) {
-                const item = classToPlain(Object.getPrototypeOf(this.valueOrSubject).constructor, this.valueOrSubject);
-                for (const p of this.ignore) {
-                    delete item[p];
-                }
-                return item;
-            } else {
-                return {};
-            }
+            return {};
         }
     }
 
     changed(): boolean {
-        const newState = this.createState();
-        const ops = compare(this.old, newState);
-        return ops.length !== 0;
+        if (this.old) {
+            const newState = this.createState();
+            const ops = compare(this.old, newState);
+            return ops.length !== 0;
+        }
+
+        return false;
     }
 
+    /**
+     * Returns the plain patch values, key value.
+     */
     private normalizePatch(ops: Operation[]): { [path: string]: any } | undefined {
+        if (!this._snapshot) return undefined;
+
         const patches: { [path: string]: any } = {};
-        const doc = this.valueOrSubject instanceof EntitySubject ? this.valueOrSubject.value : this.valueOrSubject;
+        const doc = this._snapshot;
 
         for (const op of ops) {
             const path = op.path.slice(1).replace(/\//g, '.');
@@ -82,20 +134,56 @@ export class ItemObserver<T> {
         return size(patches) > 0 ? patches : undefined;
     }
 
-    getPatchesAndReset(): { [path: string]: any } | undefined {
-        const newState = this.createState();
-        const ops = compare(this.old, newState);
-        this.old = newState;
-
-        return this.normalizePatch(ops);
+    /**
+     * Returns class values of patches.
+     */
+    getPatchesAndReset(): { [name: string]: any } | undefined {
+        const patches = this.getPatches();
+        if (patches) {
+            this.reset();
+            return patches;
+        }
     }
 
+    /**
+     * Returns plain values of patches.
+     */
     getPatches(): { [path: string]: any } | undefined {
-        const newState = this.createState();
-        const ops = compare(this.old, newState);
-        return this.normalizePatch(ops);
+        if (this.old) {
+            const newState = this.createState();
+            const ops = compare(this.old, newState);
+            return this.normalizePatch(ops);
+        }
     }
 
+    /**
+     * Returns plain values of patches.
+     */
+    getRawPatches(): { [path: string]: any } | undefined {
+        const plainPatches = this.getPatches();
+        if (plainPatches) {
+            return partialClassToPlain(Object.getPrototypeOf(this._snapshot).constructor, plainPatches);
+        }
+    }
+
+    /**
+     * Applies all detected changes to the original object.
+     */
+    applyAndReset() {
+        const object = this.original;
+        const patches = this.getPatches();
+        if (patches) {
+            for (const [i, v] of eachPair(patches)) {
+                set(object as any, i, v);
+            }
+        }
+
+        this.reset();
+    }
+
+    /**
+     * Resets all changes.
+     */
     reset(): void {
         this.old = this.createState();
     }
@@ -104,6 +192,7 @@ export class ItemObserver<T> {
 /**
  * Returns patches in plain parameters.
  */
-export function observeItem<T>(valueOrSubject: T | EntitySubject<any>, ignore: string[] = ['version']): ItemObserver<T> {
-    return new ItemObserver(valueOrSubject, ignore);
+export function observeItem<T>(valueOrSubject: T | BehaviorSubject<T>, ignore: string[] = ['version']): ItemObserver<T> {
+    const observer = new ItemObserver<T>(valueOrSubject);
+    return observer;
 }
