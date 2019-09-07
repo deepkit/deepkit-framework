@@ -55,7 +55,6 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
             if (this.valueOrSubject instanceof EntitySubject) {
                 this.valueOrSubject.patches.subscribe((patches) => {
                     if (this.valueOrSubject instanceof EntitySubject) {
-
                         if (this.old) {
                             const plainPatches = partialClassToPlain(Object.getPrototypeOf(this.valueOrSubject.value).constructor, patches);
                             for (const [i, v] of eachPair(plainPatches)) {

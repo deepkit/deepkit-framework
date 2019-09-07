@@ -1,4 +1,4 @@
-import {EntitySubject, StreamBehaviorSubject} from "./core";
+import {EntitySubject, StreamBehaviorSubject, ValidationErrorItem, ValidationParameterError} from "./core";
 import {Collection} from "./collection";
 import {ServerMessageActionType} from "./contract";
 import {eachKey, getClassName, isArray, isObject, isPlainObject} from "@marcj/estdlib";
@@ -10,6 +10,7 @@ export type ActionTypes = { parameters: ServerMessageActionType[], returnType: S
 
 export async function executeActionAndSerialize(
     actionTypes: ActionTypes,
+    controllerName: any,
     controllerInstance: any,
     methodName: string,
     args: any[]): Promise<any> {
@@ -32,8 +33,7 @@ export async function executeActionAndSerialize(
             if (!type.partial) {
                 const errors = await validate(RegisteredEntities[type.entityName], args[i]);
                 if (errors.length) {
-                    //todo, wrap in own ValidationError so we can serialise it better when send to the client
-                    throw new Error(`${fullName} validation for arg ${i} failed\n` + JSON.stringify(errors) + '\nGot: ' + JSON.stringify(args[i]));
+                    throw new ValidationParameterError(controllerName, methodName, i, errors.map(error => new ValidationErrorItem(error.path, error.message, error.code)));
                 }
             }
             if (type.partial) {
