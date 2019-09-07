@@ -1,12 +1,24 @@
 import 'jest';
 import 'reflect-metadata';
-import {Action, Controller, ParamType, PartialEntityReturnType, PartialParamType, ReturnType, ReturnPlainObject} from "@marcj/glut-core";
+import {
+    Action,
+    Controller,
+    ParamType,
+    PartialEntityReturnType,
+    PartialParamType,
+    ReturnType,
+    ReturnPlainObject,
+    ValidationError,
+    ValidationErrorItem,
+    ValidationParameterError
+} from "@marcj/glut-core";
 import {createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
 import {Entity, Field} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
-import {isArray} from '@marcj/estdlib';
+import {CustomError, isArray} from '@marcj/estdlib';
+import {JSONError} from "@marcj/glut-core/src/core";
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -15,6 +27,16 @@ global['WebSocket'] = require('ws');
 class User {
     constructor(@Field() public name: string) {
         this.name = name;
+    }
+}
+
+@Entity('error:custom-error')
+class MyCustomError {
+    @Field()
+    additional?: string;
+
+    constructor(@Field() public readonly message: string) {
+
     }
 }
 
@@ -30,6 +52,27 @@ test('test basic setup', async () => {
         @Action()
         user(name: string): User {
             return new User(name);
+        }
+
+        @Action()
+        myErrorNormal() {
+            throw new Error('Nothing to see here');
+        }
+
+        @Action()
+        myErrorJson() {
+            throw new JSONError([{path: 'name', name: 'missing'}]);
+        }
+
+        @Action()
+        myErrorCustom() {
+            const error = new MyCustomError('Shit dreck');
+            error.additional = 'hi';
+            throw error;
+        }
+
+        @Action()
+        validationError(user: User) {
         }
     }
 
@@ -67,6 +110,50 @@ test('test basic setup', async () => {
 
     const names = await test.names('d');
     expect(names).toEqual(['a', 'b', 'c', 'd']);
+
+    {
+        try {
+            const error = await test.myErrorNormal();
+            fail('should error');
+        } catch (error) {
+            expect(error).toBeInstanceOf(Error);
+            expect(error.message).toBe('Nothing to see here');
+        }
+    }
+
+    {
+        try {
+            const error = await test.myErrorJson();
+            fail('should error');
+        } catch (error) {
+            expect(error).toBeInstanceOf(JSONError);
+            expect((error as JSONError).json).toEqual([{path: 'name', name: 'missing'}]);
+        }
+    }
+
+    {
+        try {
+            const error = await test.myErrorCustom();
+            fail('should error');
+        } catch (error) {
+            expect(error).toBeInstanceOf(MyCustomError);
+            expect((error as MyCustomError).message).toEqual('Shit dreck');
+            expect((error as MyCustomError).additional).toEqual('hi');
+        }
+    }
+
+    {
+        try {
+            const user = new User('asd');
+            delete user.name;
+            const error = await test.validationError(user);
+            fail('should error');
+        } catch (error) {
+            expect(error).toBeInstanceOf(ValidationParameterError);
+            expect((error as ValidationError).errors[0]).toBeInstanceOf(ValidationErrorItem);
+            expect((error as ValidationError).errors[0]).toEqual({code: 'required', message: 'Required value is undefined', path: 'name'});
+        }
+    }
 
     const user = await test.user('pete');
     expect(user).toBeInstanceOf(User);
