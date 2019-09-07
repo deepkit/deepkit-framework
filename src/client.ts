@@ -9,7 +9,7 @@ import {
     executeActionAndSerialize,
     getActionParameters,
     getActionReturnType,
-    getActions,
+    getActions, getSerializedErrorPair, getUnserializedError,
     MessageSubject,
     RemoteController,
     ServerMessageActionType,
@@ -25,6 +25,7 @@ import {
 import {applyDefaults, ClassType, each, eachKey, getClassName, isArray, sleep} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {EntityState} from "./entity-state";
+import {JSONError} from "@marcj/glut-core";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';
@@ -172,7 +173,7 @@ export class SocketClient {
                             name: 'peerController/message',
                             controllerName: name,
                             replyId: message.replyId,
-                            data: {type: 'error', id: 0, error: `Action ${data.action} does not exist.`}
+                            data: {type: 'error', id: 0, entityName: '@error:default', error: `Action ${data.action} does not exist.`}
                         });
                         return;
                     }
@@ -208,7 +209,7 @@ export class SocketClient {
                         }
 
                         try {
-                            let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], controllerInstance, data.action, data.args);
+                            let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], name, controllerInstance, data.action, data.args);
 
                             if (actionResult && actionResult.then) {
                                 actionResult = await actionResult;
@@ -219,7 +220,7 @@ export class SocketClient {
                                     name: 'peerController/message',
                                     controllerName: name,
                                     replyId: message.replyId,
-                                    data: {type: 'error', id: 0, error: `Action ${data.action} returned Observable, which is not supported.`}
+                                    data: {type: 'error', id: 0, entityName: '@error:default', error: `Action ${data.action} returned Observable, which is not supported.`}
                                 });
                                 console.warn(`Action ${data.action} returned Observable, which is not supported.`);
                                 return;
@@ -231,14 +232,14 @@ export class SocketClient {
                                 replyId: message.replyId,
                                 data: {type: 'next/json', id: message.id, next: actionResult}
                             });
-                        } catch (error) {
-                            console.warn('Error in peer controller', getClassName(controllerInstance.constructor), data.action, error);
+                        } catch (errorObject) {
+                            const [entityName, error] = getSerializedErrorPair(errorObject);
 
                             activeSubject.sendMessage({
                                 name: 'peerController/message',
                                 controllerName: name,
                                 replyId: message.replyId,
-                                data: {type: 'error', id: 0, error: error instanceof Error ? error.message : error.toString()}
+                                data: {type: 'error', id: 0, entityName, error}
                             });
                         }
                     }
@@ -704,8 +705,7 @@ export class SocketClient {
                     }
 
                     if (reply.type === 'error') {
-                        //todo, try to find a way to get correct Error instance as well.
-                        const error = new Error(reply.error);
+                        const error = getUnserializedError(reply.entityName, reply.error);
 
                         if (returnValue instanceof Collection) {
                             returnValue.error(error);
@@ -719,8 +719,8 @@ export class SocketClient {
                     }
 
                     if (reply.type === 'error/observable') {
-                        //todo, try to find a way to get correct Error instance as well.
-                        const error = new Error(reply.error);
+                        const error = getUnserializedError(reply.entityName, reply.error);
+
                         if (subscribers[reply.subscribeId]) {
                             subscribers[reply.subscribeId].error(error);
                         }
