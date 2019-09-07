@@ -26,6 +26,14 @@ export class ValidationError {
         @Field(ValidationErrorItem).asArray().asName('errors') public readonly errors: ValidationErrorItem[]
     ) {
     }
+
+    static from(errors: {path: string, message: string, code?: string}[]) {
+        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '')));
+    }
+
+    get message(): string {
+        return this.errors.map(v => `${v.path}: ${v.message} (${v.code})`).join(',');
+    }
 }
 
 @Entity('@error:parameter')
@@ -36,6 +44,10 @@ export class ValidationParameterError {
         @Field().asArray().asName('arg') public readonly arg: number,
         @Field(ValidationErrorItem).asArray().asName('errors') public readonly errors: ValidationErrorItem[]
     ) {
+    }
+
+    get message(): string {
+        return this.errors.map(v => `${v.path}: ${v.message} (${v.code})`).join(',');
     }
 }
 
