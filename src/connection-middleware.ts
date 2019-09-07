@@ -1,5 +1,5 @@
 import {EntityStorage} from "./entity-storage";
-import {ClientMessageAll, Collection, CollectionStream, EntitySubject, JSONObjectCollection, StreamBehaviorSubject} from "@marcj/glut-core";
+import {ClientMessageAll, Collection, CollectionStream, EntitySubject, getSerializedErrorPair, JSONError, JSONObjectCollection, StreamBehaviorSubject} from "@marcj/glut-core";
 import {classToPlain, getEntityName} from "@marcj/marshal";
 import {ClassType, each, getClassName, isObject, isPlainObject} from "@marcj/estdlib";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
@@ -120,11 +120,13 @@ export class ConnectionMiddleware {
                     subscribeId: message.subscribeId,
                     next: next
                 });
-            }, (error) => {
+            }, (errorObject) => {
+                const [entityName, error] = getSerializedErrorPair(errorObject);
+
                 this.writer.write({
                     type: 'error/observable',
                     id: message.forId,
-                    error: error.message || error,
+                    entityName, error,
                     subscribeId: message.subscribeId
                 });
             }, () => {

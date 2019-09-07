@@ -1,6 +1,7 @@
 import * as WebSocket from "ws";
 import {Injectable, Inject} from "injection-js";
-import {ServerMessageAll} from "@marcj/glut-core";
+import {getSerializedErrorPair, JSONError, ServerMessageAll} from "@marcj/glut-core";
+import { getEntityName, getEntitySchema } from "@marcj/marshal";
 
 
 @Injectable()
@@ -24,7 +25,9 @@ export class ConnectionWriter {
         this.write({type: 'ack', id: id});
     }
 
-    public sendError(id: number, error: any, code?: string) {
-        this.write({type: 'error', id: id, error: error instanceof Error ? error.message : error, code: error.code || code});
+    public sendError(id: number, errorObject: any, code?: string) {
+        const [entityName, error] = getSerializedErrorPair(errorObject);
+
+        this.write({type: 'error', id: id, entityName, error, code: error.code || code});
     }
 }

@@ -383,7 +383,7 @@ export class ClientConnection {
 
             const types = await this.getActionTypes(controller, action);
 
-            return executeActionAndSerialize(types, controllerInstance, methodName, args);
+            return executeActionAndSerialize(types, controller, controllerInstance, methodName, args);
         }
 
         throw new Error(`Action unknown ${fullName}`);
@@ -394,7 +394,6 @@ export class ClientConnection {
             await this.connectionMiddleware.actionMessageOut(message, await exec());
         } catch (error) {
             await this.writer.sendError(message.id, error);
-            throw error;
         }
     }
 }
