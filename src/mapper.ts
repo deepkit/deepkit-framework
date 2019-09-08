@@ -2,7 +2,7 @@ import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
-import {getEntitySchema, getOrCreateEntitySchema} from "./decorators";
+import {getClassTypeFromInstance, getEntitySchema} from "./decorators";
 import {
     ClassType,
     getClassName,
@@ -408,7 +408,7 @@ export function propertyPlainToClass<T>(
  * Clones a class instance deeply.
  */
 export function cloneClass<T>(target: T, parents?: any[]): T {
-    return plainToClass(target['constructor'] as ClassType<T>, classToPlain(target['constructor'] as ClassType<T>, target), parents);
+    return plainToClass(getClassTypeFromInstance(target), classToPlain(getClassTypeFromInstance(target), target), parents);
 }
 
 /**
