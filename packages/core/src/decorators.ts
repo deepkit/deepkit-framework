@@ -269,6 +269,30 @@ export function getEntitySchema<T>(classType: ClassType<T>): EntitySchema {
 }
 
 /**
+ * Returns the ClassType for a given instance.
+ */
+export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
+    if (!target
+        || !target['constructor']
+        || Object.getPrototypeOf(target) !== target['constructor'].prototype
+        || isPlainObject(target)
+        || !isObject(target)
+    ) {
+        throw new Error('Target does not seem to be a class instance.');
+    }
+
+    return target['constructor'] as ClassType<T>;
+}
+
+/**
+ * Returns true if given class has an @Entity() or @Field()s defined, and thus became
+ * a Marshal entity.
+ */
+export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
+    return EntitySchemas.has(classType.prototype);
+}
+
+/**
  * Used to define a entity name for an entity.
  *
  * The name is used for an internal registry, so ot should be a unique one.

@@ -227,7 +227,7 @@ export class Database {
     }
 
     /**
-     * Patches an entity in the database and returns the new version number if successful, or null if not successful.
+     * Patches a single entity in the collection and returns the new version number if successful, or null if not successful.
      * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
      *
      * Example
@@ -261,5 +261,34 @@ export class Database {
         }
 
         return (<any>doc)['version'];
+    }
+
+    /**
+     * Patches all items in the collection and returns the count of modified items..
+     * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
+     *
+     * Example
+     *
+     * await patch(SimpleEntity, {
+     *     ['children.0.label']: 'Changed label'
+     * });
+     */
+    public async patchAll<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number> {
+        const collection = await this.getCollection(classType);
+
+        const patchStatement: { [name: string]: any } = {
+            $inc: {version: +1}
+        };
+
+        delete (<any>patch)['id'];
+        delete (<any>patch)['_id'];
+        delete (<any>patch)['version'];
+
+        patchStatement['$set'] = partialClassToMongo(classType, patch);
+
+        const response = await collection.updateMany(convertClassQueryToMongo(classType, filter), patchStatement, {
+        });
+
+        return response.modifiedCount;
     }
 }

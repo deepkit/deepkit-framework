@@ -17,13 +17,14 @@ import {
     ParentReference,
     plainToClass,
     RegisteredEntities,
-    FieldAny, FieldMap, forwardRef, FieldArray, Index, UUIDField, isOptional,
+    FieldAny, FieldMap, forwardRef, FieldArray, Index, UUIDField, isOptional, isRegisteredEntity,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
 import {PageClass} from "./document-scenario/PageClass";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
+import { getClassTypeFromInstance } from '../src/decorators';
 
 test('test invalid usage decorator', async () => {
     expect(() => {
@@ -32,6 +33,34 @@ test('test invalid usage decorator', async () => {
             ohwe: any;
         }
     }).toThrow('Could not detect property in Base');
+});
+
+test('test getClassTypeFromInstance', async () => {
+    {
+        class Mother {
+            a: any;
+        }
+
+        class Base extends Mother {
+            b: any;
+        }
+
+        @Entity('ding')
+        class Ding extends Base {}
+
+        expect(() => getClassTypeFromInstance(Base)).toThrow('Target does not seem to be');
+        expect(() => getClassTypeFromInstance({})).toThrow('Target does not seem to be');
+        expect(() => getClassTypeFromInstance(false)).toThrow('Target does not seem to be');
+        expect(() => getClassTypeFromInstance(undefined)).toThrow('Target does not seem to be');
+        expect(() => getClassTypeFromInstance(0)).toThrow('Target does not seem to be');
+        expect(() => getClassTypeFromInstance('')).toThrow('Target does not seem to be');
+
+        expect(getClassTypeFromInstance(new Base)).toBe(Base);
+        expect(getClassTypeFromInstance(new Mother)).toBe(Mother);
+        expect(isRegisteredEntity(Mother)).toBe(false);
+        expect(isRegisteredEntity(Base)).toBe(false);
+        expect(isRegisteredEntity(Ding)).toBe(true);
+    }
 });
 
 test('test invalid usage', async () => {
