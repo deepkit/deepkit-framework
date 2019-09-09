@@ -4,12 +4,16 @@ import {
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection,
+    CollectionEntitySubjectFetcher,
     CollectionPaginationEvent,
     EntitySubject,
     executeActionAndSerialize,
     getActionParameters,
     getActionReturnType,
-    getActions, getSerializedErrorPair, getUnserializedError,
+    getActions,
+    getSerializedErrorPair,
+    getUnserializedError,
+    IdInterface,
     MessageSubject,
     RemoteController,
     ServerMessageActionType,
@@ -22,10 +26,9 @@ import {
     ServerMessageResult,
     StreamBehaviorSubject,
 } from "@marcj/glut-core";
-import {applyDefaults, ClassType, each, eachKey, getClassName, isArray, sleep} from "@marcj/estdlib";
+import {applyDefaults, ClassType, each, eachKey, isArray, sleep} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {EntityState} from "./entity-state";
-import {JSONError} from "@marcj/glut-core";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';
@@ -581,7 +584,7 @@ export class SocketClient {
 
                                 resolve(subject);
                             } else {
-                                resolve(new EntitySubject(undefined));
+                                reject(new Error('Item not found'));
                             }
                         }
 
@@ -617,6 +620,12 @@ export class SocketClient {
                             }
 
                             const collection = new Collection<any>(classType);
+                            const that = this;
+                            collection.setEntitySubjectFetcher(new class implements CollectionEntitySubjectFetcher {
+                                fetch<T extends IdInterface>(classType: ClassType<T>, id: string): EntitySubject<T> {
+                                    return that.entityState.getStore(classType).createFork(id);
+                                }
+                            });
 
                             if (reply.pagination.active) {
                                 collection.pagination._activate();

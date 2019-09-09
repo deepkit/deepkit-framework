@@ -6,7 +6,7 @@ import {skip} from "rxjs/operators";
 import {ObjectUnsubscribedError} from "rxjs";
 
 class EntitySubjectStore<T extends IdInterface> {
-    subjects: { [id: string]: EntitySubject<T | undefined> } = {};
+    subjects: { [id: string]: EntitySubject<T> } = {};
     consumers: { [id: string]: { count: number } } = {};
 
     public async forkUnsubscribed(id: string) {
@@ -27,7 +27,7 @@ class EntitySubjectStore<T extends IdInterface> {
      *  it would unsubscribe for ALL subscribers of that particular entity item.
      *  so we fork it. The fork can be unsubscribed without touching the origin.
      */
-    public createFork(id: string, item?: T): EntitySubject<T | undefined> {
+    public createFork(id: string, item?: T): EntitySubject<T> {
         const originSubject = this.getOrCreateSubject(id, item);
 
         if (!this.consumers[id]) {
@@ -36,7 +36,7 @@ class EntitySubjectStore<T extends IdInterface> {
 
         this.consumers[id].count++;
 
-        const forkedSubject = new EntitySubject(originSubject.getValue(), async () => {
+        const forkedSubject = new EntitySubject<T>(originSubject.getValue(), async () => {
             await this.forkUnsubscribed(id);
         });
 
@@ -82,9 +82,13 @@ class EntitySubjectStore<T extends IdInterface> {
         return 0;
     }
 
-    protected getOrCreateSubject(id: string, item?: T): EntitySubject<T | undefined> {
+    protected getOrCreateSubject(id: string, item?: T): EntitySubject<T> {
         if (!this.subjects[id]) {
-            this.subjects[id] = new EntitySubject<T | undefined>(item);
+            if (item) {
+                this.subjects[id] = new EntitySubject<T>(item);
+            } else {
+                throw new Error('Can not create a EntitySubject without item.');
+            }
         }
 
         return this.subjects[id];
@@ -217,7 +221,7 @@ export class EntityState {
      * @param classType
      * @param jsonItem
      */
-    public handleEntity<T extends IdInterface>(classType: ClassType<T>, jsonItem: JSONEntity<T>): EntitySubject<T | undefined> {
+    public handleEntity<T extends IdInterface>(classType: ClassType<T>, jsonItem: JSONEntity<T>): EntitySubject<T> {
         const store = this.getStore(classType);
         const item = plainToClass(classType, jsonItem);
 
