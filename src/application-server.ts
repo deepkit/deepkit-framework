@@ -37,7 +37,7 @@ export class ApplicationServerConfig {
     /**
      * Whether entity definition (mongo indices) should be synchronised on bootstrap.
      */
-    mongoSynchronize: boolean = false;
+    mongoSynchronize: boolean = true;
 
     redisHost: string = 'localhost';
 
@@ -126,6 +126,12 @@ export class ApplicationServer {
     }
 
     protected async bootstrap() {
+        const entities = this.entities.map(v => getTypeOrmEntity(v));
+
+        for (const entity of entities) {
+            entity.options.database = this.config.mongoDbName;
+        }
+
         this.connection = await createConnection({
             type: "mongodb",
             host: this.config.mongoHost,
@@ -134,7 +140,7 @@ export class ApplicationServer {
             name: this.config.mongoConnectionName,
             useNewUrlParser: true,
             synchronize: this.config.mongoSynchronize,
-            entities: this.entities.map(v => getTypeOrmEntity(v))
+            entities: entities
         });
 
         const self = this;

@@ -611,7 +611,7 @@ export class EntityStorage {
         });
     }
 
-    public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T | undefined>> {
+    public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T> | undefined> {
         const item = await this.exchangeDatabase.get(classType, filter);
 
         if (item) {
@@ -621,11 +621,9 @@ export class EntityStorage {
             this.setSent(classType, item.id, item.version);
             this.subscribeEntity(classType);
 
-            return new EntitySubject<T | undefined>(item, () => {
+            return new EntitySubject<T>(item, () => {
                 this.decreaseUsage(classType, foundId);
             });
-        } else {
-            return new EntitySubject<T | undefined>(undefined, classType);
         }
     }
 
@@ -961,6 +959,7 @@ export class EntityStorage {
             await fieldSub.unsubscribe();
         });
 
+        const start = Date.now();
         const cursor = await getCursor();
         const total = await cursor.count(false);
         jsonCollection.pagination.setTotal(total);
