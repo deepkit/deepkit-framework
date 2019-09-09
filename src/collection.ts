@@ -7,6 +7,7 @@ import {ReplaySubject, Subject, TeardownLogic} from "rxjs";
 import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {ClassType, getClassName, each} from "@marcj/estdlib";
+import {EntitySubject} from "./core";
 
 export type FilterParameters = {[name: string]: any | undefined};
 
@@ -237,6 +238,10 @@ export class CollectionPagination<T extends IdInterface> {
     }
 }
 
+export interface CollectionEntitySubjectFetcher {
+    fetch<T extends IdInterface>(classType: ClassType<T>, id: string): EntitySubject<T>;
+}
+
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent> = new Subject;
 
@@ -255,11 +260,26 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     protected batchActive = false;
     protected batchNeedLoaded = false;
+    protected entitySubjectFetcher?: CollectionEntitySubjectFetcher;
 
     constructor(
         public readonly classType: ClassType<T>,
     ) {
         super(1);
+    }
+
+    public setEntitySubjectFetcher(f: CollectionEntitySubjectFetcher) {
+        this.entitySubjectFetcher = f;
+    }
+
+    public getEntitySubject(idOrItem: string | T): EntitySubject<T> {
+        const id: string = idOrItem instanceof this.classType ? idOrItem.id : String(idOrItem);
+
+        if (!this.entitySubjectFetcher) {
+            throw new Error('No CollectionEntitySubjectFetcher set.');
+        }
+
+        return this.entitySubjectFetcher.fetch(this.classType, id);
     }
 
     public has(id: string) {

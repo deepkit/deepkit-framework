@@ -16,6 +16,7 @@ export class ValidationErrorItem {
         @Field().asName('path') public readonly path: string,
         @Field().asName('message') public readonly message: string,
         @Field().asName('code') public readonly code: string,
+        @Field().asName('entityName') public readonly entityName: string,
     ) {
     }
 }
@@ -27,8 +28,8 @@ export class ValidationError {
     ) {
     }
 
-    static from(errors: {path: string, message: string, code?: string}[]) {
-        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '')));
+    static from(errors: {path: string, message: string, code?: string, entityName?: string}[]) {
+        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '', v.entityName || '')));
     }
 
     get message(): string {
@@ -39,9 +40,9 @@ export class ValidationError {
 @Entity('@error:parameter')
 export class ValidationParameterError {
     constructor(
-        @Field().asArray().asName('controller') public readonly controller: string,
-        @Field().asArray().asName('action') public readonly action: string,
-        @Field().asArray().asName('arg') public readonly arg: number,
+        @Field().asName('controller') public readonly controller: string,
+        @Field().asName('action') public readonly action: string,
+        @Field().asName('arg') public readonly arg: number,
         @Field(ValidationErrorItem).asArray().asName('errors') public readonly errors: ValidationErrorItem[]
     ) {
     }
@@ -216,11 +217,23 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     }
 }
 
-export class EntitySubject<T extends IdInterface | undefined> extends StreamBehaviorSubject<T> {
+export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<T> {
     /**
      * Patches are in class format.
      */
     public readonly patches = new Subject<{ [path: string]: any }>();
+
+    public deleted: boolean = false;
+
+    next(value: T | undefined): void {
+        if (value === undefined) {
+            this.deleted = true;
+            super.next(this.value);
+            return;
+        }
+
+        super.next(value);
+    }
 }
 
 export type JSONEntity<T> = {
