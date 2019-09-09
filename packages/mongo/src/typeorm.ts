@@ -1,4 +1,5 @@
 import {
+    getCollectionName,
     getDatabaseName,
     getEntityName,
     getEntitySchema,
@@ -65,7 +66,7 @@ function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: strin
 }
 
 export function getTypeOrmEntity<T>(classType: ClassType<T>): EntitySchema<T> {
-    const name = getEntityName(classType);
+    let name = getCollectionName(classType) || getEntityName(classType);
     const schema = getEntitySchema(classType);
 
     const indices: EntitySchemaIndexOptions[] = [];

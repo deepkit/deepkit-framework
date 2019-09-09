@@ -189,7 +189,6 @@ test('test actual sync', async () => {
 
     // await connection.connect();
     const indexes = await connection.mongoManager.queryRunner.collectionIndexes('simple_model');
-    console.log('indexes', indexes);
     expect(indexes.length).toBe(3);
     expect(indexes[0].key).toEqual({_id: 1});
 
