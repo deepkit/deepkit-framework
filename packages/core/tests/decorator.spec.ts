@@ -32,7 +32,7 @@ test('test invalid usage decorator', async () => {
         class Base {
             ohwe: any;
         }
-    }).toThrow('Could not detect property in Base');
+    }).toThrow('Could not detect property name in Base');
 });
 
 test('test getClassTypeFromInstance', async () => {

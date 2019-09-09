@@ -63,14 +63,10 @@ Install `buffer` as well if you want to have Binary support.
 ```typescript
 import {
     Field,
-    Entity,
-    IDField,
     UUIDField,
     EnumField,
     plainToClass,
     uuid,
-    Optional,
-    Index,
 } from '@marcj/marshal';
 import {Buffer} from 'buffer';
 
@@ -86,15 +82,13 @@ export enum Plan {
 }
 
 class SimpleModel {
-    @IDField()
-    @UUIDField()
+    @UUIDField().asId()
     id: string = uuid();
 
-    @Field([String])
+    @Field(String).asArray()
     tags: string[] = [];
 
-    @Field(Buffer) //binary
-    @Optional()
+    @Field(Buffer).optional() //binary
     picture?: Buffer;
 
     @Field()
@@ -106,15 +100,14 @@ class SimpleModel {
     @Field()
     created: Date = new Date;
 
-    @Field([SubModel])
+    @Field(SubModel).asArray()
     children: SubModel[] = [];
 
-    @Field({SubModel})
+    @Field(SubModel).asMap()
     childrenMap: {[key: string]: SubModel} = {};
 
     constructor(
-        @Field() 
-        @Index() 
+        @Field().index().asName('name') //asName is required for minimized code
         public name: string
     ) {}
 }
@@ -220,7 +213,7 @@ import {Field, AddValidator, PropertyValidator, PropertyValidatorError, ClassTyp
 class MyCustomValidator implements PropertyValidator {
      validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError {
          if (value.length > 10) {
-             return new PropertyValidatorError('Too long :()');
+             return new PropertyValidatorError('too_long', 'Too long :()');
          }
      };
 }
@@ -276,10 +269,10 @@ class Page {
     @Field() //will be detected as String
     name?: string;
     
-    @Field([String]) //will be detected as String array
+    @Field(String).asArray() //will be detected as String array
     name: string[] = [];
     
-    @Field({String}) //will be detected as String map
+    @Field(String).asMap() //will be detected as String map
     name: {[name: string]: string} = {};
 }
 ````
@@ -298,13 +291,64 @@ Available type decorators:
 
 ```typescript
 @Field()
-@FieldMap() //alternative to @Field({Type})
-@FieldArray() //alternative to @Field([Type])
 @EnumField(MyEnumClass) //implicitly calls @Field()
 @UUIDField() //implicitly calls @Field()
-@IDField() //necessary entities that should be stored in database, implicitly calls @Field()
-@MongoIdField() //for database only, implicitly calls @Field()
-@Index() //for database only. Can be used at class and class property.
+@MongoIdField() //for mongodb only, implicitly calls @Field()
+```
+
+which have all a common chainable interface:
+
+```typescript
+
+interface FieldDecoratorResult {
+    (target: Object, property?: string, parameterIndexOrDescriptor?: any): void;
+
+    /**
+     * Sets the name of this property. Important for cases where the actual name is lost during compilation.
+     * @param name
+     */
+    asName(name: string): FieldDecoratorResult;
+
+    /**
+     * @see Optional
+     */
+    optional(): FieldDecoratorResult;
+
+    /**
+     * @see IDField
+     */
+    asId(): FieldDecoratorResult;
+
+    /**
+     * @see Index
+     */
+    index(options?: IndexOptions): FieldDecoratorResult;
+
+    /**
+     * @see FieldArray
+     */
+    asArray(): FieldDecoratorResult;
+
+    /**
+     * @see FieldMap
+     */
+    asMap(): FieldDecoratorResult;
+}
+```
+
+Example:
+
+```typescript
+class MyModel {
+    @UUIDField().asId()
+    id: string = uuid();
+
+    @Field().optional().index()
+    name?: string;
+
+    @Field(String).optional().asArray()
+    tags?: string[];
+}
 ```
 
 ## TypeORM
@@ -336,21 +380,22 @@ which makes it possible to sync the schema defined only with Marshal decorators 
 
 ### Exclude
 
-`@Exclude()` lets you exclude properties from a class in a certain
+`exclude` lets you exclude properties from a class in a certain
 direction. Per default it excludes to export to `*toPlain` and
-`*toMongo`. You can also use `@ExcludeToMongo` or `@ExcludeToPlain` to
+`*toMongo`. You can also use `'mongo'` or `'plain'` to
 have more control.
-Note: Fields that are not decorated with `@Field`, `@MongoIdField`, `@EnumField` or `@UUIDField` are not mapped and will be omitted.
+Note: Fields that are not decorated with `@Field`, `@MongoIdField`, `@EnumField` or `@UUIDField` are not mapped and will be excluded per default
 
 ```typescript
 class MyEntity {
-    @IDField()
-    @MongoIdField()
+    @MongoIdField().asId()
     id: string;
     
-    @Field()
-    @Exclude()
+    @Field().exclude()
     internalState: string;
+
+    @Field().exclude('mongo')
+    publicState: string;
 }
 ```
 
@@ -417,7 +462,7 @@ example `string[]` => `ChildrenCollection`.
 ```typescript
 class ChildrenCollection {
     @Decorated()
-    @Field([String])
+    @Field(String).asArray()
     items: string[];
     
     constructor(items: string[]) {
@@ -430,8 +475,7 @@ class ChildrenCollection {
 }
 
 class MyEntity {
-    @IDField()
-    @MongoIdField()
+    @MongoIdField().index()
     id: string;
     
     //in *toMongo and *toPlain is children the value of ChildrenCollection::items
@@ -534,7 +578,6 @@ npm install @marcj/marshal-mongo
 ```
 
 ```typescript
-import {plainToClass} from "@marcj/marshal";
 import {Database} from "@marcj/marshal-mongo";
 import {createConnection} from "typeorm";
 
