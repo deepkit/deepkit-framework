@@ -395,7 +395,6 @@ test('test setter/getter', async () => {
     }
 
     class Model {
-        @Exclude()
         private _fonts: Font[] = [];
 
         get test() {
