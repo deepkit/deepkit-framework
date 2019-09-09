@@ -152,6 +152,7 @@ export class EntitySchema {
     idField?: string;
     propertyNames: string[] = [];
     constructorParamNames: string[] = [];
+    constructorParamNamesAutoResolved: string[] = [];
 
     indices: EntityIndex[] = [];
 
@@ -342,6 +343,13 @@ interface FieldDecoratorResult {
     optional(): FieldDecoratorResult;
 
     /**
+     * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
+     *
+     * @see Exclude
+     */
+    exclude(t?: 'all' | 'mongo' | 'plain'): FieldDecoratorResult;
+
+    /**
      * @see IDField
      */
     asId(): FieldDecoratorResult;
@@ -376,18 +384,48 @@ function FieldDecoratorWrapper(
 
     const fn = (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
         let returnType;
+        const schema = getOrCreateEntitySchema(target);
 
         if (property) {
             returnType = Reflect.getMetadata('design:type', target, property);
         }
 
         if (isNumber(parameterIndexOrDescriptor)) {
+            if (givenPropertyName && (
+                (schema.constructorParamNames[parameterIndexOrDescriptor] && schema.constructorParamNames[parameterIndexOrDescriptor] !== givenPropertyName)
+                || (schema.constructorParamNamesAutoResolved[parameterIndexOrDescriptor] && schema.constructorParamNamesAutoResolved[parameterIndexOrDescriptor] !== givenPropertyName)
+            )
+            ) {
+                //we got a new decorator with a different name on a constructor param
+                //since we cant not resolve logically which name to use, we forbid that case.
+                throw new Error(`Defining multiple Marshal decorators with different names on ${getClassName(target)} at a constructor param is forbidden.` +
+                    ` @Field.asName('name') is required.`)
+            }
+
+            if (!givenPropertyName && schema.constructorParamNames.length) {
+                //we got a new decorator with a different name on a constructor param
+                //since we cant not resolve logically which name to use, we forbid that case.
+                throw new Error(`Mixing named and not-named constructor parameter is not possible.` +
+                    ` @Field.asName('name') is required everywhere once used.`)
+            }
+
             if (givenPropertyName) {
                 property = givenPropertyName;
-                getOrCreateEntitySchema(target).constructorParamNames[parameterIndexOrDescriptor] = property;
+                //we only store the name, when we explicitely defined one
+                schema.constructorParamNames[parameterIndexOrDescriptor] = property;
             } else {
-                const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
+                const constructorParamNames = getCachedParameterNames((target as ClassType<any>).prototype.constructor);
                 property = constructorParamNames[parameterIndexOrDescriptor];
+
+                if (schema.constructorParamNames[parameterIndexOrDescriptor] && schema.constructorParamNames[parameterIndexOrDescriptor] !== property) {
+                    //we got a new decorator with a different name on a constructor param
+                    //since we cant not resolve logically which name to use, we forbid that case.
+                    throw new Error(`Defining multiple Marshal decorators with different names on ${getClassName(target)} at a constructor param is forbidden.` +
+                        ` @Field.asName('name') is required.`)
+                }
+                if (property) {
+                    schema.constructorParamNamesAutoResolved[parameterIndexOrDescriptor] = property;
+                }
             }
 
             const returnTypes = Reflect.getMetadata('design:paramtypes', target);
@@ -396,7 +434,7 @@ function FieldDecoratorWrapper(
         }
 
         if (!property) {
-            throw new Error(`Could not detect property in ${getClassName(target)}`);
+            throw new Error(`Could not detect property name in ${getClassName(target)}`);
         }
 
         for (const mod of modifier) {
@@ -413,6 +451,11 @@ function FieldDecoratorWrapper(
 
     fn.optional = () => {
         modifier.push(Optional());
+        return fn;
+    };
+
+    fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
+        modifier.push(Exclude(target));
         return fn;
     };
 
@@ -488,6 +531,11 @@ function FieldAndClassDecoratorWrapper(
 
     fn.index = (options?: IndexOptions) => {
         modifier.push(Index(options));
+        return fn;
+    };
+
+    fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
+        modifier.push(Exclude(target));
         return fn;
     };
 
@@ -610,13 +658,11 @@ export function IDField() {
  *     @Field()
  *     name: string;
  *
- *     @Field(() => PageClass)
- *     @ArrayType()
+ *     @Field(() => PageClass).asArray()
  *     children: Page[] = [];
  *
- *     @Field(() => PageClass)
+ *     @Field(() => PageClass).optional()
  *     @ParentReference()
- *     @Optional()
  *     parent?: PageClass;
  *
  *     constructor(name: string) {
@@ -665,38 +711,14 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
 }
 
 /**
- * Used to define a field as excluded when serialized to Mongo or JSON.
+ * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
  * PlainToClass or mongoToClass is not effected by this.
  *
  * @category Decorator
  */
-export function Exclude() {
+export function Exclude(t: 'all' | 'mongo' | 'plain' = 'all') {
     return FieldDecoratorWrapper((target: Object, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'all';
-    });
-}
-
-/**
- * Used to define a field as excluded when serialized to Mongo.
- * PlainToClass or mongoToClass is not effected by this.
- *
- * @category Decorator
- */
-export function ExcludeToMongo() {
-    return FieldDecoratorWrapper((target: Object, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'mongo';
-    });
-}
-
-/**
- * Used to define a field as excluded when serialized to JSON.
- * PlainToClass or mongoToClass is not effected by this.
- *
- * @category Decorator
- */
-export function ExcludeToPlain() {
-    return FieldDecoratorWrapper((target: Object, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = 'plain';
+        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = t;
     });
 }
 
@@ -787,8 +809,7 @@ interface FieldOptions {
  *     @Field().optional()
  *     birthdate?: Date;
  *
- *     @Field()
- *     @Optional()
+ *     @Field().optional()
  *     yes?: Boolean;
  *
  *     @Field([String])
@@ -820,9 +841,6 @@ interface FieldOptions {
  *     configMap: {[name: string]: MyClass} = {}};
  *
  *     constrcutor(
- *         @Field()
- *         @Index({unique: true})
- *         //or
  *         @Field().index({unique: true})
  *         //if minified using bundled and names are removed, use asName() as as first argument
  *         //the exact same property name as string. During compilation/bundling this information

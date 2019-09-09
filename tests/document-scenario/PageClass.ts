@@ -2,7 +2,6 @@ import {PageCollection} from "./PageCollection";
 import {DocumentClass} from "./DocumentClass";
 import {Entity, Field, forwardRef, ParentReference, UUIDField} from "../../src/decorators";
 import {uuid} from "../../src/utils";
-import {Optional} from "../../src/validation";
 import {Buffer} from 'buffer';
 
 @Entity('PageClass')
@@ -16,9 +15,8 @@ export class PageClass {
     @Field(Buffer)
     picture?: Buffer;
 
-    @Field()
+    @Field().optional()
     @ParentReference()
-    @Optional()
     parent?: PageClass;
 
     constructor(

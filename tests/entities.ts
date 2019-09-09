@@ -3,12 +3,12 @@ import {
     Entity,
     EnumField,
     Exclude,
-    ExcludeToMongo,
-    ExcludeToPlain,
-    Field, FieldAny,
+    Field,
+    FieldAny,
     IDField,
     Index,
-    MongoIdField, Optional,
+    MongoIdField,
+    Optional,
     uuid,
     UUIDField
 } from '../index';
@@ -123,7 +123,7 @@ export class SimpleModel {
     children: SubModel[] = [];
 
     @Field({SubModel})
-    childrenMap: {[key: string]: SubModel} = {};
+    childrenMap: { [key: string]: SubModel } = {};
 
     @Field(CollectionWrapper)
     childrenCollection: CollectionWrapper = new CollectionWrapper([]);
@@ -131,21 +131,18 @@ export class SimpleModel {
     @Field(StringCollectionWrapper)
     stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper([]);
 
-    notMapped: {[key: string]: any} = {};
+    notMapped: { [key: string]: any } = {};
 
     @FieldAny()
     anyField: any;
 
-    @Exclude()
-    @Field()
+    @Field().exclude()
     excluded: string = 'default';
 
-    @ExcludeToMongo()
-    @Field()
+    @Field().exclude('mongo')
     excludedForMongo: string = 'excludedForMongo';
 
-    @ExcludeToPlain()
-    @Field()
+    @Field().exclude('plain')
     excludedForPlain: string = 'excludedForPlain';
 
     constructor(name: string) {
@@ -176,4 +173,3 @@ export class ChildClass extends BaseClass {
     @Field()
     name?: string;
 }
-

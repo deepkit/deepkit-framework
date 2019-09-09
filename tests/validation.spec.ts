@@ -244,6 +244,7 @@ test('test boolean', async () => {
     expect(validate(Model, {bo: '0'})).toEqual([]);
     expect(validate(Model, {bo: 1})).toEqual([]);
     expect(validate(Model, {bo: 0})).toEqual([]);
+    expect(validate(Model, {bo: 0, e: undefined})).toEqual([]);
 
     expect(validate(Model, {bo: '2'})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
     expect(validate(Model, {bo: 2})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
@@ -481,7 +482,6 @@ test('test decorated', async () => {
     expect(validate(AClass, plainToClass(AClass, {}))).toEqual([]);
     expect(validate(AClass, plainToClass(AClass, {infos: []}))).toEqual([]);
 
-    const i =  plainToClass(AClass, {infos: ['string']});
     expect(validate(AClass, plainToClass(AClass, {infos: ['string']}))).toEqual([
         {code: 'required', message: "Required value is undefined", path: 'infos.0.name'},
         {code: 'required', message: "Required value is undefined", path: 'infos.0.value'},
