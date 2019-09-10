@@ -25,7 +25,7 @@
     "injection-js": "^2.2.1",
     "md5": "^2.2.1",
     "reflect-metadata": "^0.1.12",
-    "rxjs": "6.3.3",
+    "rxjs": "^6.3.3",
     "sift": "^7.0.1",
     "source-map": "^0.7.3",
     "source-map-support": "^0.5.9",
