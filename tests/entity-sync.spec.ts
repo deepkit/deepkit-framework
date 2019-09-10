@@ -298,7 +298,7 @@ test('test entity sync item', async () => {
         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(true);
 
         await user.nextStateChange;
-        expect(user.getValue()).toBeUndefined();
+        expect(user.deleted).toBe(true);
 
         // there are two ways to stop syncing that entity:
         // call user.unsubscribe() or when server sent next(undefined), which means it got deleted.
@@ -341,7 +341,7 @@ test('test entity sync item undefined', async () => {
         }
 
         @Action()
-        async user(): Promise<EntitySubject<User | undefined>> {
+        async user(): Promise<EntitySubject<User> | undefined> {
             await this.database.deleteMany(User, {});
             await this.database.add(User, new User('Guschdl'));
 
@@ -358,8 +358,7 @@ test('test entity sync item undefined', async () => {
     const test = client.controller<TestController>('test');
 
     const user = await test.user();
-    expect(user).toBeInstanceOf(EntitySubject);
-    expect(user.getValue()).toBeUndefined();
+    expect(user).toBeUndefined();
 
     await close();
 });
