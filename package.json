@@ -17,11 +17,11 @@
   },
   "peerDependencies": {
     "@marcj/estdlib": "^0.1.4",
-    "rxjs": "6.3.3"
+    "rxjs": "^6.3.3"
   },
   "devDependencies": {
     "@marcj/estdlib": "^0.1.11",
-    "rxjs": "6.3.3"
+    "rxjs": "^6.3.3"
   },
   "jest": {
     "moduleFileExtensions": [
