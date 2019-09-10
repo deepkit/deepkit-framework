@@ -17,18 +17,18 @@
     "@marcj/marshal": "^0.9.0",
     "buffer": "^5.2.1",
     "reflect-metadata": "^0.1.12",
-    "rxjs": "6.3.3"
+    "rxjs": "^6.3.3"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
-    "@marcj/estdlib-rxjs": "^0.1.12",
+    "@marcj/estdlib-rxjs": "^0.1.13",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {
     "@marcj/marshal": "^0.9.0",
     "@types/fs-extra": "^5.0.4",
     "buffer": "^5.2.1",
-    "rxjs": "6.3.3"
+    "rxjs": "^6.3.3"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -51,5 +51,8 @@
     "ts-jest": {
       "tsConfigFile": "tsconfig.json"
     }
+  },
+  "__processed_by_ivy_ngcc__": {
+    "main": "8.2.0"
   }
 }
