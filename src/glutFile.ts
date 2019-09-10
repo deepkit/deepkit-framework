@@ -19,7 +19,7 @@ export class GlutFile implements IdInterface {
     @EnumField(FileMode)
     mode: FileMode = FileMode.closed;
 
-    @Field()
+    @Field().index()
     md5?: string; //undefined in case of file is in mode=streaming
 
     @Field()
@@ -39,7 +39,7 @@ export class GlutFile implements IdInterface {
          *    model.py
          *    .deepkit/log/master.txt
          */
-        @Field().asName('path')
+        @Field().asName('path').index()
         public path: string,
     ) {
         if (undefined === this.path) {

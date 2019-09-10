@@ -159,6 +159,11 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     }
 
     addTearDown(teardown: TeardownLogic) {
+        if (this.unsubscribed) {
+            tearDown(teardown);
+            return;
+        }
+
         this.teardowns.push(teardown);
     }
 
@@ -222,12 +227,14 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
      * Patches are in class format.
      */
     public readonly patches = new Subject<{ [path: string]: any }>();
+    public readonly delete = new Subject<boolean>();
 
     public deleted: boolean = false;
 
     next(value: T | undefined): void {
         if (value === undefined) {
             this.deleted = true;
+            this.delete.next(true);
             super.next(this.value);
             return;
         }
