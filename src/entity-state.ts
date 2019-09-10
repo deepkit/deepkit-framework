@@ -22,6 +22,7 @@ class EntitySubjectStore<T extends IdInterface> {
         }
     }
 
+
     /**
      *  If we would return the original EntitySubject and one of the consumers unsubscribes()
      *  it would unsubscribe for ALL subscribers of that particular entity item.
@@ -55,6 +56,10 @@ class EntitySubjectStore<T extends IdInterface> {
         });
 
         // originSubject.subscribe(forkedSubject);
+        originSubject.delete.subscribe((v) => {
+            forkedSubject.deleted = v;
+            forkedSubject.delete.next(v);
+        });
         const patchSub = originSubject.patches.subscribe((next) => {
             forkedSubject.patches.next(next);
         }, (error) => {
@@ -266,12 +271,10 @@ export class EntityState {
                     forks[itemRaw.id] = subject;
 
                     subject.pipe(skip(1)).subscribe((i) => {
-                        if (i) {
+                        if (!subject.deleted) {
                             collection.deepChange.next(i);
                             //when item is removed, we get that signal before the collection gets that information. Which means we trigger loaded() twice
                             collection.loaded();
-                        } else {
-                            //item is removed. we get that information with stream.type='remove, so don't do anything here.
                         }
                     });
                 } else {
@@ -337,12 +340,10 @@ export class EntityState {
                 forks[item.id] = subject;
 
                 subject.pipe(skip(1)).subscribe((i) => {
-                    if (i) {
+                    if (!subject.deleted) {
                         collection.deepChange.next(i);
                         //when item is removed, we get that signal before the collection gets that information. Which means we trigger loaded() twice
                         collection.loaded();
-                    } else {
-                        //item is removed. we get that information with stream.type='remove, so don't do anything here.
                     }
                 });
             } else {
