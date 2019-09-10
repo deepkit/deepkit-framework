@@ -36,8 +36,9 @@ export class ApplicationServerConfig {
 
     /**
      * Whether entity definition (mongo indices) should be synchronised on bootstrap.
+     * This could go wrong when indices changed, so use it only in development.
      */
-    mongoSynchronize: boolean = true;
+    mongoSynchronize: boolean = false;
 
     redisHost: string = 'localhost';
 

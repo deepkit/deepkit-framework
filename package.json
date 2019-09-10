@@ -19,10 +19,11 @@
     "@marcj/marshal": "^0.9.0",
     "@marcj/marshal-mongo": "^0.9.1",
     "buffer": "^5.2.1",
-    "mongodb": "^3.1.10",
+    "mongodb": "^3.3.2",
+    "bson-ext": "^2.0.3",
+    "typeorm": "^0.2.18",
     "reflect-metadata": "^0.1.12",
-    "rxjs": "6.3.3",
-    "typeorm": "0.2.14"
+    "rxjs": "6.3.3"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
@@ -50,12 +51,13 @@
     "awesome-typescript-loader": "^5.2.1",
     "buffer": "^5.2.1",
     "cache-loader": "^1.2.2",
-    "mongodb": "^3.1.10",
+    "mongodb": "^3.3.2",
+    "bson-ext": "^2.0.3",
+    "typeorm": "^0.2.18",
     "reflect-metadata": "^0.1.12",
     "rxjs": "6.3.3",
     "source-map": "^0.7.3",
-    "source-map-support": "^0.5.9",
-    "typeorm": "0.2.14"
+    "source-map-support": "^0.5.9"
   },
   "jest": {
     "moduleFileExtensions": [

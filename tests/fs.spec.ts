@@ -6,7 +6,7 @@ import {Exchange} from "../src/exchange";
 import {readFile, pathExists, remove} from 'fs-extra';
 import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
 import {ClassType, sleep} from '@marcj/estdlib';
-import {Database} from '@marcj/marshal-mongo';
+import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
 import {createConnection} from 'typeorm';
 import {FileType, GlutFile} from "@marcj/glut-core";
 import {Locker} from "../src/locker";
@@ -15,17 +15,17 @@ jest.setTimeout(100_000);
 
 let fs = 0;
 
-async function createFs(): Promise<[FS<GlutFile>, Function]> {
+async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
     fs++;
     const connection = await createConnection({
         type: "mongodb",
         host: "localhost",
         port: 27017,
-        name: 'fs-test-' + fs,
-        database: "fs-test-" + fs,
+        name: 'fs-test-' + (name || fs),
+        database: "fs-test-" + (name || fs),
         useNewUrlParser: true,
         synchronize: true,
-        entities: []
+        entities: [getTypeOrmEntity(GlutFile)]
     });
 
     const localDir = '/tmp/deepkit/testing/';
@@ -50,7 +50,7 @@ async function createFs(): Promise<[FS<GlutFile>, Function]> {
 }
 
 test('performance', async () => {
-    const [fs, disconnect] = await createFs();
+    const [fs, disconnect] = await createFs('performance');
     await fs.remove('logfile.txt');
 
     const start = performance.now();

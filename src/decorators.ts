@@ -13,7 +13,6 @@ export interface ApplicationDecoratorOptions {
     notifyEntities: ClassType<any>[];
 }
 
-
 export interface ControllerOptions {
     name: string;
 }
