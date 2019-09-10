@@ -17,11 +17,11 @@
     "@marcj/glut-core": "0.0.2",
     "@marcj/marshal": "^0.9.0",
     "reflect-metadata": "^0.1.12",
-    "rxjs": "6.3.3"
+    "rxjs": "^6.3.3"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
-    "@marcj/estdlib-rxjs": "^0.1.12",
+    "@marcj/estdlib-rxjs": "^0.1.13",
     "dot-prop": "^4.2.0",
     "ws": "^6.1.2"
   },
@@ -53,5 +53,8 @@
     "ts-jest": {
       "tsConfig": "tsconfig.run.json"
     }
+  },
+  "__processed_by_ivy_ngcc__": {
+    "main": "8.2.0"
   }
 }
