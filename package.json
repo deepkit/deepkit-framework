@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-server",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
@@ -18,12 +18,12 @@
     "@marcj/glut-core": "0.0.1",
     "@marcj/marshal": "^0.9.0",
     "@marcj/marshal-mongo": "^0.9.1",
+    "bson-ext": "^2.0.3",
     "buffer": "^5.2.1",
     "mongodb": "^3.3.2",
-    "bson-ext": "^2.0.3",
-    "typeorm": "^0.2.18",
     "reflect-metadata": "^0.1.12",
-    "rxjs": "^6.3.3"
+    "rxjs": "^6.3.3",
+    "typeorm": "^0.2.18"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
@@ -31,15 +31,15 @@
     "clone": "^2.1.1",
     "fs-extra": "^6.0.1",
     "injection-js": "^2.2.1",
+    "live-mutex": "^0.1.1066",
     "md5": "^2.2.1",
     "redis": "^2.8.0",
     "redlock": "^3.1.2",
-    "live-mutex": "^0.1.1066",
     "sift": "^7.0.1",
     "ws": "^6.1.2"
   },
   "devDependencies": {
-    "@marcj/glut-core": "^0.0.17",
+    "@marcj/glut-core": "^0.0.18",
     "@marcj/marshal": "^0.9.0",
     "@marcj/marshal-mongo": "^0.9.1",
     "@types/clone": "^0.1.30",
@@ -49,15 +49,15 @@
     "@types/redlock": "^3.0.2",
     "@types/ws": "^6.0.1",
     "awesome-typescript-loader": "^5.2.1",
+    "bson-ext": "^2.0.3",
     "buffer": "^5.2.1",
     "cache-loader": "^1.2.2",
     "mongodb": "^3.3.2",
-    "bson-ext": "^2.0.3",
-    "typeorm": "^0.2.18",
     "reflect-metadata": "^0.1.12",
     "rxjs": "^6.3.3",
     "source-map": "^0.7.3",
-    "source-map-support": "^0.5.9"
+    "source-map-support": "^0.5.9",
+    "typeorm": "^0.2.18"
   },
   "jest": {
     "moduleFileExtensions": [
