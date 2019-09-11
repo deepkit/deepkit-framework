@@ -137,7 +137,7 @@ export class PropertySchema {
 }
 
 export interface EntityIndex {
-    name?: string,
+    name: string,
     fields: string[],
     options: IndexOptions
 }

@@ -4,6 +4,7 @@ import {createConnection} from "typeorm";
 import {Plan, SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {getTypeOrmEntity} from "../src/typeorm";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
+import {Entity, Field, uuid, UUIDField} from "@marcj/marshal";
 
 test('basic SuperSimple', async () => {
     const entity = getTypeOrmEntity(SuperSimple);
@@ -26,6 +27,37 @@ test('basic SuperSimple', async () => {
         primary: false,
         nullable: false
     });
+});
+
+
+test('basic inheritance', async () => {
+
+    @Entity('base_file')
+    class BaseFile {
+        @UUIDField()
+        id: string = uuid();
+
+        @Field().index()
+        path: string = '';
+    }
+
+    @Entity('file')
+    class File extends BaseFile {
+        @UUIDField().optional()
+        project?: string;
+
+        @UUIDField().optional().index()
+        job?: string;
+
+        @Field().optional()
+        task?: string;
+
+        @Field().optional()
+        instance?: number;
+    }
+
+    const entity = getTypeOrmEntity(File);
+    expect(entity.options.indices!.length).toBe(2);
 });
 
 test('basic PageClass', async () => {
