@@ -34,7 +34,7 @@ export class Database {
      * The naming policy defines the collection name, so we need typeorm.Connection for it.
      */
     public getCollectionName<T>(classType: ClassType<T>): string {
-        return this.connection.namingStrategy.tableName(getEntityName(classType), getCollectionName(classType));
+        return getCollectionName(classType) || getEntityName(classType);
     }
 
     public async dropDatabase(dbName: string) {
