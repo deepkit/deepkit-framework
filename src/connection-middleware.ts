@@ -121,12 +121,12 @@ export class ConnectionMiddleware {
                     next: next
                 });
             }, (errorObject) => {
-                const [entityName, error] = getSerializedErrorPair(errorObject);
+                const [entityName, error, stack] = getSerializedErrorPair(errorObject);
 
                 this.writer.write({
                     type: 'error/observable',
                     id: message.forId,
-                    entityName, error,
+                    entityName, error, stack,
                     subscribeId: message.subscribeId
                 });
             }, () => {

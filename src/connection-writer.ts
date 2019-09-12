@@ -26,8 +26,8 @@ export class ConnectionWriter {
     }
 
     public sendError(id: number, errorObject: any, code?: string) {
-        const [entityName, error] = getSerializedErrorPair(errorObject);
+        const [entityName, error, stack] = getSerializedErrorPair(errorObject);
 
-        this.write({type: 'error', id: id, entityName, error, code: error.code || code});
+        this.write({type: 'error', id: id, entityName, error, stack, code: error.code || code});
     }
 }
