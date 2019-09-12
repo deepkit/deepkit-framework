@@ -176,7 +176,7 @@ export class SocketClient {
                             name: 'peerController/message',
                             controllerName: name,
                             replyId: message.replyId,
-                            data: {type: 'error', id: 0, entityName: '@error:default', error: `Action ${data.action} does not exist.`}
+                            data: {type: 'error', id: 0, stack: undefined, entityName: '@error:default', error: `Action ${data.action} does not exist.`}
                         });
                         return;
                     }
@@ -223,7 +223,7 @@ export class SocketClient {
                                     name: 'peerController/message',
                                     controllerName: name,
                                     replyId: message.replyId,
-                                    data: {type: 'error', id: 0, entityName: '@error:default', error: `Action ${data.action} returned Observable, which is not supported.`}
+                                    data: {type: 'error', id: 0, stack: undefined, entityName: '@error:default', error: `Action ${data.action} returned Observable, which is not supported.`}
                                 });
                                 console.warn(`Action ${data.action} returned Observable, which is not supported.`);
                                 return;
@@ -236,13 +236,13 @@ export class SocketClient {
                                 data: {type: 'next/json', id: message.id, next: actionResult}
                             });
                         } catch (errorObject) {
-                            const [entityName, error] = getSerializedErrorPair(errorObject);
+                            const [entityName, error, stack] = getSerializedErrorPair(errorObject);
 
                             activeSubject.sendMessage({
                                 name: 'peerController/message',
                                 controllerName: name,
                                 replyId: message.replyId,
-                                data: {type: 'error', id: 0, entityName, error}
+                                data: {type: 'error', id: 0, entityName, error, stack}
                             });
                         }
                     }
@@ -620,12 +620,6 @@ export class SocketClient {
                             }
 
                             const collection = new Collection<any>(classType);
-                            const that = this;
-                            collection.setEntitySubjectFetcher(new class implements CollectionEntitySubjectFetcher {
-                                fetch<T extends IdInterface>(classType: ClassType<T>, id: string): EntitySubject<T> {
-                                    return that.entityState.getStore(classType).createFork(id);
-                                }
-                            });
 
                             if (reply.pagination.active) {
                                 collection.pagination._activate();
@@ -652,7 +646,9 @@ export class SocketClient {
                             returnValue = collection;
 
                             collection.addTeardown(async () => {
-                                await this.entityState.unsubscribeCollection(collection);
+                                for (const entitySubject of each(collection.entitySubjects)) {
+                                    entitySubject.unsubscribe();
+                                }
 
                                 //collection unsubscribed, so we stop syncing changes
                                 await activeSubject.sendMessage({
@@ -714,7 +710,7 @@ export class SocketClient {
                     }
 
                     if (reply.type === 'error') {
-                        const error = getUnserializedError(reply.entityName, reply.error);
+                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack);
 
                         if (returnValue instanceof Collection) {
                             returnValue.error(error);
@@ -728,7 +724,7 @@ export class SocketClient {
                     }
 
                     if (reply.type === 'error/observable') {
-                        const error = getUnserializedError(reply.entityName, reply.error);
+                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack);
 
                         if (subscribers[reply.subscribeId]) {
                             subscribers[reply.subscribeId].error(error);

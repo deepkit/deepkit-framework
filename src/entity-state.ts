@@ -148,7 +148,6 @@ class EntitySubjectStore<T extends IdInterface> {
 
 export class EntityState {
     private readonly items = new Map<ClassType<any>, EntitySubjectStore<any>>();
-    private readonly collectionSubjectsForks = new Map<Collection<any>, { [id: string]: EntitySubject<any> }>();
 
     public getStore<T extends IdInterface>(classType: ClassType<T>): EntitySubjectStore<T> {
         let store = this.items.get(classType);
@@ -233,42 +232,20 @@ export class EntityState {
         return store.createFork(item.id, item);
     }
 
-    public async unsubscribeCollection<T extends IdInterface>(collection: Collection<T>) {
-        const subs = this.collectionSubjectsForks.get(collection);
-
-        if (subs) {
-            for (const sub of each(subs)) {
-                await sub.unsubscribe();
-            }
-        }
-    }
-
-    protected getOrCreateCollectionSubjectsForks<T extends IdInterface>(collection: Collection<T>): { [id: string]: EntitySubject<any> } {
-        let subs = this.collectionSubjectsForks.get(collection);
-
-        if (!subs) {
-            subs = {};
-            this.collectionSubjectsForks.set(collection, subs);
-        }
-
-        return subs;
-    }
-
     public handleCollectionNext<T extends IdInterface>(collection: Collection<T>, stream: CollectionStream) {
         const classType = collection.classType;
         const store = this.getStore(classType);
 
         // console.log('collection next', stream);
-        const forks = this.getOrCreateCollectionSubjectsForks(collection);
 
         if (stream.type === 'set') {
             const setItems: T[] = [];
             for (const itemRaw of stream.items) {
-                if (!forks[itemRaw.id]) {
+                if (!collection.entitySubjects[itemRaw.id]) {
                     const item = plainToClass(classType, itemRaw);
                     setItems.push(item);
                     const subject = store.createFork(item.id, item);
-                    forks[itemRaw.id] = subject;
+                    collection.entitySubjects[itemRaw.id] = subject;
 
                     subject.pipe(skip(1)).subscribe((i) => {
                         if (!subject.deleted) {
@@ -278,7 +255,7 @@ export class EntityState {
                         }
                     });
                 } else {
-                    setItems.push(forks[itemRaw.id].value);
+                    setItems.push(collection.entitySubjects[itemRaw.id].value);
                 }
             }
             collection.set(setItems);
@@ -286,9 +263,9 @@ export class EntityState {
 
         if (stream.type === 'removeMany') {
             for (const id of stream.ids) {
-                if (forks[id]) {
-                    forks[id].unsubscribe();
-                    delete forks[id];
+                if (collection.entitySubjects[id]) {
+                    collection.entitySubjects[id].unsubscribe();
+                    delete collection.entitySubjects[id];
                 }
             }
             collection.removeMany(stream.ids);
@@ -325,9 +302,9 @@ export class EntityState {
         if (stream.type === 'remove') {
             collection.remove(stream.id);
 
-            if (forks[stream.id]) {
-                forks[stream.id].unsubscribe();
-                delete forks[stream.id];
+            if (collection.entitySubjects[stream.id]) {
+                collection.entitySubjects[stream.id].unsubscribe();
+                delete collection.entitySubjects[stream.id];
             }
         }
 
@@ -335,9 +312,9 @@ export class EntityState {
             const item = plainToClass(classType, stream.item);
             collection.add(item);
 
-            if (!forks[item.id]) {
+            if (!collection.entitySubjects[item.id]) {
                 const subject = store.createFork(item.id, item);
-                forks[item.id] = subject;
+                collection.entitySubjects[item.id] = subject;
 
                 subject.pipe(skip(1)).subscribe((i) => {
                     if (!subject.deleted) {
@@ -347,7 +324,7 @@ export class EntityState {
                     }
                 });
             } else {
-                forks[item.id].next(item);
+                collection.entitySubjects[item.id].next(item);
             }
         }
     }
