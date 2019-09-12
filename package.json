@@ -17,7 +17,7 @@
     "@marcj/marshal": "^0.9.0",
     "buffer": "^5.2.1",
     "reflect-metadata": "^0.1.12",
-    "rxjs": "^6.3.3"
+    "rxjs": "~6.5.3"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
@@ -28,7 +28,7 @@
     "@marcj/marshal": "^0.9.0",
     "@types/fs-extra": "^5.0.4",
     "buffer": "^5.2.1",
-    "rxjs": "^6.3.3"
+    "rxjs": "~6.5.3"
   },
   "jest": {
     "moduleFileExtensions": [

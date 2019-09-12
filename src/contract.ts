@@ -358,6 +358,7 @@ export interface ServerMessageErrorGeneral {
     type: 'error';
     id: number;
     error: any;
+    stack: any;
     entityName: string | '@error:default';
     code?: string;
 }
@@ -366,6 +367,7 @@ export interface ServerMessageErrorObservable {
     type: 'error/observable';
     id: number;
     error: any;
+    stack: any;
     entityName: string | '@error:default';
     subscribeId: number;
 }

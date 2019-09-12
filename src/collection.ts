@@ -262,24 +262,17 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     protected batchNeedLoaded = false;
     protected entitySubjectFetcher?: CollectionEntitySubjectFetcher;
 
+    public readonly entitySubjects: {[id: string]: EntitySubject<T>} = {};
+
     constructor(
         public readonly classType: ClassType<T>,
     ) {
         super(1);
     }
 
-    public setEntitySubjectFetcher(f: CollectionEntitySubjectFetcher) {
-        this.entitySubjectFetcher = f;
-    }
-
     public getEntitySubject(idOrItem: string | T): EntitySubject<T> {
         const id: string = idOrItem instanceof this.classType ? idOrItem.id : String(idOrItem);
-
-        if (!this.entitySubjectFetcher) {
-            throw new Error('No CollectionEntitySubjectFetcher set.');
-        }
-
-        return this.entitySubjectFetcher.fetch(this.classType, id);
+        return this.entitySubjects[id];
     }
 
     public has(id: string) {

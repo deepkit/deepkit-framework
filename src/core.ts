@@ -1,4 +1,4 @@
-import {BehaviorSubject, TeardownLogic, Subject} from "rxjs";
+import {BehaviorSubject, TeardownLogic, Subject, Observable} from "rxjs";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {IdInterface} from "./contract";
 import {ClassType} from "@marcj/estdlib";
@@ -28,7 +28,7 @@ export class ValidationError {
     ) {
     }
 
-    static from(errors: {path: string, message: string, code?: string, entityName?: string}[]) {
+    static from(errors: { path: string, message: string, code?: string, entityName?: string }[]) {
         return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '', v.entityName || '')));
     }
 
@@ -52,22 +52,30 @@ export class ValidationParameterError {
     }
 }
 
-export function getSerializedErrorPair(error: any): [string, any] {
+export function getSerializedErrorPair(error: any): [string, any, any] {
     if (error instanceof Error) {
-        return ['@error:default', error.message];
+        return ['@error:default', error.message, error.stack];
     } else {
         const entityName = getEntitySchema(error['constructor'] as ClassType<typeof error>).name;
         if (entityName) {
-            return [entityName, classToPlain(error['constructor'] as ClassType<typeof error>, error)];
+            return [entityName, classToPlain(error['constructor'] as ClassType<typeof error>, error), error ? error.stack : undefined];
         }
     }
 
-    return ['@error:default', error];
+    return ['@error:default', error, undefined];
 }
 
-export function getUnserializedError(entityName: string, error: any): any {
+export function getUnserializedError(entityName: string, error: any, stack: any): any {
     if (!entityName || entityName === '@error:default') {
-        return new Error(error);
+        const errorObject = new Error(error);
+        if (stack) {
+            // console.log('error stack', errorObject.stack);
+            // console.log('server stack', stack);
+
+            errorObject.stack = errorObject.stack + '\n    at ORIGIN (server)\n' + stack.substr(stack.indexOf('\n    at'));
+            // console.log('result', errorObject.stack);
+        }
+        return errorObject;
     }
 
     if (entityName) {
@@ -230,6 +238,30 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
     public readonly delete = new Subject<boolean>();
 
     public deleted: boolean = false;
+
+    get id(): string {
+        return this.value.id;
+    }
+
+    get onDeletion(): Observable<void> {
+        return new Observable((observer) => {
+            if (this.deleted) {
+                observer.next();
+                return;
+            }
+
+            const sub = this.delete.subscribe(() => {
+                observer.next();
+                sub.unsubscribe();
+            });
+
+            return {
+                unsubscribe(): void {
+                    sub.unsubscribe();
+                }
+            }
+        });
+    }
 
     next(value: T | undefined): void {
         if (value === undefined) {
