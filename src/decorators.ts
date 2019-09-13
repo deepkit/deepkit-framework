@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import {ServerMessageActionType, ServerMessageActionTypeNames} from "./contract";
 import {ClassType, eachKey, getClassName} from "@marcj/estdlib";
 import {Observable} from "rxjs";
