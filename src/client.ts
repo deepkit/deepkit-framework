@@ -223,7 +223,13 @@ export class SocketClient {
                                     name: 'peerController/message',
                                     controllerName: name,
                                     replyId: message.replyId,
-                                    data: {type: 'error', id: 0, stack: undefined, entityName: '@error:default', error: `Action ${data.action} returned Observable, which is not supported.`}
+                                    data: {
+                                        type: 'error',
+                                        id: 0,
+                                        stack: undefined,
+                                        entityName: '@error:default',
+                                        error: `Action ${data.action} returned Observable, which is not supported.`
+                                    }
                                 });
                                 console.warn(`Action ${data.action} returned Observable, which is not supported.`);
                                 return;
@@ -359,7 +365,7 @@ export class SocketClient {
                     this.disconnected.next(this.currentConnectionId);
                     this.currentConnectionId++;
 
-                    reject(new Error(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message || error}`));
+                    reject(new OfflineError(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message || error}`));
                 };
 
                 socket.onopen = async () => {
@@ -414,7 +420,7 @@ export class SocketClient {
         }
     }
 
-    public async getActionTypes(controller: string, actionName: string, timeoutInSeconds = 60): Promise<ActionTypes> {
+    public async getActionTypes(controller: string, actionName: string, timeoutInSeconds = 0): Promise<ActionTypes> {
         if (!this.cachedActionsTypes[controller]) {
             this.cachedActionsTypes[controller] = {};
         }
@@ -428,7 +434,7 @@ export class SocketClient {
             }, {timeout: timeoutInSeconds}).firstThenClose();
 
             if (reply.type === 'error') {
-                throw new Error(reply.error);
+                throw new Error('Action types failed. ' + reply.error);
             } else if (reply.type === 'actionTypes/result') {
                 this.cachedActionsTypes[controller][actionName] = {
                     parameters: reply.parameters,
@@ -453,7 +459,7 @@ export class SocketClient {
 
                 let returnValue: any;
 
-                const timeoutInSeconds = options && options.timeoutInSeconds ? options.timeoutInSeconds : 60;
+                const timeoutInSeconds = options && options.timeoutInSeconds ? options.timeoutInSeconds : 0;
 
                 const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
                 let subscriberIdCounter = 0;
@@ -776,7 +782,7 @@ export class SocketClient {
         this.messageId++;
         const messageId = this.messageId;
         const dontWaitForConnection = !!(options && options.dontWaitForConnection);
-        const timeout = options && options.timeout ? options.timeout : 30;
+        const timeout = options && options.timeout ? options.timeout : 0;
         const connectionId = options && options.connectionId ? options.connectionId : this.currentConnectionId;
 
         const message = {
@@ -797,17 +803,20 @@ export class SocketClient {
 
         const subject = new MessageSubject<K>(connectionId, reply);
 
-        const timer = setTimeout(() => {
-            if (!subject.isStopped) {
-                subject.error('Server timed out');
-            }
-        }, timeout * 1000);
+        let timer: any;
+        if (timeout) {
+            timer = setTimeout(() => {
+                if (!subject.isStopped) {
+                    subject.error('Server timed out after ' + timeout + 'seconds');
+                }
+            }, timeout * 1000);
+        }
 
         const sub = this.disconnected.subscribe((disconnectedConnectionId: number) => {
             if (disconnectedConnectionId === connectionId) {
                 if (!subject.isStopped) {
                     // console.debug('MessageSubject: connection disconnected before closing', {message: messageWithoutId, isStopped: subject.isStopped});
-                    subject.error('Connection broke');
+                    subject.error(new OfflineError);
                 }
             }
         });
@@ -857,7 +866,7 @@ export class SocketClient {
         }
 
         if (reply.type === 'error') {
-            throw new Error(reply.error);
+            throw new Error('Authentication error. ' + reply.error);
         }
 
         return this.loggedIn;
