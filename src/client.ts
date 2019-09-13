@@ -347,10 +347,13 @@ export class SocketClient {
                         this.connection.next(false);
                         this.onDisconnect();
                     }
-                    this.connected = false;
                     this.loggedIn = false;
 
-                    this.disconnected.next(this.currentConnectionId);
+                    if (this.connected) {
+                        this.connected = false;
+                        this.disconnected.next(this.currentConnectionId);
+                    }
+
                     this.currentConnectionId++;
                 };
 
@@ -359,10 +362,13 @@ export class SocketClient {
                         this.connection.next(false);
                         this.onDisconnect();
                     }
-                    this.connected = false;
-                    this.loggedIn = false;
 
-                    this.disconnected.next(this.currentConnectionId);
+                    this.loggedIn = false;
+                    if (this.connected) {
+                        this.connected = false;
+                        this.disconnected.next(this.currentConnectionId);
+                    }
+
                     this.currentConnectionId++;
 
                     reject(new OfflineError(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message || error}`));
@@ -434,7 +440,7 @@ export class SocketClient {
             }, {timeout: timeoutInSeconds}).firstThenClose();
 
             if (reply.type === 'error') {
-                throw new Error('Action types failed. ' + reply.error);
+                throw new Error(reply.error);
             } else if (reply.type === 'actionTypes/result') {
                 this.cachedActionsTypes[controller][actionName] = {
                     parameters: reply.parameters,
