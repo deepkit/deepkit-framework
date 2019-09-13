@@ -959,7 +959,6 @@ export class EntityStorage {
             await fieldSub.unsubscribe();
         });
 
-        const start = Date.now();
         const cursor = await getCursor();
         const total = await cursor.count(false);
         jsonCollection.pagination.setTotal(total);
