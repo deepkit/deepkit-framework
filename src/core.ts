@@ -140,8 +140,6 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     protected nextOnAppend = false;
     protected unsubscribed = false;
 
-    protected lastValue: T;
-
     protected teardowns: TeardownLogic[] = [];
 
     constructor(
@@ -149,7 +147,6 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         teardown?: TeardownLogic,
     ) {
         super(item);
-        this.lastValue = item;
         if (teardown) {
             this.teardowns.push(teardown);
         }
@@ -175,10 +172,6 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         this.teardowns.push(teardown);
     }
 
-    get value(): T {
-        return this.lastValue;
-    }
-
     /**
      * This method differs to BehaviorSubject in the way that this does not throw an error
      * when the subject is closed/unsubscribed.
@@ -187,13 +180,12 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         if (this.hasError) {
             throw this.thrownError;
         } else {
-            return this.lastValue;
+            return (this as any)._value;
         }
     }
 
     next(value: T): void {
         super.next(value);
-        this.lastValue = value;
 
         if (this.nextChange) {
             this.nextChange.complete();
@@ -212,8 +204,8 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
             this.next(this.getValue() as any + value);
         } else {
             if ('string' === typeof value) {
-                if (!this.lastValue) (this.lastValue as any) = '';
-                (this.lastValue as any) = (this.lastValue as any) + value;
+                if (!(this as any)._value) ((this as any)._value as any) = '';
+                ((this as any)._value as any) = ((this as any)._value as any) + value;
             }
         }
     }
@@ -259,7 +251,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
                 unsubscribe(): void {
                     sub.unsubscribe();
                 }
-            }
+            };
         });
     }
 
@@ -278,3 +270,4 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
 export type JSONEntity<T> = {
     [P in keyof T]?: any;
 };
+

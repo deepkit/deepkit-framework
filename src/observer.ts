@@ -190,6 +190,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
 
 /**
  * Returns patches in plain parameters.
+ * @deprecated Use custom patch building.
  */
 export function observeItem<T>(valueOrSubject: T | BehaviorSubject<T>, ignore: string[] = ['version']): ItemObserver<T> {
     const observer = new ItemObserver<T>(valueOrSubject);
