@@ -33,6 +33,9 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
         return observer;
     }
 
+    /**
+     * After creating an ItemObserver, the user requires to operate on this object. Otherwise changes are not detected.
+     */
     get snapshot(): T {
         if (!this._snapshot) {
             throw new Error('Observer not started');

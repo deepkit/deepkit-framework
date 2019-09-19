@@ -385,8 +385,18 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
     }
 
-    public set(items: T[], withEvent = true) {
+    public seItem(id: string, item: T) {
+        if (this.itemsMapped[item.id]) {
+            const index = this.items.indexOf(this.itemsMapped[item.id]);
+            this.items[index] = item;
+            this.itemsMapped[item.id] = item;
+        } else {
+            this.items.push(item);
+            this.itemsMapped[item.id] = item;
+        }
+    }
 
+    public set(items: T[], withEvent = true) {
         for (const item of items) {
             if (!this.itemsMapped[item.id]) {
                 this.added.next(item);

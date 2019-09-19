@@ -65,14 +65,14 @@ export function getSerializedErrorPair(error: any): [string, any, any] {
     return ['@error:default', error, undefined];
 }
 
-export function getUnserializedError(entityName: string, error: any, stack: any): any {
+export function getUnserializedError(entityName: string, error: any, stack: any, info: string = ''): any {
     if (!entityName || entityName === '@error:default') {
         const errorObject = new Error(error);
         if (stack) {
             // console.log('error stack', errorObject.stack);
             // console.log('server stack', stack);
 
-            errorObject.stack = errorObject.stack + '\n    at ORIGIN (server)\n' + stack.substr(stack.indexOf('\n    at'));
+            errorObject.stack = errorObject.stack + `\n    at ORIGIN (${info})\n` + stack.substr(stack.indexOf('\n    at'));
             // console.log('result', errorObject.stack);
         }
         return errorObject;

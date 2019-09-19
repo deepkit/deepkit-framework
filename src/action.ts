@@ -31,13 +31,19 @@ export async function executeActionAndSerialize(
             //todo, validate also partial objects, but @marcj/marshal needs an adjustments for the `validation` method to avoid Required() validator
             // otherwise it fails always.
             if (!type.partial) {
-                const errors = validate(RegisteredEntities[type.entityName], args[i]);
-                if (errors.length) {
-                    throw new ValidationParameterError(
-                        controllerName,
-                        methodName,
-                        i,
-                        errors.map(error => new ValidationErrorItem(error.path, error.message, error.code, type.entityName!)));
+                try {
+                    const errors = validate(RegisteredEntities[type.entityName], args[i]);
+                    if (errors.length) {
+                        throw new ValidationParameterError(
+                            controllerName,
+                            methodName,
+                            i,
+                            errors.map(error => new ValidationErrorItem(error.path, error.message, error.code, type.entityName!)));
+                    }
+                } catch (error) {
+                    console.log('error validating arg', i, 'of', `${controllerName}.${methodName}`);
+                    console.log('got', args[i]);
+                    throw error;
                 }
             }
             if (type.partial) {
