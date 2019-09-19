@@ -472,7 +472,7 @@ function findParent<T>(parents: any[], parentType: ClassType<T>): T | null {
  */
 export function toClass<T>(
     classType: ClassType<T>,
-    cloned: object,
+    data: object,
     converter: (classType: ClassType<T>, propertyName: string, propertyValue: any, parents: any[], incomingLevel: number, state: ToClassState) => any,
     parents: any[],
     incomingLevel,
@@ -496,22 +496,17 @@ export function toClass<T>(
     }
 
     const parameterNames = getCachedParameterNames(classType);
-
     const decoratorName = getDecorator(classType);
-    const backupedClone = cloned;
 
-    if (!isObject(cloned)) {
-        cloned = {};
-    }
-
+    const argsValues = {};
     const args: any[] = [];
     for (const propertyName of parameterNames) {
         if (decoratorName && propertyName === decoratorName) {
-            cloned[propertyName] = converter(classType, decoratorName, backupedClone, parents, incomingLevel, state);
+            argsValues[propertyName] = converter(classType, decoratorName, data, parents, incomingLevel, state);
         } else if (parentReferences[propertyName]) {
             const parent = findParent(parents, parentReferences[propertyName]);
             if (parent) {
-                cloned[propertyName] = parent;
+                argsValues[propertyName] = parent;
             } else if (!isOptional(classType, propertyName)) {
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is in constructor ` +
                     `has @ParentReference() and NOT @Optional(), but no parent of type ${getClassName(parentReferences[propertyName])} found. ` +
@@ -519,11 +514,11 @@ export function toClass<T>(
                 );
             }
         } else {
-            cloned[propertyName] = converter(classType, propertyName, cloned[propertyName], parents, incomingLevel + 1, state);
+            argsValues[propertyName] = converter(classType, propertyName, data[propertyName], parents, incomingLevel + 1, state);
         }
 
         assignedViaConstructor[propertyName] = true;
-        args.push(cloned[propertyName]);
+        args.push(argsValues[propertyName]);
     }
 
     const item = new classType(...args);
@@ -545,8 +540,8 @@ export function toClass<T>(
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is defined as @ParentReference() and ` +
                     `NOT @Optional(), but no parent found. Add @Optional() or provide ${propertyName} in parents to fix that.`);
             }
-        } else if (undefined !== cloned[propertyName]) {
-            item[propertyName] = converter(classType, propertyName, cloned[propertyName], parentsWithItem, incomingLevel + 1, state);
+        } else if (undefined !== data[propertyName]) {
+            item[propertyName] = converter(classType, propertyName, data[propertyName], parentsWithItem, incomingLevel + 1, state);
         }
     }
 

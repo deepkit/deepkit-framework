@@ -267,7 +267,7 @@ test('no id', async () => {
         name: 'myName',
     });
 
-    expect(database.getCollectionName(NoId)).toBe('no_id');
+    expect(database.getCollectionName(NoId)).toBe('NoId');
     await database.add(NoId, instance);
     expect(instance._id).toBeUndefined();
 
