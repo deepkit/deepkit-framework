@@ -53,8 +53,5 @@
     "ts-jest": {
       "tsConfig": "tsconfig.run.json"
     }
-  },
-  "__processed_by_ivy_ngcc__": {
-    "main": "8.2.0"
   }
 }

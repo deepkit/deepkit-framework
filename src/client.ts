@@ -4,16 +4,13 @@ import {
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection,
-    CollectionEntitySubjectFetcher,
     CollectionPaginationEvent,
-    EntitySubject,
     executeActionAndSerialize,
     getActionParameters,
     getActionReturnType,
     getActions,
     getSerializedErrorPair,
     getUnserializedError,
-    IdInterface,
     MessageSubject,
     RemoteController,
     ServerMessageActionType,
@@ -722,7 +719,7 @@ export class SocketClient {
                     }
 
                     if (reply.type === 'error') {
-                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack);
+                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
 
                         if (returnValue instanceof Collection) {
                             returnValue.error(error);
@@ -736,7 +733,7 @@ export class SocketClient {
                     }
 
                     if (reply.type === 'error/observable') {
-                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack);
+                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
 
                         if (subscribers[reply.subscribeId]) {
                             subscribers[reply.subscribeId].error(error);

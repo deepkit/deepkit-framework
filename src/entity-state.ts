@@ -239,18 +239,21 @@ export class EntityState {
         // console.log('collection next', stream);
 
         if (stream.type === 'set') {
+
             const setItems: T[] = [];
             for (const itemRaw of stream.items) {
                 if (!collection.entitySubjects[itemRaw.id]) {
                     const item = plainToClass(classType, itemRaw);
-                    setItems.push(item);
                     const subject = store.createFork(item.id, item);
+
+                    setItems.push(subject.getValue());
                     collection.entitySubjects[itemRaw.id] = subject;
 
                     subject.pipe(skip(1)).subscribe((i) => {
                         if (!subject.deleted) {
                             collection.deepChange.next(i);
                             //when item is removed, we get that signal before the collection gets that information. Which means we trigger loaded() twice
+                            collection.seItem(i.id, i);
                             collection.loaded();
                         }
                     });
@@ -309,22 +312,21 @@ export class EntityState {
         }
 
         if (stream.type === 'add') {
-            const item = plainToClass(classType, stream.item);
-            collection.add(item);
-
-            if (!collection.entitySubjects[item.id]) {
+            if (!collection.entitySubjects[stream.item.id]) {
+                const item = plainToClass(classType, stream.item);
                 const subject = store.createFork(item.id, item);
+
                 collection.entitySubjects[item.id] = subject;
+                collection.add(subject.getValue());
 
                 subject.pipe(skip(1)).subscribe((i) => {
                     if (!subject.deleted) {
                         collection.deepChange.next(i);
                         //when item is removed, we get that signal before the collection gets that information. Which means we trigger loaded() twice
+                        collection.seItem(i.id, i);
                         collection.loaded();
                     }
                 });
-            } else {
-                collection.entitySubjects[item.id].next(item);
             }
         }
     }
