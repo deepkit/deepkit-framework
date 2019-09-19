@@ -10,7 +10,6 @@ import {Exchange} from "./exchange";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Lock, Locker} from "./locker";
 
-
 @Injectable()
 export class ClientConnection {
     protected timeoutTimers: any[] = [];

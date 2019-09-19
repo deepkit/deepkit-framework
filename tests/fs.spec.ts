@@ -49,21 +49,21 @@ async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
     }];
 }
 
-test('performance', async () => {
-    const [fs, disconnect] = await createFs('performance');
-    await fs.remove('logfile.txt');
-
-    const start = performance.now();
-    const times = 1_000;
-    const all: Promise<any>[] = [];
-    for (let i = 0; i < times; i++) {
-        all.push(fs.stream('logfile.txt', Buffer.from('Hiiii wahhat uupppp', 'utf8')));
-    }
-
-    await Promise.all(all);
-    console.log('fs took for ', times, performance.now() - start, 'ms', ', per item=', (performance.now() - start) / times, 'ms');
-    disconnect();
-});
+// test('performance', async () => {
+//     const [fs, disconnect] = await createFs('performance');
+//     await fs.remove('logfile.txt');
+//
+//     const start = performance.now();
+//     const times = 1_000;
+//     const all: Promise<any>[] = [];
+//     for (let i = 0; i < times; i++) {
+//         all.push(fs.stream('logfile.txt', Buffer.from('Hiiii wahhat uupppp', 'utf8')));
+//     }
+//
+//     await Promise.all(all);
+//     console.log('fs took for ', times, performance.now() - start, 'ms', ', per item=', (performance.now() - start) / times, 'ms');
+//     disconnect();
+// });
 
 test('test fs storage based on md5', async () => {
     const [fs, disconnect] = await createFs();
