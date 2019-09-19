@@ -1,6 +1,12 @@
-import {ClassType, isArray, isObject, typeOf, eachKey} from "@marcj/estdlib";
+import {ClassType, eachKey, getClassName, isArray, isObject, isPlainObject, typeOf} from "@marcj/estdlib";
 import {applyDefaultValues, getRegisteredProperties} from "./mapper";
-import {getEntitySchema, getOrCreateEntitySchema, PropertySchema, PropertyValidator} from "./decorators";
+import {
+    getClassTypeFromInstance,
+    getEntitySchema,
+    getOrCreateEntitySchema,
+    PropertySchema,
+    PropertyValidator
+} from "./decorators";
 
 function addValidator<T extends PropertyValidator>(target: Object, property: string, validator: ClassType<T>) {
     getOrCreateEntitySchema(target).getOrCreateProperty(property).validators.push(validator);
@@ -255,9 +261,13 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
     const schema = getEntitySchema(classType);
     let fromObjectLiteral = false;
 
-    if (!schema.decorator && !(item instanceof classType)) {
-        fromObjectLiteral = true;
-        item = applyDefaultValues(classType, item as object);
+    if (!schema.decorator) {
+        if (isPlainObject(item)) {
+            fromObjectLiteral = true;
+            item = applyDefaultValues(classType, item as object);
+        } else if (isObject(item) && !(item instanceof classType)) {
+            throw new Error(`Given item is from the wrong class type. Expected ${getClassName(classType)}, got ${getClassTypeFromInstance(item)}.`)
+        }
     }
 
     function handleValidator(

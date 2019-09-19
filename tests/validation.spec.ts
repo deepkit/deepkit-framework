@@ -14,7 +14,7 @@ import {
     ValidationError,
     ValidationFailed
 } from "../";
-import {CustomError} from '@marcj/estdlib';
+import {CustomError, isPlainObject} from '@marcj/estdlib';
 import {Decorated, FieldAny, FieldArray, getEntitySchema, UUIDField} from "../src/decorators";
 
 test('test simple', async () => {
@@ -557,4 +557,96 @@ test('test nested validation', async () => {
         {'message': 'Invalid type. Expected object, but got boolean', code: 'invalid_type', 'path': 'nested'},
     ]);
 
+});
+
+
+test('test valdiation on real life case', () => {
+    class NodeResourceReservation {
+        @Field()
+        reserved: number = 0;
+
+        @Field()
+        total: number = 0;
+    }
+
+    class JobAssignedResourcesGpu {
+        constructor(
+            @Field().asName('uuid') public uuid: string,
+            @Field().asName('name') public name: string,
+            @Field().asName('memory') public memory: number,
+        ) {
+        }
+    }
+
+    class JobAssignedResources {
+        @Field()
+        cpu: number = 0;
+
+        @Field()
+        memory: number = 0;
+
+        @FieldArray(JobAssignedResourcesGpu)
+        gpus: JobAssignedResourcesGpu[] = [];
+    }
+
+    class AssignedJobTaskInstance {
+        constructor(
+            @Field().asName('jobId') public jobId: string,
+            @Field().asName('jobAccessToken') public jobAccessToken: string,
+            @Field().asName('taskName') public taskName: string,
+            @Field().asName('instance') public instance: number,
+            @Field().asName('assignedResources') public assignedResources: JobAssignedResources,
+        ) {}
+    }
+
+    class NodeGpuResource {
+        @Field()
+        reserved: boolean = false;
+
+        /**
+         * Value in GB.
+         */
+        @Field()
+        memory: number = 1;
+
+        constructor(
+            @Field().asName('uuid') public uuid: string,
+            @Field().asName('name') public name: string,
+        ) {
+        }
+    }
+    class NodeResources {
+        @Field()
+        cpu: NodeResourceReservation = new NodeResourceReservation;
+
+        @Field()
+        memory: NodeResourceReservation = new NodeResourceReservation;
+
+        @FieldArray(NodeGpuResource)
+        gpu: NodeGpuResource[] = [];
+
+        @Field(AssignedJobTaskInstance).asMap()
+        assignedJobTaskInstances: { [taskInstanceId: string]: AssignedJobTaskInstance } = {};
+    }
+
+    const object = {
+        cpu: { reserved: 4, total: 6 },
+        memory: { reserved: 4, total: 4 },
+        gpu: [],
+        assignedJobTaskInstances: {
+            'a09be358-d6ce-477f-829a-0dc27219de34.0.main': {
+                assignedResources: { cpu: 4, memory: 4, gpus: [] },
+                instance: 0,
+                taskName: 'main',
+                jobAccessToken: 'af82a082-493f-4b1b-ad25-1948ccbe32cb',
+                jobId: 'a09be358-d6ce-477f-829a-0dc27219de34'
+            }
+        }
+    };
+
+    plainToClass(NodeResources, object);
+
+    expect(isPlainObject(object.assignedJobTaskInstances['a09be358-d6ce-477f-829a-0dc27219de34.0.main'].assignedResources)).toBeTrue();
+
+    expect(validate(NodeResources, object)).toEqual([]);
 });
