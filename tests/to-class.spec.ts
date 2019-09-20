@@ -301,7 +301,7 @@ test('test allowNull', async () => {
 
     for (const toClass of [plainToClass, mongoToClass]) {
         expect(toClass(Model, {}).name).toBe(undefined);
-        expect(toClass(Model, {name: null}).name).toBe(null);
+        expect(toClass(Model, {name: null}).name).toBe(undefined);
         expect(toClass(Model, {name: undefined}).name).toBe(undefined);
     }
 });
@@ -641,13 +641,14 @@ test('simple string + number + boolean', () => {
         expect(toClass(Model, {yesNo: false}).yesNo).toBeFalse();
         expect(toClass(Model, {yesNo: 0}).yesNo).toBeFalse();
         expect(toClass(Model, {yesNo: 'nothing'}).yesNo).toBeFalse();
-        expect(toClass(Model, {yesNo: null}).yesNo).toBeNull();
+        expect(toClass(Model, {yesNo: null}).yesNo).toBeUndefined();
+        expect(toClass(Model, {yesNo: undefined}).yesNo).toBeUndefined();
 
         expect(toClass(Model, {yesNo: 'true'}).yesNo).toBeTrue();
         expect(toClass(Model, {yesNo: '1'}).yesNo).toBeTrue();
         expect(toClass(Model, {yesNo: true}).yesNo).toBeTrue();
         expect(toClass(Model, {yesNo: 1}).yesNo).toBeTrue();
-        expect(toClass(Model, {yesNo: null}).yesNo).toBeNull();
+        expect(toClass(Model, {yesNo: null}).yesNo).toBeUndefined();
     }
 });
 

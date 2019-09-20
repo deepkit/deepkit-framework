@@ -420,7 +420,7 @@ test('partial mongo to plain ', () => {
         });
 
         expect(u.name).toBe('peter');
-        expect(u.picture).toBe(null);
+        expect(u.picture).toBeUndefined();
         expect(u.tags).toEqual([]);
         expect(u.parent).toBeUndefined();
     }
