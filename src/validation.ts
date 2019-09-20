@@ -322,7 +322,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
             }
         }
 
-        if (undefined === propertyValue) {
+        if (undefined === propertyValue || null === propertyValue) {
             //there's no need to continue validation without a value.
             continue;
         }
