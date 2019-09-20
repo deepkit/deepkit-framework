@@ -200,7 +200,7 @@ test('test uuid', async () => {
     expect(validate(Model, {id: "xxxx"})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
     expect(validate(Model, {id: ""})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
     expect(validate(Model, {id: false})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
     expect(validate(Model, {id: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
 });
 
@@ -215,7 +215,7 @@ test('test objectId', async () => {
     expect(validate(Model, {id: "xxxx"})).toEqual([{code: 'invalid_objectid', message: 'No Mongo ObjectID given', path: 'id'}]);
     expect(validate(Model, {id: ""})).toEqual([{code: 'invalid_objectid', message: 'No Mongo ObjectID given', path: 'id'}]);
     expect(validate(Model, {id: false})).toEqual([{code: 'invalid_objectid', message: 'No Mongo ObjectID given', path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
     expect(validate(Model, {id: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
 });
 
@@ -270,7 +270,7 @@ test('test Date', async () => {
     expect(validate(Model, {endTime: ''})).toEqual([{code: 'invalid_date', message: 'No Date string given', path: 'endTime'}]);
     expect(validate(Model, {endTime: new Date('asdf')})).toEqual([{code: 'invalid_date', message: 'No valid Date given', path: 'endTime'}]);
     expect(validate(Model, {endTime: 'asdf'})).toEqual([{code: 'invalid_date', message: 'No valid Date string given', path: 'endTime'}]);
-    expect(validate(Model, {endTime: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'endTime'}]);
+    expect(validate(Model, {endTime: null})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'endTime'}]);
     expect(validate(Model, {endTime: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'endTime'}]);
 
     {
@@ -285,7 +285,7 @@ test('test Date', async () => {
 
     {
         const o = plainToClass(Model, {endTime: null});
-        expect(o.endTime).toBe(null);
+        expect(o.endTime).toBe(undefined);
     }
 
     {
@@ -319,7 +319,7 @@ test('test Date', async () => {
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
-        expect(error.errors[0].message).toBe('Required value is null');
+        expect(error.errors[0].message).toBe('Required value is undefined');
     }
 
     try {
@@ -340,7 +340,7 @@ test('test string', async () => {
 
     expect(validate(Model, {id: '2'})).toEqual([]);
     expect(validate(Model, {id: 2})).toEqual([{code: 'invalid_string', message: "No String given", path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([]);
     expect(validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
@@ -366,8 +366,8 @@ test('test number', async () => {
     expect(validate(Model, {id: 3})).toEqual([]);
     expect(validate(Model, {id: '3'})).toEqual([]);
     expect(validate(Model, {id: 'a'})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([]);
     expect(validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
+    expect(validate(Model, {id: null})).toEqual([]); //because defaults are applied
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {

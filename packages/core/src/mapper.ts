@@ -540,7 +540,7 @@ export function toClass<T>(
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is defined as @ParentReference() and ` +
                     `NOT @Optional(), but no parent found. Add @Optional() or provide ${propertyName} in parents to fix that.`);
             }
-        } else if (undefined !== data[propertyName]) {
+        } else if (undefined !== data[propertyName] && null !== data[propertyName]) {
             item[propertyName] = converter(classType, propertyName, data[propertyName], parentsWithItem, incomingLevel + 1, state);
         }
     }
@@ -754,7 +754,7 @@ export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: s
     const entitySchema = getEntitySchema(classType);
 
     for (const [i, v] of eachPair(entitySchema.properties)) {
-        if (undefined === value[i]) {
+        if (undefined === value[i] || null === value[i]) {
             const decoratedProp = v.getForeignClassDecorator();
             if (decoratedProp) {
                 valueWithDefaults[i] = (instance as any)[i][decoratedProp.name];
