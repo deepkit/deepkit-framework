@@ -352,7 +352,7 @@ test('test string', async () => {
 
     expect(validate(ModelOptional, {id: '2'})).toEqual([]);
     expect(validate(ModelOptional, {id: 2})).toEqual([{code: 'invalid_string', message: "No String given", path: 'id'}]);
-    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'invalid_string', message: "No String given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: null})).toEqual([]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
 });
@@ -366,7 +366,7 @@ test('test number', async () => {
     expect(validate(Model, {id: 3})).toEqual([]);
     expect(validate(Model, {id: '3'})).toEqual([]);
     expect(validate(Model, {id: 'a'})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([]);
     expect(validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
@@ -379,7 +379,7 @@ test('test number', async () => {
     expect(validate(ModelOptional, {id: 3})).toEqual([]);
     expect(validate(ModelOptional, {id: '3'})).toEqual([]);
     expect(validate(ModelOptional, {id: 'a'})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
-    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: null})).toEqual([]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
 });
