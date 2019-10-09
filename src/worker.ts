@@ -1,69 +1,100 @@
-import * as WebSocket from "ws";
-import {ServerOptions} from "ws";
 import {Provider, ReflectiveInjector} from "injection-js";
 import {SessionStack} from "./application";
 import {ClientConnection} from "./client-connection";
 import {EntityStorage} from "./entity-storage";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
+import {us_listen_socket, us_listen_socket_close, App, WebSocket} from "uWebSockets.js";
 
 export class Worker {
-    protected wss?: WebSocket.Server;
+    protected listen?: us_listen_socket;
 
     constructor(
         protected mainInjector: ReflectiveInjector,
         protected connectionProvider: Provider[],
-        protected options: ServerOptions,
+        protected options: { host: string, port: number },
     ) {
     }
 
     close() {
-        if (this.wss) {
-            this.wss.close();
+        if (this.listen) {
+            us_listen_socket_close(this.listen);
+            this.listen = undefined;
         }
     }
 
-    run() {
-        this.wss = new WebSocket.Server(this.options);
+    async run() {
+        const injectorMap = new Map<WebSocket, ReflectiveInjector>();
 
-        this.wss.on('connection', (socket: WebSocket, req) => {
-            let injector: ReflectiveInjector | undefined;
+        await new Promise((resolve, reject) => {
+            App().ws('/*', {
+                /* Options */
+                compression: 0,
+                maxPayloadLength: 2 * 100 * 1024 * 1024, //200mb
+                idleTimeout: 10,
+                /* Handlers */
+                open: (ws, req) => {
+                    const ip = Buffer.from(ws.getRemoteAddress());
+                    const ipString = ip[0] + '.' + ip[1] + '.' + ip[2] + '.' + ip[3];
 
-            const provider: Provider[] = [
-                {provide: 'socket', useValue: socket},
-                {provide: 'remoteAddress', useValue: req.connection.remoteAddress},
-                EntityStorage,
-                SessionStack,
-                ClientConnection,
-                ConnectionMiddleware,
-                ConnectionWriter
-            ];
-
-            provider.push(...this.connectionProvider);
-
-            injector = this.mainInjector.resolveAndCreateChild(provider);
-            const connection: ClientConnection = injector.get(ClientConnection);
-
-            socket.on('message', async (raw: string) => {
-                try {
-                    await connection.onMessage(raw);
-                } catch (error) {
-                    console.error('Error on connection message');
-                    console.error(error);
-                    console.error('Got message:');
-                    console.error(raw);
+                    const provider: Provider[] = [
+                        {provide: 'socket', useValue: ws},
+                        {provide: 'remoteAddress', useValue: ipString},
+                        EntityStorage,
+                        SessionStack,
+                        ClientConnection,
+                        ConnectionMiddleware,
+                        ConnectionWriter
+                    ];
+                    provider.push(...this.connectionProvider);
+                    injectorMap.set(ws, this.mainInjector.resolveAndCreateChild(provider));
+                },
+                message: async (ws, message: ArrayBuffer, isBinary) => {
+                    const json = String.fromCharCode.apply(null, new Uint8Array(message) as any);
+                    await injectorMap.get(ws)!.get(ClientConnection).onMessage(json);
+                },
+                drain: (ws) => {
+                    console.log('WebSocket backpressure: ' + ws.getBufferedAmount());
+                },
+                close: (ws, code, message) => {
+                    injectorMap.get(ws)!.get(ClientConnection).destroy();
+                    injectorMap.delete(ws);
+                }
+            }).listen(this.options.host, this.options.port, (token) => {
+                if (token) {
+                    console.log('listen on', this.options.host, this.options.port);
+                    this.listen = token;
+                    resolve();
+                } else {
+                    reject('Failed to listen on ' + this.options.host + ':' + this.options.port);
                 }
             });
-
-            socket.on('close', async (data: object) => {
-                connection.destroy();
-            });
-
-            socket.on('error', (error: any) => {
-                connection.destroy();
-                console.log('error');
-                console.log('error from client: ', error);
-            });
         });
+
+        // this.wss = new WebSocket.Server(this.options);
+        //
+        // this.wss.on('connection', (socket: WebSocket, req) => {
+
+        //     socket.on('message', async (raw: string) => {
+        //         try {
+        //             await connection.onMessage(raw);
+        //         } catch (error) {
+        //             console.error('Error on connection message');
+        //             console.error(error);
+        //             console.error('Got message:');
+        //             console.error(raw);
+        //         }
+        //     });
+        //
+        //     socket.on('close', async (data: object) => {
+        //         connection.destroy();
+        //     });
+        //
+        //     socket.on('error', (error: any) => {
+        //         connection.destroy();
+        //         console.log('error');
+        //         console.log('error from client: ', error);
+        //     });
+        // // });
     }
 }

@@ -9,7 +9,7 @@ import {ClassType, sleep} from '@marcj/estdlib';
 import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
 import {createConnection} from 'typeorm';
 import {FileType, GlutFile} from "@marcj/glut-core";
-import {Locker} from "../src/locker";
+import {ProcessLocker} from "../src/locker";
 
 jest.setTimeout(100_000);
 
@@ -43,7 +43,7 @@ async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
     await database.dropDatabase('fs-test-' + fs);
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 
-    return [new FS(FileType.forDefault(), exchange, accountDb, new Locker(), localDir), async function () {
+    return [new FS(FileType.forDefault(), exchange, accountDb, new ProcessLocker(), localDir), async function () {
         await exchange.disconnect();
         await database.close();
     }];

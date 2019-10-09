@@ -14,7 +14,7 @@ import {
 import {Subscription} from "rxjs";
 import {eachKey, isArray} from "@marcj/estdlib";
 import {Injectable} from "injection-js";
-import {Locker} from "./locker";
+import {ProcessLocker} from "./process-locker";
 
 @Injectable()
 export class InternalClient {
@@ -23,7 +23,7 @@ export class InternalClient {
     } = {};
 
     constructor(
-        private locker: Locker,
+        private locker: ProcessLocker,
         private exchange: Exchange,
     ) {
     }

@@ -8,7 +8,7 @@ import {arrayRemoveItem, each} from "@marcj/estdlib";
 import {uuid} from "@marcj/marshal";
 import {Exchange} from "./exchange";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
-import {Lock, Locker} from "./locker";
+import {ProcessLock, ProcessLocker} from "./process-locker";
 
 @Injectable()
 export class ClientConnection {
@@ -20,7 +20,7 @@ export class ClientConnection {
         [controllerName: string]: { [actionName: string]: ActionTypes }
     } = {};
 
-    private registeredPeerControllers: { [name: string]: { sub: Subscription, lock: Lock } } = {};
+    private registeredPeerControllers: { [name: string]: { sub: Subscription, lock: ProcessLock } } = {};
 
     protected pushMessageReplyId = 0;
     protected pushMessageReplies: { [id: string]: (data: any) => void } = {};
@@ -31,7 +31,7 @@ export class ClientConnection {
         protected app: Application,
         protected sessionStack: SessionStack,
         protected injector: Injector,
-        protected locker: Locker,
+        protected locker: ProcessLocker,
         protected exchange: Exchange,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,

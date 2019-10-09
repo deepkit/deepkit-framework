@@ -1,14 +1,14 @@
 import 'reflect-metadata';
 import 'jest';
 import 'jest-extended';
-import {Locker, Lock} from "../src/locker";
+import {ProcessLocker, ProcessLock} from "../src/process-locker";
 
 jest.setTimeout(20000);
 
-let locker: Locker;
+let locker: ProcessLocker;
 
 beforeAll(async () => {
-    locker = new Locker();
+    locker = new ProcessLocker();
 });
 
 
@@ -61,7 +61,7 @@ test('test performance', async () => {
 
 test('test tryLock', async () => {
     const lock1 = await locker.acquireLock('trylock', 1);
-    expect(lock1).toBeInstanceOf(Lock);
+    expect(lock1).toBeInstanceOf(ProcessLock);
 
     const lock2 = await locker.tryLock('trylock', 1);
     expect(lock2).toBeUndefined();
@@ -71,7 +71,7 @@ test('test tryLock', async () => {
         setTimeout(async () => {
             expect(await locker.isLocked('trylock')).toBeFalse();
             const lock3 = await locker.tryLock('trylock', 1);
-            expect(lock3).toBeInstanceOf(Lock);
+            expect(lock3).toBeInstanceOf(ProcessLock);
             expect(await locker.isLocked('trylock')).toBeTrue();
 
             setTimeout(async () => {
@@ -84,7 +84,7 @@ test('test tryLock', async () => {
             setTimeout(async () => {
                 expect(await locker.isLocked('trylock')).toBeFalse();
                 const lock5 = await locker.acquireLock('trylock', 1);
-                expect(lock5).toBeInstanceOf(Lock);
+                expect(lock5).toBeInstanceOf(ProcessLock);
                 expect(await locker.isLocked('trylock')).toBeTrue();
                 await lock5.unlock();
                 resolve();

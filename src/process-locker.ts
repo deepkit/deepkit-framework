@@ -11,7 +11,7 @@ const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
  * redislock: Very bad performance on high-load (when multiple locks on the same key `wait`, since it loops)
  * mongodb lock: even worse performance than redis. Jesus.
  */
-export class Lock {
+export class ProcessLock {
     private holding = false;
 
     constructor(
@@ -102,7 +102,7 @@ export class Lock {
 }
 
 @Injectable()
-export class Locker {
+export class ProcessLocker {
     constructor() {
     }
 
@@ -111,15 +111,15 @@ export class Locker {
      * @param id
      * @param timeout optional defines when the times automatically unlocks.
      */
-    public async acquireLock(id: string, timeout?: number): Promise<Lock> {
-        const lock = new Lock(id);
+    public async acquireLock(id: string, timeout?: number): Promise<ProcessLock> {
+        const lock = new ProcessLock(id);
         await lock.acquire(timeout);
 
         return lock;
     }
 
-    public async tryLock(id: string, timeout?: number): Promise<Lock | undefined> {
-        const lock = new Lock(id);
+    public async tryLock(id: string, timeout?: number): Promise<ProcessLock | undefined> {
+        const lock = new ProcessLock(id);
 
         if (await lock.tryLock(timeout)) {
             return lock;

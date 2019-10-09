@@ -9,17 +9,15 @@ import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
 import {Database, getTypeOrmEntity} from "@marcj/marshal-mongo";
 import {Application} from "./application";
 import {applyDefaults, each, eachPair} from "@marcj/estdlib";
-import {Server} from "http";
-import {ServerOptions} from "ws";
 import {createConnection, Connection} from "typeorm";
 import {FileType} from "@marcj/glut-core";
-import {Locker} from "./locker";
+import {ProcessLocker} from "./process-locker";
 import {InternalClient} from "./internal-client";
 import {homedir} from "os";
+import {GlobalLocker} from "./global-locker";
+import {ExchangeServer} from "./exchange-server";
 
 export class ApplicationServerConfig {
-    server?: Server = undefined;
-
     host: string = '127.0.0.1';
 
     port: number = 8080;
@@ -107,7 +105,7 @@ export class ApplicationServer {
             if (this.masterWorker) {
 
                 if (this.connection) {
-                    this.connection.close();
+                    this.connection.mongoManager.queryRunner.databaseConnection.close(true);
                 }
 
                 const exchange: Exchange = this.getInjector().get(Exchange);
@@ -160,11 +158,7 @@ export class ApplicationServer {
                 }
             },
             {provide: Connection, useValue: this.connection},
-            {
-                provide: Exchange,
-                deps: ['redis.host', 'redis.port', 'redis.prefix'],
-                useFactory: (host: string, port: number, prefix: string) => new Exchange(host, port, prefix)
-            },
+            ExchangeServer, Exchange,
             {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {
                     return new Database(connection, dbName);
@@ -180,7 +174,8 @@ export class ApplicationServer {
                     }, d, e);
                 }
             },
-            Locker,
+            ProcessLocker,
+            GlobalLocker,
             FS,
             InternalClient,
         ];
@@ -212,8 +207,9 @@ export class ApplicationServer {
         });
 
         if (this.config.workers > 1) {
-            throw new Error('No supported due to poor-mans Lock implementation. Soon available.');
             if (cluster.isMaster) {
+                (this.getInjector().get(ExchangeServer) as ExchangeServer).start();
+
                 const app: Application = this.getInjector().get(Application);
                 await app.bootstrap();
 
@@ -236,21 +232,17 @@ export class ApplicationServer {
                 worker.run();
             }
         } else {
+            (this.getInjector().get(ExchangeServer) as ExchangeServer).start();
             const app: Application = this.getInjector().get(Application);
             await app.bootstrap();
 
-            let options: ServerOptions = {
+            const options = {
                 host: this.config.host,
                 port: this.config.port,
             };
-            if (this.config.server) {
-                options = {
-                    server: this.config.server
-                };
-            }
 
             this.masterWorker = new Worker(this.getInjector(), this.connectionProvider, options);
-            this.masterWorker.run();
+            await this.masterWorker.run();
             this.done();
         }
     }

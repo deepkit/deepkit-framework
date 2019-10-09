@@ -36,6 +36,7 @@
     "redis": "^2.8.0",
     "redlock": "^3.1.2",
     "sift": "^7.0.1",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v16.0.0",
     "ws": "^6.1.2"
   },
   "devDependencies": {

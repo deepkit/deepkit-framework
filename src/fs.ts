@@ -6,7 +6,7 @@ import {FileMode, FileType, FilterQuery, GlutFile, StreamBehaviorSubject} from "
 import {eachKey, eachPair} from "@marcj/estdlib";
 import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
-import {Locker} from "./locker";
+import {ProcessLocker} from "./process-locker";
 
 export type PartialFile = {id: string, path: string, mode: FileMode, md5?: string, version: number};
 
@@ -27,7 +27,7 @@ export class FS<T extends GlutFile> {
         public readonly fileType: FileType<T>,
         private exchange: Exchange,
         private exchangeDatabase: ExchangeDatabase,
-        private locker: Locker,
+        private locker: ProcessLocker,
         @Inject('fs.path') private fileDir: string /* .glut/data/files/ */,
     ) {
     }
