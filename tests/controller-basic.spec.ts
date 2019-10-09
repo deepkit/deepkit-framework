@@ -12,13 +12,17 @@ import {
     ValidationErrorItem,
     ValidationParameterError
 } from "@marcj/glut-core";
-import {createServerClientPair, subscribeAndWait} from "./util";
+import {closeAllCreatedServers, createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount} from "rxjs/operators";
 import {Entity, Field} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
 import {CustomError, isArray} from '@marcj/estdlib';
 import {JSONError} from "@marcj/glut-core/src/core";
+
+afterAll(async () => {
+    await closeAllCreatedServers();
+});
 
 // @ts-ignore
 global['WebSocket'] = require('ws');

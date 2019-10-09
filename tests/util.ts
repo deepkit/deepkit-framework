@@ -1,9 +1,8 @@
 import 'jest';
-import {ClassType} from "@marcj/estdlib";
+import {arrayRemoveItem, ClassType} from "@marcj/estdlib";
 import {Application, ApplicationServer, Session} from "@marcj/glut-server";
 import {SocketClient} from "@marcj/glut-client";
 import {RemoteController} from "@marcj/glut-core";
-import {createServer} from "http";
 import {Observable} from "rxjs";
 import {sleep} from "@marcj/estdlib";
 import {Injector} from 'injection-js';
@@ -43,9 +42,13 @@ class MyApp extends Application {
     }
 }
 
-const testState = {
-    id: 0
-};
+let port = 28000;
+
+export async function closeAllCreatedServers() {
+    for (const close of closer) {
+        await close();
+    }
+}
 
 export async function createServerClientPair(
     dbTestName: string,
@@ -60,18 +63,12 @@ export async function createServerClientPair(
     createControllerClient: <T>(controllerName: string) => RemoteController<T>,
     app: MyApp
 }> {
-    const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
-    const server = createServer();
+    const thisPort = ++port;
     const dbName = 'glut_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
 
-    await new Promise((resolve) => {
-        server.listen(socketPath, function () {
-            resolve();
-        });
-    });
-
     const app = new ApplicationServer(appController, {
-        server: server,
+        host: '127.0.0.1',
+        port: thisPort,
         mongoDbName: dbName,
         mongoConnectionName: dbName,
         mongoSynchronize: false,
@@ -86,7 +83,8 @@ export async function createServerClientPair(
     const createdClients: SocketClient[] = [];
 
     const socket = new SocketClient({
-        host: 'ws+unix://' + socketPath
+        host: '127.0.0.1',
+        port: thisPort,
     });
 
     createdClients.push(socket);
@@ -94,6 +92,8 @@ export async function createServerClientPair(
     let closed = false;
 
     const close = async () => {
+        arrayRemoveItem(closer, close);
+
         if (closed) {
             return;
         }
@@ -112,9 +112,9 @@ export async function createServerClientPair(
         }
 
         await sleep(0.1); //let the server read the disconnect
-        server.close();
+        const start = performance.now();
         await app.close();
-        console.log('server closed');
+        console.log('server closed', performance.now() - start);
     };
 
     closer.push(close);
@@ -123,14 +123,16 @@ export async function createServerClientPair(
         client: socket,
         createClient: () => {
             const client = new SocketClient({
-                host: 'ws+unix://' + socketPath
+                host: '127.0.0.1',
+                port: thisPort,
             });
             createdClients.push(client);
             return client;
         },
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
             const client = new SocketClient({
-                host: 'ws+unix://' + socketPath
+                host: '127.0.0.1',
+                port: thisPort,
             });
             createdClients.push(client);
             return client.controller<T>(controllerName);

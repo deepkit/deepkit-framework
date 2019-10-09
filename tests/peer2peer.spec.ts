@@ -2,7 +2,7 @@ import 'jest';
 import 'reflect-metadata';
 import {Action, Controller, ReturnType} from "@marcj/glut-core";
 import {Entity, Field} from '@marcj/marshal';
-import {createServerClientPair} from "./util";
+import {closeAllCreatedServers, createServerClientPair} from "./util";
 import {Application} from "@marcj/glut-server";
 import {Session} from "@marcj/glut-server";
 import {Injector} from 'injection-js';
@@ -12,6 +12,10 @@ import {sleep} from '@marcj/estdlib';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
+
+afterAll(async () => {
+    await closeAllCreatedServers();
+});
 
 @Entity('user')
 class User {

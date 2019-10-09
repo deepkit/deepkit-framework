@@ -2,7 +2,7 @@ import 'jest';
 import 'reflect-metadata';
 import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@marcj/glut-core";
 import {ClientConnection, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
-import {createServerClientPair} from "./util";
+import {closeAllCreatedServers, createServerClientPair} from "./util";
 import {Entity, Field, getEntitySchema, IDField, uuid, UUIDField} from '@marcj/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@marcj/estdlib-rxjs';
@@ -11,6 +11,10 @@ import {Database} from '@marcj/marshal-mongo';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
+
+afterAll(async () => {
+    await closeAllCreatedServers();
+});
 
 // const Promise = require('bluebird');
 // Promise.longStackTraces(); //needs to be disabled in production since it leaks memory
