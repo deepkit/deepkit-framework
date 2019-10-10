@@ -7,6 +7,7 @@ import {createConnection} from 'typeorm';
 import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
 import { ClassType } from '@marcj/estdlib';
 import { Field, uuid, Entity, UUIDField } from '@marcj/marshal';
+import {ExchangeServer} from "../src/exchange-server";
 
 let i = 0;
 
@@ -38,7 +39,10 @@ async function createExchangeDatabase(name?: string): Promise<[ExchangeDatabase,
     const localDir = '/tmp/deepkit/testing/';
     await remove(localDir);
 
-    const exchange = new Exchange();
+    const exchangeServer = new ExchangeServer();
+    await exchangeServer.start();
+
+    const exchange = new Exchange(exchangeServer.port);
 
     const notifyPolicy = new class implements ExchangeNotifyPolicy {
         notifyChanges<T>(classType: ClassType<T>): boolean {
