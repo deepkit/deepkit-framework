@@ -34,7 +34,7 @@ export class Worker {
                 /* Options */
                 compression: 0,
                 maxPayloadLength: 2 * 100 * 1024 * 1024, //200mb
-                idleTimeout: 10,
+                idleTimeout: 0,
                 /* Handlers */
                 open: (ws, req) => {
                     const ip = Buffer.from(ws.getRemoteAddress());

@@ -69,9 +69,9 @@ export class Exchange {
         return new Promise<void>((resolve, reject) => {
             this.socket = new WebSocket('ws://' + this.host + ':' + this.port);
 
-            this.socket.onerror = () => {
+            this.socket.onerror = (error: any) => {
                 this.socket = undefined;
-                reject(new Error('Error websocket'));
+                reject(new Error(`Could not connect to ${this.host + ':' + this.port}. Reason: ${error.message || error}`));
             };
 
             this.socket.onclose = () => {

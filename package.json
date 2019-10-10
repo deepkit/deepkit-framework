@@ -23,7 +23,8 @@
     "mongodb": "^3.3.2",
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3",
-    "typeorm": "^0.2.18"
+    "typeorm": "^0.2.18",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v16.0.0"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.11",
@@ -36,7 +37,6 @@
     "redis": "^2.8.0",
     "redlock": "^3.1.2",
     "sift": "^7.0.1",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v16.0.0",
     "ws": "^6.1.2"
   },
   "devDependencies": {
@@ -57,6 +57,7 @@
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3",
     "source-map": "^0.7.3",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v16.0.0",
     "source-map-support": "^0.5.9",
     "typeorm": "^0.2.18"
   },

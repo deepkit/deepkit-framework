@@ -38,9 +38,7 @@ export class ApplicationServerConfig {
      */
     mongoSynchronize: boolean = false;
 
-    redisHost: string = 'localhost';
-
-    redisPort: number = 6379;
+    exchangePort: number = 8561;
 
     redisPrefix: string = 'glut';
 
@@ -149,9 +147,7 @@ export class ApplicationServer {
             {provide: Application, useClass: this.application},
             {provide: ApplicationServerConfig, useValue: this.config},
             {provide: 'fs.path', useValue: this.config.fsPath},
-            {provide: 'redis.host', useValue: this.config.redisHost},
-            {provide: 'redis.port', useValue: this.config.redisPort},
-            {provide: 'redis.prefix', useValue: this.config.redisPrefix},
+            {provide: 'exchange.port', useValue: this.config.exchangePort},
             {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
             {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
             {
@@ -162,13 +158,13 @@ export class ApplicationServer {
             {provide: Connection, useValue: this.connection},
             {
                 provide: Exchange,
-                deps: [],
-                useFactory: () => new Exchange()
+                deps: ['exchange.port'],
+                useFactory: (port: number) => new Exchange(port)
             },
             {
                 provide: ExchangeServer,
-                deps: [],
-                useFactory: () => new ExchangeServer()
+                deps: ['exchange.port'],
+                useFactory: (port: number) => new ExchangeServer('127.0.0.1', port)
             },
             {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {

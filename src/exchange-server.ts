@@ -31,7 +31,7 @@ export class ExchangeServer {
             /* Options */
             compression: 0,
             maxPayloadLength: 50 * 1024 * 1024, //50mb
-            idleTimeout: 10,
+            idleTimeout: 0,
             /* Handlers */
             open: (ws, req) => {
                 console.log('new exchange client');
