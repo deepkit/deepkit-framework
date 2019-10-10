@@ -244,6 +244,7 @@ export class ExchangeDatabase {
 
         const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
         const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
+
         for (const field of subscribedFields) {
             projection[field] = 1;
         }

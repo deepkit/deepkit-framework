@@ -108,6 +108,8 @@ export class ApplicationServer {
                     this.connection.mongoManager.queryRunner.databaseConnection.close(true);
                 }
 
+                (this.getInjector().get(ExchangeServer) as ExchangeServer).close();
+
                 const exchange: Exchange = this.getInjector().get(Exchange);
                 await exchange.disconnect();
 
@@ -158,7 +160,16 @@ export class ApplicationServer {
                 }
             },
             {provide: Connection, useValue: this.connection},
-            ExchangeServer, Exchange,
+            {
+                provide: Exchange,
+                deps: [],
+                useFactory: () => new Exchange()
+            },
+            {
+                provide: ExchangeServer,
+                deps: [],
+                useFactory: () => new ExchangeServer()
+            },
             {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {
                     return new Database(connection, dbName);

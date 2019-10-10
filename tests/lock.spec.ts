@@ -49,12 +49,13 @@ test('test lock timeout accum', async () => {
 test('test performance', async () => {
     const start = performance.now();
 
-    for (let i = 0; i < 2000; i++) {
+    const count = 2000;
+    for (let i = 0; i < count; i++) {
         const lock1 = await locker.acquireLock('test-perf', 0.01);
         await lock1.unlock();
     }
 
-    console.log('2000 locks took', performance.now() - start);
+    console.log(count, 'locks took', performance.now() - start, (performance.now() - start) / count);
 
     // expect(performance.now() - start).toBeLessThan(100);
 });

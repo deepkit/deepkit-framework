@@ -4,6 +4,7 @@ import {ExchangeEntity, StreamFileResult} from '@marcj/glut-core';
 import {ClassType, sleep} from '@marcj/estdlib';
 import {Injectable} from "injection-js";
 import {decodeMessage, encodeMessage, uintToString} from './exchange-prot';
+import { AsyncSubscription } from "@marcj/estdlib-rxjs";
 
 type Callback<T> = (message: T) => void;
 
@@ -26,8 +27,8 @@ export class Exchange {
     protected replyResolver: { [id: number]: Function } = {};
 
     constructor(
-        protected host: string = 'localhost',
         protected port: number = 8561,
+        protected host: string = '127.0.0.1',
     ) {
     }
 
@@ -41,6 +42,10 @@ export class Exchange {
         while (this.connectionPromise) {
             await sleep(0.01);
             await this.connectionPromise;
+        }
+
+        if (this.socket) {
+            return this.socket;
         }
 
         this.connectionPromise = this.doConnect();
@@ -59,19 +64,17 @@ export class Exchange {
     }
 
     protected async doConnect(): Promise<void> {
-        if (this.socket) return;
+        this.socket = undefined;
 
         return new Promise<void>((resolve, reject) => {
             this.socket = new WebSocket('ws://' + this.host + ':' + this.port);
 
             this.socket.onerror = () => {
-                console.log('onerror');
                 this.socket = undefined;
                 reject(new Error('Error websocket'));
             };
 
             this.socket.onclose = () => {
-                console.log('onclose');
                 this.socket = undefined;
             };
 
@@ -90,7 +93,7 @@ export class Exchange {
         // console.log('client message', m);
 
         if (this.replyResolver[m.id]) {
-            this.replyResolver[m.id](m.arg);
+            this.replyResolver[m.id]({arg: m.arg, payload: m.payload});
             delete this.replyResolver[m.id];
         }
 
@@ -104,72 +107,34 @@ export class Exchange {
         }
     }
 
-    // todo, redo that
-    // public async getSubscribedEntityFields<T>(classType: ClassType<T>): Promise<string[]> {
-    //     const key = 'entity-field-subscription/' + getEntityName(classType);
-    //     const fields: string[] = [];
-    //
-    //     return new Promise<string[]>((resolve, reject) => {
-    //         try {
-    //             this.redis.hgetall(key, (err, keys: { [field: string]: any }) => {
-    //                 if (err) {
-    //                     reject(err);
-    //                 } else {
-    //                     for (const [i, v] of eachPair(keys)) {
-    //                         if (parseInt(v, 10) > 0) {
-    //                             fields.push(i);
-    //                         }
-    //                     }
-    //                     resolve(fields);
-    //                 }
-    //             });
-    //         } catch (error) {
-    //             reject(error);
-    //         }
-    //     });
-    // }
-    //
-    // public async del(key: string) {
-    //     return new Promise((resolve, reject) => {
-    //         this.redis.del(key, (err) => {
-    //             if (err) reject(err); else resolve();
-    //         });
-    //     });
-    // }
+    public async get(key: string): Promise<any> {
+        const reply = await this.sendAndWaitForReply('get', key);
+        return reply.payload;
+    }
 
-    // public async clearEntityFields<T>(classType: ClassType<T>) {
-    //     return this.del(this.prefix + '/entity-field-subscription/' + getEntityName(classType));
-    // }
+    public async set(key: string, payload: any): Promise<any> {
+        await this.send('set', key, payload);
+    }
+
+    public async getSubscribedEntityFields<T>(classType: ClassType<T>): Promise<string[]> {
+        const a = await this.sendAndWaitForReply('get-entity-subscribe-fields', getEntityName(classType));
+        return a.arg;
+    }
+
+    public async del(key: string) {
+        await this.send('del', key);
+    }
 
     // /**
     //  * This tells the ExchangeDatabase which field values you additionally need in a patch-message.
     //  */
-    // public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
-    //     const key = this.prefix + '/entity-field-subscription/' + getEntityName(classType);
-    //
-    //     const promises: Promise<void>[] = [];
-    //     for (const field of fields) {
-    //         promises.push(new Promise((resolve, reject) => {
-    //             this.redis.hincrby(key, field, 1, (err) => {
-    //                 if (err) reject(err); else resolve();
-    //             });
-    //         }));
-    //     }
-    //
-    //     await Promise.all(promises);
-    //
-    //     return new AsyncSubscription(async () => {
-    //         const promises: Promise<void>[] = [];
-    //         for (const field of fields) {
-    //             promises.push(new Promise((resolve, reject) => {
-    //                 this.redis.hincrby(key, field, -1, (err) => {
-    //                     if (err) reject(err); else resolve();
-    //                 });
-    //             }));
-    //         }
-    //         await Promise.all(promises);
-    //     });
-    // }
+    public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
+        this.send('entity-subscribe-fields', getEntityName(classType), fields);
+
+        return new AsyncSubscription(async () => {
+            this.send('del-entity-subscribe-fields', getEntityName(classType), fields);
+        });
+    }
 
     public async publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
         const channelName = 'entity/' + getEntityName(classType);
@@ -193,10 +158,11 @@ export class Exchange {
 
     protected async send(type: string, arg: string, payload?: string | ArrayBuffer | Uint8Array | object): Promise<void> {
         const messageId = this.messageId++;
-        (await this.connect()).send(encodeMessage(messageId, type, arg, payload));
+        const message = encodeMessage(messageId, type, arg, payload);
+        (await this.connect()).send(message);
     }
 
-    protected async sendAndWaitForReply(type: string, arg: string, payload?: string | ArrayBuffer | Uint8Array | object): Promise<any> {
+    protected async sendAndWaitForReply(type: string, arg: string, payload?: string | ArrayBuffer | Uint8Array | object): Promise<{arg: any, payload: any}> {
         const messageId = this.messageId++;
 
         return new Promise(async (resolve) => {
@@ -209,15 +175,15 @@ export class Exchange {
         this.send('publish', channelName, message);
     }
 
-    public async lock(name: string): Promise<ExchangeLock> {
-        await this.sendAndWaitForReply('lock', name);
+    public async lock(name: string, timeout = 0): Promise<ExchangeLock> {
+        await this.sendAndWaitForReply('lock', name + '$$' + timeout);
         return new ExchangeLock(() => {
             this.send('unlock', name);
         });
     }
 
     public async isLocked(name: string): Promise<boolean> {
-        return await this.sendAndWaitForReply('isLocked', name);
+        return (await this.sendAndWaitForReply('isLocked', name)).arg;
     }
 
     public async subscribe(channelName: string, callback: Callback<any>): Promise<Subscription> {

@@ -9,7 +9,8 @@ import {ClassType, sleep} from '@marcj/estdlib';
 import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
 import {createConnection} from 'typeorm';
 import {FileType, GlutFile} from "@marcj/glut-core";
-import {ProcessLocker} from "../src/locker";
+import {ProcessLocker} from "../src/process-locker";
+import {ExchangeServer} from "../src/exchange-server";
 
 jest.setTimeout(100_000);
 
@@ -31,7 +32,10 @@ async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
     const localDir = '/tmp/deepkit/testing/';
     await remove(localDir);
 
-    const exchange = new Exchange();
+    const exchangeServer = new ExchangeServer();
+    await exchangeServer.start();
+
+    const exchange = new Exchange(exchangeServer.port);
 
     const notifyPolicy = new class implements ExchangeNotifyPolicy {
         notifyChanges<T>(classType: ClassType<T>): boolean {
@@ -46,6 +50,7 @@ async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
     return [new FS(FileType.forDefault(), exchange, accountDb, new ProcessLocker(), localDir), async function () {
         await exchange.disconnect();
         await database.close();
+        exchangeServer.close();
     }];
 }
 

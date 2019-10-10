@@ -1,3 +1,7 @@
+export function decodePayloadAsJson(payload: Uint8Array): any {
+    return JSON.parse(uintToString(payload));
+}
+
 /**
  * A message of exchange-server has a very simple frame:
  *
@@ -15,7 +19,7 @@ export function decodeMessage(array: ArrayBuffer | string): {id: number, type: s
         const arg = JSON.parse(array.slice(posColon + 1, posNull));
 
         return {
-            id, type, arg, payload: new Uint8Array(str2ab(array.slice(posNull + 1)))
+            id, type, arg, payload: new Uint8Array(Buffer.from(array.slice(posNull + 1)))
         };
     } else {
         const uintArray = new Uint8Array(array);
@@ -35,25 +39,33 @@ export function decodeMessage(array: ArrayBuffer | string): {id: number, type: s
     }
 }
 
-export function encodeMessage(messageId: number, type: string, arg: any, payload?: string | ArrayBuffer | Uint8Array | object): Uint8Array {
-    const message = new Uint8Array((messageId + '.' + type + ':' + JSON.stringify(arg) + '\0').split('').map(v => v.charCodeAt(0)));
-    let payloadBuffer = new Uint8Array(0);
-
-    if (payload instanceof ArrayBuffer) {
-        payloadBuffer = new Uint8Array(payload);
-    } else if (payload instanceof Uint8Array) {
-        payloadBuffer = payload;
-    } else if ('string' === typeof payload) {
-        payloadBuffer = new Uint8Array(str2ab(payload));
-    } else if (payload) {
-        payloadBuffer = new Uint8Array(str2ab(JSON.stringify(payload)));
+export function encodeMessage(messageId: number, type: string, arg: any, payload?: string | ArrayBuffer | Uint8Array | object): Uint8Array | string {
+    if (!payload) {
+        return messageId + '.' + type + ':' + JSON.stringify(arg) + '\0';
     }
 
-    const m = new Uint8Array(message.length + payloadBuffer.length);
-    m.set(message);
-    m.set(payloadBuffer, message.length);
+    if (payload instanceof Uint8Array || payload instanceof ArrayBuffer) {
+        let payloadBuffer = new Uint8Array(0);
 
-    return m;
+        if (payload instanceof Uint8Array) {
+            payloadBuffer = payload;
+        }
+        if (payload instanceof Uint8Array) {
+            payloadBuffer = new Uint8Array(payload);
+        }
+
+        const header = messageId + '.' + type + ':' + JSON.stringify(arg) + '\0';
+        const headerBuffer = new Uint8Array(Buffer.from(header, 'utf8'));
+
+        const m = new Uint8Array(headerBuffer.length + payloadBuffer.length);
+        m.set(headerBuffer);
+        m.set(payloadBuffer, headerBuffer.length);
+
+        return m;
+    }
+
+    return messageId + '.' + type + ':' + JSON.stringify(arg) + '\0' + JSON.stringify(payload);
+
 }
 
 export function uintToString(array: Uint8Array): string {

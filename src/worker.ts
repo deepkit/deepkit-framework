@@ -5,6 +5,7 @@ import {EntityStorage} from "./entity-storage";
 import {ConnectionMiddleware} from "./connection-middleware";
 import {ConnectionWriter} from "./connection-writer";
 import {us_listen_socket, us_listen_socket_close, App, WebSocket} from "uWebSockets.js";
+import {Exchange} from "./exchange";
 
 export class Worker {
     protected listen?: us_listen_socket;
@@ -25,6 +26,8 @@ export class Worker {
 
     async run() {
         const injectorMap = new Map<WebSocket, ReflectiveInjector>();
+
+        await (this.mainInjector.get(Exchange) as Exchange).connect();
 
         await new Promise((resolve, reject) => {
             App().ws('/*', {
@@ -70,31 +73,5 @@ export class Worker {
                 }
             });
         });
-
-        // this.wss = new WebSocket.Server(this.options);
-        //
-        // this.wss.on('connection', (socket: WebSocket, req) => {
-
-        //     socket.on('message', async (raw: string) => {
-        //         try {
-        //             await connection.onMessage(raw);
-        //         } catch (error) {
-        //             console.error('Error on connection message');
-        //             console.error(error);
-        //             console.error('Got message:');
-        //             console.error(raw);
-        //         }
-        //     });
-        //
-        //     socket.on('close', async (data: object) => {
-        //         connection.destroy();
-        //     });
-        //
-        //     socket.on('error', (error: any) => {
-        //         connection.destroy();
-        //         console.log('error');
-        //         console.log('error from client: ', error);
-        //     });
-        // // });
     }
 }
