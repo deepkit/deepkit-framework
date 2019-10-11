@@ -69,7 +69,7 @@ export function encodeMessage(messageId: number, type: string, arg: any, payload
 }
 
 export function uintToString(array: Uint8Array): string {
-    return String.fromCharCode.apply(null, array as any);
+    return Buffer.from(array).toString();
 }
 
 export function str2ab(str: string): ArrayBuffer {

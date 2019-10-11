@@ -34,13 +34,9 @@ export class ExchangeServer {
             idleTimeout: 0,
             /* Handlers */
             open: (ws, req) => {
-                console.log('new exchange client');
             },
             message: async (ws, message: ArrayBuffer, isBinary) => {
                 this.onMessage(ws, message);
-            },
-            drain: (ws) => {
-                console.log('WebSocket exchange backpressure: ' + ws.getBufferedAmount());
             },
             close: (ws, code, message) => {
             }

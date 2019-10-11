@@ -53,11 +53,8 @@ export class Worker {
                     injectorMap.set(ws, this.mainInjector.resolveAndCreateChild(provider));
                 },
                 message: async (ws, message: ArrayBuffer, isBinary) => {
-                    const json = String.fromCharCode.apply(null, new Uint8Array(message) as any);
+                    const json = Buffer.from(message).toString();
                     await injectorMap.get(ws)!.get(ClientConnection).onMessage(json);
-                },
-                drain: (ws) => {
-                    console.log('WebSocket backpressure: ' + ws.getBufferedAmount());
                 },
                 close: (ws, code, message) => {
                     injectorMap.get(ws)!.get(ClientConnection).destroy();
