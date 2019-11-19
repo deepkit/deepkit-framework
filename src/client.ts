@@ -136,7 +136,7 @@ export class SocketClient {
                 controllerName: name,
             });
 
-            const actions = getActions(controllerInstance.constructor as ClassType<T>);
+            const actions = getActions((controllerInstance as any).constructor as ClassType<T>);
 
             activeSubject.subscribe(async (message) => {
                 if (message.type === 'error') {
@@ -180,8 +180,8 @@ export class SocketClient {
 
                     if (data.name === 'actionTypes') {
                         peerActionTypes[data.action] = {
-                            parameters: getActionParameters(controllerInstance.constructor as ClassType<T>, data.action),
-                            returnType: getActionReturnType(controllerInstance.constructor as ClassType<T>, data.action),
+                            parameters: getActionParameters((controllerInstance as any).constructor as ClassType<T>, data.action),
+                            returnType: getActionReturnType((controllerInstance as any).constructor as ClassType<T>, data.action),
                         };
 
                         const result: ServerMessageActionTypes = {
@@ -203,8 +203,8 @@ export class SocketClient {
                         if (!peerActionTypes[data.action]) {
                             //when the client cached the parameters, it won't execute actionTypes again
                             peerActionTypes[data.action] = {
-                                parameters: getActionParameters(controllerInstance.constructor as ClassType<T>, data.action),
-                                returnType: getActionReturnType(controllerInstance.constructor as ClassType<T>, data.action),
+                                parameters: getActionParameters((controllerInstance as any).constructor as ClassType<T>, data.action),
+                                returnType: getActionReturnType((controllerInstance as any).constructor as ClassType<T>, data.action),
                             };
                         }
 
