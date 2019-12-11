@@ -212,7 +212,6 @@ export interface StreamFileSet {
     type: 'set';
     path: string;
     version: number;
-    content: any;
 }
 
 export interface StreamFileAppend {
@@ -285,7 +284,7 @@ export interface ServerMessageTypeSubject {
     type: 'type';
     returnType: 'subject';
     id: number;
-    entityName?: string;
+    encoding: string | '@base64' | '@plain';
     data: any;
 }
 
@@ -295,6 +294,7 @@ export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollect
 export interface ServerMessageNextJson {
     type: 'next/json';
     id: number;
+    encoding: string | '@base64' | '@plain';
     next: any;
 }
 
@@ -307,6 +307,7 @@ export interface ServerPushMessageMessage {
 export interface ServerMessageNextObservable {
     type: 'next/observable';
     id: number;
+    encoding: string | '@base64' | '@plain';
     next: any;
     subscribeId: number;
 }
@@ -314,12 +315,14 @@ export interface ServerMessageNextObservable {
 export interface ServerMessageNextSubject {
     type: 'next/subject';
     id: number;
+    encoding: string | '@base64' | '@plain';
     next: any;
 }
 
 export interface ServerMessageAppendSubject {
     type: 'append/subject';
     id: number;
+    encoding: string | '@base64' | '@plain';
     append: any;
 }
 
