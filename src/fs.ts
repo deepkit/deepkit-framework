@@ -361,7 +361,7 @@ export class FS<T extends GlutFile> {
         }
     }
 
-    public async subscribe(path: string, fields: Partial<T>, encoding: 'binary'): Promise<StreamBehaviorSubject<Buffer | undefined>>;
+    public async subscribe(path: string, fields?: Partial<T>, encoding?: 'binary'): Promise<StreamBehaviorSubject<Buffer | undefined>>;
     public async subscribe(path: string, fields: Partial<T>, encoding: 'utf8'): Promise<StreamBehaviorSubject<string | undefined>>;
     public async subscribe(path: string, fields: Partial<T> = {}, encoding: 'binary' | 'utf8' = 'binary'):
         Promise<StreamBehaviorSubject<Buffer | undefined> | StreamBehaviorSubject<string | undefined>> {
@@ -369,6 +369,8 @@ export class FS<T extends GlutFile> {
         const subject = new StreamBehaviorSubject<any>(undefined);
 
         const file = await this.findOne(path, fields);
+
+        this.subscribe(path);
 
         const streamContent = async (id: string) => {
             //it's important to stop writing/appending when we read initially the file
