@@ -370,8 +370,6 @@ export class FS<T extends GlutFile> {
 
         const file = await this.findOne(path, fields);
 
-        this.subscribe(path);
-
         const streamContent = async (id: string) => {
             //it's important to stop writing/appending when we read initially the file
             //and then subscribe, otherwise we are hit by a race condition where it can happen
