@@ -134,7 +134,7 @@ test('test file stream', async () => {
     expect(fileContent.value).toBe('init\nupdated');
 
     const binaryContent = await test.binary('stream.txt');
-    expect(binaryContent).toBeInstanceOf(Buffer);
+    expect(binaryContent.value).toBeInstanceOf(Buffer);
     expect(binaryContent.value!.toString('utf8')).toBe('init\nupdated');
 
     await close();

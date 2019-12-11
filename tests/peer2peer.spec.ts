@@ -182,12 +182,8 @@ test('test peer2peer offline', async () => {
 
     await client.registerController('test', new TestController);
 
-    try {
-        const result = await peerController.ping();
-        expect(result).toBe(true);
-    } catch (error) {
-        fail('Should  work');
-    }
+    const result = await peerController.ping();
+    expect(result).toBe(true);
 
     try {
         const result = await peerController.timeout();
