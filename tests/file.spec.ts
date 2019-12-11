@@ -40,7 +40,7 @@ test('test file list', async () => {
 
         @Action()
         async content(path: string): Promise<StreamBehaviorSubject<string | undefined>> {
-            return await this.fs.subscribe(path);
+            return await this.fs.subscribe(path, {}, 'utf8');
         }
 
         @Action()
@@ -101,6 +101,11 @@ test('test file stream', async () => {
 
         @Action()
         async content(path: string): Promise<StreamBehaviorSubject<string | undefined>> {
+            return await this.fs.subscribe(path, {}, 'utf8');
+        }
+
+        @Action()
+        async binary(path: string): Promise<StreamBehaviorSubject<Buffer | undefined>> {
             return await this.fs.subscribe(path);
         }
     }
@@ -127,6 +132,10 @@ test('test file stream', async () => {
     await sleep(0.2);
     //content is still the same, since we unsubscribed
     expect(fileContent.value).toBe('init\nupdated');
+
+    const binaryContent = await test.binary('stream.txt');
+    expect(binaryContent).toBeInstanceOf(Buffer);
+    expect(binaryContent.value!.toString('utf8')).toBe('init\nupdated');
 
     await close();
 });
