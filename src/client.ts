@@ -26,6 +26,7 @@ import {
 import {applyDefaults, ClassType, each, eachKey, isArray, sleep} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {EntityState} from "./entity-state";
+import {Buffer} from "buffer";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';
@@ -236,7 +237,7 @@ export class SocketClient {
                                 name: 'peerController/message',
                                 controllerName: name,
                                 replyId: message.replyId,
-                                data: {type: 'next/json', id: message.id, next: actionResult}
+                                data: {type: 'next/json', id: message.id, encoding: '@plain', next: actionResult}
                             });
                         } catch (errorObject) {
                             const [entityName, error, stack] = getSerializedErrorPair(errorObject);
@@ -512,7 +513,7 @@ export class SocketClient {
                     timeout: timeoutInSeconds
                 }, {timeout: timeoutInSeconds});
 
-                function deserializeResult(next: any): any {
+                function deserializeResult(encoding: string | '@base64' | '@plain', next: any): any {
                     if (types.returnType.type === 'Date') {
                         return new Date(next);
                     }
@@ -545,17 +546,27 @@ export class SocketClient {
                         }
                     }
 
-                    return next;
+                    if (encoding === '@plain') {
+                        return next;
+                    }
+
+                    if (encoding === '@base64') {
+                        return Buffer.from(next, 'base64');
+                    }
+
+                    const classType = RegisteredEntities[types.returnType.entityName!];
+                    return plainToClass(classType, next);
                 }
 
                 activeSubject.subscribe((reply: ServerMessageResult) => {
                     if (reply.type === 'type') {
                         if (reply.returnType === 'subject') {
+
                             if (options && options.useThisStreamBehaviorSubject) {
                                 streamBehaviorSubject = options.useThisStreamBehaviorSubject;
-                                streamBehaviorSubject.next(reply.data);
+                                streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.data));
                             } else {
-                                streamBehaviorSubject = new StreamBehaviorSubject(reply.data);
+                                streamBehaviorSubject = new StreamBehaviorSubject(deserializeResult(reply.encoding, reply.data));
                             }
 
                             const reconnectionSub = activeSubject.reconnected.subscribe(() => {
@@ -671,14 +682,14 @@ export class SocketClient {
                     }
 
                     if (reply.type === 'next/json') {
-                        resolve(deserializeResult(reply.next));
+                        resolve(deserializeResult(reply.encoding, reply.next));
                         activeSubject.complete();
                     }
 
                     if (reply.type === 'next/observable') {
 
                         if (subscribers[reply.subscribeId]) {
-                            subscribers[reply.subscribeId].next(deserializeResult(reply.next));
+                            subscribers[reply.subscribeId].next(deserializeResult(reply.encoding, reply.next));
                         }
                     }
 
@@ -687,7 +698,7 @@ export class SocketClient {
                             if (streamBehaviorSubject.isUnsubscribed()) {
                                 throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
                             }
-                            streamBehaviorSubject.next(deserializeResult(reply.next));
+                            streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.next));
                         }
                     }
 
@@ -696,7 +707,7 @@ export class SocketClient {
                             if (streamBehaviorSubject.isUnsubscribed()) {
                                 throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
                             }
-                            const append = deserializeResult(reply.append);
+                            const append = deserializeResult(reply.encoding, reply.append);
                             streamBehaviorSubject.append(append);
                         }
                     }
