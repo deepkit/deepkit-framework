@@ -100,7 +100,7 @@ export class SocketClient {
     public readonly connection = new BehaviorSubject<boolean>(false);
 
     private cachedActionsTypes: {
-        [controllerName: string]: { [actionName: string]: ActionTypes }
+        [controllerName: string]: { [actionName: string]: {types?: ActionTypes, promise?: Promise<void>} }
     } = {};
 
     public constructor(
@@ -428,28 +428,44 @@ export class SocketClient {
         if (!this.cachedActionsTypes[controller]) {
             this.cachedActionsTypes[controller] = {};
         }
-
         if (!this.cachedActionsTypes[controller][actionName]) {
-            const reply = await this.sendMessage<ServerMessageActionTypes>({
-                name: 'actionTypes',
-                controller: controller,
-                action: actionName,
-                timeout: timeoutInSeconds,
-            }, {timeout: timeoutInSeconds}).firstThenClose();
-
-            if (reply.type === 'error') {
-                throw new Error(reply.error);
-            } else if (reply.type === 'actionTypes/result') {
-                this.cachedActionsTypes[controller][actionName] = {
-                    parameters: reply.parameters,
-                    returnType: reply.returnType
-                };
-            } else {
-                throw new Error('Invalid message returned: ' + JSON.stringify(reply));
-            }
+            this.cachedActionsTypes[controller][actionName] = {};
         }
 
-        return this.cachedActionsTypes[controller][actionName];
+        if (this.cachedActionsTypes[controller][actionName].promise) {
+            await this.cachedActionsTypes[controller][actionName].promise;
+        }
+
+        if (!this.cachedActionsTypes[controller][actionName].types) {
+            this.cachedActionsTypes[controller][actionName].promise = new Promise<void>(async (resolve, reject) => {
+                try {
+                    const reply = await this.sendMessage<ServerMessageActionTypes>({
+                        name: 'actionTypes',
+                        controller: controller,
+                        action: actionName,
+                        timeout: timeoutInSeconds,
+                    }, {timeout: timeoutInSeconds}).firstThenClose();
+
+                    if (reply.type === 'error') {
+                        throw new Error(reply.error);
+                    } else if (reply.type === 'actionTypes/result') {
+                        this.cachedActionsTypes[controller][actionName].types = {
+                            parameters: reply.parameters,
+                            returnType: reply.returnType
+                        };
+                        resolve();
+                    } else {
+                        throw new Error('Invalid message returned: ' + JSON.stringify(reply));
+                    }
+                } catch (e) {
+                    reject(e);
+                }
+            });
+
+            await this.cachedActionsTypes[controller][actionName].promise;
+        }
+
+        return this.cachedActionsTypes[controller][actionName].types!;
     }
 
     public async stream(controller: string, name: string, args: any[], options?: {
