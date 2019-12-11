@@ -17,6 +17,19 @@ function getSafeEntityName(object: any): string | undefined {
     }
 }
 
+function encodeValue(v: any): { encoding: string, value: any } {
+    const entityName = isObject(v) ? getSafeEntityName(v) : undefined;
+    if (entityName) {
+        return {encoding: entityName, value: classToPlain(v.constructor, v)};
+    }
+
+    if (v instanceof Buffer) {
+        return {encoding: '@base64', value: v.toString('base64')};
+    }
+
+    return {encoding: '@plain', value: v};
+}
+
 @Injectable()
 export class ConnectionMiddleware {
     protected collectionSubscriptions: { [messageId: string]: Subscriptions } = {};
@@ -106,19 +119,13 @@ export class ConnectionMiddleware {
             }
 
             this.observables[message.forId].subscriber[message.subscribeId] = this.observables[message.forId].observable.subscribe((next) => {
-                /**
-                 * `next` is automatically mapped.
-                 * @see ClientConnection.action.
-                 */
-                if (isObject(next) && !isPlainObject(next)) {
-                    console.warn(`Warning: you are sending an object (${getClassName(next)}) without serialising it using @Entity.`);
-                }
-
+                const {encoding, value} = encodeValue(next);
                 this.writer.write({
                     type: 'next/observable',
                     id: message.forId,
                     subscribeId: message.subscribeId,
-                    next: next
+                    encoding: encoding,
+                    next: value
                 });
             }, (errorObject) => {
                 const [entityName, error, stack] = getSerializedErrorPair(errorObject);
@@ -196,14 +203,14 @@ export class ConnectionMiddleware {
         } else if (result instanceof StreamBehaviorSubject) {
             const item = result.getValue();
 
-            const entityName = item ? getSafeEntityName(item.constructor) : undefined;
+            const {encoding, value} = encodeValue(item);
 
             this.writer.write({
                 type: 'type',
                 id: message.id,
                 returnType: 'subject',
-                entityName: entityName,
-                data: entityName ? classToPlain(item.constructor, item) : item
+                encoding: encoding,
+                data: value,
             });
 
             this.subjectSubscriptions[message.id] = new Subscriptions(async () => {
@@ -212,21 +219,25 @@ export class ConnectionMiddleware {
             });
 
             this.subjectSubscriptions[message.id].add = result.appendSubject.subscribe((append: any) => {
+
+                const {encoding, value} = encodeValue(append);
+
                 this.writer.write({
                     type: 'append/subject',
                     id: message.id,
-                    append: append
+                    encoding: encoding,
+                    append: value
                 });
             });
 
             //we sent already the first initial value, since its a BehaviorSubject we skip the first
             this.subjectSubscriptions[message.id].add = result.pipe(skip(1)).subscribe((next) => {
-                const entityName = next ? getSafeEntityName(next.constructor) : undefined;
-
+                const {encoding, value} = encodeValue(next);
                 this.writer.write({
                     type: 'next/subject',
                     id: message.id,
-                    next: entityName ? classToPlain(next.constructor, next) : next
+                    encoding: encoding,
+                    next: value,
                 });
             }, async (error) => {
                 this.writer.sendError(message.id, error);
@@ -368,7 +379,8 @@ export class ConnectionMiddleware {
             this.writer.write({type: 'type', id: message.id, returnType: 'observable'});
             this.observables[message.id] = {observable: result, subscriber: {}};
         } else {
-            this.writer.write({type: 'next/json', id: message.id, next: result});
+            const {encoding, value} = encodeValue(result);
+            this.writer.write({type: 'next/json', id: message.id, encoding, next: value});
         }
     }
 }

@@ -8,7 +8,7 @@ import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
 import {ProcessLocker} from "./process-locker";
 
-export type PartialFile = {id: string, path: string, mode: FileMode, md5?: string, version: number};
+export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
 
 export function getMd5(content: string | Buffer): string {
     const buffer: Buffer = 'string' === typeof content ? new Buffer(content, 'utf8') : new Buffer(content);
@@ -225,6 +225,7 @@ export class FS<T extends GlutFile> {
      * Adds a new file or updates an existing one.
      */
     public async write(path: string, data: string | Buffer, fields: Partial<T> = {}): Promise<PartialFile> {
+        // tslint:disable-next-line:prefer-const
         let {id, md5, version} = await this.exchangeDatabase.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id', 'md5']);
 
         if ('string' === typeof data) {
@@ -279,7 +280,6 @@ export class FS<T extends GlutFile> {
                 type: 'set',
                 version: version,
                 path: path,
-                content: data.toString('utf8')
             });
         } finally {
             await lock.unlock();
@@ -361,8 +361,12 @@ export class FS<T extends GlutFile> {
         }
     }
 
-    public async subscribe(path: string, fields: Partial<T> = {}): Promise<StreamBehaviorSubject<string | undefined>> {
-        const subject = new StreamBehaviorSubject<string | undefined>('');
+    public async subscribe(path: string, fields: Partial<T>, encoding: 'binary'): Promise<StreamBehaviorSubject<Buffer | undefined>>;
+    public async subscribe(path: string, fields: Partial<T>, encoding: 'utf8'): Promise<StreamBehaviorSubject<string | undefined>>;
+    public async subscribe(path: string, fields: Partial<T> = {}, encoding: 'binary' | 'utf8' = 'binary'):
+        Promise<StreamBehaviorSubject<Buffer | undefined> | StreamBehaviorSubject<string | undefined>> {
+
+        const subject = new StreamBehaviorSubject<any>(undefined);
 
         const file = await this.findOne(path, fields);
 
@@ -380,14 +384,14 @@ export class FS<T extends GlutFile> {
                     return;
                 }
 
-                //todo, support binary
-                subject.next(data ? data.toString('utf8') : undefined);
+                subject.next(data ? (encoding === 'binary' ? data : data.toString('utf8')) : undefined);
 
                 //it's important that this callback is called right after we returned the subject,
                 //and subscribed to the subject, otherwise append won't work correctly and might be hit by a race-condition.
-                const exchangeSubscription = await this.exchange.subscribeFile(id, (message) => {
+                const exchangeSubscription = await this.exchange.subscribeFile(id, async (message) => {
                     if (message.type === 'set') {
-                        subject.next(message.content);
+                        const data = await this.read(path, fields);
+                        subject.next(data ? (encoding === 'binary' ? data : data.toString('utf8')) : undefined);
                     } else if (message.type === 'append') {
                         //message.size contains the new size after this append has been applied.
                         //this means we could track to avoid race conditions, but for the moment we use a lock.
@@ -425,7 +429,6 @@ export class FS<T extends GlutFile> {
                 }
             });
         }
-
 
         return subject;
     }
