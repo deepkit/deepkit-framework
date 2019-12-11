@@ -341,6 +341,7 @@ export class SocketClient {
                 };
 
                 socket.onclose = () => {
+                    this.cachedActionsTypes = {};
                     if (this.connected) {
                         this.connection.next(false);
                         this.onDisconnect();
@@ -356,6 +357,7 @@ export class SocketClient {
                 };
 
                 socket.onerror = (error: any) => {
+                    this.cachedActionsTypes = {};
                     if (this.connected) {
                         this.connection.next(false);
                         this.onDisconnect();
