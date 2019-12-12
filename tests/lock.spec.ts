@@ -17,7 +17,7 @@ test('test lock competing', async () => {
     const lock1 = await locker.acquireLock('test-lock1', 2);
 
     const lock2 = await locker.acquireLock('test-lock1', 1);
-    expect(+new Date - started).toBeGreaterThan(2000);
+    expect(+new Date - started).toBeGreaterThanOrEqual(2000);
 });
 
 test('test lock early release', async () => {

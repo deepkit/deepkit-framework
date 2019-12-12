@@ -20,7 +20,7 @@ import {ExchangeServer} from "./exchange-server";
 export class ApplicationServerConfig {
     host: string = '127.0.0.1';
 
-    port: number = 8080;
+    port: number | 'auto' = 8080;
 
     workers: number = 1;
 
@@ -53,6 +53,11 @@ export class ApplicationServer {
     protected connection?: Connection;
 
     protected masterWorker?: Worker;
+
+    /**
+     * The port used in workers.
+     */
+    public port: number = 0;
 
     constructor(
         protected application: ClassType<any>,
@@ -213,6 +218,10 @@ export class ApplicationServer {
             process.exit(1);
         });
 
+        if (this.config.port === 'auto' && this.config.workers > 1) {
+            throw new Error('Automatic port is only available for single workers');
+        }
+
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
                 (this.getInjector().get(ExchangeServer) as ExchangeServer).start();
@@ -243,13 +252,11 @@ export class ApplicationServer {
             const app: Application = this.getInjector().get(Application);
             await app.bootstrap();
 
-            const options = {
+            this.masterWorker = new Worker(this.getInjector(), this.connectionProvider, {
                 host: this.config.host,
                 port: this.config.port,
-            };
-
-            this.masterWorker = new Worker(this.getInjector(), this.connectionProvider, options);
-            await this.masterWorker.run();
+            });
+            this.port = await this.masterWorker!.run();
             this.done();
         }
     }
