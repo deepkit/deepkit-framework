@@ -7,6 +7,8 @@ import {Observable} from "rxjs";
 import {sleep} from "@marcj/estdlib";
 import {Injector} from 'injection-js';
 import {Database} from '@marcj/marshal-mongo';
+import * as lockFile from 'proper-lockfile';
+import {readJsonSync, writeJSONSync} from "fs-extra";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -42,7 +44,8 @@ class MyApp extends Application {
     }
 }
 
-let port = 28000;
+const startPort = 28000;
+const portFile = '/tmp/glut-integration-port.txt';
 
 export async function closeAllCreatedServers() {
     for (const close of closer) {
@@ -63,12 +66,24 @@ export async function createServerClientPair(
     createControllerClient: <T>(controllerName: string) => RemoteController<T>,
     app: MyApp
 }> {
-    const thisPort = ++port;
     const dbName = 'glut_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
+
+    lockFile.lockSync(portFile, {stale: 30000});
+    let port = startPort;
+    try {
+        port = readJsonSync(portFile, {throws: false}) || startPort;
+        if (port > 50000) {
+            port = startPort;
+        }
+        const thisPort = port + 1;
+        writeJSONSync(portFile, thisPort);
+    } finally {
+        lockFile.unlockSync(portFile);
+    }
 
     const app = new ApplicationServer(appController, {
         host: '127.0.0.1',
-        port: thisPort,
+        port: port,
         mongoDbName: dbName,
         mongoConnectionName: dbName,
         mongoSynchronize: false,
@@ -84,7 +99,7 @@ export async function createServerClientPair(
 
     const socket = new SocketClient({
         host: '127.0.0.1',
-        port: thisPort,
+        port: port,
     });
 
     createdClients.push(socket);
@@ -124,7 +139,7 @@ export async function createServerClientPair(
         createClient: () => {
             const client = new SocketClient({
                 host: '127.0.0.1',
-                port: thisPort,
+                port: port,
             });
             createdClients.push(client);
             return client;
@@ -132,7 +147,7 @@ export async function createServerClientPair(
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
             const client = new SocketClient({
                 host: '127.0.0.1',
-                port: thisPort,
+                port: port,
             });
             createdClients.push(client);
             return client.controller<T>(controllerName);

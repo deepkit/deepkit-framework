@@ -18,7 +18,7 @@ import {bufferCount} from "rxjs/operators";
 import {Entity, Field} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
 import {CustomError, isArray} from '@marcj/estdlib';
-import {JSONError} from "@marcj/glut-core/src/core";
+import {JSONError} from "@marcj/glut-core";
 
 afterAll(async () => {
     await closeAllCreatedServers();
