@@ -27,8 +27,8 @@
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v16.0.0"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.11",
-    "@marcj/estdlib-rxjs": "^0.1.13",
+    "@marcj/estdlib": "^0.1.14",
+    "@marcj/estdlib-rxjs": "^0.1.14",
     "clone": "^2.1.1",
     "fs-extra": "^6.0.1",
     "injection-js": "^2.2.1",
