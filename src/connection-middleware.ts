@@ -362,7 +362,7 @@ export class ConnectionMiddleware {
 
                 if (event.type === 'set') {
                     //consider batching the items, so we don't block the connection stack
-                    //when we have thousand of items
+                    //when we have thousand of items and we get a nice loading bar.
                     const items = collection instanceof JSONObjectCollection
                         ? event.items
                         : event.items.map(v => classToPlain(collection.classType, v));

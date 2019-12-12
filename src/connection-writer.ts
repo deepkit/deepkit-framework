@@ -1,11 +1,12 @@
-import * as WebSocket from "ws";
-import {Injectable, Inject} from "injection-js";
-import {getSerializedErrorPair, JSONError, ServerMessageAll} from "@marcj/glut-core";
-import { getEntityName, getEntitySchema } from "@marcj/marshal";
+import {WebSocket} from "uWebSockets.js";
+import {Inject, Injectable} from "injection-js";
+import {getSerializedErrorPair, ServerMessageAll} from "@marcj/glut-core";
 
 
 @Injectable()
 export class ConnectionWriter {
+    protected chunkIds = 0;
+
     constructor(
         @Inject('socket') protected socket: WebSocket,
     ) {
@@ -13,7 +14,25 @@ export class ConnectionWriter {
 
     public write(message: ServerMessageAll) {
         if (this.socket.readyState === this.socket.OPEN) {
-            this.socket.send(JSON.stringify(message));
+            const json = JSON.stringify(message);
+
+            this.socket.getBufferedAmount();
+            const chunkSize = 1024 * 50; //50kb
+
+            if (json.length > chunkSize) {
+                const chunkId = this.chunkIds++;
+
+                let position = 0;
+                this.socket.send("@batch-start:" + ((message as any)['id'] || 0) + ":" + chunkId + ":" + json.length);
+                while (position * chunkSize < json.length) {
+                    const chunk = json.substr(position * (chunkSize), chunkSize);
+                    position++;
+                    this.socket.send("@batch:" + chunkId + ":" + chunk);
+                }
+                this.socket.send("@batch-end:" + chunkId);
+            } else {
+                this.socket.send(json);
+            }
         }
     }
 

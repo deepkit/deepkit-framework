@@ -31,7 +31,7 @@ export class Worker {
 
         const app = App().ws('/*', {
             /* Options */
-            compression: 0,
+            compression: 1,
             maxPayloadLength: 2 * 100 * 1024 * 1024, //200mb
             idleTimeout: 0,
             /* Handlers */
