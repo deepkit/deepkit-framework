@@ -1,5 +1,5 @@
 import 'jest-extended'
-import {getClassName, isArray, isObject, isPlainObject, isUndefined} from "../src/core";
+import {asyncOperation, getClassName, isArray, isObject, isPlainObject, isUndefined, sleep} from "../src/core";
 import {getPathValue, setPathValue} from "../src/core";
 
 class SimpleClass {
@@ -136,4 +136,39 @@ test('test setPathValue ', () => {
         setPathValue(obj, 'bla.mowla', 6);
         expect(obj['bla']['mowla']).toBe(6);
     }
+});
+
+
+test('asyncOperation', async () => {
+    let fetched = false;
+    try {
+        await asyncOperation(async (resolve) => {
+            await sleep(0.2);
+            throw new Error('MyError1');
+        });
+    } catch (error) {
+        fetched = true;
+        expect(error.stack).toContain('MyError1');
+        expect(error.stack).toContain('Object.asyncOperation');
+    }
+    expect(fetched).toBe(true);
+});
+
+test('asyncOperation deep', async () => {
+    let fetched = false;
+    try {
+        await asyncOperation(async (resolve) => {
+            await sleep(0.2);
+            await asyncOperation(async (resolve) => {
+                await sleep(0.2);
+                throw new Error('MyError2');
+            })
+        });
+    } catch (error) {
+        fetched = true;
+        console.log(error);
+        expect(error.stack).toContain('MyError2');
+        expect(error.stack).toContain('Object.asyncOperation');
+    }
+    expect(fetched).toBe(true);
 });

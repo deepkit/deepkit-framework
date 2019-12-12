@@ -24,7 +24,7 @@ export class CustomError extends Error {
  * @public
  */
 export interface ClassType<T> {
-    new (...args: any[]): T;
+    new(...args: any[]): T;
 }
 
 /**
@@ -61,7 +61,7 @@ export function getClassPropertyName<T>(classType: ClassType<T> | Object, proper
 /**
  * @public
  */
-export function applyDefaults<T>(classType: ClassType<T>, target: {[k: string]: any}): T {
+export function applyDefaults<T>(classType: ClassType<T>, target: { [k: string]: any }): T {
     const classInstance = new classType();
 
     for (const [i, v] of eachPair(target)) {
@@ -342,6 +342,28 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
     for (const [i, v] of eachPair(no)) {
         origin[i] = v;
     }
+}
+
+/**
+ * A better alternative to "new Promise()" that supports error handling and maintains the stack trace.
+ *
+ * When you use `new Promise()` you need to wrap your code inside a try-catch to call `reject` on error.
+ * asyncOperation() does this automatically.
+ *
+ * When you use `new Promise()` you will lose the stack trace when `reject(new Error())` is called.
+ * asyncOperation() makes sure the error stack trace is the correct one.
+ *
+ * @public
+ */
+export function asyncOperation<T>(executor: (resolve: (value?: T) => void, reject: (reason?: any) => void) => void | Promise<void>): Promise<T> {
+    return mergePromiseStack(new Promise<T>(async (resolve, reject) => {
+        try {
+            const res = executor(resolve, reject);
+            if (res['then']) await res;
+        } catch (e) {
+            reject(e);
+        }
+    }));
 }
 
 /**
