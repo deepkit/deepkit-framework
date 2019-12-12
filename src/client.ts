@@ -15,13 +15,13 @@ import {
     RemoteController,
     ServerMessageActionType,
     ServerMessageActionTypes,
-    ServerMessageAll,
     ServerMessageAuthorize,
     ServerMessageComplete,
     ServerMessageError,
     ServerMessagePeerChannelMessage,
     ServerMessageResult,
     StreamBehaviorSubject,
+    Batcher, Progress,
 } from "@marcj/glut-core";
 import {applyDefaults, ClassType, each, eachKey, isArray, sleep, asyncOperation} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
@@ -54,16 +54,27 @@ export class OfflineError extends Error {
 
 let _clientId = 0;
 
-export function jsonParser(key: string, value: any) {
-    if (typeof value === 'string' && value[10] === 'T') {
-        const a = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(value);
+export class ClientProgress {
+    static downloadProgress: Progress[] = [];
+    static uploadProgress: Progress[] = [];
 
-        if (a) {
-            return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4], +a[5], +a[6]));
-        }
+    /**
+     * @deprecated not implemented yet
+     */
+    static trackUpload() {
+        const progress = new Progress;
+        ClientProgress.uploadProgress.push(progress);
+        return progress;
     }
 
-    return value;
+    /**
+     * Sets up a new Progress object for the next API request to be made.
+     */
+    static trackDownload() {
+        const progress = new Progress;
+        ClientProgress.downloadProgress.push(progress);
+        return progress;
+    }
 }
 
 export class SocketClient {
@@ -93,6 +104,8 @@ export class SocketClient {
     public readonly reconnected = new Subject<number>();
 
     public readonly clientId = _clientId++;
+
+    protected batcher = new Batcher(this.onDecodedMessage.bind(this));
 
     /**
      * true when the connection fully established (after authentication)
@@ -293,23 +306,20 @@ export class SocketClient {
     }
 
     protected onMessage(event: MessageEvent) {
-        const message = JSON.parse(event.data.toString(), jsonParser) as ServerMessageAll;
-        // console.log('onMessage', message);
+        this.batcher.handle(event.data.toString());
+    }
 
-        if (!message) {
-            throw new Error(`Got invalid message: ` + event.data);
-        }
-
-        if (message.type === 'entity/remove' || message.type === 'entity/patch' || message.type === 'entity/update' || message.type === 'entity/removeMany') {
-            this.entityState.handleEntityMessage(message);
+    protected onDecodedMessage(decoded: any) {
+        if (decoded.type === 'entity/remove' || decoded.type === 'entity/patch' || decoded.type === 'entity/update' || decoded.type === 'entity/removeMany') {
+            this.entityState.handleEntityMessage(decoded);
             return;
-        } else if (message.type === 'push-message') {
+        } else if (decoded.type === 'push-message') {
             //handle shizzle
-        } else if (message.type === 'channel') {
+        } else if (decoded.type === 'channel') {
             //not built in yet
         } else {
-            if (this.replies[message.id]) {
-                this.replies[message.id](message);
+            if (this.replies[decoded.id]) {
+                this.replies[decoded.id](decoded);
             }
         }
     }
@@ -524,8 +534,8 @@ export class SocketClient {
                 controller: controller,
                 action: name,
                 args: args,
-                timeout: timeoutInSeconds
-            }, {timeout: timeoutInSeconds});
+                timeout: timeoutInSeconds,
+            }, {timeout: timeoutInSeconds, progressable: true});
 
             function deserializeResult(encoding: string | '@base64' | '@plain', next: any): any {
                 if (types.returnType.type === 'Date') {
@@ -776,7 +786,7 @@ export class SocketClient {
                     delete subscribers[reply.subscribeId];
                     activeSubject.complete();
                 }
-            }, (error) => {
+            }, (error: any) => {
                 reject(error);
             }, () => {
 
@@ -801,10 +811,17 @@ export class SocketClient {
         options?: {
             dontWaitForConnection?: boolean,
             connectionId?: number,
-            timeout?: number
+            timeout?: number,
+            progressable?: boolean,
         }
     ): MessageSubject<K> {
         this.messageId++;
+
+        if (options && options.progressable && ClientProgress.downloadProgress.length > 0) {
+            this.batcher.registerProgress(this.messageId, ClientProgress.downloadProgress);
+            ClientProgress.downloadProgress = [];
+        }
+
         const messageId = this.messageId;
         const dontWaitForConnection = !!(options && options.dontWaitForConnection);
         const timeout = options && options.timeout ? options.timeout : 0;
