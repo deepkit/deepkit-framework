@@ -8,7 +8,7 @@ import {sleep} from "@marcj/estdlib";
 import {Injector} from 'injection-js';
 import {Database} from '@marcj/marshal-mongo';
 import * as lockFile from 'proper-lockfile';
-import {readJsonSync, writeJSONSync} from "fs-extra";
+import {pathExistsSync, readJsonSync, writeJSONSync} from "fs-extra";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -67,6 +67,10 @@ export async function createServerClientPair(
     app: MyApp
 }> {
     const dbName = 'glut_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
+
+    if (!pathExistsSync(portFile)) {
+        writeJSONSync(portFile, startPort);
+    }
 
     lockFile.lockSync(portFile, {stale: 30000});
     let port = startPort;
