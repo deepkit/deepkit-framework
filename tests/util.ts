@@ -44,9 +44,6 @@ class MyApp extends Application {
     }
 }
 
-const startPort = 28000;
-const portFile = '/tmp/glut-integration-port.txt';
-
 export async function closeAllCreatedServers() {
     for (const close of closer) {
         await close();
@@ -68,26 +65,9 @@ export async function createServerClientPair(
 }> {
     const dbName = 'glut_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
 
-    if (!pathExistsSync(portFile)) {
-        writeJSONSync(portFile, startPort);
-    }
-
-    lockFile.lockSync(portFile, {stale: 30000});
-    let port = startPort;
-    try {
-        port = readJsonSync(portFile, {throws: false}) || startPort;
-        if (port > 50000) {
-            port = startPort;
-        }
-        const thisPort = port + 1;
-        writeJSONSync(portFile, thisPort);
-    } finally {
-        lockFile.unlockSync(portFile);
-    }
-
     const app = new ApplicationServer(appController, {
         host: '127.0.0.1',
-        port: port,
+        port: 'auto',
         mongoDbName: dbName,
         mongoConnectionName: dbName,
         mongoSynchronize: false,
@@ -103,7 +83,7 @@ export async function createServerClientPair(
 
     const socket = new SocketClient({
         host: '127.0.0.1',
-        port: port,
+        port: app.port,
     });
 
     createdClients.push(socket);
@@ -143,7 +123,7 @@ export async function createServerClientPair(
         createClient: () => {
             const client = new SocketClient({
                 host: '127.0.0.1',
-                port: port,
+                port: app.port,
             });
             createdClients.push(client);
             return client;
@@ -151,7 +131,7 @@ export async function createServerClientPair(
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
             const client = new SocketClient({
                 host: '127.0.0.1',
-                port: port,
+                port: app.port,
             });
             createdClients.push(client);
             return client.controller<T>(controllerName);
