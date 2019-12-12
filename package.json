@@ -13,10 +13,10 @@
   "scripts": {
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc",
-    "tsc-watch": "tsc --watch"
+    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@marcj/estdlib": "^0.1.4",
+    "@marcj/estdlib": "^0.1.11",
     "rxjs": "^6.3.3"
   },
   "devDependencies": {
