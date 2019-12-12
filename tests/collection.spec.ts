@@ -1,3 +1,4 @@
+import 'jest';
 import {Collection} from '../src/collection';
 import {uuid} from '@marcj/marshal';
 
