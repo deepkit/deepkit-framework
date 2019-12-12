@@ -50,9 +50,9 @@ class EntitySubjectStore<T extends IdInterface> {
                 }
             }
         }, error => {
-           forkedSubject.error(error);
+            forkedSubject.error(error);
         }, () => {
-           forkedSubject.complete();
+            forkedSubject.complete();
         });
 
         // originSubject.subscribe(forkedSubject);
@@ -128,7 +128,7 @@ class EntitySubjectStore<T extends IdInterface> {
         this.subjects[id].next(this.subjects[id].getValue());
     }
 
-    public notifyForksAboutPatches(id: string, patches: {[path: string]: any}) {
+    public notifyForksAboutPatches(id: string, patches: { [path: string]: any }) {
         this.subjects[id].patches.next(patches);
     }
 
@@ -181,7 +181,7 @@ export class EntityState {
 
                 if (item && (toVersion === 0 || item.version < toVersion)) {
 
-                    const patches: {[path: string]: any} = {};
+                    const patches: { [path: string]: any } = {};
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(stream.patch)) {
@@ -239,7 +239,6 @@ export class EntityState {
         // console.log('collection next', stream);
 
         if (stream.type === 'set') {
-
             const setItems: T[] = [];
             for (const itemRaw of stream.items) {
                 if (!collection.entitySubjects[itemRaw.id]) {

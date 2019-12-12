@@ -23,7 +23,7 @@ import {
     ServerMessageResult,
     StreamBehaviorSubject,
 } from "@marcj/glut-core";
-import {applyDefaults, ClassType, each, eachKey, isArray, sleep} from "@marcj/estdlib";
+import {applyDefaults, ClassType, each, eachKey, isArray, sleep, asyncOperation} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {EntityState} from "./entity-state";
 import {Buffer} from "buffer";
@@ -439,31 +439,28 @@ export class SocketClient {
         }
 
         if (!this.cachedActionsTypes[controller][actionName].types) {
-            this.cachedActionsTypes[controller][actionName].promise = new Promise<void>(async (resolve, reject) => {
-                try {
-                    const reply = await this.sendMessage<ServerMessageActionTypes>({
-                        name: 'actionTypes',
-                        controller: controller,
-                        action: actionName,
-                        timeout: timeoutInSeconds,
-                    }, {timeout: timeoutInSeconds}).firstThenClose();
+            this.cachedActionsTypes[controller][actionName].promise = asyncOperation<void>(async (resolve, reject) => {
+                const reply = await this.sendMessage<ServerMessageActionTypes>({
+                    name: 'actionTypes',
+                    controller: controller,
+                    action: actionName,
+                    timeout: timeoutInSeconds,
+                }, {timeout: timeoutInSeconds}).firstThenClose();
 
-                    if (reply.type === 'error') {
-                        throw new Error(reply.error);
-                    } else if (reply.type === 'actionTypes/result') {
-                        this.cachedActionsTypes[controller][actionName].types = {
-                            parameters: reply.parameters,
-                            returnType: reply.returnType
-                        };
-                        resolve();
-                    } else {
-                        throw new Error('Invalid message returned: ' + JSON.stringify(reply));
-                    }
-                } catch (e) {
-                    reject(e);
+                if (reply.type === 'error') {
+                    delete this.cachedActionsTypes[controller][actionName];
+                    throw new Error(reply.error);
+                } else if (reply.type === 'actionTypes/result') {
+                    this.cachedActionsTypes[controller][actionName].types = {
+                        parameters: reply.parameters,
+                        returnType: reply.returnType
+                    };
+                    resolve();
+                } else {
+                    delete this.cachedActionsTypes[controller][actionName];
+                    throw new Error('Invalid message returned: ' + JSON.stringify(reply));
                 }
             });
-
             await this.cachedActionsTypes[controller][actionName].promise;
         }
 
@@ -475,319 +472,315 @@ export class SocketClient {
         timeoutInSeconds?: number,
         useThisStreamBehaviorSubject?: StreamBehaviorSubject<any>,
     }): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            try {
-                //todo, handle reject when we sending message fails
+        return asyncOperation<any>(async (resolve, reject) => {
+            //todo, handle reject when we sending message fails
 
-                let returnValue: any;
+            let returnValue: any;
 
-                const timeoutInSeconds = options && options.timeoutInSeconds ? options.timeoutInSeconds : 0;
+            const timeoutInSeconds = options && options.timeoutInSeconds ? options.timeoutInSeconds : 0;
 
-                const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
-                let subscriberIdCounter = 0;
-                let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
+            const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
+            let subscriberIdCounter = 0;
+            let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
-                const types = await this.getActionTypes(controller, name, timeoutInSeconds);
+            const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
-                for (const i of eachKey(args)) {
-                    const type = types.parameters[i];
+            for (const i of eachKey(args)) {
+                const type = types.parameters[i];
 
-                    if (!type) continue;
+                if (!type) continue;
 
-                    if (undefined === args[i]) {
-                        continue;
+                if (undefined === args[i]) {
+                    continue;
+                }
+
+                if (type.type === 'Entity' && type.entityName) {
+                    if (!RegisteredEntities[type.entityName]) {
+                        throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
                     }
 
-                    if (type.type === 'Entity' && type.entityName) {
-                        if (!RegisteredEntities[type.entityName]) {
-                            throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
-                        }
-
-                        if (type.partial) {
-                            args[i] = partialClassToPlain(RegisteredEntities[type.entityName], args[i]);
-                        } else {
-                            args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
-                        }
-                    }
-
-                    if (type.type === 'String') {
-                        args[i] = type.array ? args[i].map((v: any) => String(v)) : String(args[i]);
-                    }
-
-                    if (type.type === 'Number') {
-                        args[i] = type.array ? args[i].map((v: any) => Number(v)) : Number(args[i]);
-                    }
-
-                    if (type.type === 'Boolean') {
-                        args[i] = type.array ? args[i].map((v: any) => Boolean(v)) : Boolean(args[i]);
+                    if (type.partial) {
+                        args[i] = partialClassToPlain(RegisteredEntities[type.entityName], args[i]);
+                    } else {
+                        args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
                     }
                 }
 
-                const activeSubject = this.sendMessage<ServerMessageResult>({
-                    name: 'action',
-                    controller: controller,
-                    action: name,
-                    args: args,
-                    timeout: timeoutInSeconds
-                }, {timeout: timeoutInSeconds});
+                if (type.type === 'String') {
+                    args[i] = type.array ? args[i].map((v: any) => String(v)) : String(args[i]);
+                }
 
-                function deserializeResult(encoding: string | '@base64' | '@plain', next: any): any {
-                    if (types.returnType.type === 'Date') {
-                        return new Date(next);
-                    }
+                if (type.type === 'Number') {
+                    args[i] = type.array ? args[i].map((v: any) => Number(v)) : Number(args[i]);
+                }
 
-                    if (types.returnType.type === 'Entity') {
-                        if (next === null || next === undefined) {
-                            return next;
-                        }
+                if (type.type === 'Boolean') {
+                    args[i] = type.array ? args[i].map((v: any) => Boolean(v)) : Boolean(args[i]);
+                }
+            }
 
-                        const classType = RegisteredEntities[types.returnType.entityName!];
+            const activeSubject = this.sendMessage<ServerMessageResult>({
+                name: 'action',
+                controller: controller,
+                action: name,
+                args: args,
+                timeout: timeoutInSeconds
+            }, {timeout: timeoutInSeconds});
 
-                        if (!classType) {
-                            reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                            activeSubject.complete();
-                            return;
-                        }
+            function deserializeResult(encoding: string | '@base64' | '@plain', next: any): any {
+                if (types.returnType.type === 'Date') {
+                    return new Date(next);
+                }
 
-                        if (types.returnType.partial) {
-                            if (isArray(next)) {
-                                return next.map(v => partialPlainToClass(classType, v));
-                            } else {
-                                return partialPlainToClass(classType, next);
-                            }
-                        } else {
-                            if (isArray(next)) {
-                                return next.map(v => plainToClass(classType, v));
-                            } else {
-                                return plainToClass(classType, next);
-                            }
-                        }
-                    }
-
-                    if (encoding === '@plain') {
+                if (types.returnType.type === 'Entity') {
+                    if (next === null || next === undefined) {
                         return next;
                     }
 
-                    if (encoding === '@base64') {
-                        return Buffer.from(next, 'base64');
+                    const classType = RegisteredEntities[types.returnType.entityName!];
+
+                    if (!classType) {
+                        reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
+                        activeSubject.complete();
+                        return;
                     }
 
-                    const classType = RegisteredEntities[types.returnType.entityName!];
-                    return plainToClass(classType, next);
+                    if (types.returnType.partial) {
+                        if (isArray(next)) {
+                            return next.map(v => partialPlainToClass(classType, v));
+                        } else {
+                            return partialPlainToClass(classType, next);
+                        }
+                    } else {
+                        if (isArray(next)) {
+                            return next.map(v => plainToClass(classType, v));
+                        } else {
+                            return plainToClass(classType, next);
+                        }
+                    }
                 }
 
-                activeSubject.subscribe((reply: ServerMessageResult) => {
-                    if (reply.type === 'type') {
-                        if (reply.returnType === 'subject') {
+                if (encoding === '@plain') {
+                    return next;
+                }
 
-                            if (options && options.useThisStreamBehaviorSubject) {
-                                streamBehaviorSubject = options.useThisStreamBehaviorSubject;
-                                streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.data));
-                            } else {
-                                streamBehaviorSubject = new StreamBehaviorSubject(deserializeResult(reply.encoding, reply.data));
-                            }
+                if (encoding === '@base64') {
+                    return Buffer.from(next, 'base64');
+                }
 
-                            const reconnectionSub = activeSubject.reconnected.subscribe(() => {
-                                reconnectionSub.unsubscribe();
-                                this.stream(controller, name, args, {useThisStreamBehaviorSubject: streamBehaviorSubject});
-                            });
+                const classType = RegisteredEntities[types.returnType.entityName!];
+                return plainToClass(classType, next);
+            }
 
-                            streamBehaviorSubject.addTearDown(async () => {
-                                reconnectionSub.unsubscribe();
-                                //user unsubscribed the entity subject, so we stop syncing changes
-                                await activeSubject.sendMessage({
-                                    name: 'subject/unsubscribe',
-                                    forId: reply.id,
-                                }).firstOrUndefinedThenClose();
-                            });
-                            resolve(streamBehaviorSubject);
+            activeSubject.subscribe((reply: ServerMessageResult) => {
+                if (reply.type === 'type') {
+                    if (reply.returnType === 'subject') {
+
+                        if (options && options.useThisStreamBehaviorSubject) {
+                            streamBehaviorSubject = options.useThisStreamBehaviorSubject;
+                            streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.data));
+                        } else {
+                            streamBehaviorSubject = new StreamBehaviorSubject(deserializeResult(reply.encoding, reply.data));
                         }
 
-                        if (reply.returnType === 'entity') {
-                            if (reply.item) {
-                                const classType = RegisteredEntities[reply.entityName || ''];
+                        const reconnectionSub = activeSubject.reconnected.subscribe(() => {
+                            reconnectionSub.unsubscribe();
+                            this.stream(controller, name, args, {useThisStreamBehaviorSubject: streamBehaviorSubject});
+                        });
 
-                                if (!classType) {
-                                    throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
-                                }
+                        streamBehaviorSubject.addTearDown(async () => {
+                            reconnectionSub.unsubscribe();
+                            //user unsubscribed the entity subject, so we stop syncing changes
+                            await activeSubject.sendMessage({
+                                name: 'subject/unsubscribe',
+                                forId: reply.id,
+                            }).firstOrUndefinedThenClose();
+                        });
+                        resolve(streamBehaviorSubject);
+                    }
 
-                                const subject = this.entityState.handleEntity(classType, reply.item!);
-                                subject.addTearDown(async () => {
-                                    //user unsubscribed the entity subject, so we stop syncing changes
-                                    await activeSubject.sendMessage({
-                                        name: 'entity/unsubscribe',
-                                        forId: reply.id,
-                                    }).firstOrUndefinedThenClose();
-                                });
+                    if (reply.returnType === 'entity') {
+                        if (reply.item) {
+                            const classType = RegisteredEntities[reply.entityName || ''];
 
-                                resolve(subject);
-                            } else {
-                                reject(new Error('Item not found'));
-                            }
-                        }
-
-                        if (reply.returnType === 'observable') {
-                            returnValue = new Observable((observer) => {
-                                const subscriberId = ++subscriberIdCounter;
-
-                                subscribers[subscriberId] = observer;
-
-                                activeSubject.sendMessage({
-                                    forId: reply.id,
-                                    name: 'observable/subscribe',
-                                    subscribeId: subscriberId
-                                }).firstOrUndefinedThenClose();
-
-                                return {
-                                    unsubscribe(): void {
-                                        activeSubject.sendMessage({
-                                            forId: reply.id,
-                                            name: 'observable/unsubscribe',
-                                            subscribeId: subscriberId
-                                        }).firstOrUndefinedThenClose();
-                                    }
-                                };
-                            });
-                            resolve(returnValue);
-                        }
-
-                        if (reply.returnType === 'collection') {
-                            const classType = RegisteredEntities[reply.entityName];
                             if (!classType) {
                                 throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                             }
 
-                            const collection = new Collection<any>(classType);
-
-                            if (reply.pagination.active) {
-                                collection.pagination._activate();
-                                collection.pagination.setItemsPerPage(reply.pagination.itemsPerPage);
-                                collection.pagination.setTotal(reply.pagination.total);
-                                collection.pagination.setPage(reply.pagination.page);
-                                collection.pagination.setSort(reply.pagination.sort);
-                                collection.pagination.setParameters(reply.pagination.parameters);
-
-                                collection.pagination.event.subscribe((event: CollectionPaginationEvent) => {
-                                    if (event.type === 'apply') {
-                                        activeSubject.sendMessage({
-                                            forId: reply.id,
-                                            name: 'collection/pagination',
-                                            sort: collection.pagination.getSort(),
-                                            parameters: collection.pagination.getParameters(),
-                                            page: collection.pagination.getPage(),
-                                            itemsPerPage: collection.pagination.getItemsPerPage(),
-                                        }).firstOrUndefinedThenClose();
-                                    }
-                                });
-                            }
-
-                            returnValue = collection;
-
-                            collection.addTeardown(async () => {
-                                for (const entitySubject of each(collection.entitySubjects)) {
-                                    entitySubject.unsubscribe();
-                                }
-
-                                //collection unsubscribed, so we stop syncing changes
+                            const subject = this.entityState.handleEntity(classType, reply.item!);
+                            subject.addTearDown(async () => {
+                                //user unsubscribed the entity subject, so we stop syncing changes
                                 await activeSubject.sendMessage({
+                                    name: 'entity/unsubscribe',
                                     forId: reply.id,
-                                    name: 'collection/unsubscribe'
                                 }).firstOrUndefinedThenClose();
-                                activeSubject.complete();
                             });
-                            //do not resolve yet, since we want to wait until the collection has bee populated.
+
+                            resolve(subject);
+                        } else {
+                            reject(new Error('Item not found'));
                         }
                     }
 
-                    if (reply.type === 'next/json') {
-                        resolve(deserializeResult(reply.encoding, reply.next));
-                        activeSubject.complete();
-                    }
+                    if (reply.returnType === 'observable') {
+                        returnValue = new Observable((observer) => {
+                            const subscriberId = ++subscriberIdCounter;
 
-                    if (reply.type === 'next/observable') {
+                            subscribers[subscriberId] = observer;
 
-                        if (subscribers[reply.subscribeId]) {
-                            subscribers[reply.subscribeId].next(deserializeResult(reply.encoding, reply.next));
-                        }
-                    }
+                            activeSubject.sendMessage({
+                                forId: reply.id,
+                                name: 'observable/subscribe',
+                                subscribeId: subscriberId
+                            }).firstOrUndefinedThenClose();
 
-                    if (reply.type === 'next/subject') {
-                        if (streamBehaviorSubject) {
-                            if (streamBehaviorSubject.isUnsubscribed()) {
-                                throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
-                            }
-                            streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.next));
-                        }
-                    }
-
-                    if (reply.type === 'append/subject') {
-                        if (streamBehaviorSubject) {
-                            if (streamBehaviorSubject.isUnsubscribed()) {
-                                throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
-                            }
-                            const append = deserializeResult(reply.encoding, reply.append);
-                            streamBehaviorSubject.append(append);
-                        }
-                    }
-
-                    if (reply.type === 'next/collection') {
-                        this.entityState.handleCollectionNext(returnValue, reply.next);
+                            return {
+                                unsubscribe(): void {
+                                    activeSubject.sendMessage({
+                                        forId: reply.id,
+                                        name: 'observable/unsubscribe',
+                                        subscribeId: subscriberId
+                                    }).firstOrUndefinedThenClose();
+                                }
+                            };
+                        });
                         resolve(returnValue);
                     }
 
-                    if (reply.type === 'complete') {
-                        if (returnValue instanceof Collection) {
-                            returnValue.complete();
+                    if (reply.returnType === 'collection') {
+                        const classType = RegisteredEntities[reply.entityName];
+                        if (!classType) {
+                            throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
                         }
 
-                        if (streamBehaviorSubject) {
-                            streamBehaviorSubject.complete();
+                        const collection = new Collection<any>(classType);
+
+                        if (reply.pagination.active) {
+                            collection.pagination._activate();
+                            collection.pagination.setItemsPerPage(reply.pagination.itemsPerPage);
+                            collection.pagination.setTotal(reply.pagination.total);
+                            collection.pagination.setPage(reply.pagination.page);
+                            collection.pagination.setSort(reply.pagination.sort);
+                            collection.pagination.setParameters(reply.pagination.parameters);
+
+                            collection.pagination.event.subscribe((event: CollectionPaginationEvent) => {
+                                if (event.type === 'apply') {
+                                    activeSubject.sendMessage({
+                                        forId: reply.id,
+                                        name: 'collection/pagination',
+                                        sort: collection.pagination.getSort(),
+                                        parameters: collection.pagination.getParameters(),
+                                        page: collection.pagination.getPage(),
+                                        itemsPerPage: collection.pagination.getItemsPerPage(),
+                                    }).firstOrUndefinedThenClose();
+                                }
+                            });
                         }
 
-                        activeSubject.complete();
+                        returnValue = collection;
+
+                        collection.addTeardown(async () => {
+                            for (const entitySubject of each(collection.entitySubjects)) {
+                                entitySubject.unsubscribe();
+                            }
+
+                            //collection unsubscribed, so we stop syncing changes
+                            await activeSubject.sendMessage({
+                                forId: reply.id,
+                                name: 'collection/unsubscribe'
+                            }).firstOrUndefinedThenClose();
+                            activeSubject.complete();
+                        });
+                        //do not resolve yet, since we want to wait until the collection has bee populated.
+                    }
+                }
+
+                if (reply.type === 'next/json') {
+                    resolve(deserializeResult(reply.encoding, reply.next));
+                    activeSubject.complete();
+                }
+
+                if (reply.type === 'next/observable') {
+
+                    if (subscribers[reply.subscribeId]) {
+                        subscribers[reply.subscribeId].next(deserializeResult(reply.encoding, reply.next));
+                    }
+                }
+
+                if (reply.type === 'next/subject') {
+                    if (streamBehaviorSubject) {
+                        if (streamBehaviorSubject.isUnsubscribed()) {
+                            throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
+                        }
+                        streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.next));
+                    }
+                }
+
+                if (reply.type === 'append/subject') {
+                    if (streamBehaviorSubject) {
+                        if (streamBehaviorSubject.isUnsubscribed()) {
+                            throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
+                        }
+                        const append = deserializeResult(reply.encoding, reply.append);
+                        streamBehaviorSubject.append(append);
+                    }
+                }
+
+                if (reply.type === 'next/collection') {
+                    this.entityState.handleCollectionNext(returnValue, reply.next);
+                    resolve(returnValue);
+                }
+
+                if (reply.type === 'complete') {
+                    if (returnValue instanceof Collection) {
+                        returnValue.complete();
                     }
 
-                    if (reply.type === 'error') {
-                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
-
-                        if (returnValue instanceof Collection) {
-                            returnValue.error(error);
-                        } else if (streamBehaviorSubject) {
-                            streamBehaviorSubject.error(error);
-                        } else {
-                            reject(error);
-                        }
-
-                        activeSubject.complete();
+                    if (streamBehaviorSubject) {
+                        streamBehaviorSubject.complete();
                     }
 
-                    if (reply.type === 'error/observable') {
-                        const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
+                    activeSubject.complete();
+                }
 
-                        if (subscribers[reply.subscribeId]) {
-                            subscribers[reply.subscribeId].error(error);
-                        }
+                if (reply.type === 'error') {
+                    const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
 
-                        delete subscribers[reply.subscribeId];
-                        activeSubject.complete();
+                    if (returnValue instanceof Collection) {
+                        returnValue.error(error);
+                    } else if (streamBehaviorSubject) {
+                        streamBehaviorSubject.error(error);
+                    } else {
+                        reject(error);
                     }
 
-                    if (reply.type === 'complete/observable') {
-                        if (subscribers[reply.subscribeId]) {
-                            subscribers[reply.subscribeId].complete();
-                        }
+                    activeSubject.complete();
+                }
 
-                        delete subscribers[reply.subscribeId];
-                        activeSubject.complete();
+                if (reply.type === 'error/observable') {
+                    const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
+
+                    if (subscribers[reply.subscribeId]) {
+                        subscribers[reply.subscribeId].error(error);
                     }
-                }, (error) => {
-                    reject(error);
-                }, () => {
 
-                });
-            } catch (error) {
+                    delete subscribers[reply.subscribeId];
+                    activeSubject.complete();
+                }
+
+                if (reply.type === 'complete/observable') {
+                    if (subscribers[reply.subscribeId]) {
+                        subscribers[reply.subscribeId].complete();
+                    }
+
+                    delete subscribers[reply.subscribeId];
+                    activeSubject.complete();
+                }
+            }, (error) => {
                 reject(error);
-            }
+            }, () => {
+
+            });
         });
     }
 
