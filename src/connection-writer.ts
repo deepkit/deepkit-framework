@@ -17,7 +17,7 @@ export class ConnectionWriter {
             const json = JSON.stringify(message);
 
             this.socket.getBufferedAmount();
-            const chunkSize = 1024 * 50; //50kb
+            const chunkSize = 1024 * 100;
 
             if (json.length > chunkSize) {
                 const chunkId = this.chunkIds++;
