@@ -200,7 +200,7 @@ export class EntityState {
                     }
                 }
             } else {
-                throw new Error(`${getClassName(classType)} item not found in store for ${stream.id}. Patch not possible`);
+                console.debug(new Error(`${getClassName(classType)} item not found in store for ${stream.id}. Patch not possible`));
             }
         }
 
@@ -208,7 +208,7 @@ export class EntityState {
             if (store.hasStoreItem(stream.id)) {
                 store.removeItemAndNotifyObservers(stream.id);
             } else {
-                throw new Error(`${getClassName(classType)} item not found in store for ${stream.id}. Removing not possible`);
+                console.debug(new Error(`${getClassName(classType)} item not found in store for ${stream.id}. Removing not possible`));
             }
         }
     }
