@@ -3,8 +3,7 @@ import 'reflect-metadata';
 import {
     classToPlain,
     cloneClass,
-    EnumField,
-    Exclude,
+    f,
     getEntityName,
     getIdField,
     getIdFieldValue,
@@ -14,8 +13,7 @@ import {
     getReflectionType,
     getParentReferenceClass,
     ParentReference,
-    Optional,
-    OnLoad, Field, forwardRef, FieldAny
+    OnLoad
 } from "@marcj/marshal";
 import {
     now,
@@ -294,8 +292,7 @@ test('test childrenMap', async () => {
 
 test('test allowNull', async () => {
     class Model {
-        @Field()
-        @Optional()
+        @f.optional()
         name?: string;
     }
 
@@ -310,14 +307,14 @@ test('test OnLoad', async () => {
     let ModelRef;
 
     class Sub {
-        @Field()
+        @f
         name?: string;
 
         onLoadCallback: (item: Sub) => void;
 
         onFullLoadCallback: (item: Sub) => void;
 
-        @Field(forwardRef(() => ModelRef))
+        @f.forward(() => ModelRef)
         @ParentReference()
         parent?: any;
 
@@ -339,14 +336,13 @@ test('test OnLoad', async () => {
     }
 
     class Model {
-        @Field()
-        @Optional()
+        @f.optional()
         name?: string;
 
-        @Field(Sub)
+        @f.type(Sub)
         sub?: Sub;
 
-        @Field(Sub)
+        @f.type(Sub)
         sub2?: Sub;
     }
 
@@ -401,7 +397,7 @@ test('test setter/getter', async () => {
             return true;
         }
 
-        @Field([Font])
+        @f.array(Font)
         get fonts(): Font[] {
             return this._fonts;
         }
@@ -617,13 +613,13 @@ test('test @Decorated with parent', async () => {
 test('simple string + number + boolean', () => {
 
     class Model {
-        @Field()
+        @f
         name?: string;
 
-        @Field()
+        @f
         age?: number;
 
-        @Field()
+        @f
         yesNo?: boolean;
     }
 
@@ -655,23 +651,23 @@ test('simple string + number + boolean', () => {
 
 test('cloneClass', () => {
     class SubModel {
-        @Field()
+        @f
         name?: string;
     }
 
     class DataStruct {
-        @Field()
+        @f
         name?: string;
     }
 
     class Model {
-       @FieldAny()
+       @f.any()
        data: any;
 
-       @Field(DataStruct)
+       @f.type(DataStruct)
        dataStruct?: DataStruct;
 
-       @Field([SubModel])
+       @f.array(SubModel)
        subs?: SubModel[];
     }
 
@@ -729,19 +725,19 @@ test('enums', () => {
     }
 
     class Model {
-        @EnumField(Enum1)
+        @f.enum(Enum1)
         enum1?: Enum1;
 
-        @EnumField(Enum2)
+        @f.enum(Enum2)
         enum2?: Enum2;
 
-        @EnumField(Enum3)
+        @f.enum(Enum3)
         enum3?: Enum3;
 
-        @EnumField(Enum4)
+        @f.enum(Enum4)
         enum4?: Enum4;
 
-        @EnumField(Enum4, true)
+        @f.enum(Enum4, true)
         enumLabels?: Enum4;
     }
 

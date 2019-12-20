@@ -1,13 +1,10 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
-    EnumField,
-    Field,
+    f,
     forwardRef,
     getResolvedReflection,
-    MongoIdField, Optional,
     ParentReference,
-    UUIDField
 } from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
@@ -67,7 +64,7 @@ test('make sure undefined is undefined', () => {
 
     class Model {
         constructor(
-        @Field().optional()
+        @f.optional()
         public name?: string){}
     }
 
@@ -109,13 +106,13 @@ test('convert IDs and invalid values', () => {
     }
 
     class Model {
-        @MongoIdField()
+        @f.mongoId()
         id2?: string;
 
-        @UUIDField()
+        @f.uuid()
         uuid?: string;
 
-        @EnumField(Enum)
+        @f.enum(Enum)
         enum?: Enum;
     }
 
@@ -142,7 +139,7 @@ test('convert IDs and invalid values', () => {
 
 test('binary', () => {
     class Model {
-        @Field(Buffer)
+        @f.type(Buffer)
         preview: Buffer = Buffer.from('FooBar', 'utf8');
     }
 
@@ -157,7 +154,7 @@ test('binary', () => {
 
 test('binary from mongo', () => {
     class Model {
-        @Field(Buffer)
+        @f.type(Buffer)
         preview: Buffer = Buffer.from('FooBar', 'utf8');
     }
 
@@ -382,18 +379,17 @@ test('partial any copy ', () => {
 
 test('partial mongo to plain ', () => {
     class User {
-        @Field()
+        @f
         name?: string;
 
-        @Field([String])
+        @f.array(String)
         tags?: string[];
 
-        @Field(Buffer)
+        @f.type(Buffer)
         picture?: Buffer;
 
-        @Field(forwardRef(() => User))
+        @f.forward(() => User).optional()
         @ParentReference()
-        @Optional()
         parent?: User;
     }
 

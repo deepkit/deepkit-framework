@@ -4,7 +4,7 @@ import {createConnection} from "typeorm";
 import {Plan, SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {getTypeOrmEntity} from "../src/typeorm";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
-import {Entity, Field, uuid, UUIDField} from "@marcj/marshal";
+import {Entity, f, getClassSchema, uuid} from "@marcj/marshal";
 
 test('basic SuperSimple', async () => {
     const entity = getTypeOrmEntity(SuperSimple);
@@ -34,25 +34,25 @@ test('basic inheritance', async () => {
 
     @Entity('base_file')
     class BaseFile {
-        @UUIDField()
+        @f.uuid()
         id: string = uuid();
 
-        @Field().index()
+        @f.index()
         path: string = '';
     }
 
     @Entity('file')
     class File extends BaseFile {
-        @UUIDField().optional()
+        @f.uuid().optional()
         project?: string;
 
-        @UUIDField().optional().index()
+        @f.uuid().optional().index()
         job?: string;
 
-        @Field().optional()
+        @f.optional()
         task?: string;
 
-        @Field().optional()
+        @f.optional()
         instance?: number;
     }
 
@@ -86,6 +86,8 @@ test('basic PageClass', async () => {
 
 test('basic SimpleModel', async () => {
     const entity = getTypeOrmEntity(SimpleModel);
+    const schema = getClassSchema(SimpleModel);
+    expect(schema.getProperty('name').type).toBe('string');
 
     expect(entity.options.indices![1]).toEqual({
         columns: ['name', 'type'],

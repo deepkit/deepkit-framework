@@ -3,11 +3,9 @@ import 'reflect-metadata';
 import {
     DatabaseName,
     Entity,
-    Field,
+    f,
     getDatabaseName,
     getEntityName,
-    IDField,
-    MongoIdField,
     plainToClass,
 } from "@marcj/marshal";
 import {Binary, ObjectID} from "mongodb";
@@ -42,7 +40,7 @@ test('test save undefined values', async () => {
     @Entity('undefined-model-value')
     class Model {
         constructor(
-            @Field().optional()
+            @f.optional()
             public name?: string){}
     }
     const collection = database.getCollection(Model);
@@ -224,11 +222,10 @@ test('test databaseName', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing2')
     class DifferentDataBase {
-        @IDField()
-        @MongoIdField()
+        @f.id().mongoId()
         _id?: string;
 
-        @Field()
+        @f
         name?: string;
     }
 
@@ -256,10 +253,10 @@ test('no id', async () => {
 
     @Entity('NoId')
     class NoId {
-        @MongoIdField()
+        @f.mongoId()
         _id?: string;
 
-        @Field()
+        @f
         name?: string;
     }
 
@@ -287,17 +284,16 @@ test('second object id', async () => {
 
     @Entity('SecondObjectId')
     class SecondObjectId {
-        @IDField()
-        @MongoIdField()
+        @f.id().mongoId()
         _id?: string;
 
-        @Field()
+        @f
         name?: string;
 
-        @Field(Buffer)
+        @f.type(Buffer)
         preview: Buffer = Buffer.from('FooBar', 'utf8');
 
-        @MongoIdField()
+        @f.mongoId()
         secondId?: string;
     }
 
