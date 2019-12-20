@@ -354,7 +354,7 @@ export class JobTask {
 
 @Entity('job', 'jobs')
 export class Job {
-    @f.id().uuid()
+    @f.primary().uuid()
     id: string;
 
     @f.uuid()

@@ -138,6 +138,33 @@ test('test save model', async () => {
     expect(await database.has(SimpleModel, {name: 'New Name 2'})).toBeTrue();
 });
 
+test('test patchAll', async () => {
+    const database = await createDatabase('testing');
+
+    await database.add(SimpleModel, new SimpleModel('myName1'));
+    await database.add(SimpleModel, new SimpleModel('myName2'));
+    await database.add(SimpleModel, new SimpleModel('peter'));
+
+    expect(await database.count(SimpleModel, {name: {$regex: /^myName?/}})).toBe(2);
+    expect(await database.count(SimpleModel, {name: {$regex: /^peter.*/}})).toBe(1);
+
+    await database.patchAll(SimpleModel, {name: {$regex: /^myName?/}}, {
+        name: 'peterNew'
+    });
+
+    expect(await database.count(SimpleModel, {name: {$regex: /^myName?/}})).toBe(0);
+    expect(await database.count(SimpleModel, {name: {$regex: /^peter.*/}})).toBe(3);
+
+    const fields = await database.fieldsOne(SimpleModel, {name: 'peterNew'}, ['name']);
+    expect(fields!.name).toBe('peterNew');
+
+    const fieldRows = await database.fields(SimpleModel, {}, ['name']);
+    expect(fieldRows).toBeArrayOfSize(3);
+    expect(fieldRows[0].name).toBe('peterNew');
+    expect(fieldRows[1].name).toBe('peterNew');
+    expect(fieldRows[2].name).toBe('peter');
+});
+
 test('test delete', async () => {
     const database = await createDatabase('testing');
 
@@ -222,7 +249,7 @@ test('test databaseName', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing2')
     class DifferentDataBase {
-        @f.id().mongoId()
+        @f.primary().mongoId()
         _id?: string;
 
         @f
@@ -284,7 +311,7 @@ test('second object id', async () => {
 
     @Entity('SecondObjectId')
     class SecondObjectId {
-        @f.id().mongoId()
+        @f.primary().mongoId()
         _id?: string;
 
         @f

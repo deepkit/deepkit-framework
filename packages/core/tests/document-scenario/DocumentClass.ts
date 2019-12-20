@@ -3,7 +3,7 @@ import {ParentReference, f} from "../../src/decorators";
 import {PageClass} from "./PageClass";
 
 export class DocumentClass {
-    @f.id().mongoId()
+    @f.primary().mongoId()
     _id?: string;
 
     @f
@@ -17,7 +17,7 @@ export class DocumentClass {
 }
 
 export class ImpossibleToMetDocumentClass {
-    @f.id().mongoId()
+    @f.primary().mongoId()
     _id?: string;
 
 

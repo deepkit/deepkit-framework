@@ -4,12 +4,13 @@ import {
     classToMongo,
     convertClassQueryToMongo,
     mongoToClass,
-    partialClassToMongo,
+    partialClassToMongo, partialMongoToClass,
     partialMongoToPlain,
     propertyClassToMongo
 } from "./mapping";
 import {Collection, Connection, Cursor} from 'typeorm';
 import {ClassType, getClassName} from '@marcj/estdlib';
+import {FindOneOptions} from "mongodb";
 
 export class NoIDDefinedError extends Error {
 }
@@ -105,6 +106,51 @@ export class Database {
         cursor.map(v => converter(classType, v));
 
         return cursor;
+    }
+
+    /**
+     * Returns specified fields from the first document.
+     */
+    public async fieldsOne<T>(
+        classType: ClassType<T>,
+        filter: { [field: string]: any },
+        fields: (keyof T)[] | string[],
+    ): Promise<Partial<T> | {[P in keyof T]?: any} | undefined> {
+        const collection = await this.getCollection(classType);
+
+        const projection: any = {};
+        for (const f of fields) {
+            projection[f] = 1;
+        }
+
+        const item = await collection.findOne(convertClassQueryToMongo(classType, filter), {projection} as FindOneOptions);
+        if (!item) {
+            return undefined;
+        }
+
+        return partialMongoToClass(classType, item) as Partial<T> | {[P in keyof T]?: any};
+    }
+
+    /**
+     * Returns specified fields from a list of document.
+     */
+    public async fields<T>(
+        classType: ClassType<T>,
+        filter: { [field: string]: any },
+        fields: (keyof T)[] | string[],
+    ): Promise<(Partial<T> | {[P in keyof T]?: any})[]> {
+        const collection = await this.getCollection(classType);
+
+        const projection: any = {};
+        for (const f of fields) {
+            projection[f] = 1;
+        }
+
+        return await collection
+            .find(convertClassQueryToMongo(classType, filter))
+            .project(projection)
+            .map((v) => partialClassToMongo(classType, v))
+            .toArray();
     }
 
     /**
@@ -264,7 +310,7 @@ export class Database {
     }
 
     /**
-     * Patches all items in the collection and returns the count of modified items..
+     * Patches all items in the collection and returns the count of modified items.
      * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
      *
      * Example

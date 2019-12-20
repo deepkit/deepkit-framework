@@ -8,7 +8,7 @@ import {
     StringValidator,
     UUIDValidator
 } from "./validation";
-import {ClassType, eachKey, eachPair, getClassName, isArray, isNumber, isObject, isPlainObject} from '@marcj/estdlib';
+import {ClassType, eachKey, eachPair, getClassName, isClass, isNumber, isObject, isPlainObject} from '@marcj/estdlib';
 import {Buffer} from "buffer";
 import * as getParameterNames from "get-parameter-names";
 
@@ -19,6 +19,10 @@ export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
 
 export interface PropertyValidator {
     validate<T>(value: any, target: ClassType<T>, propertyName: string, propertySchema: PropertySchema): PropertyValidatorError | void;
+}
+
+export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
+    return isClass(object);
 }
 
 type IndexOptions = Partial<{
@@ -71,6 +75,49 @@ export class PropertySchema {
 
     constructor(name: string) {
         this.name = name;
+    }
+
+    static getTypeFromJSType(type: any) {
+        if (type === String) {
+            return 'string';
+        }
+        if (type === Number) {
+            return 'number';
+        }
+        if (type === Date) {
+            return 'date';
+        }
+        if (type === Buffer) {
+            return 'binary';
+        }
+        if (type === Boolean) {
+            return 'boolean';
+        }
+
+        return 'any';
+    }
+
+    setFromJSType(type: any) {
+        this.type = PropertySchema.getTypeFromJSType(type);
+
+        const isCustomObject = type !== String
+            && type !== String
+            && type !== Number
+            && type !== Date
+            && type !== Buffer
+            && type !== Boolean
+            && type !== Any
+            && type !== Object;
+
+        if (isCustomObject) {
+            this.type = 'class';
+            this.classType = type as ClassType<any>;
+
+            if (type instanceof ForwardedRef) {
+                this.classTypeForwardRef = type;
+                delete this.classType;
+            }
+        }
     }
 
     clone(): PropertySchema {
@@ -171,7 +218,7 @@ export class ClassSchema {
      * Each method can have its own PropertySchema definition for each argument, where map key = method name.
      */
     methodProperties = new Map<string, PropertySchema[]>();
-    normalizedMethodProperties: {[name: string]: true} = {};
+    normalizedMethodProperties: { [name: string]: true } = {};
 
     classProperties: { [name: string]: PropertySchema } = {};
 
@@ -239,12 +286,16 @@ export class ClassSchema {
     public getMethodProperties(name: string): PropertySchema[] {
         const properties = this.getOrCreateMethodProperties(name);
         if (!this.normalizedMethodProperties[name]) {
-            for (const [i, p] of eachPair(properties)) {
-                if (!p) {
+            const returnTypes = Reflect.getMetadata('design:paramtypes', this.proto, name);
+            if (!returnTypes) {
+                throw new Error(`Method ${name} has no decorated used, so reflection does not work.`);
+            }
+
+            for (const [i, t] of eachPair(returnTypes)) {
+                if (!properties[i]) {
                     properties[i] = new PropertySchema(String(i));
-                    const returnTypes = Reflect.getMetadata('design:paramtypes', this.proto, name);
-                    if (returnTypes) {
-                        properties[i].type = returnTypes
+                    if (properties[i].type === 'any' && returnTypes[i] !== Object) {
+                        properties[i].setFromJSType(t)
                     }
                 }
             }
@@ -399,7 +450,7 @@ export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
 }
 
 /**
- * Returns true if given class has an @Entity() or @Field()s defined, and thus became
+ * Returns true if given class has an @Entity() or @f defined, and thus became
  * a Marshal entity.
  */
 export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
@@ -446,65 +497,176 @@ export interface FieldDecoratorResult {
 
     /**
      * Sets the name of this property. Important for cases where the actual name is lost during compilation.
-     * @param name
      */
     asName(name: string): FieldDecoratorResult;
 
     /**
-     * @see Optional
+     * Marks this field as optional. The validation requires field values per default, this makes it optional.
      */
     optional(): FieldDecoratorResult;
 
     /**
      * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
-     *
-     * @see Exclude
+     * PlainToClass or mongoToClass is not effected by this.
      */
     exclude(t?: 'all' | 'mongo' | 'plain'): FieldDecoratorResult;
 
     /**
-     * @see IDField
+     * Marks this field as an ID aka primary.
+     * This is important if you interact with the database abstraction.
+     *
+     * Only one field in a class can be the ID.
+     */
+    primary(): FieldDecoratorResult;
+
+    /**
+     * @see primary
+     * @deprecated
      */
     asId(): FieldDecoratorResult;
 
-    id(): FieldDecoratorResult;
-
     /**
-     * @see Index
+     * Used to define an index on a field.
      */
     index(options?: IndexOptions, name?: string): FieldDecoratorResult;
 
     /**
-     * Mongo's ObjectID.
-     * @see MongoIdField
+     * Used to define a field as MongoDB ObjectId. This decorator is necessary if you want to use Mongo's _id.
+     *
+     * ```typescript
+     * class Page {
+     *     @f.mongoId()
+     *     referenceToSomething?: string;
+     *
+     *     constructor(
+     *         @f.id().mongoId()
+     *         public readonly _id: string
+     *     ) {
+     *
+     *     }
+     * }
+     * ```
      */
     mongoId(): FieldDecoratorResult;
 
     /**
-     * @see UUIDField
+     * Used to define a field as UUID (v4).
      */
     uuid(): FieldDecoratorResult;
 
     /**
-     * @see Decorated
+     * Used to define a field as decorated.
+     * This is necessary if you want to wrap a field value in the class instance using
+     * a own class, like for example for Array manipulations, but keep the JSON and Database value
+     * as primitive as possible.
+     *
+     * Only one field per class can be the decorated one.
+     *
+     * @category Decorator
+     *
+     * Example
+     * ```typescript
+     * export class PageCollection {
+     *     @f.forward(() => PageClass).decorated()
+     *     private readonly pages: PageClass[] = [];
+     *
+     *     constructor(pages: PageClass[] = []) {
+     *         this.pages = pages;
+     *     }
+     *
+     *     public count(): number {
+     *         return this.pages.length;
+     *     }
+     *
+     *     public add(name: string): number {
+     *         return this.pages.push(new PageClass(name));
+     *     }
+     * }
+     *
+     * export class PageClass {
+     *     @f.uuid()
+     *     id: string = uuid();
+     *
+     *     @f
+     *     name: string;
+     *
+     *     @f.forward(() => PageCollection)
+     *     children: PageCollection = new PageCollection;
+     *
+     *     constructor(name: string) {
+     *         this.name = name;
+     *     }
+     * }
+     * ```
+     *
+     * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
+     * `PageCollection.pages` (always the field where @Decorated() is applied to), here a array of PagesClass `PageClass[]`.
      */
     decorated(): FieldDecoratorResult;
 
     /**
-     * @see FieldArray
+     * Marks a field as array. You should prefer `@f.array(T)` syntax.
+     *
+     * ```typescript
+     * class User {
+     *     @f.type(String).asArray()
+     *     tags: strings[] = [];
+     * }
+     * ```
      */
     asArray(): FieldDecoratorResult;
 
     /**
-     * @see FieldMap
+     * Marks a field as map. You should prefer `@f.map(T)` syntax.
+     *
+     * ```typescript
+     * class User {
+     *     @f.type(String).asMap()
+     *     tags: {[name: string]: string} = [];
+     * }
+     * ```
      */
     asMap(): FieldDecoratorResult;
 
     /**
      * Uses an additional decorator.
-     * @see FieldMap
      */
     use(decorator: (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void): FieldDecoratorResult;
+
+    /**
+     * Adds a custom validator class or validator callback.
+     *
+     * @example
+     * ```typescript
+     * import {PropertyValidator, PropertyValidatorError} from '@marcj/marshal';
+     *
+     * class MyCustomValidator implements PropertyValidator {
+     *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
+     *          if (value.length > 10) {
+     *              return new PropertyValidatorError('too_long', 'Too long :()');
+     *          }
+     *      };
+     * }
+     *
+     * class Entity {
+     *     @f.validator(MyCustomValidator)
+     *     name: string;
+     *
+     *     @f.validator(MyCustomValidator)
+     *     name: string;
+     *
+     *     @f.validator((value: any, target: ClassType<any>, propertyName: string) => {
+     *          if (value.length > 255) {
+     *              return new PropertyValidatorError('too_long', 'Too long :()');
+     *          }
+     *     })
+     *     title: string;
+     * }
+     *
+     * ```
+     */
+    validator(validator: ClassType<PropertyValidator> | ((value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void)):
+        FieldDecoratorResult;
 }
 
 function createFieldDecoratorResult(
@@ -549,7 +711,7 @@ function createFieldDecoratorResult(
                 //we got a new decorator with a different name on a constructor param
                 //since we cant not resolve logically which name to use, we forbid that case.
                 throw new Error(`Defining multiple Marshal decorators with different names at arguments of ${getClassName(target)}::${methodName} #${parameterIndexOrDescriptor} is forbidden.` +
-                    ` @Field.asName('name') is required. Got ${methodsParamNames[parameterIndexOrDescriptor] || methodsParamNamesAutoResolved[parameterIndexOrDescriptor]} !== ${givenPropertyName}`)
+                    ` @f.asName('name') is required. Got ${methodsParamNames[parameterIndexOrDescriptor] || methodsParamNamesAutoResolved[parameterIndexOrDescriptor]} !== ${givenPropertyName}`)
             }
 
             if (givenPropertyName) {
@@ -560,17 +722,6 @@ function createFieldDecoratorResult(
                 const constructorParamNames = getParameterNames((target as ClassType<any>).prototype.constructor);
                 // const constructorParamNames = getCachedParameterNames((target as ClassType<any>).prototype.constructor);
                 givenPropertyName = constructorParamNames[parameterIndexOrDescriptor];
-                if (!givenPropertyName) {
-                    console.debug('constructorParamNames', parameterIndexOrDescriptor, constructorParamNames);
-                    throw new Error('Unable not extract constructor argument names');
-                }
-
-                if (methodsParamNames[parameterIndexOrDescriptor] && methodsParamNames[parameterIndexOrDescriptor] !== givenPropertyName) {
-                    //we got a new decorator with a different name on a constructor param
-                    //since we cant not resolve logically which name to use, we forbid that case.
-                    throw new Error(`Defining multiple Marshal decorators with different names at arguments of ${getClassName(target)}::${methodName} is forbidden.` +
-                        ` @Field.asName('name') is required.`)
-                }
 
                 if (givenPropertyName) {
                     methodsParamNamesAutoResolved[parameterIndexOrDescriptor] = givenPropertyName;
@@ -604,9 +755,6 @@ function createFieldDecoratorResult(
         if (isNumber(parameterIndexOrDescriptor)) {
             //decorator is used on a method argument. Might be on constructor or any other method.
             if (methodName === 'constructor') {
-                if (!givenPropertyName) {
-                    throw new Error(`Could not resolve property name for class property on ${getClassName(target)} ${propertyOrMethodName}`);
-                }
                 if (!schema.classProperties[givenPropertyName]) {
                     schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
                     schema.propertyNames.push(givenPropertyName);
@@ -661,7 +809,7 @@ function createFieldDecoratorResult(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)], modifiedOptions);
     };
 
-    fn.id = fn.asId = () => {
+    fn.primary = fn.asId = () => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, IDField()], modifiedOptions);
     };
@@ -703,6 +851,24 @@ function createFieldDecoratorResult(
         return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, map: true});
     };
 
+    fn.validator = (validator: ClassType<PropertyValidator> | ((value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void)) => {
+        resetIfNecessary();
+
+        const validatorClass: ClassType<PropertyValidator> = isPropertyValidator(validator) ? validator : class implements PropertyValidator {
+            validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
+                try {
+                    return validator(value, target, propertyName);
+                } catch (error) {
+                    return new PropertyValidatorError('error', error.message ? error.message : error);
+                }
+            }
+        };
+
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, FieldDecoratorWrapper((target, property) => {
+            property.validators.push(validatorClass);
+        })], modifiedOptions);
+    };
+
     return fn;
 }
 
@@ -718,50 +884,7 @@ export function FieldDecoratorWrapper(
 }
 
 /**
- * Used to define a field as decorated.
- * This is necessary if you want to wrap a field value in the class instance using
- * a own class, like for example for Array manipulations, but keep the JSON and Database value
- * as primitive as possible.
- *
- * Only one field per class can be the decorated one.
- *
- * Example
- * ```typescript
- * export class PageCollection {
- *     @f.forward(() => PageClass).decorated()
- *     private readonly pages: PageClass[] = [];
- *
- *     constructor(pages: PageClass[] = []) {
- *         this.pages = pages;
- *     }
- *
- *     public count(): number {
- *         return this.pages.length;
- *     }
- *
- *     public add(name: string): number {
- *         return this.pages.push(new PageClass(name));
- *     }
- * }
- *
- * export class PageClass {
- *     @f.uuid()
- *     id: string = uuid();
- *
- *     @f
- *     name: string;
- *
- *     @f.forward(() => PageCollection)
- *     children: PageCollection = new PageCollection;
- *
- *     constructor(name: string) {
- *         this.name = name;
- *     }
- * }
- * ```
- *
- * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
- * `PageCollection.pages` (always the field where @Decorated() is applied to), here a array of PagesClass `PageClass[]`.
+ * @internal
  */
 function Decorated() {
     return FieldDecoratorWrapper((target, property) => {
@@ -771,11 +894,7 @@ function Decorated() {
 }
 
 /**
- *
- * Used to define a field as a reference to an ID.
- * This is important if you interact with the database abstraction.
- *
- * Only one field can be the ID.
+ * @internal
  */
 function IDField() {
     return FieldDecoratorWrapper((target, property) => {
@@ -785,7 +904,7 @@ function IDField() {
 }
 
 /**
- * Used to mark a field as optional. The validation requires field values per default, this makes it optional.
+ * @internal
  */
 function Optional() {
     return FieldDecoratorWrapper((target, property) => {
@@ -808,8 +927,7 @@ function Optional() {
  * }
  *
  * class Job {
- *     @Field()
- *     config: JobConfig;
+ *     @f config: JobConfig;
  * }
  * ```
  *
@@ -874,8 +992,7 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
 }
 
 /**
- * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
- * PlainToClass or mongoToClass is not effected by this.
+ * @internal
  */
 function Exclude(t: 'all' | 'mongo' | 'plain' = 'all') {
     return FieldDecoratorWrapper((target, property) => {
@@ -902,23 +1019,14 @@ class ForwardedRef<T> {
  *
  * ```typescript
  * class User {
- *     @Field(forwardRef(() => Config)
+ *     @f.forward(() => Config)
  *     config: Config;
-
  *
- *     @Field([forwardRef(() => Config])
+ *     @f.forwardArray(() => Config)
  *     configArray: Config[] = [];
  *
- *     @FieldArray(forwardRef(() => Config)
- *     configArray: Config[] = [];
- *
- *
- *     @FieldMap(forwardRef(() => Config)
+ *     @f.forwardMap(() => Config)
  *     configMap: {[k: string]: Config} = {};
- *
- *     @Field({forwardRef(() => Config})
- *     configMap: {[k: string]: Config} = {};
- * }
  *
  * ```
  */
@@ -926,44 +1034,19 @@ export function forwardRef<T>(forward: ForwardRefFn<T>): ForwardedRef<T> {
     return new ForwardedRef(forward);
 }
 
+/**
+ * @internal
+ */
 interface FieldOptions {
-    /**
-     * Whether the type is a map. You should prefer the short {} annotation
-     *
-     * Example short {} annotation
-     * ```typescript
-     * class User {
-     *     @Field({MyClass})
-     *     config2: {[name: string]: MyClass} = {};
-     * }
-     * ```
-     *
-     * Example verbose annotation is necessary for factory method, if you face circular dependencies.
-     * ```typescript
-     * class User {
-     *     @Field(() => MyClass, {map: true})
-     *     config2: {[name: string]: MyClass} = {};
-     * }
-     * ```
-     */
     map?: boolean;
 
-    /**
-     * @internal
-     */
     array?: boolean;
-
-    /**
-     * @internal
-     */
-    type?: Types;
 }
-
 
 /**
  * Decorator to define a field for an entity.
  */
-export function Field(oriType?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }) {
+export function Field(oriType?: FieldTypes) {
     return FieldDecoratorWrapper((target, property, returnType, options) => {
         if (property.typeSet) return;
         property.typeSet = true;
@@ -991,88 +1074,55 @@ export function Field(oriType?: FieldTypes | FieldTypes[] | { [n: string]: Field
             return getTypeName(t);
         }
 
-        if (!options.type) {
-            // console.log(`${id} ${returnType} ${typeof type} ${type}`);
+        if (type && options.array && returnType !== Array) {
+            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                `Please use the correct type in @f.type(T).`
+            );
+        }
 
-            if (type && isArray(type)) {
-                type = type[0];
-                options.array = true;
-            }
+        if (type && !options.array && returnType === Array) {
+            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                `Please use @f.array(MyType) or @f.forwardArray(() => MyType), e.g. @f.array(String) for '${propertyName}: String[]'.`);
+        }
 
-            if (type && isPlainObject(type)) {
-                type = type[Object.keys(type)[0]];
-                options.map = true;
-            }
+        if (type && options.map && returnType !== Object) {
+            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                `Please use the correct type in @f.type(TYPE).`);
+        }
 
-            if (type && options.array && returnType !== Array) {
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use the correct type in @Field().`
-                );
-            }
+        if (!type && returnType === Array) {
+            throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
+                `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
+                `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(forwardRef(() => MyType)).`
+            );
+        }
 
-            if (type && !options.array && returnType === Array) {
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use @f.array(MyType) or @f.forwardArray(() => MyType), e.g. @f.array(String) for '${propertyName}: String[]'.`);
-            }
+        if (!type && returnType === Object) {
+            //typescript puts `Object` for undefined types.
+            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
+                `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
+                `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
+            );
+        }
 
-            if (type && options.map && returnType !== Object) {
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use the correct type in @f.type(TYPE).`);
-            }
+        const isCustomObject = type !== String
+            && type !== String
+            && type !== Number
+            && type !== Date
+            && type !== Buffer
+            && type !== Boolean
+            && type !== Any
+            && type !== Object
+            && !(type instanceof ForwardedRef);
 
-            if (!type && returnType === Array) {
-                throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
-                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(forwardRef(() => MyType)).`
-                );
-            }
+        if (type && !options.map && isCustomObject && returnType === Object) {
+            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
+                `The actual type is an Object, but you specified a Class in @f.type(T).\n` +
+                `Please declare a type or use @f.map(${getClassName(type)} for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
+        }
 
-            if (!type && returnType === Object) {
-                //typescript puts `Object` for undefined types.
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
-                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
-                );
-            }
-
-            const isCustomObject = type !== String
-                && type !== String
-                && type !== Number
-                && type !== Date
-                && type !== Buffer
-                && type !== Boolean
-                && type !== Any
-                && type !== Object
-                && !(type instanceof ForwardedRef);
-
-            if (type && !options.map && isCustomObject && returnType === Object) {
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
-                    `The actual type is an Object, but you specified a Class in @f.type(T).\n` +
-                    `Please declare a type or use @f.map(${getClassName(type)} for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
-            }
-
-            options.type = 'any';
-
-            if (!type) {
-                type = returnType;
-            }
-
-            if (type === String) {
-                options.type = 'string';
-            }
-
-            if (type === Number) {
-                options.type = 'number';
-            }
-            if (type === Date) {
-                options.type = 'date';
-            }
-            if (type === Buffer) {
-                options.type = 'binary';
-            }
-            if (type === Boolean) {
-                options.type = 'boolean';
-            }
+        if (!type) {
+            type = returnType;
         }
 
         if (options.array) {
@@ -1083,33 +1133,13 @@ export function Field(oriType?: FieldTypes | FieldTypes[] | { [n: string]: Field
             property.isMap = true;
         }
 
-        const isCustomObject = type !== String
-            && type !== String
-            && type !== Number
-            && type !== Date
-            && type !== Buffer
-            && type !== Boolean
-            && type !== Any
-            && type !== Object;
-
-        if (isCustomObject) {
-            property.type = 'class';
-            property.classType = type as ClassType<any>;
-
-            if (type instanceof ForwardedRef) {
-                property.classTypeForwardRef = type;
-                delete property.classType;
-            }
-            return;
-        }
-
         if (property.type === 'any') {
-            property.type = options.type!;
+            property.setFromJSType(type);
         }
     }, true);
 }
 
-declare type TYPES = FieldTypes | FieldTypes[] | { [n: string]: FieldTypes };
+declare type TYPES = FieldTypes;
 
 const fRaw = Field();
 
@@ -1146,16 +1176,111 @@ fRaw['forwardMap'] = function (this: FieldDecoratorResult, f: () => TYPES): Fiel
 };
 
 /**
- * Same as @Field() but a short version @f where you can use it like `@f public name: string;`.
+ * THis is the main decorator to define a properties on class or arguments on methods.
+ *
+ * @see FieldDecoratorResult
+ * @category Decorator
  */
 export const f: FieldDecoratorResult & {
+    /**
+     * Defines a type for a certain field. This is only necessary for custom classes
+     * if the Typescript compiler does not include the reflection type in the build output.
+     *
+     * ```typescript
+     * class User {
+     *     @f.type(MyClass)
+     *     tags: MyClass = new MyClass;
+     * }
+     * ```
+     */
     type: (type: TYPES) => FieldDecoratorResult,
+
+    /**
+     * Marks a field as array.
+     *
+     * ```typescript
+     * class User {
+     *     @f.array(String)
+     *     tags: string[] = [];
+     * }
+     * ```
+     */
     array: (type: TYPES) => FieldDecoratorResult,
+
+    /**
+     * Marks a field as enum.
+     *
+     * ```typescript
+     * enum MyEnum {
+     *     low;
+     *     medium;
+     *     hight;
+     * }
+     *
+     * class User {
+     *     @f.enum(MyEnum)
+     *     level: MyEnum = MyEnum.low;
+     * }
+     * ```
+     *
+     * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
+     */
     enum: <T>(type: any, allowLabelsAsValue?: boolean) => FieldDecoratorResult,
+
+    /**
+     * Marks a field as type any. It does not transform the value and directly uses JSON.parse/stringify.
+     */
     any: () => FieldDecoratorResult,
+
+    /**
+     * Marks a field as map.
+     *
+     * ```typescript
+     * class User {
+     *     @f.map(String)
+     *     tags: {[k: string]: string};
+     *
+     *     @f.forwardMap(() => MyClass)
+     *     tags: {[k: string]: MyClass};
+     * }
+     * ```
+     */
     map: (type: TYPES) => FieldDecoratorResult,
+
+    /**
+     * Forward references a type, required for circular reference.
+     *
+     * ```typescript
+     * class User {
+     *     @f.forward(() => User)).optional()
+     *     parent: User;
+     * }
+     * ```
+     */
     forward: (f: () => TYPES) => FieldDecoratorResult,
+
+    /**
+     * Forward references a type in an array, required for circular reference.
+     *
+     * ```typescript
+     * class User {
+     *     @f.forwardArray(() => User)).optional()
+     *     parents: User[] = [];
+     * }
+     * ```
+     */
     forwardArray: (f: () => TYPES) => FieldDecoratorResult,
+
+    /**
+     * Forward references a type in a map, required for circular reference.
+     *
+     * ```typescript
+     * class User {
+     *     @f.forwardRef(() => User)).optional()
+     *     parents: {[name: string]: User} = {}};
+     * }
+     * ```
+     */
     forwardMap: (f: () => TYPES) => FieldDecoratorResult,
 } = fRaw as any;
 
@@ -1168,39 +1293,22 @@ function Type<T>(type: Types) {
     });
 }
 
-
 /**
- * Used to define a field as ObjectId. This decorator is necessary if you want to use Mongo's _id.
- *
- *
- * ```typescript
- * class Page {
- *     @MongoIdField()
- *     referenceToSomething?: string;
- *
- *     constructor(
- *         @IdType()
- *         @MongoIdField()
- *         public readonly _id: string
- *     ) {
- *
- *     }
- * }
- * ```
+ * @internal
  */
 function MongoIdField() {
     return Type('objectId');
 }
 
 /**
- * Used to define a field as UUID (v4).
+ * @internal
  */
 function UUIDField() {
     return Type('uuid');
 }
 
 /**
- * Used to define an index on a field.
+ * @internal
  */
 function Index(options?: IndexOptions, name?: string) {
     return FieldDecoratorWrapper((target, property) => {

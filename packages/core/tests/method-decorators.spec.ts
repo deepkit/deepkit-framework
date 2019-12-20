@@ -93,7 +93,8 @@ test('method args', () => {
         expect(props[0].name).toBe('0');
         expect(props[0].type).toBe('string');
 
-        expect(props[1]).toBeUndefined();
+        expect(props[1].name).toBe('1');
+        expect(props[1].type).toBe('boolean');
 
         expect(props[2].name).toBe('2');
         expect(props[2].type).toBe('boolean');
@@ -142,9 +143,28 @@ test('short @f multi', () => {
 });
 
 
+test('no decorators', () => {
+    expect(() => {
+        class Controller {
+            public foo(bar: string, nothing: boolean) {
+            }
+        }
+        const s = getClassSchema(Controller);
+        s.getMethodProperties('foo');
+
+    }).toThrow('has no decorated used, so reflection does not work');
+});
+
 test('short @f multi gap', () => {
     class Controller {
         public foo(@f bar: string, nothing: boolean, @f foo: number) {
+        }
+
+        @f
+        public undefined(bar: string, nothing: boolean) {
+        }
+
+        public onlyFirst(@f.array(String) bar: string[], nothing: boolean) {
         }
     }
 
@@ -157,11 +177,33 @@ test('short @f multi gap', () => {
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
 
-        expect(props[1]).toBeUndefined();
+        expect(props[1].name).toBe('1');
+        expect(props[1].type).toBe('boolean');
 
         expect(props[2].name).toBe('2');
         expect(props[2].type).toBe('number');
         expect(props[2].isArray).toBe(false);
+    }
+    {
+        const props = s.getMethodProperties('undefined');
+
+        expect(props).toBeArrayOfSize(2);
+        expect(props[0].name).toBe('0');
+        expect(props[0].type).toBe('string');
+
+        expect(props[1].name).toBe('1');
+        expect(props[1].type).toBe('boolean');
+    }
+    {
+        const props = s.getMethodProperties('onlyFirst');
+
+        expect(props).toBeArrayOfSize(2);
+        expect(props[0].name).toBe('0');
+        expect(props[0].type).toBe('string');
+        expect(props[0].isArray).toBe(true);
+
+        expect(props[1].name).toBe('1');
+        expect(props[1].type).toBe('boolean');
     }
 });
 

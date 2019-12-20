@@ -6,7 +6,7 @@ import {mongoToPlain, partialMongoToPlain, uuid4Binary} from "../src/mapping";
 
 test('mongo to plain', () => {
     class Model {
-        @f.id().mongoId()
+        @f.primary().mongoId()
         _id?: string;
 
         @f
@@ -24,7 +24,7 @@ test('mongo to plain', () => {
 
 test('mongo to plain partial', () => {
     class Model {
-        @f.id().mongoId()
+        @f.primary().mongoId()
         _id?: string;
 
         @f.uuid()

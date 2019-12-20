@@ -76,7 +76,7 @@ export class StringCollectionWrapper {
 @Entity('SimpleModel')
 @MultiIndex(['name', 'type'], {unique: true})
 export class SimpleModel {
-    @f.id().uuid()
+    @f.primary().uuid()
     id: string = uuid();
 
     @f.index()
@@ -136,7 +136,7 @@ export class SimpleModel {
 
 @Entity('SuperSimple')
 export class SuperSimple {
-    @f.id().mongoId()
+    @f.primary().mongoId()
     _id?: string;
 
     @f
@@ -145,7 +145,7 @@ export class SuperSimple {
 
 @Entity('BaseClass')
 export class BaseClass {
-    @f.id().mongoId()
+    @f.primary().mongoId()
     _id?: string;
 }
 

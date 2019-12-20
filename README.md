@@ -62,17 +62,14 @@ Install `buffer` as well if you want to have Binary support.
 
 ```typescript
 import {
-    Field,
-    UUIDField,
-    EnumField,
+    f,
     plainToClass,
     uuid,
 } from '@marcj/marshal';
 import {Buffer} from 'buffer';
 
 class SubModel {
-    @Field()
-    label: string;
+    @f label: string;
 }
 
 export enum Plan {
@@ -82,32 +79,32 @@ export enum Plan {
 }
 
 class SimpleModel {
-    @UUIDField().asId()
+    @f.primary().uuid()
     id: string = uuid();
 
-    @Field(String).asArray()
+    @f.array(String)
     tags: string[] = [];
 
-    @Field(Buffer).optional() //binary
+    @f.type(Buffer).optional() //binary
     picture?: Buffer;
 
-    @Field()
+    @f
     type: number = 0;
 
-    @EnumField(Plan)
+    @f.enum(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @Field()
+    @f
     created: Date = new Date;
 
-    @Field(SubModel).asArray()
+    @f.array(SubModel)
     children: SubModel[] = [];
 
-    @Field(SubModel).asMap()
+    @f.map(SubModel)
     childrenMap: {[key: string]: SubModel} = {};
 
     constructor(
-        @Field().index().asName('name') //asName is required for minimized code
+        @f.index().asName('name') //asName is required for minimized code
         public name: string
     ) {}
 }
@@ -182,13 +179,14 @@ You can validate incoming object literals or an class instance.
 First make sure you have some validators attached to your fields you want to validate.
 
 ```typescript
-import {Field, validate, ValidationError, validatedPlainToClass, plainToClass} from '@marcj/marshal';
+import 'jest';
+import {f, validate, ValidationError, validatedPlainToClass, plainToClass} from '@marcj/marshal';
 
 class Page {
-    @Field()
+    @f
     name: string;
     
-    @Field()
+    @f
     age: number;
 }
 
@@ -208,10 +206,10 @@ const page = validatedPlainToClass(Page, {name: 'peter'});
 You can also custom validators
 
 ```typescript
-import {Field, AddValidator, PropertyValidator, PropertyValidatorError, ClassType} from '@marcj/marshal';
+import {f, PropertyValidatorError, PropertyValidator} from '@marcj/marshal';
 
 class MyCustomValidator implements PropertyValidator {
-     validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError {
+     validate<T>(value: any): PropertyValidatorError {
          if (value.length > 10) {
              return new PropertyValidatorError('too_long', 'Too long :()');
          }
@@ -219,8 +217,7 @@ class MyCustomValidator implements PropertyValidator {
 }
 
 class Entity {
-    @Field()
-    @AddValidator(MyCustomValidator)
+    @f.validator(MyCustomValidator)
     name: string;
 }
 ```
@@ -228,11 +225,10 @@ class Entity {
 or inline validators
 
 ```typescript
-import {Field, AddValidator, InlineValidator, ClassType, PropertyValidatorError} from '@marcj/marshal';
+import {f, PropertyValidatorError} from '@marcj/marshal';
 
 class Entity {
-    @Field()
-    @InlineValidator((value: any) => {
+    @f.validator((value: any) => {
         if (value.length > 10) {
             return new PropertyValidatorError('too_long', 'Too long :()');
         }
@@ -256,97 +252,54 @@ you might have the need to serialize only one field.
 
 ## Types / Decorators
 
-Class fields are annotated using mainly [@Field decorators](https://marshal.marcj.dev/modules/_marcj_marshal.html#field).
+Class fields are annotated using mainly [@f](https://marshal.marcj.dev/modules/_marcj_marshal.html#f).
 You can define primitives, class mappings, relations between parents, and indices for the database (currently MongoDB).
 
-Most of the time @Field is able to detect the primitive type by reading the emitted meta data from TypeScript when you declared
-the type correctly in Typescript.
+Most of the time @f is able to detect the primitive type by reading the emitted meta data from TypeScript when you declared
+the type correctly in Typescript. However, `@f` provides additional chainable methods to let you further define the type.
+This duplication in defining the type is necessary since Typescript's reflection ability is only very rudimentary.
 
 Example valid decoration:
 
 ```typescript
+import {f} from '@marcj/marshal';
+
 class Page {
-    @Field() //will be detected as String
+    @f.optional() //will be detected as String
     name?: string;
     
-    @Field(String).asArray() //will be detected as String array
+    @f.array(String) //will be detected as String array
     name: string[] = [];
     
-    @Field(String).asMap() //will be detected as String map
+    @f.map(String) //will be detected as String map
     name: {[name: string]: string} = {};
 }
 ````
 
 Example *not* valid decorators:
 ```typescript
+import {f} from '@marcj/marshal';
+
 class Page {
-    @Field() //can't be detected, you get an error with further instructions
+    @f //can't be detected, you get an error with further instructions
     name;
 }
 ````
 
-See [documentation of @marcj/marshal](https://marshal.marcj.dev/modules/_marcj_marshal.html) for all available decorators. (Search for "Category: Decorator")
 
-Available type decorators:
-
-```typescript
-@Field()
-@EnumField(MyEnumClass) //implicitly calls @Field()
-@UUIDField() //implicitly calls @Field()
-@MongoIdField() //for mongodb only, implicitly calls @Field()
-```
-
-which have all a common chainable interface:
+More examples:
 
 ```typescript
+import {f, uuid} from '@marcj/marshal';
 
-interface FieldDecoratorResult {
-    (target: Object, property?: string, parameterIndexOrDescriptor?: any): void;
-
-    /**
-     * Sets the name of this property. Important for cases where the actual name is lost during compilation.
-     * @param name
-     */
-    asName(name: string): FieldDecoratorResult;
-
-    /**
-     * @see Optional
-     */
-    optional(): FieldDecoratorResult;
-
-    /**
-     * @see IDField
-     */
-    asId(): FieldDecoratorResult;
-
-    /**
-     * @see Index
-     */
-    index(options?: IndexOptions): FieldDecoratorResult;
-
-    /**
-     * @see FieldArray
-     */
-    asArray(): FieldDecoratorResult;
-
-    /**
-     * @see FieldMap
-     */
-    asMap(): FieldDecoratorResult;
-}
-```
-
-Example:
-
-```typescript
 class MyModel {
-    @UUIDField().asId()
+    @f.primary().uuid()
     id: string = uuid();
 
-    @Field().optional().index()
+    @f.optional().index()
     name?: string;
 
-    @Field(String).optional().asArray()
+    @f.array(String).optional()
     tags?: string[];
 }
 ```
@@ -384,39 +337,43 @@ which makes it possible to sync the schema defined only with Marshal decorators 
 direction. Per default it excludes to export to `*toPlain` and
 `*toMongo`. You can also use `'mongo'` or `'plain'` to
 have more control.
-Note: Fields that are not decorated with `@Field`, `@MongoIdField`, `@EnumField` or `@UUIDField` are not mapped and will be excluded per default
+Note: Fields that are not decorated with `@f` are not mapped and will be excluded per default.
 
 ```typescript
+import {f} from '@marcj/marshal';
+
 class MyEntity {
-    @MongoIdField().asId()
+    @f.primary().mongoId()
     id: string;
     
-    @Field().exclude()
+    @f.exclude()
     internalState: string;
 
-    @Field().exclude('mongo')
+    @f.exclude('mongo')
     publicState: string;
 }
 ```
 
 ### ParentReference
 
-`@ParentReference` together with `@Field` is used for all `*ToClass` functions
-and allows you to have the parent from instance of class given in `@Field` assigned
+`@ParentReference` together with `@f` is used for all `*ToClass` functions
+and allows you to have the parent from instance of class given in `@f` assigned
 as reference. Properties that used `@ParentReference` are automatically excluded
 in `*ToPlain` and `*ToMongo` functions.
 
 ```typescript
+import {f, ParentReference, plainToClass} from '@marcj/marshal';
+
 class Page {
-    @Field()
+    @f
     name: string;
     
-    @Field([Page])
+    @f.array(Page)
     children: Page[] = [];
     
-    @Field(Page)
+    @f.type(Page)
     @ParentReference()
-    parent?: PageClass;
+    parent?: Page;
 }
 
 const root = plainToClass(Page, {
@@ -441,28 +398,29 @@ of objects has been created, which means when all parents and siblings
 are fully initialised.
 
 ```typescript
+import {f, OnLoad} from '@marcj/marshal';
 class Page {
-    @Field()
+    @f
     name: string;
     
     @OnLoad()
     onLoad() {
-        console.log('initialised')
+        console.log('initialised');
     }
 }
 ````
 
 ### Value decorator
 
-`@Decorated` lets you transform the actual class into something
+`decorated()` lets you transform the actual class into something
 different. This is useful if you have in the actual class instance
 (plainToClass or mongoToClass) a wrapper for a certain property, for
 example `string[]` => `ChildrenCollection`.
 
 ```typescript
+import {f} from '@marcj/marshal';
 class ChildrenCollection {
-    @Decorated()
-    @Field(String).asArray()
+    @f.array(String).decorated()
     items: string[];
     
     constructor(items: string[]) {
@@ -475,11 +433,11 @@ class ChildrenCollection {
 }
 
 class MyEntity {
-    @MongoIdField().index()
+    @f.primary().mongoId()
     id: string;
     
     //in *toMongo and *toPlain is children the value of ChildrenCollection::items
-    @Field(ChildrenCollection)
+    @f.type(ChildrenCollection)
     children: ChildrenCollection = new ChildrenCollection([]);
 }
 ```
@@ -489,6 +447,8 @@ constructor of ChildrenCollection receives the actual value as
 first argument.
 
 ```typescript
+import {classToPlain} from '@marcj/marshal';
+
 const entity = new MyEntity();
 entity.children.add('Foo');
 entity.children.add('Bar');
@@ -506,6 +466,8 @@ plainToClass) your decorator will be used again and receives as first
 argument the actual property value:
 
 ```typescript
+import {classToPlain} from '@marcj/marshal';
+
 const entity = plainToClass(MyEntity, {
     id: 'abcde',
     children: ['Foo', 'Bar']
@@ -527,6 +489,8 @@ to retrieve type information, so you can use this also in combination with JSON-
 #### partialPlainToClass
 
 ```typescript
+import {partialPlainToClass} from '@marcj/marshal';
+
 const converted = partialPlainToClass(SimpleModel, {
     id: 'abcde',
     ['childrenMap.item.label']: 3 
@@ -544,9 +508,11 @@ expect(i2['children'][0].label).toBe('3');
 #### partialClassToPlain / partialClassToMongo
 
 toPlain and toMongo differ in the way, that latter will transform
-@ObjectID and @UUID in different way, suitable for Mongo's binary storage.
+`mongoId`) and `uuid()` in different way, suitable for Mongo's binary storage.
 
 ```typescript
+import {partialClassToPlain} from '@marcj/marshal';
+
 const plain = partialClassToPlain(SimpleModel, {
     'children.0': i.children[0],
     'stringChildrenCollection': new StringCollectionWrapper(['Foo', 'Bar']),
