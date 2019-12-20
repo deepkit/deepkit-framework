@@ -1,41 +1,41 @@
 import 'jest';
 import 'reflect-metadata';
-import {classToPlain, EnumField, Exclude, Field, plainToClass} from "../core";
+import {classToPlain, f, plainToClass} from "../core";
 import {plainToClass as classTransformerPlainToClass, classToPlain as classTransformerClassToPlain, Exclude as ctExclude, Transform, Type} from "class-transformer";
 import {bench} from "./util";
 import {Plan, SubModel} from "@marcj/marshal/tests/entities";
 
 export class SimpleModel {
-    @Field()
+    @f
     name: string;
 
-    @Field()
+    @f
     type: number = 0;
 
-    @Field()
+    @f
     yesNo: boolean = false;
 
-    @EnumField(Plan)
+    @f.enum(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @Field()
+    @f
     created: Date = new Date;
 
-    @Field([String])
+    @f.array(String)
     types: string[] = [];
 
-    @Field([SubModel])
+    @f.array(SubModel)
     children: SubModel[] = [];
 
-    @Field({SubModel})
+    @f.map(SubModel)
     childrenMap: { [key: string]: SubModel } = {};
 
     notMapped: { [key: string]: any } = {};
 
-    @Field().exclude()
+    @f.exclude()
     excluded: string = 'default';
 
-    @Field().exclude('plain')
+    @f.exclude('plain')
     excludedForPlain: string = 'excludedForPlain';
 
     constructor(name: string) {
