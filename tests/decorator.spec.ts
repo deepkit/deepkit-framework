@@ -110,7 +110,7 @@ test('test entity database', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
-        @f.id().mongoId()
+        @f.primary().mongoId()
         _id?: string;
 
         @f
@@ -241,7 +241,32 @@ test('test decorator ParentReference without class', () => {
         }
 
         getParentReferenceClass(Model, 'sub');
+        expect(getClassSchema(Model).getProperty('sub').isResolvedClassTypeIsDecorated()).toBe(false);
     }).toThrowError('Model::sub has @ParentReference but no @Class defined.');
+});
+
+test('test No decorated property found', () => {
+    expect(() => {
+        class Model {
+        }
+
+        getClassSchema(Model).getDecoratedPropertySchema();
+        getClassSchema(Model).getDecoratedPropertySchema();
+    }).toThrowError('No decorated property found');
+});
+
+test('test custom decorator', () => {
+    let called = false;
+    function Decorator(target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) {
+        called = true;
+    }
+
+    class Model {
+        @f.use(Decorator) b!: string;
+    }
+
+    expect(getClassSchema(Model).getProperty('b').type).toBe('string');
+    expect(called).toBe(true);
 });
 
 test('test same name', () => {
@@ -299,7 +324,7 @@ test('test properties', () => {
 
     @Entity('Model')
     class Model {
-        @f.id().mongoId()
+        @f.primary().mongoId()
         _id?: string;
 
         @f

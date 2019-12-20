@@ -1,17 +1,12 @@
 import {ClassType, eachKey, getClassName, isArray, isObject, isPlainObject, typeOf} from "@marcj/estdlib";
 import {applyDefaultValues, getRegisteredProperties} from "./mapper";
 import {
-    getClassTypeFromInstance,
     getClassSchema,
+    getClassTypeFromInstance,
     getOrCreateEntitySchema,
     PropertySchema,
     PropertyValidator,
-    FieldDecoratorWrapper
 } from "./decorators";
-
-function addValidator<T extends PropertyValidator>(target: Object, property: PropertySchema, validator: ClassType<T>) {
-    property.validators.push(validator);
-}
 
 export class PropertyValidatorError {
     constructor(
@@ -19,68 +14,6 @@ export class PropertyValidatorError {
         public readonly message: string,
     ) {
     }
-}
-
-/**
- * Decorator to add a custom validator class.
- *
- * @example
- * ```typescript
- * import {PropertyValidator} from '@marcj/marshal';
- *
- * class MyCustomValidator implements PropertyValidator {
- *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
- *          if (value.length > 10) {
- *              return new PropertyValidatorError('too_long', 'Too long :()');
- *          }
- *      };
- * }
- *
- * class Entity {
- *     @Field()
- *     @AddValidator(MyCustomValidator)
- *     name: string;
- * }
- *
- * ```
- *
- * @category Decorator
- */
-export function AddValidator<T extends PropertyValidator>(validator: ClassType<T>) {
-    return FieldDecoratorWrapper((target, property) => {
-        addValidator(target, property, validator);
-    });
-}
-
-/**
- * Decorator to add a custom inline validator.
- *
- * @example
- * ```typescript
- * class Entity {
- *     @Field()
- *     @InlineValidator(async (value: any) => {
- *          if (value.length > 10) {
- *              return new PropertyValidatorError('too_long', 'Too long :()');
- *          }
- *     }))
- *     name: string;
- * }
- * ```
- * @category Decorator
- */
-export function InlineValidator<T extends PropertyValidator>(cb: (value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void) {
-    return FieldDecoratorWrapper((target, property) => {
-        addValidator(target, property, class implements PropertyValidator {
-            validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
-                try {
-                    return cb(value, target, propertyName);
-                } catch (error) {
-                    return new PropertyValidatorError('error', error.message ? error.message : error);
-                }
-            }
-        });
-    });
 }
 
 /**
@@ -100,6 +33,7 @@ export class BooleanValidator implements PropertyValidator {
 
 
 const objectIdValidation = new RegExp(/^[a-fA-F0-9]{24}$/);
+
 /**
  * @hidden
  */
@@ -116,6 +50,7 @@ export class ObjectIdValidator implements PropertyValidator {
 }
 
 const uuidValidation = new RegExp(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+
 /**
  * @hidden
  */

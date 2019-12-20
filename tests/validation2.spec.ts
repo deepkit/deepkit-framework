@@ -9,8 +9,8 @@ test('test minimized code', async () => {
             sshPort: number = 22;
 
             constructor(
-                @f.id().uuid().asName('nodeId')
-                @f.id()
+                @f.primary().uuid().asName('nodeId')
+                @f.primary()
                 public e: string
             ) {
             }
@@ -23,8 +23,8 @@ test('test minimized code', async () => {
             sshPort: number = 22;
 
             constructor(
-                @f.id().uuid().asName('nodeId')
-                @f.id().uuid().asName('asd')
+                @f.primary().uuid().asName('nodeId')
+                @f.primary().uuid().asName('asd')
                 public e: string
             ) {
             }
@@ -36,8 +36,8 @@ test('test minimized code', async () => {
         sshPort: number = 22;
 
         constructor(
-            @f.id().uuid().asName('nodeId')
-            @f.id().uuid().asName('nodeId')
+            @f.primary().uuid().asName('nodeId')
+            @f.primary().uuid().asName('nodeId')
             public e: string
         ) {
         }

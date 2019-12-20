@@ -1,8 +1,6 @@
 import 'reflect-metadata';
 import 'jest-extended'
 import {
-    AddValidator,
-    InlineValidator,
     plainToClass,
     PropertyValidator,
     PropertyValidatorError,
@@ -136,8 +134,7 @@ test('test AddValidator', async () => {
     }
 
     class Model {
-        @f
-        @AddValidator(MyValidator)
+        @f.validator(MyValidator)
         id: string = '2';
     }
 
@@ -153,8 +150,7 @@ test('test inline validator throw Error', async () => {
     }
 
     class Model {
-        @f
-        @InlineValidator((value: string) => {
+        @f.validator((value: string) => {
             if (value.length > 5) {
                 throw new MyError();
             }
@@ -168,8 +164,7 @@ test('test inline validator throw Error', async () => {
 
 test('test inline validator throw string', async () => {
     class Model {
-        @f
-        @InlineValidator((value: string) => {
+        @f.validator((value: string) => {
             if (value.length > 5) {
                 throw 'Too long';
             }
@@ -183,8 +178,7 @@ test('test inline validator throw string', async () => {
 
 test('test inline validator', async () => {
     class Model {
-        @f
-        @InlineValidator((value: string) => {
+        @f.validator((value: string) => {
             if (value.length > 5) {
                 return new PropertyValidatorError('too_long', 'Too long');
             }
