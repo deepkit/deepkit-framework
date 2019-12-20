@@ -195,17 +195,6 @@ export class RequiredValidator implements PropertyValidator {
 }
 
 /**
- * Used to mark a field as optional. The validation requires field values per default, this makes it optional.
- *
- * @category Decorator
- */
-export function Optional() {
-    return FieldDecoratorWrapper((target, property) => {
-        property.isOptional = true;
-    });
-}
-
-/**
  * @hidden
  */
 export function isOptional<T>(classType: ClassType<T>, propertyName: string): boolean {

@@ -1,10 +1,9 @@
 import 'jest';
 import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
-import {Field, Decorated} from "@marcj/marshal/src/decorators";
+import {f} from "@marcj/marshal/src/decorators";
 
 class SimpleConfig {
-    @Decorated()
-    @Field([String])
+    @f.array(String).decorated()
     items: string[] = [];
 
     constructor(items: string[] = []) {
@@ -13,16 +12,16 @@ class SimpleConfig {
 }
 
 class Simple {
-    @Field()
+    @f
     public id!: number;
 
-    @Field()
+    @f
     public price!: number;
 
-    @Field()
+    @f
     public label!: string;
 
-    @Field(SimpleConfig)
+    @f.type(SimpleConfig)
     public config: SimpleConfig = new SimpleConfig;
 }
 

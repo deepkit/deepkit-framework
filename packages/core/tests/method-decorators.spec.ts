@@ -1,15 +1,14 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Decorated, f, Field, getClassSchema} from "../src/decorators";
+import {f, getClassSchema} from "../src/decorators";
 
 test('Basic array', () => {
     class Other {
     }
 
     class Controller {
-        @Field([Other])
-        @Decorated()
+        @f.array(Other).decorated()
         protected readonly bar: Other[] = [];
     }
 
@@ -71,10 +70,10 @@ test('short @f no index on arg', () => {
 
 test('method args', () => {
     class Controller {
-        public foo(@Field() bar: string) {
+        public foo(@f bar: string) {
         }
 
-        public foo2(@Field() bar: string, optional?: true, @Field().optional() anotherOne?: boolean) {
+        public foo2(@f bar: string, optional?: true, @f.optional() anotherOne?: boolean) {
         }
     }
 
@@ -117,6 +116,52 @@ test('short @f', () => {
         expect(props[0].name).toBe('0');
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
+    }
+});
+
+
+test('short @f multi', () => {
+    class Controller {
+        public foo(@f bar: string, @f foo: number) {
+        }
+    }
+
+    const s = getClassSchema(Controller);
+    {
+        const props = s.getMethodProperties('foo');
+
+        expect(props).toBeArrayOfSize(2);
+        expect(props[0].name).toBe('0');
+        expect(props[0].type).toBe('string');
+        expect(props[0].isArray).toBe(false);
+
+        expect(props[1].name).toBe('1');
+        expect(props[1].type).toBe('number');
+        expect(props[1].isArray).toBe(false);
+    }
+});
+
+
+test('short @f multi gap', () => {
+    class Controller {
+        public foo(@f bar: string, nothing: boolean, @f foo: number) {
+        }
+    }
+
+    const s = getClassSchema(Controller);
+    {
+        const props = s.getMethodProperties('foo');
+
+        expect(props).toBeArrayOfSize(3);
+        expect(props[0].name).toBe('0');
+        expect(props[0].type).toBe('string');
+        expect(props[0].isArray).toBe(false);
+
+        expect(props[1]).toBeUndefined();
+
+        expect(props[2].name).toBe('2');
+        expect(props[2].type).toBe('number');
+        expect(props[2].isArray).toBe(false);
     }
 });
 

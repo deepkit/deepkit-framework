@@ -4,21 +4,19 @@ import {
     classToPlain,
     DatabaseName,
     Entity,
-    Field,
+    f,
     getDatabaseName,
     getEntityName,
     getClassSchema,
     getParentReferenceClass,
     getReflectionType,
-    IDField,
     isArrayType,
     isMapType,
-    MongoIdField,
     ParentReference,
     plainToClass,
     RegisteredEntities,
-    f,
-    FieldAny, FieldMap, forwardRef, FieldArray, isOptional, isRegisteredEntity,
+    isOptional,
+    isRegisteredEntity,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
@@ -29,7 +27,7 @@ import {getClassTypeFromInstance} from '../src/decorators';
 
 test('test invalid usage decorator', async () => {
     expect(() => {
-        @Field()
+        @f
         class Base {
             ohwe: any;
         }
@@ -70,13 +68,13 @@ test('test invalid usage', async () => {
     }
 
     class Base {
-        @Field(forwardRef(() => undefined))
+        @f.forward(() => undefined!)
         ohwe: any;
 
-        @Field(forwardRef(() => Config))
+        @f.forward(() => Config)
         config?: any;
 
-        constructor(@Field() public id: string) {
+        constructor(@f public id: string) {
         }
     }
 
@@ -112,7 +110,7 @@ test('test entity database', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
-        @f.id().mongo()
+        @f.id().mongoId()
         _id?: string;
 
         @f
@@ -222,117 +220,6 @@ test('test @Field', () => {
     expect(schema.getProperty('configArray').isMap).toBe(false);
 });
 
-test('test invalid @Field', () => {
-    class Config {
-        @f.optional() name?: string;
-    }
-
-    expect(() => {
-        class User {
-            @Field()
-            notDefined;
-        }
-    }).toThrowError('User::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
-
-    expect(() => {
-        var NOTEXIST;
-
-        class User {
-            @Field(NOTEXIST)
-            notDefined;
-        }
-    }).toThrowError('User::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
-
-    expect(() => {
-        class User {
-            @Field()
-            created = new Date;
-        }
-    }).toThrowError('User::created type mismatch. Given undefined, but declared is Object or undefined.');
-
-    expect(() => {
-        class User {
-            @Field(Config)
-            config: Config[] = [];
-        }
-    }).toThrowError('User::config type mismatch. Given Config, but declared is Array.');
-
-    expect(() => {
-        class User {
-            @Field([Config])
-            config?: Config;
-        }
-    }).toThrowError('User::config type mismatch. Given Config[], but declared is Config.');
-
-    expect(() => {
-        class User {
-            @Field(Config)
-            config: { [k: string]: Config } = {};
-        }
-    }).toThrowError('User::config type mismatch. Given Config, but declared is Object or undefined');
-
-    expect(() => {
-        class Model {
-            @Field([forwardRef(() => Config)])
-            sub?: Config;
-        }
-
-    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[], but declared is Config.');
-
-    expect(() => {
-        class Model {
-            @FieldArray(forwardRef(() => Config))
-            sub?: Config;
-        }
-
-    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[], but declared is Config.');
-
-    expect(() => {
-        class Model {
-            @FieldMap(forwardRef(() => Config))
-            sub?: Config;
-        }
-    }).toThrowError('Model::sub type mismatch. Given {[key: string]: ForwardedRef}, but declared is Config.');
-
-    expect(() => {
-        class Model {
-            @Field({Config})
-            sub?: Config[];
-        }
-
-    }).toThrowError('Model::sub type mismatch. Given {[key: string]: Config}, but declared is Array.');
-
-    expect(() => {
-        class Model {
-            @FieldAny()
-            any?: any[];
-        }
-    }).toThrowError('Model::any type mismatch. Given Any, but declared is Array.');
-
-    {
-        //works
-        class Model {
-            @FieldAny()
-            any?: { [k: string]: any };
-        }
-    }
-    {
-        //works
-        class Model {
-            @FieldAny({})
-            any?;
-        }
-    }
-
-    {
-        //works
-        class Model {
-            @Field(forwardRef(() => Config))
-            sub?: Config;
-        }
-    }
-});
-
 test('test no entity throw error', () => {
 
     expect(() => {
@@ -375,7 +262,7 @@ test('test decorator circular', () => {
 
     {
         class Model {
-            @Field(forwardRef(() => Sub))
+            @f.forward(() => Sub)
             sub?: Sub;
         }
 
@@ -384,7 +271,7 @@ test('test decorator circular', () => {
 
     {
         class Model {
-            @FieldMap(forwardRef(() => Sub))
+            @f.forwardMap(() => Sub)
             sub?: { [l: string]: Sub };
         }
 
@@ -394,7 +281,7 @@ test('test decorator circular', () => {
 
     {
         class Model {
-            @Field([forwardRef(() => Sub)])
+            @f.forwardArray(() => Sub)
             sub?: Sub[];
         }
 
@@ -412,20 +299,19 @@ test('test properties', () => {
 
     @Entity('Model')
     class Model {
-        @IDField()
-        @MongoIdField()
+        @f.id().mongoId()
         _id?: string;
 
-        @Field()
+        @f
         name?: string;
 
-        @Field(DataValue)
+        @f.type(DataValue)
         data?: DataValue;
     }
 
     @Entity('SubModel')
     class SubModel extends Model {
-        @Field(DataValue2)
+        @f.type(DataValue2)
         data2?: DataValue2;
     }
 
@@ -466,10 +352,10 @@ test('test properties', () => {
 
 test('more decorator', () => {
     class Model {
-        @Field()
+        @f
         bool: boolean = false;
 
-        @FieldAny()
+        @f.any()
         whatever: any;
     }
 
@@ -528,13 +414,13 @@ test('more decorator', () => {
 
 test('more array/map', () => {
     class Model {
-        @Field([Boolean])
+        @f.array(Boolean)
         bools?: boolean[];
 
-        @FieldAny([])
+        @f.any().asArray()
         whatever?: any[];
 
-        @FieldAny({})
+        @f.any().asMap()
         whatevermap?: { [k: string]: any };
     }
 
@@ -545,7 +431,7 @@ test('more array/map', () => {
 
 test('binary', () => {
     class Model {
-        @Field(Buffer)
+        @f.type(Buffer)
         preview: Buffer = Buffer.from('FooBar', 'utf8');
     }
 

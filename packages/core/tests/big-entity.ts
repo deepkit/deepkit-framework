@@ -1,72 +1,67 @@
 import {
     Entity,
-    EnumField,
-    Field,
-    FieldAny,
-    IDField,
-    Optional,
-    UUIDField
+    f
 } from "../index";
 
 export class JobConfigDocker {
-    @Field([String])
+    @f.array(String)
     env: string[] = []; //e.g. ["PATH=bla"]
 
-    @Field([String])
+    @f.array(String)
     binds: string[] = []; //e.g. ["/tmp:/tmp"]
 
-    @Field([String])
+    @f.array(String)
     links: string[] = []; //e.g. ["redis3:redis"]
 }
 
 export class JobResources {
-    @Field()
+    @f
     cpu: number = 1;
 
-    @Field()
+    @f
     memory: number = 1;
 
-    @Field()
+    @f
     gpu: number = 0;
 
-    @Field()
+    @f
     gpuMemory: number = 0;
 }
 
 export class JobTaskCommand {
-    constructor(@Field() public name: string, @Field() public command: string) {
+    constructor(@f public name: string, @f public command: string) {
     }
 }
 
 export class JobTaskConfigBase {
-    @Field([String])
+    @f.array(String)
     install?: string[];
 
-    @Field()
+    @f
     dockerfile: string = '';
 
-    @Field([String])
+    @f.array(String)
     install_files?: string[];
 
-    @Field()
+    @f
     image: string = '';
 
-    @Field([String])
+    @f.array(String)
     environmentVariables: string[] = [];
 
-    @Field([String])
+    @f.array(String)
     servers: string[] = [];
 
-    @Field([JobTaskCommand])
+    @f.array(JobTaskCommand)
     commands: JobTaskCommand[] = [];
 
-    @Field([String])
+    @f.array(String)
     args?: string[];
 
-    @Field(JobResources)
+    @f
     resources: JobResources = new JobResources;
 
-    @Field(JobConfigDocker)
+    @f
     docker: JobConfigDocker = new JobConfigDocker;
 }
 
@@ -74,13 +69,13 @@ export class JobTaskConfig extends JobTaskConfigBase {
     /**
      * Will be set by config loading.
      */
-    @Field()
+    @f
     name: string = '';
 
-    @Field()
+    @f
     replicas: number = 1;
 
-    @Field([String])
+    @f.array(String)
     depends_on: string[] = [];
 }
 
@@ -98,79 +93,79 @@ export class JobConfig extends JobTaskConfigBase {
         'docker'
     ];
 
-    @FieldAny()
+    @f.any()
     parameters: { [name: string]: any } = {};
 
-    @Field([String])
+    @f.array(String)
     ignore: string[] = [];
 
-    @Field()
+    @f
     priority: number = 0;
 
-    @Field()
+    @f
     import: string = '';
 
-    @Field({JobTaskConfig})
+    @f.map(JobTaskConfig)
     tasks: { [name: string]: JobTaskConfig } = {};
 }
 
 export class JobEnvironmentPython {
-    @Field()
+    @f
     version?: string;
 
-    @Field()
+    @f
     binary?: string;
 
-    @Field()
+    @f
     sdkVersion?: string;
 
-    @Field({String})
+    @f.map(String)
     pipPackages: { [name: string]: string } = {};
 }
 
 export class JobEnvironment {
-    @Field()
+    @f
     hostname?: string;
 
-    @Field()
+    @f
     username?: string;
 
-    @Field()
+    @f
     platform?: string;
 
-    @Field()
+    @f
     release?: string;
 
-    @Field()
+    @f
     arch?: string;
 
-    @Field()
+    @f
     uptime?: number;
 
-    @Field()
+    @f
     nodeVersion?: string;
 
-    @Field({String})
+    @f.map(String)
     environmentVariables?: { [name: string]: string };
 
-    @Field(JobEnvironmentPython)
+    @f
     python?: JobEnvironmentPython;
 }
 
 export class JobGit {
-    @Field()
+    @f
     author?: string;
 
-    @Field()
+    @f
     branch?: string;
 
-    @Field()
+    @f
     commit?: string;
 
-    @Field()
+    @f
     message?: string;
 
-    @Field()
+    @f
     origin?: string;
 }
 
@@ -179,25 +174,25 @@ export class JobDocker {
 }
 
 export class JobDockerImage {
-    @Field()
+    @f
     name?: string;
 
-    @Field()
+    @f
     id?: string;
 
-    @Field()
+    @f
     size?: number;
 
-    @Field()
+    @f
     os?: string;
 
-    @Field()
+    @f
     arch?: string;
 
-    @Field()
+    @f
     created?: Date;
 
-    @Field()
+    @f
     builtWithDockerVersion?: string;
 }
 
@@ -247,107 +242,107 @@ export enum JobTaskInstanceStatus {
 }
 
 export class Channel {
-    @Field([String])
+    @f.array(String)
     traces: string[] = [];
 
-    @Field()
+    @f
     main?: boolean;
 
-    @Field()
+    @f
     kpi?: boolean;
 
-    @Field()
+    @f
     kpiTrace: number = 0;
 
-    @Field()
+    @f
     maxOptimization: boolean = true;
 
-    @FieldAny([])
+    @f.any().asArray()
     lastValue: any[] = [];
 
-    @FieldAny()
+    @f.any()
     xaxis?: object;
 
-    @FieldAny()
+    @f.any()
     yaxis?: object;
 
-    @FieldAny()
+    @f.any()
     layout?: object;
 }
 
 export class JobAssignedResourcesGpu {
-    constructor(@Field() public id: number, @Field() public memory: number) {
+    constructor(@f public id: number, @f public memory: number) {
     }
 }
 
 export class JobAssignedResources {
-    @Field()
+    @f
     cpu: number = 0;
 
-    @Field()
+    @f
     memory: number = 0;
 
-    @Field([JobAssignedResourcesGpu])
+    @f.array(JobAssignedResourcesGpu)
     gpus: JobAssignedResourcesGpu[] = [];
 }
 
 export class JobTaskInstance {
-    @EnumField(JobTaskInstanceStatus)
+    @f.enum(JobTaskInstanceStatus)
     status: JobTaskInstanceStatus = JobTaskInstanceStatus.pending;
 
-    @Field(JobEnvironment)
+    @f.type(JobEnvironment)
     environment: JobEnvironment = new JobEnvironment;
 
-    @UUIDField()
+    @f.uuid()
     server?: string;
 
-    @Field(JobAssignedResources)
+    @f.type(JobAssignedResources)
     assignedResources: JobAssignedResources = new JobAssignedResources;
 
-    constructor(@Field() public id: number) {
+    constructor(@f public id: number) {
     }
 }
 
 export class JobTaskQueue {
-    @Field()
+    @f
     position: number = 0;
 
-    @Field()
+    @f
     tries: number = 0;
 
-    @Field()
+    @f
     result: string = '';
 
-    @Field()
+    @f
     added: Date = new Date();
 }
 
 export class JobTask {
-    @Field(JobTaskQueue)
+    @f
     queue: JobTaskQueue = new JobTaskQueue;
 
-    @Field()
+    @f
     name: string;
 
-    @Field(JobDocker)
+    @f
     docker: JobDocker = new JobDocker;
 
-    @Field(JobDockerImage)
+    @f
     dockerImage: JobDockerImage = new JobDockerImage;
 
-    @EnumField(JobTaskStatus)
+    @f.enum(JobTaskStatus)
     status: JobTaskStatus = JobTaskStatus.pending;
 
-    @Field()
+    @f
     assigned?: Date;
 
-    @Field()
+    @f
     started?: Date;
 
-    @Field()
+    @f
     ended?: Date;
 
-    @Field({JobTaskInstance})
+    @f.map(JobTaskInstance)
     private instances: { [name: string]: JobTaskInstance } = {};
 
     constructor(name: string, replicas: number) {
@@ -359,94 +354,92 @@ export class JobTask {
 
 @Entity('job', 'jobs')
 export class Job {
-    @IDField()
-    @UUIDField()
+    @f.id().uuid()
     id: string;
 
-    @UUIDField()
+    @f.uuid()
     project: string;
 
-    @Field()
+    @f
     number: number = 0;
 
-    @Field()
+    @f
     version: number = 1;
 
-    @Field()
+    @f
     created: Date = new Date();
 
-    @Field()
+    @f
     updated: Date = new Date();
 
-    @Field()
+    @f
     author?: string;
 
-    @Field(JobConfig)
+    @f
     config: JobConfig = new JobConfig;
 
-    @Field(JobGit)
-    @Optional()
+    @f.optional()
     git?: JobGit;
 
-    @Field()
+    @f
     configFile?: string;
 
-    @EnumField(JobStatus)
+    @f.enum(JobStatus)
     status: JobStatus = JobStatus.creating;
 
-    @Field()
+    @f
     title: string = '';
 
-    @Field({JobTask})
+    @f.map(JobTask)
     tasks: { [name: string]: JobTask } = {};
 
-    @Field()
+    @f
     runOnCluster: boolean = false;
 
-    @Field()
+    @f
     assigned?: Date;
 
-    @Field()
+    @f
     started?: Date;
 
-    @Field()
+    @f
     ended?: Date;
 
-    @Field()
+    @f
     ping?: Date;
 
-    @Field()
+    @f
     iteration: number = 0;
 
-    @Field()
+    @f
     iterations: number = 0;
 
-    @Field()
+    @f
     secondsPerIteration: number = 0;
 
     //aka batches
-    @Field()
+    @f
     step: number = 0;
 
-    @Field()
+    @f
     steps: number = 0;
 
-    @Field()
+    @f
     stepLabel: string = 'step';
 
     /**
      * ETA in seconds. Time left.
      */
-    @Field()
+    @f
     eta: number = 0;
 
-    @Field()
+    @f
     speed: number = 0;
 
-    @Field()
+    @f
     speedLabel: string = 'sample/s';
 
-    @Field({Channel})
+    @f.map(Channel)
     channels: { [name: string]: Channel } = {};
 
     constructor(id: string, project: string) {

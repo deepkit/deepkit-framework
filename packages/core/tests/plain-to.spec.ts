@@ -9,7 +9,7 @@ import {
     partialPlainToClass,
     plainToClass
 } from "../src/mapper";
-import {EnumField, Field, forwardRef, Optional, ParentReference} from "..";
+import {f, ParentReference} from "..";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from "./document-scenario/PageClass";
 import {PageCollection} from "./document-scenario/PageCollection";
@@ -278,7 +278,7 @@ test('test enum string', () => {
     }
 
     class Model {
-        @EnumField(MyEnum)
+        @f.enum(MyEnum)
         enum: MyEnum = MyEnum.waiting;
     }
 
@@ -298,7 +298,7 @@ test('test enum labels', () => {
     }
 
     class Model {
-        @EnumField(MyEnum)
+        @f.enum(MyEnum)
         enum: MyEnum = MyEnum.third;
     }
 
@@ -314,7 +314,7 @@ test('test enum labels', () => {
 
 
     class ModelWithLabels {
-        @EnumField(MyEnum, true)
+        @f.enum(MyEnum, true)
         enum: MyEnum = MyEnum.third;
     }
 
@@ -339,18 +339,17 @@ test('partial edge cases', () => {
     class Config {}
 
     class User {
-        @Field()
+        @f
         name?: string;
 
-        @Field([String])
+        @f.array(String)
         tags?: string[];
 
-        @Field()
+        @f
         config?: Config;
 
-        @Field(forwardRef(() => User))
+        @f.forward(() => User).optional()
         @ParentReference()
-        @Optional()
         parent?: User;
     }
 
