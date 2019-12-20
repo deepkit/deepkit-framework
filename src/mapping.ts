@@ -11,7 +11,8 @@ import {
     isEnumAllowLabelsAsValue,
     isOptional,
     toClass,
-    ToClassState
+    ToClassState,
+    moment
 } from "@marcj/marshal";
 import {
     ClassType,
@@ -111,12 +112,13 @@ export function propertyMongoToPlain<T>(
             return (<ObjectID>value).toHexString();
         }
 
-        if ('date' === type && value instanceof Date) {
-            return value.toJSON();
-        }
-
         if ('binary' === type && value instanceof Binary) {
             return value.buffer.toString('base64');
+        }
+
+        //Date automatically is converted since it has toJSON() method.
+        if (value && 'function' === typeof value.toJSON) {
+            return value.toJSON();
         }
 
         return value;
@@ -163,6 +165,10 @@ export function propertyClassToMongo<T>(
             } catch (e) {
                 throw new Error(`Invalid UUID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
             }
+        }
+
+        if ('moment' === type) {
+            return value.toDate();
         }
 
         if ('string' === type) {
@@ -330,7 +336,6 @@ export function propertyMongoToClass<T>(
     const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
 
     function convert(value: any) {
-
         if (value && 'uuid' === type && 'string' !== typeof value) {
             return uuid4Stringify(value);
         }
@@ -341,6 +346,10 @@ export function propertyMongoToClass<T>(
 
         if ('date' === type && !(value instanceof Date)) {
             return new Date(value);
+        }
+
+        if ('moment' === type) {
+            return moment(value);
         }
 
         if ('binary' === type && value instanceof Binary) {

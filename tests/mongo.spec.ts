@@ -14,6 +14,7 @@ import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {plainToMongo, uuid4Stringify} from "../src/mapping";
 import {Buffer} from "buffer";
 import {createConnection} from "typeorm";
+import * as moment from "moment";
 
 let database: Database;
 
@@ -34,6 +35,25 @@ afterEach(async () => {
     await database.close();
 });
 
+test('test moment db', async () => {
+    @Entity('model-moment')
+    class Model {
+        @f.moment()
+        created: moment.Moment = moment();
+    }
+
+    const database = await createDatabase('testing');
+
+    const m = new Model;
+    m.created = moment(new Date('2018-10-13T12:17:35.000Z'));
+
+    await database.add(Model, m);
+    const m2 = await database.get(Model, {});
+    expect(m2).toBeInstanceOf(Model);
+    expect(m2!.created).toBeInstanceOf(moment);
+    expect(m2!.created.toJSON()).toBe('2018-10-13T12:17:35.000Z');
+});
+
 test('test save undefined values', async () => {
     const database = await createDatabase('testing');
 
@@ -41,8 +61,10 @@ test('test save undefined values', async () => {
     class Model {
         constructor(
             @f.optional()
-            public name?: string){}
+            public name?: string) {
+        }
     }
+
     const collection = database.getCollection(Model);
 
     {
