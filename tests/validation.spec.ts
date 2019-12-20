@@ -1,27 +1,25 @@
 import 'reflect-metadata';
 import 'jest-extended'
-import {Optional, validate, Field} from "@marcj/marshal";
+import {validate, f} from "@marcj/marshal";
 import {ValidationPipe} from '../';
 import {BadRequestException} from '@nestjs/common';
 
 test('test required', async () => {
 
     class Model {
-        @Field()
+        @f
         id: string = '1';
 
-        @Field()
+        @f
         name?: string;
 
-        @Optional()
+        @f.optional()
         optional?: string;
 
-        @Optional()
-        @Field({String})
+        @f.map(String).optional()
         map?: {[name: string]: string};
 
-        @Optional()
-        @Field([String])
+        @f.array(String).optional()
         array?: string[];
     }
 
