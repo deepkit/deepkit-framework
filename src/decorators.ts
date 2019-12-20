@@ -1,24 +1,14 @@
-import {getCachedParameterNames, Types} from "./mapper";
+import {Types} from "./mapper";
 import {
     BooleanValidator,
     DateValidator,
     NumberValidator,
     ObjectIdValidator,
-    Optional,
     PropertyValidatorError,
     StringValidator,
     UUIDValidator
 } from "./validation";
-import {
-    ClassType,
-    getClassName,
-    isArray,
-    isNumber,
-    isObject,
-    isPlainObject,
-    eachPair,
-    eachKey
-} from '@marcj/estdlib';
+import {ClassType, eachKey, eachPair, getClassName, isArray, isNumber, isObject, isPlainObject} from '@marcj/estdlib';
 import {Buffer} from "buffer";
 import * as getParameterNames from "get-parameter-names";
 
@@ -157,7 +147,7 @@ export class PropertySchema {
         }
 
         if (!this.classType) {
-            throw new Error(`No classType given for ${this.name}. Use @Field(forwardRef(() => MyClass)) for circular dependencies.`);
+            throw new Error(`No classType given for ${this.name}. Use @f.forward(() => MyClass) for circular dependencies.`);
         }
 
         return this.classType;
@@ -181,6 +171,7 @@ export class ClassSchema {
      * Each method can have its own PropertySchema definition for each argument, where map key = method name.
      */
     methodProperties = new Map<string, PropertySchema[]>();
+    normalizedMethodProperties: {[name: string]: true} = {};
 
     classProperties: { [name: string]: PropertySchema } = {};
 
@@ -246,7 +237,21 @@ export class ClassSchema {
      * array item.
      */
     public getMethodProperties(name: string): PropertySchema[] {
-        return this.methodProperties.get(name) || [];
+        const properties = this.getOrCreateMethodProperties(name);
+        if (!this.normalizedMethodProperties[name]) {
+            for (const [i, p] of eachPair(properties)) {
+                if (!p) {
+                    properties[i] = new PropertySchema(String(i));
+                    const returnTypes = Reflect.getMetadata('design:paramtypes', this.proto, name);
+                    if (returnTypes) {
+                        properties[i].type = returnTypes
+                    }
+                }
+            }
+            this.normalizedMethodProperties[name] = true;
+        }
+
+        return properties;
     }
 
     /**
@@ -470,14 +475,20 @@ export interface FieldDecoratorResult {
     index(options?: IndexOptions, name?: string): FieldDecoratorResult;
 
     /**
+     * Mongo's ObjectID.
      * @see MongoIdField
      */
-    mongo(): FieldDecoratorResult;
+    mongoId(): FieldDecoratorResult;
 
     /**
      * @see UUIDField
      */
     uuid(): FieldDecoratorResult;
+
+    /**
+     * @see Decorated
+     */
+    decorated(): FieldDecoratorResult;
 
     /**
      * @see FieldArray
@@ -503,7 +514,19 @@ function createFieldDecoratorResult(
     modifiedOptions: FieldOptions = {},
     root = false,
 ): FieldDecoratorResult {
+    function resetIfNecessary() {
+        //on root we never use the overwritten name, so we set it back
+        //for child FieldDecoratorResults created via asName() etc we keep that stuff (since there is root=false)
+        if (root) {
+            givenPropertyName = '';
+            modifier = [];
+            modifiedOptions = {};
+        }
+    }
+
     const fn = (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
+        resetIfNecessary();
+
         let returnType;
         let methodName = 'constructor';
         const schema = getOrCreateEntitySchema(target);
@@ -621,53 +644,61 @@ function createFieldDecoratorResult(
         }
 
         cb(target, propertySchema!, returnType, {...modifiedOptions});
-
-        //when @f is used alone, we need to reset the roots state
-        if (root) {
-            givenPropertyName = '';
-            modifier = [];
-            modifiedOptions = {};
-        }
     };
 
     fn.asName = (name: string) => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, name, [...modifier, Optional()], modifiedOptions);
     };
 
     fn.optional = () => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Optional()], modifiedOptions);
     };
 
     fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)], modifiedOptions);
     };
 
     fn.id = fn.asId = () => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, IDField()], modifiedOptions);
     };
 
     fn.index = (options?: IndexOptions, name?: string) => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Index(options, name)], modifiedOptions);
     };
 
-    fn.mongo = () => {
+    fn.mongoId = () => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, MongoIdField()], modifiedOptions);
     };
 
     fn.uuid = () => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, UUIDField()], modifiedOptions);
     };
 
+    fn.decorated = () => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Decorated()], modifiedOptions);
+    };
+
     fn.use = (decorator: (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void) => {
+        resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator], modifiedOptions);
     };
 
     fn.asArray = () => {
+        resetIfNecessary();
         if (modifiedOptions.map) throw new Error('Field is already defined as map.');
         return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, array: true});
     };
 
     fn.asMap = () => {
+        resetIfNecessary();
         if (modifiedOptions.array) throw new Error('Field is already defined as array.');
         return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, map: true});
     };
@@ -680,9 +711,10 @@ function createFieldDecoratorResult(
  * We detect the name by reading the constructor' signature, which would be otherwise lost.
  */
 export function FieldDecoratorWrapper(
-    cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void
+    cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
+    root = false
 ): FieldDecoratorResult {
-    return createFieldDecoratorResult(cb, '', [], {}, true);
+    return createFieldDecoratorResult(cb, '', [], {}, root);
 }
 
 /**
@@ -693,13 +725,10 @@ export function FieldDecoratorWrapper(
  *
  * Only one field per class can be the decorated one.
  *
- * @category Decorator
- *
  * Example
  * ```typescript
  * export class PageCollection {
- *     @Field(() => PageClass)
- *     @Decorated()
+ *     @f.forward(() => PageClass).decorated()
  *     private readonly pages: PageClass[] = [];
  *
  *     constructor(pages: PageClass[] = []) {
@@ -716,13 +745,13 @@ export function FieldDecoratorWrapper(
  * }
  *
  * export class PageClass {
- *     @UUIDField()
+ *     @f.uuid()
  *     id: string = uuid();
  *
- *     @Field()
+ *     @f
  *     name: string;
  *
- *     @ClassCircular(() => PageCollection)
+ *     @f.forward(() => PageCollection)
  *     children: PageCollection = new PageCollection;
  *
  *     constructor(name: string) {
@@ -734,7 +763,7 @@ export function FieldDecoratorWrapper(
  * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
  * `PageCollection.pages` (always the field where @Decorated() is applied to), here a array of PagesClass `PageClass[]`.
  */
-export function Decorated() {
+function Decorated() {
     return FieldDecoratorWrapper((target, property) => {
         getOrCreateEntitySchema(target).decorator = property.name;
         property.isDecorated = true;
@@ -747,13 +776,20 @@ export function Decorated() {
  * This is important if you interact with the database abstraction.
  *
  * Only one field can be the ID.
- *
- * @category Decorator
  */
-export function IDField() {
+function IDField() {
     return FieldDecoratorWrapper((target, property) => {
         getOrCreateEntitySchema(target).idField = property.name;
         property.isId = true;
+    });
+}
+
+/**
+ * Used to mark a field as optional. The validation requires field values per default, this makes it optional.
+ */
+function Optional() {
+    return FieldDecoratorWrapper((target, property) => {
+        property.isOptional = true;
     });
 }
 
@@ -765,7 +801,7 @@ export function IDField() {
  * Example one direction.
  * ```typescript
  * class JobConfig {
- *     @Type(() => Job) //necessary since circular dependency
+ *     @f.forward(() => Job) //forward necessary since circular dependency
  *     @ParentReference()
  *     job: Job;
  *
@@ -780,16 +816,16 @@ export function IDField() {
  * Example circular parent-child setup.
  * ```typescript
  * export class PageClass {
- *     @UUIDField()
+ *     @f.uuid()
  *     id: string = uuid();
  *
- *     @Field()
+ *     @f
  *     name: string;
  *
- *     @Field(() => PageClass).asArray()
+ *     @f.forwardArray(() => PageClass) //forward necessary since circular dependency
  *     children: Page[] = [];
  *
- *     @Field(() => PageClass).optional()
+ *     @f.forward(() => PageClass).optional() //forward necessary since circular dependency
  *     @ParentReference()
  *     parent?: PageClass;
  *
@@ -812,7 +848,6 @@ export function ParentReference() {
  * Example
  * ```typescript
  * class User {
- *
  *     @OnLoad()
  *     onLoad() {
  *         console.log('self loaded!');
@@ -841,10 +876,8 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
 /**
  * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
  * PlainToClass or mongoToClass is not effected by this.
- *
- * @category Decorator
  */
-export function Exclude(t: 'all' | 'mongo' | 'plain' = 'all') {
+function Exclude(t: 'all' | 'mongo' | 'plain' = 'all') {
     return FieldDecoratorWrapper((target, property) => {
         property.exclude = t;
     });
@@ -929,58 +962,6 @@ interface FieldOptions {
 
 /**
  * Decorator to define a field for an entity.
- *
- * ```typescript
- * class User {
- *     @Field().optional()
- *     num?: number;
- *
- *     @Field().optional()
- *     birthdate?: Date;
- *
- *     @Field().optional()
- *     yes?: Boolean;
- *
- *     @Field([String])
- *     //or ...
- *     @Field(String).asArray()
- *     tags: string[] = [];
- *
- *     @Field({String})
- *     //or ...
- *     @Field(String).asMap()
- *     flatStringConfigs: {[name: string]: String} = {}};
- *
- *     @FieldAny({})
- *     //or ...
- *     @Field({}).asMap()
- *     flatConfig: {[name: string]: any} = {}};
- *
- *     @Field(MyClass)
- *     config: MyClass = new wMyClass;
- *
- *     @Field([MyClass])
- *     //or ...
- *     @Field(MyClass).asArray()
- *     configArray: MyClass[] = []];
- *
- *     @Field({MyClass})
- *     //or ...
- *     @Field(MyClass).asMap()
- *     configMap: {[name: string]: MyClass} = {}};
- *
- *     constrcutor(
- *         @Field().index({unique: true})
- *         //if minified using bundled and names are removed, use asName() as as first argument
- *         //the exact same property name as string. During compilation/bundling this information
- *         //is otherwise lost and transformations fails.
- *         @Field().asName('name').index({unique: true})
- *         public name: string
- *     ) {}
- * }
- * ```
- *
- * @category Decorator
  */
 export function Field(oriType?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }) {
     return FieldDecoratorWrapper((target, property, returnType, options) => {
@@ -1047,9 +1028,10 @@ export function Field(oriType?: FieldTypes | FieldTypes[] | { [n: string]: Field
             }
 
             if (!type && returnType === Object) {
+                //typescript puts `Object` for undefined types.
                 throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
                     `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                    `If you don't have a type, use @FieldAny(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
+                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
                 );
             }
 
@@ -1124,7 +1106,7 @@ export function Field(oriType?: FieldTypes | FieldTypes[] | { [n: string]: Field
         if (property.type === 'any') {
             property.type = options.type!;
         }
-    });
+    }, true);
 }
 
 declare type TYPES = FieldTypes | FieldTypes[] | { [n: string]: FieldTypes };
@@ -1139,8 +1121,16 @@ fRaw['map'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecorator
     return Field(type).asMap();
 };
 
+fRaw['any'] = function (this: FieldDecoratorResult): FieldDecoratorResult {
+    return Field(Any);
+};
+
 fRaw['type'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecoratorResult {
     return Field(type);
+};
+
+fRaw['enum'] = function (this: FieldDecoratorResult, clazz: any, allowLabelsAsValue = false): FieldDecoratorResult {
+    return EnumField(clazz, allowLabelsAsValue);
 };
 
 fRaw['forward'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
@@ -1161,6 +1151,8 @@ fRaw['forwardMap'] = function (this: FieldDecoratorResult, f: () => TYPES): Fiel
 export const f: FieldDecoratorResult & {
     type: (type: TYPES) => FieldDecoratorResult,
     array: (type: TYPES) => FieldDecoratorResult,
+    enum: <T>(type: any, allowLabelsAsValue?: boolean) => FieldDecoratorResult,
+    any: () => FieldDecoratorResult,
     map: (type: TYPES) => FieldDecoratorResult,
     forward: (f: () => TYPES) => FieldDecoratorResult,
     forwardArray: (f: () => TYPES) => FieldDecoratorResult,
@@ -1168,89 +1160,10 @@ export const f: FieldDecoratorResult & {
 } = fRaw as any;
 
 /**
- * Same as @Field() but defines type as 'any'. With type any no transformation is applied.
- *
- * ```typescript
- * class User {
- *     @FieldAny()
- *     config: any;
- *
- *     @FieldAny([])
- *     configs: any[];
- *
- *     @FieldAny({})
- *     configMap: {[name: string]: any};
- * }
- *
- * ```
- *
- * @category Decorator
- */
-export function FieldAny(type?: {} | Array<any>) {
-    if (isObject(type)) {
-        return Field({Any});
-    }
-
-    if (isArray(type)) {
-        return Field([Any]);
-    }
-
-    return Field(Any);
-}
-
-/**
- * Same as @Field(T) but defines the field as array of type T.
- * This is the same as @Field({T}).
- *
- * Use this method if you reference a circular dependency class, e.g.
- * ```typescript
- *
- * class User {
- *     @FieldMap(() => MyConfig)
- *     config: {[k: string]: MyConfig};
- * }
- * ```
- *
- * ```typescript
- * class User {
- *     @FieldMap(String)
- *     tags: {[k: string]: string};
- *
- *     @Field({String})
- *     tags: {[k: string]: string};
- * }
- * ```
- *
- * @category Decorator
- */
-export function FieldMap(type: FieldTypes) {
-    return Field({type});
-}
-
-/**
- * Same as @Field(T) but defines the field as map of type T.
- *
- * ```typescript
- * class User {
- *     @FieldArray(String)
- *     tags: string[];
- *
- *     @Field([String])
- *     tags: string[];
- * }
- * ```
- *
- * @category Decorator
- */
-export function FieldArray(type: FieldTypes) {
-    return Field([type]);
-}
-
-/**
  * @hidden
  */
 function Type<T>(type: Types) {
-    return FieldDecoratorWrapper((target, property, returnType?: any) => {
+    return FieldDecoratorWrapper((target, property, returnType: any) => {
         property.type = type;
     });
 }
@@ -1274,28 +1187,22 @@ function Type<T>(type: Types) {
  *     }
  * }
  * ```
- *
- * @category Decorator
  */
-export function MongoIdField() {
+function MongoIdField() {
     return Type('objectId');
 }
 
 /**
  * Used to define a field as UUID (v4).
- *
- * @category Decorator
  */
-export function UUIDField() {
+function UUIDField() {
     return Type('uuid');
 }
 
 /**
  * Used to define an index on a field.
- *
- * @category Decorator
  */
-export function Index(options?: IndexOptions, name?: string) {
+function Index(options?: IndexOptions, name?: string) {
     return FieldDecoratorWrapper((target, property) => {
         const schema = getOrCreateEntitySchema(target);
         if (property.methodName) {
@@ -1323,10 +1230,8 @@ export function MultiIndex(fields: string[], options: IndexOptions, name?: strin
  * Used to define a field as Enum.
  *
  * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
- *
- * @category Decorator
  */
-export function EnumField<T>(type: any, allowLabelsAsValue = false) {
+function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return FieldDecoratorWrapper((target, property, returnType?: any) => {
         if (property) {
             Type('enum')(target, property.name);

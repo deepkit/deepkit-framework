@@ -1,30 +1,30 @@
 import {PageCollection} from "./PageCollection";
 import {DocumentClass} from "./DocumentClass";
-import {Entity, Field, forwardRef, ParentReference, UUIDField} from "../../src/decorators";
+import {Entity, f, ParentReference} from "../../src/decorators";
 import {uuid} from "../../src/utils";
 import {Buffer} from 'buffer';
 
 @Entity('PageClass')
 export class PageClass {
-    @UUIDField()
+    @f.uuid()
     id: string = uuid();
 
-    @Field(forwardRef(() => PageCollection))
+    @f.forward(() => PageCollection)
     children: PageCollection = new PageCollection;
 
-    @Field(Buffer)
+    @f.type(Buffer)
     picture?: Buffer;
 
-    @Field().optional()
+    @f.forward(() => PageClass).optional()
     @ParentReference()
     parent?: PageClass;
 
     constructor(
-        @Field(forwardRef(() => DocumentClass))
+        @f.forward(() => DocumentClass)
         @ParentReference()
         public readonly document: DocumentClass,
 
-        @Field()
+        @f
         public readonly name: string
     ) {
         this.document = document;

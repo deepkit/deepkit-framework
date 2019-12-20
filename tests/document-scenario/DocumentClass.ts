@@ -1,32 +1,30 @@
 import {PageCollection} from "./PageCollection";
-import {ParentReference, IDField, MongoIdField, Field} from "../../src/decorators";
+import {ParentReference, f} from "../../src/decorators";
 import {PageClass} from "./PageClass";
 
 export class DocumentClass {
-    @IDField()
-    @MongoIdField()
+    @f.id().mongoId()
     _id?: string;
 
-    @Field()
+    @f
     name?: string;
 
-    @Field(PageCollection)
+    @f.type(PageCollection)
     pages: PageCollection = new PageCollection;
 
-    @Field(PageClass)
+    @f.type(PageClass)
     page?: PageClass;
 }
 
 export class ImpossibleToMetDocumentClass {
-    @IDField()
-    @MongoIdField()
+    @f.id().mongoId()
     _id?: string;
 
 
-    @Field()
+    @f
     name?: string;
 
-    @Field(PageCollection)
+    @f.type(PageCollection)
     pages: PageCollection = new PageCollection;
 
     constructor(pages: PageCollection) {
@@ -34,7 +32,7 @@ export class ImpossibleToMetDocumentClass {
 }
 
 export class ClassWithUnmetParent {
-    @Field(ClassWithUnmetParent)
+    @f.type(ClassWithUnmetParent)
     @ParentReference()
     parent?: ClassWithUnmetParent;
 }

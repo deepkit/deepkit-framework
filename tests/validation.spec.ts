@@ -2,10 +2,7 @@ import 'reflect-metadata';
 import 'jest-extended'
 import {
     AddValidator,
-    Field,
     InlineValidator,
-    MongoIdField,
-    Optional,
     plainToClass,
     PropertyValidator,
     PropertyValidatorError,
@@ -15,13 +12,13 @@ import {
     ValidationFailed
 } from "../";
 import {CustomError, isPlainObject} from '@marcj/estdlib';
-import {Decorated, FieldAny, FieldArray, getClassSchema, UUIDField} from "../src/decorators";
+import {getClassSchema, f} from "../src/decorators";
 
 test('test simple', async () => {
     class Page {
         constructor(
-            @Field() public name: string,
-            @Field() public age: number,
+            @f public name: string,
+            @f public age: number,
         ) {
         }
     }
@@ -36,27 +33,29 @@ test('test simple', async () => {
 test('test required', async () => {
 
     class Model {
-        @Field()
+        @f
         id: string = '1';
 
-        @Field()
+        @f
         name?: string;
 
-        @Optional()
+        @f.optional()
         optional?: string;
 
-        @Optional()
-        @Field({String})
+        @f.map(String).optional()
         map?: { [name: string]: string };
 
-        @Optional()
-        @Field([String])
+        @f.array(String).optional()
         array?: string[];
     }
 
     const instance = new Model;
     expect(validate(Model, instance)).toBeArrayOfSize(1);
-    expect(validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined", path: 'name'}]);
+    expect(validate(Model, instance)).toEqual([{
+        code: 'required',
+        message: "Required value is undefined",
+        path: 'name'
+    }]);
 
     expect(validate(Model, {
         name: 'foo',
@@ -74,30 +73,38 @@ test('test required', async () => {
 
 test('test deep', async () => {
     class Deep {
-        @Field()
+        @f
         name?: string;
     }
 
     class Model {
-        @Field()
+        @f
         id: string = '2';
 
-        @Field(Deep)
+        @f.type(Deep)
         deep?: Deep;
 
-        @Field([Deep])
+        @f.array(Deep)
         deepArray: Deep[] = [];
 
-        @Field({Deep})
+        @f.map(Deep)
         deepMap: { [name: string]: Deep } = {};
     }
 
     const instance = new Model;
     expect(validate(Model, instance)).toBeArrayOfSize(1);
-    expect(validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined", path: 'deep'}]);
+    expect(validate(Model, instance)).toEqual([{
+        code: 'required',
+        message: "Required value is undefined",
+        path: 'deep'
+    }]);
 
     instance.deep = new Deep();
-    expect(validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined", path: 'deep.name'}]);
+    expect(validate(Model, instance)).toEqual([{
+        code: 'required',
+        message: "Required value is undefined",
+        path: 'deep.name'
+    }]);
 
     instance.deep.name = 'defined';
     instance.deepArray.push(new Deep());
@@ -129,7 +136,7 @@ test('test AddValidator', async () => {
     }
 
     class Model {
-        @Field()
+        @f
         @AddValidator(MyValidator)
         id: string = '2';
     }
@@ -146,7 +153,7 @@ test('test inline validator throw Error', async () => {
     }
 
     class Model {
-        @Field()
+        @f
         @InlineValidator((value: string) => {
             if (value.length > 5) {
                 throw new MyError();
@@ -161,7 +168,7 @@ test('test inline validator throw Error', async () => {
 
 test('test inline validator throw string', async () => {
     class Model {
-        @Field()
+        @f
         @InlineValidator((value: string) => {
             if (value.length > 5) {
                 throw 'Too long';
@@ -176,7 +183,7 @@ test('test inline validator throw string', async () => {
 
 test('test inline validator', async () => {
     class Model {
-        @Field()
+        @f
         @InlineValidator((value: string) => {
             if (value.length > 5) {
                 return new PropertyValidatorError('too_long', 'Too long');
@@ -191,37 +198,73 @@ test('test inline validator', async () => {
 
 test('test uuid', async () => {
     class Model {
-        @UUIDField()
+        @f.uuid()
         public id!: string;
     }
 
     expect(validate(Model, {id: "4cac8ff9-4450-42c9-b736-e4d56f7a832d"})).toEqual([]);
-    expect(validate(Model, {id: "4cac8ff9-4450-42c9-b736"})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
+    expect(validate(Model, {id: "4cac8ff9-4450-42c9-b736"})).toEqual([{
+        code: 'invalid_uuid',
+        message: 'No UUID given',
+        path: 'id'
+    }]);
     expect(validate(Model, {id: "xxxx"})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
     expect(validate(Model, {id: ""})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
     expect(validate(Model, {id: false})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
-    expect(validate(Model, {id: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([{
+        code: 'required',
+        message: 'Required value is undefined',
+        path: 'id'
+    }]);
+    expect(validate(Model, {id: undefined})).toEqual([{
+        code: 'required',
+        message: 'Required value is undefined',
+        path: 'id'
+    }]);
 });
 
 test('test objectId', async () => {
     class Model {
-        @MongoIdField()
+        @f.mongoId()
         public id!: string;
     }
 
     expect(validate(Model, {id: "507f191e810c19729de860ea"})).toEqual([]);
-    expect(validate(Model, {id: "507f191e810c19729de860"})).toEqual([{code: 'invalid_objectid', message: 'No Mongo ObjectID given', path: 'id'}]);
-    expect(validate(Model, {id: "xxxx"})).toEqual([{code: 'invalid_objectid', message: 'No Mongo ObjectID given', path: 'id'}]);
-    expect(validate(Model, {id: ""})).toEqual([{code: 'invalid_objectid', message: 'No Mongo ObjectID given', path: 'id'}]);
-    expect(validate(Model, {id: false})).toEqual([{code: 'invalid_objectid', message: 'No Mongo ObjectID given', path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
-    expect(validate(Model, {id: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'id'}]);
+    expect(validate(Model, {id: "507f191e810c19729de860"})).toEqual([{
+        code: 'invalid_objectid',
+        message: 'No Mongo ObjectID given',
+        path: 'id'
+    }]);
+    expect(validate(Model, {id: "xxxx"})).toEqual([{
+        code: 'invalid_objectid',
+        message: 'No Mongo ObjectID given',
+        path: 'id'
+    }]);
+    expect(validate(Model, {id: ""})).toEqual([{
+        code: 'invalid_objectid',
+        message: 'No Mongo ObjectID given',
+        path: 'id'
+    }]);
+    expect(validate(Model, {id: false})).toEqual([{
+        code: 'invalid_objectid',
+        message: 'No Mongo ObjectID given',
+        path: 'id'
+    }]);
+    expect(validate(Model, {id: null})).toEqual([{
+        code: 'required',
+        message: 'Required value is undefined',
+        path: 'id'
+    }]);
+    expect(validate(Model, {id: undefined})).toEqual([{
+        code: 'required',
+        message: 'Required value is undefined',
+        path: 'id'
+    }]);
 });
 
 test('test boolean', async () => {
     class Model {
-        @Field()
+        @f
         public bo!: boolean;
     }
 
@@ -248,7 +291,11 @@ test('test boolean', async () => {
 
     expect(validate(Model, {bo: '2'})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
     expect(validate(Model, {bo: 2})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
-    expect(validate(Model, {bo: 'asdasd'})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
+    expect(validate(Model, {bo: 'asdasd'})).toEqual([{
+        code: 'invalid_boolean',
+        message: 'No Boolean given',
+        path: 'bo'
+    }]);
     expect(validate(Model, {bo: 233})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
     expect(validate(Model, {bo: {}})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
     expect(validate(Model, {bo: []})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
@@ -256,7 +303,7 @@ test('test boolean', async () => {
 
 test('test Date', async () => {
     class Model {
-        @Field(Date)
+        @f.type(Date)
         public endTime!: Date;
     }
 
@@ -267,11 +314,31 @@ test('test Date', async () => {
     expect(validate(Model, {endTime: "Tue Mar 19 2019 11:39:10 GMT+0100 (Central European Standard Time)"})).toEqual([]);
     expect(validate(Model, {endTime: date.toString()})).toEqual([]);
     expect(validate(Model, {endTime: new Date()})).toEqual([]);
-    expect(validate(Model, {endTime: ''})).toEqual([{code: 'invalid_date', message: 'No Date string given', path: 'endTime'}]);
-    expect(validate(Model, {endTime: new Date('asdf')})).toEqual([{code: 'invalid_date', message: 'No valid Date given', path: 'endTime'}]);
-    expect(validate(Model, {endTime: 'asdf'})).toEqual([{code: 'invalid_date', message: 'No valid Date string given', path: 'endTime'}]);
-    expect(validate(Model, {endTime: null})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'endTime'}]);
-    expect(validate(Model, {endTime: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'endTime'}]);
+    expect(validate(Model, {endTime: ''})).toEqual([{
+        code: 'invalid_date',
+        message: 'No Date string given',
+        path: 'endTime'
+    }]);
+    expect(validate(Model, {endTime: new Date('asdf')})).toEqual([{
+        code: 'invalid_date',
+        message: 'No valid Date given',
+        path: 'endTime'
+    }]);
+    expect(validate(Model, {endTime: 'asdf'})).toEqual([{
+        code: 'invalid_date',
+        message: 'No valid Date string given',
+        path: 'endTime'
+    }]);
+    expect(validate(Model, {endTime: null})).toEqual([{
+        code: 'required',
+        message: 'Required value is undefined',
+        path: 'endTime'
+    }]);
+    expect(validate(Model, {endTime: undefined})).toEqual([{
+        code: 'required',
+        message: 'Required value is undefined',
+        path: 'endTime'
+    }]);
 
     {
         const o = plainToClass(Model, {endTime: date.toString()});
@@ -334,7 +401,7 @@ test('test Date', async () => {
 
 test('test string', async () => {
     class Model {
-        @Field()
+        @f
         id: string = '2';
     }
 
@@ -345,13 +412,16 @@ test('test string', async () => {
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
-        @Field()
-        @Optional()
+        @f.optional()
         id?: string;
     }
 
     expect(validate(ModelOptional, {id: '2'})).toEqual([]);
-    expect(validate(ModelOptional, {id: 2})).toEqual([{code: 'invalid_string', message: "No String given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: 2})).toEqual([{
+        code: 'invalid_string',
+        message: "No String given",
+        path: 'id'
+    }]);
     expect(validate(ModelOptional, {id: null})).toEqual([]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
@@ -359,7 +429,7 @@ test('test string', async () => {
 
 test('test number', async () => {
     class Model {
-        @Field()
+        @f
         id: number = 2;
     }
 
@@ -371,14 +441,17 @@ test('test number', async () => {
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
-        @Field()
-        @Optional()
+        @f.optional()
         id?: number;
     }
 
     expect(validate(ModelOptional, {id: 3})).toEqual([]);
     expect(validate(ModelOptional, {id: '3'})).toEqual([]);
-    expect(validate(ModelOptional, {id: 'a'})).toEqual([{code: 'invalid_number', message: "No Number given", path: 'id'}]);
+    expect(validate(ModelOptional, {id: 'a'})).toEqual([{
+        code: 'invalid_number',
+        message: "No Number given",
+        path: 'id'
+    }]);
     expect(validate(ModelOptional, {id: null})).toEqual([]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
@@ -386,31 +459,39 @@ test('test number', async () => {
 
 test('test array', async () => {
     class AClass {
-        @Field([String])
+        @f.array(String)
         public tags: string[] = [];
     }
 
     expect(validate(AClass, {tags: ['Hi']})).toEqual([]);
-    expect(validate(AClass, {tags: ['hi', 2]})).toEqual([{code: 'invalid_string', message: "No String given", path: 'tags.1'}]);
+    expect(validate(AClass, {tags: ['hi', 2]})).toEqual([{
+        code: 'invalid_string',
+        message: "No String given",
+        path: 'tags.1'
+    }]);
 });
 
 test('test map', async () => {
 
     class AClass {
-        @Field({String})
-        public tags: {[k: string]: string} = {};
+        @f.map(String)
+        public tags: { [k: string]: string } = {};
     }
 
     expect(validate(AClass, {tags: {'nix': 'yes'}})).toEqual([]);
-    expect(validate(AClass, {tags: {'nix': 2}})).toEqual([{code: 'invalid_string', message: "No String given", path: 'tags.nix'}]);
+    expect(validate(AClass, {tags: {'nix': 2}})).toEqual([{
+        code: 'invalid_string',
+        message: "No String given",
+        path: 'tags.nix'
+    }]);
 });
 
 test('test decorated', async () => {
     class JobInfo {
-        @Field()
+        @f
         name: string;
 
-        @FieldAny()
+        @f.any()
         value: any;
 
         constructor(name: string, value: any) {
@@ -420,11 +501,10 @@ test('test decorated', async () => {
     }
 
     class JobInfos {
-        @Decorated()
-        @FieldArray(JobInfo)
+        @f.array(JobInfo).decorated()
         public items: JobInfo[] = [];
 
-        @Field()
+        @f
         public thisFieldIsIgnored: string = '';
 
         protected map: { [name: string]: JobInfo } = {};
@@ -456,7 +536,7 @@ test('test decorated', async () => {
     }
 
     class AClass {
-        @Field(JobInfos)
+        @f.type(JobInfos)
         infos: JobInfos = new JobInfos();
     }
 
@@ -500,21 +580,21 @@ test('test decorated', async () => {
 test('test nested validation', async () => {
     // Class definition with validation rules
     class A {
-        @Field()
+        @f
         public x!: string;
     }
 
     class B {
-        @Field()
+        @f
         public type!: string;
 
-        @Field(A)
+        @f.type(A)
         public nested!: A;
 
-        @Field({A})
+        @f.map(A)
         public nestedMap!: { [name: string]: A };
 
-        @Field([A])
+        @f.array(A)
         public nesteds!: A[];
     }
 
@@ -538,11 +618,10 @@ test('test nested validation', async () => {
     ]);
 
     class BOptional {
-        @Field()
+        @f
         public type!: string;
 
-        @Field(A)
-        @Optional()
+        @f.type(A).optional()
         public nested!: A;
     }
 
@@ -562,80 +641,82 @@ test('test nested validation', async () => {
 
 test('test valdiation on real life case', () => {
     class NodeResourceReservation {
-        @Field()
+        @f
         reserved: number = 0;
 
-        @Field()
+        @f
         total: number = 0;
     }
 
     class JobAssignedResourcesGpu {
         constructor(
-            @Field().asName('uuid') public uuid: string,
-            @Field().asName('name') public name: string,
-            @Field().asName('memory') public memory: number,
+            @f.asName('uuid') public uuid: string,
+            @f.asName('name') public name: string,
+            @f.asName('memory') public memory: number,
         ) {
         }
     }
 
     class JobAssignedResources {
-        @Field()
+        @f
         cpu: number = 0;
 
-        @Field()
+        @f
         memory: number = 0;
 
-        @FieldArray(JobAssignedResourcesGpu)
+        @f.array(JobAssignedResourcesGpu)
         gpus: JobAssignedResourcesGpu[] = [];
     }
 
     class AssignedJobTaskInstance {
         constructor(
-            @Field().asName('jobId') public jobId: string,
-            @Field().asName('jobAccessToken') public jobAccessToken: string,
-            @Field().asName('taskName') public taskName: string,
-            @Field().asName('instance') public instance: number,
-            @Field().asName('assignedResources') public assignedResources: JobAssignedResources,
-        ) {}
+            @f.asName('jobId') public jobId: string,
+            @f.asName('jobAccessToken') public jobAccessToken: string,
+            @f.asName('taskName') public taskName: string,
+            @f.asName('instance') public instance: number,
+            @f.asName('assignedResources') public assignedResources: JobAssignedResources,
+        ) {
+        }
     }
 
     class NodeGpuResource {
-        @Field()
+        @f
         reserved: boolean = false;
 
         /**
          * Value in GB.
          */
-        @Field()
+        @f
         memory: number = 1;
 
         constructor(
-            @Field().asName('uuid') public uuid: string,
-            @Field().asName('name') public name: string,
+            @f.asName('uuid') public uuid: string,
+            @f.asName('name') public name: string,
         ) {
         }
     }
+
     class NodeResources {
-        @Field()
+        @f
         cpu: NodeResourceReservation = new NodeResourceReservation;
 
-        @Field()
+        @f
         memory: NodeResourceReservation = new NodeResourceReservation;
 
-        @FieldArray(NodeGpuResource)
+        @f.array(NodeGpuResource)
         gpu: NodeGpuResource[] = [];
 
-        @Field(AssignedJobTaskInstance).asMap()
+        @f.map(AssignedJobTaskInstance)
         assignedJobTaskInstances: { [taskInstanceId: string]: AssignedJobTaskInstance } = {};
     }
 
     const object = {
-        cpu: { reserved: 4, total: 6 },
-        memory: { reserved: 4, total: 4 },
+        cpu: {reserved: 4, total: 6},
+        memory: {reserved: 4, total: 4},
         gpu: [],
         assignedJobTaskInstances: {
             'a09be358-d6ce-477f-829a-0dc27219de34.0.main': {
-                assignedResources: { cpu: 4, memory: 4, gpus: [] },
+                assignedResources: {cpu: 4, memory: 4, gpus: []},
                 instance: 0,
                 taskName: 'main',
                 jobAccessToken: 'af82a082-493f-4b1b-ad25-1948ccbe32cb',

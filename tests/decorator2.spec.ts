@@ -92,25 +92,130 @@ test('test inheritance', async () => {
     class Super3 extends Super2 {
     }
 
-    // expect(getClassSchema(Base).getProperty('id').type).toBe('string');
-    // expect(getClassSchema(Base).getIndex('id2')!.name).toBe('id2');
-    //
-    // expect(getClassSchema(Page).getProperty('id').type).toBe('string');
-    // expect(getClassSchema(Page).getProperty('name').type).toBe('string');
-    // expect(getClassSchema(Page).getIndex('id2')!.name).toBe('id2');
-    //
-    // expect(getClassSchema(SuperPage).getProperty('id').type).toBe('string');
-    // expect(getClassSchema(SuperPage).getProperty('name').type).toBe('string');
+    expect(getClassSchema(Base).getProperty('id').type).toBe('string');
+    expect(getClassSchema(Base).getIndex('id2')!.name).toBe('id2');
+
+    expect(getClassSchema(Page).getProperty('id').type).toBe('string');
+    expect(getClassSchema(Page).getProperty('name').type).toBe('string');
+    expect(getClassSchema(Page).getIndex('id2')!.name).toBe('id2');
+
+    expect(getClassSchema(SuperPage).getProperty('id').type).toBe('string');
+    expect(getClassSchema(SuperPage).getProperty('name').type).toBe('string');
     expect(getClassSchema(SuperPage).getProperty('super').type).toBe('number');
-    // expect(getClassSchema(SuperPage).getIndex('id2')!.name).toBe('id2');
-    //
-    // expect(getClassSchema(Super3).getProperty('id').type).toBe('string');
-    // expect(getClassSchema(Super3).getProperty('name').type).toBe('string');
-    // expect(getClassSchema(Super3).getProperty('super').type).toBe('number');
-    // expect(getClassSchema(Super3).getIndex('id2')!.name).toBe('id2');
-    //
-    // expect(getClassSchema(Super2).getProperty('id').type).toBe('string');
-    // expect(getClassSchema(Super2).getProperty('name').type).toBe('string');
-    // expect(getClassSchema(Super2).getProperty('super').type).toBe('number');
-    // expect(getClassSchema(Super2).getIndex('id2')!.name).toBe('id2');
+    expect(getClassSchema(SuperPage).getIndex('id2')!.name).toBe('id2');
+
+    expect(getClassSchema(Super3).getProperty('id').type).toBe('string');
+    expect(getClassSchema(Super3).getProperty('name').type).toBe('string');
+    expect(getClassSchema(Super3).getProperty('super').type).toBe('number');
+    expect(getClassSchema(Super3).getIndex('id2')!.name).toBe('id2');
+
+    expect(getClassSchema(Super2).getProperty('id').type).toBe('string');
+    expect(getClassSchema(Super2).getProperty('name').type).toBe('string');
+    expect(getClassSchema(Super2).getProperty('super').type).toBe('number');
+    expect(getClassSchema(Super2).getIndex('id2')!.name).toBe('id2');
+});
+
+
+
+test('test invalid @Field', () => {
+    class Config {
+        @f.optional() name?: string;
+    }
+
+    expect(() => {
+        class User1 {
+            @f
+            notDefined;
+        }
+    }).toThrowError('User1::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
+
+    expect(() => {
+        var NOTEXIST;
+
+        class User2 {
+            @f.type(NOTEXIST)
+            notDefined;
+        }
+    }).toThrowError('User2::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
+
+    expect(() => {
+        class User3 {
+            @f
+            created = new Date;
+        }
+    }).toThrowError('User3::created type mismatch. Given undefined, but declared is Object or undefined.');
+
+    expect(() => {
+        class User4 {
+            @f.type(Config)
+            config: Config[] = [];
+        }
+    }).toThrowError('User4::config type mismatch. Given Config, but declared is Array.');
+
+    expect(() => {
+        class User5 {
+            @f.array(Config)
+            config?: Config;
+        }
+    }).toThrowError('User5::config type mismatch. Given Config[], but declared is Config.');
+
+    expect(() => {
+        class User6 {
+            @f.type(Config)
+            config: { [k: string]: Config } = {};
+        }
+    }).toThrowError('User6::config type mismatch. Given Config, but declared is Object or undefined');
+
+    expect(() => {
+        class Model {
+            @f.forwardArray(() => Config)
+            sub?: Config;
+        }
+
+    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[], but declared is Config.');
+
+    expect(() => {
+        class Model {
+            @f.forwardMap(() => Config)
+            sub?: Config;
+        }
+    }).toThrowError('Model::sub type mismatch. Given {[key: string]: ForwardedRef}, but declared is Config.');
+
+    expect(() => {
+        class Model {
+            @f.map(Config)
+            sub?: Config[];
+        }
+
+    }).toThrowError('Model::sub type mismatch. Given {[key: string]: Config}, but declared is Array.');
+
+    expect(() => {
+        class Model {
+            @f.any()
+            any?: any[];
+        }
+    }).toThrowError('Model::any type mismatch. Given Any, but declared is Array.');
+
+    {
+        //works
+        class Model {
+            @f.any()
+            any?: { [k: string]: any };
+        }
+    }
+    {
+        //works
+        class Model {
+            @f.any().asMap()
+            any?;
+        }
+    }
+
+    {
+        //works
+        class Model {
+            @f.forward(() => Config)
+            sub?: Config;
+        }
+    }
 });

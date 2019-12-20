@@ -1,44 +1,34 @@
 import {
-    Decorated,
     Entity,
-    EnumField,
-    Field,
-    FieldAny,
-    IDField,
-    Index,
-    MongoIdField,
-    Optional,
+    f,
     uuid,
-    UUIDField,
     MultiIndex
 } from '../index';
 
 export class JobTaskQueue {
-    @Field()
+    @f
     position: number = 0;
 
-    @Field()
+    @f
     tries: number = 0;
 
-    @Field()
+    @f
     result: string = '';
 
-    @Field()
+    @f
     added: Date = new Date();
 }
 
 
 @Entity('sub')
 export class SubModel {
-    @Field()
+    @f
     label: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     age?: number;
 
-    @Field(JobTaskQueue)
-    @Optional()
+    @f.type(JobTaskQueue).optional()
     queue?: JobTaskQueue;
 
     constructorUsed = false;
@@ -58,8 +48,7 @@ export enum Plan {
 export const now = new Date();
 
 export class CollectionWrapper {
-    @Field([SubModel])
-    @Decorated()
+    @f.array(SubModel).decorated()
     public items: SubModel[];
 
     constructor(items: SubModel[]) {
@@ -72,8 +61,7 @@ export class CollectionWrapper {
 }
 
 export class StringCollectionWrapper {
-    @Decorated()
-    @Field([String])
+    @f.array(String).decorated()
     public items: string[];
 
     constructor(items: string[]) {
@@ -88,61 +76,57 @@ export class StringCollectionWrapper {
 @Entity('SimpleModel')
 @MultiIndex(['name', 'type'], {unique: true})
 export class SimpleModel {
-    @IDField()
-    @UUIDField()
+    @f.id().uuid()
     id: string = uuid();
 
-    @Field()
-    @Index()
+    @f.index()
     name: string;
 
-    @Field()
+    @f
     type: number = 0;
 
-    @Field()
+    @f
     yesNo: boolean = false;
 
-    @EnumField(Plan)
+    @f.enum(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @Field()
+    @f
     created: Date = now;
 
-    @Field([String])
+    @f.array(String)
     types: string[] = [];
 
-    @Field()
-    @Optional()
+    @f.optional()
     child?: SubModel;
 
-    @Field()
-    @Optional()
+    @f.optional()
     selfChild?: SimpleModel;
 
-    @Field([SubModel])
+    @f.array(SubModel)
     children: SubModel[] = [];
 
-    @Field({SubModel})
+    @f.map(SubModel)
     childrenMap: { [key: string]: SubModel } = {};
 
-    @Field(CollectionWrapper)
+    @f.type(CollectionWrapper)
     childrenCollection: CollectionWrapper = new CollectionWrapper([]);
 
-    @Field(StringCollectionWrapper)
+    @f.type(StringCollectionWrapper)
     stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper([]);
 
     notMapped: { [key: string]: any } = {};
 
-    @FieldAny()
+    @f.any()
     anyField: any;
 
-    @Field().exclude()
+    @f.exclude()
     excluded: string = 'default';
 
-    @Field().exclude('mongo')
+    @f.exclude('mongo')
     excludedForMongo: string = 'excludedForMongo';
 
-    @Field().exclude('plain')
+    @f.exclude('plain')
     excludedForPlain: string = 'excludedForPlain';
 
     constructor(name: string) {
@@ -152,24 +136,22 @@ export class SimpleModel {
 
 @Entity('SuperSimple')
 export class SuperSimple {
-    @IDField()
-    @MongoIdField()
+    @f.id().mongoId()
     _id?: string;
 
-    @Field()
+    @f
     name?: string;
 }
 
 @Entity('BaseClass')
 export class BaseClass {
-    @IDField()
-    @MongoIdField()
+    @f.id().mongoId()
     _id?: string;
 }
 
 
 @Entity('ChildClass')
 export class ChildClass extends BaseClass {
-    @Field()
+    @f
     name?: string;
 }
