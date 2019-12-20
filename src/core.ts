@@ -96,7 +96,24 @@ export function isPlainObject(obj: any): obj is object {
  * @public
  */
 export function isFunction(obj: any): obj is Function {
-    return 'function' === typeOf(obj);
+    if ('function' === typeof obj) {
+        return !obj.toString().startsWith('class ');
+    }
+
+    return false;
+}
+
+/**
+ * Returns true if given obj is a ES6 class (ES5 fake classes are not supported).
+ *
+ * @public
+ */
+export function isClass(obj: any): obj is ClassType<any> {
+    if ('function' === typeof obj) {
+        return obj.toString().startsWith('class ');
+    }
+
+    return false;
 }
 
 /**

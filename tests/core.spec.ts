@@ -1,5 +1,14 @@
 import 'jest-extended'
-import {asyncOperation, getClassName, isArray, isObject, isPlainObject, isUndefined, sleep} from "../src/core";
+import {
+    asyncOperation,
+    getClassName,
+    isArray, isClass,
+    isFunction,
+    isObject,
+    isPlainObject,
+    isUndefined,
+    sleep
+} from "../src/core";
 import {getPathValue, setPathValue} from "../src/core";
 
 class SimpleClass {
@@ -32,6 +41,45 @@ test('helper isObject', () => {
     expect(isObject({})).toBeTrue();
     expect(isObject(new Date())).toBeTrue();
     expect(isObject(new SimpleClass('asd'))).toBeTrue();
+});
+
+test('helper isFunction', () => {
+    expect(isFunction([])).toBeFalse();
+    expect(isFunction(false)).toBeFalse();
+    expect(isFunction(true)).toBeFalse();
+    expect(isFunction(null)).toBeFalse();
+    expect(isFunction(undefined)).toBeFalse();
+    expect(isFunction(1)).toBeFalse();
+    expect(isFunction('1')).toBeFalse();
+    expect(isFunction({})).toBeFalse();
+    expect(isFunction(new Date())).toBeFalse();
+    expect(isFunction(new SimpleClass('asd'))).toBeFalse();
+
+    expect(isFunction(isFunction)).toBeTrue();
+    expect(isFunction(() => {})).toBeTrue();
+    expect(isFunction(async () => {})).toBeTrue();
+    expect(isFunction(function() {})).toBeTrue();
+    expect(isFunction(async function() {})).toBeTrue();
+});
+
+test('helper isClass', () => {
+    expect(isClass([])).toBeFalse();
+    expect(isClass(false)).toBeFalse();
+    expect(isClass(true)).toBeFalse();
+    expect(isClass(null)).toBeFalse();
+    expect(isClass(undefined)).toBeFalse();
+    expect(isClass(1)).toBeFalse();
+    expect(isClass('1')).toBeFalse();
+    expect(isClass({})).toBeFalse();
+    expect(isClass(new Date())).toBeFalse();
+    expect(isClass(new SimpleClass('asd'))).toBeFalse();
+    expect(isClass(isFunction)).toBeFalse();
+    expect(isClass(() => {})).toBeFalse();
+    expect(isClass(async () => {})).toBeFalse();
+    expect(isClass(function() {})).toBeFalse();
+    expect(isClass(async function() {})).toBeFalse();
+
+    expect(isClass(SimpleClass)).toBeTrue();
 });
 
 test('helper isPlainObject', () => {
