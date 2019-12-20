@@ -250,7 +250,7 @@ you might have the need to serialize only one field.
 * partialPlainToMongo
 * partialMongoToPlain
 
-## Types / Decorators
+## `@f` decorator: define types
 
 Class fields are annotated using mainly [@f](https://marshal.marcj.dev/modules/_marcj_marshal.html#f).
 You can define primitives, class mappings, relations between parents, and indices for the database (currently MongoDB).
@@ -277,6 +277,7 @@ class Page {
 ````
 
 Example *not* valid decorators:
+
 ```typescript
 import {f} from '@marcj/marshal';
 
@@ -286,11 +287,11 @@ class Page {
 }
 ````
 
-
 More examples:
 
 ```typescript
 import {f, uuid} from '@marcj/marshal';
+import * as moment from 'moment';
 
 class MyModel {
     @f.primary().uuid()
@@ -299,37 +300,29 @@ class MyModel {
     @f.optional().index()
     name?: string;
 
-    @f.array(String).optional()
-    tags?: string[];
+    @f()
+    created: Date = new Date;
+    
+    @f.moment()
+    modified?: moment.Moment = moment();
 }
 ```
 
-## TypeORM
+### Moment.js
 
-The meta information about your entity can be exported to TypeORM EntitySchema.
+Instead of `Date` object you can use `Moment` if `moment` is installed.
+
+In MongoDB it's stored as `Date`. In JSON its encoded as ISO8601 string.
 
 ```typescript
-// typeorm.js
-import {getTypeOrmEntity} from "@marcj/marshal-mongo";
+import {f} from '@marcj/marshal';
+import * as moment from 'moment';
 
-const TypeOrmSchema = getTypeOrmEntity(MyEntity);
-module.exports = {
-    type: "mongodb",
-    host: "localhost",
-    port: 27017,
-    database: "test",
-    useNewUrlParser: true,
-    synchronize: true,
-    entities: [TypeOrmSchema]
+class MyModel {
+    @f.moment()
+    created?: moment.Moment = moment();
 }
 ```
-
-Marshal.ts uses only TypeORM for connection abstraction and to generate a `EntitySchema` for your typeOrm use-cases.
-You need in most cases only to use the @Field decorator with some other Marshal decorators (like @EnumField, @IDField, @UUIDField, @Index)
-on your entity.
-
-You can generate a schema for Typeorm using  `getTypeOrmEntity` and then pass this to your `createConnection` call,
-which makes it possible to sync the schema defined only with Marshal decorators with your database managed by Typeorm.
 
 ### Exclude
 
@@ -529,6 +522,34 @@ expect(plain['childrenCollection']).toEqual([{label: 'Bar3'}]);
 expect(plain['childrenCollection.1']).toEqual({label: 'Bar4'});
 expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 ```
+
+### TypeORM
+
+The meta information about your entity can be exported to TypeORM EntitySchema.
+
+```typescript
+// typeorm.js
+import {getTypeOrmEntity} from "@marcj/marshal-mongo";
+
+const TypeOrmSchema = getTypeOrmEntity(MyEntity);
+module.exports = {
+    type: "mongodb",
+    host: "localhost",
+    port: 27017,
+    database: "test",
+    useNewUrlParser: true,
+    synchronize: true,
+    entities: [TypeOrmSchema]
+}
+```
+
+Marshal.ts uses only TypeORM for connection abstraction and to generate a `EntitySchema` for your typeOrm use-cases.
+You need in most cases only to use the @Field decorator with some other Marshal decorators (like @EnumField, @IDField, @UUIDField, @Index)
+on your entity.
+
+You can generate a schema for Typeorm using  `getTypeOrmEntity` and then pass this to your `createConnection` call,
+which makes it possible to sync the schema defined only with Marshal decorators with your database managed by Typeorm.
+
 
 ## Mongo Database
 

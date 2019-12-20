@@ -15,7 +15,11 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "buffer": "^5.2.1"
+    "buffer": "^5.2.1",
+    "moment": "^2.0.0"
+  },
+  "optionalDependencies": {
+    "moment": "^2.0.0"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.15",
@@ -25,6 +29,8 @@
   },
   "devDependencies": {
     "@types/clone": "^0.1.30",
+    "@types/moment": "^2.0.0",
+    "moment": "^2.0.0",
     "buffer": "^5.2.1"
   },
   "jest": {

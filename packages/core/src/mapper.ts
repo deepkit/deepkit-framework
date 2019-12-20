@@ -23,12 +23,23 @@ export type Types =
     | 'uuid'
     | 'binary'
     | 'class'
+    | 'moment'
     | 'date'
     | 'string'
     | 'boolean'
     | 'number'
     | 'enum'
     | 'any';
+
+export let moment: any = () => {
+    throw new Error('Moment.js not installed')
+};
+
+declare function require(moduleName: string): any;
+
+try {
+    moment = require('moment');
+} catch(e) {}
 
 const cache = new Map<Object, Map<string, any>>();
 
@@ -75,7 +86,7 @@ export interface ResolvedReflectionFound {
  */
 export type ResolvedReflection = ResolvedReflectionFound | undefined;
 
-type ResolvedReflectionCaches = {[path: string]: ResolvedReflection};
+type ResolvedReflectionCaches = { [path: string]: ResolvedReflection };
 const resolvedReflectionCaches = new Map<ClassType<any>, ResolvedReflectionCaches>();
 
 /**
@@ -249,10 +260,6 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     const {type, typeValue, array, map} = reflection;
 
     function convert(value: any) {
-        if ('date' === type && value instanceof Date) {
-            return value.toJSON();
-        }
-
         if ('string' === type) {
             return String(value);
         }
@@ -278,6 +285,11 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             }
 
             return classToPlain(typeValue, value);
+        }
+
+        //Date/moment automatically is converted since it has toJSON() method.
+        if (value && 'function' === typeof value.toJSON) {
+            return value.toJSON();
         }
 
         return value;
@@ -331,6 +343,10 @@ export function propertyPlainToClass<T>(
     function convert(value: any) {
         if ('date' === type && ('string' === typeof value || 'number' === typeof value)) {
             return new Date(value);
+        }
+
+        if ('moment' === type && ('string' === typeof value || 'number' === typeof value)) {
+            return moment(value);
         }
 
         if ('string' === type && 'string' !== typeof value) {

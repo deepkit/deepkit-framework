@@ -1163,6 +1163,10 @@ fRaw['enum'] = function (this: FieldDecoratorResult, clazz: any, allowLabelsAsVa
     return EnumField(clazz, allowLabelsAsValue);
 };
 
+fRaw['moment'] = function (this: FieldDecoratorResult): FieldDecoratorResult {
+    return MomentField();
+};
+
 fRaw['forward'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
     return Field(forwardRef(f));
 };
@@ -1175,13 +1179,7 @@ fRaw['forwardMap'] = function (this: FieldDecoratorResult, f: () => TYPES): Fiel
     return Field(forwardRef(f)).asMap();
 };
 
-/**
- * THis is the main decorator to define a properties on class or arguments on methods.
- *
- * @see FieldDecoratorResult
- * @category Decorator
- */
-export const f: FieldDecoratorResult & {
+export interface MainDecorator {
     /**
      * Defines a type for a certain field. This is only necessary for custom classes
      * if the Typescript compiler does not include the reflection type in the build output.
@@ -1193,7 +1191,7 @@ export const f: FieldDecoratorResult & {
      * }
      * ```
      */
-    type: (type: TYPES) => FieldDecoratorResult,
+    type(type: TYPES): FieldDecoratorResult;
 
     /**
      * Marks a field as array.
@@ -1205,7 +1203,7 @@ export const f: FieldDecoratorResult & {
      * }
      * ```
      */
-    array: (type: TYPES) => FieldDecoratorResult,
+    array(type: TYPES): FieldDecoratorResult;
 
     /**
      * Marks a field as enum.
@@ -1225,12 +1223,20 @@ export const f: FieldDecoratorResult & {
      *
      * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
      */
-    enum: <T>(type: any, allowLabelsAsValue?: boolean) => FieldDecoratorResult,
+    enum<T>(type: any, allowLabelsAsValue?: boolean): FieldDecoratorResult;
+
+    /**
+     * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
+     * In MongoDB its stored as Date.
+     *
+     * You have to install moment npm package in order to use it.
+     */
+    moment(): FieldDecoratorResult;
 
     /**
      * Marks a field as type any. It does not transform the value and directly uses JSON.parse/stringify.
      */
-    any: () => FieldDecoratorResult,
+    any(): FieldDecoratorResult;
 
     /**
      * Marks a field as map.
@@ -1245,7 +1251,7 @@ export const f: FieldDecoratorResult & {
      * }
      * ```
      */
-    map: (type: TYPES) => FieldDecoratorResult,
+    map(type: TYPES): FieldDecoratorResult;
 
     /**
      * Forward references a type, required for circular reference.
@@ -1257,7 +1263,7 @@ export const f: FieldDecoratorResult & {
      * }
      * ```
      */
-    forward: (f: () => TYPES) => FieldDecoratorResult,
+    forward(f: () => TYPES): FieldDecoratorResult;
 
     /**
      * Forward references a type in an array, required for circular reference.
@@ -1269,7 +1275,7 @@ export const f: FieldDecoratorResult & {
      * }
      * ```
      */
-    forwardArray: (f: () => TYPES) => FieldDecoratorResult,
+    forwardArray(f: () => TYPES): FieldDecoratorResult;
 
     /**
      * Forward references a type in a map, required for circular reference.
@@ -1281,8 +1287,58 @@ export const f: FieldDecoratorResult & {
      * }
      * ```
      */
-    forwardMap: (f: () => TYPES) => FieldDecoratorResult,
-} = fRaw as any;
+    forwardMap(f: () => TYPES): FieldDecoratorResult;
+}
+
+/**
+ * This is the main decorator to define a properties on class or arguments on methods.
+ *
+ * ```typescript
+ * class SubModel {
+ *    @f label: string;
+ * }
+ *
+ * export enum Plan {
+ *   DEFAULT,
+ *   PRO,
+ *   ENTERPRISE,
+ * }
+ *
+ * class SimpleModel {
+ *   @f.primary().uuid()
+ *   id: string = uuid();
+ *
+ *   @f.array(String)
+ *   tags: string[] = [];
+ *
+ *   @f.type(Buffer).optional() //binary
+ *   picture?: Buffer;
+ *
+ *   @f
+ *   type: number = 0;
+ *
+ *   @f.enum(Plan)
+ *   plan: Plan = Plan.DEFAULT;
+ *
+ *   @f
+ *   created: Date = new Date;
+ *
+ *   @f.array(SubModel)
+ *   children: SubModel[] = [];
+ *
+ *   @f.map(SubModel)
+ *   childrenMap: {[key: string]: SubModel} = {};
+ *
+ *   constructor(
+ *       @f.index().asName('name') //asName is required for minimized code
+ *       public name: string
+ *   ) {}
+ * }
+ * ```
+ *
+ * @category Decorator
+ */
+export const f: MainDecorator & FieldDecoratorResult = fRaw as any;
 
 /**
  * @hidden
@@ -1336,8 +1392,9 @@ export function MultiIndex(fields: string[], options: IndexOptions, name?: strin
 
 /**
  * Used to define a field as Enum.
- *
  * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
+ *
+ * @internal
  */
 function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return FieldDecoratorWrapper((target, property, returnType?: any) => {
@@ -1346,5 +1403,14 @@ function EnumField<T>(type: any, allowLabelsAsValue = false) {
             property.classType = type;
             property.allowLabelsAsValue = allowLabelsAsValue;
         }
+    });
+}
+
+/**
+ * @internal
+ */
+function MomentField<T>() {
+    return FieldDecoratorWrapper((target, property, returnType?: any) => {
+        property.type = 'moment';
     });
 }

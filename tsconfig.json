@@ -8,6 +8,8 @@
     "module": "commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "esModuleInterop": false,
+    "moduleResolution": "node",
     "target": "es2017",
     "types": [
       "reflect-metadata"
