@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import 'jest-extended'
-import {Field, getEntitySchema, IDField, UUIDField} from "../src/decorators";
+import {Field, getClassSchema, IDField, UUIDField} from "../src/decorators";
 
 test('test minimized code', async () => {
     expect(() => {
@@ -17,7 +17,9 @@ test('test minimized code', async () => {
         }
     }).toThrow('Defining multiple Marshal decorators with different names')
 
-    expect(() => {
+    {
+        //this case works since decorators are handled from bottom to up
+        //thus the asName() decorated the name already for that #0 arg.
         class ClusterNodeCredentials {
             @Field()
             sshPort: number = 22;
@@ -29,7 +31,7 @@ test('test minimized code', async () => {
             ) {
             }
         }
-    }).toThrow('Mixing named and not-named constructor parameter is not possible')
+    }
 
     expect(() => {
         class ClusterNodeCredentials {
@@ -56,5 +58,5 @@ test('test minimized code', async () => {
         ) {
         }
     }
-    expect(getEntitySchema(ClusterNodeCredentials).properties['e']).toBeUndefined();
+    expect(getClassSchema(ClusterNodeCredentials).classProperties['e']).toBeUndefined();
 });

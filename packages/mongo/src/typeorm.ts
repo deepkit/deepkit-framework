@@ -2,7 +2,7 @@ import {
     getCollectionName,
     getDatabaseName,
     getEntityName,
-    getEntitySchema,
+    getClassSchema,
     getIdField,
     getParentReferenceClass,
     getRegisteredProperties,
@@ -67,7 +67,7 @@ function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: strin
 
 export function getTypeOrmEntity<T>(classType: ClassType<T>): EntitySchema<T> {
     let name = getCollectionName(classType) || getEntityName(classType);
-    const schema = getEntitySchema(classType);
+    const schema = getClassSchema(classType);
 
     const indices: EntitySchemaIndexOptions[] = [];
     for (const index of schema.indices) {

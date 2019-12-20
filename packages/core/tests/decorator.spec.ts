@@ -7,7 +7,7 @@ import {
     Field,
     getDatabaseName,
     getEntityName,
-    getEntitySchema,
+    getClassSchema,
     getParentReferenceClass,
     getReflectionType,
     IDField,
@@ -17,14 +17,15 @@ import {
     ParentReference,
     plainToClass,
     RegisteredEntities,
-    FieldAny, FieldMap, forwardRef, FieldArray, Index, UUIDField, isOptional, isRegisteredEntity,
+    f,
+    FieldAny, FieldMap, forwardRef, FieldArray, isOptional, isRegisteredEntity,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
 import {PageClass} from "./document-scenario/PageClass";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
-import { getClassTypeFromInstance } from '../src/decorators';
+import {getClassTypeFromInstance} from '../src/decorators';
 
 test('test invalid usage decorator', async () => {
     expect(() => {
@@ -32,7 +33,7 @@ test('test invalid usage decorator', async () => {
         class Base {
             ohwe: any;
         }
-    }).toThrow('Could not detect property name in Base');
+    }).toThrow('Could not resolve property name for class property on Base');
 });
 
 test('test getClassTypeFromInstance', async () => {
@@ -46,7 +47,8 @@ test('test getClassTypeFromInstance', async () => {
         }
 
         @Entity('ding')
-        class Ding extends Base {}
+        class Ding extends Base {
+        }
 
         expect(() => getClassTypeFromInstance(Base)).toThrow('Target does not seem to be');
         expect(() => getClassTypeFromInstance({})).toThrow('Target does not seem to be');
@@ -79,98 +81,41 @@ test('test invalid usage', async () => {
     }
 
     expect(() => {
-        getEntitySchema(Base).getProperty('ohwe').getResolvedClassType();
+        getClassSchema(Base).getProperty('ohwe').getResolvedClassType();
     }).toThrowError('ForwardRef returns no value');
 
     expect(() => {
         getReflectionType(Base, 'ohwe');
     }).toThrowError('Base::ohwe: Error: ForwardRef returns no value. () => undefined');
 
-    expect(getEntitySchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
+    expect(getClassSchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
 
     //second call uses cached one
-    expect(getEntitySchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
+    expect(getClassSchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
 
     expect(() => {
-        getEntitySchema(Base).getProperty('id').getResolvedClassType();
+        getClassSchema(Base).getProperty('id').getResolvedClassType();
     }).toThrowError('No classType given for id');
 
     expect(() => {
-        getEntitySchema(Base).getProperty('bla');
+        getClassSchema(Base).getProperty('bla');
     }).toThrowError('Property bla not found');
 });
 
 test('test circular', async () => {
-    expect(getEntitySchema(PageClass).getProperty('children').getResolvedClassType()).toBe(PageCollection);
-    expect(getEntitySchema(PageClass).getProperty('parent').getResolvedClassType()).toBe(PageClass);
-    expect(getEntitySchema(PageClass).getProperty('document').getResolvedClassType()).toBe(DocumentClass);
-});
-
-test('test inheritance', async () => {
-    class Base {
-        constructor(
-            @Field()
-            @Index({}, 'id2')
-            public id: string,
-        ) {
-        }
-    }
-
-    class Page extends Base {
-        constructor(id: string, @Field() public name: string) {
-            super(id);
-        }
-    }
-
-    class Between extends Page {
-
-    }
-
-    class SuperPage extends Between {
-        @Field()
-        super?: number
-    }
-
-    class Super2 extends SuperPage {
-    }
-
-    class Super3 extends Super2 {
-    }
-
-    expect(getEntitySchema(Base).getProperty('id').type).toBe('string');
-    expect(getEntitySchema(Base).getIndex('id2')!.name).toBe('id2');
-
-    expect(getEntitySchema(Page).getProperty('id').type).toBe('string');
-    expect(getEntitySchema(Page).getProperty('name').type).toBe('string');
-    expect(getEntitySchema(Page).getIndex('id2')!.name).toBe('id2');
-
-    expect(getEntitySchema(SuperPage).getProperty('id').type).toBe('string');
-    expect(getEntitySchema(SuperPage).getProperty('name').type).toBe('string');
-    expect(getEntitySchema(SuperPage).getProperty('super').type).toBe('number');
-    expect(getEntitySchema(SuperPage).getIndex('id2')!.name).toBe('id2');
-
-    expect(getEntitySchema(Super3).getProperty('id').type).toBe('string');
-    expect(getEntitySchema(Super3).getProperty('name').type).toBe('string');
-    expect(getEntitySchema(Super3).getProperty('super').type).toBe('number');
-    expect(getEntitySchema(Super3).getIndex('id2')!.name).toBe('id2');
-
-    expect(getEntitySchema(Super2).getProperty('id').type).toBe('string');
-    expect(getEntitySchema(Super2).getProperty('name').type).toBe('string');
-    expect(getEntitySchema(Super2).getProperty('super').type).toBe('number');
-    expect(getEntitySchema(Super2).getIndex('id2')!.name).toBe('id2');
-
-
+    expect(getClassSchema(PageClass).getProperty('children').getResolvedClassType()).toBe(PageCollection);
+    expect(getClassSchema(PageClass).getProperty('parent').getResolvedClassType()).toBe(PageClass);
+    expect(getClassSchema(PageClass).getProperty('document').getResolvedClassType()).toBe(DocumentClass);
 });
 
 test('test entity database', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
-        @IDField()
-        @MongoIdField()
+        @f.id().mongo()
         _id?: string;
 
-        @Field()
+        @f
         name?: string;
     }
 
@@ -202,27 +147,26 @@ test('test entity database', async () => {
 });
 
 test('test uuid', () => {
-    const schema = getEntitySchema(SimpleModel);
+    const schema = getClassSchema(SimpleModel);
     expect(schema.getProperty('id').type).toBe('uuid');
     expect(schema.getProperty('id').isId).toBe(true);
 });
 
 test('test binary', () => {
     class User {
-        @Field(Buffer)
-        picture?: Buffer
+        @f.type(Buffer) picture?: Buffer
     }
 
-    const schema = getEntitySchema(User);
+    const schema = getClassSchema(User);
     expect(schema.getProperty('picture').type).toBe('binary');
 });
 
 test('test asName', () => {
     class User {
         constructor(
-            @Field().asName('fieldA')
+            @f.asName('fieldA')
             public parent: string,
-            @UUIDField().asName('fieldB').optional()
+            @f.uuid().asName('fieldB').optional()
             public neighbor?: string,
         ) {
         }
@@ -240,25 +184,24 @@ test('test asName', () => {
 
 test('test @Field', () => {
     class Config {
-        @Field()
-        created: Date = new Date;
+        @f created: Date = new Date;
     }
 
     class Page {
-        @Field({Config})
+        @f.map(Config)
         map: { [name: string]: Config } = {};
 
-        @Field([Config])
+        @f.array(Config)
         configArray: Config[] = [];
 
         constructor(
-            @Field() name: string,
-            @Field([String]) tags: string[]
+            @f name: string,
+            @f.array(String) tags: string[]
         ) {
         }
     }
 
-    const schema = getEntitySchema(Page);
+    const schema = getClassSchema(Page);
 
     expect(schema.getProperty('name').isMap).toBe(false);
     expect(schema.getProperty('name').isArray).toBe(false);
@@ -281,8 +224,7 @@ test('test @Field', () => {
 
 test('test invalid @Field', () => {
     class Config {
-        @Field()
-        name?: string;
+        @f.optional() name?: string;
     }
 
     expect(() => {

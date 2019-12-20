@@ -9,9 +9,18 @@ import {
     StringValidator,
     UUIDValidator
 } from "./validation";
-import * as clone from 'clone';
-import {ClassType, getClassName, isArray, isNumber, isObject, isPlainObject, isString} from '@marcj/estdlib';
+import {
+    ClassType,
+    getClassName,
+    isArray,
+    isNumber,
+    isObject,
+    isPlainObject,
+    eachPair,
+    eachKey
+} from '@marcj/estdlib';
 import {Buffer} from "buffer";
+import * as getParameterNames from "get-parameter-names";
 
 /**
  * Registry of all registered entity that used the @Entity('name') decorator.
@@ -31,11 +40,17 @@ type IndexOptions = Partial<{
     where: string,
 }>;
 
+/**
+ * Represents a class property or method argument definition.
+ */
 export class PropertySchema {
     name: string;
+
     type: Types = 'any';
     isArray: boolean = false;
     isMap: boolean = false;
+
+    typeSet: boolean = false;
 
     /**
      * Whether this property is decorated.
@@ -45,6 +60,11 @@ export class PropertySchema {
     isParentReference: boolean = false;
     isOptional: boolean = false;
     isId: boolean = false;
+
+    /**
+     * When this property belongs to method as argument then this contains the name of the method.
+     */
+    methodName?: string;
 
     readonly validators: ClassType<PropertyValidator>[] = [];
 
@@ -63,11 +83,19 @@ export class PropertySchema {
         this.name = name;
     }
 
+    clone(): PropertySchema {
+        const s = new PropertySchema(this.name);
+        for (const i of eachKey(this)) {
+            s[i] = this[i];
+        }
+        return s;
+    }
+
     getForeignClassDecorator(): PropertySchema | undefined {
         if (this.type === 'class') {
             const targetClass = this.getResolvedClassType();
-            if (getEntitySchema(targetClass).decorator) {
-                return getEntitySchema(targetClass).getDecoratedPropertySchema();
+            if (getClassSchema(targetClass).decorator) {
+                return getClassSchema(targetClass).getDecoratedPropertySchema();
             }
         }
     }
@@ -108,7 +136,7 @@ export class PropertySchema {
 
     isResolvedClassTypeIsDecorated(): boolean {
         if (this.type === 'class') {
-            const foreignSchema = getEntitySchema(this.getResolvedClassType());
+            const foreignSchema = getClassSchema(this.getResolvedClassType());
             return Boolean(foreignSchema.decorator);
         }
 
@@ -142,17 +170,25 @@ export interface EntityIndex {
     options: IndexOptions
 }
 
-export class EntitySchema {
+export class ClassSchema {
     proto: Object;
     name?: string;
     collectionName?: string;
     databaseName?: string;
     decorator?: string;
-    properties: { [name: string]: PropertySchema } = {};
+
+    /**
+     * Each method can have its own PropertySchema definition for each argument, where map key = method name.
+     */
+    methodProperties = new Map<string, PropertySchema[]>();
+
+    classProperties: { [name: string]: PropertySchema } = {};
+
     idField?: string;
     propertyNames: string[] = [];
-    constructorParamNames: string[] = [];
-    constructorParamNamesAutoResolved: string[] = [];
+
+    methodsParamNames = new Map<string, string[]>();
+    methodsParamNamesAutoResolved = new Map<string, string[]>();
 
     indices: EntityIndex[] = [];
 
@@ -160,6 +196,90 @@ export class EntitySchema {
 
     constructor(proto: Object) {
         this.proto = proto;
+    }
+
+    public clone(proto: Object): ClassSchema {
+        const s = new ClassSchema(proto);
+        s.name = this.name;
+        s.collectionName = this.collectionName;
+        s.databaseName = this.databaseName;
+        s.decorator = this.decorator;
+
+        s.classProperties = {};
+        for (const [i, v] of eachPair(this.classProperties)) {
+            s.classProperties[i] = v.clone();
+        }
+
+        s.methodProperties = new Map();
+        for (const [i, properties] of this.methodProperties.entries()) {
+            const obj: PropertySchema[] = [];
+            for (const v of properties) {
+                obj.push(v.clone());
+            }
+            s.methodProperties.set(i, obj);
+        }
+
+        s.idField = this.idField;
+        s.propertyNames = this.propertyNames.slice(0);
+        s.methodsParamNames = new Map<string, string[]>();
+        s.methodsParamNamesAutoResolved = new Map<string, string[]>();
+        for (const [m, p] of this.methodsParamNames.entries()) s.methodsParamNames.set(m, p.slice(0));
+        for (const [m, p] of this.methodsParamNamesAutoResolved.entries()) s.methodsParamNamesAutoResolved.set(m, p.slice(0));
+
+        s.indices = [];
+        for (const v of this.indices) {
+            s.indices.push({...v});
+        }
+
+        s.onLoad = [];
+        for (const v of this.onLoad) {
+            s.onLoad.push({...v});
+        }
+        return s;
+    }
+
+    /**
+     * Returns all annotated arguments as PropertSchema for given method name.
+     *
+     * notice: The user is allowed to annotated partial arguments, which means you end up having
+     * in this array only a subset of annotated method arguments. Check always for undefined when accessing an
+     * array item.
+     */
+    public getMethodProperties(name: string): PropertySchema[] {
+        return this.methodProperties.get(name) || [];
+    }
+
+    /**
+     * @internal
+     */
+    public getOrCreateMethodProperties(name: string): PropertySchema[] {
+        if (!this.methodProperties.has(name)) {
+            this.methodProperties.set(name, []);
+        }
+
+        return this.methodProperties.get(name)!;
+    }
+
+    public getClassProperties(): { [name: string]: PropertySchema } {
+        return this.classProperties;
+    }
+
+    /**
+     * @internal
+     */
+    public getMethodsParamNames(methodName: string): string[] {
+        if (!this.methodsParamNames.has(methodName)) this.methodsParamNames.set(methodName, []);
+
+        return this.methodsParamNames.get(methodName)!;
+    }
+
+    /**
+     * @internal
+     */
+    public getMethodsParamNamesAutoResolved(methodName: string): string[] {
+        if (!this.methodsParamNamesAutoResolved.has(methodName)) this.methodsParamNamesAutoResolved.set(methodName, []);
+
+        return this.methodsParamNamesAutoResolved.get(methodName)!;
     }
 
     public getDecoratedPropertySchema(): PropertySchema {
@@ -178,95 +298,83 @@ export class EntitySchema {
         }
     }
 
-    public getOrCreateProperty(name: string): PropertySchema {
-
-        if (!this.properties[name]) {
-            this.properties[name] = new PropertySchema(name);
-            this.propertyNames.push(name);
-        }
-
-        return this.properties[name];
-    }
-
     public getPropertyOrUndefined(name: string): PropertySchema | undefined {
-        if (this.properties[name]) {
-            return this.properties[name];
+        if (this.classProperties[name]) {
+            return this.classProperties[name];
         }
     }
 
     public hasProperty(name: string): boolean {
-        return Boolean(this.properties[name]);
+        return Boolean(this.classProperties[name]);
     }
 
     public getProperty(name: string): PropertySchema {
-        if (!this.properties[name]) {
+        if (!this.classProperties[name]) {
             throw new Error(`Property ${name} not found`);
         }
 
-        return this.properties[name];
+        return this.classProperties[name];
     }
 }
 
 /**
  * @hidden
  */
-export const EntitySchemas = new Map<object, EntitySchema>();
+export const ClassSchemas = new Map<object, ClassSchema>();
 
 /**
  * @hidden
  */
-export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): EntitySchema {
+export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): ClassSchema {
     const proto = target['prototype'] ? target['prototype'] : target;
 
-    if (!EntitySchemas.has(proto)) {
+    if (!ClassSchemas.has(proto)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
 
         let currentProto = Object.getPrototypeOf(proto);
         let found = false;
         while (currentProto && currentProto !== Object.prototype) {
-            if (EntitySchemas.has(currentProto)) {
+            if (ClassSchemas.has(currentProto)) {
                 found = true;
-                const cloned = clone(EntitySchemas.get(currentProto));
-                EntitySchemas.set(proto, cloned!);
+                ClassSchemas.set(proto, ClassSchemas.get(currentProto)!.clone(proto));
                 break;
             }
             currentProto = Object.getPrototypeOf(currentProto);
         }
 
         if (!found) {
-            const reflection = new EntitySchema(proto);
-            EntitySchemas.set(proto, reflection);
+            const reflection = new ClassSchema(proto);
+            ClassSchemas.set(proto, reflection);
         }
     }
 
-    return EntitySchemas.get(proto)!;
+    return ClassSchemas.get(proto)!;
 }
 
 /**
  * Returns meta information / schema about given entity class.
  */
-export function getEntitySchema<T>(classType: ClassType<T>): EntitySchema {
-    if (!EntitySchemas.has(classType.prototype)) {
+export function getClassSchema<T>(classType: ClassType<T>): ClassSchema {
+    if (!ClassSchemas.has(classType.prototype)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
         let currentProto = Object.getPrototypeOf(classType.prototype);
         let found = false;
         while (currentProto && currentProto !== Object.prototype) {
-            if (EntitySchemas.has(currentProto)) {
+            if (ClassSchemas.has(currentProto)) {
                 found = true;
-                const cloned = clone(EntitySchemas.get(currentProto));
-                EntitySchemas.set(classType.prototype, cloned!);
+                ClassSchemas.set(classType.prototype, ClassSchemas.get(currentProto)!.clone(classType.prototype));
                 break;
             }
             currentProto = Object.getPrototypeOf(currentProto);
         }
 
         if (!found) {
-            const reflection = new EntitySchema(classType.prototype);
-            EntitySchemas.set(classType.prototype, reflection);
+            const reflection = new ClassSchema(classType.prototype);
+            ClassSchemas.set(classType.prototype, reflection);
         }
     }
 
-    return EntitySchemas.get(classType.prototype)!;
+    return ClassSchemas.get(classType.prototype)!;
 }
 
 /**
@@ -290,7 +398,7 @@ export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
  * a Marshal entity.
  */
 export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
-    return EntitySchemas.has(classType.prototype);
+    return ClassSchemas.has(classType.prototype);
 }
 
 /**
@@ -328,7 +436,7 @@ export function DatabaseName<T>(name: string) {
     };
 }
 
-interface FieldDecoratorResult {
+export interface FieldDecoratorResult {
     (target: Object, property?: string, parameterIndexOrDescriptor?: any): void;
 
     /**
@@ -354,10 +462,22 @@ interface FieldDecoratorResult {
      */
     asId(): FieldDecoratorResult;
 
+    id(): FieldDecoratorResult;
+
     /**
      * @see Index
      */
-    index(options?: IndexOptions): FieldDecoratorResult;
+    index(options?: IndexOptions, name?: string): FieldDecoratorResult;
+
+    /**
+     * @see MongoIdField
+     */
+    mongo(): FieldDecoratorResult;
+
+    /**
+     * @see UUIDField
+     */
+    uuid(): FieldDecoratorResult;
 
     /**
      * @see FieldArray
@@ -368,193 +488,201 @@ interface FieldDecoratorResult {
      * @see FieldMap
      */
     asMap(): FieldDecoratorResult;
+
+    /**
+     * Uses an additional decorator.
+     * @see FieldMap
+     */
+    use(decorator: (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void): FieldDecoratorResult;
+}
+
+function createFieldDecoratorResult(
+    cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
+    givenPropertyName: string = '',
+    modifier: ((target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void)[] = [],
+    modifiedOptions: FieldOptions = {},
+    root = false,
+): FieldDecoratorResult {
+    const fn = (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
+        let returnType;
+        let methodName = 'constructor';
+        const schema = getOrCreateEntitySchema(target);
+
+        if (isNumber(parameterIndexOrDescriptor)) {
+            //decorator is used on a method argument
+            methodName = propertyOrMethodName || 'constructor';
+            const methodsParamNames = schema.getMethodsParamNames(methodName);
+            const methodsParamNamesAutoResolved = schema.getMethodsParamNamesAutoResolved(methodName);
+
+            if (!givenPropertyName && methodsParamNames[parameterIndexOrDescriptor]) {
+                givenPropertyName = methodsParamNames[parameterIndexOrDescriptor];
+            }
+
+            if (givenPropertyName && (
+                (methodsParamNames[parameterIndexOrDescriptor] && methodsParamNames[parameterIndexOrDescriptor] !== givenPropertyName)
+                || (methodsParamNamesAutoResolved[parameterIndexOrDescriptor] && methodsParamNamesAutoResolved[parameterIndexOrDescriptor] !== givenPropertyName)
+            )
+            ) {
+                //we got a new decorator with a different name on a constructor param
+                //since we cant not resolve logically which name to use, we forbid that case.
+                throw new Error(`Defining multiple Marshal decorators with different names at arguments of ${getClassName(target)}::${methodName} #${parameterIndexOrDescriptor} is forbidden.` +
+                    ` @Field.asName('name') is required. Got ${methodsParamNames[parameterIndexOrDescriptor] || methodsParamNamesAutoResolved[parameterIndexOrDescriptor]} !== ${givenPropertyName}`)
+            }
+
+            if (givenPropertyName) {
+                //we only store the name, when we explicitly defined one
+                methodsParamNames[parameterIndexOrDescriptor] = givenPropertyName;
+            } else if (methodName === 'constructor') {
+                //only for constructor methods
+                const constructorParamNames = getParameterNames((target as ClassType<any>).prototype.constructor);
+                // const constructorParamNames = getCachedParameterNames((target as ClassType<any>).prototype.constructor);
+                givenPropertyName = constructorParamNames[parameterIndexOrDescriptor];
+                if (!givenPropertyName) {
+                    console.debug('constructorParamNames', parameterIndexOrDescriptor, constructorParamNames);
+                    throw new Error('Unable not extract constructor argument names');
+                }
+
+                if (methodsParamNames[parameterIndexOrDescriptor] && methodsParamNames[parameterIndexOrDescriptor] !== givenPropertyName) {
+                    //we got a new decorator with a different name on a constructor param
+                    //since we cant not resolve logically which name to use, we forbid that case.
+                    throw new Error(`Defining multiple Marshal decorators with different names at arguments of ${getClassName(target)}::${methodName} is forbidden.` +
+                        ` @Field.asName('name') is required.`)
+                }
+
+                if (givenPropertyName) {
+                    methodsParamNamesAutoResolved[parameterIndexOrDescriptor] = givenPropertyName;
+                }
+            }
+
+            if (methodName === 'constructor') {
+                //constructor
+                const returnTypes = Reflect.getMetadata('design:paramtypes', target);
+                if (returnTypes) returnType = returnTypes[parameterIndexOrDescriptor];
+            } else {
+                //method
+                const returnTypes = Reflect.getMetadata('design:paramtypes', target, methodName);
+                if (returnTypes) returnType = returnTypes[parameterIndexOrDescriptor];
+            }
+
+        } else {
+            //it's a class property, so propertyOrMethodName contains the actual property name
+            if (propertyOrMethodName) {
+                returnType = Reflect.getMetadata('design:type', target, propertyOrMethodName);
+            }
+
+            if (!givenPropertyName && propertyOrMethodName) {
+                givenPropertyName = propertyOrMethodName;
+            }
+        }
+
+        const argumentsProperties = schema.getOrCreateMethodProperties(methodName);
+        let propertySchema: PropertySchema | undefined = undefined;
+
+        if (isNumber(parameterIndexOrDescriptor)) {
+            //decorator is used on a method argument. Might be on constructor or any other method.
+            if (methodName === 'constructor') {
+                if (!givenPropertyName) {
+                    throw new Error(`Could not resolve property name for class property on ${getClassName(target)} ${propertyOrMethodName}`);
+                }
+                if (!schema.classProperties[givenPropertyName]) {
+                    schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
+                    schema.propertyNames.push(givenPropertyName);
+                }
+
+                propertySchema = schema.classProperties[givenPropertyName];
+                argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
+            } else {
+                if (!argumentsProperties[parameterIndexOrDescriptor]) {
+                    argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(String(parameterIndexOrDescriptor));
+                    argumentsProperties[parameterIndexOrDescriptor].methodName = methodName;
+                }
+
+                propertySchema = argumentsProperties[parameterIndexOrDescriptor];
+            }
+        } else {
+            if (!givenPropertyName) {
+                throw new Error(`Could not resolve property name for class property on ${getClassName(target)}`);
+            }
+
+            if (!schema.classProperties[givenPropertyName]) {
+                schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
+                schema.propertyNames.push(givenPropertyName);
+            }
+
+            propertySchema = schema.classProperties[givenPropertyName];
+        }
+
+        for (const mod of modifier) {
+            mod(target, propertyOrMethodName, parameterIndexOrDescriptor);
+        }
+
+        if (isNumber(parameterIndexOrDescriptor) && target['prototype']) {
+            target = target['prototype'];
+        }
+
+        cb(target, propertySchema!, returnType, {...modifiedOptions});
+
+        //when @f is used alone, we need to reset the roots state
+        if (root) {
+            givenPropertyName = '';
+            modifier = [];
+            modifiedOptions = {};
+        }
+    };
+
+    fn.asName = (name: string) => {
+        return createFieldDecoratorResult(cb, name, [...modifier, Optional()], modifiedOptions);
+    };
+
+    fn.optional = () => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Optional()], modifiedOptions);
+    };
+
+    fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)], modifiedOptions);
+    };
+
+    fn.id = fn.asId = () => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, IDField()], modifiedOptions);
+    };
+
+    fn.index = (options?: IndexOptions, name?: string) => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Index(options, name)], modifiedOptions);
+    };
+
+    fn.mongo = () => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, MongoIdField()], modifiedOptions);
+    };
+
+    fn.uuid = () => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, UUIDField()], modifiedOptions);
+    };
+
+    fn.use = (decorator: (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void) => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator], modifiedOptions);
+    };
+
+    fn.asArray = () => {
+        if (modifiedOptions.map) throw new Error('Field is already defined as map.');
+        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, array: true});
+    };
+
+    fn.asMap = () => {
+        if (modifiedOptions.array) throw new Error('Field is already defined as array.');
+        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, map: true});
+    };
+
+    return fn;
 }
 
 /**
  * Helper for decorators that are allowed to be placed in property declaration and constructor property declaration.
  * We detect the name by reading the constructor' signature, which would be otherwise lost.
  */
-function FieldDecoratorWrapper(
-    cb: (target: Object, property: string, returnType?: any, modifiedOptions?: FieldOptions) => void
+export function FieldDecoratorWrapper(
+    cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void
 ): FieldDecoratorResult {
-    let givenPropertyName = '';
-
-    const modifier: ((target: Object, property: string) => void)[] = [];
-    const modifiedOptions: FieldOptions = {};
-
-    const fn = (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
-        let returnType;
-        const schema = getOrCreateEntitySchema(target);
-
-        if (property) {
-            returnType = Reflect.getMetadata('design:type', target, property);
-        }
-
-        if (isNumber(parameterIndexOrDescriptor)) {
-            if (givenPropertyName && (
-                (schema.constructorParamNames[parameterIndexOrDescriptor] && schema.constructorParamNames[parameterIndexOrDescriptor] !== givenPropertyName)
-                || (schema.constructorParamNamesAutoResolved[parameterIndexOrDescriptor] && schema.constructorParamNamesAutoResolved[parameterIndexOrDescriptor] !== givenPropertyName)
-            )
-            ) {
-                //we got a new decorator with a different name on a constructor param
-                //since we cant not resolve logically which name to use, we forbid that case.
-                throw new Error(`Defining multiple Marshal decorators with different names on ${getClassName(target)} at a constructor param is forbidden.` +
-                    ` @Field.asName('name') is required.`)
-            }
-
-            if (!givenPropertyName && schema.constructorParamNames.length) {
-                //we got a new decorator with a different name on a constructor param
-                //since we cant not resolve logically which name to use, we forbid that case.
-                throw new Error(`Mixing named and not-named constructor parameter is not possible.` +
-                    ` @Field.asName('name') is required everywhere once used.`)
-            }
-
-            if (givenPropertyName) {
-                property = givenPropertyName;
-                //we only store the name, when we explicitely defined one
-                schema.constructorParamNames[parameterIndexOrDescriptor] = property;
-            } else {
-                const constructorParamNames = getCachedParameterNames((target as ClassType<any>).prototype.constructor);
-                property = constructorParamNames[parameterIndexOrDescriptor];
-
-                if (schema.constructorParamNames[parameterIndexOrDescriptor] && schema.constructorParamNames[parameterIndexOrDescriptor] !== property) {
-                    //we got a new decorator with a different name on a constructor param
-                    //since we cant not resolve logically which name to use, we forbid that case.
-                    throw new Error(`Defining multiple Marshal decorators with different names on ${getClassName(target)} at a constructor param is forbidden.` +
-                        ` @Field.asName('name') is required.`)
-                }
-                if (property) {
-                    schema.constructorParamNamesAutoResolved[parameterIndexOrDescriptor] = property;
-                }
-            }
-
-            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
-            returnType = returnTypes[parameterIndexOrDescriptor];
-            target = target['prototype'];
-        }
-
-        if (!property) {
-            throw new Error(`Could not detect property name in ${getClassName(target)}`);
-        }
-
-        for (const mod of modifier) {
-            mod(target, property);
-        }
-
-        cb(target, property, returnType, modifiedOptions)
-    };
-
-    fn.asName = (name: string) => {
-        givenPropertyName = name;
-        return fn;
-    };
-
-    fn.optional = () => {
-        modifier.push(Optional());
-        return fn;
-    };
-
-    fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
-        modifier.push(Exclude(target));
-        return fn;
-    };
-
-    fn.asId = () => {
-        modifier.push(IDField());
-        return fn;
-    };
-
-    fn.index = (options?: IndexOptions) => {
-        modifier.push(Index(options));
-        return fn;
-    };
-
-    fn.asArray = () => {
-        modifiedOptions.array = true;
-        return fn;
-    };
-
-    fn.asMap = () => {
-        modifiedOptions.map = true;
-        return fn;
-    };
-
-    return fn;
-}
-
-function FieldAndClassDecoratorWrapper(
-    cb: (target: Object, property?: string, returnType?: any, modifiedOptions?: FieldOptions) => void
-): FieldDecoratorResult {
-    let givenPropertyName = '';
-
-    const modifier: ((target: Object, property: string) => void)[] = [];
-    const modifiedOptions: FieldOptions = {};
-
-    const fn = (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
-        let returnType;
-
-        if (property) {
-            returnType = Reflect.getMetadata('design:type', target, property);
-        }
-
-        if (isNumber(parameterIndexOrDescriptor)) {
-            if (givenPropertyName) {
-                property = givenPropertyName;
-            } else {
-                const constructorParamNames = getCachedParameterNames(target as ClassType<any>);
-                property = constructorParamNames[parameterIndexOrDescriptor];
-            }
-
-            const returnTypes = Reflect.getMetadata('design:paramtypes', target);
-            returnType = returnTypes[parameterIndexOrDescriptor];
-            target = target['prototype'];
-        }
-
-        if (property) {
-            for (const mod of modifier) {
-                mod(target, property);
-            }
-        }
-
-        cb(target, property, returnType, modifiedOptions)
-    };
-
-    fn.asName = (name: string) => {
-        givenPropertyName = name;
-        return fn;
-    };
-
-    fn.asId = () => {
-        modifier.push(IDField());
-        return fn;
-    };
-
-    fn.index = (options?: IndexOptions) => {
-        modifier.push(Index(options));
-        return fn;
-    };
-
-    fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
-        modifier.push(Exclude(target));
-        return fn;
-    };
-
-    fn.optional = () => {
-        modifier.push(Optional());
-        return fn;
-    };
-
-    fn.asArray = () => {
-        modifiedOptions.array = true;
-        return fn;
-    };
-
-    fn.asMap = () => {
-        modifiedOptions.map = true;
-        return fn;
-    };
-
-    return fn;
+    return createFieldDecoratorResult(cb, '', [], {}, true);
 }
 
 /**
@@ -607,9 +735,9 @@ function FieldAndClassDecoratorWrapper(
  * `PageCollection.pages` (always the field where @Decorated() is applied to), here a array of PagesClass `PageClass[]`.
  */
 export function Decorated() {
-    return FieldDecoratorWrapper((target: Object, property: string) => {
-        getOrCreateEntitySchema(target).decorator = property;
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).isDecorated = true;
+    return FieldDecoratorWrapper((target, property) => {
+        getOrCreateEntitySchema(target).decorator = property.name;
+        property.isDecorated = true;
     });
 }
 
@@ -623,9 +751,9 @@ export function Decorated() {
  * @category Decorator
  */
 export function IDField() {
-    return FieldDecoratorWrapper((target: Object, property: string) => {
-        getOrCreateEntitySchema(target).idField = property;
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).isId = true;
+    return FieldDecoratorWrapper((target, property) => {
+        getOrCreateEntitySchema(target).idField = property.name;
+        property.isId = true;
     });
 }
 
@@ -671,8 +799,8 @@ export function IDField() {
  * ```
  */
 export function ParentReference() {
-    return FieldDecoratorWrapper((target: Object, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).isParentReference = true;
+    return FieldDecoratorWrapper((target, property) => {
+        property.isParentReference = true;
     });
 }
 
@@ -717,8 +845,8 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
  * @category Decorator
  */
 export function Exclude(t: 'all' | 'mongo' | 'plain' = 'all') {
-    return FieldDecoratorWrapper((target: Object, property: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).exclude = t;
+    return FieldDecoratorWrapper((target, property) => {
+        property.exclude = t;
     });
 }
 
@@ -798,6 +926,7 @@ interface FieldOptions {
     type?: Types;
 }
 
+
 /**
  * Decorator to define a field for an entity.
  *
@@ -853,14 +982,14 @@ interface FieldOptions {
  *
  * @category Decorator
  */
-export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }, options?: FieldOptions) {
-    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any, modifiedOptions?: FieldOptions) => {
-        options = options || {};
-        if (modifiedOptions) {
-            options = {...options, ...modifiedOptions};
-        }
+export function Field(oriType?: FieldTypes | FieldTypes[] | { [n: string]: FieldTypes }) {
+    return FieldDecoratorWrapper((target, property, returnType, options) => {
+        if (property.typeSet) return;
+        property.typeSet = true;
+        let type = oriType;
 
-        const id = getClassName(target) + '::' + property;
+        const propertyName = property.name;
+        const id = getClassName(target) + (property.methodName ? '::' + property.methodName : '') + '::' + propertyName;
 
         function getTypeName(t: any): string {
             if (t === Object) return 'Object';
@@ -902,18 +1031,25 @@ export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTyp
 
             if (type && !options.array && returnType === Array) {
                 throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use @Field([MyType]) or @FieldArray(MyType) or @FieldArray(forwardRef() => MyType)), e.g. @Field([String]) for '${property}: String[]'.`);
+                    `Please use @f.array(MyType) or @f.forwardArray(() => MyType), e.g. @f.array(String) for '${propertyName}: String[]'.`);
             }
 
             if (type && options.map && returnType !== Object) {
                 throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use the correct type in @Field().`);
+                    `Please use the correct type in @f.type(TYPE).`);
+            }
+
+            if (!type && returnType === Array) {
+                throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
+                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(forwardRef(() => MyType)).`
+                );
             }
 
             if (!type && returnType === Object) {
                 throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
-                    `When you don't declare a type in TypeScript, you need to pass a type in @Field(), e.g. @Field(String).\n` +
-                    `If you don't have a type, use @FieldAny(). If you reference a class with circular dependency, use @Field(forwardRef(() => MyType)).`
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
+                    `If you don't have a type, use @FieldAny(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
                 );
             }
 
@@ -929,8 +1065,8 @@ export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTyp
 
             if (type && !options.map && isCustomObject && returnType === Object) {
                 throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
-                    `The actual type is an Object, but you specified a Class in @Field(T).\n` +
-                    `Please declare a type or use @Field({${getClassName(type)}} for '${property}: {[k: string]: ${getClassName(type)}}'.`);
+                    `The actual type is an Object, but you specified a Class in @f.type(T).\n` +
+                    `Please declare a type or use @f.map(${getClassName(type)} for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
             }
 
             options.type = 'any';
@@ -958,11 +1094,11 @@ export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTyp
         }
 
         if (options.array) {
-            getOrCreateEntitySchema(target).getOrCreateProperty(property).isArray = true;
+            property.isArray = true;
         }
 
         if (options.map) {
-            getOrCreateEntitySchema(target).getOrCreateProperty(property).isMap = true;
+            property.isMap = true;
         }
 
         const isCustomObject = type !== String
@@ -975,21 +1111,61 @@ export function Field(type?: FieldTypes | FieldTypes[] | { [n: string]: FieldTyp
             && type !== Object;
 
         if (isCustomObject) {
-            getOrCreateEntitySchema(target).getOrCreateProperty(property).type = 'class';
-            getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = type as ClassType<any>;
+            property.type = 'class';
+            property.classType = type as ClassType<any>;
 
             if (type instanceof ForwardedRef) {
-                getOrCreateEntitySchema(target).getOrCreateProperty(property).classTypeForwardRef = type;
-                delete getOrCreateEntitySchema(target).getOrCreateProperty(property).classType;
+                property.classTypeForwardRef = type;
+                delete property.classType;
             }
             return;
         }
 
-        if (options.type) {
-            getOrCreateEntitySchema(target).getOrCreateProperty(property).type = options.type!;
+        if (property.type === 'any') {
+            property.type = options.type!;
         }
     });
 }
+
+declare type TYPES = FieldTypes | FieldTypes[] | { [n: string]: FieldTypes };
+
+const fRaw = Field();
+
+fRaw['array'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecoratorResult {
+    return Field(type).asArray();
+};
+
+fRaw['map'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecoratorResult {
+    return Field(type).asMap();
+};
+
+fRaw['type'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecoratorResult {
+    return Field(type);
+};
+
+fRaw['forward'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
+    return Field(forwardRef(f));
+};
+
+fRaw['forwardArray'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
+    return Field(forwardRef(f)).asArray();
+};
+
+fRaw['forwardMap'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
+    return Field(forwardRef(f)).asMap();
+};
+
+/**
+ * Same as @Field() but a short version @f where you can use it like `@f public name: string;`.
+ */
+export const f: FieldDecoratorResult & {
+    type: (type: TYPES) => FieldDecoratorResult,
+    array: (type: TYPES) => FieldDecoratorResult,
+    map: (type: TYPES) => FieldDecoratorResult,
+    forward: (f: () => TYPES) => FieldDecoratorResult,
+    forwardArray: (f: () => TYPES) => FieldDecoratorResult,
+    forwardMap: (f: () => TYPES) => FieldDecoratorResult,
+} = fRaw as any;
 
 /**
  * Same as @Field() but defines type as 'any'. With type any no transformation is applied.
@@ -1074,8 +1250,8 @@ export function FieldArray(type: FieldTypes) {
  * @hidden
  */
 function Type<T>(type: Types) {
-    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(property).type = type;
+    return FieldDecoratorWrapper((target, property, returnType?: any) => {
+        property.type = type;
     });
 }
 
@@ -1119,18 +1295,28 @@ export function UUIDField() {
  *
  * @category Decorator
  */
-export function Index(options?: IndexOptions, fields?: string | string[], name?: string) {
-    return FieldAndClassDecoratorWrapper((target: Object, property?: string, returnType?: any, modifiedOptions?: FieldOptions) => {
+export function Index(options?: IndexOptions, name?: string) {
+    return FieldDecoratorWrapper((target, property) => {
+        const schema = getOrCreateEntitySchema(target);
+        if (property.methodName) {
+            throw new Error('Index could not be used on method arguments.');
+        }
+
+        schema.indices.push({name: name || property.name, fields: [property.name], options: options || {}});
+    });
+}
+
+/**
+ * Used to define an index on a class.
+ *
+ * @category Decorator
+ */
+export function MultiIndex(fields: string[], options: IndexOptions, name?: string) {
+    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
         const schema = getOrCreateEntitySchema(target);
 
-        if (isArray(fields)) {
-            schema.indices.push({name: name || fields.join('_'), fields: fields as string[], options: options || {}});
-        } else if (isString(fields)) {
-            schema.indices.push({name: name || fields, fields: [fields] as string[], options: options || {}});
-        } else if (property) {
-            schema.indices.push({name: name || property, fields: [property] as string[], options: options || {}});
-        }
-    });
+        schema.indices.push({name: name || fields.join('_'), fields: fields as string[], options: options || {}});
+    };
 }
 
 /**
@@ -1141,11 +1327,11 @@ export function Index(options?: IndexOptions, fields?: string | string[], name?:
  * @category Decorator
  */
 export function EnumField<T>(type: any, allowLabelsAsValue = false) {
-    return FieldDecoratorWrapper((target: Object, property: string, returnType?: any) => {
+    return FieldDecoratorWrapper((target, property, returnType?: any) => {
         if (property) {
-            Type('enum')(target, property);
-            getOrCreateEntitySchema(target).getOrCreateProperty(property).classType = type;
-            getOrCreateEntitySchema(target).getOrCreateProperty(property).allowLabelsAsValue = allowLabelsAsValue;
+            Type('enum')(target, property.name);
+            property.classType = type;
+            property.allowLabelsAsValue = allowLabelsAsValue;
         }
     });
 }

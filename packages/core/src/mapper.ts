@@ -2,7 +2,7 @@ import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
-import {getClassTypeFromInstance, getEntitySchema} from "./decorators";
+import {getClassTypeFromInstance, getClassSchema} from "./decorators";
 import {
     ClassType,
     getClassName,
@@ -38,7 +38,7 @@ const cache = new Map<Object, Map<string, any>>();
  * @hidden
  */
 export function getCachedParameterNames<T>(classType: ClassType<T>): string[] {
-    const cpn = getEntitySchema(classType).constructorParamNames;
+    const cpn = getClassSchema(classType).getMethodsParamNames('constructor');
     if (cpn.length > 0) {
         return cpn;
     }
@@ -93,7 +93,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
     }
 
     const names = propertyPath === '' ? [] : propertyPath.split('.');
-    const schema = getEntitySchema(classType);
+    const schema = getClassSchema(classType);
 
     if (names.length === 1) {
         if (!schema.hasProperty(names[0])) {
@@ -122,7 +122,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
         let prop = schema.getProperty(name);
 
         if (prop.type === 'class' && prop.isResolvedClassTypeIsDecorated()) {
-            const foreignSchema = getEntitySchema(prop.getResolvedClassType());
+            const foreignSchema = getClassSchema(prop.getResolvedClassType());
             prop = foreignSchema.getProperty(foreignSchema.decorator!);
         }
 
@@ -180,7 +180,7 @@ export function getReflectionType<T>(classType: ClassType<T>, propertyName: stri
     let value = valueMap.get('getReflectionType::' + propertyName);
 
     if (undefined === value) {
-        const schema = getEntitySchema(classType).getPropertyOrUndefined(propertyName);
+        const schema = getClassSchema(classType).getPropertyOrUndefined(propertyName);
 
         try {
             if (schema) {
@@ -216,7 +216,7 @@ export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName
 
     let value = valueMap.get('ParentReferenceClass::' + propertyName);
     if (undefined === value) {
-        if (getEntitySchema(classType).getProperty(propertyName).isParentReference) {
+        if (getClassSchema(classType).getProperty(propertyName).isParentReference) {
             const {typeValue} = getReflectionType(classType, propertyName);
 
             if (!typeValue) {
@@ -545,7 +545,7 @@ export function toClass<T>(
         }
     }
 
-    for (const onLoad of getEntitySchema(classType).onLoad) {
+    for (const onLoad of getClassSchema(classType).onLoad) {
         if (onLoad.options.fullLoad) {
             state.onFullLoadCallbacks.push(() => {
                 item[onLoad.methodName]();
@@ -660,7 +660,7 @@ export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: an
  * @hidden
  */
 export function getIdField<T>(classType: ClassType<T>): string | undefined {
-    return getEntitySchema(classType).idField;
+    return getClassSchema(classType).idField;
 }
 
 /**
@@ -675,42 +675,42 @@ export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
  * @hidden
  */
 export function getDecorator<T>(classType: ClassType<T>): string | undefined {
-    return getEntitySchema(classType).decorator;
+    return getClassSchema(classType).decorator;
 }
 
 /**
  * @hidden
  */
 export function getRegisteredProperties<T>(classType: ClassType<T>): string[] {
-    return getEntitySchema(classType).propertyNames;
+    return getClassSchema(classType).propertyNames;
 }
 
 /**
  * @hidden
  */
 export function isArrayType<T>(classType: ClassType<T>, property: string): boolean {
-    return getEntitySchema(classType).getProperty(property).isArray;
+    return getClassSchema(classType).getProperty(property).isArray;
 }
 
 /**
  * @hidden
  */
 export function isMapType<T>(classType: ClassType<T>, property: string): boolean {
-    return getEntitySchema(classType).getProperty(property).isMap;
+    return getClassSchema(classType).getProperty(property).isMap;
 }
 
 /**
  * @hidden
  */
 export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property: string): boolean {
-    return getEntitySchema(classType).getProperty(property).allowLabelsAsValue;
+    return getClassSchema(classType).getProperty(property).allowLabelsAsValue;
 }
 
 /**
  * @hidden
  */
 export function isExcluded<T>(classType: ClassType<T>, property: string, wantedTarget: 'mongo' | 'plain'): boolean {
-    const mode = getEntitySchema(classType).getProperty(property).exclude;
+    const mode = getClassSchema(classType).getProperty(property).exclude;
 
     if ('all' === mode) {
         return true;
@@ -720,7 +720,7 @@ export function isExcluded<T>(classType: ClassType<T>, property: string, wantedT
 }
 
 export function getEntityName<T>(classType: ClassType<T>): string {
-    const name = getEntitySchema(classType).name;
+    const name = getClassSchema(classType).name;
 
     if (!name) {
         throw new Error('No @Entity() defined for class ' + classType);
@@ -733,14 +733,14 @@ export function getEntityName<T>(classType: ClassType<T>): string {
  * @hidden
  */
 export function getDatabaseName<T>(classType: ClassType<T>): string | undefined {
-    return getEntitySchema(classType).databaseName;
+    return getClassSchema(classType).databaseName;
 }
 
 /**
  * @hidden
  */
 export function getCollectionName<T>(classType: ClassType<T>): string | undefined {
-    return getEntitySchema(classType).collectionName;
+    return getClassSchema(classType).collectionName;
 }
 
 /**
@@ -751,9 +751,9 @@ export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: s
 
     const valueWithDefaults = value;
     const instance = plainToClass(classType, value);
-    const entitySchema = getEntitySchema(classType);
+    const entitySchema = getClassSchema(classType);
 
-    for (const [i, v] of eachPair(entitySchema.properties)) {
+    for (const [i, v] of eachPair(entitySchema.getClassProperties())) {
         if (undefined === value[i] || null === value[i]) {
             const decoratedProp = v.getForeignClassDecorator();
             if (decoratedProp) {

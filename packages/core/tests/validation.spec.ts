@@ -15,7 +15,7 @@ import {
     ValidationFailed
 } from "../";
 import {CustomError, isPlainObject} from '@marcj/estdlib';
-import {Decorated, FieldAny, FieldArray, getEntitySchema, UUIDField} from "../src/decorators";
+import {Decorated, FieldAny, FieldArray, getClassSchema, UUIDField} from "../src/decorators";
 
 test('test simple', async () => {
     class Page {
@@ -225,7 +225,7 @@ test('test boolean', async () => {
         public bo!: boolean;
     }
 
-    expect(getEntitySchema(Model).getProperty('bo').type).toBe('boolean');
+    expect(getClassSchema(Model).getProperty('bo').type).toBe('boolean');
 
     expect(plainToClass(Model, {bo: false}).bo).toBe(false);
     expect(plainToClass(Model, {bo: true}).bo).toBe(true);
