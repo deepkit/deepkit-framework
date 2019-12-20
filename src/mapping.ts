@@ -59,6 +59,19 @@ export function partialPlainToMongo<T, K extends keyof T>(
     return result;
 }
 
+export function partialMongoToClass<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target: { [path: string]: any },
+    parents: any[] = [],
+): { [path: string]: any } {
+    const result = {};
+    for (const i of eachKey(target)) {
+        result[i] = propertyMongoToClass(classType, i, target[i], parents);
+    }
+
+    return result;
+}
+
 export function partialMongoToPlain<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
@@ -264,7 +277,7 @@ export function propertyPlainToMongo<T>(
                     if (isOptional(typeValue, property)) {
                         continue;
                     }
-                    throw new Error(`Missing value in ${getClassPropertyName(resolvedClassType, propertyName)} for `+
+                    throw new Error(`Missing value in ${getClassPropertyName(resolvedClassType, propertyName)} for ` +
                         `${getClassPropertyName(typeValue, property)}. Can not convert to mongo.`);
                 }
 
@@ -299,9 +312,9 @@ export function propertyMongoToClass<T>(
     classType: ClassType<T>,
     propertyName: string,
     propertyValue: any,
-    parents: any[],
-    incomingLevel: number,
-    state: ToClassState
+    parents: any[] = [],
+    incomingLevel: number = 1,
+    state: ToClassState = {onFullLoadCallbacks: []}
 ) {
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -384,7 +397,7 @@ export function propertyMongoToClass<T>(
     if (map) {
         const result: any = {};
         if (isObject(propertyValue)) {
-                for (const i of eachKey(propertyValue)) {
+            for (const i of eachKey(propertyValue)) {
                 result[i] = convert((propertyValue as any)[i]);
             }
         }
