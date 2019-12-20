@@ -1,8 +1,8 @@
-import {Field, Decorated} from "../../src/decorators";
+import {Field, Decorated, forwardRef, f} from "../../src/decorators";
 import {PageClass} from "./PageClass";
 
 export class PageCollection {
-    @Field([PageClass])
+    @f.array(forwardRef(() => PageClass))
     @Decorated()
     private readonly pages: PageClass[] = [];
 

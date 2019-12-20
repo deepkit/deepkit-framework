@@ -2,7 +2,6 @@ import {
     Decorated,
     Entity,
     EnumField,
-    Exclude,
     Field,
     FieldAny,
     IDField,
@@ -10,7 +9,8 @@ import {
     MongoIdField,
     Optional,
     uuid,
-    UUIDField
+    UUIDField,
+    MultiIndex
 } from '../index';
 
 export class JobTaskQueue {
@@ -86,7 +86,7 @@ export class StringCollectionWrapper {
 }
 
 @Entity('SimpleModel')
-@Index({unique: true}, ['name', 'type'])
+@MultiIndex(['name', 'type'], {unique: true})
 export class SimpleModel {
     @IDField()
     @UUIDField()

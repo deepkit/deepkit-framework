@@ -2,14 +2,15 @@ import {ClassType, eachKey, getClassName, isArray, isObject, isPlainObject, type
 import {applyDefaultValues, getRegisteredProperties} from "./mapper";
 import {
     getClassTypeFromInstance,
-    getEntitySchema,
+    getClassSchema,
     getOrCreateEntitySchema,
     PropertySchema,
-    PropertyValidator
+    PropertyValidator,
+    FieldDecoratorWrapper
 } from "./decorators";
 
-function addValidator<T extends PropertyValidator>(target: Object, property: string, validator: ClassType<T>) {
-    getOrCreateEntitySchema(target).getOrCreateProperty(property).validators.push(validator);
+function addValidator<T extends PropertyValidator>(target: Object, property: PropertySchema, validator: ClassType<T>) {
+    property.validators.push(validator);
 }
 
 export class PropertyValidatorError {
@@ -46,9 +47,9 @@ export class PropertyValidatorError {
  * @category Decorator
  */
 export function AddValidator<T extends PropertyValidator>(validator: ClassType<T>) {
-    return (target: Object, property: string) => {
+    return FieldDecoratorWrapper((target, property) => {
         addValidator(target, property, validator);
-    };
+    });
 }
 
 /**
@@ -69,7 +70,7 @@ export function AddValidator<T extends PropertyValidator>(validator: ClassType<T
  * @category Decorator
  */
 export function InlineValidator<T extends PropertyValidator>(cb: (value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void) {
-    return (target: Object, property: string) => {
+    return FieldDecoratorWrapper((target, property) => {
         addValidator(target, property, class implements PropertyValidator {
             validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
                 try {
@@ -79,7 +80,7 @@ export function InlineValidator<T extends PropertyValidator>(cb: (value: any, ta
                 }
             }
         });
-    };
+    });
 }
 
 /**
@@ -199,16 +200,16 @@ export class RequiredValidator implements PropertyValidator {
  * @category Decorator
  */
 export function Optional() {
-    return (target: Object, propertyName: string) => {
-        getOrCreateEntitySchema(target).getOrCreateProperty(propertyName).isOptional = true;
-    };
+    return FieldDecoratorWrapper((target, property) => {
+        property.isOptional = true;
+    });
 }
 
 /**
  * @hidden
  */
 export function isOptional<T>(classType: ClassType<T>, propertyName: string): boolean {
-    return getOrCreateEntitySchema(classType).getOrCreateProperty(propertyName).isOptional;
+    return getOrCreateEntitySchema(classType).getProperty(propertyName).isOptional;
 }
 
 /**
@@ -258,7 +259,7 @@ export class ValidationFailed {
 export function validate<T>(classType: ClassType<T>, item: { [name: string]: any } | T, path?: string): ValidationError[] {
     const properties = getRegisteredProperties(classType);
     const errors: ValidationError[] = [];
-    const schema = getEntitySchema(classType);
+    const schema = getClassSchema(classType);
     let fromObjectLiteral = false;
 
     if (!schema.decorator) {
@@ -330,7 +331,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
         let propSchema = schema.getProperty(propertyName);
 
         if (propSchema.type === 'class') {
-            const targetEntitySchema = getEntitySchema(propSchema.getResolvedClassType());
+            const targetEntitySchema = getClassSchema(propSchema.getResolvedClassType());
             if (targetEntitySchema.decorator && fromObjectLiteral) {
                 //the required type is actual the type of the decorated field
                 //when we come from objectLiteral (from JSON)
