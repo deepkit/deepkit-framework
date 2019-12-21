@@ -7,10 +7,10 @@
 Marshal is a library written in and for TypeScript to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
 JSON-representable data from JSON object to class instance to database records and vice versa.
 
-Marshal introduces the concept of decorating your entity class *once* with all
+Marshal introduces the concept of decorating your entity class or class methods *once* with all
 necessary annotations (like type declaration, indices, and relations) using only Marshal's TypeScript decorators
 agnostic to any serialization target by saving only the meta data,
-and then use it everywhere: frontend, backend, http-transport, query parameter, DTOs, and database, including validations.
+and then use it everywhere: frontend, backend, http-transport, rpc serialization, query parameter, DTOs, and database, including validations.
 
 The goal is to support all types of structures/use-cases where you need to serialize and validate data in a very user-friendly
 way while providing the fastest possible serializer for all platforms, NodeJS and browsers.
@@ -21,7 +21,7 @@ package (super simple with [Lerna](https://github.com/lerna/lerna)). You then us
 
 By using a new client-server framework entirely written in and for TypeScript like [glut.ts](https://github.com/marcj/glut.ts) which is based on Marshal.ts
 you enter a new world of developing web applications by not caring anymore at all about hand-made serialization and validation.
-However Marshal.ts helps also for traditional REST APIs
+However Marshal.ts helps also for traditional REST APIs.
 
 ## Features
 
@@ -306,6 +306,55 @@ class MyModel {
     @f.moment()
     modified?: moment.Moment = moment();
 }
+```
+
+### Method annotation
+
+You can also annotation class methods and method arguments.
+This can be useful for building custom RPC interfaces.
+
+```typescript
+import {
+    f, PartialField, argumentClassToPlain, argumentPlainToClass,
+    methodResultClassToPlain, methodResultPlainToClass,
+} from '@marcj/marshal';
+
+class Config {
+    @f.optional()
+    name?: string;
+
+    @f.optional()
+    sub?: Config;
+
+    @f
+    prio: number = 0;
+}
+
+class Controller {
+    @f.partial(Config) //this defines the return type.
+    foo(name: string): PartialField<Config> {
+        return {prio: 2, 'sub.name': name};
+    }
+
+    @f //this register the function. `Config` type can be retrieve by TS reflection
+    bar(config: Config): Config {
+        config.name = 'peter';
+        return config;
+    }
+    
+    @f.array(Number) //return type. Necessary to specify array, since `number[]` is not inferable
+    another(@f.array(String) names: string): number[] {
+        return [1, 2];
+    }
+}
+
+//from class to transport layer
+const arg0 = argumentClassToPlain(Controller, 'foo', 0, 2); //'2'
+const res = methodResultClassToPlain(Controller, 'foo', {'sub.name': 3}); //{'sub.name': '3'}
+
+//from transport layer to 
+const arg0 = argumentPlainToClass(Controller, 'bar', 0, {prio: '2'}); //Config {}
+const res = methodResultPlainToClass(Controller, 'bar', {'sub': {name: 3}}); //Config {}
 ```
 
 ### Moment.js

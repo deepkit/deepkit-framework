@@ -223,7 +223,7 @@ export function propertyPlainToMongo<T>(
     const reflection = getResolvedReflection(classType, propertyName);
     if (!reflection) return propertyValue;
 
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map, partial} = reflection;
 
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -301,6 +301,10 @@ export function propertyPlainToMongo<T>(
         return [];
     }
 
+    if (partial) {
+        return propertyValue ? partialPlainToMongo(typeValue, propertyValue) : propertyValue;
+    }
+
     if (map) {
         const result: { [name: string]: any } = {};
         if (isObject(propertyValue)) {
@@ -333,7 +337,7 @@ export function propertyMongoToClass<T>(
     const reflection = getResolvedReflection(classType, propertyName);
     if (!reflection) return propertyValue;
 
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map, partial} = reflection;
 
     function convert(value: any) {
         if (value && 'uuid' === type && 'string' !== typeof value) {
@@ -401,6 +405,10 @@ export function propertyMongoToClass<T>(
             return propertyValue.map(v => convert(v));
         }
         return [];
+    }
+
+    if (partial) {
+        return propertyValue ? partialMongoToClass(typeValue, propertyValue) : propertyValue;
     }
 
     if (map) {

@@ -1,7 +1,14 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema} from "../src/decorators";
+import {f, getClassSchema, PartialField} from "../src/decorators";
+import {
+    argumentClassToPlain,
+    argumentPlainToClass,
+    methodResultClassToPlain, methodResultPlainToClass,
+    plainToClass,
+    propertyPlainToClass
+} from "..";
 
 test('Basic array', () => {
     class Other {
@@ -24,15 +31,23 @@ test('Basic array', () => {
 
 test('short @f 2', () => {
     class Controller {
-        public foo(@f.array(String) bar: string[]) {
+        public foo(@f.array(String) bar: string[]): string {
+            return '';
         }
 
-        public foo2(@f.map(String) bar: {[name: string]: string}) {
+        @f.array(Number)
+        public foo2(@f.map(String) bar: { [name: string]: string }): number[] {
+            return [];
         }
     }
 
     const s = getClassSchema(Controller);
     {
+        const method = s.getMethod('foo');
+        expect(method.name).toBe('foo');
+        expect(method.type).toBe('string');
+        expect(method.isArray).toBe(false);
+
         const props = s.getMethodProperties('foo');
 
         expect(props).toBeArrayOfSize(1);
@@ -40,7 +55,13 @@ test('short @f 2', () => {
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(true);
     }
+
     {
+        const method = s.getMethod('foo2');
+        expect(method.name).toBe('foo2');
+        expect(method.type).toBe('number');
+        expect(method.isArray).toBe(true);
+
         const props = s.getMethodProperties('foo2');
 
         expect(props).toBeArrayOfSize(1);
@@ -149,10 +170,100 @@ test('no decorators', () => {
             public foo(bar: string, nothing: boolean) {
             }
         }
+
         const s = getClassSchema(Controller);
         s.getMethodProperties('foo');
 
-    }).toThrow('has no decorated used, so reflection does not work');
+    }).toThrow('Method foo has no decorators used, so reflection does not work');
+});
+
+test('partial', () => {
+    class Config {
+        @f.optional()
+        name?: string;
+
+        @f.optional()
+        sub?: Config;
+
+        @f
+        prio: number = 0;
+    }
+
+    class User {
+        @f.partial(Config)
+        config: Partial<Config> = {};
+
+        @f.forwardPartial(() => Config)
+        config2: Partial<Config> = {};
+    }
+
+    const s = getClassSchema(User);
+    expect(s.getProperty('config').isPartial).toBe(true);
+    expect(s.getProperty('config').getResolvedClassType()).toBe(Config);
+
+    expect(s.getProperty('config2').isPartial).toBe(true);
+    expect(s.getProperty('config2').getResolvedClassType()).toBe(Config);
+
+    const u = plainToClass(User, {
+        config: {
+            name: 'peter',
+            'sub.name': 'peter2',
+            'sub.prio': '3',
+        }
+    });
+
+    expect(u.config).not.toBeInstanceOf(Config);
+    expect(u.config.name).toBe('peter');
+    expect(u.config.prio).toBeUndefined();
+    expect(u.config['sub.name']).toBe('peter2');
+    expect(u.config['sub.prio']).toBe(3);
+});
+
+test('argument convertion', () => {
+    class Config {
+        @f.optional()
+        name?: string;
+
+        @f.optional()
+        sub?: Config;
+
+        @f
+        prio: number = 0;
+    }
+
+    class Controller {
+        @f.partial(Config)
+        foo(name: string): PartialField<Config> {
+            return {prio: 2, 'sub.name': name};
+        }
+
+        @f
+        bar(config: Config): Config {
+            config.name = 'peter';
+            return config;
+        }
+    }
+
+    {
+        const name = argumentClassToPlain(Controller, 'foo', 0, 2);
+        expect(name).toBe('2');
+
+        const res = methodResultClassToPlain(Controller, 'foo', {'sub.name': 3});
+        expect(res['sub.name']).toBe('3');
+    }
+
+    {
+        const config = argumentPlainToClass(Controller, 'bar', 0, {prio: '2'});
+        expect(config).toBeInstanceOf(Config);
+        expect(config.prio).toBe(2);
+
+        const res = methodResultPlainToClass(Controller, 'bar', {'sub': {name: 3}});
+        expect(res).toBeInstanceOf(Config);
+        expect(res.sub).toBeInstanceOf(Config);
+        expect(res.sub.name).toBe('3');
+    }
+
+    //todo, add validation
 });
 
 test('short @f multi gap', () => {
