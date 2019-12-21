@@ -102,6 +102,7 @@ test('getResolvedReflection deep decorator', () => {
         typeValue: SubModel,
         array: false,
         map: false,
+        partial: false,
     });
 
     expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!).toEqual({
@@ -111,6 +112,7 @@ test('getResolvedReflection deep decorator', () => {
         typeValue: undefined,
         array: false,
         map: false,
+        partial: false,
     });
 });
 
@@ -247,6 +249,7 @@ test('partial document', () => {
         typeValue: undefined,
         array: false,
         map: false,
+        partial: false,
     });
 
     expect(getResolvedReflection(DocumentClass, 'pages.0.children')).toEqual({
@@ -256,6 +259,7 @@ test('partial document', () => {
         typeValue: PageCollection,
         array: false,
         map: false,
+        partial: false,
     });
 
     expect(getResolvedReflection(DocumentClass, 'pages.0.children.0.name')).toEqual({
@@ -265,6 +269,7 @@ test('partial document', () => {
         typeValue: undefined,
         array: false,
         map: false,
+        partial: false,
     });
 });
 

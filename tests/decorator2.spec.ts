@@ -15,6 +15,47 @@ test('test optional', () => {
     expect(prop.type).toBe('number');
 });
 
+test('test @Field', () => {
+    class Config {
+        @f created: Date = new Date;
+    }
+
+    class Page {
+        @f.map(Config)
+        map: { [name: string]: Config } = {};
+
+        @f.array(Config)
+        configArray: Config[] = [];
+
+        constructor(
+            @f name: string,
+            @f.array(String) tags: string[]
+        ) {
+        }
+    }
+
+    const schema = getClassSchema(Page);
+
+    expect(schema.getProperty('name').isMap).toBe(false);
+    expect(schema.getProperty('name').isArray).toBe(false);
+    expect(schema.getProperty('name').type).toBe('string');
+
+    expect(schema.getProperty('tags').isMap).toBe(false);
+    expect(schema.getProperty('tags').isArray).toBe(true);
+    expect(schema.getProperty('tags').type).toBe('string');
+
+    expect(schema.getProperty('map').type).toBe('class');
+    expect(schema.getProperty('map').isMap).toBe(true);
+    expect(schema.getProperty('map').getResolvedClassType()).toBe(Config);
+    expect(schema.getProperty('map').isArray).toBe(false);
+
+    expect(schema.getProperty('configArray').type).toBe('class');
+    expect(schema.getProperty('configArray').isArray).toBe(true);
+    expect(schema.getProperty('configArray').getResolvedClassType()).toBe(Config);
+    expect(schema.getProperty('configArray').isMap).toBe(false);
+});
+
+
 test('test binary', () => {
     class User {
         @f.type(Buffer) picture?: Buffer

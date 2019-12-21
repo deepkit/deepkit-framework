@@ -271,7 +271,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
                 continue;
             }
         } else {
-            if (propSchema.type === 'class' || propSchema.isMap) {
+            if (propSchema.type === 'class' || propSchema.isMap || propSchema.isPartial) {
                 if (!isObject(propertyValue)) {
                     errors.push(ValidationError.createInvalidType(propertyPath, 'object', propertyValue));
                     continue;
@@ -284,7 +284,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
         }
 
         if (propSchema.type === 'class') {
-            if (propSchema.isMap || propSchema.isArray) {
+            if (propSchema.isMap || propSchema.isPartial || propSchema.isArray) {
                 for (const i in propertyValue) {
                     const deepPropertyPath = propertyPath + '.' + i;
                     errors.push(...validate(propSchema.getResolvedClassType(), propertyValue[i], deepPropertyPath));

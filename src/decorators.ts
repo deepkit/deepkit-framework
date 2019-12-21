@@ -17,6 +17,19 @@ import * as getParameterNames from "get-parameter-names";
  */
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
 
+/**
+ * Type for @f.partial().
+ *
+ * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths.
+ */
+export type PartialField<T> = {
+    [P in keyof T]: T[P]
+} & {
+    //it's currently not possible to further define it
+    //https://github.com/Microsoft/TypeScript/issues/12754
+    [path: string]: any
+}
+
 export interface PropertyValidator {
     validate<T>(value: any, target: ClassType<T>, propertyName: string, propertySchema: PropertySchema): PropertyValidatorError | void;
 }
@@ -54,6 +67,11 @@ export class PropertySchema {
     isParentReference: boolean = false;
     isOptional: boolean = false;
     isId: boolean = false;
+
+    /**
+     * Whether given classType can be populated partially (for example in patch mechanisms).
+     */
+    isPartial: boolean = false;
 
     /**
      * When this property belongs to method as argument then this contains the name of the method.
@@ -218,7 +236,12 @@ export class ClassSchema {
      * Each method can have its own PropertySchema definition for each argument, where map key = method name.
      */
     methodProperties = new Map<string, PropertySchema[]>();
-    normalizedMethodProperties: { [name: string]: true } = {};
+    methods: { [name: string]: PropertySchema } = {};
+
+    /**
+     * @internal
+     */
+    initializedMethods: { [name: string]: true } = {};
 
     classProperties: { [name: string]: PropertySchema } = {};
 
@@ -278,32 +301,43 @@ export class ClassSchema {
 
     /**
      * Returns all annotated arguments as PropertSchema for given method name.
-     *
-     * notice: The user is allowed to annotated partial arguments, which means you end up having
-     * in this array only a subset of annotated method arguments. Check always for undefined when accessing an
-     * array item.
      */
     public getMethodProperties(name: string): PropertySchema[] {
-        const properties = this.getOrCreateMethodProperties(name);
-        if (!this.normalizedMethodProperties[name]) {
-            const returnTypes = Reflect.getMetadata('design:paramtypes', this.proto, name);
-            if (!returnTypes) {
-                throw new Error(`Method ${name} has no decorated used, so reflection does not work.`);
+        this.initializeMethod(name);
+
+        return this.methodProperties.get(name)!;
+    }
+
+    public getMethod(name: string): PropertySchema {
+        this.initializeMethod(name);
+
+        return this.methods[name];
+    }
+
+    protected initializeMethod(name: string) {
+        if (!this.initializedMethods[name]) {
+            if (!Reflect.hasMetadata('design:returntype', this.proto, name)) {
+                throw new Error(`Method ${name} has no decorators used, so reflection does not work. Use @f on the method or arguments.`);
             }
 
-            for (const [i, t] of eachPair(returnTypes)) {
+            if (!this.methods[name]) {
+                this.methods[name] = new PropertySchema(name);
+                this.methods[name].setFromJSType(Reflect.getMetadata('design:returntype', this.proto, name));
+            }
+
+            const properties = this.getOrCreateMethodProperties(name);
+
+            const paramtypes = Reflect.getMetadata('design:paramtypes', this.proto, name);
+            for (const [i, t] of eachPair(paramtypes)) {
                 if (!properties[i]) {
                     properties[i] = new PropertySchema(String(i));
-                    if (properties[i].type === 'any' && returnTypes[i] !== Object) {
+                    if (properties[i].type === 'any' && paramtypes[i] !== Object) {
                         properties[i].setFromJSType(t)
                     }
                 }
             }
-            this.normalizedMethodProperties[name] = true;
-        }
-
-        return properties;
-    }
+            this.initializedMethods[name] = true;
+        }}
 
     /**
      * @internal
@@ -617,6 +651,11 @@ export interface FieldDecoratorResult {
     asArray(): FieldDecoratorResult;
 
     /**
+     * @internal
+     */
+    asPartial(): FieldDecoratorResult;
+
+    /**
      * Marks a field as map. You should prefer `@f.map(T)` syntax.
      *
      * ```typescript
@@ -687,11 +726,15 @@ function createFieldDecoratorResult(
     }
 
     const fn = (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
+        //classes not supported
+
         resetIfNecessary();
 
         let returnType;
         let methodName = 'constructor';
         const schema = getOrCreateEntitySchema(target);
+
+        const isMethod = propertyOrMethodName && Reflect.hasMetadata('design:returntype', target, propertyOrMethodName) && !isNumber(parameterIndexOrDescriptor);
 
         if (isNumber(parameterIndexOrDescriptor)) {
             //decorator is used on a method argument
@@ -742,6 +785,11 @@ function createFieldDecoratorResult(
             //it's a class property, so propertyOrMethodName contains the actual property name
             if (propertyOrMethodName) {
                 returnType = Reflect.getMetadata('design:type', target, propertyOrMethodName);
+
+                if (isMethod) {
+                    //its a method, so returnType is the actual type
+                    returnType = Reflect.getMetadata('design:returntype', target, propertyOrMethodName);
+                }
             }
 
             if (!givenPropertyName && propertyOrMethodName) {
@@ -752,35 +800,47 @@ function createFieldDecoratorResult(
         const argumentsProperties = schema.getOrCreateMethodProperties(methodName);
         let propertySchema: PropertySchema | undefined = undefined;
 
-        if (isNumber(parameterIndexOrDescriptor)) {
-            //decorator is used on a method argument. Might be on constructor or any other method.
-            if (methodName === 'constructor') {
+        if (isMethod && propertyOrMethodName) {
+            if (givenPropertyName && propertyOrMethodName !== givenPropertyName) {
+                throw new Error(`${propertyOrMethodName} asName not allowed on methods.`);
+            }
+
+            if (!schema.methods[propertyOrMethodName]) {
+                schema.methods[propertyOrMethodName] = new PropertySchema(propertyOrMethodName);
+            }
+
+            propertySchema = schema.methods[propertyOrMethodName];
+        } else {
+            if (isNumber(parameterIndexOrDescriptor)) {
+                //decorator is used on a method argument. Might be on constructor or any other method.
+                if (methodName === 'constructor') {
+                    if (!schema.classProperties[givenPropertyName]) {
+                        schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
+                        schema.propertyNames.push(givenPropertyName);
+                    }
+
+                    propertySchema = schema.classProperties[givenPropertyName];
+                    argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
+                } else {
+                    if (!argumentsProperties[parameterIndexOrDescriptor]) {
+                        argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(String(parameterIndexOrDescriptor));
+                        argumentsProperties[parameterIndexOrDescriptor].methodName = methodName;
+                    }
+
+                    propertySchema = argumentsProperties[parameterIndexOrDescriptor];
+                }
+            } else {
+                if (!givenPropertyName) {
+                    throw new Error(`Could not resolve property name for class property on ${getClassName(target)}`);
+                }
+
                 if (!schema.classProperties[givenPropertyName]) {
                     schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
                     schema.propertyNames.push(givenPropertyName);
                 }
 
                 propertySchema = schema.classProperties[givenPropertyName];
-                argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
-            } else {
-                if (!argumentsProperties[parameterIndexOrDescriptor]) {
-                    argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(String(parameterIndexOrDescriptor));
-                    argumentsProperties[parameterIndexOrDescriptor].methodName = methodName;
-                }
-
-                propertySchema = argumentsProperties[parameterIndexOrDescriptor];
             }
-        } else {
-            if (!givenPropertyName) {
-                throw new Error(`Could not resolve property name for class property on ${getClassName(target)}`);
-            }
-
-            if (!schema.classProperties[givenPropertyName]) {
-                schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
-                schema.propertyNames.push(givenPropertyName);
-            }
-
-            propertySchema = schema.classProperties[givenPropertyName];
         }
 
         for (const mod of modifier) {
@@ -843,6 +903,12 @@ function createFieldDecoratorResult(
         resetIfNecessary();
         if (modifiedOptions.map) throw new Error('Field is already defined as map.');
         return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, array: true});
+    };
+
+    fn.asPartial = () => {
+        resetIfNecessary();
+        if (modifiedOptions.partial) throw new Error('Field is already defined as partial.');
+        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, partial: true});
     };
 
     fn.asMap = () => {
@@ -1039,8 +1105,8 @@ export function forwardRef<T>(forward: ForwardRefFn<T>): ForwardedRef<T> {
  */
 interface FieldOptions {
     map?: boolean;
-
     array?: boolean;
+    partial?: boolean;
 }
 
 /**
@@ -1115,14 +1181,18 @@ export function Field(oriType?: FieldTypes) {
             && type !== Object
             && !(type instanceof ForwardedRef);
 
-        if (type && !options.map && isCustomObject && returnType === Object) {
+        if (type && !options.map && !options.partial && isCustomObject && returnType === Object) {
             throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
                 `The actual type is an Object, but you specified a Class in @f.type(T).\n` +
-                `Please declare a type or use @f.map(${getClassName(type)} for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
+                `Please declare a type or use @f.map(${getClassName(type)}) for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
         }
 
         if (!type) {
             type = returnType;
+        }
+
+        if (options.partial) {
+            property.isPartial = true;
         }
 
         if (options.array) {
@@ -1159,6 +1229,10 @@ fRaw['type'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecorato
     return Field(type);
 };
 
+fRaw['partial'] = function (this: FieldDecoratorResult, type: ClassType<any>): FieldDecoratorResult {
+    return Field(type).asPartial();
+};
+
 fRaw['enum'] = function (this: FieldDecoratorResult, clazz: any, allowLabelsAsValue = false): FieldDecoratorResult {
     return EnumField(clazz, allowLabelsAsValue);
 };
@@ -1177,6 +1251,10 @@ fRaw['forwardArray'] = function (this: FieldDecoratorResult, f: () => TYPES): Fi
 
 fRaw['forwardMap'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
     return Field(forwardRef(f)).asMap();
+};
+
+fRaw['forwardPartial'] = function (this: FieldDecoratorResult, f: () => ClassType<any>): FieldDecoratorResult {
+    return Field(forwardRef(f)).asPartial();
 };
 
 export interface MainDecorator {
@@ -1224,6 +1302,30 @@ export interface MainDecorator {
      * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
      */
     enum<T>(type: any, allowLabelsAsValue?: boolean): FieldDecoratorResult;
+
+    /**
+     * Marks a field as partial of a class entity. It differs in a way to standard Partial<> that
+     * it allows path based sub values, like you know from JSON patch.
+     *
+     * ```typescript
+     * class Config {
+     *     @f.optional()
+     *     name?: string;
+     *
+     *     @f.optional()
+     *     sub?: Config;
+     *
+     *     @f
+     *     prio: number = 0;
+     * }
+     *
+     * class User {
+     *     @f.partial(Config)
+     *     config: PartialField<Config> = {};
+     * }
+     * ```
+     */
+    partial(type: ClassType<any>): FieldDecoratorResult;
 
     /**
      * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
@@ -1288,6 +1390,26 @@ export interface MainDecorator {
      * ```
      */
     forwardMap(f: () => TYPES): FieldDecoratorResult;
+
+    /**
+     * Marks a field as partial of a class entity.
+     *
+     * ```typescript
+     * class Config {
+     *     @f.optional()
+     *     name?: string;
+     *
+     *     @f
+     *     prio: number = 0;
+     * }
+     *
+     * class User {
+     *     @f.forwardPartial(() => Config)
+     *     config: PartialField<Config> = {};
+     * }
+     * ```
+     */
+    forwardPartial(type: () => ClassType<any>): FieldDecoratorResult;
 }
 
 /**

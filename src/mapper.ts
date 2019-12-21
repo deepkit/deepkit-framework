@@ -2,7 +2,7 @@ import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
-import {getClassTypeFromInstance, getClassSchema} from "./decorators";
+import {getClassTypeFromInstance, getClassSchema, PropertySchema} from "./decorators";
 import {
     ClassType,
     getClassName,
@@ -39,7 +39,8 @@ declare function require(moduleName: string): any;
 
 try {
     moment = require('moment');
-} catch(e) {}
+} catch (e) {
+}
 
 const cache = new Map<Object, Map<string, any>>();
 
@@ -79,6 +80,7 @@ export interface ResolvedReflectionFound {
     typeValue: any;
     array: boolean;
     map: boolean;
+    partial: boolean;
 }
 
 /**
@@ -92,7 +94,7 @@ const resolvedReflectionCaches = new Map<ClassType<any>, ResolvedReflectionCache
 /**
  * @hidden
  */
-export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: string): ResolvedReflection {
+export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: string, propertySchema?: PropertySchema): ResolvedReflection {
     let cache = resolvedReflectionCaches.get(classType);
     if (!cache) {
         cache = {};
@@ -105,6 +107,18 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
 
     const names = propertyPath === '' ? [] : propertyPath.split('.');
     const schema = getClassSchema(classType);
+
+    if (propertySchema) {
+        return {
+            resolvedClassType: classType,
+            resolvedPropertyName: names[0],
+            type: propertySchema.type,
+            typeValue: propertySchema.getResolvedClassTypeForValidType(),
+            array: propertySchema.isArray,
+            map: propertySchema.isMap,
+            partial: propertySchema.isPartial,
+        }
+    }
 
     if (names.length === 1) {
         if (!schema.hasProperty(names[0])) {
@@ -120,6 +134,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
             typeValue: prop.getResolvedClassTypeForValidType(),
             array: prop.isArray,
             map: prop.isMap,
+            partial: prop.isPartial,
         }
     }
 
@@ -150,6 +165,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                         typeValue: prop.getResolvedClassTypeForValidType(),
                         array: false,
                         map: false,
+                        partial: false,
                     }
                 }
             } else {
@@ -162,6 +178,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                         typeValue: prop.getResolvedClassTypeForValidType(),
                         array: false,
                         map: false,
+                        partial: false,
                     }
                 }
             }
@@ -241,10 +258,26 @@ export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName
 }
 
 /**
+ * Converts a argument of a method from class to plain.
+ */
+export function argumentClassToPlain<T>(classType: ClassType<T>, methodName: string, argument: number, value: any): any {
+    return propertyClassToPlain(classType, methodName, value, getClassSchema(classType).getMethodProperties(methodName)[argument]);
+}
+
+/**
+ * Converts a result type of a method from class to plain.
+ */
+export function methodResultClassToPlain<T>(classType: ClassType<T>, methodName: string, value: any): any {
+    return propertyClassToPlain(
+        classType, methodName, value,
+        getClassSchema(classType).getMethod(methodName)
+    );
+}
+
+/**
  * @hidden
  */
-export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any) {
-
+export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any, propertySchema?: PropertySchema) {
     if (undefined === propertyValue) {
         return undefined;
     }
@@ -252,12 +285,12 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     if (null === propertyValue) {
         return null;
     }
-    const reflection = getResolvedReflection(classType, propertyName);
+    const reflection = getResolvedReflection(classType, propertyName, propertySchema);
     if (!reflection) {
         throw new Error(`No reflection available for ${getClassPropertyName(classType, propertyName)}`);
     }
 
-    const {type, typeValue, array, map} = reflection;
+    const {type, typeValue, array, map, partial} = reflection;
 
     function convert(value: any) {
         if ('string' === type) {
@@ -303,6 +336,10 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         return [];
     }
 
+    if (partial) {
+        return propertyValue ? partialClassToPlain(typeValue, propertyValue) : propertyValue;
+    }
+
     if (map) {
         const result: { [name: string]: any } = {};
         if (isObject(propertyValue)) {
@@ -317,6 +354,32 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
 }
 
 /**
+ * Converts an argument of a method from class to plain.
+ */
+export function argumentPlainToClass<T>(classType: ClassType<T>, methodName: string, argument: number, value: any): any {
+    //todo add validation
+
+    return propertyPlainToClass(
+        classType,
+        methodName,
+        value, [], 1, {onFullLoadCallbacks: []},
+        getClassSchema(classType).getMethodProperties(methodName)[argument]
+    );
+}
+
+/**
+ * Converts a result type of a method from class to plain.
+ */
+export function methodResultPlainToClass<T>(classType: ClassType<T>, methodName: string, value: any): any {
+    return propertyPlainToClass(
+        classType,
+        methodName,
+        value, [], 1, {onFullLoadCallbacks: []},
+        getClassSchema(classType).getMethod(methodName)
+    );
+}
+
+/**
  * @hidden
  */
 export function propertyPlainToClass<T>(
@@ -325,7 +388,8 @@ export function propertyPlainToClass<T>(
     propertyValue: any,
     parents: any[],
     incomingLevel: number,
-    state: ToClassState
+    state: ToClassState,
+    propertySchema?: PropertySchema,
 ) {
     if (isUndefined(propertyValue)) {
         return undefined;
@@ -335,10 +399,10 @@ export function propertyPlainToClass<T>(
         return null;
     }
 
-    const reflection = getResolvedReflection(classType, propertyName);
+    const reflection = getResolvedReflection(classType, propertyName, propertySchema);
     if (!reflection) return propertyValue;
 
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
+    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map, partial} = reflection;
 
     function convert(value: any) {
         if ('date' === type && ('string' === typeof value || 'number' === typeof value)) {
@@ -405,6 +469,10 @@ export function propertyPlainToClass<T>(
         }
 
         return [];
+    }
+
+    if (partial) {
+        return propertyValue ? partialPlainToClass(typeValue, propertyValue) : propertyValue;
     }
 
     if (map) {
