@@ -148,14 +148,16 @@ Make sure you have `experimentalDecorators` and `emitDecoratorMetadata` enabled 
 }
 ```
 
-If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle: false`), which is the default. This is important to support constructor assignment.
+If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle: false`), which is the default.  
+This is important to support constructor assignment. You can alternatively use asName() to hard code the constructor param names
+as strings.
 
 ### Definition
 
-Once your have defined your entity (see above) using the [@Field decorators](https://marshal.marcj.dev/modules/_marcj_marshal.html#field) you can use one of Marshal's core methods
+Once your have defined your entity (see above) using the [@f decorators](https://marshal.marcj.dev/modules/_marcj_marshal.html#f) you can use one of Marshal's core methods
 to transform data.
 
-Note: Class fields that aren't annotated either by @Field() or any other decorator
+Note: Class fields that aren't annotated either by `@f` or any other decorator
 won't be serialized. Their value will be dropped.
 
 ### Serialization
@@ -310,7 +312,7 @@ class MyModel {
 
 ### Method annotation
 
-You can also annotation class methods and method arguments.
+You can also annotate class methods and method arguments.
 This can be useful for building custom RPC interfaces.
 
 ```typescript
@@ -593,8 +595,7 @@ module.exports = {
 ```
 
 Marshal.ts uses only TypeORM for connection abstraction and to generate a `EntitySchema` for your typeOrm use-cases.
-You need in most cases only to use the @Field decorator with some other Marshal decorators (like @EnumField, @IDField, @UUIDField, @Index)
-on your entity.
+You need in most cases only to use the `@f` decorator with some additional function calls (primary, index, etc) on your entity.
 
 You can generate a schema for Typeorm using  `getTypeOrmEntity` and then pass this to your `createConnection` call,
 which makes it possible to sync the schema defined only with Marshal decorators with your database managed by Typeorm.
