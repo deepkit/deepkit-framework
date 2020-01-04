@@ -15,7 +15,7 @@ test('test optional', () => {
     expect(prop.type).toBe('number');
 });
 
-test('test @Field', () => {
+test('test @f', () => {
     class Config {
         @f created: Date = new Date;
     }
@@ -158,7 +158,7 @@ test('test inheritance', async () => {
 
 
 
-test('test invalid @Field', () => {
+test('test invalid @f', () => {
     class Config {
         @f.optional() name?: string;
     }

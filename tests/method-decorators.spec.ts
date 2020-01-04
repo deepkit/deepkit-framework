@@ -5,9 +5,10 @@ import {f, getClassSchema, PartialField} from "../src/decorators";
 import {
     argumentClassToPlain,
     argumentPlainToClass,
-    methodResultClassToPlain, methodResultPlainToClass,
+    methodResultClassToPlain,
+    methodResultPlainToClass,
     plainToClass,
-    propertyPlainToClass
+    validateMethodArgs
 } from "..";
 
 test('Basic array', () => {
@@ -69,6 +70,38 @@ test('short @f 2', () => {
         expect(props[0].type).toBe('string');
         expect(props[0].isMap).toBe(true);
     }
+    {
+        const errors = validateMethodArgs(Controller, 'foo', []);
+        expect(errors.length).toBe(1);
+        expect(errors[0].code).toBe('required');
+        expect(errors[0].message).toBe('Required value is undefined');
+        expect(errors[0].path).toBe('#0');
+    }
+    {
+        const errors = validateMethodArgs(Controller, 'foo', ['asd']);
+        expect(errors.length).toBe(1);
+        expect(errors[0].code).toBe('invalid_type');
+        expect(errors[0].message).toBe('Invalid type. Expected array, but got string');
+        expect(errors[0].path).toBe('#0');
+    }
+    {
+        const errors = validateMethodArgs(Controller, 'foo', [['asd']]);
+        expect(errors.length).toBe(0);
+    }
+    {
+        const errors = validateMethodArgs(Controller, 'foo', [[1]]);
+        expect(errors.length).toBe(1);
+        expect(errors[0].code).toBe('invalid_string');
+        expect(errors[0].message).toBe('No String given');
+        expect(errors[0].path).toBe('#0.0');
+    }
+    {
+        const errors = validateMethodArgs(Controller, 'foo', [[{'asd': 'sa'}]]);
+        expect(errors.length).toBe(1);
+        expect(errors[0].code).toBe('invalid_string');
+        expect(errors[0].message).toBe('No String given');
+        expect(errors[0].path).toBe('#0.0');
+    }
 });
 
 test('short @f unmet array definition', () => {
@@ -120,6 +153,17 @@ test('method args', () => {
         expect(props[2].name).toBe('2');
         expect(props[2].type).toBe('boolean');
         expect(props[2].isOptional).toBe(true);
+    }
+    {
+        const errors = validateMethodArgs(Controller, 'foo2', ['bar']);
+        expect(errors.length).toBe(1);
+        expect(errors[0].code).toBe('required');
+        expect(errors[0].message).toBe('Required value is undefined');
+        expect(errors[0].path).toBe('#1');
+    }
+    {
+        const errors = validateMethodArgs(Controller, 'foo2', ['bar', true]);
+        expect(errors.length).toBe(0);
     }
 });
 
@@ -315,6 +359,10 @@ test('short @f multi gap', () => {
 
         expect(props[1].name).toBe('1');
         expect(props[1].type).toBe('boolean');
+    }
+    {
+        const errors = validateMethodArgs(Controller, 'foo', []);
+        expect(errors.length).toBe(3);
     }
 });
 
