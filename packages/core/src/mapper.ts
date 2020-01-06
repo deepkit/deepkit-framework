@@ -95,18 +95,7 @@ const resolvedReflectionCaches = new Map<ClassType<any>, ResolvedReflectionCache
  * @hidden
  */
 export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: string, propertySchema?: PropertySchema): ResolvedReflection {
-    let cache = resolvedReflectionCaches.get(classType);
-    if (!cache) {
-        cache = {};
-        resolvedReflectionCaches.set(classType, cache);
-    }
-
-    if (cache[propertyPath]) {
-        return cache[propertyPath];
-    }
-
     const names = propertyPath === '' ? [] : propertyPath.split('.');
-    const schema = getClassSchema(classType);
 
     if (propertySchema) {
         return {
@@ -119,6 +108,18 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
             partial: propertySchema.isPartial,
         }
     }
+
+    let cache = resolvedReflectionCaches.get(classType);
+    if (!cache) {
+        cache = {};
+        resolvedReflectionCaches.set(classType, cache);
+    }
+
+    if (cache[propertyPath]) {
+        return cache[propertyPath];
+    }
+
+    const schema = getClassSchema(classType);
 
     if (names.length === 1) {
         if (!schema.hasProperty(names[0])) {
@@ -357,8 +358,6 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
  * Converts an argument of a method from class to plain.
  */
 export function argumentPlainToClass<T>(classType: ClassType<T>, methodName: string, argument: number, value: any): any {
-    //todo add validation
-
     return propertyPlainToClass(
         classType,
         methodName,

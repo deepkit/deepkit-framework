@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, PartialField} from "../src/decorators";
+import {f, getClassSchema, PartialField, PropertySchema} from "../src/decorators";
 import {
     argumentClassToPlain,
     argumentPlainToClass,
@@ -306,8 +306,6 @@ test('argument convertion', () => {
         expect(res.sub).toBeInstanceOf(Config);
         expect(res.sub.name).toBe('3');
     }
-
-    //todo, add validation
 });
 
 test('short @f multi gap', () => {
@@ -401,4 +399,56 @@ test('short @f second type fails', () => {
             }
         }
     }).toThrow('Field is already defined as map')
+});
+
+
+test('short @f templateArgs', () => {
+    class Observable<T> {
+        constructor(protected cb: (observer: {next: (v: T) => void}) => void) {
+
+        }
+    }
+
+    class Controller {
+        @f.template(Number)
+        public foo(): Observable<number> {
+            return new Observable((observer) => {
+                observer.next(3);
+            })
+        }
+
+        @f.template(f.type(String).optional())
+        public foo2(): Observable<string | undefined> {
+            return new Observable((observer) => {
+                observer.next('2');
+            })
+        }
+    }
+
+    const s = getClassSchema(Controller);
+    {
+        const props = s.getMethod('foo');
+        expect(props.getResolvedClassType()).toBe(Observable);
+        expect(props.templateArgs).not.toBeUndefined();
+        expect(props.templateArgs).toBeArrayOfSize(1);
+        if (props.templateArgs) {
+            expect(props.templateArgs[0]).toBeInstanceOf(PropertySchema);
+            expect(props.templateArgs[0].name).toBe('0');
+            expect(props.templateArgs[0].type).toBe('number');
+            expect(props.templateArgs[0].isOptional).toBe(false);
+        }
+    }
+
+    {
+        const props = s.getMethod('foo2');
+        expect(props.getResolvedClassType()).toBe(Observable);
+        expect(props.templateArgs).not.toBeUndefined();
+        expect(props.templateArgs).toBeArrayOfSize(1);
+        if (props.templateArgs) {
+            expect(props.templateArgs[0]).toBeInstanceOf(PropertySchema);
+            expect(props.templateArgs[0].name).toBe('0');
+            expect(props.templateArgs[0].isOptional).toBe(true);
+            expect(props.templateArgs[0].type).toBe('string');
+        }
+    }
 });
