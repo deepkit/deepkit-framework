@@ -16,7 +16,7 @@ import {
     plainToClass,
     RegisteredEntities,
     isOptional,
-    isRegisteredEntity,
+    isRegisteredEntity, PropertySchema,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
@@ -217,7 +217,7 @@ test('test No decorated property found', () => {
 
 test('test custom decorator', () => {
     let called = false;
-    function Decorator(target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) {
+    function Decorator(target: Object, property: PropertySchema) {
         called = true;
     }
 
