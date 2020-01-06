@@ -1,7 +1,8 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {getClassSchema, isOptional, plainToClass, PropertySchema, f} from "..";
+import {getClassSchema, isOptional, plainToClass, PropertySchema, f, Entity} from "..";
 import {Buffer} from "buffer";
+import {uuid} from "../src/utils";
 
 test('test optional', () => {
     class Model {
@@ -55,6 +56,94 @@ test('test @f', () => {
     expect(schema.getProperty('configArray').isMap).toBe(false);
 });
 
+
+test('test propertySchema serialization wrong', () => {
+    class Config {
+        @f created: Date = new Date;
+    }
+
+    class Page {
+        @f.type(Config).optional()
+        config?: Config;
+    }
+
+    const schema = getClassSchema(Page);
+    const p1 = schema.getProperty('config');
+    expect(() => {
+        p1.toJSON();
+    }).toThrow('Could not serialize type information for');
+});
+
+test('test propertySchema serialization', () => {
+    @Entity('config')
+    class Config {
+        @f created: Date = new Date;
+    }
+
+    class Page {
+        @f.primary().uuid()
+        id: string = uuid();
+
+        @f.optional()
+        title: string = '';
+
+        @f.map(Config)
+        map: { [name: string]: Config } = {};
+    }
+
+    function compare(p1: PropertySchema, p2: PropertySchema) {
+        const compare: Partial<keyof PropertySchema>[] = [
+            'name',
+            'type',
+            'isArray',
+            'isMap',
+            'isOptional',
+            'isDecorated',
+            'isParentReference',
+            'isId',
+            'isPartial',
+            'methodName',
+            'allowLabelsAsValue',
+            'classType',
+        ];
+        for (const k of compare) {
+            expect(p1[k]).toBe(p2[k]);
+        }
+    }
+
+    const schema = getClassSchema(Page);
+    {
+        const p1 = schema.getProperty('id');
+        const p2 = PropertySchema.fromJSON(p1.toJSON());
+        expect(p1.name).toBe('id');
+        expect(p1.isId).toBe(true);
+        expect(p1.type).toBe('uuid');
+        compare(p1, p2);
+    }
+
+    {
+        const p1 = schema.getProperty('title');
+        const p2 = PropertySchema.fromJSON(p1.toJSON());
+        compare(p1, p2);
+        expect(p1.name).toBe('title');
+        expect(p1.isId).toBe(false);
+        expect(p1.isOptional).toBe(true);
+        expect(p1.type).toBe('string');
+    }
+
+    {
+        const p1 = schema.getProperty('map');
+        const p2 = PropertySchema.fromJSON(p1.toJSON());
+        expect(p1.name).toBe('map');
+        expect(p1.isId).toBe(false);
+        expect(p1.getResolvedClassType()).toBe(Config);
+        expect(p1.classType).toBe(Config);
+        expect(p1.isMap).toBe(true);
+        expect(p1.type).toBe('class');
+        compare(p1, p2);
+    }
+
+});
 
 test('test binary', () => {
     class User {

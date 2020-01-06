@@ -8,7 +8,17 @@ import {
     StringValidator,
     UUIDValidator
 } from "./validation";
-import {ClassType, eachKey, eachPair, getClassName, isClass, isNumber, isObject, isPlainObject} from '@marcj/estdlib';
+import {
+    ClassType,
+    eachKey,
+    eachPair,
+    getClassName,
+    isClass,
+    isNumber,
+    isObject,
+    isPlainObject,
+    isFunction
+} from '@marcj/estdlib';
 import {Buffer} from "buffer";
 import * as getParameterNames from "get-parameter-names";
 
@@ -47,6 +57,23 @@ type IndexOptions = Partial<{
     where: string,
 }>;
 
+
+export interface PropertySchemaSerialized {
+    name: string;
+    type: Types;
+    isArray?: true;
+    isMap?: true;
+    isDecorated?: true;
+    isParentReference?: true;
+    isOptional?: true;
+    isId?: true;
+    isPartial?: true;
+    allowLabelsAsValue?: true;
+    methodName?: string;
+    templateArgs?: PropertySchemaSerialized[];
+    classType?: string;
+}
+
 /**
  * Represents a class property or method argument definition.
  */
@@ -57,6 +84,9 @@ export class PropertySchema {
     isArray: boolean = false;
     isMap: boolean = false;
 
+    /**
+     * Used in decorator to check whether type has been set already.
+     */
     typeSet: boolean = false;
 
     /**
@@ -87,12 +117,77 @@ export class PropertySchema {
 
     exclude?: 'all' | 'mongo' | 'plain';
 
+    templateArgs?: PropertySchema[];
+
     classType?: ClassType<any>;
     classTypeForwardRef?: ForwardedRef<any>;
     classTypeResolved?: ClassType<any>;
 
     constructor(name: string) {
         this.name = name;
+    }
+
+    toJSON(): PropertySchemaSerialized {
+        const props: PropertySchemaSerialized = {
+            name: this.name,
+            type: this.type
+        };
+
+        if (this.isArray) props['isArray'] = true;
+        if (this.isMap) props['isMap'] = true;
+        if (this.isDecorated) props['isDecorated'] = true;
+        if (this.isParentReference) props['isParentReference'] = true;
+        if (this.isOptional) props['isOptional'] = true;
+        if (this.isId) props['isId'] = true;
+        if (this.isPartial) props['isPartial'] = true;
+        if (this.allowLabelsAsValue) props['allowLabelsAsValue'] = true;
+        if (this.methodName) props['methodName'] = this.methodName;
+
+        if (this.templateArgs) {
+            props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
+        }
+
+        const resolved = this.getResolvedClassTypeForValidType();
+        if (resolved) {
+            const name = getClassSchema(resolved).name;
+            if (!name) {
+                throw new Error(`Could not serialize type information for ${this.methodName || ''}:${this.name}, got type ${getClassName(resolved)}. ` +
+                    `Please use @Entity() decorator at ${getClassName(resolved)}`);
+            }
+            props['classType'] = name;
+        }
+
+        return props;
+    }
+
+    static fromJSON(props: PropertySchemaSerialized): PropertySchema {
+        const p = new PropertySchema(props['name']);
+        p.type = props['type'];
+
+        if (props['isArray']) p.isArray = true;
+        if (props['isMap']) p.isMap = true;
+        if (props['isDecorated']) p.isDecorated = true;
+        if (props['isParentReference']) p.isParentReference = true;
+        if (props['isOptional']) p.isOptional = true;
+        if (props['isId']) p.isId = true;
+        if (props['isPartial']) p.isPartial = true;
+        if (props['allowLabelsAsValue']) p.allowLabelsAsValue = true;
+        if (props['methodName']) p.methodName = props['methodName'];
+
+        if (props['templateArgs']) {
+            p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v));
+        }
+
+        if (props['classType']) {
+            const entity = RegisteredEntities[props['classType']];
+            if (!entity) {
+                throw new Error(`Could not unserialize type information for ${p.methodName || ''}:${p.name}, got entity name ${props['classType']}. ` +
+                    `Make sure given entity is loaded (imported at least once globally).`);
+            }
+            p.classType = entity;
+        }
+
+        return p;
     }
 
     static getTypeFromJSType(type: any) {
@@ -337,7 +432,8 @@ export class ClassSchema {
                 }
             }
             this.initializedMethods[name] = true;
-        }}
+        }
+    }
 
     /**
      * @internal
@@ -560,6 +656,33 @@ export interface FieldDecoratorResult {
     asId(): FieldDecoratorResult;
 
     /**
+     * Defines template arguments of a tempalted class. Very handy for types like Observables.
+     *
+     * ```typescript
+     * class Stuff {
+     * }
+     *
+     * class Page {
+     *     @f.t(Stuff)
+     *     downloadStuff(): Observable<Stuff> {
+     *          return new Observable<Stuff>((observer) => {
+     *              observer.next(new Stuff());
+     *          })
+     *     }
+     *
+     *     //or more verbose way if the type is more complex.
+     *     @f.t(f.type(Stuff).optional())
+     *     downloadStuffWrapper(): Observable<Stuff | undefined> {
+     *          return new Observable<Stuff>((observer) => {
+     *              observer.next(new Stuff());
+     *          })
+     *     }
+     * }
+     * ```
+     */
+    template(...templateArgs: any[]): FieldDecoratorResult;
+
+    /**
      * Used to define an index on a field.
      */
     index(options?: IndexOptions, name?: string): FieldDecoratorResult;
@@ -668,9 +791,9 @@ export interface FieldDecoratorResult {
     asMap(): FieldDecoratorResult;
 
     /**
-     * Uses an additional decorator.
+     * Uses an additional modifier to change the PropertySchema.
      */
-    use(decorator: (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void): FieldDecoratorResult;
+    use(decorator: (target: Object, property: PropertySchema) => void): FieldDecoratorResult;
 
     /**
      * Adds a custom validator class or validator callback.
@@ -711,7 +834,7 @@ export interface FieldDecoratorResult {
 function createFieldDecoratorResult(
     cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
     givenPropertyName: string = '',
-    modifier: ((target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void)[] = [],
+    modifier: ((target: Object, property: PropertySchema) => void)[] = [],
     modifiedOptions: FieldOptions = {},
     root = false,
 ): FieldDecoratorResult {
@@ -726,9 +849,22 @@ function createFieldDecoratorResult(
     }
 
     const fn = (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
-        //classes not supported
-
         resetIfNecessary();
+
+        if (target === Object) {
+            const propertySchema = new PropertySchema(String(parameterIndexOrDescriptor));
+
+            for (const mod of modifier) {
+                mod(target, propertySchema);
+            }
+
+            if (isNumber(parameterIndexOrDescriptor) && target['prototype']) {
+                target = target['prototype'];
+            }
+
+            cb(target, propertySchema!, undefined, {...modifiedOptions});
+            return;
+        }
 
         let returnType;
         let methodName = 'constructor';
@@ -844,7 +980,7 @@ function createFieldDecoratorResult(
         }
 
         for (const mod of modifier) {
-            mod(target, propertyOrMethodName, parameterIndexOrDescriptor);
+            mod(target, propertySchema);
         }
 
         if (isNumber(parameterIndexOrDescriptor) && target['prototype']) {
@@ -894,7 +1030,7 @@ function createFieldDecoratorResult(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Decorated()], modifiedOptions);
     };
 
-    fn.use = (decorator: (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => void) => {
+    fn.use = (decorator: (target: Object, property: PropertySchema) => void) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator], modifiedOptions);
     };
@@ -903,6 +1039,15 @@ function createFieldDecoratorResult(
         resetIfNecessary();
         if (modifiedOptions.map) throw new Error('Field is already defined as map.');
         return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, array: true});
+    };
+
+    fn.template = (...templateArgs: any[]) => {
+        resetIfNecessary();
+        if (modifiedOptions.template) throw new Error('Field has already template args defined.');
+        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {
+            ...modifiedOptions,
+            template: templateArgs
+        });
     };
 
     fn.asPartial = () => {
@@ -930,9 +1075,9 @@ function createFieldDecoratorResult(
             }
         };
 
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, FieldDecoratorWrapper((target, property) => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: Object, property: PropertySchema) => {
             property.validators.push(validatorClass);
-        })], modifiedOptions);
+        }], modifiedOptions);
     };
 
     return fn;
@@ -953,29 +1098,29 @@ export function FieldDecoratorWrapper(
  * @internal
  */
 function Decorated() {
-    return FieldDecoratorWrapper((target, property) => {
+    return (target: Object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).decorator = property.name;
         property.isDecorated = true;
-    });
+    };
 }
 
 /**
  * @internal
  */
 function IDField() {
-    return FieldDecoratorWrapper((target, property) => {
+    return (target: Object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).idField = property.name;
         property.isId = true;
-    });
+    };
 }
 
 /**
  * @internal
  */
 function Optional() {
-    return FieldDecoratorWrapper((target, property) => {
+    return (target: Object, property: PropertySchema) => {
         property.isOptional = true;
-    });
+    };
 }
 
 /**
@@ -1061,9 +1206,9 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
  * @internal
  */
 function Exclude(t: 'all' | 'mongo' | 'plain' = 'all') {
-    return FieldDecoratorWrapper((target, property) => {
+    return (target: Object, property: PropertySchema) => {
         property.exclude = t;
-    });
+    };
 }
 
 type FieldTypes = String | Number | Date | ClassType<any> | ForwardedRef<any>;
@@ -1104,6 +1249,7 @@ export function forwardRef<T>(forward: ForwardRefFn<T>): ForwardedRef<T> {
  * @internal
  */
 interface FieldOptions {
+    template?: any[];
     map?: boolean;
     array?: boolean;
     partial?: boolean;
@@ -1112,7 +1258,7 @@ interface FieldOptions {
 /**
  * Decorator to define a field for an entity.
  */
-export function Field(oriType?: FieldTypes) {
+function Field(oriType?: FieldTypes) {
     return FieldDecoratorWrapper((target, property, returnType, options) => {
         if (property.typeSet) return;
         property.typeSet = true;
@@ -1201,6 +1347,23 @@ export function Field(oriType?: FieldTypes) {
 
         if (options.map) {
             property.isMap = true;
+        }
+
+        if (options.template) {
+            property.templateArgs = [];
+            for (const [i, t] of eachPair(options.template)) {
+                if (isFunction(t) && isFunction(t.asName) && isFunction(t.optional)) {
+                    //its a decorator @f()
+                    //target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
+                    t.use((target: Object, incomingProperty: PropertySchema) => {
+                        property.templateArgs!.push(incomingProperty);
+                    })(Object, undefined, i);
+                } else {
+                    const p = new PropertySchema(String(i));
+                    p.setFromJSType(t);
+                    property.templateArgs.push(p);
+                }
+            }
         }
 
         if (property.type === 'any') {
@@ -1466,37 +1629,41 @@ export const f: MainDecorator & FieldDecoratorResult = fRaw as any;
  * @hidden
  */
 function Type<T>(type: Types) {
-    return FieldDecoratorWrapper((target, property, returnType: any) => {
+    return (target: Object, property: PropertySchema) => {
         property.type = type;
-    });
+    };
 }
 
 /**
  * @internal
  */
 function MongoIdField() {
-    return Type('objectId');
+    return (target: Object, property: PropertySchema) => {
+        property.type = 'objectId';
+    };
 }
 
 /**
  * @internal
  */
 function UUIDField() {
-    return Type('uuid');
+    return (target: Object, property: PropertySchema) => {
+        property.type = 'uuid';
+    };
 }
 
 /**
  * @internal
  */
 function Index(options?: IndexOptions, name?: string) {
-    return FieldDecoratorWrapper((target, property) => {
+    return (target: Object, property: PropertySchema) => {
         const schema = getOrCreateEntitySchema(target);
         if (property.methodName) {
             throw new Error('Index could not be used on method arguments.');
         }
 
         schema.indices.push({name: name || property.name, fields: [property.name], options: options || {}});
-    });
+    };
 }
 
 /**
@@ -1521,7 +1688,7 @@ export function MultiIndex(fields: string[], options: IndexOptions, name?: strin
 function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return FieldDecoratorWrapper((target, property, returnType?: any) => {
         if (property) {
-            Type('enum')(target, property.name);
+            Type('enum')(target, property);
             property.classType = type;
             property.allowLabelsAsValue = allowLabelsAsValue;
         }
