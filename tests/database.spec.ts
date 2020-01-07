@@ -5,21 +5,21 @@ import {Exchange, ExchangeDatabase, ExchangeNotifyPolicy} from "..";
 import {remove} from "fs-extra";
 import {createConnection} from 'typeorm';
 import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
-import { ClassType } from '@marcj/estdlib';
-import { Field, uuid, Entity, UUIDField } from '@marcj/marshal';
+import {ClassType} from '@marcj/estdlib';
+import {f, uuid, Entity} from '@marcj/marshal';
 import {ExchangeServer} from "../src/exchange-server";
 
 let i = 0;
 
 @Entity('incrementEntity')
 class IncrementEntity {
-    @UUIDField().asId()
+    @f.uuid().primary()
     public id: string = uuid();
 
-    @Field()
+    @f
     public version: number = 0;
 
-    @Field()
+    @f
     public i: number = 0;
 }
 

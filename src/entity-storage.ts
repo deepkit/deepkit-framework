@@ -2,12 +2,11 @@ import {Exchange} from "./exchange";
 import {getEntityName} from "@marcj/marshal";
 import {Observable, Subject, Subscription} from "rxjs";
 import {convertPlainQueryToMongo, convertQueryToMongo, mongoToPlain, partialMongoToPlain} from "@marcj/marshal-mongo";
-import {Collection, CollectionSort, EntitySubject, ExchangeEntity, FilterParameters, FilterQuery, IdInterface, JSONObjectCollection, ReactiveSubQuery} from "@marcj/glut-core";
+import {Collection, CollectionSort, EntitySubject, ExchangeEntity, FilterParameters, FilterQuery, IdInterface, JSONObjectCollection, ReactiveSubQuery, ConnectionWriter} from "@marcj/glut-core";
 import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@marcj/estdlib";
 import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
 import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
-import {ConnectionWriter} from "./connection-writer";
 import {Cursor} from "typeorm";
 import { findQuerySatisfied } from "./utils";
 
@@ -270,6 +269,9 @@ export class ReactiveQuery<T> {
     }
 }
 
+/**
+ * This is instantiated per connection.
+ */
 @Injectable()
 export class EntityStorage {
     protected sentEntities = new Map<ClassType<any>, { [id: string]: SentState }>();

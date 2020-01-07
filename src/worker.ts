@@ -2,9 +2,9 @@ import {Provider, ReflectiveInjector} from "injection-js";
 import {SessionStack} from "./application";
 import {ClientConnection} from "./client-connection";
 import {EntityStorage} from "./entity-storage";
-import {ConnectionMiddleware} from "./connection-middleware";
-import {ConnectionWriter} from "./connection-writer";
-import {us_listen_socket, us_listen_socket_close, App, WebSocket} from "uWebSockets.js";
+import {ServerConnectionMiddleware} from "./connection-middleware";
+import {ConnectionMiddleware, ConnectionWriter} from "@marcj/glut-core";
+import {App, us_listen_socket, us_listen_socket_close, WebSocket} from "uWebSockets.js";
 import {Exchange} from "./exchange";
 
 export class Worker {
@@ -45,7 +45,7 @@ export class Worker {
                     EntityStorage,
                     SessionStack,
                     ClientConnection,
-                    ConnectionMiddleware,
+                    {provide: ConnectionMiddleware, useClass: ServerConnectionMiddleware},
                     ConnectionWriter
                 ];
                 provider.push(...this.connectionProvider);
@@ -57,6 +57,7 @@ export class Worker {
             },
             close: (ws, code, message) => {
                 injectorMap.get(ws)!.get(ClientConnection).destroy();
+                injectorMap.get(ws)!.get(EntityStorage).destroy();
                 injectorMap.delete(ws);
             }
         });

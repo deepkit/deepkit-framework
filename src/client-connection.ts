@@ -1,9 +1,7 @@
 import {Inject, Injectable, Injector} from "injection-js";
-import {Observable, Subscription} from "rxjs";
+import {Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ActionTypes, ClientMessageAll, executeActionAndSerialize, getActionParameters, getActionReturnType, getActions} from "@marcj/glut-core";
-import {ConnectionMiddleware} from "./connection-middleware";
-import {ConnectionWriter} from "./connection-writer";
+import {ActionTypes, ClientMessageAll, ConnectionMiddleware, ConnectionWriter, executeAction, getActionParameters, getActions} from "@marcj/glut-core";
 import {arrayRemoveItem, each} from "@marcj/estdlib";
 import {uuid} from "@marcj/marshal";
 import {Exchange} from "./exchange";
@@ -12,9 +10,11 @@ import {ProcessLock, ProcessLocker} from "./process-locker";
 
 @Injectable()
 export class ClientConnection {
+    protected id: string = uuid();
+
     protected timeoutTimers: any[] = [];
     protected destroyed = false;
-    protected usedControllers: { [path: string]: any } = {};
+    protected usedControllers: { [path: string]: { i: any, p: Promise<any> } } = {};
 
     private cachedActionsTypes: {
         [controllerName: string]: { [actionName: string]: ActionTypes }
@@ -26,6 +26,7 @@ export class ClientConnection {
     protected pushMessageReplies: { [id: string]: (data: any) => void } = {};
 
     protected unsubscribeOnDisconnectSubscriptions = new Subscriptions();
+    protected clientUsedPeerControllers: {[controllerName: string]: Subscription} = {};
 
     constructor(
         protected app: Application,
@@ -42,7 +43,7 @@ export class ClientConnection {
     /**
      * Is called when connection breaks or client disconnects.
      */
-    public destroy() {
+    public async destroy() {
         if (this.destroyed) return;
 
         this.connectionMiddleware.destroy();
@@ -54,9 +55,14 @@ export class ClientConnection {
 
         this.unsubscribeOnDisconnectSubscriptions.unsubscribe();
 
+        for (const sub of each(this.clientUsedPeerControllers)) {
+            sub.unsubscribe();
+        }
+
         for (const usedController of each(this.usedControllers)) {
-            if (usedController.destroy) {
-                usedController.destroy();
+            await usedController.p;
+            if (usedController.i.destroy) {
+                usedController.i.destroy();
             }
         }
 
@@ -164,14 +170,16 @@ export class ClientConnection {
                     const lock = await this.locker.acquireLock('peerController/' + message.controllerName);
 
                     try {
-                        const sub = await this.exchange.subscribe('peerController/' + message.controllerName, (controllerMessage: { replyId: string, data: any }) => {
-                            this.writer.write({
-                                id: message.id,
-                                type: 'peerController/message',
-                                replyId: controllerMessage.replyId,
-                                data: controllerMessage.data
+                        const sub = await this.exchange.subscribe('peerController/' + message.controllerName,
+                            (controllerMessage: { replyId: string, clientId: string, data: any }) => {
+                                this.writer.write({
+                                    id: message.id,
+                                    type: 'peerController/message',
+                                    replyId: controllerMessage.replyId,
+                                    clientId: controllerMessage.clientId,
+                                    data: controllerMessage.data
+                                });
                             });
-                        });
 
                         this.registeredPeerControllers[message.controllerName] = {
                             sub: sub,
@@ -224,15 +232,30 @@ export class ClientConnection {
                             }
                         }, message.timeout * 1000);
 
+                        if (!this.clientUsedPeerControllers[controllerName]) {
+                            this.clientUsedPeerControllers[controllerName] = new Subscription(() => {
+                                this.exchange.publish('peerController/' + controllerName, {
+                                    type: 'end',
+                                    clientId: this.id,
+                                });
+                            });
+                        }
+
                         this.exchange.publish('peerController/' + controllerName, {
                             replyId: replyId,
+                            clientId: this.id,
                             data: {
                                 ...message,
                                 controller: controllerName
                             }
                         });
                     } else {
-                        await this.actionSend(message, () => this.action(message.controller, message.action, message.args));
+                        try {
+                            const {value, encoding} = await this.action(message.controller, message.action, message.args);
+                            await this.connectionMiddleware.actionMessageOut(message, value, encoding, message.controller, message.action);
+                        } catch (error) {
+                            await this.writer.sendError(message.id, error);
+                        }
                     }
                 } catch (error) {
                     console.debug(`Error in ${message.controller}.${message.action}`, error);
@@ -281,15 +304,16 @@ export class ClientConnection {
                                 ...message,
                                 controller: controllerName
                             }
+                        }).catch((error) => {
+                            console.error(`Could not publish peerController/${controllerName} message`, error);
                         });
                     } else {
-                        const {parameters, returnType} = await this.getActionTypes(message.controller, message.action);
+                        const {parameters} = await this.getActionTypes(message.controller, message.action);
 
                         this.writer.write({
                             type: 'actionTypes/result',
                             id: message.id,
-                            returnType: returnType,
-                            parameters: parameters,
+                            parameters: parameters.map(v => v.toJSON()),
                         });
                     }
                 } catch (error) {
@@ -346,14 +370,13 @@ export class ClientConnection {
 
             this.cachedActionsTypes[controller][action] = {
                 parameters: getActionParameters(controllerClass, action),
-                returnType: getActionReturnType(controllerClass, action)
             };
         }
 
         return this.cachedActionsTypes[controller][action];
     }
 
-    public async action(controller: string, action: string, args: any[]): Promise<any> {
+    public async action(controller: string, action: string, args: any[]) {
         const controllerClass = await this.app.resolveController(controller);
 
         if (!controllerClass) {
@@ -367,7 +390,14 @@ export class ClientConnection {
 
         const controllerInstance = this.injector.get(controllerClass);
 
-        this.usedControllers[controller] = controllerInstance;
+        if (!this.usedControllers[controller]) {
+            this.usedControllers[controller] = {
+                i: controllerInstance,
+                p: controllerInstance.initPerConnection ? controllerInstance.initPerConnection() : Promise.resolve()
+            };
+        }
+
+        await this.usedControllers[controller].p;
 
         const methodName = action;
         const fullName = `${controller}::${action}`;
@@ -382,17 +412,9 @@ export class ClientConnection {
 
             const types = await this.getActionTypes(controller, action);
 
-            return executeActionAndSerialize(types, controller, controllerInstance, methodName, args);
+            return await executeAction(types, controller, controllerInstance, methodName, args);
         }
 
         throw new Error(`Action unknown ${fullName}`);
-    }
-
-    public async actionSend(message: ClientMessageAll, exec: (() => Promise<any> | Observable<any>)) {
-        try {
-            await this.connectionMiddleware.actionMessageOut(message, await exec());
-        } catch (error) {
-            await this.writer.sendError(message.id, error);
-        }
     }
 }
