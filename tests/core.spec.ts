@@ -2,14 +2,17 @@ import 'jest-extended'
 import {
     asyncOperation,
     getClassName,
-    isArray, isClass,
+    getPathValue,
+    isArray,
+    isClass,
     isFunction,
     isObject,
     isPlainObject,
+    isPromise,
     isUndefined,
+    setPathValue,
     sleep
 } from "../src/core";
-import {getPathValue, setPathValue} from "../src/core";
 
 class SimpleClass {
     constructor(public name: string){}
@@ -41,6 +44,36 @@ test('helper isObject', () => {
     expect(isObject({})).toBeTrue();
     expect(isObject(new Date())).toBeTrue();
     expect(isObject(new SimpleClass('asd'))).toBeTrue();
+});
+
+test('helper isPromise', async () => {
+    expect(isPromise([])).toBeFalse();
+    expect(isPromise(false)).toBeFalse();
+    expect(isPromise(true)).toBeFalse();
+    expect(isPromise(null)).toBeFalse();
+    expect(isPromise(undefined)).toBeFalse();
+    expect(isPromise(1)).toBeFalse();
+    expect(isPromise('1')).toBeFalse();
+
+    function foo1() {
+    }
+
+    const foo2 = () => {};
+    expect(isPromise(foo1())).toBeFalse();
+    expect(isPromise(foo2())).toBeFalse();
+
+    async function foo3() {
+    }
+    function foo4() {
+        return new Promise((resolve) => {
+            resolve(1);
+        })
+    }
+
+    expect(isObject(foo3())).toBeTrue();
+    expect(isObject(foo4())).toBeTrue();
+    expect(isObject(await foo4())).toBeFalse();
+    expect(isObject((async () => {})())).toBeTrue();
 });
 
 test('helper isFunction', () => {

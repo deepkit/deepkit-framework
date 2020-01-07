@@ -104,6 +104,18 @@ export function isFunction(obj: any): obj is Function {
 }
 
 /**
+ * Returns true if given obj is a promise like object.
+ *
+ * Note: There's not way to check if it's actually a Promise using instanceof since
+ * there are a lot of different implementations around.
+ *
+ * @public
+ */
+export function isPromise(obj: any): obj is Function {
+    return obj !== null && typeof obj === "object" && typeof obj.then === "function";
+}
+
+/**
  * Returns true if given obj is a ES6 class (ES5 fake classes are not supported).
  *
  * @public
