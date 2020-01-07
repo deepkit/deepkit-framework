@@ -1,157 +1,77 @@
-import {EntitySubject, StreamBehaviorSubject, ValidationErrorItem, ValidationParameterError} from "./core";
-import {Collection} from "./collection";
-import {ServerMessageActionType} from "./contract";
-import {eachKey, getClassName, isArray, isObject, isPlainObject} from "@marcj/estdlib";
-import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities, validate} from "@marcj/marshal";
-import {Observable} from "rxjs";
-import {map} from "rxjs/operators";
+import {eachKey, isPromise, eachPair, getClassName} from "@marcj/estdlib";
+import {propertyPlainToClass, PropertySchema, getClassSchema, ValidationError, validatePropSchema} from "@marcj/marshal";
+import {ValidationParameterError, ValidationErrorItem} from "./core";
 
-export type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMessageActionType };
+export type ActionTypes = { parameters: PropertySchema[] };
 
-export async function executeActionAndSerialize(
+export async function executeAction(
     actionTypes: ActionTypes,
     controllerName: any,
     controllerInstance: any,
     methodName: string,
-    args: any[]): Promise<any> {
-    const fullName = `${getClassName(controllerInstance)}.${methodName}`;
+    args: any[]): Promise<{ value: any, encoding: PropertySchema }> {
 
-    for (const i of eachKey(args)) {
-        if (!actionTypes.parameters[i]) {
-            continue;
+    for (const [i, p] of eachPair(actionTypes.parameters)) {
+
+        // console.log(p, args[i]);
+
+        if (!p.typeSet && p.type === 'any' && args[i] && args[i].constructor === Object) {
+            throw new Error(
+                `${controllerName}::${methodName} argument ${i} is an Object with unknown structure. Please declare the type using the @f decorator.`
+            );
         }
 
-        const type = actionTypes.parameters[i];
+        const errors: ValidationError[] = [];
 
-        if (type.type === 'Entity' && type.entityName) {
-            if (!RegisteredEntities[type.entityName]) {
-                throw new Error(`Action's parameter ${fullName}:${i} has invalid entity referenced ${type.entityName}.`);
-            }
+        validatePropSchema(
+            Object,
+            p,
+            errors,
+            args[i],
+            String(i),
+            methodName + '#' + String(i),
+            false
+        );
 
-            //todo, validate also partial objects, but @marcj/marshal needs an adjustments for the `validation` method to avoid Required() validator
-            // otherwise it fails always.
-            if (!type.partial) {
-                try {
-                    const errors = validate(RegisteredEntities[type.entityName], args[i]);
-                    if (errors.length) {
-                        throw new ValidationParameterError(
-                            controllerName,
-                            methodName,
-                            i,
-                            errors.map(error => new ValidationErrorItem(error.path, error.message, error.code, type.entityName!)));
-                    }
-                } catch (error) {
-                    console.log('error validating arg', i, 'of', `${controllerName}.${methodName}`);
-                    console.log('got', args[i]);
-                    throw error;
-                }
-            }
-            if (type.partial) {
-                args[i] = partialPlainToClass(RegisteredEntities[type.entityName], args[i]);
-            } else {
-                args[i] = plainToClass(RegisteredEntities[type.entityName], args[i]);
-            }
+        if (errors.length > 0) {
+            throw new ValidationParameterError(
+                controllerName,
+                methodName,
+                i,
+                errors.map(error => new ValidationErrorItem(error.path, error.message, error.code)));
         }
+
+        args[i] = propertyPlainToClass(
+            Object,
+            methodName,
+            args[i],
+            [], 1, {onFullLoadCallbacks: []},
+            p
+        );
     }
 
     let result = (controllerInstance as any)[methodName](...args);
 
-    if (result && typeof (result as any)['then'] === 'function') {
-        // console.log('its an Promise');
+    if (isPromise(result)) {
         result = await result;
     }
 
-    if (result instanceof EntitySubject) {
-        return result;
+    const schema = getClassSchema(controllerInstance.constructor);
+
+    if (schema.hasMethod(methodName)) {
+        return {
+            value: result,
+            encoding: schema.getMethod(methodName),
+        };
     }
 
-    if (result instanceof StreamBehaviorSubject) {
-        return result;
+    const p = new PropertySchema(methodName);
+    if (result) {
+        p.setFromJSValue(result);
     }
 
-    if (result instanceof Collection) {
-        return result;
-    }
-
-    if (result === undefined) {
-        return result;
-    }
-
-    const converter: { [name: string]: (v: any) => any } = {
-        'Entity': (v: any) => {
-            if (actionTypes.returnType.partial) {
-                return partialClassToPlain(RegisteredEntities[actionTypes.returnType.entityName!], v);
-            } else {
-                return classToPlain(RegisteredEntities[actionTypes.returnType.entityName!], v);
-            }
-        },
-        'Boolean': (v: any) => {
-            return Boolean(v);
-        },
-        'Number': (v: any) => {
-            return Number(v);
-        },
-        'Date': (v: any) => {
-            return v;
-        },
-        'Plain': (v: any) => {
-            return v;
-        },
-        'String': (v: any) => {
-            return String(v);
-        },
-        'Object': (v: any) => {
-            return v;
-        }
+    return {
+        value: result,
+        encoding: p,
     };
-
-    function checkForNonObjects(v: any) {
-        if (isArray(v) && v[0]) {
-            v = v[0];
-        }
-
-        const prefix = `Action ${fullName}`;
-
-        if (isObject(v) && !isPlainObject(v)) {
-            throw new Error(`${prefix} returns an not annotated custom class instance (${getClassName(v)}) that can not be serialized.\n` +
-                `Use e.g. @ReturnType(MyClass) at your action.`);
-        } else if (isObject(v) && actionTypes.returnType.type !== 'Plain' && actionTypes.returnType.type !== 'Any') {
-            throw new Error(`${prefix} returns an not annotated object literal that can not be serialized.\n` +
-                `Use either @ReturnPlainObject() to avoid serialisation using Marshal.ts, or (better) create an Marshal.ts entity and use @ReturnType(MyEntity) at your action.`);
-        }
-    }
-
-    if (result instanceof Observable) {
-        return result.pipe(map((v) => {
-            if (actionTypes.returnType.type === 'undefined') {
-                checkForNonObjects(v);
-
-                return v;
-            }
-
-            if (isArray(v)) {
-                return v.map((j: any) => converter[actionTypes.returnType.type](j));
-            }
-
-            return converter[actionTypes.returnType.type](v);
-        }));
-    }
-
-    if (actionTypes.returnType.type === 'undefined') {
-        checkForNonObjects(result, );
-
-        return result;
-    }
-
-    if (actionTypes.returnType.type === 'Object') {
-        checkForNonObjects(result);
-
-        return result;
-    }
-
-    if (isArray(result)) {
-        return result.map((v: any) => converter[actionTypes.returnType.type](v));
-    }
-
-    return converter[actionTypes.returnType.type](result);
 }

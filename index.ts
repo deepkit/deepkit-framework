@@ -7,3 +7,4 @@ export * from './src/action';
 export * from './src/client';
 export * from './src/observer';
 export * from './src/batcher';
+export * from './src/connection';

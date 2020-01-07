@@ -1,104 +1,266 @@
 import {
-    FieldArray,
-    FieldMap,
-    Field,
-    Entity,
-    EnumField,
-    Optional,
-    UUIDField,
-    FieldAny,
-    Decorated,
-    IDField,
+    Entity, f,
     uuid,
 } from "@marcj/marshal";
-import {each, eachKey, eachPair} from "@marcj/estdlib";
+import {each, eachPair} from "@marcj/estdlib";
 import {IdInterface} from "..";
 
+@Entity('JobAssignedResourcesGpu')
+export class JobAssignedResourcesGpu {
+    constructor(
+        @f.asName('uuid') public uuid: string,
+        @f.asName('name') public name: string,
+        @f.asName('memory') public memory: number,
+    ) {
+    }
+}
+
+
+@Entity('JobAssignedResources')
+export class JobAssignedResources {
+    @f
+    cpu: number = 0;
+
+    @f
+    memory: number = 0;
+
+    @f.array(JobAssignedResourcesGpu)
+    gpus: JobAssignedResourcesGpu[] = [];
+
+    public getMinGpuMemory(): number {
+        let minGpuMemory = 0;
+
+        for (const gpu of this.gpus) {
+            if (!minGpuMemory || gpu.memory < minGpuMemory) minGpuMemory = gpu.memory;
+        }
+
+        return minGpuMemory;
+    }
+
+    public getMaxGpuMemory(): number {
+        let maxGpuMemory = 0;
+
+        for (const gpu of this.gpus) {
+            if (gpu.memory > maxGpuMemory) maxGpuMemory = gpu.memory;
+        }
+
+        return maxGpuMemory;
+    }
+
+    public getGpuUUIDs(): string[] {
+        return this.gpus.map(v => v.uuid);
+    }
+
+    public getGpuMemoryRange(): string {
+        const min = this.getMinGpuMemory();
+        const max = this.getMaxGpuMemory();
+
+        if (min === max) return `${min}`;
+
+        return `${min}-${max}`;
+    }
+}
 
 export class JobConfigDocker {
-    @Field([String])
+    @f.array(String)
     env: string[] = []; //e.g. ["PATH=bla"]
 
-    @Field([String])
+    @f.array(String)
     binds: string[] = []; //e.g. ["/tmp:/tmp"]
 
-    @Field([String])
+    @f.array(String)
     links: string[] = []; //e.g. ["redis3:redis"]
 }
 
 export class JobResources {
-    @Field()
-    cpu: number = 1;
+    @f
+    minCpu: number = 0;
 
-    @Field()
-    memory: number = 1;
+    @f
+    maxCpu: number = 0;
 
-    @Field()
+    @f
+    cpu: number = 0;
+
+    @f
+    allMemory: boolean = true;
+
+    @f
+    minMemory: number = 0;
+
+    @f
+    maxMemory: number = 0;
+
+    @f
+    memory: number = 0;
+
+
+    @f
+    minGpu: number = 0;
+
+    @f
+    maxGpu: number = 0;
+
+    @f
     gpu: number = 0;
 
-    @Field()
-    gpuMemory: number = 0;
+    /**
+     * Value in GB. Defines minimum gpu memory that is necessary.
+     */
+    @f
+    minGpuMemory: number = 0;
+
+    static fromPartial(partial: Partial<JobResources>): JobResources {
+        const resources = new JobResources;
+        for (const [i, v] of eachPair(partial)) {
+            (resources as any)[i] = v;
+        }
+        return resources;
+    }
+
+    public normalizeValues() {
+        this.cpu = Math.max(this.cpu, 0);
+        this.maxCpu = Math.max(this.maxCpu, 0);
+        this.minCpu = Math.max(this.minCpu, 0);
+
+        this.memory = Math.max(this.memory, 0);
+        this.maxMemory = Math.max(this.maxMemory, 0);
+        this.minMemory = Math.max(this.minMemory, 0);
+
+        this.gpu = Math.max(this.gpu, 0);
+        this.maxGpu = Math.max(this.maxGpu, 0);
+        this.minGpu = Math.max(this.minGpu, 0);
+        this.minGpuMemory = Math.max(this.minGpuMemory, 0);
+    }
+
+    public getMinCpu(): number {
+        return Math.max(this.minCpu || this.cpu, 1);
+    }
+
+    public getMaxCpu(): number {
+        return Math.max(this.maxCpu || this.cpu, 1);
+    }
+
+    public getMinMemory(): number {
+        return Math.max(this.minMemory || this.memory, 1);
+    }
+
+    public getMaxMemory(): number {
+        return Math.max(this.maxMemory || this.memory, 1);
+    }
+
+    public getMinGpu(): number {
+        return Math.max(this.minGpu || this.gpu, 0);
+    }
+
+    public getMaxGpu(): number {
+        return Math.max(this.maxGpu || this.gpu, 0);
+    }
 }
 
 export class JobTaskCommand {
-    @Field()
-    name: string = '';
-
-    @Field()
-    command: string = '';
-
-    constructor(name: string, command: string) {
-        this.name = name;
-        this.command = command;
+    constructor(
+        @f.asName('name')
+        public name: string = '',
+        @f.asName('command')
+        public command: string = '',
+    ) {
     }
 }
 
 export class JobTaskConfigBase {
-    @Field([String])
+    @f
+    label: string = '';
+
+    @f.array(String)
     install: string[] = [];
 
-    @Field()
+    @f
     dockerfile: string = '';
 
-    @Field([String])
+    @f.array(String)
     install_files: string[] = [];
 
-    @Field()
+    @f
     image: string = '';
 
-    @Field([String])
+    @f.array(String)
+    output: string[] = [];
+
+    @f.array(String)
     environmentVariables: string[] = [];
 
-    @Field([String])
-    servers: string[] = [];
+    @f.array(String)
+    nodeIds: string[] = [];
 
-    @FieldArray(JobTaskCommand)
+    @f.array(String)
+    nodes: string[] = [];
+
+    @f.array(String)
+    clusters: string[] = [];
+
+    @f.array(JobTaskCommand)
     commands: JobTaskCommand[] = [];
 
-    @Field([String])
+    @f.array(String)
     args: string[] = [];
 
-    @Field(JobResources)
+    @f.type(JobResources)
     resources: JobResources = new JobResources;
 
-    @Field(JobConfigDocker)
+    @f.type(JobConfigDocker)
     docker: JobConfigDocker = new JobConfigDocker;
+
+    public isDockerImage(): boolean {
+        return !!this.image;
+    }
+
+    public hasCommand() {
+        return this.commands.length > 0;
+    }
+
+    get installString(): string {
+        return this.install.join('\n');
+    }
+
+    set installString(v: string) {
+        this.install = v.split('\n');
+    }
+
+    set installFilesString(v: string) {
+        this.install_files = v.split('\n');
+    }
+
+    get installFilesString(): string {
+        return this.install_files.join('\n');
+    }
 }
 
 export class JobTaskConfig extends JobTaskConfigBase {
     /**
-     * Will be set by config loading.
+     * Will be set by config loader.
      */
-    @Field()
+    @f
     name: string = '';
 
-    @Field()
+    @f
     replicas: number = 1;
 
-    @Field([String])
+    @f.array(String)
     depends_on: string[] = [];
+
+    /**
+     * Will be set config loader
+     */
+    @f.type(Boolean).asMap()
+    configValuesNoOverwrite: { [path: string]: true } = {};
+
+    public isRoot(): boolean {
+        return this.depends_on.length === 0;
+    }
 }
 
+@Entity('job-config')
 export class JobConfig extends JobTaskConfigBase {
     public static readonly inheritTaskProperties: string[] = [
         'install',
@@ -106,159 +268,180 @@ export class JobConfig extends JobTaskConfigBase {
         'install_files',
         'image',
         'environmentVariables',
-        'servers',
+        'clusters',
+        'nodes',
+        'nodeIds',
         'resources',
         'commands',
         'args',
+        'output',
         'docker'
     ];
 
-    @FieldAny({})
+    @f.any().asMap()
     parameters: { [name: string]: any } = {};
 
-    @Field([String])
+    @f
+    path: string = '';
+
+    @f.array(String)
     ignore: string[] = [];
 
-    @Field()
+    @f
     priority: number = 0;
 
-    @Field()
+    @f
     import: string = '';
 
-    @FieldMap(JobTaskConfig)
-    tasks: { [name: string]: JobTaskConfig } = {};
+    @f.map(JobTaskConfig)
+    protected tasks: { [name: string]: JobTaskConfig } = {};
 
     protected parametersArray?: { name: string, value: any }[];
+
+    protected resolved = false;
+
+    public getLabel(): string {
+        if (!this.label && this.path) {
+            let path = this.path;
+
+            if (path.endsWith('.yaml')) path = path.substr(0, path.length - 5);
+            if (path.endsWith('.yml')) path = path.substr(0, path.length - 4);
+
+            const index = path.lastIndexOf('/');
+            if (index !== -1) {
+                path = path.substr(index + 1);
+            }
+
+            if (path === 'deepkit') {
+                return 'Default';
+            }
+
+            return path;
+        }
+
+        return this.label;
+    }
+
+
+    /**
+     * Writes all values of the root config into task config and the values from the original config (configValuesToOverwrite)
+     * file to task config (so user can override them)
+     */
+    resolveInheritance() {
+        for (const task of each(this.getTasks())) {
+            for (const name of JobConfig.inheritTaskProperties) {
+                if (task.configValuesNoOverwrite[name]) continue;
+                (task as any)[name] = (this as any)[name];
+            }
+        }
+    }
+
+    public getTasks(): { [name: string]: JobTaskConfig } {
+        if (Object.keys(this.tasks).length === 0) {
+            this.tasks = {main: new JobTaskConfig};
+            this.tasks.main.name = 'main';
+        }
+
+        if (!this.resolved) {
+            this.resolved = true;
+            this.resolveInheritance();
+        }
+
+        return this.tasks;
+    }
 }
 
 export class JobEnvironmentPython {
-    @Field()
-    @Optional()
+    @f.optional()
     version?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     binary?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     sdkVersion?: string;
 
-    @Field({String})
+    @f.map(String)
     pipPackages: { [name: string]: string } = {};
 }
 
 export class JobEnvironment {
-    @Field()
-    @Optional()
+    @f.optional()
     hostname?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     username?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     platform?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     release?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     arch?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     uptime?: number;
 
-    @Field()
-    @Optional()
+    @f.optional()
     nodeVersion?: string;
 
-    @Field({String})
-    @Optional()
+    @f.map(String).optional()
     environmentVariables?: { [name: string]: string };
 
-    @Field(JobEnvironmentPython)
-    @Optional()
+    @f.type(JobEnvironmentPython).optional()
     python?: JobEnvironmentPython;
 }
 
 export class JobGit {
-    @Field()
-    @Optional()
+    @f.optional()
     author?: string;
 
-    @Field()
-    @Optional()
-    authorEmail?: string;
-
-    @Field()
-    @Optional()
+    @f.optional()
     branch?: string;
 
-    @Field()
-    @Optional()
-    commit?: string;
-
-    @Field()
-    @Optional()
-    message?: string;
-
-    @Field()
-    @Optional()
-    date?: Date;
-
-    @Field()
-    @Optional()
+    @f.optional()
     origin?: string;
 
-    constructor(authorEmail: string, commit: string, message: string, date: Date) {
-        this.authorEmail = authorEmail;
-        this.commit = commit;
-        this.message = message;
-        this.date = date;
+    constructor(
+        @f.asName('commit') public commit: string,
+        @f.asName('message') public message: string,
+        @f.asName('authorEmail').optional() public authorEmail?: string,
+        @f.asName('date').optional() public date?: Date,
+    ) {
     }
 }
 
 export class JobDocker {
-    @Field()
-    @Optional()
+    @f.optional()
     runOnVersion?: string;
 }
 
 export class JobDockerImage {
-    @Field()
-    @Optional()
+    @f.optional()
     name?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     id?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     size?: number;
 
-    @Field()
-    @Optional()
+    @f.optional()
     os?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     arch?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     created?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
     builtWithDockerVersion?: string;
 }
 
+//note: these codes are hardcoded in the SDKs as well
 export enum JobStatus {
     creating = 0,
     created = 50, //when all files are attached
@@ -272,6 +455,7 @@ export enum JobStatus {
     crashed = 300, //when at least one task crashed
 }
 
+//note: these codes are hardcoded in the SDKs as well
 export enum JobTaskStatus {
     pending = 0,
 
@@ -287,12 +471,14 @@ export enum JobTaskStatus {
     crashed = 650,
 }
 
+//note: these codes are hardcoded in the SDKs as well
 export enum JobTaskInstanceStatus {
     pending = 0,
 
     booting = 200, //is starting the job's task
     docker_pull = 220, //joining docker's network
-    docker_build = 230, //joining docker's network
+    docker_build_await = 230, //joining docker's network
+    docker_build = 235, //joining docker's network
     joining_network = 250, //joining docker's network
     checkout_files = 260, //download job files for that task instance
 
@@ -305,323 +491,528 @@ export enum JobTaskInstanceStatus {
     crashed = 650,
 }
 
+@Entity('job/channel')
 export class Channel {
-    @Field([String])
+    /**
+     * This might be empty.
+     */
+    @f.array(String)
     traces: string[] = [];
 
-    @Field()
-    @Optional()
-    main?: boolean;
-
-    @Field()
-    @Optional()
+    @f.optional()
     kpi?: boolean;
 
-    @Field()
+    @f
     kpiTrace: number = 0;
 
-    @Field()
+    @f
     maxOptimization: boolean = true;
 
-    @FieldAny([])
+    @f.any().asArray()
     lastValue: any[] = [];
 
-    @FieldAny()
-    @Optional()
+    @f.any().optional()
     xaxis?: object;
 
-    @FieldAny()
-    @Optional()
+    @f.any().optional()
     yaxis?: object;
 
-    @FieldAny()
-    @Optional()
+    @f.any().optional()
     layout?: object;
 }
 
-export class JobAssignedResourcesGpu {
-    @Field()
-    id: number;
+export enum PullStatsStatus {
+    waiting = 'waiting',
+    downloading = 'downloading',
+    extracting = 'extracting',
+    verifying = 'verifying',
+    done = 'done',
+}
 
-    @Field()
-    name: string;
+export class PullStats {
+    @f
+    current: number = 0;
 
-    @Field()
-    memory: number;
+    @f
+    total: number = 0;
 
-    constructor(id: number, name: string, memory: number) {
-        this.id = id;
-        this.name = name;
-        this.memory = memory;
+    @f.enum(PullStatsStatus)
+    status: PullStatsStatus = PullStatsStatus.waiting;
+
+    constructor(
+        @f.asName('id') public readonly id: string
+    ) {
     }
 }
 
-export class JobAssignedResources {
-    @Field()
-    cpu: number = 0;
-
-    @Field()
-    memory: number = 0;
-
-    @FieldArray(JobAssignedResourcesGpu)
-    gpus: JobAssignedResourcesGpu[] = [];
-}
-
 export class JobTaskInstance {
-    @Field()
-    id: number;
-
-    @EnumField(JobTaskInstanceStatus)
+    @f.enum(JobTaskInstanceStatus)
     status: JobTaskInstanceStatus = JobTaskInstanceStatus.pending;
 
-    @Field(JobEnvironment)
+    @f
+    uploadOutputCurrent: number = -1;
+
+    @f
+    uploadOutputTotal: number = 0;
+
+    @f.type(JobEnvironment)
     environment: JobEnvironment = new JobEnvironment;
 
-    @Field(JobDocker)
+    @f.type(JobDocker)
     docker: JobDocker = new JobDocker;
 
-    @Field(JobDockerImage)
+    @f.map(PullStats)
+    dockerPullStats: { [id: string]: PullStats } = {};
+
+    @f.type(JobDockerImage)
     dockerImage: JobDockerImage = new JobDockerImage;
 
-    @UUIDField()
-    @Optional()
+    @f.uuid().optional()
     node?: string;
 
-    @Field()
-    @Optional()
+    @f.optional()
     exitCode?: number;
 
-    @Field(JobAssignedResources)
+    @f
+    error: string = '';
+
+    @f.type(JobAssignedResources)
     assignedResources: JobAssignedResources = new JobAssignedResources;
 
-    @Field()
-    @Optional()
+    @f.optional()
     started?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
     ended?: Date;
 
-    constructor(id: number) {
-        this.id = id;
+    constructor(@f.asName('id') public id: number) {
+    }
+
+    public getOrCreatePullStats(id: string): PullStats {
+        if (!this.dockerPullStats[id]) {
+            this.dockerPullStats[id] = new PullStats(id);
+        }
+
+        return this.dockerPullStats[id];
+    }
+
+    public isRunning() {
+        return this.isStarted() && !this.isEnded();
+    }
+
+    public isStarted() {
+        return this.status >= JobTaskInstanceStatus.booting;
+    }
+
+    public isEnded() {
+        return this.status >= JobTaskInstanceStatus.done;
+    }
+
+    public isDockerPull() {
+        return this.status === JobTaskInstanceStatus.docker_pull;
+    }
+
+    public elapsedTime(): number | undefined {
+        if (this.ended && this.started) {
+            return (this.ended.getTime() - this.started.getTime()) / 1000;
+        }
+
+        if (this.started) {
+            return ((new Date).getTime() - this.started.getTime()) / 1000;
+        }
+
+        return undefined;
     }
 }
 
 export class JobTaskQueue {
-    @Field()
+    @f
     position: number = 0;
 
-    @Field()
+    @f
     tries: number = 0;
 
-    @Field()
+    @f
     result: string = '';
 
-    @Field()
+    @f
     added: Date = new Date();
 }
 
 export class JobTask {
-    @Field(JobTaskQueue)
+    @f.type(JobTaskQueue)
     queue: JobTaskQueue = new JobTaskQueue;
 
-    @Field()
-    name: string;
-
-    @EnumField(JobTaskStatus)
+    @f.enum(JobTaskStatus)
     status: JobTaskStatus = JobTaskStatus.pending;
 
-    @Field()
-    @Optional()
+    @f.optional()
     assigned?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
     started?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
     ended?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
     exitCode?: number;
 
-    @FieldArray(JobTaskInstance)
+    @f.array(JobTaskInstance)
     public instances: JobTaskInstance[] = [];
 
-    constructor(name: string, replicas: number) {
-        this.name = name;
-
+    constructor(
+        @f.asName('name') public name: string,
+        replicas: number,
+    ) {
         for (let i = 0; i < replicas; i++) {
             this.instances[i] = new JobTaskInstance(i);
         }
     }
-}
 
-export class JobInfo {
-    @Field()
-    name: string;
-
-    @FieldAny()
-    value: any;
-
-    constructor(name: string, value: any) {
-        this.name = name;
-        this.value = value;
-    }
-}
-
-export class JobInfos {
-    @Decorated()
-    @FieldArray(JobInfo)
-    public items: JobInfo[] = [];
-
-    protected map: { [name: string]: JobInfo } = {};
-
-    constructor(items: JobInfo[] = []) {
-        this.items = items;
-    }
-
-    public all(): JobInfo[] {
-        return this.items;
-    }
-
-    public add(name: string, value: any) {
-        if (this.map[name]) {
-            this.map[name].value = value;
-        } else {
-            this.map[name] = new JobInfo(name, value);
-            this.items.push(this.map[name]);
+    public elapsedTime(): number | undefined {
+        if (this.ended && this.started) {
+            return (this.ended.getTime() - this.started.getTime()) / 1000;
         }
+
+        if (this.started) {
+            return ((new Date).getTime() - this.started.getTime()) / 1000;
+        }
+
+        return undefined;
     }
 
-    public remove(name: string) {
-        if (!this.map[name]) return;
-
-        const index = this.items.indexOf(this.map[name]);
-        this.items.splice(index, 1);
-        delete this.map[name];
+    public getInstances(): JobTaskInstance[] {
+        return this.instances;
     }
+
+    public getRunningInstances(): JobTaskInstance[] {
+        const result: JobTaskInstance[] = [];
+        for (const instance of this.instances) {
+            if (instance.isRunning()) result.push(instance);
+        }
+        return result;
+    }
+
+    public getFirstInstance(): JobTaskInstance | undefined {
+        return this.instances[0];
+    }
+
+    public isErrored(): boolean {
+        return this.status === JobTaskStatus.crashed
+            || this.status === JobTaskStatus.failed
+            || this.status === JobTaskStatus.aborted;
+    }
+
+    public getInstance(replica: number): JobTaskInstance {
+        if (!this.instances[replica]) {
+            throw new Error(`Replica #${replica} of task ${this.name} does not exist.`);
+        }
+
+        return this.instances[replica];
+    }
+
+    public isStarted() {
+        return this.status >= JobTaskStatus.started;
+    }
+
+    public isQueued() {
+        return this.status === JobTaskStatus.queued;
+    }
+
+    public isRunning() {
+        return this.isStarted() && !this.isEnded();
+    }
+
+    public isEnded() {
+        return this.status >= JobTaskStatus.done;
+    }
+
+    public areAllInstancesEnded(): boolean {
+        return this.instances.every((instance) => {
+            return instance.isEnded();
+        });
+    }
+
+    public calculateStatusByInstances(): JobTaskStatus {
+        let status = JobTaskStatus.done;
+
+        for (const instance of this.instances) {
+            if (status === JobTaskStatus.done) {
+                //allowed to set to all
+
+                if (instance.status === JobTaskInstanceStatus.aborted) {
+                    status = JobTaskStatus.aborted;
+                }
+                if (instance.status === JobTaskInstanceStatus.failed) {
+                    status = JobTaskStatus.failed;
+                }
+                if (instance.status === JobTaskInstanceStatus.crashed) {
+                    status = JobTaskStatus.crashed;
+                }
+            }
+
+            if (status === JobTaskStatus.aborted) {
+                if (instance.status === JobTaskInstanceStatus.failed) {
+                    status = JobTaskStatus.failed;
+                }
+                if (instance.status === JobTaskInstanceStatus.crashed) {
+                    status = JobTaskStatus.crashed;
+                }
+            }
+        }
+
+        return status;
+    }
+}
+
+@Entity('jobModelGraphSnapshot/histogram')
+export class JobModelGraphSnapshotHistogram {
+    @f.array(Number)
+    x!: number[];
+
+    @f.array(Number)
+    y!: number[];
+}
+
+
+@Entity('jobModelGraphSnapshot/layer')
+export class JobModelGraphSnapshotLayer {
+    @f.optional()
+    saved?: Date;
+
+    @f.optional()
+    outputFileId?: string;
+
+    @f.type(JobModelGraphSnapshotHistogram).optional()
+    weights?: JobModelGraphSnapshotHistogram;
+
+    @f.type(JobModelGraphSnapshotHistogram).optional()
+    biases?: JobModelGraphSnapshotHistogram;
+}
+
+@Entity('jobModelGraphSnapshot')
+export class JobModelGraphSnapshot {
+    @f.uuid()
+    id: string = uuid();
+
+    @f
+    version: number = 0;
+
+    @f
+    created: Date = new Date;
+
+    @f
+    iteration: number = 0;
+
+    @f.index()
+    live: boolean = false;
+
+    @f.type(JobModelGraphSnapshotLayer).asMap()
+    layerInfo: {[layerName: string]: JobModelGraphSnapshotLayer} = {};
+
+    constructor(@f.uuid().index().asName('job') public job: string) {
+    }
+}
+
+export class JobModelNode {
+    /**
+     * Separated by /. Will be grouped together.
+     */
+    @f
+    id!: string;
+
+    @f
+    label!: string;
+
+    @f.optional()
+    type: string = ''; //op, dense, conv, concat, reshape, etc.
+
+    @f.optional()
+    op?: string;
+
+    @f.array(Number)
+    shape: number[] = [];
+
+    @f.any().asMap()
+    attributes: { [name: string]: any } = {};
+
+    /**
+     * input ids from other nodes.
+     */
+    @f.type(String).asArray()
+    input: string[] = [];
+
+    /**
+     * input ids from other nodes.
+     */
+    @f.type(JobModelNode).asArray()
+    children: JobModelNode[] = [];
+
+    public hasSelfActivation(): boolean {
+        return this.attributes['activation'] && this.attributes['activation'] !== 'linear';
+    }
+
+    public isSmallBox() {
+        return this.type === 'BatchNormalization' || this.type === 'Dropout' || this.type.includes('Padding') || this.type.includes('Pooling');
+    }
+
+    public hasBorder() {
+        return !this.isSmallBox();
+    }
+
+    public isBorderRadius() {
+        return this.type === 'Dense';
+    }
+
+    public isActivation() {
+        return this.type === 'Activation';
+    }
+}
+
+@Entity('job/model/graph')
+export class JobModelGraph {
+    @f.type(JobModelNode).asArray()
+    nodes: JobModelNode[] = [];
+
+    @f.type(String).asArray()
+    inputs: string[] = [];
+
+    @f.type(String).asArray()
+    outputs: string[] = [];
 }
 
 @Entity('job', 'jobs')
 export class Job implements IdInterface {
-    @IDField()
-    @UUIDField()
-    id: string;
-
-    @UUIDField()
-    project: string;
-
-    @UUIDField()
+    @f.uuid().exclude('plain')
     accessToken: string = uuid();
 
-    @Field()
+    @f
     number: number = 0;
 
-    @Field()
+    @f.index()
     version: number = 1;
 
-    @Field()
+    @f
     description: string = '';
 
-    @Field()
+    /**
+     * The cluster id if assigned.
+     */
+    @f.uuid().optional()
+    cluster?: string;
+
+    @f.index()
     connections: number = 0;
 
-    @Field()
-    alive: boolean = false;
-
-    @Field()
+    @f
     created: Date = new Date();
 
-    @Field()
+    @f
     updated: Date = new Date();
 
-    // exitCode = 0;
-    @Field()
-    @Optional()
+    @f.optional()
     author?: string;
 
-    @Field(JobConfig)
+    @f.type(JobConfig)
     config: JobConfig = new JobConfig;
 
-    @Field(JobGit)
-    @Optional()
+    @f.type(JobGit).optional()
     git?: JobGit;
 
-    @Field()
-    @Optional()
+    @f.optional()
     configFile?: string;
 
-    @EnumField(JobStatus)
+    /**
+     * Whether the job is executed directly in script without Deepkit CLI tools.
+     */
+    @f
+    selfExecution: boolean = false;
+
+    @f
+    hasModelGraph: boolean = false;
+
+    @f.uuid().optional()
+    liveSnapshotId?: string;
+
+    @f.enum(JobStatus)
     status: JobStatus = JobStatus.creating;
 
-    @Field()
+    @f
     title: string = '';
 
-    @Field(JobInfos)
-    infos: JobInfos = new JobInfos();
+    @f.any().asMap()
+    infos: { [name: string]: any } = {};
 
-    @FieldMap(JobTask)
+    @f.map(JobTask)
     tasks: { [name: string]: JobTask } = {};
 
-    @Field()
+    //todo, move the content to a file
+    @f.any().asMap()
+    debugSnapshots: { [timestamp: number]: any } = {};
+
+    @f.type(Boolean).asMap()
+    debugActiveLayerWatching: { [layerId: string]: boolean } = {};
+
+    @f
     runOnCluster: boolean = false;
 
-    @Field()
-    @Optional()
+    @f.type(String).asArray().index()
+    tags: string[] = [];
+
+    @f.optional()
     assigned?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
     started?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
     ended?: Date;
 
-    @Field()
-    @Optional()
+    @f.optional()
+    stopRequested?: Date;
+
+    @f.optional()
     ping?: Date;
 
     //aka epochs
-    @Field()
+    @f
     iteration: number = 0;
 
-    @Field()
+    @f
     iterations: number = 0;
 
-    @Field()
+    @f
     secondsPerIteration: number = 0;
 
     //aka batches
-    @Field()
+    @f
     step: number = 0;
 
-    @Field()
+    @f
     steps: number = 0;
 
-    @Field()
+    @f
     stepLabel: string = 'step';
 
     /**
      * ETA in seconds. Time left.
      */
-    @Field()
+    @f
     eta: number = 0;
 
-    @Field()
+    @f
     speed: number = 0;
 
-    @Field()
+    @f
     speedLabel: string = 'sample/s';
 
-    @FieldMap(Channel)
+    @f.map(Channel)
     channels: { [name: string]: Channel } = {};
 
-    constructor(id: string, project: string) {
-        this.id = id;
-        this.project = project;
+    constructor(
+        @f.uuid().primary().asName('id') public id: string,
+        @f.uuid().index().asName('project') public project: string,
+    ) {
     }
 }

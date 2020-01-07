@@ -2,21 +2,20 @@ import {BehaviorSubject, TeardownLogic, Subject, Observable} from "rxjs";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {IdInterface} from "./contract";
 import {ClassType} from "@marcj/estdlib";
-import {Entity, Field, getEntitySchema, classToPlain, RegisteredEntities, plainToClass, FieldAny} from "@marcj/marshal";
+import {Entity, f, getClassSchema, classToPlain, RegisteredEntities, plainToClass} from "@marcj/marshal";
 
 @Entity('@error:json')
 export class JSONError {
-    constructor(@FieldAny().asName('json') public readonly json: any) {
+    constructor(@f.any().asName('json') public readonly json: any) {
     }
 }
 
 
 export class ValidationErrorItem {
     constructor(
-        @Field().asName('path') public readonly path: string,
-        @Field().asName('message') public readonly message: string,
-        @Field().asName('code') public readonly code: string,
-        @Field().asName('entityName') public readonly entityName: string,
+        @f.asName('path') public readonly path: string,
+        @f.asName('message') public readonly message: string,
+        @f.asName('code') public readonly code: string,
     ) {
     }
 }
@@ -24,12 +23,12 @@ export class ValidationErrorItem {
 @Entity('@error:validation')
 export class ValidationError {
     constructor(
-        @Field(ValidationErrorItem).asArray().asName('errors') public readonly errors: ValidationErrorItem[]
+        @f.array(ValidationErrorItem).asName('errors') public readonly errors: ValidationErrorItem[]
     ) {
     }
 
-    static from(errors: { path: string, message: string, code?: string, entityName?: string }[]) {
-        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '', v.entityName || '')));
+    static from(errors: { path: string, message: string, code?: string}[]) {
+        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '')));
     }
 
     get message(): string {
@@ -40,10 +39,10 @@ export class ValidationError {
 @Entity('@error:parameter')
 export class ValidationParameterError {
     constructor(
-        @Field().asName('controller') public readonly controller: string,
-        @Field().asName('action') public readonly action: string,
-        @Field().asName('arg') public readonly arg: number,
-        @Field(ValidationErrorItem).asArray().asName('errors') public readonly errors: ValidationErrorItem[]
+        @f.asName('controller') public readonly controller: string,
+        @f.asName('action') public readonly action: string,
+        @f.asName('arg') public readonly arg: number,
+        @f.array(ValidationErrorItem).asName('errors') public readonly errors: ValidationErrorItem[]
     ) {
     }
 
@@ -56,7 +55,7 @@ export function getSerializedErrorPair(error: any): [string, any, any] {
     if (error instanceof Error) {
         return ['@error:default', error.message, error.stack];
     } else {
-        const entityName = getEntitySchema(error['constructor'] as ClassType<typeof error>).name;
+        const entityName = getClassSchema(error['constructor'] as ClassType<typeof error>).name;
         if (entityName) {
             return [entityName, classToPlain(error['constructor'] as ClassType<typeof error>, error), error ? error.stack : undefined];
         }

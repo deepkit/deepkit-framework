@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import {ServerMessageActionType, ServerMessageActionTypeNames} from "./contract";
-import {ClassType, eachKey, getClassName} from "@marcj/estdlib";
+import {ServerMessageActionTypeNames} from "./contract";
+import {ClassType, eachKey, getClassName, getClassPropertyName} from "@marcj/estdlib";
 import {Observable} from "rxjs";
-import {getEntityName} from "@marcj/marshal";
+import {getEntityName, getClassSchema, PropertySchemaSerialized, PropertySchema} from "@marcj/marshal";
 
 type TYPES = ClassType<any> | 'any' | Object | String | Number | Boolean | undefined;
 
@@ -38,116 +38,16 @@ function getSafeEntityName(classType: any): string | undefined {
     return getEntityName(classType as ClassType<any>);
 }
 
-export function getActionReturnType<T>(target: ClassType<T>, method: string): ServerMessageActionType {
-    const returnType = Reflect.getMetadata('design:returntype', target.prototype, method);
-
-    //returnType might be Array in case of "string[], number[]" etc. The actual type is lost.
-    //when it's "Object" and meta is undefined, we should print a warning saying the serialisation might be wrong.
-
-    const meta = Reflect.getMetadata('glut:returnType', target.prototype, method) as {
-        type: TYPES,
-        partial: true
-    };
-
-    if (meta) {
-        const typeName = typeNameOf(meta.type);
-        try {
-            return {
-                type: typeName,
-                array: returnType === Array,
-                entityName: typeName === 'Entity' ? getSafeEntityName(meta.type) : undefined,
-                partial: meta.partial
-            };
-        } catch (error) {
-            throw new Error(`Error in parsing return type of ${getClassName(target)}::${method}: ${error}`);
-        }
-    }
-
-    const typeName = typeNameOf(returnType);
-
-    function getValidTypeOf(t: any): any {
-        if (
-            returnType === Array
-            || returnType === Promise
-            || returnType === Observable
-        ) {
-            return undefined;
-        }
-
-        return t;
-    }
-
-    try {
-        return {
-            type: typeNameOf(getValidTypeOf(returnType)),
-            array: returnType === Array,
-            entityName: typeName === 'Entity' ? getSafeEntityName(returnType) : undefined,
-            partial: false
-        };
-    } catch (error) {
-        throw new Error(`Error in parsing returnType of ${getClassName(target)}::${method}: ${error}`);
-    }
+export function getActionReturnType<T>(target: ClassType<T>, method: string): PropertySchemaSerialized {
+    return getClassSchema(target).getMethod(method).toJSON();
 }
 
-export function getActionParameters<T>(target: ClassType<T>, method: string): ServerMessageActionType[] {
+export function getActionParameters<T>(target: ClassType<T>, method: string): PropertySchema[] {
     if (!target || !target.prototype) {
         throw new Error('Target is undefined or has no prototype.');
     }
 
-    const paramTypes = Reflect.getMetadata('design:paramtypes', target.prototype, method);
-
-    if (!paramTypes) {
-        console.log('design:paramtypes', target.prototype, method, paramTypes);
-        throw new Error('EmitDecoratorMetadata is not enabled.');
-    }
-
-    const result: ServerMessageActionType[] = [];
-
-    for (const i of eachKey(paramTypes)) {
-        const returnType = paramTypes[i];
-
-        const meta = Reflect.getMetadata('glut:parameters:' + i, target.prototype, method) as {
-            type: ClassType<any> | String | Number | Boolean | undefined,
-            partial: true
-        } | undefined;
-
-        if (!meta && returnType === Array) {
-            throw Error(`${getClassName(target)}::${method} argument ${i} is an Array. You need to specify it's content using e.g. @ParamType(String).`);
-        }
-
-        if (!meta && returnType === Object) {
-            throw Error(`${getClassName(target)}::${method} argument ${i} is an Object with unknown structure. Define an entity and use @ParamType(MyEntity).`);
-        }
-
-        if (meta) {
-            const typeName = typeNameOf(meta.type);
-            try {
-                result.push({
-                    type: typeName,
-                    array: returnType === Array,
-                    entityName: typeName === 'Entity' ? getSafeEntityName(meta.type) : undefined,
-                    partial: meta.partial
-                });
-            } catch (error) {
-                throw new Error(`Error in parsing in argument ${i} of ${getClassName(target)}::${method}: ${error}`);
-            }
-            continue;
-        }
-
-        const typeName = typeNameOf(returnType);
-        try {
-            result.push({
-                type: typeName,
-                array: false,
-                entityName: typeName === 'Entity' ? getSafeEntityName(returnType) : undefined,
-                partial: false
-            });
-        } catch (error) {
-            throw new Error(`Error in parsing in argument ${i} of ${getClassName(target)}::${method}: ${error}`);
-        }
-    }
-
-    return result;
+    return getClassSchema(target).getMethodProperties(method);
 }
 
 export function getActions<T>(target: ClassType<T>): { [name: string]: {} } {
@@ -160,51 +60,6 @@ export function Action(options?: {}) {
         actions[property] = options || {};
 
         Reflect.defineMetadata('glut:actions', actions, target);
-    };
-}
-
-export function ReturnType<T>(returnType: ClassType<T> | String | Number | Boolean | undefined) {
-    return (target: Object, property: string) => {
-        return Reflect.defineMetadata('glut:returnType', {
-            type: returnType,
-            partial: false
-        }, target, property);
-    };
-}
-
-export function ReturnPlainObject<T>() {
-    return (target: Object, property: string) => {
-        return Reflect.defineMetadata('glut:returnType', {
-            type: 'Plain',
-            partial: false
-        }, target, property);
-    };
-}
-
-export function PartialEntityReturnType<T>(returnType: ClassType<T> | String | Number | Boolean | undefined) {
-    return (target: Object, property: string) => {
-        return Reflect.defineMetadata('glut:returnType', {
-            type: returnType,
-            partial: true
-        }, target, property);
-    };
-}
-
-export function ParamType<T>(paramType: ClassType<T> | String | Number | Boolean | undefined | 'any') {
-    return (target: Object, property: string, parameterIndex: number) => {
-        return Reflect.defineMetadata('glut:parameters:' + parameterIndex, {
-            type: paramType,
-            partial: false
-        }, target, property);
-    };
-}
-
-export function PartialParamType<T>(paramType: ClassType<T> | String | Number | Boolean | undefined | 'any') {
-    return (target: Object, property: string, parameterIndex: number) => {
-        return Reflect.defineMetadata('glut:parameters:' + parameterIndex, {
-            type: paramType,
-            partial: true
-        }, target, property);
     };
 }
 

@@ -1,5 +1,6 @@
 import {JSONEntity} from "./core";
 import {CollectionPaginationEvent, CollectionSort, FilterParameters} from "./collection";
+import {PropertySchemaSerialized} from "@marcj/marshal";
 
 export interface IdInterface {
     id: string;
@@ -284,7 +285,7 @@ export interface ServerMessageTypeSubject {
     type: 'type';
     returnType: 'subject';
     id: number;
-    encoding: string | '@base64' | '@plain';
+    encoding: PropertySchemaSerialized;
     data: any;
 }
 
@@ -294,7 +295,7 @@ export type ServerMessageType = ServerMessageTypeJson | ServerMessageTypeCollect
 export interface ServerMessageNextJson {
     type: 'next/json';
     id: number;
-    encoding: string | '@base64' | '@plain';
+    encoding: PropertySchemaSerialized;
     next: any;
 }
 
@@ -307,7 +308,7 @@ export interface ServerPushMessageMessage {
 export interface ServerMessageNextObservable {
     type: 'next/observable';
     id: number;
-    encoding: string | '@base64' | '@plain';
+    encoding: PropertySchemaSerialized;
     next: any;
     subscribeId: number;
 }
@@ -315,14 +316,14 @@ export interface ServerMessageNextObservable {
 export interface ServerMessageNextSubject {
     type: 'next/subject';
     id: number;
-    encoding: string | '@base64' | '@plain';
+    encoding: PropertySchemaSerialized;
     next: any;
 }
 
 export interface ServerMessageAppendSubject {
     type: 'append/subject';
     id: number;
-    encoding: string | '@base64' | '@plain';
+    encoding: PropertySchemaSerialized;
     append: any;
 }
 
@@ -385,18 +386,10 @@ export interface ServerMessageAuthorize {
 
 export type ServerMessageActionTypeNames = 'Entity' | 'Object' | 'Any' | 'Plain' | 'String' | 'Date' | 'Number' | 'Boolean' | 'undefined';
 
-export type ServerMessageActionType = {
-    partial: boolean,
-    type: ServerMessageActionTypeNames;
-    array: boolean;
-    entityName?: string,
-};
-
 export interface ServerMessageActionTypes {
     type: 'actionTypes/result';
     id: number;
-    parameters: ServerMessageActionType[];
-    returnType: ServerMessageActionType;
+    parameters: PropertySchemaSerialized[];
 }
 
 export type ServerMessageResult = ServerMessageActionTypes | ServerMessageAuthorize | ServerMessageType
@@ -412,6 +405,7 @@ export interface ServerMessagePeerChannelMessage {
     id: number;
     type: 'peerController/message';
     replyId: string;
+    clientId: string;
     data: any;
 }
 

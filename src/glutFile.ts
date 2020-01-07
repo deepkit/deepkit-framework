@@ -1,5 +1,5 @@
 import {IdInterface} from "./contract";
-import {Entity, EnumField, uuid, IDField, UUIDField, Field} from "@marcj/marshal";
+import {Entity, f, uuid} from "@marcj/marshal";
 import {ClassType, eachKey} from "@marcj/estdlib";
 
 export enum FileMode {
@@ -9,26 +9,25 @@ export enum FileMode {
 
 @Entity('file', 'files')
 export class GlutFile implements IdInterface {
-    @IDField()
-    @UUIDField()
+    @f.primary().uuid()
     id: string = uuid();
 
-    @Field()
+    @f
     version: number = 0;
 
-    @EnumField(FileMode)
+    @f.enum(FileMode)
     mode: FileMode = FileMode.closed;
 
-    @Field().index()
+    @f.index()
     md5?: string; //undefined in case of file is in mode=streaming
 
-    @Field()
+    @f
     size: number = 0;
 
-    @Field()
+    @f
     created: Date = new Date();
 
-    @Field()
+    @f
     updated: Date = new Date();
 
     constructor(
@@ -39,7 +38,7 @@ export class GlutFile implements IdInterface {
          *    model.py
          *    .deepkit/log/master.txt
          */
-        @Field().asName('path').index()
+        @f.asName('path').index()
         public path: string,
     ) {
         if (undefined === this.path) {

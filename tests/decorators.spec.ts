@@ -3,11 +3,7 @@ import 'reflect-metadata';
 import {
     Action,
     getActionParameters,
-    getActionReturnType,
     getActions,
-    ParamType,
-    PartialEntityReturnType, PartialParamType,
-    ReturnType
 } from "../src/decorators";
 import {Entity} from "@marcj/marshal";
 import {Observable} from "rxjs";
