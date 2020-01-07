@@ -1,32 +1,32 @@
 import {BehaviorSubject, Observable, Subject, Subscriber} from "rxjs";
-import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
+import {propertyClassToPlain, propertyPlainToClass, PropertySchema, PropertySchemaSerialized, RegisteredEntities} from "@marcj/marshal";
 import {
+    Batcher,
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection,
     CollectionPaginationEvent,
-    executeActionAndSerialize,
+    ConnectionMiddleware,
+    executeAction,
     getActionParameters,
-    getActionReturnType,
     getActions,
-    getSerializedErrorPair,
     getUnserializedError,
     MessageSubject,
+    Progress,
     RemoteController,
-    ServerMessageActionType,
     ServerMessageActionTypes,
+    ServerMessageAll,
     ServerMessageAuthorize,
     ServerMessageComplete,
     ServerMessageError,
     ServerMessagePeerChannelMessage,
     ServerMessageResult,
+    SimpleConnectionWriter,
     StreamBehaviorSubject,
-    Batcher, Progress,
 } from "@marcj/glut-core";
-import {applyDefaults, ClassType, each, eachKey, isArray, sleep, asyncOperation} from "@marcj/estdlib";
+import {applyDefaults, asyncOperation, ClassType, each, eachKey, sleep} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
 import {EntityState} from "./entity-state";
-import {Buffer} from "buffer";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';
@@ -37,8 +37,6 @@ export class SocketClientConfig {
 
     token: any = undefined;
 }
-
-type ActionTypes = { parameters: ServerMessageActionType[], returnType: ServerMessageActionType };
 
 export class AuthenticationError extends Error {
     constructor(message: string = 'Authentication failed') {
@@ -113,7 +111,7 @@ export class SocketClient {
     public readonly connection = new BehaviorSubject<boolean>(false);
 
     private cachedActionsTypes: {
-        [controllerName: string]: { [actionName: string]: {types?: ActionTypes, promise?: Promise<void>} }
+        [controllerName: string]: { [actionName: string]: { types?: { parameters: PropertySchema[] }, promise?: Promise<void> } }
     } = {};
 
     public constructor(
@@ -139,9 +137,12 @@ export class SocketClient {
 
         const peerActionTypes: {
             [name: string]: {
-                parameters: ServerMessageActionType[],
-                returnType: ServerMessageActionType
+                parameters: PropertySchema[],
             }
+        } = {};
+
+        const peerConnectionMiddleware: {
+            [cientId: string]: ConnectionMiddleware
         } = {};
 
         return new Promise(async (resolve, reject) => {
@@ -173,6 +174,29 @@ export class SocketClient {
                 }
 
                 if (message.type === 'peerController/message') {
+                    if (!peerConnectionMiddleware[message.clientId]) {
+                        peerConnectionMiddleware[message.clientId] = new ConnectionMiddleware(new class extends SimpleConnectionWriter {
+                            write(connectionMessage: ServerMessageAll) {
+                                if (connectionMessage.type === 'peerController/message' || connectionMessage.type === 'channel') {
+                                    return;
+                                }
+
+                                if (connectionMessage.type === 'entity/remove' || connectionMessage.type === 'entity/removeMany'
+                                    || connectionMessage.type === 'entity/update' || connectionMessage.type === 'entity/patch') {
+                                    return;
+                                }
+
+                                activeSubject.sendMessage({
+                                    name: 'peerController/message',
+                                    controllerName: name,
+                                    replyId: message.replyId,
+                                    data: connectionMessage
+                                });
+                            }
+                        });
+                    }
+
+
                     const data = message.data as {
                         name: 'actionTypes',
                         action: string,
@@ -195,14 +219,12 @@ export class SocketClient {
                     if (data.name === 'actionTypes') {
                         peerActionTypes[data.action] = {
                             parameters: getActionParameters((controllerInstance as any).constructor as ClassType<T>, data.action),
-                            returnType: getActionReturnType((controllerInstance as any).constructor as ClassType<T>, data.action),
                         };
 
                         const result: ServerMessageActionTypes = {
                             type: 'actionTypes/result',
                             id: 0, //will be overwritten
-                            parameters: peerActionTypes[data.action].parameters,
-                            returnType: peerActionTypes[data.action].returnType,
+                            parameters: peerActionTypes[data.action].parameters.map(v => v.toJSON()),
                         };
 
                         activeSubject.sendMessage({
@@ -215,54 +237,23 @@ export class SocketClient {
 
                     if (data.name === 'action') {
                         if (!peerActionTypes[data.action]) {
-                            //when the client cached the parameters, it won't execute actionTypes again
+                            //when the client cached the parameters, it won't execute 'actionTypes' again
                             peerActionTypes[data.action] = {
                                 parameters: getActionParameters((controllerInstance as any).constructor as ClassType<T>, data.action),
-                                returnType: getActionReturnType((controllerInstance as any).constructor as ClassType<T>, data.action),
                             };
                         }
 
                         try {
-                            let actionResult: any = executeActionAndSerialize(peerActionTypes[data.action], name, controllerInstance, data.action, data.args);
+                            //todo remove that shit and use the ConnectionMiddleware as the server does
+                            const {value, encoding} = await executeAction(peerActionTypes[data.action], name, controllerInstance, data.action, data.args);
 
-                            if (actionResult && actionResult.then) {
-                                actionResult = await actionResult;
-                            }
-
-                            if (actionResult instanceof Observable) {
-                                activeSubject.sendMessage({
-                                    name: 'peerController/message',
-                                    controllerName: name,
-                                    replyId: message.replyId,
-                                    data: {
-                                        type: 'error',
-                                        id: 0,
-                                        stack: undefined,
-                                        entityName: '@error:default',
-                                        error: `Action ${data.action} returned Observable, which is not supported.`
-                                    }
-                                });
-                                console.warn(`Action ${data.action} returned Observable, which is not supported.`);
-                                return;
-                            }
-
-                            activeSubject.sendMessage({
-                                name: 'peerController/message',
-                                controllerName: name,
-                                replyId: message.replyId,
-                                data: {type: 'next/json', id: message.id, encoding: '@plain', next: actionResult}
-                            });
-                        } catch (errorObject) {
-                            const [entityName, error, stack] = getSerializedErrorPair(errorObject);
-
-                            activeSubject.sendMessage({
-                                name: 'peerController/message',
-                                controllerName: name,
-                                replyId: message.replyId,
-                                data: {type: 'error', id: 0, entityName, error, stack}
-                            });
+                            peerConnectionMiddleware[message.clientId].actionMessageOut(message.data, value, encoding, name, data.action);
+                        } catch (error) {
+                            peerConnectionMiddleware[message.clientId].writer.sendError(message.id, error);
                         }
                     }
+
+                    peerConnectionMiddleware[message.clientId].messageIn(message.data);
                 }
             }, (error: any) => {
                 delete this.registeredControllers[name];
@@ -436,7 +427,9 @@ export class SocketClient {
         }
     }
 
-    public async getActionTypes(controller: string, actionName: string, timeoutInSeconds = 0): Promise<ActionTypes> {
+    public async getActionTypes(controller: string, actionName: string, timeoutInSeconds = 0): Promise<{
+        parameters: PropertySchema[]
+    }> {
         if (!this.cachedActionsTypes[controller]) {
             this.cachedActionsTypes[controller] = {};
         }
@@ -462,8 +455,7 @@ export class SocketClient {
                     throw new Error(reply.error);
                 } else if (reply.type === 'actionTypes/result') {
                     this.cachedActionsTypes[controller][actionName].types = {
-                        parameters: reply.parameters,
-                        returnType: reply.returnType
+                        parameters: reply.parameters.map(v => PropertySchema.fromJSON(v)),
                     };
                     resolve();
                 } else {
@@ -496,37 +488,7 @@ export class SocketClient {
             const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
             for (const i of eachKey(args)) {
-                const type = types.parameters[i];
-
-                if (!type) continue;
-
-                if (undefined === args[i]) {
-                    continue;
-                }
-
-                if (type.type === 'Entity' && type.entityName) {
-                    if (!RegisteredEntities[type.entityName]) {
-                        throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
-                    }
-
-                    if (type.partial) {
-                        args[i] = partialClassToPlain(RegisteredEntities[type.entityName], args[i]);
-                    } else {
-                        args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
-                    }
-                }
-
-                if (type.type === 'String') {
-                    args[i] = type.array ? args[i].map((v: any) => String(v)) : String(args[i]);
-                }
-
-                if (type.type === 'Number') {
-                    args[i] = type.array ? args[i].map((v: any) => Number(v)) : Number(args[i]);
-                }
-
-                if (type.type === 'Boolean') {
-                    args[i] = type.array ? args[i].map((v: any) => Boolean(v)) : Boolean(args[i]);
-                }
+                args[i] = propertyClassToPlain(Object, name, args[i], types.parameters[i]);
             }
 
             const activeSubject = this.sendMessage<ServerMessageResult>({
@@ -537,52 +499,18 @@ export class SocketClient {
                 timeout: timeoutInSeconds,
             }, {timeout: timeoutInSeconds, progressable: true});
 
-            function deserializeResult(encoding: string | '@base64' | '@plain', next: any): any {
-                if (types.returnType.type === 'Date') {
-                    return new Date(next);
-                }
-
-                if (types.returnType.type === 'Entity') {
-                    if (next === null || next === undefined) {
-                        return next;
-                    }
-
-                    const classType = RegisteredEntities[types.returnType.entityName!];
-
-                    if (!classType) {
-                        reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                        activeSubject.complete();
-                        return;
-                    }
-
-                    if (types.returnType.partial) {
-                        if (isArray(next)) {
-                            return next.map(v => partialPlainToClass(classType, v));
-                        } else {
-                            return partialPlainToClass(classType, next);
-                        }
-                    } else {
-                        if (isArray(next)) {
-                            return next.map(v => plainToClass(classType, v));
-                        } else {
-                            return plainToClass(classType, next);
-                        }
-                    }
-                }
-
-                if (encoding === '@plain') {
-                    return next;
-                }
-
-                if (encoding === '@base64') {
-                    return Buffer.from(next, 'base64');
-                }
-
-                const classType = RegisteredEntities[types.returnType.entityName!];
-                return plainToClass(classType, next);
+            function deserializeResult(encoding: PropertySchemaSerialized, next: any): any {
+                return propertyPlainToClass(
+                    Object,
+                    name,
+                    next, [], 1, {onFullLoadCallbacks: []},
+                    PropertySchema.fromJSON(encoding),
+                );
             }
 
             activeSubject.subscribe((reply: ServerMessageResult) => {
+                //todo, move this whole block into a class and use it in internal-client as well.
+                // console.log('reply', reply);
                 if (reply.type === 'type') {
                     if (reply.returnType === 'subject') {
 
@@ -711,7 +639,6 @@ export class SocketClient {
                 }
 
                 if (reply.type === 'next/observable') {
-
                     if (subscribers[reply.subscribeId]) {
                         subscribers[reply.subscribeId].next(deserializeResult(reply.encoding, reply.next));
                     }

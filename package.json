@@ -15,19 +15,19 @@
   },
   "peerDependencies": {
     "@marcj/glut-core": "0.0.2",
-    "@marcj/marshal": "^0.9.0",
+    "@marcj/marshal": "^1.0.0",
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.14",
-    "@marcj/estdlib-rxjs": "^0.1.14",
+    "@marcj/estdlib": "^0.1.17",
+    "@marcj/estdlib-rxjs": "^0.1.17",
     "dot-prop": "^4.2.0",
     "ws": "^6.1.2"
   },
   "devDependencies": {
     "@marcj/glut-core": "^0.0.21",
-    "@marcj/marshal": "^0.9.0",
+    "@marcj/marshal": "^1.0.0",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
     "reflect-metadata": "^0.1.13"
