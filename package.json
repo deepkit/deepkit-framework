@@ -1,6 +1,6 @@
 {
   "name": "@marcj/estdlib",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "engineering stdlib for typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
