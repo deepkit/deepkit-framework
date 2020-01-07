@@ -1,7 +1,7 @@
 import 'jest';
 import 'reflect-metadata';
-import {Action, Controller, ReturnType} from "@marcj/glut-core";
-import {Entity, Field} from '@marcj/marshal';
+import {Action, Controller} from "@marcj/glut-core";
+import {Entity, f} from '@marcj/marshal';
 import {closeAllCreatedServers, createServerClientPair} from "./util";
 import {Application} from "@marcj/glut-server";
 import {Session} from "@marcj/glut-server";
@@ -19,7 +19,7 @@ afterAll(async () => {
 
 @Entity('user')
 class User {
-    constructor(@Field() public name: string) {
+    constructor(@f public name: string) {
         this.name = name;
     }
 }
@@ -28,7 +28,7 @@ test('test peer2peer', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @ReturnType(String)
+        @f.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }

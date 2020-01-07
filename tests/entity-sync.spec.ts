@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@marcj/glut-core";
 import {ClientConnection, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
 import {closeAllCreatedServers, createServerClientPair} from "./util";
-import {Entity, Field, getEntitySchema, IDField, uuid, UUIDField} from '@marcj/marshal';
+import {Entity, f, getClassSchema, uuid} from '@marcj/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@marcj/estdlib-rxjs';
 import {sleep} from '@marcj/estdlib';
@@ -21,14 +21,13 @@ afterAll(async () => {
 // global.Promise = Promise;
 
 class UserBase implements IdInterface {
-    @IDField()
-    @Field()
+    @f.primary().uuid()
     id: string = uuid();
 
-    @Field()
+    @f
     version: number = 1;
 
-    constructor(@Field() public name: string) {
+    constructor(@f public name: string) {
         this.name = name;
     }
 }
@@ -36,7 +35,7 @@ class UserBase implements IdInterface {
 test('test increase', async () => {
     @Entity('user_increase')
     class User extends UserBase {
-        @Field()
+        @f
         connections: number = 0;
     }
 
@@ -464,17 +463,17 @@ test('test entity collection unsubscribe + findOne', async () => {
 
     @Entity('jobTest')
     class Job implements IdInterface {
-        @UUIDField()
+        @f.uuid()
         id: string = uuid();
 
-        @Field()
+        @f
         version: number = 0;
 
-        constructor(@Field() public name: string) {
+        constructor(@f public name: string) {
         }
     }
 
-    expect(getEntitySchema(Job).name).toBe('jobTest');
+    expect(getClassSchema(Job).name).toBe('jobTest');
 
     @Controller('test')
     class TestController {
@@ -642,43 +641,40 @@ test('test entity collection unsubscribe + findOne', async () => {
 test('test entity collection reactive find', async () => {
     @Entity('entitySyncTeam')
     class Team implements IdInterface {
-        @UUIDField()
-        @IDField()
+        @f.primary().uuid()
         id: string = uuid();
 
-        @Field()
+        @f
         version: number = 0;
 
-        constructor(@Field() public name: string) {
+        constructor(@f public name: string) {
         }
     }
 
     @Entity('entitySyncUserTeam')
     class UserTeam {
-        @UUIDField()
-        @IDField()
+        @f.primary().uuid()
         id: string = uuid();
 
-        @Field()
+        @f
         version: number = 0;
 
         constructor(
-            @UUIDField() public teamId: string,
-            @UUIDField() public userId: string,
+            @f.uuid() public teamId: string,
+            @f.uuid() public userId: string,
         ) {
         }
     }
 
     @Entity('entitySyncUser')
     class User implements IdInterface {
-        @UUIDField()
-        @IDField()
+        @f.primary().uuid()
         id: string = uuid();
 
-        @Field()
+        @f
         version: number = 0;
 
-        constructor(@Field() public name: string) {
+        constructor(@f public name: string) {
         }
     }
 
@@ -834,18 +830,17 @@ test('test entity collection reactive find', async () => {
 test('test entity collection pagination', async () => {
     @Entity('paginate/item')
     class Item implements IdInterface {
-        @UUIDField()
-        @IDField()
+        @f.primary().uuid()
         id: string = uuid();
 
-        @Field()
+        @f
         version: number = 0;
 
         constructor(
-            @Field() public name: string,
-            @Field() public nr: number = 0,
-            @Field() public clazz: string = 'a',
-            @UUIDField() public owner: string
+            @f public name: string,
+            @f public nr: number = 0,
+            @f public clazz: string = 'a',
+            @f.uuid() public owner: string
         ) {
         }
     }

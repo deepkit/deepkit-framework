@@ -11,13 +11,13 @@
     "tsc-watch": "echo nothing"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.14",
-    "@marcj/estdlib-rxjs": "^0.1.14",
+    "@marcj/estdlib": "^0.1.17",
+    "@marcj/estdlib-rxjs": "^0.1.17",
     "@marcj/glut-client": "^0.0.21",
     "@marcj/glut-core": "^0.0.21",
     "@marcj/glut-server": "^0.0.21",
-    "@marcj/marshal": "^0.9.0",
-    "@marcj/marshal-mongo": "^0.9.1",
+    "@marcj/marshal": "^1.0.0",
+    "@marcj/marshal-mongo": "^1.0.0",
     "@types/proper-lockfile": "^4.1.1",
     "bluebird": "^3.5.1",
     "buffer": "^5.2.1",

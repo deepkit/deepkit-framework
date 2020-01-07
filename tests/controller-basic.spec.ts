@@ -3,21 +3,16 @@ import 'reflect-metadata';
 import {
     Action,
     Controller,
-    ParamType,
-    PartialEntityReturnType,
-    PartialParamType,
-    ReturnType,
-    ReturnPlainObject,
     ValidationError,
     ValidationErrorItem,
     ValidationParameterError
 } from "@marcj/glut-core";
 import {closeAllCreatedServers, createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
-import {bufferCount} from "rxjs/operators";
-import {Entity, Field} from '@marcj/marshal';
+import {bufferCount, first} from "rxjs/operators";
+import {Entity, f, getClassSchema, PropertySchema} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
-import {CustomError, isArray} from '@marcj/estdlib';
+import {isArray} from '@marcj/estdlib';
 import {JSONError} from "@marcj/glut-core";
 
 afterAll(async () => {
@@ -29,17 +24,17 @@ global['WebSocket'] = require('ws');
 
 @Entity('user')
 class User {
-    constructor(@Field() public name: string) {
+    constructor(@f public name: string) {
         this.name = name;
     }
 }
 
 @Entity('error:custom-error')
 class MyCustomError {
-    @Field()
+    @f
     additional?: string;
 
-    constructor(@Field() public readonly message: string) {
+    constructor(@f public readonly message: string) {
 
     }
 }
@@ -48,7 +43,7 @@ test('test basic setup', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @ReturnType(String)
+        @f.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }
@@ -80,34 +75,30 @@ test('test basic setup', async () => {
         }
     }
 
+    const schema = getClassSchema(TestController);
+    {
+        const u = schema.getMethodProperties('validationError')[0];
+        expect(u).toBeInstanceOf(PropertySchema);
+        expect(u.type).toBe('class');
+        expect(u.classType).toBe(User);
+        expect(u.toJSON()).toEqual({name: '0', type: 'class', classType: 'user'});
+    }
+
     const {client, close} = await createServerClientPair('test basic setup', [TestController]);
     {
         const types = await client.getActionTypes('test', 'names');
-        expect(types.parameters[0]).toEqual({
-            partial: false,
-            type: 'String',
-            array: false,
-        });
-        expect(types.returnType).toEqual({
-            partial: false,
-            type: 'String',
-            array: true,
-        });
+        expect(types.parameters[0].type).toBe('string');
     }
 
     {
         const types = await client.getActionTypes('test', 'user');
-        expect(types.parameters[0]).toEqual({
-            partial: false,
-            type: 'String',
-            array: false,
-        });
-        expect(types.returnType).toEqual({
-            partial: false,
-            type: 'Entity',
-            entityName: 'user',
-            array: false,
-        });
+        expect(types.parameters[0].type).toBe('string');
+    }
+
+    {
+        const types = await client.getActionTypes('test', 'validationError');
+        expect(types.parameters[0].type).toBe('class');
+        expect(types.parameters[0].classType).toBe(User);
     }
 
     const test = client.controller<TestController>('test');
@@ -155,7 +146,7 @@ test('test basic setup', async () => {
         } catch (error) {
             expect(error).toBeInstanceOf(ValidationParameterError);
             expect((error as ValidationError).errors[0]).toBeInstanceOf(ValidationErrorItem);
-            expect((error as ValidationError).errors[0]).toEqual({code: 'required', "entityName": "user", message: 'Required value is undefined', path: 'name'});
+            expect((error as ValidationError).errors[0]).toEqual({code: 'required', message: 'Required value is undefined', path: 'validationError#0.name'});
         }
     }
 
@@ -171,7 +162,7 @@ test('test basic serialisation: primitives', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @ReturnType(String)
+        @f.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', 15 as any as string, last];
         }
@@ -191,36 +182,36 @@ test('test basic serialisation return: entity', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @ReturnType(User)
+        @f.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
 
         @Action()
-        @ReturnType(User)
-        async optionalUser(): Promise<User | undefined> {
-            return undefined;
+        @f.type(User).optional()
+        async optionalUser(@f.optional() returnUser: boolean = false): Promise<User | undefined> {
+            return returnUser ? new User('optional') : undefined;
         }
 
         @Action()
-        @ReturnType(User)
+        @f.array(User)
         async users(name: string): Promise<User[]> {
             return [new User(name)];
         }
 
         @Action()
-        async failUser(name: string): Promise<User> {
+        async notAnnotatedUser(name: string): Promise<User> {
             return new User(name);
         }
 
         @Action()
-        @ReturnPlainObject()
+        @f.any()
         async allowPlainObject(name: string): Promise<{mowla: boolean, name: string, date: Date}> {
             return {mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z')};
         }
 
         @Action()
-        async failObservable(name: string): Promise<Observable<User>> {
+        async notAnnotatedObservable(name: string): Promise<Observable<User>> {
             return new Observable((observer) => {
                 observer.next(new User(name));
             });
@@ -236,9 +227,14 @@ test('test basic serialisation return: entity', async () => {
     const users = await test.users('peter');
     expect(users.length).toBe(1);
     expect(users[0]).toBeInstanceOf(User);
+    expect(users[0].name).toBe('peter');
 
     const optionalUser = await test.optionalUser();
     expect(optionalUser).toBeUndefined();
+
+    const optionalUser2 = await test.optionalUser(true);
+    expect(optionalUser2).toBeInstanceOf(User);
+    expect(optionalUser2!.name).toBe('optional');
 
     const struct = await test.allowPlainObject('peter');
     expect(struct.mowla).toBe(true);
@@ -246,20 +242,16 @@ test('test basic serialisation return: entity', async () => {
     expect(struct.date).toBeInstanceOf(Date);
     expect(struct.date).toEqual(new Date('1987-12-12T11:00:00.000Z'));
 
-    try {
-        await test.failUser('peter');
-        fail('Should fail');
-    } catch (e) {
-        expect(e.message).toMatch('returns an not annotated custom class instance (User) that can not be serialized.\n' +
-            'Use e.g. @ReturnType(MyClass) at your action.');
+    {
+        //this should work because returnType is dynamic every time
+        const u = await test.notAnnotatedUser('peter');
+        expect(u).toBeInstanceOf(User);
     }
 
-    try {
-        await (await test.failObservable('peter')).toPromise();
-        fail('Should fail');
-    } catch (e) {
-        expect(e.message).toMatch('Observable returns an not annotated custom class instance (User) that can not be serialized.\n' +
-            'Use e.g. @ReturnType(MyClass) at your action.');
+    {
+        //this should work because returnType is dynamic every time
+        const u = await (await test.notAnnotatedObservable('peter')).pipe(first()).toPromise();
+        expect(u).toBeInstanceOf(User);
     }
 
     await close();
@@ -286,13 +278,13 @@ test('test basic serialisation param: entity', async () => {
 test('test basic serialisation partial param: entity', async () => {
     @Entity('user3')
     class User {
-        @Field()
+        @f
         defaultVar: string = 'yes';
 
-        @Field()
+        @f
         birthdate?: Date;
 
-        constructor(@Field() public name: string) {
+        constructor(@f public name: string) {
             this.name = name;
         }
     }
@@ -312,7 +304,7 @@ test('test basic serialisation partial param: entity', async () => {
         }
 
         @Action()
-        @PartialEntityReturnType(User)
+        @f.partial(User)
         partialUser(name: string, date: Date): Partial<User> {
             return {
                 name: name,
@@ -321,7 +313,7 @@ test('test basic serialisation partial param: entity', async () => {
         }
 
         @Action()
-        user(@PartialParamType(User) user: Partial<User>): boolean {
+        user(@f.partial(User) user: Partial<User>): boolean {
             return !(user instanceof User) && user.name === 'peter2' && !user.defaultVar;
         }
     }
@@ -329,30 +321,29 @@ test('test basic serialisation partial param: entity', async () => {
     const {client, close} = await createServerClientPair('test basic serialisation partial param: entity', [TestController]);
 
     const test = client.controller<TestController>('test');
-
-    try {
-        await test.failUser({name: 'asd'});
-        fail('Should fail');
-    } catch (e) {
-        expect(e.message).toMatch('TestController::failUser argument 0 is an Object with unknown structure. Define an entity and use @ParamType(MyEntity)');
-    }
-
-    const date = new Date('1987-12-12T11:00:00.000Z');
-
-    try {
-        await test.failPartialUser('asd', date);
-        fail('Should fail');
-    } catch (e) {
-        expect(e.message).toMatch('returns an not annotated object literal that can not be serialized.\n' +
-            'Use either @ReturnPlainObject() to avoid serialisation using Marshal.ts, or (better) create an Marshal.ts entity and use @ReturnType(MyEntity) at your action.');
-    }
+    //
+    // try {
+    //     await test.failUser({name: 'asd'});
+    //     fail('Should fail');
+    // } catch (e) {
+    //     expect(e.message).toMatch('test::failUser argument 0 is an Object with unknown structure. ');
+    // }
+    //
+    // const date = new Date('1987-12-12T11:00:00.000Z');
+    //
+    // try {
+    //     await test.failPartialUser('asd', date);
+    //     fail('Should fail');
+    // } catch (e) {
+    //     expect(e.message).toMatch('test::failPartialUser result is an Object with unknown structure.');
+    // }
 
     const a = await test.user({name: 'peter2'});
     expect(a).toBeTruthy();
 
-    const partialUser = await test.partialUser('peter2', date);
-    expect(partialUser.name).toBe('peter2');
-    expect(partialUser.birthdate).toEqual(date);
+    // const partialUser = await test.partialUser('peter2', date);
+    // expect(partialUser.name).toBe('peter2');
+    // expect(partialUser.birthdate).toEqual(date);
 
     await close();
 });
@@ -361,12 +352,13 @@ test('test basic promise', async () => {
     @Controller('test')
     class TestController {
         @Action()
+        @f.array(String)
         async names(last: string): Promise<string[]> {
             return ['a', 'b', 'c', last];
         }
 
         @Action()
-        @ReturnType(User)
+        @f.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
@@ -410,7 +402,7 @@ test('test observable', async () => {
         }
 
         @Action()
-        @ReturnType(User)
+        @f.template(User)
         user(name: string): Observable<User> {
             return new Observable((observer) => {
                 observer.next(new User('first'));
@@ -448,12 +440,12 @@ test('test param serialization', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        actionString(@ParamType(String) array: string): boolean {
+        actionString(@f.type(String) array: string): boolean {
             return 'string' === typeof array;
         }
 
         @Action()
-        actionArray(@ParamType(String) array: string[]): boolean {
+        actionArray(@f.array(String) array: string[]): boolean {
             return isArray(array) && 'string' === typeof array[0];
         }
     }
