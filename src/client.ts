@@ -5,7 +5,7 @@ import {getUnserializedError, StreamBehaviorSubject} from "./core";
 import {Collection, CollectionPaginationEvent} from "./collection";
 import {PropertySchemaSerialized, propertyPlainToClass, PropertySchema, RegisteredEntities} from "@marcj/marshal";
 import {each} from "@marcj/estdlib";
-import {EntityState} from "../../client";
+import {EntityState} from "./entity-state";
 
 export class MessageSubject<T> extends Subject<T> {
     public readonly disconnected = new Subject<number>();

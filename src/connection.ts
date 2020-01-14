@@ -1,7 +1,6 @@
 import {Collection, JSONObjectCollection} from "./collection";
 import {ClientMessageAll, CollectionStream, ServerMessageAll} from "./contract";
 import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./core";
-import {Injectable, Inject} from "injection-js";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {ClassType, each} from "@marcj/estdlib";
@@ -71,12 +70,11 @@ export class SimpleConnectionWriter implements ConnectionWriterInterface {
     }
 }
 
-@Injectable()
 export class ConnectionWriter extends SimpleConnectionWriter {
     protected chunkIds = 0;
 
     constructor(
-        @Inject('socket') protected socket: ConnectionWriterStream,
+        protected socket: ConnectionWriterStream,
     ) {
         super();
     }
@@ -120,7 +118,6 @@ export class ConnectionWriter extends SimpleConnectionWriter {
 }
 
 
-@Injectable()
 export class ConnectionMiddleware {
     protected collectionSubscriptions: { [messageId: string]: Subscriptions } = {};
     protected collections: { [messageId: string]: Collection<any> } = {};
