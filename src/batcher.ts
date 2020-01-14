@@ -66,6 +66,7 @@ export class Progress extends BehaviorSubject<Progress> {
     public setDone() {
         this.done = true;
         this.next(this);
+        this.complete();
     }
 }
 
