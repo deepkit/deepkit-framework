@@ -40,7 +40,10 @@ test('test peer2peer', async () => {
 
         @Action()
         ob(): Observable<string> {
-            return new Observable(() => {
+            return new Observable((observer) => {
+                console.log('lets go?');
+                observer.next('Hello!');
+                observer.complete();
             });
         }
 
@@ -61,7 +64,6 @@ test('test peer2peer', async () => {
             return true;
         }
     }
-
     const {client, server, createClient, close} = await createServerClientPair('test peer2peer', [], [], MyAppController);
 
     await client.registerController('test', new TestController);
@@ -76,12 +78,17 @@ test('test peer2peer', async () => {
     expect(user).toBeInstanceOf(User);
     expect(user.name).toBe('Peter');
 
-    try {
-        await peerController.ob();
-        fail('should error');
-    } catch (error) {
-        expect(error.message).toBe('Action ob returned Observable, which is not supported.');
-    }
+    const observable = await peerController.ob();
+    observable.subscribe((next) => {
+        console.log('next', next);
+    }, (error) => {
+        console.log('error', error);
+    }, () => {
+        console.log('complete');
+    });
+    console.log('----');
+    const lastMessage = await observable.toPromise();
+    console.log('lastMessage', lastMessage);
 
     try {
         await peerController.throwError();
@@ -94,7 +101,7 @@ test('test peer2peer', async () => {
         await (peerController as any).nothing();
         fail('should error');
     } catch (error) {
-        expect(error.message).toBe('Action nothing does not exist.');
+        expect(error.message).toBe('Peer action nothing does not exist.');
     }
 
     try {
@@ -112,9 +119,45 @@ test('test peer2peer', async () => {
     } catch (error) {
         expect(error.message).toBe('Access denied to peer controller forbiddenToSend');
     }
+    await close();
+});
+
+test('test peer2peer internal client', async () => {
+    @Controller('test')
+    class TestController {
+        @Action()
+        @f.array(String)
+        names(last: string): string[] {
+            return ['a', 'b', 'c', last];
+        }
+
+        @Action()
+        user(name: string): User {
+            return new User(name);
+        }
+
+        @Action()
+        ob(): Observable<string> {
+            return new Observable((observer) => {
+                console.log('lets go?');
+                observer.next('Hello!');
+                observer.complete();
+            });
+        }
+
+        @Action()
+        throwError(): void {
+            throw new Error('Errored.');
+        }
+    }
+
+    const {client, server, createClient, close} = await createServerClientPair('test peer2peer internal client', [], []);
+
+    await client.registerController('test', new TestController);
 
     const internalClient: InternalClient = server.getInjector().get(InternalClient);
-    const internalPeerController = internalClient.peerController<TestController>('test');
+    const internalClientConnection = internalClient.create();
+    const internalPeerController = internalClientConnection.peerController<TestController>('test');
 
     {
         const result = await internalPeerController.names('myName');
@@ -132,7 +175,9 @@ test('test peer2peer', async () => {
         }
     }
 
-    await close();
+    internalClientConnection.destroy();
+
+    close();
 });
 
 test('test peer2peer offline', async () => {
@@ -155,6 +200,7 @@ test('test peer2peer offline', async () => {
 
     const peerController = client2.peerController<TestController>('test', 1);
     const internalClient: InternalClient = server.getInjector().get(InternalClient);
+    const internalClientConnection = internalClient.create();
 
     const controller = client.controller<TestController>('test', 1);
 
@@ -173,7 +219,7 @@ test('test peer2peer offline', async () => {
     }
 
     try {
-        const peerController = internalClient.peerController<TestController>('test');
+        const peerController = internalClientConnection.peerController<TestController>('test');
         const result = await peerController.ping();
         fail('Should not work');
     } catch (error) {
@@ -189,19 +235,19 @@ test('test peer2peer offline', async () => {
         const result = await peerController.timeout();
         fail('Should not work');
     } catch (error) {
-        expect(error).toContain('Server timed out');
+        expect(error).toContain('Server timed out after');
     }
 
-    try {
-        const peerController = internalClient.peerController<TestController>('test', 1);
+    //todo, this fails, but only when we called "await peerController.timeout();" and it errors first
+    // question is what could it be?
+    {
+        const peerController = internalClientConnection.peerController<TestController>('test', 1);
         const result = await peerController.ping();
         expect(result).toBe(true);
-    } catch (error) {
-        fail('Should  work');
     }
 
     try {
-        const peerController = internalClient.peerController<TestController>('test', 1);
+        const peerController = internalClientConnection.peerController<TestController>('test', 1);
         const result = await peerController.timeout();
         fail('Should not work');
     } catch (error) {
