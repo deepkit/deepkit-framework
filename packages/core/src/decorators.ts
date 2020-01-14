@@ -14,10 +14,10 @@ import {
     eachPair,
     getClassName,
     isClass,
+    isFunction,
     isNumber,
     isObject,
-    isPlainObject,
-    isFunction
+    isPlainObject
 } from '@marcj/estdlib';
 import {Buffer} from "buffer";
 import * as getParameterNames from "get-parameter-names";
@@ -30,7 +30,7 @@ export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
 /**
  * Type for @f.partial().
  *
- * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths.
+ * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths (like mongoDB)
  */
 export type PartialField<T> = {
     [P in keyof T]: T[P]
@@ -151,8 +151,8 @@ export class PropertySchema {
         if (resolved) {
             const name = getClassSchema(resolved).name;
             if (!name) {
-                throw new Error(`Could not serialize type information for ${this.methodName || ''}:${this.name}, got type ${getClassName(resolved)}. ` +
-                    `Please use @Entity() decorator at ${getClassName(resolved)}`);
+                throw new Error(`Could not serialize type information for ${this.methodName ? this.methodName + ':' : ''}${this.name}, got type ${getClassName(resolved)}. ` +
+                    `Either further specify the type using the @f decorator or use @Entity() decorator at the ${getClassName(resolved)} class.`);
             }
             props['classType'] = name;
         }
@@ -190,27 +190,31 @@ export class PropertySchema {
         return p;
     }
 
-    static getTypeFromJSType(type: any) {
+    static getTypeFromJSType(type: any): Types {
         if (type === String) {
             return 'string';
-        }
-        if (type === Number) {
+        } else if (type === Number) {
             return 'number';
-        }
-        if (type === Date) {
+        } else if (type === Date) {
             return 'date';
-        }
-        if (type === Buffer) {
+        } else if (type === Buffer) {
             return 'binary';
-        }
-        if (type === Boolean) {
+        } else if (type === Boolean) {
             return 'boolean';
         }
 
         return 'any';
     }
 
+    setFromJSValue(value: any) {
+        if (value === undefined || value === null) return;
+
+        this.setFromJSType(value.constructor);
+    }
+
     setFromJSType(type: any) {
+        if (type === undefined || type === null) return;
+
         this.type = PropertySchema.getTypeFromJSType(type);
 
         const isCustomObject = type !== String
@@ -239,6 +243,10 @@ export class PropertySchema {
             s[i] = this[i];
         }
         return s;
+    }
+
+    public getTemplateArg(position: number): PropertySchema | undefined {
+        return this.templateArgs ? this.templateArgs[position] : undefined;
     }
 
     getForeignClassDecorator(): PropertySchema | undefined {
@@ -409,6 +417,13 @@ export class ClassSchema {
         return this.methods[name];
     }
 
+    /**
+     * Returns true if the method got a @f decorator.
+     */
+    public hasMethod(name: string): boolean {
+        return !!this.methods[name];
+    }
+
     protected initializeMethod(name: string) {
         if (!this.initializedMethods[name]) {
             if (!Reflect.hasMetadata('design:returntype', this.proto, name)) {
@@ -416,8 +431,13 @@ export class ClassSchema {
             }
 
             if (!this.methods[name]) {
-                this.methods[name] = new PropertySchema(name);
-                this.methods[name].setFromJSType(Reflect.getMetadata('design:returntype', this.proto, name));
+                const returnType = Reflect.getMetadata('design:returntype', this.proto, name);
+                if (returnType !== Promise) {
+                    //Promise is not a legit returnType as this is automatically the case for async functions
+                    //we assume no meta data is given when Promise is defined, as it basically tells us nothing.
+                    this.methods[name] = new PropertySchema(name);
+                    this.methods[name].setFromJSType(returnType);
+                }
             }
 
             const properties = this.getOrCreateMethodProperties(name);
@@ -1286,35 +1306,40 @@ function Field(oriType?: FieldTypes) {
             return getTypeName(t);
         }
 
-        if (type && options.array && returnType !== Array) {
-            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                `Please use the correct type in @f.type(T).`
-            );
-        }
+        if (returnType !== Promise) {
+            //we don't want to check for type mismatch when returnType is a Promise.
 
-        if (type && !options.array && returnType === Array) {
-            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                `Please use @f.array(MyType) or @f.forwardArray(() => MyType), e.g. @f.array(String) for '${propertyName}: String[]'.`);
-        }
+            if (type && options.array && returnType !== Array) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                    `Please use the correct type in @f.type(T).`
+                );
+            }
 
-        if (type && options.map && returnType !== Object) {
-            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                `Please use the correct type in @f.type(TYPE).`);
-        }
+            if (type && !options.array && returnType === Array) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                    `Please use @f.array(MyType) or @f.forwardArray(() => MyType), e.g. @f.array(String) for '${propertyName}: String[]'.`);
+            }
 
-        if (!type && returnType === Array) {
-            throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
-                `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(forwardRef(() => MyType)).`
-            );
-        }
+            if (type && options.map && returnType !== Object) {
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+                    `Please use the correct type in @f.type(TYPE).`);
+            }
 
-        if (!type && returnType === Object) {
-            //typescript puts `Object` for undefined types.
-            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
-                `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
-            );
+            if (!type && returnType === Array) {
+                throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
+                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(forwardRef(() => MyType)).`
+                );
+            }
+
+            if (!type && returnType === Object) {
+                //typescript puts `Object` for undefined types.
+                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
+                    `Please note that Typescript's reflection system does not support type hints based on interfaces or types, but only classes and primitives (String, Number, Boolean, Date). ` +
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
+                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
+                );
+            }
         }
 
         const isCustomObject = type !== String

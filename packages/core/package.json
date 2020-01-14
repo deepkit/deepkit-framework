@@ -21,7 +21,7 @@
     "moment": "^2.0.0"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.15",
+    "@marcj/estdlib": "^0.1.17",
     "clone": "^2.1.2",
     "get-parameter-names": "^0.3.0",
     "uuid": "^3.2.1"

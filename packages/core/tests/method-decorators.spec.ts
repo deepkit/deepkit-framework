@@ -223,11 +223,11 @@ test('no decorators', () => {
 
 test('partial', () => {
     class Config {
-        @f.optional()
-        name?: string;
+        @f
+        name!: string;
 
-        @f.optional()
-        sub?: Config;
+        @f
+        sub!: Config;
 
         @f
         prio: number = 0;
@@ -261,6 +261,33 @@ test('partial', () => {
     expect(u.config.prio).toBeUndefined();
     expect(u.config['sub.name']).toBe('peter2');
     expect(u.config['sub.prio']).toBe(3);
+});
+
+test('argument partial', () => {
+    class Config {
+        @f
+        name!: string;
+
+        @f.optional()
+        sub?: Config;
+    }
+
+    class User {
+        foo(@f.partial(Config) config: Partial<Config>) {
+        }
+
+        @f
+        foo2(config: Config) {
+        }
+    }
+
+    expect(validateMethodArgs(User, 'foo', [{}])).toBeArrayOfSize(0);
+    expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.name"}]);
+    expect(validateMethodArgs(User, 'foo', [{name: []}])).toEqual([{"code": "invalid_string", "message": "No String given", "path": "#0.name"}]);
+    expect(validateMethodArgs(User, 'foo', [{name: ''}])).toEqual([]);
+    expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.name"}]);
+    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: undefined}])).toEqual([]);
+    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: {peter: true}}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.sub.name"}]);
 });
 
 test('argument convertion', () => {
@@ -382,6 +409,56 @@ test('short @f with type', () => {
     }
 });
 
+test('hasMethod and templateArgs', () => {
+    class Peter<T, K> {
+
+    }
+
+    function myCustom(target: object, p1: any, p2: any) {
+    }
+
+    class Controller {
+        public foo(@f.array(String) bar: string[]): string[] {
+            return [];
+        }
+
+        @f.array(String)
+        public foo2(@f.array(String) bar: string[]): string[] {
+            return [];
+        }
+
+        @f.type(Peter).template(Boolean, String)
+        public foo3(@f.array(String) bar: string[]): Peter<boolean, string> {
+            return new Peter;
+        }
+
+        @myCustom
+        public async foo4(@f.array(String) bar: string[]): Promise<string> {
+            return 'sd';
+        }
+    }
+
+    const s = getClassSchema(Controller);
+    expect(s.hasMethod('foo')).toBe(false);
+    expect(s.hasMethod('foo2')).toBe(true);
+    expect(s.hasMethod('foo3')).toBe(true);
+    expect(s.hasMethod('foo4')).toBe(false);
+
+    expect(s.getMethod('foo3').getTemplateArg(0)!.type).toBe('boolean');
+    expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
+
+    s.getMethodProperties('foo2');
+    s.getMethodProperties('foo3');
+    s.getMethodProperties('foo4');
+    expect(s.hasMethod('foo')).toBe(false);
+    expect(s.hasMethod('foo2')).toBe(true);
+    expect(s.hasMethod('foo3')).toBe(true);
+    expect(s.hasMethod('foo4')).toBe(false);
+
+    expect(s.getMethod('foo3').getTemplateArg(0)!.type).toBe('boolean');
+    expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
+});
+
 
 test('short @f second type fails', () => {
     expect(() => {
@@ -404,7 +481,7 @@ test('short @f second type fails', () => {
 
 test('short @f templateArgs', () => {
     class Observable<T> {
-        constructor(protected cb: (observer: {next: (v: T) => void}) => void) {
+        constructor(protected cb: (observer: { next: (v: T) => void }) => void) {
 
         }
     }
@@ -450,5 +527,28 @@ test('short @f templateArgs', () => {
             expect(props.templateArgs[0].isOptional).toBe(true);
             expect(props.templateArgs[0].type).toBe('string');
         }
+    }
+});
+
+test('PropertySchema setFromJSValue', () => {
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue(1);
+        expect(p.type).toBe('number')
+    }
+
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue(null);
+        expect(p.type).toBe('any')
+    }
+
+    class Peter {}
+
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue(new Peter);
+        expect(p.type).toBe('class');
+        expect(p.classType).toBe(Peter);
     }
 });
