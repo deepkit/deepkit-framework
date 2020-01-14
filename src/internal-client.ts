@@ -1,4 +1,4 @@
-import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities, uuid} from "@marcj/marshal";
+import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities, uuid, PropertySchema, propertyClassToPlain} from "@marcj/marshal";
 import {Exchange} from "./exchange";
 import {
     ActionTypes,
@@ -9,18 +9,19 @@ import {
     ServerMessageComplete,
     ServerMessageError,
     ServerMessageResult,
-    ServerMessageErrorGeneral
+    ServerMessageErrorGeneral, handleActiveSubject
 } from "@marcj/glut-core";
 import {Subscription} from "rxjs";
-import {eachKey, isArray} from "@marcj/estdlib";
+import {eachKey, isArray, each} from "@marcj/estdlib";
 import {Injectable} from "injection-js";
 import {ProcessLocker} from "./process-locker";
+import {EntityState} from "../../client";
 
+/**
+ * Internal client for communication with registered peer controllers of connected clients.
+ */
 @Injectable()
 export class InternalClient {
-    private cachedActionsTypes: {
-        [controllerName: string]: { [actionName: string]: ActionTypes }
-    } = {};
 
     constructor(
         private locker: ProcessLocker,
@@ -28,6 +29,54 @@ export class InternalClient {
     ) {
     }
 
+    create(): InternalClientConnection {
+        return new InternalClientConnection(this.locker, this.exchange);
+    }
+}
+
+
+export class InternalClientConnection {
+    protected id = uuid();
+    protected messageId = 0;
+    protected reply: {[id: number]: MessageSubject<any>} = {};
+
+    private controllerSub: { [controllerName: string]: Subscription } = {};
+
+    private cachedActionsTypes: {
+        [controllerName: string]: { [actionName: string]: ActionTypes }
+    } = {};
+
+    public readonly entityState = new EntityState();
+
+    constructor(
+        private locker: ProcessLocker,
+        private exchange: Exchange,
+    ) {
+    }
+
+    /**
+     * Closes all open peerController instances.
+     */
+    public destroy() {
+        for (const sub of each(this.controllerSub)) {
+            sub.unsubscribe();
+        }
+    }
+
+    /**
+     * It's important to close a peerController instance so all resources can be freed.
+     */
+    public closePeerController<T>(name: string) {
+        if (this.controllerSub[name]) {
+            this.controllerSub[name].unsubscribe();
+            delete this.controllerSub[name];
+        }
+    }
+
+    /**
+     * Creates a new RemoteController instance and allows to execute remote methods.
+     * Use stopPeerController(name) if you're done or InternalClientConnection.destroy();
+     */
     public peerController<T>(name: string, timeoutInSeconds = 60): RemoteController<T> {
         const t = this;
 
@@ -50,59 +99,56 @@ export class InternalClient {
         messageWithoutId: ClientMessageWithoutId,
         timeoutInSeconds = 30
     ): MessageSubject<T | ServerMessageComplete | ServerMessageError> {
-        const replyId = uuid();
-        let sub: Subscription | undefined;
         const subject = new MessageSubject<T | ServerMessageComplete | ServerMessageError>(0);
         let timer: any;
+        const messageId = this.messageId++;
+
+        //todo, move logic from SocketClient.sendMessage to here.
+        //put
+
+        subject.setSendMessageModifier((m: any) => {
+            return {
+                name: 'peerMessage',
+                controller: controllerName,
+                message: m,
+                timeout: timeoutInSeconds,
+            };
+        });
 
         (async () => {
-            //check if registered
-            const locked = await this.locker.isLocked('peerController/' + controllerName);
+            if (!this.controllerSub[controllerName]) {
+                //check if registered
+                const locked = await this.locker.isLocked('peerController/' + controllerName);
 
-            if (!locked) {
-                const next = {type: 'error', id: 0, error: `Peer controller ${controllerName} not registered`, code: 'peer_not_registered'} as ServerMessageErrorGeneral;
-                subject.next(next);
-                return;
+                if (!locked) {
+                    const next = {type: 'error', id: 0, error: `Peer controller ${controllerName} not registered`, code: 'peer_not_registered'} as ServerMessageErrorGeneral;
+                    subject.next(next);
+                    return;
+                }
+
+                this.controllerSub[controllerName] = await this.exchange.subscribe(
+                    'peerController/' + controllerName + '/reply/' + this.id, (reply: any) => {
+                        if (this.reply[reply.id] && !this.reply[reply.id].isStopped) {
+                            this.reply[reply.id].next(reply);
+                        }
+                    });
             }
 
-            sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
-                if (sub) {
-                    sub.unsubscribe();
-                }
-
-                if (!subject.isStopped) {
-                    subject.next(reply);
-                }
-            });
+            this.reply[messageId] = subject;
 
             timer = setTimeout(() => {
-                if (sub) {
-                    sub.unsubscribe();
-                }
-
                 if (!subject.isStopped) {
                     subject.error('Timed out.');
                 }
             }, timeoutInSeconds * 1000);
 
+            subject.subscribe(() => clearTimeout(timer), () => clearTimeout(timer), () => clearTimeout(timer));
+
             this.exchange.publish('peerController/' + controllerName, {
-                replyId: replyId,
-                data: messageWithoutId
+                clientId: this.id,
+                data: {id: messageId, ...messageWithoutId}
             });
         })();
-
-        subject.subscribe({
-            next: () => {
-                clearTimeout(timer);
-            }, complete: () => {
-                clearTimeout(timer);
-            }, error: () => {
-                clearTimeout(timer);
-            }}).add(() => {
-            if (sub) {
-                sub.unsubscribe();
-            }
-        });
 
         return subject;
     }
@@ -124,8 +170,7 @@ export class InternalClient {
                 throw new Error(reply.error);
             } else if (reply.type === 'actionTypes/result') {
                 this.cachedActionsTypes[controller][actionName] = {
-                    parameters: reply.parameters,
-                    returnType: reply.returnType
+                    parameters: reply.parameters.map(v => PropertySchema.fromJSON(v)),
                 };
             } else {
                 throw new Error('Invalid message returned: ' + JSON.stringify(reply));
@@ -138,38 +183,10 @@ export class InternalClient {
     public async stream(controller: string, name: string, args: any[], timeoutInSeconds = 60): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
             try {
-                //todo, handle reject when we sending message fails
                 const types = await this.getActionTypes(controller, name);
 
                 for (const i of eachKey(args)) {
-                    const type = types.parameters[i];
-                    if (undefined === args[i]) {
-                        continue;
-                    }
-
-                    if (type.type === 'Entity' && type.entityName) {
-                        if (!RegisteredEntities[type.entityName]) {
-                            throw new Error(`Action's parameter ${controller}::${name}:${i} has invalid entity referenced ${type.entityName}.`);
-                        }
-
-                        if (type.partial) {
-                            args[i] = partialClassToPlain(RegisteredEntities[type.entityName], args[i]);
-                        } else {
-                            args[i] = classToPlain(RegisteredEntities[type.entityName], args[i]);
-                        }
-                    }
-
-                    if (type.type === 'String') {
-                        args[i] = type.array ? args[i].map((v: any) => String(v)) : String(args[i]);
-                    }
-
-                    if (type.type === 'Number') {
-                        args[i] = type.array ? args[i].map((v: any) => Number(v)) : Number(args[i]);
-                    }
-
-                    if (type.type === 'Boolean') {
-                        args[i] = type.array ? args[i].map((v: any) => Boolean(v)) : Boolean(args[i]);
-                    }
+                    args[i] = propertyClassToPlain(Object, name, args[i], types.parameters[i]);
                 }
 
                 const subject = this.sendMessage<ServerMessageResult>(controller, {
@@ -180,54 +197,7 @@ export class InternalClient {
                     timeout: timeoutInSeconds,
                 }, timeoutInSeconds);
 
-                function deserializeResult(next: any): any {
-                    if (types.returnType.type === 'Date') {
-                        return new Date(next);
-                    }
-
-                    if (types.returnType.type === 'Entity') {
-                        const classType = RegisteredEntities[types.returnType.entityName!];
-
-                        if (!classType) {
-                            reject(new Error(`Entity ${types.returnType.entityName} now known on client side.`));
-                            subject.complete();
-                            return;
-                        }
-
-                        if (types.returnType.partial) {
-                            if (isArray(next)) {
-                                return next.map(v => partialPlainToClass(classType, v));
-                            } else {
-                                return partialPlainToClass(classType, next);
-                            }
-                        } else {
-                            if (isArray(next)) {
-                                return next.map(v => plainToClass(classType, v));
-                            } else {
-                                return plainToClass(classType, next);
-                            }
-                        }
-                    }
-
-                    return next;
-                }
-
-                subject.subscribe((reply: ServerMessageResult) => {
-                    if (reply.type === 'next/json') {
-                        resolve(deserializeResult(reply.next));
-                        subject.complete();
-                    }
-
-                    if (reply.type === 'error') {
-                        //todo, try to find a way to get correct Error instance as well.
-                        const error = new Error(reply.error);
-                        reject(error);
-
-                        subject.complete();
-                    }
-                }, (error) => {
-                    reject(error);
-                });
+                handleActiveSubject(subject, resolve, reject, controller, name, this.entityState, {});
             } catch (error) {
                 reject(error);
             }

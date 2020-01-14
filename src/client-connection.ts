@@ -25,8 +25,7 @@ export class ClientConnection {
     protected pushMessageReplyId = 0;
     protected pushMessageReplies: { [id: string]: (data: any) => void } = {};
 
-    protected unsubscribeOnDisconnectSubscriptions = new Subscriptions();
-    protected clientUsedPeerControllers: {[controllerName: string]: Subscription} = {};
+    protected clientUsedPeerControllers: { [controllerName: string]: Subscription } = {};
 
     constructor(
         protected app: Application,
@@ -52,8 +51,6 @@ export class ClientConnection {
         for (const timeout of this.timeoutTimers) {
             clearTimeout(timeout);
         }
-
-        this.unsubscribeOnDisconnectSubscriptions.unsubscribe();
 
         for (const sub of each(this.clientUsedPeerControllers)) {
             sub.unsubscribe();
@@ -95,27 +92,26 @@ export class ClientConnection {
         return timer;
     }
 
-    public async sendPushMessage(data: any): Promise<any> {
-        const replyId = ++this.pushMessageReplyId;
-
-        return new Promise<any>((resolve, reject) => {
-            this.pushMessageReplies[replyId] = (data: any) => {
-                resolve(data);
-                delete this.pushMessageReplies[replyId];
-            };
-
-            this.writer.write({
-                type: 'push-message',
-                replyId: replyId,
-                next: data
-            });
-        });
-    }
+    // public async sendPushMessage(data: any): Promise<any> {
+    //     const replyId = ++this.pushMessageReplyId;
+    //
+    //     return new Promise<any>((resolve, reject) => {
+    //         this.pushMessageReplies[replyId] = (data: any) => {
+    //             resolve(data);
+    //             delete this.pushMessageReplies[replyId];
+    //         };
+    //
+    //         this.writer.write({
+    //             type: 'push-message',
+    //             replyId: replyId,
+    //             next: data
+    //         });
+    //     });
+    // }
 
     public async onMessage(raw: string) {
         if ('string' === typeof raw) {
             const message = JSON.parse(raw) as ClientMessageAll;
-            // console.log('server onMessage', message);
 
             if (message.name === 'push-message/reply') {
                 if (!this.pushMessageReplies[message.replyId]) {
@@ -136,14 +132,24 @@ export class ClientConnection {
                 delete this.registeredPeerControllers[message.controllerName];
             }
 
+            /**
+             * Message from peer controller to client.
+             */
             if (message.name === 'peerController/message') {
                 if (!this.registeredPeerControllers[message.controllerName]) {
                     this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
                     return;
                 }
 
-                this.exchange.publish('peerController/' + message.controllerName + '/reply/' + message.replyId, message.data);
+                this.exchange.publish('peerController/' + message.controllerName + '/reply/' + message.clientId, message.data);
                 return;
+            }
+
+            /**
+             * Message from client to peer controller.
+             */
+            if (message.name === 'peerMessage') {
+                await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message.message, message.timeout);
             }
 
             if (message.name === 'peerController/register') {
@@ -171,11 +177,10 @@ export class ClientConnection {
 
                     try {
                         const sub = await this.exchange.subscribe('peerController/' + message.controllerName,
-                            (controllerMessage: { replyId: string, clientId: string, data: any }) => {
+                            (controllerMessage: { clientId: string, data: any }) => {
                                 this.writer.write({
                                     id: message.id,
                                     type: 'peerController/message',
-                                    replyId: controllerMessage.replyId,
                                     clientId: controllerMessage.clientId,
                                     data: controllerMessage.data
                                 });
@@ -200,59 +205,11 @@ export class ClientConnection {
             if (message.name === 'action') {
                 try {
                     if (message.controller.startsWith('_peer/')) {
-                        const controllerName = message.controller.substr('_peer/'.length);
-
-                        const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
-
-                        if (!access) {
-                            this.writer.sendError(message.id, `Access denied to peer controller ` + controllerName, 'access_denied');
-                            return;
-                        }
-
-                        //check if registered
-                        const locked = await this.locker.isLocked('peerController/' + controllerName);
-
-                        if (!locked) {
-                            this.writer.sendError(message.id, `Peer controller ${controllerName} not registered`, 'peer_not_registered');
-                            return;
-                        }
-
-                        const replyId = uuid();
-                        const sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
-                            this.writer.write({...reply, id: message.id});
-                            sub.unsubscribe();
-                        });
-
-                        this.unsubscribeOnDisconnectSubscriptions.add = sub;
-
-                        setTimeout(() => {
-                            if (!sub.closed) {
-                                sub.unsubscribe();
-                                this.writer.sendError(message.id, `Peer timed out ` + controllerName, 'peer_timeout');
-                            }
-                        }, message.timeout * 1000);
-
-                        if (!this.clientUsedPeerControllers[controllerName]) {
-                            this.clientUsedPeerControllers[controllerName] = new Subscription(() => {
-                                this.exchange.publish('peerController/' + controllerName, {
-                                    type: 'end',
-                                    clientId: this.id,
-                                });
-                            });
-                        }
-
-                        this.exchange.publish('peerController/' + controllerName, {
-                            replyId: replyId,
-                            clientId: this.id,
-                            data: {
-                                ...message,
-                                controller: controllerName
-                            }
-                        });
+                        await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message, message.timeout);
                     } else {
                         try {
                             const {value, encoding} = await this.action(message.controller, message.action, message.args);
-                            await this.connectionMiddleware.actionMessageOut(message, value, encoding, message.controller, message.action);
+                            await this.connectionMiddleware.actionMessageOut(message, value, encoding, message.controller, message.action, this.writer);
                         } catch (error) {
                             await this.writer.sendError(message.id, error);
                         }
@@ -266,47 +223,7 @@ export class ClientConnection {
             if (message.name === 'actionTypes') {
                 try {
                     if (message.controller.startsWith('_peer/')) {
-                        const controllerName = message.controller.substr('_peer/'.length);
-
-                        const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
-
-                        if (!access) {
-                            this.writer.sendError(message.id, `Access denied to peer controller ` + controllerName, 'access_denied');
-                            return;
-                        }
-
-                        //check if registered
-                        const locked = await this.locker.isLocked('peerController/' + controllerName);
-
-                        if (!locked) {
-                            this.writer.sendError(message.id, `Peer controller ${controllerName} not registered`, 'peer_not_registered');
-                            return;
-                        }
-
-                        const replyId = uuid();
-                        const sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + replyId, (reply: any) => {
-                            this.writer.write({...reply, id: message.id});
-                            sub.unsubscribe();
-                        });
-
-                        this.unsubscribeOnDisconnectSubscriptions.add = sub;
-
-                        setTimeout(() => {
-                            if (!sub.closed) {
-                                sub.unsubscribe();
-                                this.writer.sendError(message.id, `Peer timed out ` + controllerName, 'peer_timeout');
-                            }
-                        }, message.timeout * 1000);
-
-                        this.exchange.publish('peerController/' + controllerName, {
-                            replyId: replyId,
-                            data: {
-                                ...message,
-                                controller: controllerName
-                            }
-                        }).catch((error) => {
-                            console.error(`Could not publish peerController/${controllerName} message`, error);
-                        });
+                        await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message, message.timeout);
                     } else {
                         const {parameters} = await this.getActionTypes(message.controller, message.action);
 
@@ -337,8 +254,76 @@ export class ClientConnection {
                 return;
             }
 
-            await this.connectionMiddleware.messageIn(message);
+            await this.connectionMiddleware.messageIn(message, this.writer);
         }
+    }
+
+    protected async sendToPeerController(
+        messageId: number,
+        controllerName: string,
+        message: object,
+        timeout: number = 20,
+    ) {
+        const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
+
+        if (!access) {
+            this.writer.sendError(messageId, `Access denied to peer controller ` + controllerName, 'access_denied');
+            return;
+        }
+
+        //check if registered
+        const locked = await this.locker.isLocked('peerController/' + controllerName);
+
+        if (!locked) {
+            this.writer.sendError(messageId, `Peer controller ${controllerName} not registered`, 'peer_not_registered');
+            return;
+        }
+
+        //todo, rework that and request from the exchange a new tcp port forwarding to the peer directly. But is that then really faster?
+        // We could register multiple broker, that could be used instead of always the exchange server. For many connections this could solve
+        // bottleneck issues.
+
+        let timeoutTimer: any = null;
+
+        if (!this.clientUsedPeerControllers[controllerName]) {
+            const sub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + this.id, (reply: any) => {
+                this.writer.write(reply);
+            });
+
+            this.clientUsedPeerControllers[controllerName] = new Subscription(() => {
+                sub.unsubscribe();
+                this.exchange.publish('peerController/' + controllerName, {
+                    data: {name: 'peerUser/end'},
+                    clientId: this.id,
+                });
+            });
+        }
+
+        timeoutTimer = setTimeout(() => {
+            if (this.clientUsedPeerControllers[controllerName]) {
+                this.clientUsedPeerControllers[controllerName].unsubscribe();
+                delete this.clientUsedPeerControllers[controllerName];
+            }
+            this.writer.sendError(messageId, `Peer timed out ` + controllerName, 'peer_timeout');
+        }, timeout * 1000);
+
+        //this subscribe is just for checking timeout
+        const timeoutSub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + this.id, (reply: any) => {
+            if (reply.id === messageId) {
+                clearTimeout(timeoutTimer);
+                timeoutSub.unsubscribe();
+            }
+        });
+
+        this.exchange.publish('peerController/' + controllerName, {
+            clientId: this.id,
+            data: {
+                ...message,
+                controller: controllerName
+            }
+        }).catch((error) => {
+            console.error(`Could not publish peerController/${controllerName} message`, error);
+        });
     }
 
     public async getActionTypes(controller: string, action: string)
