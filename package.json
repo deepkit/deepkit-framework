@@ -16,7 +16,7 @@
   },
   "peerDependencies": {
     "@marcj/glut-core": "0.0.1",
-    "@marcj/marshal": "^1.0.0",
+    "@marcj/marshal": "^1.0.1",
     "@marcj/marshal-mongo": "^1.0.0",
     "bson-ext": "^2.0.3",
     "buffer": "^5.2.1",
@@ -41,8 +41,8 @@
   },
   "devDependencies": {
     "@marcj/glut-core": "^0.0.21",
-    "@marcj/marshal": "^1.0.0",
-    "@marcj/marshal-mongo": "^1.0.0",
+    "@marcj/marshal": "^1.0.1",
+    "@marcj/marshal-mongo": "^1.0.1",
     "@types/clone": "^0.1.30",
     "@types/fs-extra": "^5.0.2",
     "@types/mongodb": "^3.1.14",
