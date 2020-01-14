@@ -1,21 +1,22 @@
-import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, RegisteredEntities, uuid, PropertySchema, propertyClassToPlain} from "@marcj/marshal";
+import {propertyClassToPlain, PropertySchema, uuid} from "@marcj/marshal";
 import {Exchange} from "./exchange";
 import {
     ActionTypes,
     ClientMessageWithoutId,
+    handleActiveSubject,
     MessageSubject,
     RemoteController,
     ServerMessageActionTypes,
     ServerMessageComplete,
     ServerMessageError,
+    ServerMessageErrorGeneral,
     ServerMessageResult,
-    ServerMessageErrorGeneral, handleActiveSubject
+    EntityState
 } from "@marcj/glut-core";
 import {Subscription} from "rxjs";
-import {eachKey, isArray, each} from "@marcj/estdlib";
+import {each, eachKey} from "@marcj/estdlib";
 import {Injectable} from "injection-js";
 import {ProcessLocker} from "./process-locker";
-import {EntityState} from "../../client";
 
 /**
  * Internal client for communication with registered peer controllers of connected clients.
@@ -32,13 +33,26 @@ export class InternalClient {
     create(): InternalClientConnection {
         return new InternalClientConnection(this.locker, this.exchange);
     }
+
+    /**
+     * Creates a new InternalClientConnection and closes it automatically once cb() is done.
+     */
+    async auto<T, R = any>(controllerName: string, cb: (controller: RemoteController<T>) => Promise<R>, timeoutInSeconds = 60): Promise<R> {
+        const internal = new InternalClientConnection(this.locker, this.exchange);
+
+        try {
+            return await cb(internal.peerController(controllerName, timeoutInSeconds));
+        } finally {
+            internal.destroy();
+        }
+    }
 }
 
 
 export class InternalClientConnection {
     protected id = uuid();
     protected messageId = 0;
-    protected reply: {[id: number]: MessageSubject<any>} = {};
+    protected reply: { [id: number]: MessageSubject<any> } = {};
 
     private controllerSub: { [controllerName: string]: Subscription } = {};
 

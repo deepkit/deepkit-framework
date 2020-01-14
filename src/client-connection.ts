@@ -5,7 +5,6 @@ import {ActionTypes, ClientMessageAll, ConnectionMiddleware, ConnectionWriter, e
 import {arrayRemoveItem, each} from "@marcj/estdlib";
 import {uuid} from "@marcj/marshal";
 import {Exchange} from "./exchange";
-import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {ProcessLock, ProcessLocker} from "./process-locker";
 
 @Injectable()

@@ -1,7 +1,6 @@
 import {EntityStorage} from "./entity-storage";
-import {ClientMessageAll, ConnectionMiddleware, ConnectionWriter} from "@marcj/glut-core";
+import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from "@marcj/glut-core";
 import {Injectable} from "injection-js";
-import {ConnectionWriterInterface} from "../../core";
 
 /**
  * Extends the ConnectionMiddleware to make sure entityStorage decrease the usage of EntitySubject when it got unsubscribed.

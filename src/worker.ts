@@ -3,7 +3,7 @@ import {SessionStack} from "./application";
 import {ClientConnection} from "./client-connection";
 import {EntityStorage} from "./entity-storage";
 import {ServerConnectionMiddleware} from "./connection-middleware";
-import {ConnectionMiddleware, ConnectionWriter} from "@marcj/glut-core";
+import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@marcj/glut-core";
 import {App, us_listen_socket, us_listen_socket_close, WebSocket} from "uWebSockets.js";
 import {Exchange} from "./exchange";
 
@@ -46,7 +46,11 @@ export class Worker {
                     SessionStack,
                     ClientConnection,
                     {provide: ConnectionMiddleware, useClass: ServerConnectionMiddleware},
-                    ConnectionWriter
+                    {
+                        provide: ConnectionWriter, deps: [], useFactory: () => {
+                            return new ConnectionWriter(ws);
+                        }
+                    },
                 ];
                 provider.push(...this.connectionProvider);
                 injectorMap.set(ws, this.mainInjector.resolveAndCreateChild(provider));
