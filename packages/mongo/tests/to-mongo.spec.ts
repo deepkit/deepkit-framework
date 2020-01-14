@@ -4,7 +4,7 @@ import {
     f,
     forwardRef,
     getResolvedReflection,
-    ParentReference,
+    ParentReference, PropertySchema,
 } from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
@@ -64,8 +64,9 @@ test('make sure undefined is undefined', () => {
 
     class Model {
         constructor(
-        @f.optional()
-        public name?: string){}
+            @f.optional()
+            public name?: string) {
+        }
     }
 
     {
@@ -497,6 +498,11 @@ test('partial document', () => {
     expect(document['pages.0.children'][0].name).toBe('7');
 
     expect(getResolvedReflection(DocumentClass, 'pages.0.name')).toEqual({
+        "propertySchema": PropertySchema.fromJSON({
+            "name": "name",
+            "type": "string",
+            "typeSet": true,
+        }),
         resolvedClassType: PageClass,
         resolvedPropertyName: 'name',
         type: 'string',
@@ -506,23 +512,24 @@ test('partial document', () => {
         partial: false,
     });
 
-    expect(getResolvedReflection(DocumentClass, 'pages.0.children')).toEqual({
-        resolvedClassType: PageClass,
-        resolvedPropertyName: 'children',
-        type: 'class',
-        typeValue: PageCollection,
-        array: false,
-        map: false,
-        partial: false,
-    });
+    {
+        const a1 = getResolvedReflection(DocumentClass, 'pages.0.children');
+        expect(a1!.resolvedClassType).toBe(PageClass);
+        expect(a1!.resolvedPropertyName).toBe('children');
+        expect(a1!.type).toBe('class');
+        expect(a1!.typeValue).toBe(PageCollection);
+        expect(a1!.array).toBe(false);
+        expect(a1!.map).toBe(false);
+        expect(a1!.partial).toBe(false);
+    }
 
-    expect(getResolvedReflection(DocumentClass, 'pages.0.children.0.name')).toEqual({
-        resolvedClassType: PageClass,
-        resolvedPropertyName: 'name',
-        type: 'string',
-        typeValue: undefined,
-        array: false,
-        map: false,
-        partial: false,
-    });
-});
+    {
+        const a1 = getResolvedReflection(DocumentClass, 'pages.0.children.0.name');
+        expect(a1!.resolvedClassType).toBe(PageClass);
+        expect(a1!.resolvedPropertyName).toBe('name');
+        expect(a1!.type).toBe('string');
+        expect(a1!.typeValue).toBe(undefined);
+        expect(a1!.array).toBe(false);
+        expect(a1!.map).toBe(false);
+        expect(a1!.partial).toBe(false);
+    } });

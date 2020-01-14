@@ -9,7 +9,7 @@ import {
     partialPlainToClass,
     plainToClass
 } from "../src/mapper";
-import {f, ParentReference} from "..";
+import {f, ParentReference, PropertySchema} from "..";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from "./document-scenario/PageClass";
 import {PageCollection} from "./document-scenario/PageCollection";
@@ -96,6 +96,14 @@ test('getResolvedReflection deep', () => {
 
 test('getResolvedReflection deep decorator', () => {
     expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!).toEqual({
+        "propertySchema": PropertySchema.fromJSON({
+            "classType": "sub",
+            "isArray": true,
+            "isDecorated": true,
+            "name": "items",
+            "type": "class",
+            "typeSet": true,
+        }),
         resolvedClassType: SimpleModel,
         resolvedPropertyName: 'childrenCollection',
         type: 'class',
@@ -106,6 +114,11 @@ test('getResolvedReflection deep decorator', () => {
     });
 
     expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!).toEqual({
+        "propertySchema": PropertySchema.fromJSON({
+            "name": "label",
+            "type": "string",
+            "typeSet": true,
+        }),
         resolvedClassType: SubModel,
         resolvedPropertyName: 'label',
         type: 'string',
@@ -243,6 +256,11 @@ test('partial document', () => {
     expect(document['pages.0.children'].get(0).name).toBe('7');
 
     expect(getResolvedReflection(DocumentClass, 'pages.0.name')).toEqual({
+        "propertySchema": PropertySchema.fromJSON({
+            "name": "name",
+            "type": "string",
+            "typeSet": true,
+        }),
         resolvedClassType: PageClass,
         resolvedPropertyName: 'name',
         type: 'string',
@@ -252,25 +270,28 @@ test('partial document', () => {
         partial: false,
     });
 
-    expect(getResolvedReflection(DocumentClass, 'pages.0.children')).toEqual({
-        resolvedClassType: PageClass,
-        resolvedPropertyName: 'children',
-        type: 'class',
-        typeValue: PageCollection,
-        array: false,
-        map: false,
-        partial: false,
-    });
+    {
+        const a = getResolvedReflection(DocumentClass, 'pages.0.children');
+        expect(a!.resolvedClassType).toBe(PageClass);
+        expect(a!.resolvedPropertyName).toBe('children');
+        expect(a!.type).toBe('class');
+        expect(a!.typeValue).toBe(PageCollection);
+        expect(a!.array).toBe(false);
+        expect(a!.map).toBe(false);
+        expect(a!.partial).toBe(false);
+    }
 
-    expect(getResolvedReflection(DocumentClass, 'pages.0.children.0.name')).toEqual({
-        resolvedClassType: PageClass,
-        resolvedPropertyName: 'name',
-        type: 'string',
-        typeValue: undefined,
-        array: false,
-        map: false,
-        partial: false,
-    });
+
+    {
+        const a = getResolvedReflection(DocumentClass, 'pages.0.children.0.name');
+        expect(a!.resolvedClassType).toBe(PageClass);
+        expect(a!.resolvedPropertyName).toBe('name');
+        expect(a!.type).toBe('string');
+        expect(a!.typeValue).toBe(undefined);
+        expect(a!.array).toBe(false);
+        expect(a!.map).toBe(false);
+        expect(a!.partial).toBe(false);
+    }
 });
 
 test('test enum string', () => {
@@ -341,7 +362,8 @@ test('test enum labels', () => {
 
 
 test('partial edge cases', () => {
-    class Config {}
+    class Config {
+    }
 
     class User {
         @f

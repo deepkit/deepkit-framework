@@ -68,6 +68,7 @@ export interface PropertySchemaSerialized {
     isOptional?: true;
     isId?: true;
     isPartial?: true;
+    typeSet?: true;
     allowLabelsAsValue?: true;
     methodName?: string;
     templateArgs?: PropertySchemaSerialized[];
@@ -141,6 +142,7 @@ export class PropertySchema {
         if (this.isId) props['isId'] = true;
         if (this.isPartial) props['isPartial'] = true;
         if (this.allowLabelsAsValue) props['allowLabelsAsValue'] = true;
+        if (this.typeSet) props['typeSet'] = true;
         if (this.methodName) props['methodName'] = this.methodName;
 
         if (this.templateArgs) {
@@ -172,6 +174,7 @@ export class PropertySchema {
         if (props['isId']) p.isId = true;
         if (props['isPartial']) p.isPartial = true;
         if (props['allowLabelsAsValue']) p.allowLabelsAsValue = true;
+        if (props['typeSet']) p.typeSet = true;
         if (props['methodName']) p.methodName = props['methodName'];
 
         if (props['templateArgs']) {
