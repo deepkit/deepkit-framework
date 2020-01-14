@@ -1,16 +1,15 @@
-import {BehaviorSubject, Observable, Subject, Subscriber} from "rxjs";
-import {propertyClassToPlain, propertyPlainToClass, PropertySchema, PropertySchemaSerialized, RegisteredEntities} from "@marcj/marshal";
+import {BehaviorSubject, Subject} from "rxjs";
+import {propertyClassToPlain, PropertySchema} from "@marcj/marshal";
 import {
     Batcher,
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection,
-    CollectionPaginationEvent,
     ConnectionMiddleware,
     executeAction,
     getActionParameters,
     getActions,
-    getUnserializedError,
+    handleActiveSubject,
     MessageSubject,
     Progress,
     RemoteController,
@@ -174,45 +173,47 @@ export class SocketClient {
                 }
 
                 if (message.type === 'peerController/message') {
-                    if (!peerConnectionMiddleware[message.clientId]) {
-                        peerConnectionMiddleware[message.clientId] = new ConnectionMiddleware(new class extends SimpleConnectionWriter {
-                            write(connectionMessage: ServerMessageAll) {
-                                if (connectionMessage.type === 'peerController/message' || connectionMessage.type === 'channel') {
-                                    return;
-                                }
-
-                                if (connectionMessage.type === 'entity/remove' || connectionMessage.type === 'entity/removeMany'
-                                    || connectionMessage.type === 'entity/update' || connectionMessage.type === 'entity/patch') {
-                                    return;
-                                }
-
-                                activeSubject.sendMessage({
-                                    name: 'peerController/message',
-                                    controllerName: name,
-                                    replyId: message.replyId,
-                                    data: connectionMessage
-                                });
+                    const writer = new class extends SimpleConnectionWriter {
+                        write(connectionMessage: ServerMessageAll) {
+                            if (connectionMessage.type === 'peerController/message' || connectionMessage.type === 'channel') {
+                                return;
                             }
-                        });
-                    }
 
+                            if (connectionMessage.type === 'entity/remove' || connectionMessage.type === 'entity/removeMany'
+                                || connectionMessage.type === 'entity/update' || connectionMessage.type === 'entity/patch') {
+                                return;
+                            }
 
-                    const data = message.data as {
-                        name: 'actionTypes',
-                        action: string,
-                    } | {
-                        name: 'action'
-                        action: string,
-                        args: any[],
+                            activeSubject.sendMessage({
+                                name: 'peerController/message',
+                                controllerName: name,
+                                clientId: message.clientId,
+                                data: connectionMessage
+                            });
+                        }
                     };
 
-                    if (!actions[data.action]) {
+                    if (!peerConnectionMiddleware[message.clientId]) {
+                        peerConnectionMiddleware[message.clientId] = new ConnectionMiddleware();
+                    }
+
+                    const data: ClientMessageAll = message.data;
+
+                    if ((data.name === 'actionTypes' || data.name === 'action') && !actions[data.action]) {
                         activeSubject.sendMessage({
                             name: 'peerController/message',
                             controllerName: name,
-                            replyId: message.replyId,
-                            data: {type: 'error', id: 0, stack: undefined, entityName: '@error:default', error: `Action ${data.action} does not exist.`}
+                            clientId: message.clientId,
+                            data: {type: 'error', id: data.id, stack: undefined, entityName: '@error:default', error: `Peer action ${data.action} does not exist.`}
                         });
+                        return;
+                    }
+
+                    if (data.name === 'peerUser/end') {
+                        if (peerConnectionMiddleware[message.clientId]) {
+                            peerConnectionMiddleware[message.clientId].destroy();
+                            delete peerConnectionMiddleware[message.clientId];
+                        }
                         return;
                     }
 
@@ -223,16 +224,17 @@ export class SocketClient {
 
                         const result: ServerMessageActionTypes = {
                             type: 'actionTypes/result',
-                            id: 0, //will be overwritten
+                            id: data.id,
                             parameters: peerActionTypes[data.action].parameters.map(v => v.toJSON()),
                         };
 
                         activeSubject.sendMessage({
                             name: 'peerController/message',
                             controllerName: name,
-                            replyId: message.replyId,
+                            clientId: message.clientId,
                             data: result
                         });
+                        return;
                     }
 
                     if (data.name === 'action') {
@@ -244,16 +246,16 @@ export class SocketClient {
                         }
 
                         try {
-                            //todo remove that shit and use the ConnectionMiddleware as the server does
                             const {value, encoding} = await executeAction(peerActionTypes[data.action], name, controllerInstance, data.action, data.args);
 
-                            peerConnectionMiddleware[message.clientId].actionMessageOut(message.data, value, encoding, name, data.action);
+                            peerConnectionMiddleware[message.clientId].actionMessageOut(message.data, value, encoding, name, data.action, writer);
                         } catch (error) {
-                            peerConnectionMiddleware[message.clientId].writer.sendError(message.id, error);
+                            writer.sendError(data.id, error);
                         }
+                        return;
                     }
 
-                    peerConnectionMiddleware[message.clientId].messageIn(message.data);
+                    peerConnectionMiddleware[message.clientId].messageIn(message.data, writer);
                 }
             }, (error: any) => {
                 delete this.registeredControllers[name];
@@ -475,15 +477,7 @@ export class SocketClient {
         useThisStreamBehaviorSubject?: StreamBehaviorSubject<any>,
     }): Promise<any> {
         return asyncOperation<any>(async (resolve, reject) => {
-            //todo, handle reject when we sending message fails
-
-            let returnValue: any;
-
             const timeoutInSeconds = options && options.timeoutInSeconds ? options.timeoutInSeconds : 0;
-
-            const subscribers: { [subscriberId: number]: Subscriber<any> } = {};
-            let subscriberIdCounter = 0;
-            let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
             const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
@@ -499,225 +493,18 @@ export class SocketClient {
                 timeout: timeoutInSeconds,
             }, {timeout: timeoutInSeconds, progressable: true});
 
-            function deserializeResult(encoding: PropertySchemaSerialized, next: any): any {
-                return propertyPlainToClass(
-                    Object,
-                    name,
-                    next, [], 1, {onFullLoadCallbacks: []},
-                    PropertySchema.fromJSON(encoding),
-                );
+            if (controller.startsWith('_peer/')) {
+                activeSubject.setSendMessageModifier((m: any) => {
+                    return {
+                        name: 'peerMessage',
+                        controller: controller,
+                        message: m,
+                        timeout: timeoutInSeconds,
+                    };
+                });
             }
 
-            activeSubject.subscribe((reply: ServerMessageResult) => {
-                //todo, move this whole block into a class and use it in internal-client as well.
-                // console.log('reply', reply);
-                if (reply.type === 'type') {
-                    if (reply.returnType === 'subject') {
-
-                        if (options && options.useThisStreamBehaviorSubject) {
-                            streamBehaviorSubject = options.useThisStreamBehaviorSubject;
-                            streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.data));
-                        } else {
-                            streamBehaviorSubject = new StreamBehaviorSubject(deserializeResult(reply.encoding, reply.data));
-                        }
-
-                        const reconnectionSub = activeSubject.reconnected.subscribe(() => {
-                            reconnectionSub.unsubscribe();
-                            this.stream(controller, name, args, {useThisStreamBehaviorSubject: streamBehaviorSubject});
-                        });
-
-                        streamBehaviorSubject.addTearDown(async () => {
-                            reconnectionSub.unsubscribe();
-                            //user unsubscribed the entity subject, so we stop syncing changes
-                            await activeSubject.sendMessage({
-                                name: 'subject/unsubscribe',
-                                forId: reply.id,
-                            }).firstOrUndefinedThenClose();
-                        });
-                        resolve(streamBehaviorSubject);
-                    }
-
-                    if (reply.returnType === 'entity') {
-                        if (reply.item) {
-                            const classType = RegisteredEntities[reply.entityName || ''];
-
-                            if (!classType) {
-                                throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
-                            }
-
-                            const subject = this.entityState.handleEntity(classType, reply.item!);
-                            subject.addTearDown(async () => {
-                                //user unsubscribed the entity subject, so we stop syncing changes
-                                await activeSubject.sendMessage({
-                                    name: 'entity/unsubscribe',
-                                    forId: reply.id,
-                                }).firstOrUndefinedThenClose();
-                            });
-
-                            resolve(subject);
-                        } else {
-                            reject(new Error('Item not found'));
-                        }
-                    }
-
-                    if (reply.returnType === 'observable') {
-                        returnValue = new Observable((observer) => {
-                            const subscriberId = ++subscriberIdCounter;
-
-                            subscribers[subscriberId] = observer;
-
-                            activeSubject.sendMessage({
-                                forId: reply.id,
-                                name: 'observable/subscribe',
-                                subscribeId: subscriberId
-                            }).firstOrUndefinedThenClose();
-
-                            return {
-                                unsubscribe(): void {
-                                    activeSubject.sendMessage({
-                                        forId: reply.id,
-                                        name: 'observable/unsubscribe',
-                                        subscribeId: subscriberId
-                                    }).firstOrUndefinedThenClose();
-                                }
-                            };
-                        });
-                        resolve(returnValue);
-                    }
-
-                    if (reply.returnType === 'collection') {
-                        const classType = RegisteredEntities[reply.entityName];
-                        if (!classType) {
-                            throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
-                        }
-
-                        const collection = new Collection<any>(classType);
-
-                        if (reply.pagination.active) {
-                            collection.pagination._activate();
-                            collection.pagination.setItemsPerPage(reply.pagination.itemsPerPage);
-                            collection.pagination.setTotal(reply.pagination.total);
-                            collection.pagination.setPage(reply.pagination.page);
-                            collection.pagination.setSort(reply.pagination.sort);
-                            collection.pagination.setParameters(reply.pagination.parameters);
-
-                            collection.pagination.event.subscribe((event: CollectionPaginationEvent) => {
-                                if (event.type === 'apply') {
-                                    activeSubject.sendMessage({
-                                        forId: reply.id,
-                                        name: 'collection/pagination',
-                                        sort: collection.pagination.getSort(),
-                                        parameters: collection.pagination.getParameters(),
-                                        page: collection.pagination.getPage(),
-                                        itemsPerPage: collection.pagination.getItemsPerPage(),
-                                    }).firstOrUndefinedThenClose();
-                                }
-                            });
-                        }
-
-                        returnValue = collection;
-
-                        collection.addTeardown(async () => {
-                            for (const entitySubject of each(collection.entitySubjects)) {
-                                entitySubject.unsubscribe();
-                            }
-
-                            //collection unsubscribed, so we stop syncing changes
-                            await activeSubject.sendMessage({
-                                forId: reply.id,
-                                name: 'collection/unsubscribe'
-                            }).firstOrUndefinedThenClose();
-                            activeSubject.complete();
-                        });
-                        //do not resolve yet, since we want to wait until the collection has bee populated.
-                    }
-                }
-
-                if (reply.type === 'next/json') {
-                    resolve(deserializeResult(reply.encoding, reply.next));
-                    activeSubject.complete();
-                }
-
-                if (reply.type === 'next/observable') {
-                    if (subscribers[reply.subscribeId]) {
-                        subscribers[reply.subscribeId].next(deserializeResult(reply.encoding, reply.next));
-                    }
-                }
-
-                if (reply.type === 'next/subject') {
-                    if (streamBehaviorSubject) {
-                        if (streamBehaviorSubject.isUnsubscribed()) {
-                            throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
-                        }
-                        streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.next));
-                    }
-                }
-
-                if (reply.type === 'append/subject') {
-                    if (streamBehaviorSubject) {
-                        if (streamBehaviorSubject.isUnsubscribed()) {
-                            throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
-                        }
-                        const append = deserializeResult(reply.encoding, reply.append);
-                        streamBehaviorSubject.append(append);
-                    }
-                }
-
-                if (reply.type === 'next/collection') {
-                    this.entityState.handleCollectionNext(returnValue, reply.next);
-                    resolve(returnValue);
-                }
-
-                if (reply.type === 'complete') {
-                    if (returnValue instanceof Collection) {
-                        returnValue.complete();
-                    }
-
-                    if (streamBehaviorSubject) {
-                        streamBehaviorSubject.complete();
-                    }
-
-                    activeSubject.complete();
-                }
-
-                if (reply.type === 'error') {
-                    const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
-
-                    if (returnValue instanceof Collection) {
-                        returnValue.error(error);
-                    } else if (streamBehaviorSubject) {
-                        streamBehaviorSubject.error(error);
-                    } else {
-                        reject(error);
-                    }
-
-                    activeSubject.complete();
-                }
-
-                if (reply.type === 'error/observable') {
-                    const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
-
-                    if (subscribers[reply.subscribeId]) {
-                        subscribers[reply.subscribeId].error(error);
-                    }
-
-                    delete subscribers[reply.subscribeId];
-                    activeSubject.complete();
-                }
-
-                if (reply.type === 'complete/observable') {
-                    if (subscribers[reply.subscribeId]) {
-                        subscribers[reply.subscribeId].complete();
-                    }
-
-                    delete subscribers[reply.subscribeId];
-                    activeSubject.complete();
-                }
-            }, (error: any) => {
-                reject(error);
-            }, () => {
-
-            });
+            handleActiveSubject(activeSubject, resolve, reject, controller, name, this.entityState, options);
         });
     }
 
