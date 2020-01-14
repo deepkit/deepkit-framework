@@ -1,5 +1,5 @@
 import {ClassType, eachKey, getClassName, isArray, isObject, isPlainObject, typeOf, eachPair} from "@marcj/estdlib";
-import {applyDefaultValues, getRegisteredProperties} from "./mapper";
+import {applyDefaultValues, getRegisteredProperties, getResolvedReflection} from "./mapper";
 import {
     getClassSchema,
     getClassTypeFromInstance,
@@ -204,7 +204,7 @@ function handleValidator<T>(
     return false;
 }
 
-function validatePropSchema<T>(
+export function validatePropSchema<T>(
     classType: ClassType<T>,
     propSchema: PropertySchema,
     errors: ValidationError[],
@@ -256,11 +256,13 @@ function validatePropSchema<T>(
     }
 
     if (propSchema.type === 'class') {
-        if (propSchema.isMap || propSchema.isPartial || propSchema.isArray) {
+        if (propSchema.isMap || propSchema.isArray) {
             for (const i in propertyValue) {
                 const deepPropertyPath = propertyPath + '.' + i;
                 errors.push(...validate(propSchema.getResolvedClassType(), propertyValue[i], deepPropertyPath));
             }
+        } else if (propSchema.isPartial) {
+            errors.push(...partialValidate(propSchema.getResolvedClassType(), propertyValue, propertyPath));
         } else {
             //deep validation
             errors.push(...validate(propSchema.getResolvedClassType(), propertyValue, propertyPath));
@@ -335,6 +337,31 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
             propertyName,
             propertyPath,
             fromObjectLiteral
+        );
+    }
+
+    return errors;
+}
+
+/**
+ * Validates a Partial<T> object.
+ */
+export function partialValidate<T>(classType: ClassType<T>, item: Partial<T>, path?: string): ValidationError[] {
+    const errors: ValidationError[] = [];
+
+    for (const propertyName of eachKey(item)) {
+        const reflection = getResolvedReflection(classType, propertyName);
+        if (!reflection) continue;
+
+        let propertyPath = path ? path + '.' + propertyName : propertyName;
+        validatePropSchema(
+            classType,
+            reflection.propertySchema,
+            errors,
+            item[propertyName],
+            propertyName,
+            propertyPath,
+            false,
         );
     }
 

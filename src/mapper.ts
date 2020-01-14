@@ -2,9 +2,11 @@ import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
-import {getClassTypeFromInstance, getClassSchema, PropertySchema} from "./decorators";
+import {getClassSchema, getClassTypeFromInstance, PropertySchema} from "./decorators";
 import {
     ClassType,
+    eachKey,
+    eachPair,
     getClassName,
     getClassPropertyName,
     getEnumLabels,
@@ -13,9 +15,7 @@ import {
     isArray,
     isObject,
     isUndefined,
-    isValidEnumValue,
-    eachPair,
-    eachKey
+    isValidEnumValue
 } from "@marcj/estdlib";
 
 export type Types =
@@ -74,6 +74,7 @@ export function getCachedParameterNames<T>(classType: ClassType<T>): string[] {
  * @hidden
  */
 export interface ResolvedReflectionFound {
+    propertySchema: PropertySchema,
     resolvedClassType: ClassType<any>;
     resolvedPropertyName: string;
     type: Types;
@@ -99,6 +100,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
 
     if (propertySchema) {
         return {
+            propertySchema: propertySchema,
             resolvedClassType: classType,
             resolvedPropertyName: names[0],
             type: propertySchema.type,
@@ -129,6 +131,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
         const prop = schema.getProperty(names[0]);
 
         return cache[propertyPath] = {
+            propertySchema: prop,
             resolvedClassType: classType,
             resolvedPropertyName: names[0],
             type: prop.type,
@@ -160,6 +163,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                 } else if (names[i + 1]) {
                     //we got a name or array index
                     return cache[propertyPath] = {
+                        propertySchema: prop,
                         resolvedClassType: classType,
                         resolvedPropertyName: name,
                         type: prop.type,
@@ -173,6 +177,7 @@ export function getResolvedReflection<T>(classType: ClassType<T>, propertyPath: 
                 if (names[i + 1]) {
                     //we got a name or array index
                     return cache[propertyPath] = {
+                        propertySchema: prop,
                         resolvedClassType: classType,
                         resolvedPropertyName: name,
                         type: prop.type,
