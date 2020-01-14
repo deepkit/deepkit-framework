@@ -9,11 +9,12 @@ import {
 } from "@marcj/glut-core";
 import {closeAllCreatedServers, createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
-import {bufferCount, first} from "rxjs/operators";
+import {bufferCount, first, skip} from "rxjs/operators";
 import {Entity, f, getClassSchema, PropertySchema} from '@marcj/marshal';
 import {ObserverTimer} from "@marcj/estdlib-rxjs";
 import {isArray} from '@marcj/estdlib';
 import {JSONError} from "@marcj/glut-core";
+import {ClientProgress} from "@marcj/glut-client";
 
 afterAll(async () => {
     await closeAllCreatedServers();
@@ -39,7 +40,7 @@ class MyCustomError {
     }
 }
 
-test('test basic setup', async () => {
+test('test basic setup and methods', async () => {
     @Controller('test')
     class TestController {
         @Action()
@@ -84,7 +85,7 @@ test('test basic setup', async () => {
         expect(u.toJSON()).toEqual({name: '0', type: 'class', classType: 'user'});
     }
 
-    const {client, close} = await createServerClientPair('test basic setup', [TestController]);
+    const {client, close} = await createServerClientPair('test basic setup and methods', [TestController]);
     {
         const types = await client.getActionTypes('test', 'names');
         expect(types.parameters[0].type).toBe('string');
@@ -454,6 +455,44 @@ test('test param serialization', async () => {
     const test = client.controller<TestController>('test');
 
     expect(await test.actionArray(['b'])).toBe(true);
+
+    await close();
+});
+
+
+test('test batcher', async () => {
+    @Controller('test')
+    class TestController {
+        @Action()
+        uploadBig(@f.type(Buffer) file: Buffer): boolean {
+            return file.length === 550_000;
+        }
+
+        @Action()
+        downloadBig(): Buffer {
+            return new Buffer(650_000);
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test batcher', [TestController]);
+    const test = client.controller<TestController>('test');
+
+    const progress = ClientProgress.trackDownload();
+    let hit = 0;
+    progress.pipe(skip(1)).subscribe((p) => {
+        console.log(p.progress, p.total);
+        expect(p.total).toBeGreaterThan(0);
+        expect(p.current).toBeLessThanOrEqual(p.total);
+        expect(progress.progress).toBeLessThanOrEqual(1);
+        hit++;
+    });
+    const file = await test.downloadBig();
+    expect(file.length).toBe(650_000);
+    expect(hit).toBeGreaterThan(3);
+    expect(progress.done).toBe(true);
+    expect(progress.progress).toBe(1);
+
+    const uploadFile = new Buffer(550_000);
 
     await close();
 });
