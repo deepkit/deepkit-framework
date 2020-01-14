@@ -55,10 +55,12 @@ export class SimpleConnectionWriter implements ConnectionWriterInterface {
     }
 
     public complete(id: number) {
+        if (!id) throw new Error('id required');
         this.write({type: 'complete', id: id});
     }
 
     public ack(id: number) {
+        if (!id) throw new Error('id required');
         this.write({type: 'ack', id: id});
     }
 
@@ -101,10 +103,12 @@ export class ConnectionWriter extends SimpleConnectionWriter {
     }
 
     public complete(id: number) {
+        if (!id) throw new Error('id required');
         this.write({type: 'complete', id: id});
     }
 
     public ack(id: number) {
+        if (!id) throw new Error('id required');
         this.write({type: 'ack', id: id});
     }
 
@@ -124,11 +128,6 @@ export class ConnectionMiddleware {
     protected observables: { [messageId: string]: { p?: PropertySchema, prefix: string, observable: Observable<any>, subscriber: { [subscriberId: string]: Subscription } } } = {};
     protected entitySent: { [messageId: string]: { classType: ClassType<any>, id: string } } = {};
 
-    constructor(
-        public readonly writer: ConnectionWriterInterface,
-    ) {
-    }
-
     public destroy() {
         for (const sub of each(this.collectionSubscriptions)) {
             sub.unsubscribe();
@@ -145,7 +144,10 @@ export class ConnectionMiddleware {
         }
     }
 
-    public async messageIn(message: ClientMessageAll) {
+    public async messageIn(
+        message: ClientMessageAll,
+        writer: ConnectionWriterInterface
+    ) {
         // console.log('messageIn', message);
 
         if (message.name === 'entity/unsubscribe') {
@@ -154,7 +156,7 @@ export class ConnectionMiddleware {
                 throw new Error(`Entity not sent for message ${message.id}`);
             }
 
-            this.writer.ack(message.id);
+            writer.ack(message.id);
             return;
         }
 
@@ -165,7 +167,7 @@ export class ConnectionMiddleware {
             }
 
             await sent.unsubscribe();
-            this.writer.ack(message.id);
+            writer.ack(message.id);
             return;
         }
 
@@ -173,7 +175,7 @@ export class ConnectionMiddleware {
             if (this.collectionSubscriptions[message.forId]) {
                 this.collectionSubscriptions[message.forId].unsubscribe();
             }
-            this.writer.ack(message.id);
+            writer.ack(message.id);
             return;
         }
 
@@ -187,7 +189,7 @@ export class ConnectionMiddleware {
                 this.collections[message.forId].pagination.setParameters(message.parameters);
                 this.collections[message.forId].pagination.event.next({type: 'client:apply'});
             }
-            this.writer.ack(message.id);
+            writer.ack(message.id);
             return;
         }
 
@@ -201,9 +203,8 @@ export class ConnectionMiddleware {
             }
 
             this.observables[message.forId].subscriber[message.subscribeId] = this.observables[message.forId].observable.subscribe((next) => {
-                //todo where is the type coming from? We need to store it when setting this.observables[id]
                 const {encoding, value} = encodeValue(next, this.observables[message.forId].p, `${this.observables[message.forId].prefix} observable next`);
-                this.writer.write({
+                writer.write({
                     type: 'next/observable',
                     id: message.forId,
                     subscribeId: message.subscribeId,
@@ -213,20 +214,20 @@ export class ConnectionMiddleware {
             }, (errorObject) => {
                 const [entityName, error, stack] = getSerializedErrorPair(errorObject);
 
-                this.writer.write({
+                writer.write({
                     type: 'error/observable',
                     id: message.forId,
                     entityName, error, stack,
                     subscribeId: message.subscribeId
                 });
             }, () => {
-                this.writer.write({
+                writer.write({
                     type: 'complete/observable',
                     id: message.forId,
                     subscribeId: message.subscribeId
                 });
             });
-            this.writer.ack(message.id);
+            writer.ack(message.forId);
         }
 
         if (message.name === 'observable/unsubscribe') {
@@ -239,11 +240,18 @@ export class ConnectionMiddleware {
             }
 
             this.observables[message.forId].subscriber[message.subscribeId].unsubscribe();
-            this.writer.ack(message.id);
+            writer.ack(message.forId);
         }
     }
 
-    public async actionMessageOut(message: ClientMessageAll, result: any, propertySchema: PropertySchema, controllerName: string, actionName: string) {
+    public async actionMessageOut(
+        message: ClientMessageAll,
+        result: any,
+        propertySchema: PropertySchema, //of the method return type
+        controllerName: string,
+        actionName: string,
+        writer: ConnectionWriterInterface
+    ) {
         // console.log('messageOut', {
         //     EntitySubject: result instanceof EntitySubject,
         //     StreamBehaviorSubject: result instanceof StreamBehaviorSubject,
@@ -261,7 +269,7 @@ export class ConnectionMiddleware {
             const item = result.getValue();
 
             if (undefined === item) {
-                this.writer.write({
+                writer.write({
                     type: 'type',
                     id: message.id,
                     returnType: 'entity',
@@ -278,14 +286,14 @@ export class ConnectionMiddleware {
                 id: item.id,
             };
 
-            this.writer.write({
+            writer.write({
                 type: 'type',
                 id: message.id,
                 returnType: 'entity',
                 entityName: entityName,
                 item: entityName ? classToPlain(item.constructor, item) : item
             });
-            this.writer.complete(message.id);
+            writer.complete(message.id);
             //no further subscribes/messages necessary since the 'entity' channel handles updating.
             //this means, once this entity is registered in entity-storage, we automatically push changes of this entity.
 
@@ -294,7 +302,7 @@ export class ConnectionMiddleware {
 
             const {encoding, value} = encodeValue(item, propertySchema.getTemplateArg(0), `${prefix} subject initial`);
 
-            this.writer.write({
+            writer.write({
                 type: 'type',
                 id: message.id,
                 returnType: 'subject',
@@ -310,7 +318,7 @@ export class ConnectionMiddleware {
             this.subjectSubscriptions[message.id].add = result.appendSubject.subscribe((append: any) => {
                 const {encoding, value} = encodeValue(append, propertySchema.getTemplateArg(0), `${prefix} subject append`);
 
-                this.writer.write({
+                writer.write({
                     type: 'append/subject',
                     id: message.id,
                     encoding: encoding,
@@ -321,24 +329,24 @@ export class ConnectionMiddleware {
             //we sent already the first initial value, since its a BehaviorSubject we skip the first
             this.subjectSubscriptions[message.id].add = result.pipe(skip(1)).subscribe((next) => {
                 const {encoding, value} = encodeValue(next, propertySchema.getTemplateArg(0), `${prefix} subject next`);
-                this.writer.write({
+                writer.write({
                     type: 'next/subject',
                     id: message.id,
                     encoding: encoding,
                     next: value,
                 });
             }, async (error) => {
-                this.writer.sendError(message.id, error);
+                writer.sendError(message.id, error);
                 await this.subjectSubscriptions[message.id].unsubscribe();
             }, async () => {
-                this.writer.complete(message.id);
+                writer.complete(message.id);
                 await this.subjectSubscriptions[message.id].unsubscribe();
             });
 
         } else if (result instanceof Collection) {
             const collection: Collection<any> = result;
 
-            this.writer.write({
+            writer.write({
                 type: 'type',
                 id: message.id,
                 returnType: 'collection',
@@ -363,7 +371,7 @@ export class ConnectionMiddleware {
                 total: collection.count(),
                 items: items
             };
-            this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+            writer.write({type: 'next/collection', id: message.id, next: nextValue});
 
             if (this.collectionSubscriptions[message.id]) {
                 throw new Error('Collection already subscribed');
@@ -380,9 +388,9 @@ export class ConnectionMiddleware {
             this.collectionSubscriptions[message.id].add = collection.subscribe(() => {
 
             }, (error) => {
-                this.writer.sendError(message.id, error);
+                writer.sendError(message.id, error);
             }, () => {
-                this.writer.complete(message.id);
+                writer.complete(message.id);
             });
 
             const sendPagination = () => {
@@ -397,13 +405,13 @@ export class ConnectionMiddleware {
                         parameters: collection.pagination.getParameters(),
                     }
                 };
-                this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                writer.write({type: 'next/collection', id: message.id, next: nextValue});
             };
 
             this.collectionSubscriptions[message.id].add = collection.pagination.event.subscribe((event) => {
 
                 if (event.type.startsWith('server:')) {
-                    this.writer.write({type: 'next/collection', id: message.id, next: {type: 'pagination', event: event}});
+                    writer.write({type: 'next/collection', id: message.id, next: {type: 'pagination', event: event}});
                 }
 
                 //happens when a query change or external (client) pagination change resulted in some pagination parameter changes (like total)
@@ -426,26 +434,26 @@ export class ConnectionMiddleware {
                         : classToPlain(collection.classType, event.item);
 
                     nextValue = {type: 'add', item: item};
-                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                    writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 
                 if (event.type === 'removeMany') {
                     nextValue = {type: 'removeMany', ids: event.ids};
-                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                    writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 
                 if (event.type === 'remove') {
                     nextValue = {type: 'remove', id: event.id};
-                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                    writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 
                 if (event.type === 'batch/start' || event.type === 'batch/end') {
-                    this.writer.write({type: 'next/collection', id: message.id, next: event});
+                    writer.write({type: 'next/collection', id: message.id, next: event});
                 }
 
                 if (event.type === 'sort') {
                     nextValue = {type: 'sort', ids: event.ids};
-                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                    writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
 
                 if (event.type === 'set') {
@@ -460,15 +468,15 @@ export class ConnectionMiddleware {
                         total: event.items.length,
                         items: items
                     };
-                    this.writer.write({type: 'next/collection', id: message.id, next: nextValue});
+                    writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
             });
         } else if (result instanceof Observable) {
-            this.writer.write({type: 'type', id: message.id, returnType: 'observable'});
+            writer.write({type: 'type', id: message.id, returnType: 'observable'});
             this.observables[message.id] = {observable: result, subscriber: {}, p: propertySchema.getTemplateArg(0), prefix: prefix};
         } else {
             const v = encodeValue(result, propertySchema, `${prefix} result`);
-            this.writer.write({type: 'next/json', id: message.id, encoding: v.encoding, next: v.value});
+            writer.write({type: 'next/json', id: message.id, encoding: v.encoding, next: v.value});
         }
     }
 }

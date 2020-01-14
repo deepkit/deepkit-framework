@@ -59,11 +59,16 @@ export interface ClientMessagePeerRegisterController {
     controllerName: string;
 }
 
+//from client to peer
 export interface ClientMessagePeerMessage {
     name: 'peerController/message';
     controllerName: string;
-    replyId: string;
+    clientId: string;
     data: ServerMessageResult;
+}
+
+export interface ClientMessagePeerEndMessage {
+    name: 'peerUser/end';
 }
 
 export interface ClientMessagePeerUnRegisterController {
@@ -88,6 +93,13 @@ export interface ClientMessageAction {
     controller: string;
     action: string;
     args: any[];
+    timeout: number;
+}
+
+export interface ClientPeerMessageAction {
+    name: 'peerMessage';
+    controller: string;
+    message: any;
     timeout: number;
 }
 
@@ -132,6 +144,7 @@ export type ClientMessageWithoutId = ClientPushMessage
     | ClientMessagePeerRegisterController
     | ClientMessageCollectionPagination
     | ClientMessagePeerMessage
+    | ClientMessagePeerEndMessage
     | ClientMessageActionTypes
     | ClientMessageAuthorize
     | ClientMessageAction
@@ -139,9 +152,10 @@ export type ClientMessageWithoutId = ClientPushMessage
     | ClientMessageObservableSubscribe
     | ClientMessageObservableUnsubscribe
     | ClientMessageCollectionUnsubscribe
-    | ClientMessageSubjectUnsubscribe;
+    | ClientMessageSubjectUnsubscribe
+    | ClientPeerMessageAction;
 
-export type ClientMessageAll = ClientMessageWithoutId & ClientMessageId;
+export type ClientMessageAll = (ClientMessageWithoutId & ClientMessageId);
 
 export interface MessageEntityBase {
     entityName: string;
@@ -401,12 +415,15 @@ export interface ServerMessageChannel {
     data: any;
 }
 
+/**
+ * A peer message, from server to client wrapping a message sent from
+ * the peer controller.
+ */
 export interface ServerMessagePeerChannelMessage {
     id: number;
     type: 'peerController/message';
-    replyId: string;
     clientId: string;
-    data: any;
+    data: ClientMessageAll;
 }
 
 
