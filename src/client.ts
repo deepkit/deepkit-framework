@@ -22,10 +22,10 @@ import {
     ServerMessageResult,
     SimpleConnectionWriter,
     StreamBehaviorSubject,
+    EntityState,
 } from "@marcj/glut-core";
 import {applyDefaults, asyncOperation, ClassType, each, eachKey, sleep} from "@marcj/estdlib";
 import {AsyncSubscription} from "@marcj/estdlib-rxjs";
-import {EntityState} from "./entity-state";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';
