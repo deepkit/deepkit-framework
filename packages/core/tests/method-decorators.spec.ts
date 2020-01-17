@@ -552,3 +552,19 @@ test('PropertySchema setFromJSValue', () => {
         expect(p.classType).toBe(Peter);
     }
 });
+
+
+test('set any param', () => {
+    class Controller {
+        async streamCsvFile(path: string, @f.any() rows: any[][]): Promise<boolean> {
+            return true;
+        }
+    }
+    const s = getClassSchema(Controller);
+
+    {
+        const props = s.getMethodProperties('streamCsvFile');
+        expect(props).toBeArrayOfSize(2);
+        expect(props[1].type).toBe('any');
+    }
+});
