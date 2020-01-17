@@ -319,13 +319,6 @@ test('test invalid @f', () => {
 
     }).toThrowError('Model::sub type mismatch. Given {[key: string]: Config}, but declared is Array.');
 
-    expect(() => {
-        class Model {
-            @f.any()
-            any?: any[];
-        }
-    }).toThrowError('Model::any type mismatch. Given Any, but declared is Array.');
-
     {
         //works
         class Model {
