@@ -1309,7 +1309,7 @@ function Field(oriType?: FieldTypes) {
             return getTypeName(t);
         }
 
-        if (returnType !== Promise) {
+        if (returnType !== Promise && type !== Any) {
             //we don't want to check for type mismatch when returnType is a Promise.
 
             if (type && options.array && returnType !== Array) {
