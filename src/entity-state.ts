@@ -3,7 +3,7 @@ import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, Se
 import {set} from 'dot-prop';
 import {ClassType, eachPair, getClassName} from "@marcj/estdlib";
 import {skip} from "rxjs/operators";
-import {ObjectUnsubscribedError} from "rxjs";
+import {ObjectUnsubscribedError, Subject} from "rxjs";
 
 class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T> } = {};
@@ -147,6 +147,8 @@ class EntitySubjectStore<T extends IdInterface> {
 }
 
 export class EntityState {
+    protected readonly deleted = new Subject<IdInterface>();
+
     private readonly items = new Map<ClassType<any>, EntitySubjectStore<any>>();
 
     public clear() {
@@ -210,6 +212,7 @@ export class EntityState {
 
         if (stream.type === 'entity/remove') {
             if (store.hasStoreItem(stream.id)) {
+                this.deleted.next(store.getItem(stream.id));
                 store.removeItemAndNotifyObservers(stream.id);
             } else {
                 console.debug(new Error(`${getClassName(classType)} item not found in store for ${stream.id}. Removing not possible`));
