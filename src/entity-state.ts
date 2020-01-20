@@ -149,6 +149,10 @@ class EntitySubjectStore<T extends IdInterface> {
 export class EntityState {
     private readonly items = new Map<ClassType<any>, EntitySubjectStore<any>>();
 
+    public clear() {
+        this.items.clear();
+    }
+
     public getStore<T extends IdInterface>(classType: ClassType<T>): EntitySubjectStore<T> {
         let store = this.items.get(classType);
 
