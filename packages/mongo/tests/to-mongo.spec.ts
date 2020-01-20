@@ -347,12 +347,10 @@ test('partial fail ', () => {
         plainToMongo(SimpleModel, new SimpleModel('peter'));
     }).toThrow('Could not plainToMongo since target');
 
-    expect(() => {
-        mongoToClass(SimpleModel, {
-            name: 'peter',
-            children: [new SubModel('p')]
-        });
-    }).toThrow('SimpleModel::children is already in target format');
+    mongoToClass(SimpleModel, {
+        name: 'peter',
+        children: [new SubModel('p')]
+    });
 
     expect(() => {
         plainToMongo(SimpleModel, {
