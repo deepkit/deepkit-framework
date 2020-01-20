@@ -416,14 +416,12 @@ test('partial edge cases', () => {
         expect(m.tags).toBeArray()
     }
 
-    expect(() => {
-        const m = partialPlainToClass(User, {
-            name: undefined,
-            picture: null,
-            parent: new User(),
-            tags: {}
-        });
-    }).toThrow('User::parent is already in target format. Are you calling plainToClass() with an class instance?');
+    const m = partialPlainToClass(User, {
+        name: undefined,
+        picture: null,
+        parent: new User(),
+        tags: {}
+    });
 
     expect(() => {
         const user = new User();
