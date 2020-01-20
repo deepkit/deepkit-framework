@@ -629,10 +629,7 @@ export class SocketClient {
     }
 
     protected async onDisconnect() {
-        for (const con of each(this.registeredControllers)) {
-            await con.sub.unsubscribe();
-        }
-
+        this.entityState.clear();
         this.registeredControllers = {};
         this.cachedActionsTypes = {};
     }
