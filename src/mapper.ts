@@ -457,8 +457,7 @@ export function propertyPlainToClass<T>(
 
         if (type === 'class') {
             if (value instanceof typeValue) {
-                //already the target type, this is an error
-                throw new Error(`${getClassPropertyName(resolvedClassType, resolvedPropertyName)} is already in target format. Are you calling plainToClass() with an class instance?`);
+                return value;
             }
 
             return toClass(typeValue, value, propertyPlainToClass, parents, incomingLevel, state);
