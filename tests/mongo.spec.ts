@@ -459,6 +459,20 @@ test('references back', async () => {
     }
 
     {
+        const marcFromDb = await database.query(User).select(['id']).filter({name: 'marc'}).asRaw().findOne();
+        expect(isPlainObject(marcFromDb)).toBeTrue();
+        expect(marcFromDb.id).toBeInstanceOf(Binary);
+        expect(marcFromDb.name).toBeUndefined();
+    }
+
+    {
+        const marcFromDb = await database.query(User).select(['id']).filter({name: 'marc'}).asJSON().findOne();
+        expect(isPlainObject(marcFromDb)).toBeTrue();
+        expect(marcFromDb.id).toBeString();
+        expect(marcFromDb.name).toBeUndefined();
+    }
+
+    {
         const marcFromDb = await database.query(User).joinWith('images').filter({name: 'marc'}).findOne();
         expect(marcFromDb.name).toBe('marc');
         expect(marcFromDb.images).toBeArrayOfSize(3);
@@ -474,6 +488,11 @@ test('references back', async () => {
         }).toThrow('user was not populated');
         // expect(image2['userId']).not.toBeUndefined();
         expect(image2.title).toBe('image2');
+
+        //writing is allowed
+        const mowla = new User('mowla');
+        image2.user = mowla; //then reading works again
+        expect(image2.user).toBe(mowla);
     }
 
     {
@@ -507,7 +526,10 @@ test('joins', async () => {
         @f.array(User).backReference({via: () => OrganisationMembership})
         users: User[] = [];
 
-        constructor(@f public name: string) {
+        constructor(
+            @f public name: string,
+            @f.reference() public owner: User,
+        ) {
         }
     }
 
@@ -531,13 +553,15 @@ test('joins', async () => {
         }
     }
 
+    const admin = new User('admin');
     const marc = new User('marc');
     const peter = new User('peter');
     const marcel = new User('marcel');
 
-    const microsoft = new Organisation('Microsoft');
-    const apple = new Organisation('Apple');
+    const microsoft = new Organisation('Microsoft', admin);
+    const apple = new Organisation('Apple', admin);
 
+    await database.addEntity(admin);
     await database.addEntity(marc);
     await database.addEntity(peter);
     await database.addEntity(marcel);
@@ -550,7 +574,7 @@ test('joins', async () => {
     await database.addEntity(new OrganisationMembership(peter.id, microsoft.id));
     await database.addEntity(new OrganisationMembership(marcel.id, microsoft.id));
 
-    expect(await database.query(User).count()).toBe(3);
+    expect(await database.query(User).count()).toBe(4);
     expect(await database.query(Organisation).count()).toBe(2);
     expect(await database.query(OrganisationMembership).count()).toBe(4);
 
@@ -560,6 +584,43 @@ test('joins', async () => {
 
     expect(await database.query(OrganisationMembership).filter({organisationId: apple.id}).count()).toBe(1);
     expect(await database.query(OrganisationMembership).filter({organisationId: microsoft.id}).count()).toBe(3);
+
+    expect(() => {
+        database.query(Organisation).join('id');
+    }).toThrow('is not marked as reference');
+
+    {
+        const item = await database.query(User).findOneField('name');
+        expect(item).toEqual('admin');
+    }
+
+    {
+        const items = await database.query(User).findField('name');
+        expect(items).toEqual(['admin', 'marc', 'peter', 'marcel']);
+    }
+
+    {
+        const items = await database.query(User).sort({name: 'asc'}).findField('name');
+        expect(items).toEqual(['admin', 'marc', 'marcel', 'peter']);
+    }
+
+    {
+        const items = await database.query(User).sort({name: 'desc'}).findField('name');
+        expect(items).toEqual(['peter', 'marcel', 'marc', 'admin']);
+    }
+
+    await expect(database.query(User).filter({name: 'notexisting'}).findOneField('name')).rejects.toThrow('not found');3
+
+    expect(await database.query(User).filter({name: 'marc'}).has()).toBe(true);
+    expect(await database.query(User).filter({name: 'notexisting'}).has()).toBe(false);
+
+    expect(await database.query(User).join('organisations').filter({name: 'marc'}).has()).toBe(true);
+    expect(await database.query(User).join('organisations').filter({name: 'notexisting'}).has()).toBe(false);
+
+    {
+        const item = await database.query(User).filter({name: 'notexisting'}).findOneFieldOrUndefined('name');
+        expect(item).toBeUndefined();
+    }
 
     {
         const schema = getClassSchema(OrganisationMembership);
@@ -640,14 +701,26 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(OrganisationMembership)
-            .useInnerJoinWith('user').select(['id']).filter({name: 'marc'}).end().find();
+        const query = await database.query(OrganisationMembership)
+            .useInnerJoinWith('user').select(['id']).filter({name: 'marc'}).end();
 
-        expect(items.length).toBe(2);
-        expect(items[0].user).not.toBeInstanceOf(User);
-        expect(items[1].user).not.toBeInstanceOf(User);
+        {
+            const items = await query.find();
+            expect(items.length).toBe(2);
+            expect(items[0].user).not.toBeInstanceOf(User);
+            expect(items[1].user).not.toBeInstanceOf(User);
 
-        expect(items[0].user).toEqual({id: marc.id});
+            expect(items[0].user).toEqual({id: marc.id});
+        }
+
+        {
+            const items = await query.clone().find();
+            expect(items.length).toBe(2);
+            expect(items[0].user).not.toBeInstanceOf(User);
+            expect(items[1].user).not.toBeInstanceOf(User);
+
+            expect(items[0].user).toEqual({id: marc.id});
+        }
     }
 
     {
@@ -677,6 +750,83 @@ test('joins', async () => {
         expect(items[1].organisations[0].name).toBe('Microsoft');
 
         expect(items[0].organisations[0]).toBe(items[1].organisations[0]); //microsoft the same instance
+    }
+
+    {
+        const items = await database.query(Organisation).useJoinWith('users').end().find();
+        expect(items).toBeArrayOfSize(2);
+        expect(items[0].name).toBe('Microsoft');
+        expect(items[1].name).toBe('Apple');
+
+        expect(items[0].users).toBeArrayOfSize(3);
+        expect(items[1].users).toBeArrayOfSize(1);
+    }
+
+    {
+        const items = await database.query(Organisation).useInnerJoinWith('users').end().find();
+        expect(items).toBeArrayOfSize(2);
+        expect(items[0].name).toBe('Microsoft');
+        expect(items[1].name).toBe('Apple');
+
+        expect(items[0].users).toBeArrayOfSize(3);
+        expect(items[1].users).toBeArrayOfSize(1);
+
+        expect(items[0].users[0].name).toBe('marc');
+        expect(items[0].users[1].name).toBe('peter');
+        expect(items[0].users[2].name).toBe('marcel');
+    }
+
+    {
+        const items = await database.query(Organisation).useInnerJoinWith('users').sort({name: 'asc'}).end().find();
+        expect(items).toBeArrayOfSize(2);
+        expect(items[0].name).toBe('Microsoft');
+        expect(items[1].name).toBe('Apple');
+
+        expect(items[0].users).toBeArrayOfSize(3);
+        expect(items[1].users).toBeArrayOfSize(1);
+
+        expect(items[0].users[0].name).toBe('marc');
+        expect(items[0].users[1].name).toBe('marcel');
+        expect(items[0].users[2].name).toBe('peter');
+    }
+
+    {
+        const items = await database.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).end().find();
+        expect(items).toBeArrayOfSize(2);
+        expect(items[0].name).toBe('Microsoft');
+        expect(items[1].name).toBe('Apple');
+
+        expect(items[0].users).toBeArrayOfSize(2);
+        expect(items[1].users).toBeArrayOfSize(0);
+
+        expect(items[0].users[0].name).toBe('marcel');
+        expect(items[0].users[1].name).toBe('peter');
+    }
+
+    {
+        const items = await database.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).limit(1).end().find();
+        expect(items).toBeArrayOfSize(2);
+        expect(items[0].name).toBe('Microsoft');
+        expect(items[1].name).toBe('Apple');
+
+        expect(items[0].users).toBeArrayOfSize(1);
+        expect(items[1].users).toBeArrayOfSize(0);
+
+        expect(items[0].users[0].name).toBe('marcel');
+    }
+
+    {
+        const items = await database.query(Organisation).useJoinWith('users').select(['id']).end().find();
+        expect(items).toBeArrayOfSize(2);
+        expect(items[0].name).toBe('Microsoft');
+        expect(items[1].name).toBe('Apple');
+
+        expect(items[0].users).toBeArrayOfSize(3);
+        expect(items[1].users).toBeArrayOfSize(1);
+
+        expect(items[0].users[0]).not.toBeInstanceOf(User);
+        expect(items[0].users[0].id).toBe(marc.id);
+        expect(items[0].users[0].name).toBeUndefined();
     }
 
     {
@@ -742,5 +892,53 @@ test('joins', async () => {
 
         const items = await query.find();
         expect(items.length).toBe(4); //we get all, because we got a left join
+    }
+
+    {
+        const query = database.query(User)
+            .useInnerJoinWith('organisations').filter({name: 'Microsoft'}).end();
+        {
+            const items = await query.find();
+            expect(items).toBeArrayOfSize(2);
+            expect(items[0].name).toBe('marc');
+            expect(items[0].organisations).toBeArrayOfSize(1);
+            expect(items[0].organisations[0].name).toBe('Microsoft');
+            expect(() => {expect(items[0].organisations[0].owner).toBeUndefined();}).toThrow('was not populated');
+            expect(items[1].name).toBe('marcel');
+            expect(items[1].organisations).toBeArrayOfSize(1);
+            expect(items[1].organisations[0].name).toBe('Microsoft');
+            expect(() => {expect(items[1].organisations[0].owner).toBeUndefined();}).toThrow('was not populated');
+        }
+
+        {
+            const items = await query.clone().getJoin('organisations').joinWith('owner').end().find();
+            expect(items).toBeArrayOfSize(2);
+            expect(items[0].name).toBe('marc');
+            expect(items[0].organisations).toBeArrayOfSize(1);
+            expect(items[0].organisations[0].name).toBe('Microsoft');
+            expect(items[0].organisations[0].owner).toBeInstanceOf(User);
+            expect(items[1].name).toBe('marcel');
+            expect(items[1].organisations).toBeArrayOfSize(1);
+            expect(items[1].organisations[0].name).toBe('Microsoft');
+            expect(items[1].organisations[0].owner).toBeInstanceOf(User);
+            expect(items[1].organisations[0].owner).toBe(items[0].organisations[0].owner);
+            expect(items[1].organisations[0].owner.name).toBe('admin');
+            expect(items[1].organisations[0].owner.id).toBe(admin.id);
+        }
+
+        {
+            const items = await query.clone().getJoin('organisations').useJoinWith('owner').select(['id']).end().end().find();
+            expect(items).toBeArrayOfSize(2);
+            expect(items[0].name).toBe('marc');
+            expect(items[0].organisations).toBeArrayOfSize(1);
+            expect(items[0].organisations[0].name).toBe('Microsoft');
+            expect(items[0].organisations[0].owner).not.toBeInstanceOf(User);
+            expect(items[1].name).toBe('marcel');
+            expect(items[1].organisations).toBeArrayOfSize(1);
+            expect(items[1].organisations[0].name).toBe('Microsoft');
+            expect(items[1].organisations[0].owner).not.toBeInstanceOf(User);
+            expect(items[1].organisations[0].owner.name).toBeUndefined();
+            expect(items[1].organisations[0].owner.id).toBe(admin.id);
+        }
     }
 });
