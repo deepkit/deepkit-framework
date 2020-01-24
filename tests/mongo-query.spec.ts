@@ -10,6 +10,12 @@ class SimpleConfig {
         this.items = items;
     }
 }
+class SimpleConfigRef {
+    @f name: string = '';
+
+    constructor(@f.primary() public id: number) {
+    }
+}
 
 class Simple {
     @f
@@ -23,6 +29,9 @@ class Simple {
 
     @f.type(SimpleConfig)
     public config: SimpleConfig = new SimpleConfig;
+
+    @f.reference()
+    public configRef?: SimpleConfigRef;
 }
 
 test('simple', () => {
@@ -50,6 +59,30 @@ test('simple class query', () => {
     expect(Object.keys(fieldNames)).toEqual(['id', 'config']);
 });
 
+test('reference object query', () => {
+    const fieldNames = {};
+
+    const m = convertClassQueryToMongo(Simple, {
+        configRef: new SimpleConfigRef(2),
+    }, fieldNames);
+
+    expect(m['configRefId']).toBe(2);
+    expect(Object.keys(m)).toEqual(['configRefId']);
+    expect(Object.keys(fieldNames)).toEqual(['configRefId']);
+});
+
+test('reference object query $in', () => {
+    const fieldNames = {};
+
+    const m = convertClassQueryToMongo(Simple, {
+        configRef: {$in: [new SimpleConfigRef(2)]},
+    }, fieldNames);
+
+    expect(m['configRefId']['$in']).toEqual([2]);
+    expect(Object.keys(m)).toEqual(['configRefId']);
+    expect(Object.keys(fieldNames)).toEqual(['configRefId']);
+});
+
 test('simple class query array', () => {
     const partial = propertyClassToMongo(Simple, 'config', new SimpleConfig(['a', 'b']));
     expect(partial).toEqual(['a', 'b']);
@@ -59,14 +92,20 @@ test('simple class query array', () => {
         $and: [{id: {$qt: '1'}}],
         $or: [{id: {$qt: '1'}}],
         $nor: [{id: {$qt: '1'}}],
-        $not: [{id: {$qt: '1'}}],
+        $not: [{configRef: {$qt: new SimpleConfigRef(2)}}],
     }, fieldNames);
 
     expect(m['$and'][0]['id']['$qt']).toBe(1);
     expect(m['$or'][0]['id']['$qt']).toBe(1);
     expect(m['$nor'][0]['id']['$qt']).toBe(1);
-    expect(m['$not'][0]['id']['$qt']).toBe(1);
+    expect(m['$not'][0]['configRefId']['$qt']).toBe(2);
+    expect(Object.keys(fieldNames)).toEqual(['id', 'configRefId']);
 });
+
+test('convertClassQueryToMongo reference resolution', () => {
+
+});
+
 
 test('convertClassQueryToMongo customMapping', () => {
     {

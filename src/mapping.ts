@@ -3,19 +3,20 @@ import * as clone from "clone";
 import * as mongoUuid from "mongo-uuid";
 import {
     classToPlain,
-    deleteExcludedPropertiesFor,
-    getDecorator, getOrCreateEntitySchema,
+    deleteExcludedPropertiesFor, getClassSchema,
+    getDecorator,
     getParentReferenceClass,
     getRegisteredProperties,
     getResolvedReflection,
     isEnumAllowLabelsAsValue,
     isOptional,
+    moment,
     toClass,
-    ToClassState,
-    moment
+    ToClassState
 } from "@marcj/marshal";
 import {
     ClassType,
+    eachKey,
     getClassName,
     getClassPropertyName,
     getEnumValues,
@@ -25,7 +26,7 @@ import {
     isPlainObject,
     isUndefined,
     isValidEnumValue,
-    eachKey
+    each
 } from "@marcj/estdlib";
 
 export function uuid4Binary(u?: string): Binary {
@@ -40,7 +41,7 @@ export function partialClassToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
 ): { [path: string]: any } {
-    const result = {};
+    const result: { [path: string]: any } = {};
     for (const i of eachKey(target)) {
         result[i] = propertyClassToMongo(classType, i, target[i]);
     }
@@ -52,7 +53,7 @@ export function partialPlainToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
 ): { [path: string]: any } {
-    const result = {};
+    const result: { [path: string]: any } = {};
     for (const i of eachKey(target)) {
         result[i] = propertyPlainToMongo(classType, i, target[i]);
     }
@@ -65,7 +66,7 @@ export function partialMongoToClass<T, K extends keyof T>(
     target: { [path: string]: any },
     parents: any[] = [],
 ): { [path: string]: any } {
-    const result = {};
+    const result: { [path: string]: any } = {};
     for (const i of eachKey(target)) {
         result[i] = propertyMongoToClass(classType, i, target[i], parents);
     }
@@ -77,7 +78,8 @@ export function partialMongoToPlain<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
 ): { [path: string]: any } {
-    const result = {};
+    const result: { [path: string]: any } = {};
+
     for (const i of eachKey(target)) {
         result[i] = propertyMongoToPlain(classType, i, target[i]);
     }
@@ -325,7 +327,7 @@ export function propertyMongoToClass<T>(
     parents: any[] = [],
     incomingLevel: number = 1,
     state: ToClassState = {onFullLoadCallbacks: []}
-) {
+): any {
     if (isUndefined(propertyValue)) {
         return undefined;
     }
@@ -470,18 +472,32 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
         return propertyClassToMongo(classType, decoratorName, (target as any)[decoratorName]);
     }
 
-    for (const propertyName of getRegisteredProperties(classType)) {
-        if (getParentReferenceClass(classType, propertyName)) {
+    for (const property of each(getClassSchema(classType).getClassProperties())) {
+        if (property.isParentReference) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
         }
 
-        const value = propertyClassToMongo(classType, propertyName, (target as any)[propertyName]);
+        let value: any = (target as any)[property.name];
+        let resultName = property.name;
+
+        if (property.isReference || property.backReference) {
+            //references are handled separately.
+            if (value) {
+                value = (target as any)[property.name][property.getResolvedClassSchema().getPrimaryField().name]
+                resultName = property.getForeignKeyName();
+            } else {
+                continue;
+            }
+        }
+
+        value = propertyClassToMongo(classType, resultName, value);
+
         //since mongo driver doesn't support undefined value, we need to make sure the property doesn't exist at all
         //when used undefined. This results in not having the property in the database at all, which is equivalent to
         //undefined.
         if (value !== undefined) {
-            result[propertyName] = value;
+            result[resultName] = value;
         }
     }
 
@@ -531,9 +547,14 @@ export function convertQueryToMongo<T, K extends keyof T>(
     customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
     const result: { [i: string]: any } = {};
+    const schema = getClassSchema(classType);
 
     for (const i of eachKey(target)) {
         let fieldValue: any = target[i];
+        const property = schema.getPropertyOrUndefined(i);
+
+        //when i is a reference, we rewrite it to the foreign key name
+        let targetI = property && property.isReference ? property.getForeignKeyName() : i;
 
         if (i[0] === '$') {
             result[i] = (fieldValue as any[]).map(v => convertQueryToMongo(classType, v, converter, fieldNamesMap, customMapping));
@@ -544,12 +565,17 @@ export function convertQueryToMongo<T, K extends keyof T>(
             fieldValue = {...target[i]};
 
             for (const j of eachKey(fieldValue)) {
-                const queryValue: any = (fieldValue as any)[j];
+                let queryValue: any = (fieldValue as any)[j];
 
                 if (j[0] !== '$') {
-                    fieldValue = converter(classType, i, fieldValue);
+                    //its a regular classType object
+                    if (property && property.isReference) {
+                        fieldValue = fieldValue[property.getResolvedClassSchema().getPrimaryField().name];
+                    }
+                    fieldValue = converter(classType, targetI, fieldValue);
                     break;
                 } else {
+                    //we got a mongo query, e.g. `{$all: []}` as fieldValue
                     if (customMapping[j]) {
                         const mappingResult = customMapping[j](i, queryValue, fieldNamesMap, converter);
                         if (mappingResult) {
@@ -560,24 +586,40 @@ export function convertQueryToMongo<T, K extends keyof T>(
                             break;
                         }
                     } else if (j === '$in' || j === '$nin' || j === '$all') {
-                        fieldNamesMap[i] = true;
-                        (fieldValue as any)[j] = (queryValue as any[]).map(v => converter(classType, i, v));
+                        fieldNamesMap[targetI] = true;
+                        if (property && property.isReference) {
+                            const pk = property.getResolvedClassSchema().getPrimaryField().name;
+                            queryValue = queryValue.map(v => v[pk]);
+                        }
+                        (fieldValue as any)[j] = (queryValue as any[]).map(v => converter(classType, targetI, v));
                     } else if (j === '$text' || j === '$exists' || j === '$mod' || j === '$size' || j === '$type' || j === '$regex' || j === '$where') {
-                        //don't transform
-                        fieldNamesMap[i] = true;
+                        if (property && property.isReference) {
+                            targetI = i;
+                        } else {
+                            //don't transform
+                            fieldNamesMap[targetI] = true;
+                        }
                     } else {
-                        fieldNamesMap[i] = true;
-                        (fieldValue as any)[j] = converter(classType, i, queryValue);
+                        fieldNamesMap[targetI] = true;
+                        if (property && property.isReference) {
+                            queryValue = queryValue[property.getResolvedClassSchema().getPrimaryField().name];
+                        }
+                        (fieldValue as any)[j] = converter(classType, targetI, queryValue);
                     }
                 }
             }
         } else {
-            fieldNamesMap[i] = true;
-            fieldValue = converter(classType, i, fieldValue);
+            fieldNamesMap[targetI] = true;
+
+            if (property && property.isReference) {
+                fieldValue = fieldValue[property.getResolvedClassSchema().getPrimaryField().name];
+            }
+
+            fieldValue = converter(classType, targetI, fieldValue);
         }
 
         if (fieldValue !== undefined) {
-            result[i] = fieldValue;
+            result[targetI] = fieldValue;
         }
     }
 

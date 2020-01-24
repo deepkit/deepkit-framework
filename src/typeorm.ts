@@ -11,7 +11,7 @@ import {
     isOptional
 } from "@marcj/marshal";
 import {ColumnType, EntitySchema, EntitySchemaColumnOptions, EntitySchemaIndexOptions} from "typeorm";
-import {ClassType, getEnumValues} from "@marcj/estdlib";
+import {ClassType, getEnumValues, each} from "@marcj/estdlib";
 
 function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: string): EntitySchemaColumnOptions {
     const reflection = getResolvedReflection(classType, propertyName)!;
@@ -82,17 +82,19 @@ export function getTypeOrmEntity<T>(classType: ClassType<T>): EntitySchema<T> {
         [P in keyof T]?: EntitySchemaColumnOptions;
     } = {};
 
-    for (const propertyName of getRegisteredProperties(classType)) {
-        if (getParentReferenceClass(classType, propertyName)) {
+    for (const property of each(schema.getClassProperties())) {
+        if (getParentReferenceClass(classType, property.name)) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
         }
 
-        if (isExcluded(classType, propertyName, 'mongo')) {
+        if (isExcluded(classType, property.name, 'mongo')) {
             continue;
         }
 
-        columns[propertyName] = propertyToColumnOptions(classType, propertyName);
+        if (property.isReference) continue;
+
+        columns[property.name] = propertyToColumnOptions(classType, property.name);
     }
 
     return new EntitySchema({
