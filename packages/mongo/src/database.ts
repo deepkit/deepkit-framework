@@ -22,6 +22,7 @@ import {
 import {Collection, Connection} from 'typeorm';
 import {ClassType, eachPair, getClassName} from '@marcj/estdlib';
 import {FindOneOptions} from "mongodb";
+import {Subject} from "rxjs";
 
 export class NotFoundError extends Error {
 }
@@ -65,6 +66,7 @@ declare type SORT<T> = { [P in keyof T]: SORT_TYPE } | { [path: string]: SORT_TY
 
 declare type QueryMode =
     'find'
+    | 'findField'
     | 'findOne'
     | 'findOneOrUndefined'
     | 'findOneField'
@@ -74,26 +76,62 @@ declare type QueryMode =
 
 export class DatabaseQueryModel<T> {
     public filter?: { [field: string]: any };
-    public select: string[] | (keyof T)[] = [];
+    public select: Set<string> = new Set<string>();
     public joins: {
-        classSchema: ClassSchema<any>;
-        propertySchema: PropertySchema;
-        type: 'left' | 'inner';
-        populate: boolean;
+        classSchema: ClassSchema<any>,
+        propertySchema: PropertySchema,
+        type: 'left' | 'inner',
+        populate: boolean,
         query: JoinDatabaseQuery<any, any>,
         foreignPrimaryKey: PropertySchema,
     }[] = [];
     public skip?: number;
     public limit?: number;
+    public parameters: { [name: string]: any } = {};
     public sort?: SORT<T>;
+    public readonly change = new Subject<void>();
 
-    clone() {
-        //todo clone joins as well
-        return {...this};
+    changed() {
+        this.change.next();
     }
 
+    clone(parentQuery: BaseQuery<any>) {
+        const m = new DatabaseQueryModel<T>();
+        m.filter = this.filter;
+        m.select = new Set(this.select.values());
+
+        m.joins = this.joins.map((v) => {
+            return {
+                classSchema: v.classSchema,
+                propertySchema: v.propertySchema,
+                type: v.type,
+                populate: v.populate,
+                query: v.query.clone(parentQuery),
+                foreignPrimaryKey: v.foreignPrimaryKey,
+            }
+        });
+
+        m.skip = this.skip;
+        m.limit = this.limit;
+        m.parameters = {...this.parameters};
+        m.sort = this.sort ? {...this.sort} : undefined;
+
+        return m;
+    }
+
+    /**
+     * Whether only a subset of fields are selected.
+     */
     isPartial() {
-        return this.select.length > 0;
+        return this.select.size > 0;
+    }
+
+    getFirstSelect() {
+        return this.select.values().next().value;
+    }
+
+    isSelected(field: string): boolean {
+        return this.select.has(field);
     }
 
     hasJoins() {
@@ -104,6 +142,8 @@ export class DatabaseQueryModel<T> {
 type FlattenIfArray<T> = T extends (infer R)[] ? R : T
 
 export class BaseQuery<T> {
+    public format: 'class' | 'json' | 'raw' = 'class';
+
     /**
      * @internal
      */
@@ -113,22 +153,38 @@ export class BaseQuery<T> {
     }
 
     select(fields: string[] | (keyof T)[]): this {
-        this.model.select = fields;
+        this.model.select = new Set(fields as string[]);
+        this.model.changed();
         return this;
     }
 
     skip(value?: number): this {
         this.model.skip = value;
+        this.model.changed();
         return this;
     }
 
     limit(value?: number): this {
         this.model.limit = value;
+        this.model.changed();
+        return this;
+    }
+
+    parameter(name: string, value: any): this {
+        this.model.parameters[name] = value;
+        this.model.changed();
+        return this;
+    }
+
+    parameters(parameters: { [name: string]: any }): this {
+        this.model.parameters = parameters;
+        this.model.changed();
         return this;
     }
 
     sort(sort?: SORT<T>): this {
         this.model.sort = sort;
+        this.model.changed();
         return this;
     }
 
@@ -136,6 +192,7 @@ export class BaseQuery<T> {
         if (filter && !Object.keys(filter).length) filter = undefined;
 
         this.model.filter = filter;
+        this.model.changed();
         return this;
     }
 
@@ -148,12 +205,13 @@ export class BaseQuery<T> {
         if (!propertySchema.isReference && !propertySchema.backReference) {
             throw new Error(`Field ${field} is not marked as reference. Use $f.reference()`);
         }
-        const query = new JoinDatabaseQuery<any, this>(propertySchema, this);
+        const query = new JoinDatabaseQuery<any, this>(propertySchema.getResolvedClassSchema(), this);
         this.model.joins.push({
             propertySchema, query, populate, type,
             foreignPrimaryKey: propertySchema.getResolvedClassSchema().getPrimaryField(),
             classSchema: this.classSchema,
         });
+        this.model.changed();
         return this;
     }
 
@@ -181,6 +239,13 @@ export class BaseQuery<T> {
     useJoinWith<K extends keyof T>(field: K): JoinDatabaseQuery<FlattenIfArray<T[K]>, this> {
         this.join(field, 'left', true);
         return this.model.joins[this.model.joins.length - 1].query;
+    }
+
+    getJoin<K extends keyof T>(field: K): JoinDatabaseQuery<FlattenIfArray<T[K]>, this> {
+        for (const join of this.model.joins) {
+            if (join.propertySchema.name === field) return join.query;
+        }
+        throw new Error(`No join fo reference ${field} added.`);
     }
 
     /**
@@ -219,12 +284,19 @@ export class BaseQuery<T> {
 
 }
 
-export class JoinDatabaseQuery<T, PARENT> extends BaseQuery<T> {
+export class JoinDatabaseQuery<T, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
     constructor(
-        public readonly propertySchema: PropertySchema,
+        public readonly foreignClassSchema: ClassSchema,
         public readonly parentQuery: PARENT,
     ) {
-        super(propertySchema.getResolvedClassSchema());
+        super(foreignClassSchema);
+        this.model.change.subscribe(parentQuery.model.change);
+    }
+
+    clone(parentQuery: PARENT) {
+        const query = new JoinDatabaseQuery<T, PARENT>(this.foreignClassSchema, parentQuery);
+        query.model = this.model.clone(query);
+        return query;
     }
 
     end(): PARENT {
@@ -233,8 +305,6 @@ export class JoinDatabaseQuery<T, PARENT> extends BaseQuery<T> {
 }
 
 export class DatabaseQuery<T> extends BaseQuery<T> {
-    public format: 'class' | 'json' | 'raw' = 'class';
-
     constructor(
         classSchema: ClassSchema<T>,
         protected readonly executor: (mode: QueryMode, query: DatabaseQuery<T>) => Promise<any>,
@@ -263,7 +333,8 @@ export class DatabaseQuery<T> extends BaseQuery<T> {
      */
     clone(): DatabaseQuery<T> {
         const query = new DatabaseQuery(this.classSchema, this.executor);
-        query.model = this.model.clone();
+        query.format = this.format;
+        query.model = this.model.clone(query);
         return query;
     }
 
@@ -276,17 +347,22 @@ export class DatabaseQuery<T> extends BaseQuery<T> {
     }
 
     async findOneField(fieldName: keyof T | string): Promise<any> {
-        this.model.select = [fieldName as string];
-        return await this.executor('findOne', this);
+        this.model.select = new Set([fieldName as string]);
+        return await this.executor('findOneField', this);
     }
 
     async findOneFieldOrUndefined(fieldName: keyof T | string): Promise<any | undefined> {
-        this.model.select = [fieldName as string];
+        this.model.select = new Set([fieldName as string]);
         return await this.executor('findOneFieldOrUndefined', this);
     }
 
     async find(): Promise<T[]> {
         return await this.executor('find', this);
+    }
+
+    async findField(fieldName: keyof T | string): Promise<any[]> {
+        this.model.select = new Set([fieldName as string]);
+        return await this.executor('findField', this);
     }
 
     async count(): Promise<number> {
@@ -303,7 +379,7 @@ class Formatter {
     protected converter: (c: any, v: any) => any;
     protected partialConverter: (c: any, v: any) => any;
 
-    constructor(protected query: DatabaseQuery<any>) {
+    constructor(protected query: BaseQuery<any>) {
         this.converter = this.query.format === 'class'
             ? mongoToClass : (this.query.format === 'json' ? mongoToPlain : (c, v) => v);
 
@@ -311,26 +387,27 @@ class Formatter {
             ? partialMongoToClass : (this.query.format === 'json' ? partialMongoToPlain : (c, v) => v);
     }
 
-    public hydrate<T>(classSchema: ClassSchema, value: any): any {
-        return this.hydrateModel(this.query.model, classSchema, value);
+    public hydrate<T>(value: any): any {
+        return this.hydrateModel(this.query.model, this.query.classSchema, value);
     }
 
     protected hydrateModel(model: DatabaseQueryModel<any>, classSchema: ClassSchema, value: any) {
-        const converter = model.select.length ? this.partialConverter : this.converter;
+        const converter = model.isPartial() ? this.partialConverter : this.converter;
         const converted = converter(classSchema.classType, value);
 
         const makeInvalidReference = (item, propertySchema: PropertySchema) => {
             if (this.query.format !== 'class') return;
-            if (model.select.length) return;
+            if (model.isPartial()) return;
 
             const storeName = '$__' + propertySchema.name;
             Object.defineProperty(item, storeName, {
                 enumerable: false,
                 configurable: false,
+                writable: true,
                 value: undefined
             });
             Object.defineProperty(item, propertySchema.name, {
-                enumerable: true,
+                enumerable: false,
                 configurable: false,
                 get() {
                     if ('undefined' !== typeof this[storeName]) {
@@ -406,276 +483,296 @@ export class Database {
         await this.connection.close();
     }
 
+    public async resolveQuery<T>(mode: QueryMode, query: BaseQuery<T>) {
+        let collection: Collection<T> = await this.getCollection(query.classSchema.classType);
+
+        const formatter = new Formatter(query);
+
+        function findOne() {
+            return mode.startsWith('findOne');
+        }
+
+        function findOneField() {
+            return mode.startsWith('findOneField');
+        }
+
+        function orUndefined() {
+            return mode === 'findOneOrUndefined' || mode === 'findOneFieldOrUndefined';
+        }
+
+        const projection: { [name: string]: 1 | 0 } = {};
+
+        function getProjectModel<T>(select: Set<string>) {
+            const res: { [name: string]: 0 | 1 } = {};
+            for (const v of select.values()) {
+                (res as any)[v] = 1;
+            }
+            return res;
+        }
+
+        function getSortFromModel<T>(modelSort?: SORT<T>) {
+            const sort: { [name: string]: -1 | 1 | { $meta: "textScore" } } = {};
+            if (modelSort) {
+                for (const [i, v] of eachPair(modelSort)) {
+                    sort[i] = v === 'asc' ? 1 : (v === 'desc' ? -1 : v);
+                }
+            }
+            return sort;
+        }
+
+
+        if (query.model.isPartial()) {
+            if (query.classSchema.idField) {
+                //we require ID always for hydration
+                projection[query.classSchema.idField] = 1;
+            }
+            for (const name of query.model.select) projection[name as string] = 1;
+        }
+
+        const handleJoins = (pipeline: any[], query: BaseQuery<any>) => {
+            for (const join of query.model.joins) {
+                const foreignSchema = join.propertySchema.getResolvedClassSchema();
+
+                const joinPipeline: any[] = [];
+
+                if (join.propertySchema.backReference) {
+                    if (join.propertySchema.backReference.via) {
+                    } else {
+                        const backReference = foreignSchema.findForReference(
+                            join.classSchema.classType,
+                            join.propertySchema.backReference.mappedBy as string
+                        );
+
+                        joinPipeline.push({
+                            $match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$foreign_id']}}
+                        });
+                    }
+                } else {
+                    joinPipeline.push({
+                        $match: {$expr: {$eq: ['$' + join.foreignPrimaryKey.name, '$$foreign_id']}}
+                    });
+                }
+
+                if (join.query.model.hasJoins()) {
+                    handleJoins(joinPipeline, join.query);
+                }
+
+                if (join.query.model.filter) joinPipeline.push({$match: convertClassQueryToMongo(join.query.classSchema.classType, join.query.model.filter)});
+                if (join.query.model.sort) joinPipeline.push({$sort: getSortFromModel(join.query.model.sort)});
+                if (join.query.model.skip) joinPipeline.push({$skip: join.query.model.skip});
+                if (join.query.model.limit) joinPipeline.push({$limit: join.query.model.limit});
+
+                const project = getProjectModel(join.query.model.select);
+                if (!join.classSchema.hasProperty('_id') || (join.query.model.isPartial() && !join.query.model.isSelected('_id'))) {
+                    project['_id'] = 0;
+                }
+                if (Object.keys(project).length) {
+                    joinPipeline.push({$project: project});
+                }
+
+
+                if (join.propertySchema.backReference) {
+                    if (join.propertySchema.backReference.via) {
+                        //many-to-many
+                        const viaClassType = resolveClassTypeOrForward(join.propertySchema.backReference.via);
+                        const as = join.propertySchema.name;
+
+                        const backReference = getClassSchema(viaClassType).findForReference(
+                            join.classSchema.classType,
+                            //mappedBy is not for picot tables. We would need 2 different mappedBy
+                            // join.propertySchema.backReference.mappedBy as string
+                        );
+
+                        pipeline.push({
+                            $lookup: {
+                                from: this.getCollectionName(viaClassType),
+                                let: {localField: '$' + join.classSchema.getPrimaryField().name},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$localField']}}}
+                                ],
+                                as: as,
+                            },
+                        });
+
+                        const foreignSchema = join.propertySchema.getResolvedClassSchema();
+                        const backReferenceForward = getClassSchema(viaClassType).findForReference(
+                            foreignSchema.classType,
+                            //mappedBy is not for picot tables. We would need 2 different mappedBy
+                            // join.propertySchema.backReference.mappedBy as string
+                        );
+
+                        pipeline.push({
+                            $addFields: {[as]: '$' + as + '.' + backReferenceForward.getForeignKeyName()},
+                        });
+
+                        pipeline.push({
+                            $lookup: {
+                                from: this.getCollectionName(foreignSchema.classType),
+                                let: {localField: '$' + as},
+                                pipeline: [
+                                    {$match: {$expr: {$in: ['$' + foreignSchema.getPrimaryField().name, '$$localField']}}}
+                                ].concat(joinPipeline),
+                                as: join.propertySchema.name,
+                            },
+                        });
+                    } else {
+                        //one-to-many
+                        pipeline.push({
+                            $lookup: {
+                                from: this.getCollectionName(foreignSchema.classType),
+                                let: {foreign_id: '$' + foreignSchema.getPrimaryField().name},
+                                pipeline: joinPipeline,
+                                as: join.propertySchema.name,
+                            },
+                        });
+                    }
+                } else {
+                    pipeline.push({
+                        $lookup: {
+                            from: this.getCollectionName(foreignSchema.classType),
+                            let: {foreign_id: '$' + join.propertySchema.getForeignKeyName()},
+                            pipeline: joinPipeline,
+                            as: join.propertySchema.name,
+                        },
+                    });
+                }
+
+                //for *toOne relations, since mongodb joins always as array
+                if (!join.propertySchema.isArray) {
+                    pipeline.push({
+                        $unwind: {
+                            path: '$' + join.propertySchema.name,
+                            preserveNullAndEmptyArrays: join.type === 'left'
+                        }
+                    });
+                } else {
+                    if (join.type === 'inner') {
+                        pipeline.push({
+                            $match: {[join.propertySchema.name]: {$ne: []}}
+                        })
+                    }
+                }
+            }
+        };
+
+        if (query.model.hasJoins()) {
+            const pipeline: any[] = [];
+
+            handleJoins(pipeline, query);
+
+            if (query.model.filter) pipeline.push({$match: convertClassQueryToMongo(query.classSchema.classType, query.model.filter)});
+            if (query.model.sort) pipeline.push({$sort: getSortFromModel(query.model.sort)});
+            if (query.model.skip) pipeline.push({$skip: query.model.skip});
+            if (query.model.limit) pipeline.push({$limit: query.model.limit});
+
+            if (Object.keys(projection).length) {
+                pipeline.push({$project: projection});
+            }
+
+            if (mode === 'has') {
+                pipeline.push({$limit: 1});
+                pipeline.push({$count: 'count'});
+            }
+
+            if (mode === 'count') {
+                pipeline.push({$count: 'count'});
+            }
+
+            const items = await collection.aggregate(pipeline).toArray();
+            // console.log('pipeline', JSON.stringify(pipeline, null, 4));
+            // console.log('aggregate items', items);
+
+            if (findOne()) {
+                if (items[0]) {
+                    if (findOneField()) {
+                        return formatter.hydrate(items[0])[query.model.getFirstSelect()];
+                    }
+
+                    return formatter.hydrate(items[0]);
+                }
+
+                if (orUndefined()) return;
+
+                throw new NotFoundError(`${getClassName(query.classSchema.classType)} item not found.`);
+            } else {
+                if (mode === 'count') {
+                    return items.length ? items[0].count : 0;
+                }
+
+                if (mode === 'has') {
+                    return items.length ? items[0].count > 0 : false;
+                }
+
+                if (mode === 'findField') {
+                    return items.map(v => formatter.hydrate(v)[query.model.getFirstSelect()]);
+                }
+
+                if (mode === 'find') {
+                    return items.map(v => formatter.hydrate(v));
+                }
+            }
+        }
+
+        if (mode.startsWith('findOne')) {
+            const item = await collection
+                .findOne(
+                    query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {},
+                    {
+                        projection: projection,
+                        sort: getSortFromModel(query.model.sort),
+                        skip: query.model.skip,
+                        limit: query.model.limit,
+                    } as FindOneOptions
+                );
+
+            if (item) {
+                if (findOneField()) {
+                    return formatter.hydrate(item)[query.model.getFirstSelect()];
+                }
+
+                return formatter.hydrate(item);
+            }
+
+            if (orUndefined()) return;
+
+            throw new NotFoundError(`${getClassName(query.classSchema.classType)} item not found.`);
+        }
+
+        if (mode === 'count') {
+            return await collection
+                .countDocuments(query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {});
+        }
+
+        if (mode === 'has') {
+            return await collection
+                .countDocuments(query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {}) > 0;
+        }
+
+        if (mode === 'find' || mode === 'findField') {
+            let items = await collection
+                .find(query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {})
+                .project(projection);
+
+            if (query.model.sort !== undefined) items = items.sort(getSortFromModel(query.model.sort));
+            if (query.model.skip !== undefined) items = items.skip(query.model.skip);
+            if (query.model.limit !== undefined) items = items.skip(query.model.limit);
+
+            if (mode === 'findField') {
+                return items.map(v => formatter.hydrate(v)[query.model.getFirstSelect()]).toArray();
+            }
+
+            return items.map(v => formatter.hydrate(v)).toArray();
+        }
+
+    }
+
     /**
      * Creates a new DatabaseQuery instance which can be used to query data.
      */
     public query<T>(classType: ClassType<T>): DatabaseQuery<T> {
         const schema = getClassSchema(classType);
 
-        return new DatabaseQuery(schema, async (mode: QueryMode, query) => {
-            let collection: Collection<T> = await this.getCollection(classType);
-
-            const formatter = new Formatter(query);
-
-            function findOne() {
-                return mode.startsWith('findOne');
-            }
-
-            function findOneField() {
-                return mode.startsWith('findOneField');
-            }
-
-            function orUndefined() {
-                return mode === 'findOneOrUndefined' || mode === 'findOneFieldOrUndefined';
-            }
-
-            const projection: { [name: string]: 1 | 0 } = {};
-            const sort: { [name: string]: -1 | 1 | { $meta: "textScore" } } = {};
-            if (query.model.sort) {
-                for (const [i, v] of eachPair(query.model.sort)) {
-                    sort[i] = v === 'asc' ? 1 : (v === 'desc' ? -1 : v);
-                }
-            }
-
-            if (query.model.select.length) {
-                if (schema.idField) {
-                    //we require ID always for hydration
-                    projection[schema.idField] = 1;
-                }
-                for (const name of query.model.select) projection[name as string] = 1;
-            }
-
-            const handleJoins = (pipeline: any[], query: BaseQuery<any>) => {
-                for (const join of query.model.joins) {
-                    const foreignSchema = join.propertySchema.getResolvedClassSchema();
-
-                    const joinPipeline: any[] = [];
-
-                    if (join.propertySchema.backReference) {
-                        if (join.propertySchema.backReference.via) {
-                        } else {
-                            const backReference = foreignSchema.findForReference(
-                                join.classSchema.classType,
-                                join.propertySchema.backReference.mappedBy as string
-                            );
-
-                            joinPipeline.push({
-                                $match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$foreign_id']}}
-                            });
-                        }
-                    } else {
-                        joinPipeline.push({
-                            $match: {$expr: {$eq: ['$' + join.foreignPrimaryKey.name, '$$foreign_id']}}
-                        });
-                    }
-
-                    if (join.query.model.hasJoins()) {
-                        handleJoins(joinPipeline, join.query);
-                    }
-
-                    if (join.query.model.filter) joinPipeline.push({$match: convertClassQueryToMongo(join.query.classSchema.classType, join.query.model.filter)});
-                    if (join.query.model.skip) joinPipeline.push({$skip: join.query.model.skip});
-                    if (join.query.model.limit) joinPipeline.push({$limit: join.query.model.limit});
-
-                    if (join.propertySchema.backReference) {
-                        if (join.propertySchema.backReference.via) {
-                            //many-to-many
-                            const viaClassType = resolveClassTypeOrForward(join.propertySchema.backReference.via);
-                            const as = join.propertySchema.name;
-
-                            const backReference = getClassSchema(viaClassType).findForReference(
-                                join.classSchema.classType,
-                                join.propertySchema.backReference.mappedBy as string
-                            );
-
-                            pipeline.push({
-                                $lookup: {
-                                    from: this.getCollectionName(viaClassType),
-                                    let: {localField: '$' + join.classSchema.getPrimaryField().name},
-                                    pipeline: [
-                                        {$match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$localField']}}}
-                                    ],
-                                    as: as,
-                                },
-                            });
-
-                            pipeline.push({
-                                $addFields: {[as]: '$' + as + '.organisationId'},
-                            });
-
-                            const foreignSchema = join.propertySchema.getResolvedClassSchema();
-                            pipeline.push({
-                                $lookup: {
-                                    from: this.getCollectionName(foreignSchema.classType),
-                                    let: {localField: '$' + as},
-                                    pipeline: [
-                                        {$match: {$expr: {$in: ['$' + foreignSchema.getPrimaryField().name, '$$localField']}}}
-                                    ].concat(joinPipeline),
-                                    as: join.propertySchema.name,
-                                },
-                            });
-                        } else {
-                            //one-to-many
-                            pipeline.push({
-                                $lookup: {
-                                    from: this.getCollectionName(foreignSchema.classType),
-                                    let: {foreign_id: '$' + foreignSchema.getPrimaryField().name},
-                                    pipeline: joinPipeline,
-                                    as: join.propertySchema.name,
-                                },
-                            });
-                        }
-                    } else {
-                        pipeline.push({
-                            $lookup: {
-                                from: this.getCollectionName(foreignSchema.classType),
-                                let: {foreign_id: '$' + join.propertySchema.getForeignKeyName()},
-                                pipeline: joinPipeline,
-                                as: join.propertySchema.name,
-                            },
-                        });
-                    }
-
-                    //for *toOne relations, since mongodb joins always as array
-                    if (!join.propertySchema.isArray) {
-                        pipeline.push({
-                            $unwind: {
-                                path: '$' + join.propertySchema.name,
-                                preserveNullAndEmptyArrays: join.type === 'left'
-                            }
-                        });
-                    } else {
-                        if (join.type === 'inner') {
-                            pipeline.push({
-                                $match: {[join.propertySchema.name]: {$ne: []}}
-                            })
-                        }
-                    }
-                }
-            };
-
-            if (query.model.hasJoins()) {
-                const pipeline: any[] = [];
-
-                handleJoins(pipeline, query);
-
-                if (query.model.filter) pipeline.push({$match: convertClassQueryToMongo(query.classSchema.classType, query.model.filter)});
-                if (query.model.skip) pipeline.push({$skip: query.model.skip});
-                if (query.model.limit) pipeline.push({$limit: query.model.limit});
-
-                function handleJoinFields(query: BaseQuery<any>, prefix = '') {
-                    prefix = prefix ? prefix + '.' : '';
-                    for (const join of query.model.joins) {
-                        if (join.populate && query.model.select.length) {
-                            projection[prefix + join.propertySchema.name + '.' + join.foreignPrimaryKey.name] = 1;
-                        }
-                        if (!join.populate) {
-                            projection[prefix + join.propertySchema.name as string] = 0;
-                        } else {
-                            for (const field of join.query.model.select) {
-                                projection[prefix + join.propertySchema.name + '.' + (field as string)] = 1;
-                            }
-                            if (join.query.model.hasJoins()) {
-                                handleJoinFields(join.query, join.propertySchema.name);
-                            }
-                        }
-                    }
-                }
-
-                handleJoinFields(query, '');
-
-                if (Object.keys(projection).length) {
-                    pipeline.push({$project: projection});
-                }
-
-                if (mode === 'has') {
-                    pipeline.push({$limit: 1});
-                    pipeline.push({$count: 'count'});
-                }
-
-                if (mode === 'count') {
-                    pipeline.push({$count: 'count'});
-                }
-
-                const items = await collection.aggregate(pipeline).toArray();
-                // console.log('pipeline', JSON.stringify(pipeline, null, 4));
-                // console.log('aggregate items', items);
-
-                if (findOne()) {
-                    if (items[0]) {
-                        if (findOneField()) {
-                            return formatter.hydrate(schema, items[0])[query.model.select[0]];
-                        }
-
-                        return formatter.hydrate(schema, items[0]);
-                    }
-
-                    if (orUndefined()) return;
-
-                    throw new NotFoundError(`${getClassName(classType)} item not found.`);
-                } else {
-                    if (mode === 'count') {
-                        return items.length ? items[0].count : 0;
-                    }
-
-                    if (mode === 'has') {
-                        return items.length ? items[0].count > 0 : false;
-                    }
-
-                    if (mode === 'find') {
-                        return items.map(v => formatter.hydrate(schema, v));
-                    }
-                }
-            }
-
-            if (mode.startsWith('findOne')) {
-                const item = await collection
-                    .findOne(
-                        query.model.filter ? convertClassQueryToMongo(classType, query.model.filter) : {},
-                        {
-                            projection: projection,
-                            sort: sort,
-                            skip: query.model.skip,
-                            limit: query.model.limit,
-                        } as FindOneOptions
-                    );
-
-                if (item) {
-                    if (findOneField()) {
-                        return formatter.hydrate(schema, item)[query.model.select[0]];
-                    }
-
-                    return formatter.hydrate(schema, item);
-                }
-
-                if (orUndefined()) return;
-
-                throw new NotFoundError(`${getClassName(classType)} item not found.`);
-            }
-
-            if (mode === 'count') {
-                return await collection
-                    .countDocuments(query.model.filter ? convertClassQueryToMongo(classType, query.model.filter) : {});
-            }
-
-            if (mode === 'has') {
-                return await collection
-                    .countDocuments(query.model.filter ? convertClassQueryToMongo(classType, query.model.filter) : {}) > 0;
-            }
-
-            if (mode === 'find') {
-                let items = await collection
-                    .find(query.model.filter ? convertClassQueryToMongo(classType, query.model.filter) : {})
-                    .project(projection);
-
-                if (query.model.skip !== undefined) items = items.skip(query.model.skip);
-                if (query.model.limit !== undefined) items = items.skip(query.model.limit);
-                if (query.model.sort !== undefined) items = items.sort(sort);
-
-                return items.map(v => formatter.hydrate(schema, v)).toArray();
-            }
-
-        });
+        return new DatabaseQuery(schema, this.resolveQuery.bind(this));
     }
 
     public getCollectionName<T>(classType: ClassType<T>): string {
