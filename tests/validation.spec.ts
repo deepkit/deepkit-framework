@@ -495,16 +495,15 @@ test('test decorated', async () => {
     }
 
     class JobInfos {
-        @f.array(JobInfo).decorated()
-        public items: JobInfo[] = [];
-
         @f
         public thisFieldIsIgnored: string = '';
 
         protected map: { [name: string]: JobInfo } = {};
 
-        constructor(items: JobInfo[] = []) {
-            this.items = items;
+        constructor(
+            @f.array(JobInfo).decorated().asName('items')
+            public items: JobInfo[] = []
+        ) {
         }
 
         public all(): JobInfo[] {

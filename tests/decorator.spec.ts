@@ -187,7 +187,7 @@ test('test no entity throw error', () => {
         }
 
         getEntityName(Model);
-    }).toThrowError('No @Entity() defined for class class Model');
+    }).toThrowError('No @Entity() defined for class Model');
 });
 
 test('test decorator ParentReference without class', () => {
@@ -202,7 +202,7 @@ test('test decorator ParentReference without class', () => {
 
         getParentReferenceClass(Model, 'sub');
         expect(getClassSchema(Model).getProperty('sub').isResolvedClassTypeIsDecorated()).toBe(false);
-    }).toThrowError('Model::sub has @ParentReference but no @Class defined.');
+    }).toThrowError('Model::sub has @ParentReference but no @Entity defined.');
 });
 
 test('test No decorated property found', () => {

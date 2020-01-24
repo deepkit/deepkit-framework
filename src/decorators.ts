@@ -17,15 +17,18 @@ import {
     isFunction,
     isNumber,
     isObject,
-    isPlainObject
+    isPlainObject,
+    each
 } from '@marcj/estdlib';
 import {Buffer} from "buffer";
 import * as getParameterNames from "get-parameter-names";
+import {capitalizeFirstLetter} from "./utils";
 
 /**
  * Registry of all registered entity that used the @Entity('name') decorator.
  */
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
+export const MarshalGlobal = {unpopulatedCheckActive: true};
 
 /**
  * Type for @f.partial().
@@ -84,6 +87,10 @@ export class PropertySchema {
     type: Types = 'any';
     isArray: boolean = false;
     isMap: boolean = false;
+    isReference: boolean = false;
+    isReferenceKey: boolean = false;
+    backReference?: BackReferenceOptions<any>;
+    index?: IndexOptions;
 
     /**
      * Used in decorator to check whether type has been set already.
@@ -240,10 +247,18 @@ export class PropertySchema {
         }
     }
 
+    getForeignKeyName(): string {
+        return this.name + capitalizeFirstLetter(this.getResolvedClassSchema().getPrimaryField().name);
+    }
+
+    getResolvedClassSchema(): ClassSchema {
+        return getClassSchema(this.getResolvedClassType());
+    }
+
     clone(): PropertySchema {
         const s = new PropertySchema(this.name);
         for (const i of eachKey(this)) {
-            s[i] = this[i];
+            s[i] = (this as any)[i];
         }
         return s;
     }
@@ -331,42 +346,50 @@ export interface EntityIndex {
     options: IndexOptions
 }
 
-export class ClassSchema {
-    proto: Object;
+export class ClassSchema<T = any> {
+    classType: ClassType<T>;
     name?: string;
     collectionName?: string;
     databaseName?: string;
+
     decorator?: string;
 
     /**
      * Each method can have its own PropertySchema definition for each argument, where map key = method name.
      */
-    methodProperties = new Map<string, PropertySchema[]>();
+    protected methodProperties = new Map<string, PropertySchema[]>();
     methods: { [name: string]: PropertySchema } = {};
 
     /**
      * @internal
      */
-    initializedMethods: { [name: string]: true } = {};
+    protected initializedMethods: { [name: string]: true } = {};
 
     classProperties: { [name: string]: PropertySchema } = {};
 
     idField?: string;
     propertyNames: string[] = [];
 
-    methodsParamNames = new Map<string, string[]>();
-    methodsParamNamesAutoResolved = new Map<string, string[]>();
+    protected methodsParamNames = new Map<string, string[]>();
+    protected methodsParamNamesAutoResolved = new Map<string, string[]>();
 
     indices: EntityIndex[] = [];
 
+    public readonly references = new Set<PropertySchema>();
+    protected referenceInitialized = false;
+
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
 
-    constructor(proto: Object) {
-        this.proto = proto;
+    constructor(classType: ClassType<any>) {
+        this.classType = classType;
     }
 
-    public clone(proto: Object): ClassSchema {
-        const s = new ClassSchema(proto);
+    public addIndex(name: string, options?: IndexOptions) {
+        this.indices.push({name: name, fields: [name], options: options || {}});
+    }
+
+    public clone(classType: ClassType<any>): ClassSchema {
+        const s = new ClassSchema(classType);
         s.name = this.name;
         s.collectionName = this.collectionName;
         s.databaseName = this.databaseName;
@@ -420,6 +443,14 @@ export class ClassSchema {
         return this.methods[name];
     }
 
+    public getPrimaryField(): PropertySchema {
+        if (!this.idField) {
+            throw new Error(`Class ${getClassName(this.classType)} has no primary field.`)
+        }
+
+        return this.getProperty(this.idField);
+    }
+
     /**
      * Returns true if the method got a @f decorator.
      */
@@ -427,14 +458,18 @@ export class ClassSchema {
         return !!this.methods[name];
     }
 
+    public registerReference(property: PropertySchema) {
+        this.references.add(property);
+    }
+
     protected initializeMethod(name: string) {
         if (!this.initializedMethods[name]) {
-            if (!Reflect.hasMetadata('design:returntype', this.proto, name)) {
+            if (!Reflect.hasMetadata('design:returntype', this.classType.prototype, name)) {
                 throw new Error(`Method ${name} has no decorators used, so reflection does not work. Use @f on the method or arguments.`);
             }
 
             if (!this.methods[name]) {
-                const returnType = Reflect.getMetadata('design:returntype', this.proto, name);
+                const returnType = Reflect.getMetadata('design:returntype', this.classType.prototype, name);
                 if (returnType !== Promise) {
                     //Promise is not a legit returnType as this is automatically the case for async functions
                     //we assume no meta data is given when Promise is defined, as it basically tells us nothing.
@@ -445,7 +480,7 @@ export class ClassSchema {
 
             const properties = this.getOrCreateMethodProperties(name);
 
-            const paramtypes = Reflect.getMetadata('design:paramtypes', this.proto, name);
+            const paramtypes = Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
             for (const [i, t] of eachPair(paramtypes)) {
                 if (!properties[i]) {
                     properties[i] = new PropertySchema(String(i));
@@ -469,7 +504,38 @@ export class ClassSchema {
         return this.methodProperties.get(name)!;
     }
 
+    protected initializeProperties() {
+        if (!this.referenceInitialized) {
+            this.referenceInitialized = true;
+            for (const reference of this.references.values()) {
+                const schema = reference.getResolvedClassSchema();
+                const name = reference.name + capitalizeFirstLetter(schema.getPrimaryField().name);
+
+                if (!this.classProperties[name]) {
+                    const foreignKey = schema.getPrimaryField().clone();
+                    foreignKey.isReference = false;
+                    foreignKey.backReference = undefined;
+                    foreignKey.index = {...reference.index};
+                    foreignKey.name = name;
+                    this.classProperties[name] = foreignKey;
+                    getClassSchema(this.classType).addIndex(foreignKey.name, foreignKey.index);
+                }
+
+                this.classProperties[name].isReferenceKey = true;
+            }
+        }
+    }
+
+    public getAllReferences(): PropertySchema[] {
+        this.initializeProperties();
+        return Object.values(this.classProperties).filter(v => {
+            return v.backReference || v.isReference;
+        });
+    }
+
+
     public getClassProperties(): { [name: string]: PropertySchema } {
+        this.initializeProperties();
         return this.classProperties;
     }
 
@@ -508,6 +574,7 @@ export class ClassSchema {
     }
 
     public getPropertyOrUndefined(name: string): PropertySchema | undefined {
+        this.initializeProperties();
         if (this.classProperties[name]) {
             return this.classProperties[name];
         }
@@ -517,7 +584,17 @@ export class ClassSchema {
         return Boolean(this.classProperties[name]);
     }
 
+    public findForReference(classType: ClassType<any>, name?: string): PropertySchema {
+        if (name) return this.getProperty(name);
+        for (const property of each(this.getClassProperties())) {
+            if (property.getResolvedClassTypeForValidType() === classType) return property;
+        }
+
+        throw new Error(`No reference found to class ${getClassName(classType)}`);
+    }
+
     public getProperty(name: string): PropertySchema {
+        this.initializeProperties();
         if (!this.classProperties[name]) {
             throw new Error(`Property ${name} not found`);
         }
@@ -536,6 +613,7 @@ export const ClassSchemas = new Map<object, ClassSchema>();
  */
 export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): ClassSchema {
     const proto = target['prototype'] ? target['prototype'] : target;
+    const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
 
     if (!ClassSchemas.has(proto)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
@@ -545,14 +623,14 @@ export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): Class
         while (currentProto && currentProto !== Object.prototype) {
             if (ClassSchemas.has(currentProto)) {
                 found = true;
-                ClassSchemas.set(proto, ClassSchemas.get(currentProto)!.clone(proto));
+                ClassSchemas.set(proto, ClassSchemas.get(currentProto)!.clone(classType));
                 break;
             }
             currentProto = Object.getPrototypeOf(currentProto);
         }
 
         if (!found) {
-            const reflection = new ClassSchema(proto);
+            const reflection = new ClassSchema(classType);
             ClassSchemas.set(proto, reflection);
         }
     }
@@ -563,7 +641,9 @@ export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): Class
 /**
  * Returns meta information / schema about given entity class.
  */
-export function getClassSchema<T>(classType: ClassType<T>): ClassSchema {
+export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema {
+    const classType = classTypeIn['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+
     if (!ClassSchemas.has(classType.prototype)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
         let currentProto = Object.getPrototypeOf(classType.prototype);
@@ -571,14 +651,14 @@ export function getClassSchema<T>(classType: ClassType<T>): ClassSchema {
         while (currentProto && currentProto !== Object.prototype) {
             if (ClassSchemas.has(currentProto)) {
                 found = true;
-                ClassSchemas.set(classType.prototype, ClassSchemas.get(currentProto)!.clone(classType.prototype));
+                ClassSchemas.set(classType.prototype, ClassSchemas.get(currentProto)!.clone(classType));
                 break;
             }
             currentProto = Object.getPrototypeOf(currentProto);
         }
 
         if (!found) {
-            const reflection = new ClassSchema(classType.prototype);
+            const reflection = new ClassSchema(classType);
             ClassSchemas.set(classType.prototype, reflection);
         }
     }
@@ -592,7 +672,7 @@ export function getClassSchema<T>(classType: ClassType<T>): ClassSchema {
 export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
     if (!target
         || !target['constructor']
-        || Object.getPrototypeOf(target) !== target['constructor'].prototype
+        || Object.getPrototypeOf(target) !== (target as any)['constructor'].prototype
         || isPlainObject(target)
         || !isObject(target)
     ) {
@@ -645,24 +725,62 @@ export function DatabaseName<T>(name: string) {
     };
 }
 
-export interface FieldDecoratorResult {
+export type BackReferenceOptions<T> = {
+    via?: ClassType<any> | ForwardRefFn<ClassType<any>>,
+    mappedBy?: keyof T,
+};
+
+export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<ClassType<any>>): ClassType<any> {
+    return isFunction(type) ? (type as Function)() : type;
+}
+
+export interface FieldDecoratorResult<T> {
     (target: Object, property?: string, parameterIndexOrDescriptor?: any): void;
 
     /**
      * Sets the name of this property. Important for cases where the actual name is lost during compilation.
      */
-    asName(name: string): FieldDecoratorResult;
+    asName(name: string): this;
+
+    /**
+     * Marks this field as owning reference to the foreign class.
+     *
+     * Its actual value is not written into the document itself, but stored
+     * in its own collection/table and a reference is established using its primary field.
+     * Without reference() field values are embedded into the main document.
+     *
+     * Owning reference means: Additional foreign key fields are automatically added if not already explicitly done.
+     * Those additional fields are used to store the primary key of the foreign class.
+     */
+    reference(): this;
+
+    /**
+     * Marks this reference as not-owning side.
+     *
+     * options.via: If the foreign class is not directly accessible, you can use a pivot collection/table
+     *              using the `via` option. Make sure that the given class in `via` contains both reference
+     *              (one back to this class and one to the actual foreign class).
+     *
+     * options.mappedBy: Explicitly set the name of the reference of the foreign class.
+     *                   Per default it is automatically detected, but will fail if you the foreign class contains more
+     *                   than one references to the current class.
+     * @param options
+     */
+    backReference(options?: {
+        via?: ClassType<any> | ForwardRefFn<any>,
+        mappedBy?: keyof T,
+    }): this;
 
     /**
      * Marks this field as optional. The validation requires field values per default, this makes it optional.
      */
-    optional(): FieldDecoratorResult;
+    optional(): this;
 
     /**
      * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
      * PlainToClass or mongoToClass is not effected by this.
      */
-    exclude(t?: 'all' | 'mongo' | 'plain'): FieldDecoratorResult;
+    exclude(t?: 'all' | 'mongo' | 'plain'): this;
 
     /**
      * Marks this field as an ID aka primary.
@@ -670,13 +788,13 @@ export interface FieldDecoratorResult {
      *
      * Only one field in a class can be the ID.
      */
-    primary(): FieldDecoratorResult;
+    primary(): this;
 
     /**
      * @see primary
      * @deprecated
      */
-    asId(): FieldDecoratorResult;
+    asId(): this;
 
     /**
      * Defines template arguments of a tempalted class. Very handy for types like Observables.
@@ -703,12 +821,12 @@ export interface FieldDecoratorResult {
      * }
      * ```
      */
-    template(...templateArgs: any[]): FieldDecoratorResult;
+    template(...templateArgs: any[]): this;
 
     /**
      * Used to define an index on a field.
      */
-    index(options?: IndexOptions, name?: string): FieldDecoratorResult;
+    index(options?: IndexOptions, name?: string): this;
 
     /**
      * Used to define a field as MongoDB ObjectId. This decorator is necessary if you want to use Mongo's _id.
@@ -727,12 +845,12 @@ export interface FieldDecoratorResult {
      * }
      * ```
      */
-    mongoId(): FieldDecoratorResult;
+    mongoId(): this;
 
     /**
      * Used to define a field as UUID (v4).
      */
-    uuid(): FieldDecoratorResult;
+    uuid(): this;
 
     /**
      * Used to define a field as decorated.
@@ -782,7 +900,7 @@ export interface FieldDecoratorResult {
      * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
      * `PageCollection.pages` (always the field where @Decorated() is applied to), here a array of PagesClass `PageClass[]`.
      */
-    decorated(): FieldDecoratorResult;
+    decorated(): this;
 
     /**
      * Marks a field as array. You should prefer `@f.array(T)` syntax.
@@ -794,12 +912,12 @@ export interface FieldDecoratorResult {
      * }
      * ```
      */
-    asArray(): FieldDecoratorResult;
+    asArray(): this;
 
     /**
      * @internal
      */
-    asPartial(): FieldDecoratorResult;
+    asPartial(): this;
 
     /**
      * Marks a field as map. You should prefer `@f.map(T)` syntax.
@@ -811,12 +929,12 @@ export interface FieldDecoratorResult {
      * }
      * ```
      */
-    asMap(): FieldDecoratorResult;
+    asMap(): this;
 
     /**
      * Uses an additional modifier to change the PropertySchema.
      */
-    use(decorator: (target: Object, property: PropertySchema) => void): FieldDecoratorResult;
+    use(decorator: (target: Object, property: PropertySchema) => void): this;
 
     /**
      * Adds a custom validator class or validator callback.
@@ -850,17 +968,18 @@ export interface FieldDecoratorResult {
      *
      * ```
      */
-    validator(validator: ClassType<PropertyValidator> | ((value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void)):
-        FieldDecoratorResult;
+    validator(
+        validator: ClassType<PropertyValidator> | ((value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void)
+    ): this;
 }
 
-function createFieldDecoratorResult(
+function createFieldDecoratorResult<T>(
     cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
     givenPropertyName: string = '',
     modifier: ((target: Object, property: PropertySchema) => void)[] = [],
     modifiedOptions: FieldOptions = {},
     root = false,
-): FieldDecoratorResult {
+): FieldDecoratorResult<T> {
     function resetIfNecessary() {
         //on root we never use the overwritten name, so we set it back
         //for child FieldDecoratorResults created via asName() etc we keep that stuff (since there is root=false)
@@ -1015,7 +1134,7 @@ function createFieldDecoratorResult(
 
     fn.asName = (name: string) => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, name, [...modifier, Optional()], modifiedOptions);
+        return createFieldDecoratorResult(cb, name, modifier, modifiedOptions);
     };
 
     fn.optional = () => {
@@ -1056,6 +1175,19 @@ function createFieldDecoratorResult(
     fn.use = (decorator: (target: Object, property: PropertySchema) => void) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator], modifiedOptions);
+    };
+
+    fn.reference = () => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, reference: true});
+    };
+
+    fn.backReference = (options?: BackReferenceOptions<T>) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {
+            ...modifiedOptions,
+            backReference: options || {}
+        });
     };
 
     fn.asArray = () => {
@@ -1110,11 +1242,11 @@ function createFieldDecoratorResult(
  * Helper for decorators that are allowed to be placed in property declaration and constructor property declaration.
  * We detect the name by reading the constructor' signature, which would be otherwise lost.
  */
-export function FieldDecoratorWrapper(
+export function FieldDecoratorWrapper<T>(
     cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
     root = false
-): FieldDecoratorResult {
-    return createFieldDecoratorResult(cb, '', [], {}, root);
+): FieldDecoratorResult<T> {
+    return createFieldDecoratorResult<T>(cb, '', [], {}, root);
 }
 
 /**
@@ -1217,7 +1349,6 @@ export function ParentReference() {
  */
 export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
     return (target: T, property: string) => {
-
         getOrCreateEntitySchema(target).onLoad.push({
             methodName: property,
             options: options,
@@ -1276,6 +1407,8 @@ interface FieldOptions {
     map?: boolean;
     array?: boolean;
     partial?: boolean;
+    reference?: boolean;
+    backReference?: BackReferenceOptions<any>;
 }
 
 /**
@@ -1377,6 +1510,16 @@ function Field(oriType?: FieldTypes) {
             property.isMap = true;
         }
 
+        if (options.reference) {
+            property.isReference = true;
+            getClassSchema(target).registerReference(property);
+        }
+
+        if (options.backReference) {
+            property.backReference = options.backReference;
+            getClassSchema(target).registerReference(property);
+        }
+
         if (options.template) {
             property.templateArgs = [];
             for (const [i, t] of eachPair(options.template)) {
@@ -1400,51 +1543,49 @@ function Field(oriType?: FieldTypes) {
     }, true);
 }
 
-declare type TYPES = FieldTypes;
+const fRaw: any = Field();
 
-const fRaw = Field();
-
-fRaw['array'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecoratorResult {
+fRaw['array'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field(type).asArray();
 };
 
-fRaw['map'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecoratorResult {
+fRaw['map'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field(type).asMap();
 };
 
-fRaw['any'] = function (this: FieldDecoratorResult): FieldDecoratorResult {
+fRaw['any'] = function (this: FieldDecoratorResult<any>): FieldDecoratorResult<any> {
     return Field(Any);
 };
 
-fRaw['type'] = function (this: FieldDecoratorResult, type: TYPES): FieldDecoratorResult {
+fRaw['type'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field(type);
 };
 
-fRaw['partial'] = function (this: FieldDecoratorResult, type: ClassType<any>): FieldDecoratorResult {
+fRaw['partial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
     return Field(type).asPartial();
 };
 
-fRaw['enum'] = function (this: FieldDecoratorResult, clazz: any, allowLabelsAsValue = false): FieldDecoratorResult {
+fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabelsAsValue = false): FieldDecoratorResult<T> {
     return EnumField(clazz, allowLabelsAsValue);
 };
 
-fRaw['moment'] = function (this: FieldDecoratorResult): FieldDecoratorResult {
+fRaw['moment'] = function <T>(this: FieldDecoratorResult<T>): FieldDecoratorResult<T> {
     return MomentField();
 };
 
-fRaw['forward'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
+fRaw['forward'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
     return Field(forwardRef(f));
 };
 
-fRaw['forwardArray'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
+fRaw['forwardArray'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
     return Field(forwardRef(f)).asArray();
 };
 
-fRaw['forwardMap'] = function (this: FieldDecoratorResult, f: () => TYPES): FieldDecoratorResult {
+fRaw['forwardMap'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
     return Field(forwardRef(f)).asMap();
 };
 
-fRaw['forwardPartial'] = function (this: FieldDecoratorResult, f: () => ClassType<any>): FieldDecoratorResult {
+fRaw['forwardPartial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
     return Field(forwardRef(f)).asPartial();
 };
 
@@ -1460,7 +1601,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    type(type: TYPES): FieldDecoratorResult;
+    type<T extends FieldTypes>(type: T): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as array.
@@ -1472,7 +1613,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    array(type: TYPES): FieldDecoratorResult;
+    array<T extends FieldTypes>(type: T): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as enum.
@@ -1492,7 +1633,7 @@ export interface MainDecorator {
      *
      * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
      */
-    enum<T>(type: any, allowLabelsAsValue?: boolean): FieldDecoratorResult;
+    enum<T>(type: T, allowLabelsAsValue?: boolean): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as partial of a class entity. It differs in a way to standard Partial<> that
@@ -1516,7 +1657,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    partial(type: ClassType<any>): FieldDecoratorResult;
+    partial<T extends ClassType<any>>(type: T): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
@@ -1524,12 +1665,12 @@ export interface MainDecorator {
      *
      * You have to install moment npm package in order to use it.
      */
-    moment(): FieldDecoratorResult;
+    moment(): FieldDecoratorResult<any>;
 
     /**
      * Marks a field as type any. It does not transform the value and directly uses JSON.parse/stringify.
      */
-    any(): FieldDecoratorResult;
+    any(): FieldDecoratorResult<any>;
 
     /**
      * Marks a field as map.
@@ -1544,7 +1685,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    map(type: TYPES): FieldDecoratorResult;
+    map<T extends FieldTypes>(type: T): FieldDecoratorResult<T>;
 
     /**
      * Forward references a type, required for circular reference.
@@ -1556,7 +1697,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    forward(f: () => TYPES): FieldDecoratorResult;
+    forward<T extends ClassType<any>>(f: () => T): FieldDecoratorResult<T>;
 
     /**
      * Forward references a type in an array, required for circular reference.
@@ -1568,7 +1709,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    forwardArray(f: () => TYPES): FieldDecoratorResult;
+    forwardArray<T extends ClassType<any>>(f: () => T): FieldDecoratorResult<T>;
 
     /**
      * Forward references a type in a map, required for circular reference.
@@ -1580,7 +1721,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    forwardMap(f: () => TYPES): FieldDecoratorResult;
+    forwardMap<T extends ClassType<any>>(f: () => T): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as partial of a class entity.
@@ -1600,7 +1741,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    forwardPartial(type: () => ClassType<any>): FieldDecoratorResult;
+    forwardPartial<T extends ClassType<any>>(type: () => T): FieldDecoratorResult<T>;
 }
 
 /**
@@ -1651,7 +1792,7 @@ export interface MainDecorator {
  *
  * @category Decorator
  */
-export const f: MainDecorator & FieldDecoratorResult = fRaw as any;
+export const f: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 
 /**
  * @hidden
@@ -1690,6 +1831,7 @@ function Index(options?: IndexOptions, name?: string) {
             throw new Error('Index could not be used on method arguments.');
         }
 
+        property.index = options || {};
         schema.indices.push({name: name || property.name, fields: [property.name], options: options || {}});
     };
 }
@@ -1701,7 +1843,8 @@ function Index(options?: IndexOptions, name?: string) {
  */
 export function MultiIndex(fields: string[], options: IndexOptions, name?: string) {
     return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
-        const schema = getOrCreateEntitySchema(target);
+        const classType = (target as any).prototype as ClassType<any>;
+        const schema = getOrCreateEntitySchema(classType);
 
         schema.indices.push({name: name || fields.join('_'), fields: fields as string[], options: options || {}});
     };
