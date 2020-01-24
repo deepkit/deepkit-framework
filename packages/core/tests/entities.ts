@@ -48,11 +48,9 @@ export enum Plan {
 export const now = new Date();
 
 export class CollectionWrapper {
-    @f.array(SubModel).decorated()
-    public items: SubModel[];
-
-    constructor(items: SubModel[]) {
-        this.items = items;
+    constructor(
+        @f.array(SubModel).decorated().asName('items')
+        public items: SubModel[]) {
     }
 
     public add(item: SubModel) {
@@ -61,11 +59,10 @@ export class CollectionWrapper {
 }
 
 export class StringCollectionWrapper {
-    @f.array(String).decorated()
-    public items: string[];
-
-    constructor(items: string[]) {
-        this.items = items;
+    constructor(
+        @f.array(String).decorated().asName('items')
+        public items: string[]
+    ) {
     }
 
     public add(item: string) {

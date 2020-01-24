@@ -2,7 +2,7 @@ import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
-import {getClassSchema, getClassTypeFromInstance, PropertySchema} from "./decorators";
+import {getClassSchema, getClassTypeFromInstance, MarshalGlobal, PropertySchema} from "./decorators";
 import {
     ClassType,
     eachKey,
@@ -15,7 +15,8 @@ import {
     isArray,
     isObject,
     isUndefined,
-    isValidEnumValue
+    isValidEnumValue,
+    each
 } from "@marcj/estdlib";
 
 export type Types =
@@ -254,7 +255,7 @@ export function getParentReferenceClass<T>(classType: ClassType<T>, propertyName
             const {typeValue} = getReflectionType(classType, propertyName);
 
             if (!typeValue) {
-                throw new Error(`${getClassPropertyName(classType, propertyName)} has @ParentReference but no @Class defined.`);
+                throw new Error(`${getClassPropertyName(classType, propertyName)} has @ParentReference but no @Entity defined.`);
             }
             value = typeValue;
         }
@@ -499,10 +500,12 @@ export function cloneClass<T>(target: T, parents?: any[]): T {
 }
 
 /**
- * Converts a class instance into a plain object, which an be used with JSON.stringify() to convert it into a JSON string.
+ * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
  */
-export function classToPlain<T>(classType: ClassType<T>, target: T): any {
+export function classToPlain<T>(classType: ClassType<T>, target: T, options?: {excludeReferences?: boolean}): any {
     const result: any = {};
+
+    MarshalGlobal.unpopulatedCheckActive = false;
 
     if (!(target instanceof classType)) {
         throw new Error(`Could not classToPlain since target is not a class instance of ${getClassName(classType)}`);
@@ -513,20 +516,24 @@ export function classToPlain<T>(classType: ClassType<T>, target: T): any {
         return propertyClassToPlain(classType, decoratorName, (target as any)[decoratorName]);
     }
 
-    const propertyNames = getRegisteredProperties(classType);
+    const excludeReferences = options ? options.excludeReferences === true : false;
 
-    for (const propertyName of propertyNames) {
-        if (getParentReferenceClass(classType, propertyName)) {
+    for (const property of each(getClassSchema(classType).getClassProperties())) {
+        if (property.isParentReference) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
         }
 
-        if (isExcluded(classType, propertyName, 'plain')) {
+        if (excludeReferences && (property.isReference || property.backReference || property.isReferenceKey)) continue;
+
+        if (isExcluded(classType, property.name, 'plain')) {
             continue
         }
 
-        result[propertyName] = propertyClassToPlain(classType, propertyName, (target as any)[propertyName]);
+        result[property.name] = propertyClassToPlain(classType, property.name, (target as any)[property.name]);
     }
+
+    MarshalGlobal.unpopulatedCheckActive = true;
 
     return result;
 }
@@ -566,37 +573,26 @@ export function toClass<T>(
     state: ToClassState
 ): T {
     const assignedViaConstructor: { [propertyName: string]: boolean } = {};
-
-    let propertyNames = propertyNamesCache.get(classType);
-    if (!propertyNames) {
-        propertyNames = getRegisteredProperties(classType);
-        propertyNamesCache.set(classType, propertyNames);
-    }
-
-    let parentReferences = parentReferencesCache.get(classType);
-    if (!parentReferences) {
-        parentReferences = {};
-        for (const propertyName of propertyNames) {
-            parentReferences[propertyName] = getParentReferenceClass(classType, propertyName);
-        }
-        parentReferencesCache.set(classType, parentReferences);
-    }
+    const schema = getClassSchema(classType);
 
     const parameterNames = getCachedParameterNames(classType);
-    const decoratorName = getDecorator(classType);
 
     const argsValues = {};
     const args: any[] = [];
     for (const propertyName of parameterNames) {
-        if (decoratorName && propertyName === decoratorName) {
-            argsValues[propertyName] = converter(classType, decoratorName, data, parents, incomingLevel, state);
-        } else if (parentReferences[propertyName]) {
-            const parent = findParent(parents, parentReferences[propertyName]);
+        const property = schema.classProperties[propertyName];
+
+        if (schema.decorator && propertyName === schema.decorator) {
+            argsValues[propertyName] = converter(classType, schema.decorator, data, parents, incomingLevel, state);
+        } else if (property && property.isParentReference) {
+            const parentType = property.getResolvedClassTypeForValidType();
+            if (!parentType) continue;
+            const parent = findParent(parents, parentType);
             if (parent) {
                 argsValues[propertyName] = parent;
-            } else if (!isOptional(classType, propertyName)) {
+            } else if (!property.isOptional) {
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is in constructor ` +
-                    `has @ParentReference() and NOT @Optional(), but no parent of type ${getClassName(parentReferences[propertyName])} found. ` +
+                    `has @ParentReference() and NOT @f.optional(), but no parent of type ${getClassName(parentType)} found. ` +
                     `In case of circular reference, remove '${propertyName}' from constructor, or make sure you provided all parents.`
                 );
             }
@@ -613,19 +609,25 @@ export function toClass<T>(
     const parentsWithItem = parents.slice(0);
     parentsWithItem.push(item);
 
-    for (const propertyName of propertyNames) {
+    for (const propertyName of schema.propertyNames) {
         if (assignedViaConstructor[propertyName]) {
             //already given via constructor
             continue;
         }
 
-        if (parentReferences[propertyName]) {
-            const parent = findParent(parents, parentReferences[propertyName]);
+        const property = schema.classProperties[propertyName];
+
+        if (property.isReference || property.backReference) continue;
+
+        if (property.isParentReference) {
+            const parentType = property.getResolvedClassTypeForValidType();
+            if (!parentType) continue;
+            const parent = findParent(parents, parentType);
             if (parent) {
                 item[propertyName] = parent;
-            } else if (!isOptional(classType, propertyName)) {
+            } else if (!property.isOptional) {
                 throw new Error(`${getClassPropertyName(classType, propertyName)} is defined as @ParentReference() and ` +
-                    `NOT @Optional(), but no parent found. Add @Optional() or provide ${propertyName} in parents to fix that.`);
+                    `NOT @f.optional(), but no parent found. Add @f.optional() or provide ${propertyName} in parents to fix that.`);
             }
         } else if (undefined !== data[propertyName] && null !== data[propertyName]) {
             item[propertyName] = converter(classType, propertyName, data[propertyName], parentsWithItem, incomingLevel + 1, state);
@@ -810,7 +812,7 @@ export function getEntityName<T>(classType: ClassType<T>): string {
     const name = getClassSchema(classType).name;
 
     if (!name) {
-        throw new Error('No @Entity() defined for class ' + classType);
+        throw new Error('No @Entity() defined for class ' + getClassName(classType));
     }
 
     return name;
