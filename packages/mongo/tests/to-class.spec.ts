@@ -596,7 +596,7 @@ test('test @Decorated with parent', async () => {
         expect(clone!.parent).toBeUndefined();
 
         for (const toPlain of [classToPlain, classToMongo]) {
-            const plain = toPlain(DocumentClass, instance);
+            const plain = (toPlain as any)(DocumentClass, instance);
 
             expect(plain.name).toBe('myName');
             expect(plain.pages[0].name).toEqual('Foo');

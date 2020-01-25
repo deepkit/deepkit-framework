@@ -49,30 +49,6 @@ type Store = {
 export class EntityRegistry {
     registry = new Map<ClassType<any>, Map<PK, Store>>();
 
-    /**
-     * This marks all stored entity items as stale.
-     * Stale means we don't simply pick the item when user fetched it, but also
-     * overwrite its values from the database.
-     */
-    markAsStale<T>(classSchema: ClassSchema<T>, pks: PK[]) {
-        const store = this.getStore(classSchema);
-        for (const pk of pks) {
-            if (store.has(pk)) {
-                store.get(pk)!.stale = true;
-            }
-        }
-    }
-
-    markAsFresh(classSchema: ClassSchema, pk: PK) {
-        const store = this.getStore(classSchema);
-        store.get(pk)!.stale = false;
-    }
-
-    isStale(classSchema: ClassSchema, pk: PK): boolean {
-        const store = this.getStore(classSchema);
-        return store.get(pk)!.stale;
-    }
-
     deleteMany<T>(classSchema: ClassSchema<T>, pks: any[]) {
         const store = this.getStore(classSchema);
         for (const pk of pks) {
@@ -93,11 +69,6 @@ export class EntityRegistry {
             unmarkItemAsKnownInDatabase(store.get(pk)!.ref);
             store.delete(pk);
         }
-    }
-
-    storeItem<T>(item: T) {
-        const classSchema = getClassSchema(getClassTypeFromInstance(item));
-        this.store(classSchema, item);
     }
 
     store<T>(classSchema: ClassSchema<T>, item: T) {
@@ -122,7 +93,7 @@ export class EntityRegistry {
         return store.has(pk) ? store.get(pk)!.ref : undefined;
     }
 
-    public getStore(classSchema: ClassSchema): Map<PK, Store> {
+    getStore(classSchema: ClassSchema): Map<PK, Store> {
         const store = this.registry.get(classSchema.classType);
         if (store) {
             return store;
@@ -133,19 +104,9 @@ export class EntityRegistry {
         return newStore;
     }
 
-    isKnownItem<T>(item: T): boolean {
-        return this.isKnown(getClassSchema(getClassTypeFromInstance(item)), item);
-    }
-
     isKnown<T>(classSchema: ClassSchema<T>, item: T): boolean {
         const store = this.getStore(classSchema);
         const pk = getLastKnownPKInDatabase(item);
-
-        return store.has(pk);
-    }
-
-    isKnownByPk<T>(classSchema: ClassSchema<T>, pk: any): boolean {
-        const store = this.getStore(classSchema);
 
         return store.has(pk);
     }

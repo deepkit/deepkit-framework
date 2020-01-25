@@ -200,8 +200,6 @@ export class Formatter {
             const item = this.session.entityRegistry.get(classSchema, pk);
 
             if (item) {
-                const stale = this.session.entityRegistry.isStale(classSchema, pk);
-
                 //if proxy or is stale
                 if (!isHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
@@ -247,10 +245,6 @@ export class Formatter {
                     }
 
                     markAsHydrated(item);
-                }
-
-                if (stale) {
-                    this.session.entityRegistry.markAsFresh(classSchema, pk);
                 }
 
                 return item;

@@ -307,7 +307,6 @@ export class DatabaseSession {
             updateStatement['$set'] = partialClassToMongo(query.classSchema.classType, arg1);
             await collection.updateOne(mongoFilter, updateStatement);
             if (!this.disabledInstancePooling) {
-                this.entityRegistry.markAsStale(query.classSchema, [ids[0]]);
                 if (arg1[query.classSchema.getPrimaryField().name]) {
                     this.entityRegistry.changeLastKnownPK(query.classSchema, ids[0], arg1[query.classSchema.getPrimaryField().name]);
                 }
@@ -322,9 +321,6 @@ export class DatabaseSession {
             const updateStatement: { [name: string]: any } = {};
             updateStatement['$set'] = partialClassToMongo(query.classSchema.classType, arg1);
             await collection.updateMany(mongoFilter, updateStatement);
-            if (!this.disabledInstancePooling) {
-                this.entityRegistry.markAsStale(query.classSchema, ids);
-            }
             return;
         }
     }
