@@ -80,6 +80,48 @@ async function setupTestCase(name: string) {
     }
 }
 
+test('check if foreign keys are deleted correctly', async () => {
+    const {
+        database,
+    } = await setupTestCase('check if foreign keys are deleted correctly');
+
+    const manager = new User('manager');
+    await database.add(manager);
+
+    {
+        const marc = await database.query(User).filter({name: 'marc'}).findOne();
+        expect(marc.manager).toBeUndefined();
+
+        marc.manager = manager;
+        expect(marc.manager).toBe(manager);
+        await database.update(marc);
+    }
+
+    {
+        const marc = await database.query(User).filter({name: 'marc'}).findOne();
+        expect(marc.manager!.id).toBe(manager.id);
+    }
+
+    {
+        const marc = await database.query(User).joinWith('manager').filter({name: 'marc'}).findOne();
+        console.log('marc', marc);
+        expect(marc.manager!.id).toBe(manager.id);
+        expect(marc.manager!.name).toBe('manager');
+    }
+
+    {
+        const marc = await database.query(User).filter({name: 'marc'}).findOne();
+        marc.manager = undefined;
+
+        await database.update(marc);
+    }
+
+    {
+        const marc = await database.query(User).filter({name: 'marc'}).findOne();
+        expect(marc.manager).toBeUndefined();
+    }
+});
+
 test('manger self-reference', async () => {
     const {
         database, admin, marc, peter, marcel, apple, microsoft

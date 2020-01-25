@@ -9,7 +9,7 @@ import {
     getRegisteredProperties,
     getResolvedReflection,
     isEnumAllowLabelsAsValue,
-    isOptional,
+    isOptional, MarshalGlobal,
     moment,
     toClass,
     ToClassState
@@ -460,7 +460,7 @@ export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: 
     return result;
 }
 
-export function classToMongo<T>(classType: ClassType<T>, target: T): any {
+export function classToMongo<T>(classType: ClassType<T>, target: T, omitUndefined: boolean = false): any {
     const result: any = {};
 
     if (!(target instanceof classType)) {
@@ -472,22 +472,25 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
         return propertyClassToMongo(classType, decoratorName, (target as any)[decoratorName]);
     }
 
+    MarshalGlobal.unpopulatedCheckActive = false;
     for (const property of each(getClassSchema(classType).getClassProperties())) {
         if (property.isParentReference) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
         }
+        if (property.backReference || property.isReferenceKey) continue;
 
         let value: any = (target as any)[property.name];
         let resultName = property.name;
 
-        if (property.isReference || property.backReference) {
+        if (property.isReference) {
             //references are handled separately.
             if (value) {
-                value = (target as any)[property.name][property.getResolvedClassSchema().getPrimaryField().name]
+                value = value[property.getResolvedClassSchema().getPrimaryField().name];
                 resultName = property.getForeignKeyName();
             } else {
-                continue;
+                //we reset the foreign key
+                resultName = property.getForeignKeyName();
             }
         }
 
@@ -496,12 +499,16 @@ export function classToMongo<T>(classType: ClassType<T>, target: T): any {
         //since mongo driver doesn't support undefined value, we need to make sure the property doesn't exist at all
         //when used undefined. This results in not having the property in the database at all, which is equivalent to
         //undefined.
-        if (value !== undefined) {
-            result[resultName] = value;
+        if (omitUndefined && value === undefined) {
+            continue;
         }
+
+        result[resultName] = value;
     }
 
     deleteExcludedPropertiesFor(classType, result, 'mongo');
+    MarshalGlobal.unpopulatedCheckActive = true;
+
     return result;
 }
 

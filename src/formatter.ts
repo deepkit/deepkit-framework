@@ -141,6 +141,12 @@ export class Formatter {
 
         const foreignSchema = propertySchema.getResolvedClassSchema();
         const fkn = propertySchema.getForeignKeyName();
+
+        if (undefined === dbItem[fkn] || null === dbItem[fkn]) {
+            //nothing to do when we got no item.
+            return;
+        }
+
         const pk = propertyMongoToClass(classSchema.classType, fkn, dbItem[fkn]);
 
         const pool = this.getInstancePoolForClass(foreignSchema.classType);
@@ -218,7 +224,7 @@ export class Formatter {
                     //check if we got new reference data we can apply to the instance
                     for (const join of model.joins) {
                         if (join.populate) {
-                            if (value[join.propertySchema.name]) {
+                            if (value[join.propertySchema.name] !== undefined && value[join.propertySchema.name] !== null) {
                                 if (join.propertySchema.backReference) {
                                     Object.defineProperty(item, join.propertySchema.name, {
                                         enumerable: true,
@@ -254,6 +260,7 @@ export class Formatter {
         const converted = this.createObject(model, classSchema, value);
 
         if (!model.isPartial()) {
+            markItemAsKnownInDatabase(classSchema, converted);
             pool.set(pk, converted);
 
             if (this.withEntityTracking()) {
@@ -272,7 +279,7 @@ export class Formatter {
         for (const join of model.joins) {
             handledRelation[join.propertySchema.name] = true;
             if (join.populate) {
-                if (value[join.propertySchema.name]) {
+                if (value[join.propertySchema.name] !== undefined && value[join.propertySchema.name] !== null) {
                     if (join.propertySchema.backReference && join.propertySchema.isArray) {
                         converted[join.propertySchema.name] = value[join.propertySchema.name].map(item => {
                             return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
