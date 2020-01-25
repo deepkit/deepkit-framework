@@ -10,7 +10,7 @@ export class UserCredentials {
 
     constructor(
         //one-to-one
-        @f.forward(() => User).backReference()
+        @f.forward(() => User).reference()
         public user: User,
     ) {
     }

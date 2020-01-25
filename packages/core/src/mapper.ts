@@ -505,7 +505,6 @@ export function cloneClass<T>(target: T, parents?: any[]): T {
 export function classToPlain<T>(classType: ClassType<T>, target: T, options?: {excludeReferences?: boolean}): any {
     const result: any = {};
 
-    MarshalGlobal.unpopulatedCheckActive = false;
 
     if (!(target instanceof classType)) {
         throw new Error(`Could not classToPlain since target is not a class instance of ${getClassName(classType)}`);
@@ -516,8 +515,9 @@ export function classToPlain<T>(classType: ClassType<T>, target: T, options?: {e
         return propertyClassToPlain(classType, decoratorName, (target as any)[decoratorName]);
     }
 
-    const excludeReferences = options ? options.excludeReferences === true : false;
+    MarshalGlobal.unpopulatedCheckActive = false;
 
+    const excludeReferences = options ? options.excludeReferences === true : false;
     for (const property of each(getClassSchema(classType).getClassProperties())) {
         if (property.isParentReference) {
             //we do not export parent references, as this would lead to an circular reference

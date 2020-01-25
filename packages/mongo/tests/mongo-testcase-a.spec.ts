@@ -1,8 +1,9 @@
 import 'jest';
 import 'jest-extended';
-import {Entity, f, getClassSchema, uuid} from "@marcj/marshal";
+import {Entity, f, getClassSchema, MarshalGlobal, uuid} from "@marcj/marshal";
 import {createDatabase} from "./utils";
 import {hydrateEntity} from "..";
+import {getLastKnownPKInDatabase} from "../src/entity-register";
 
 @Entity('user2')
 class User {
@@ -61,18 +62,18 @@ async function setupTestCase(name: string) {
     const microsoft = new Organisation('Microsoft', admin);
     const apple = new Organisation('Apple', admin);
 
-    await database.persist(admin);
-    await database.persist(marc);
-    await database.persist(peter);
-    await database.persist(marcel);
+    await database.add(admin);
+    await database.add(marc);
+    await database.add(peter);
+    await database.add(marcel);
 
-    await database.persist(microsoft);
-    await database.persist(apple);
+    await database.add(microsoft);
+    await database.add(apple);
 
-    await database.persist(new OrganisationMembership(marc, apple));
-    await database.persist(new OrganisationMembership(marc, microsoft));
-    await database.persist(new OrganisationMembership(peter, microsoft));
-    await database.persist(new OrganisationMembership(marcel, microsoft));
+    await database.add(new OrganisationMembership(marc, apple));
+    await database.add(new OrganisationMembership(marc, microsoft));
+    await database.add(new OrganisationMembership(peter, microsoft));
+    await database.add(new OrganisationMembership(marcel, microsoft));
 
     return {
         database, admin, marc, peter, marcel, microsoft, apple,
@@ -85,29 +86,33 @@ test('manger self-reference', async () => {
     } = await setupTestCase('manger self-reference');
 
     const manager1 = new User('manager1');
-    await database.persist(manager1);
+    await database.add(manager1);
 
     marc.manager = manager1;
-    await database.persist(marc);
+    await database.update(marc);
 
     peter.manager = manager1;
-    await database.persist(peter);
+    await database.update(peter);
 
     marcel.manager = manager1;
-    await database.persist(marcel);
+    await database.update(marcel);
 
     {
         const item = await database.query(User).filter({name: 'marc'}).findOne();
+        expect(item).not.toBe(marc);
         expect(item.manager!.id).toBe(manager1.id);
     }
 
     {
-        const item = await database.query(User).disableInstancePooling().filter({id: manager1.id}).findOne();
+        const item = await database.query(User).filter({id: manager1.id}).findOne();
+        expect(item).not.toBe(manager1);
+        expect(item).toBeInstanceOf(User);
+        expect(item.id).toBe(manager1.id);
         expect(() => item.managedUsers).toThrow('managedUsers was not populated')
     }
 
     {
-        const item = await database.query(User).disableInstancePooling().joinWith('managedUsers').filter({id: manager1.id}).findOne();
+        const item = await database.query(User).joinWith('managedUsers').filter({id: manager1.id}).findOne();
         expect(item.managedUsers.length).toBe(3);
         expect(item.managedUsers[0]).toBeInstanceOf(User);
         expect(item.managedUsers[0].id).toBe(marc.id);
@@ -140,44 +145,6 @@ test('hydrate', async () => {
         database, admin, marc, peter, marcel, apple, microsoft
     } = await setupTestCase('hydrate');
 
-    // {
-    //     const item = await database.query(OrganisationMembership).filter({
-    //         user: marc,
-    //         organisation: apple,
-    //     }).findOne();
-    //
-    //     expect(item).toBeInstanceOf(OrganisationMembership);
-    //     expect(item.user.id).toBe(marc.id);
-    //     expect(item.organisation.id).toBe(apple.id);
-    //     expect(() => item.user.name).toThrow('Reference User was not completely populated');
-    //
-    //     await hydrateEntity(item.user);
-    //     expect(item.user.name).toBe('marc');
-    // }
-
-    database.entityRegistry.deleteItem(marc);
-    expect(database.entityRegistry.isKnownItem(marc)).toBeFalse();
-
-    database.entityRegistry.clear();
-
-    //test automatic hydration
-    {
-        const marcFromDb = await database.query(User).filter({name: 'marc'}).findOne();
-        expect(database.entityRegistry.isKnownItem(marcFromDb)).toBeTrue();
-        const item = await database.query(OrganisationMembership).filter({
-            user: marc,
-            organisation: apple,
-        }).findOne();
-        expect(item).toBeInstanceOf(OrganisationMembership);
-        expect(item.user.id).toBe(marcFromDb.id);
-        expect(item.user.name).toBe('marc');
-        expect(item.user).toBe(marcFromDb);
-        expect(item.organisation.id).toBe(apple.id);
-    }
-
-    database.entityRegistry.clear();
-
-    //test automatic hydration
     {
         const item = await database.query(OrganisationMembership).filter({
             user: marc,
@@ -188,12 +155,49 @@ test('hydrate', async () => {
         expect(item.user.id).toBe(marc.id);
         expect(item.organisation.id).toBe(apple.id);
         expect(() => item.user.name).toThrow('Reference User was not completely populated');
-        expect(database.entityRegistry.isKnown(getClassSchema(User), item.user)).toBeTrue();
 
-        //this will hydrate all related proxy objects
-        const items = await database.query(User).filter({name: 'marc'}).find();
-        expect(database.entityRegistry.isKnown(getClassSchema(User), items[0])).toBeTrue();
-        expect(items[0]).toBe(item.user);
+        await hydrateEntity(item.user);
+        expect(item.user.name).toBe('marc');
+    }
+
+    {
+        const session = database.createSession();
+        expect(session.disabledInstancePooling).toBe(false);
+
+        //test automatic hydration
+        {
+            const marcFromDb = await session.query(User).filter({name: 'marc'}).findOne();
+            const item = await session.query(OrganisationMembership).filter({
+                user: marc,
+                organisation: apple,
+            }).findOne();
+            expect(item).toBeInstanceOf(OrganisationMembership);
+            expect(item.user.id).toBe(marcFromDb.id);
+            expect(item.user.name).toBe('marc');
+            expect(item.user).toBe(marcFromDb);
+            expect(item.organisation.id).toBe(apple.id);
+        }
+
+        session.entityRegistry.clear();
+
+        //test automatic hydration
+        {
+            const item = await session.query(OrganisationMembership).filter({
+                user: marc,
+                organisation: apple,
+            }).findOne();
+
+            expect(item).toBeInstanceOf(OrganisationMembership);
+            expect(item.user.id).toBe(marc.id);
+            expect(item.organisation.id).toBe(apple.id);
+            expect(() => item.user.name).toThrow('Reference User was not completely populated');
+            expect(getLastKnownPKInDatabase(item.user)).toBe(item.user.id);
+            expect(session.entityRegistry.isKnown(getClassSchema(User), item.user)).toBeTrue();
+
+            //this will hydrate all related proxy objects
+            const items = await session.query(User).filter({name: 'marc'}).find();
+            expect(items[0]).toBe(item.user);
+        }
     }
 });
 
@@ -279,7 +283,6 @@ test('joins', async () => {
     }
 
     await expect(database.query(User).filter({name: 'notexisting'}).findOneField('name')).rejects.toThrow('not found');
-    3
 
     expect(await database.query(User).filter({name: 'marc'}).has()).toBe(true);
     expect(await database.query(User).filter({name: 'notexisting'}).has()).toBe(false);
@@ -329,7 +332,7 @@ test('joins', async () => {
     }
 
     {
-        const item = await database.query(OrganisationMembership).disableInstancePooling().filter({userId: peter.id}).joinWith('user').findOne();
+        const item = await database.query(OrganisationMembership).filter({userId: peter.id}).joinWith('user').findOne();
         expect(item).not.toBeUndefined();
         expect(item.user.id).toBe(peter.id);
         expect(item.user.name).toBe(peter.name);
@@ -346,7 +349,7 @@ test('joins', async () => {
     }
 
     {
-        const item = await database.query(OrganisationMembership).disableInstancePooling().filter({userId: peter.id}).findOne();
+        const item = await database.query(OrganisationMembership).filter({userId: peter.id}).findOne();
         expect(item).not.toBeUndefined();
         expect(item.user.id).toBe(peter.id);
         expect(item.organisation.id).toBe(microsoft.id);
@@ -364,7 +367,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(OrganisationMembership).disableInstancePooling()
+        const items = await database.query(OrganisationMembership)
             .useJoinWith('user').filter({name: 'marc'}).end().find();
         expect(items.length).toBe(4); //still 4, but user is empty for all other than marc
         expect(items[0].user).toBeInstanceOf(User);
@@ -374,7 +377,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(OrganisationMembership).disableInstancePooling()
+        const items = await database.query(OrganisationMembership)
             .useInnerJoin('user').filter({name: 'marc'}).end().find();
 
         expect(items.length).toBe(2);
@@ -388,7 +391,7 @@ test('joins', async () => {
     }
 
     {
-        const query = await database.query(OrganisationMembership).disableInstancePooling()
+        const query = await database.query(OrganisationMembership)
             .useInnerJoinWith('user').select(['id']).filter({name: 'marc'}).end();
 
         {
@@ -440,7 +443,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(Organisation).disableInstancePooling().useJoinWith('users').end().find();
+        const items = await database.query(Organisation).useJoinWith('users').end().find();
         expect(items).toBeArrayOfSize(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -450,7 +453,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(Organisation).disableInstancePooling().useInnerJoinWith('users').end().find();
+        const items = await database.query(Organisation).useInnerJoinWith('users').end().find();
         expect(items).toBeArrayOfSize(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -464,7 +467,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(Organisation).disableInstancePooling().useInnerJoinWith('users').sort({name: 'asc'}).end().find();
+        const items = await database.query(Organisation).useInnerJoinWith('users').sort({name: 'asc'}).end().find();
         expect(items).toBeArrayOfSize(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -478,7 +481,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(Organisation).disableInstancePooling().useJoinWith('users').sort({name: 'asc'}).skip(1).end().find();
+        const items = await database.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).end().find();
         expect(items).toBeArrayOfSize(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -491,7 +494,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(Organisation).disableInstancePooling().useJoinWith('users').sort({name: 'asc'}).skip(1).limit(1).end().find();
+        const items = await database.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).limit(1).end().find();
         expect(items).toBeArrayOfSize(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -503,7 +506,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(Organisation).disableInstancePooling().useJoinWith('users').select(['id']).end().find();
+        const items = await database.query(Organisation).useJoinWith('users').select(['id']).end().find();
         expect(items).toBeArrayOfSize(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -517,7 +520,7 @@ test('joins', async () => {
     }
 
     {
-        const query = database.query(OrganisationMembership).disableInstancePooling()
+        const query = database.query(OrganisationMembership)
             .useInnerJoinWith('user').filter({name: 'marc'}).end();
 
         const items = await query.find();
@@ -586,7 +589,7 @@ test('joins', async () => {
             .useInnerJoinWith('organisations').filter({name: 'Microsoft'}).end();
 
         {
-            const items = await query.clone().disableInstancePooling().find();
+            const items = await query.clone().find();
             expect(items).toBeArrayOfSize(2);
             expect(() => {
                 expect(items[0].organisations[0].owner.name).toBeUndefined();
@@ -598,11 +601,11 @@ test('joins', async () => {
             expect(items[0].name).toBe('marc');
             expect(items[0].organisations).toBeArrayOfSize(1);
             expect(items[0].organisations[0].name).toBe('Microsoft');
-            expect(items[0].organisations[0].owner.name).toBe('admin');
+            expect(() => {expect(items[0].organisations[0].owner.name).toBeUndefined();}).toThrow('was not completely populated');
             expect(items[1].name).toBe('marcel');
             expect(items[1].organisations).toBeArrayOfSize(1);
             expect(items[1].organisations[0].name).toBe('Microsoft');
-            expect(items[1].organisations[0].owner.name).toBe('admin');
+            expect(() => {expect(items[1].organisations[0].owner.name).toBeUndefined();}).toThrow('was not completely populated');
         }
 
         {
@@ -637,18 +640,18 @@ test('joins', async () => {
         }
 
         {
-            const item = await database.query(User).disableInstancePooling().findOne();
+            const item = await database.query(User).findOne();
             expect(() => item.organisations).toThrow('was not populated');
         }
 
         {
-            const item = await database.query(User).disableInstancePooling().joinWith('organisations').filter({name: 'marc'}).findOne();
+            const item = await database.query(User).joinWith('organisations').filter({name: 'marc'}).findOne();
             expect(item.name).toBe('marc');
             expect(item.organisations.length).toBeGreaterThan(0);
         }
 
         {
-            const item = await database.query(User).disableInstancePooling().innerJoinWith('organisations').findOne();
+            const item = await database.query(User).innerJoinWith('organisations').findOne();
             expect(item.name).toBe('marc');
             expect(item.organisations.length).toBeGreaterThan(0);
         }
