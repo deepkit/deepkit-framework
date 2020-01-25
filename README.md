@@ -601,7 +601,7 @@ You can generate a schema for Typeorm using  `getTypeOrmEntity` and then pass th
 which makes it possible to sync the schema defined only with Marshal decorators with your database managed by Typeorm.
 
 
-## Mongo Database
+## Mongo ORM / Database abstraction
 
 Marshal's MongoDB database abstraction makes it super easy to
 retrieve and store data from and into your MongoDB. We make sure the
@@ -629,16 +629,13 @@ const connection = await createConnection({
 const database = new Database(connection, 'testing');
 
 const instance = new SimpleModel('My model');
+await database.add(instance);
 
-await database.save(SimpleModel, instance);
-
-const list: SimpleModel[] = await database.find(SimpleModel);
-const oneItem: SimpleModel = await database.get(
-    SimpleModel,
-    {id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}
-);
-});
+const list = await database.find(SimpleModel).find();
+const oneItem = await database.query(SimpleModel).filter({id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}).findOne();
 ```
+
+More documention to come.
 
 ## NestJS / Express
 

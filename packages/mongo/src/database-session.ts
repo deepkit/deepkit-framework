@@ -339,6 +339,9 @@ export class DatabaseSession {
     /**
      * Adds or updates the item in the database.
      *
+     * WARNING: This is an early stage implementation.
+     * Modifying back-references are not detect. You have to persist the owning side of the reference separately.
+     *
      *  - Populates primary key if necessary.
      *  - Persists references recursively if necessary.
      *  - Removes unlinked reference items from the database (when cascade is enabled).
@@ -379,7 +382,7 @@ export class DatabaseSession {
     }
 
     protected async ensureRelationsAreStored<T>(classSchema: ClassSchema<T>, item: T) {
-        //make sure all reference are already added as well
+        //make sure all owning references are persisted as well
         for (const relation of classSchema.references) {
             if (relation.isReference) {
                 if (item[relation.name]) {
@@ -404,7 +407,7 @@ export class DatabaseSession {
      * Low level: add one item to the database.
      *  - Populates primary key if necessary.
      *  - DOES NOT add references automatically. You have to call on each new reference add() in order to save it.
-     *  - DOES NOT update back references.
+     *  - DOES NOT update back-references.
      *  - No repository events are triggered.
      *
      * You should usually work with persist() instead, except if you know what you are doing.
@@ -413,7 +416,7 @@ export class DatabaseSession {
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
         const collection = await this.getCollection(classSchema.classType);
-        const mongoItem = classToMongo(classSchema.classType, item);
+        const mongoItem = classToMongo(classSchema.classType, item, true);
 
         const result = await collection.insertOne(mongoItem);
 
@@ -435,7 +438,7 @@ export class DatabaseSession {
     /**
      * Low level: updates one item in the database.
      *  - DOES NOT update referenced items. You have to call on each changed reference update() in order to save it.
-     *  - DOES NOT update back references.
+     *  - DOES NOT update back-references when primary key changes.
      *  - No repository events are triggered.
      *
      * You should usually work with persist() instead, except if you know what you are doing.
@@ -465,7 +468,7 @@ export class DatabaseSession {
     /**
      * Low level: removes one item from the database that has the given id.
      *  - DOES NOT remove referenced items. You have to call on each reference delete() in order to remove it.
-     *  - DOES NOT update back references.
+     *  - DOES NOT update back-references.
      *  - No repository events are triggered.
      *
      * You should usually work with persist() instead, except if you know what you are doing.
