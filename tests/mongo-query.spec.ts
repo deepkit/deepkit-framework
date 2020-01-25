@@ -102,11 +102,6 @@ test('simple class query array', () => {
     expect(Object.keys(fieldNames)).toEqual(['id', 'configRefId']);
 });
 
-test('convertClassQueryToMongo reference resolution', () => {
-
-});
-
-
 test('convertClassQueryToMongo customMapping', () => {
     {
         const fieldNames = {};
