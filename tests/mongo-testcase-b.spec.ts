@@ -10,9 +10,13 @@ async function setupTestCase(name: string) {
     const peter = new User('peter', 'peterPassword');
     const marcel = new User('marcel');
 
-    await database.persist(marc);
-    await database.persist(peter);
-    await database.persist(marcel);
+    await database.add(marc.credentials);
+    await database.add(peter.credentials);
+    await database.add(marcel.credentials);
+
+    await database.add(marc);
+    await database.add(peter);
+    await database.add(marcel);
 
     return {
         database, marc, peter, marcel,
