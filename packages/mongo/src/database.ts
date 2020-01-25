@@ -6,8 +6,10 @@ import {
     getDatabaseName,
     getEntityName,
     getIdField,
-    getReflectionType, MarshalGlobal,
-    PropertySchema, resolveClassTypeOrForward
+    MarshalGlobal,
+    PartialField,
+    PropertySchema,
+    resolveClassTypeOrForward
 } from '@marcj/marshal';
 import {
     classToMongo,
@@ -17,17 +19,142 @@ import {
     partialClassToMongo,
     partialMongoToClass,
     partialMongoToPlain,
-    propertyClassToMongo
+    propertyClassToMongo,
+    propertyMongoToClass
 } from "./mapping";
 import {Collection, Connection} from 'typeorm';
 import {ClassType, eachPair, getClassName} from '@marcj/estdlib';
 import {FindOneOptions} from "mongodb";
 import {Subject} from "rxjs";
+import * as weak from 'weak-napi';
 
 export class NotFoundError extends Error {
 }
 
 export class NoIDDefinedError extends Error {
+}
+
+type PK = any;
+type Store = {
+    ref: any,
+    stale: boolean
+};
+
+export class EntityRegistry {
+    registry = new Map<ClassType<any>, Map<PK, Store>>();
+    lastKnownPkInDB = new WeakMap<any, PK>();
+
+    public getLastKnownPkInDB<T>(item: T): any {
+        const pk = this.lastKnownPkInDB.get(item);
+        if (undefined === pk) {
+            throw new Error(`No pk known for item of ${getClassName(getClassTypeFromInstance(item))}.`);
+        }
+        return pk;
+    }
+
+    /**
+     * This marks all stored entity items as stale.
+     * Stale means we don't simply pick the item when user fetched it, but also
+     * overwrite its values from the database.
+     */
+    markAsStale<T>(classSchema: ClassSchema<T>, pks: PK[]) {
+        const store = this.getStore(classSchema);
+        for (const pk of pks) {
+            if (store.has(pk)) {
+                store.get(pk)!.stale = true;
+            }
+        }
+    }
+
+    markAsFresh(classSchema: ClassSchema, pk: PK) {
+        const store = this.getStore(classSchema);
+        store.get(pk)!.stale = false;
+    }
+
+    isStale(classSchema: ClassSchema, pk: PK): boolean {
+        const store = this.getStore(classSchema);
+        return store.get(pk)!.stale;
+    }
+
+    deleteMany<T>(classSchema: ClassSchema<T>, pks: any[]) {
+        const store = this.getStore(classSchema);
+        for (const pk of pks) {
+            const storeItem = store.get(pk);
+            if (storeItem) {
+                weak.removeCallbacks(storeItem.ref);
+                store.delete(pk);
+            }
+        }
+    }
+
+    clear<T>() {
+        this.registry.clear();
+        this.lastKnownPkInDB = new WeakMap<any, any>();
+    }
+
+    deleteItem<T>(item: T) {
+        const classSchema = getClassSchema(getClassTypeFromInstance(item));
+        this.delete(classSchema, classSchema.getPrimaryFieldRepresentation(item));
+    }
+
+    delete<T>(classSchema: ClassSchema<T>, pk: any) {
+        const store = this.getStore(classSchema);
+        const storeItem = store.get(pk);
+
+        if (storeItem) {
+            weak.removeCallbacks(storeItem.ref);
+            store.delete(pk);
+        }
+    }
+
+    storeItem<T>(item: T) {
+        const classSchema = getClassSchema(getClassTypeFromInstance(item));
+        this.store(classSchema, item);
+    }
+
+    store<T>(classSchema: ClassSchema<T>, item: T) {
+        const store = this.getStore(classSchema);
+        const pk = classSchema.getPrimaryFieldRepresentation(item);
+        this.lastKnownPkInDB.set(item, pk);
+
+        const ref = weak(item as any, this.delete.bind(this, classSchema, pk));
+
+        store.set(pk, {ref, stale: false});
+    }
+
+    get<T>(classSchema: ClassSchema<T>, pk: any): T | undefined {
+        const store = this.getStore(classSchema);
+
+        return store.has(pk) ? weak.get(store.get(pk)!.ref) : undefined;
+    }
+
+    public getStore(classSchema: ClassSchema): Map<PK, Store> {
+        const store = this.registry.get(classSchema.classType);
+        if (store) {
+            return store;
+        }
+
+        const newStore = new Map();
+        this.registry.set(classSchema.classType, newStore);
+        return newStore;
+    }
+
+    isKnownItem<T>(item: T): boolean {
+        return this.isKnown(getClassSchema(getClassTypeFromInstance(item)), item);
+    }
+
+    isKnown<T>(classSchema: ClassSchema<T>, item: T): boolean {
+        const store = this.getStore(classSchema);
+        const pk = this.lastKnownPkInDB.get(item);
+
+        return store.has(pk) && !!weak.get(store.get(pk)!.ref);
+    }
+
+    isKnownByPk<T>(classSchema: ClassSchema<T>, pk: any): boolean {
+        const store = this.getStore(classSchema);
+
+        return store.has(pk) && !!weak.get(store.get(pk)!.ref);
+    }
 }
 
 export type Query<T> = {
@@ -51,9 +178,8 @@ export type Query<T> = {
     $exists?: boolean;
     $options?: "i" | "g" | "m" | "u";
 
-    //special glut types
-    // $sub?: ReactiveSubQuery<any>;
-    // $parameter?: string;
+    //special Marshal type
+    $parameter?: string;
 };
 
 export type FilterQuery<T> = {
@@ -72,9 +198,17 @@ declare type QueryMode =
     | 'findOneField'
     | 'findOneFieldOrUndefined'
     | 'has'
-    | 'count';
+    | 'count'
+    | 'ids'
+    | 'updateOne'
+    | 'deleteOne'
+    | 'deleteMany'
+    | 'patchOne'
+    | 'patchMany'
+    ;
 
 export class DatabaseQueryModel<T> {
+    public disableInstancePooling: boolean = false;
     public filter?: { [field: string]: any };
     public select: Set<string> = new Set<string>();
     public joins: {
@@ -98,6 +232,7 @@ export class DatabaseQueryModel<T> {
     clone(parentQuery: BaseQuery<any>) {
         const m = new DatabaseQueryModel<T>();
         m.filter = this.filter;
+        m.disableInstancePooling = this.disableInstancePooling;
         m.select = new Set(this.select.values());
 
         m.joins = this.joins.map((v) => {
@@ -185,6 +320,18 @@ export class BaseQuery<T> {
     sort(sort?: SORT<T>): this {
         this.model.sort = sort;
         this.model.changed();
+        return this;
+    }
+
+    /**
+     * Instace pooling is used to store all created entity instances in a pool.
+     * If a query fetches an already known entity instance, the old will be picked.
+     * This ensures object instances uniqueness and generally saves CPU circles.
+     *
+     * This disabled entity tracking, forcing always to create new entity instances.
+     */
+    disableInstancePooling(): this {
+        this.model.disableInstancePooling = true;
         return this;
     }
 
@@ -281,7 +428,27 @@ export class BaseQuery<T> {
         this.join(field, 'inner');
         return this.model.joins[this.model.joins.length - 1].query;
     }
+}
 
+export function getMongoFilter(query: BaseQuery<any>): any {
+    return convertClassQueryToMongo(query.classSchema.classType, query.model.filter || {}, {}, {
+        $parameter: (name, value) => {
+            if (undefined === query.model.parameters[value]) {
+                throw new Error(`Parameter ${value} not defined in ${getClassName(query.classSchema.classType)} query.`);
+            }
+            return query.model.parameters[value];
+        }
+    })
+}
+
+/**
+ * Hydrates not completely populated items and makes them completely accessible.
+ */
+export async function hydrateEntity<T>(item: T) {
+    if ((item as any).__database) {
+        return await ((item as any).__database as Database).hydrateEntity(item);
+    }
+    throw new Error(`Given object is not a proxy object and thus can not be hydrated, or is already hydrated.`);
 }
 
 export class JoinDatabaseQuery<T, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
@@ -307,7 +474,8 @@ export class JoinDatabaseQuery<T, PARENT extends BaseQuery<any>> extends BaseQue
 export class DatabaseQuery<T> extends BaseQuery<T> {
     constructor(
         classSchema: ClassSchema<T>,
-        protected readonly executor: (mode: QueryMode, query: DatabaseQuery<T>) => Promise<any>,
+        protected readonly fetcher: (mode: QueryMode, query: DatabaseQuery<T>) => Promise<any>,
+        protected readonly modifier: (mode: QueryMode, query: DatabaseQuery<T>, arg1?: any) => Promise<any>,
     ) {
         super(classSchema)
     }
@@ -332,54 +500,81 @@ export class DatabaseQuery<T> extends BaseQuery<T> {
      * Creates a copy of DatabaseQuery from current state.
      */
     clone(): DatabaseQuery<T> {
-        const query = new DatabaseQuery(this.classSchema, this.executor);
+        const query = new DatabaseQuery(this.classSchema, this.fetcher, this.modifier);
         query.format = this.format;
         query.model = this.model.clone(query);
         return query;
     }
 
     async findOneOrUndefined(): Promise<T | undefined> {
-        return await this.executor('findOneOrUndefined', this);
+        return await this.fetcher('findOneOrUndefined', this);
     }
 
     async findOne(): Promise<T> {
-        return await this.executor('findOne', this);
+        return await this.fetcher('findOne', this);
     }
 
     async findOneField(fieldName: keyof T | string): Promise<any> {
         this.model.select = new Set([fieldName as string]);
-        return await this.executor('findOneField', this);
+        return await this.fetcher('findOneField', this);
     }
 
     async findOneFieldOrUndefined(fieldName: keyof T | string): Promise<any | undefined> {
         this.model.select = new Set([fieldName as string]);
-        return await this.executor('findOneFieldOrUndefined', this);
+        return await this.fetcher('findOneFieldOrUndefined', this);
     }
 
     async find(): Promise<T[]> {
-        return await this.executor('find', this);
+        return await this.fetcher('find', this);
     }
 
     async findField(fieldName: keyof T | string): Promise<any[]> {
         this.model.select = new Set([fieldName as string]);
-        return await this.executor('findField', this);
+        return await this.fetcher('findField', this);
     }
 
     async count(): Promise<number> {
-        return await this.executor('count', this);
+        return await this.fetcher('count', this);
     }
 
     async has(): Promise<boolean> {
-        return await this.executor('has', this);
+        return await this.fetcher('has', this);
+    }
+
+    async ids(): Promise<any[]> {
+        return await this.fetcher('ids', this);
+    }
+
+    async updateOne(item: T): Promise<void> {
+        return await this.modifier('updateOne', this, item);
+    }
+
+    async deleteOne(): Promise<void> {
+        return await this.modifier('deleteOne', this);
+    }
+
+    async deleteMany(): Promise<void> {
+        return await this.modifier('deleteMany', this);
+    }
+
+    async patchOne(patch: PartialField<T>): Promise<void> {
+        return await this.modifier('patchOne', this, patch);
+    }
+
+    async patchMany(patch: PartialField<T>): Promise<void> {
+        return await this.modifier('patchMany', this, patch);
     }
 }
 
 class Formatter {
-    protected entityReferences = new Map<string, any>();
     protected converter: (c: any, v: any) => any;
     protected partialConverter: (c: any, v: any) => any;
+    protected proxyClasses: Map<ClassType<any>, ClassType<any>> = new Map();
 
-    constructor(protected query: BaseQuery<any>) {
+    constructor(
+        protected database: Database,
+        protected query: BaseQuery<any>,
+    ) {
         this.converter = this.query.format === 'class'
             ? mongoToClass : (this.query.format === 'json' ? mongoToPlain : (c, v) => v);
 
@@ -391,37 +586,188 @@ class Formatter {
         return this.hydrateModel(this.query.model, this.query.classSchema, value);
     }
 
-    protected hydrateModel(model: DatabaseQueryModel<any>, classSchema: ClassSchema, value: any) {
-        const converter = model.isPartial() ? this.partialConverter : this.converter;
-        const converted = converter(classSchema.classType, value);
+    protected withEntityTracking() {
+        return this.query.format === 'class' && !this.query.model.disableInstancePooling;
+    }
 
-        const makeInvalidReference = (item, propertySchema: PropertySchema) => {
-            if (this.query.format !== 'class') return;
-            if (model.isPartial()) return;
+    protected makeInvalidReference(item: any, propertySchema: PropertySchema) {
+        if (this.query.format !== 'class') return;
 
-            const storeName = '$__' + propertySchema.name;
-            Object.defineProperty(item, storeName, {
+        const storeName = '$__' + propertySchema.name;
+        Object.defineProperty(item, storeName, {
+            enumerable: false,
+            configurable: false,
+            writable: true,
+            value: undefined
+        });
+
+        Object.defineProperty(item, propertySchema.name, {
+            enumerable: false,
+            configurable: false,
+            get() {
+                if ('undefined' !== typeof this[storeName]) {
+                    return this[storeName];
+                }
+                if (MarshalGlobal.unpopulatedCheckActive) {
+                    throw new Error(`Reference ${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                }
+            },
+            set(v: any) {
+                this[storeName] = v;
+            }
+        });
+    }
+
+    protected getProxyClass<T>(classSchema: ClassSchema<T>): ClassType<T> {
+        if (!this.proxyClasses.has(classSchema.classType)) {
+            const type = classSchema.classType as any;
+
+            //note: this is necessary to give the anonymous class the same name when using toString().
+            const temp: any = {};
+            temp.Proxy = class extends type {
+            };
+            const Proxy = temp.Proxy;
+
+            Object.defineProperty(Proxy.prototype, '__database', {
                 enumerable: false,
                 configurable: false,
                 writable: true,
-                value: undefined
+                value: this.database,
             });
-            Object.defineProperty(item, propertySchema.name, {
-                enumerable: false,
-                configurable: false,
-                get() {
-                    if ('undefined' !== typeof this[storeName]) {
-                        return this[storeName];
+
+            for (const propName of classSchema.propertyNames) {
+                if (propName === classSchema.idField) continue;
+
+                Object.defineProperty(Proxy.prototype, propName, {
+                    enumerable: false,
+                    configurable: true,
+                    get() {
+                        if (MarshalGlobal.unpopulatedCheckActive) {
+                            throw new Error(`Reference ${getClassName(classSchema.classType)} was not completely populated (only primary keys). Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                        }
+                    },
+                    set() {
+                        if (MarshalGlobal.unpopulatedCheckActive) {
+                            throw new Error(`Reference ${getClassName(classSchema.classType)} was not completely populated (only primary keys). Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                        }
                     }
-                    if (MarshalGlobal.unpopulatedCheckActive) {
-                        throw new Error(`Reference ${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                });
+            }
+            this.proxyClasses.set(classSchema.classType, Proxy);
+        }
+
+        return this.proxyClasses.get(classSchema.classType)!;
+    }
+
+    protected setProxyClass(
+        classSchema: ClassSchema,
+        converted: any,
+        dbItem: any,
+        propertySchema: PropertySchema,
+        isPartial: boolean
+    ) {
+        if (undefined === dbItem[propertySchema.getForeignKeyName()]) {
+            if (propertySchema.isOptional) return;
+            throw new Error(`Foreign key for ${propertySchema.name} is not projected.`);
+        }
+
+        const foreignSchema = propertySchema.getResolvedClassSchema();
+        const fkn = propertySchema.getForeignKeyName();
+        const pk = propertyMongoToClass(classSchema.classType, fkn, dbItem[fkn]);
+
+        if (this.withEntityTracking() && !isPartial) {
+            const item = this.database.entityRegistry.get(foreignSchema, pk);
+            if (item) {
+                converted[propertySchema.name] = item;
+                return;
+            }
+        }
+
+        const args: any[] = [];
+
+        for (const prop of foreignSchema.getMethodProperties('constructor')) {
+            args.push(propertyMongoToClass(classSchema.classType, prop.name, dbItem[prop.name]));
+        }
+
+        MarshalGlobal.unpopulatedCheckActive = false;
+        const ref = new (this.getProxyClass(foreignSchema))(...args);
+        ref[foreignSchema.getPrimaryField().name] = pk;
+        converted[propertySchema.name] = ref;
+
+        if (this.withEntityTracking() && !isPartial) {
+            this.database.entityRegistry.store(foreignSchema, ref);
+        }
+        MarshalGlobal.unpopulatedCheckActive = true;
+    }
+
+    protected hydrateModel(model: DatabaseQueryModel<any>, classSchema: ClassSchema, value: any) {
+        const primary = classSchema.getPrimaryField();
+        const pk = propertyMongoToClass(classSchema.classType, primary.name, value[primary.name]);
+
+        if (this.withEntityTracking() && !model.isPartial()) {
+            const item = this.database.entityRegistry.get(classSchema, pk);
+
+            if (item) {
+                const stale = this.database.entityRegistry.isStale(classSchema, pk);
+
+                if ((item as any).__database || stale) {
+                    //we automatically hydrate proxy object once someone fetches them from the database.
+                    //or we update a stale instance
+                    const newItem = this.createObject(model, classSchema, value);
+
+                    for (const propName of classSchema.propertyNames) {
+                        if (propName === classSchema.idField) continue;
+
+                        const prop = classSchema.classProperties[propName];
+                        if (prop.isReference || prop.backReference) continue;
+
+                        Object.defineProperty(item, propName, {
+                            enumerable: true,
+                            configurable: true,
+                            value: newItem[propName],
+                        });
                     }
-                },
-                set(v: any) {
-                    this[storeName] = v;
+
+                    (item as any).__database = undefined;
                 }
-            });
-        };
+
+                //check if we got new reference data we can apply to the instance
+                for (const join of model.joins) {
+                    if (join.populate) {
+                        if (value[join.propertySchema.name]) {
+                            if (join.propertySchema.backReference) {
+                                item[join.propertySchema.name] = value[join.propertySchema.name].map(item => {
+                                    return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
+                                });
+                            } else {
+                                item[join.propertySchema.name] = this.hydrateModel(
+                                    join.query.model, join.propertySchema.getResolvedClassSchema(), value[join.propertySchema.name]
+                                );
+                            }
+                        }
+                    }
+                }
+
+                if (stale) {
+                    this.database.entityRegistry.markAsFresh(classSchema, pk);
+                }
+
+                return item;
+            }
+        }
+
+        const converted = this.createObject(model, classSchema, value);
+
+        if (this.withEntityTracking() && !model.isPartial()) {
+            this.database.entityRegistry.store(classSchema, converted);
+        }
+
+        return converted;
+    }
+
+    protected createObject(model: DatabaseQueryModel<any>, classSchema: ClassSchema, value: any) {
+        const converter = model.isPartial() ? this.partialConverter : this.converter;
+        const converted = converter(classSchema.classType, value);
 
         const handledRelation: { [name: string]: true } = {};
         for (const join of model.joins) {
@@ -430,38 +776,41 @@ class Formatter {
                 if (value[join.propertySchema.name]) {
                     if (join.propertySchema.backReference) {
                         converted[join.propertySchema.name] = value[join.propertySchema.name].map(item => {
-                            return this.hydrateReference(join.query, join.propertySchema, item);
+                            return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
                         });
                     } else {
-                        converted[join.propertySchema.name] = this.hydrateReference(
-                            join.query, join.propertySchema, value[join.propertySchema.name]
+                        converted[join.propertySchema.name] = this.hydrateModel(
+                            join.query.model, join.propertySchema.getResolvedClassSchema(), value[join.propertySchema.name]
                         );
                     }
                 }
             } else {
-                makeInvalidReference(converted, join.propertySchema);
+                //not populated
+                if (join.propertySchema.isReference) {
+                    this.setProxyClass(classSchema, converted, value, join.propertySchema, model.isPartial());
+                } else {
+                    //unpopulated backReferences are inaccessible
+                    if (!model.isPartial()) {
+                        this.makeInvalidReference(converted, join.propertySchema);
+                    }
+                }
             }
         }
 
         //all non-populated relations will be
         for (const propertySchema of classSchema.references.values()) {
             if (handledRelation[propertySchema.name]) continue;
-            makeInvalidReference(converted, propertySchema);
+            if (propertySchema.isReference) {
+                this.setProxyClass(classSchema, converted, value, propertySchema, model.isPartial());
+            } else {
+                //unpopulated backReferences are inaccessible
+                if (!model.isPartial()) {
+                    this.makeInvalidReference(converted, propertySchema);
+                }
+            }
         }
 
         return converted;
-    }
-
-    public hydrateReference(joinQuery: BaseQuery<any>, propertySchema: PropertySchema, value: any) {
-        const classSchema = propertySchema.getResolvedClassSchema();
-
-        const primaryKey = JSON.stringify(value[classSchema.getPrimaryField().name]);
-
-        if (!this.entityReferences.has(primaryKey)) {
-            this.entityReferences.set(primaryKey, this.hydrateModel(joinQuery.model, classSchema, value));
-        }
-
-        return this.entityReferences.get(primaryKey);
     }
 
 }
@@ -474,6 +823,7 @@ class Formatter {
  * So, if you accept JSON, make sure to run `const filter = partialPlainToClass(Model, {...})` first.
  */
 export class Database {
+    public readonly entityRegistry = new EntityRegistry();
 
     constructor(private connection: Connection, private defaultDatabaseName = 'app') {
     }
@@ -483,51 +833,26 @@ export class Database {
         await this.connection.close();
     }
 
-    public async resolveQuery<T>(mode: QueryMode, query: BaseQuery<T>) {
-        let collection: Collection<T> = await this.getCollection(query.classSchema.classType);
+    public async hydrateEntity<T>(item: T) {
+        const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
-        const formatter = new Formatter(query);
+        const dbItem = await this.getCollection(classSchema.classType)
+            .findOne(this.buildFindCriteria(classSchema.classType, item));
 
-        function findOne() {
-            return mode.startsWith('findOne');
+        for (const propName of classSchema.propertyNames) {
+            if (propName === classSchema.idField) continue;
+
+            Object.defineProperty(item, propName, {
+                enumerable: true,
+                configurable: true,
+                value: propertyMongoToClass(classSchema.classType, propName, dbItem[propName]),
+            });
         }
 
-        function findOneField() {
-            return mode.startsWith('findOneField');
-        }
+        (item as any).__database = undefined;
+    }
 
-        function orUndefined() {
-            return mode === 'findOneOrUndefined' || mode === 'findOneFieldOrUndefined';
-        }
-
-        const projection: { [name: string]: 1 | 0 } = {};
-
-        function getProjectModel<T>(select: Set<string>) {
-            const res: { [name: string]: 0 | 1 } = {};
-            for (const v of select.values()) {
-                (res as any)[v] = 1;
-            }
-            return res;
-        }
-
-        function getSortFromModel<T>(modelSort?: SORT<T>) {
-            const sort: { [name: string]: -1 | 1 | { $meta: "textScore" } } = {};
-            if (modelSort) {
-                for (const [i, v] of eachPair(modelSort)) {
-                    sort[i] = v === 'asc' ? 1 : (v === 'desc' ? -1 : v);
-                }
-            }
-            return sort;
-        }
-
-
-        if (query.model.isPartial()) {
-            if (query.classSchema.idField) {
-                //we require ID always for hydration
-                projection[query.classSchema.idField] = 1;
-            }
-            for (const name of query.model.select) projection[name as string] = 1;
-        }
+    protected buildAggregationPipeline(query: BaseQuery<any>) {
 
         const handleJoins = (pipeline: any[], query: BaseQuery<any>) => {
             for (const join of query.model.joins) {
@@ -557,19 +882,18 @@ export class Database {
                     handleJoins(joinPipeline, join.query);
                 }
 
-                if (join.query.model.filter) joinPipeline.push({$match: convertClassQueryToMongo(join.query.classSchema.classType, join.query.model.filter)});
-                if (join.query.model.sort) joinPipeline.push({$sort: getSortFromModel(join.query.model.sort)});
+                if (join.query.model.filter) joinPipeline.push({$match: getMongoFilter(join.query)});
+                if (join.query.model.sort) joinPipeline.push({$sort: this.getSortFromModel(join.query.model.sort)});
                 if (join.query.model.skip) joinPipeline.push({$skip: join.query.model.skip});
                 if (join.query.model.limit) joinPipeline.push({$limit: join.query.model.limit});
 
-                const project = getProjectModel(join.query.model.select);
+                const project = this.getProjectModel(join.query.model.select);
                 if (!join.classSchema.hasProperty('_id') || (join.query.model.isPartial() && !join.query.model.isSelected('_id'))) {
                     project['_id'] = 0;
                 }
                 if (Object.keys(project).length) {
                     joinPipeline.push({$project: project});
                 }
-
 
                 if (join.propertySchema.backReference) {
                     if (join.propertySchema.backReference.via) {
@@ -655,18 +979,126 @@ export class Database {
             }
         };
 
+
+        const pipeline: any[] = [];
+
+        handleJoins(pipeline, query);
+
+        if (query.model.filter) pipeline.push({$match: getMongoFilter(query)});
+        if (query.model.sort) pipeline.push({$sort: this.getSortFromModel(query.model.sort)});
+        if (query.model.skip) pipeline.push({$skip: query.model.skip});
+        if (query.model.limit) pipeline.push({$limit: query.model.limit});
+        return pipeline;
+    }
+
+    protected getProjectModel<T>(select: Set<string>) {
+        const res: { [name: string]: 0 | 1 } = {};
+        for (const v of select.values()) {
+            (res as any)[v] = 1;
+        }
+        return res;
+    }
+
+    protected getSortFromModel<T>(modelSort?: SORT<T>) {
+        const sort: { [name: string]: -1 | 1 | { $meta: "textScore" } } = {};
+        if (modelSort) {
+            for (const [i, v] of eachPair(modelSort)) {
+                sort[i] = v === 'asc' ? 1 : (v === 'desc' ? -1 : v);
+            }
+        }
+        return sort;
+    }
+
+    public async resolveQueryModifier<T>(mode: QueryMode, query: BaseQuery<T>, arg1: any) {
+        const ids = await this.resolveQueryFetcher('ids', query);
+        if (ids.length === 0) return;
+
+        const primaryField = query.classSchema.getPrimaryField();
+
+        let collection: Collection<T> = await this.getCollection(query.classSchema.classType);
+        const mongoFilter = {id: {$in: ids.map(v => propertyClassToMongo(query.classSchema.classType, primaryField.name, v))}};
+
+        if (mode === 'deleteOne') {
+            await collection.deleteOne(mongoFilter);
+            this.entityRegistry.deleteMany(query.classSchema, ids);
+            return;
+        }
+
+        if (mode === 'deleteMany') {
+            await collection.deleteMany(mongoFilter);
+            this.entityRegistry.deleteMany(query.classSchema, ids);
+            return;
+        }
+
+        if (mode === 'updateOne') {
+            const updateStatement: { [name: string]: any } = {};
+            updateStatement['$set'] = classToMongo(query.classSchema.classType, arg1);
+            delete updateStatement['$set']['version'];
+            await collection.updateOne(mongoFilter, updateStatement);
+            this.entityRegistry.delete(query.classSchema, ids[0]);
+            this.entityRegistry.store(query.classSchema, arg1);
+            return;
+        }
+
+        if (mode === 'patchOne') {
+            const updateStatement: { [name: string]: any } = {};
+            updateStatement['$set'] = partialClassToMongo(query.classSchema.classType, arg1);
+            await collection.updateOne(mongoFilter, updateStatement);
+            this.entityRegistry.markAsStale(query.classSchema, [ids[0]]);
+            return;
+        }
+
+        if (mode === 'patchMany') {
+            const updateStatement: { [name: string]: any } = {};
+            updateStatement['$set'] = partialClassToMongo(query.classSchema.classType, arg1);
+            await collection.updateMany(mongoFilter, updateStatement);
+            this.entityRegistry.markAsStale(query.classSchema, ids);
+            return;
+        }
+    }
+
+    public async resolveQueryFetcher<T>(mode: QueryMode, query: BaseQuery<T>) {
+        let collection: Collection<T> = await this.getCollection(query.classSchema.classType);
+
+        const formatter = new Formatter(this, query);
+
+        function findOne() {
+            return mode.startsWith('findOne');
+        }
+
+        function findOneField() {
+            return mode.startsWith('findOneField');
+        }
+
+        function orUndefined() {
+            return mode === 'findOneOrUndefined' || mode === 'findOneFieldOrUndefined';
+        }
+
+        const projection: { [name: string]: 1 | 0 } = {};
+
+        if (query.model.isPartial()) {
+            for (const name of query.model.select) projection[name as string] = 1;
+        } else {
+            if (!query.classSchema.hasProperty('_id') || (query.model.isPartial() && !query.model.isSelected('_id'))) {
+                projection['_id'] = 0;
+            }
+        }
+
+        const primaryField = query.classSchema.getPrimaryField();
+
         if (query.model.hasJoins()) {
-            const pipeline: any[] = [];
+            const pipeline = this.buildAggregationPipeline(query);
 
-            handleJoins(pipeline, query);
-
-            if (query.model.filter) pipeline.push({$match: convertClassQueryToMongo(query.classSchema.classType, query.model.filter)});
-            if (query.model.sort) pipeline.push({$sort: getSortFromModel(query.model.sort)});
-            if (query.model.skip) pipeline.push({$skip: query.model.skip});
-            if (query.model.limit) pipeline.push({$limit: query.model.limit});
-
-            if (Object.keys(projection).length) {
-                pipeline.push({$project: projection});
+            if (mode === 'ids') {
+                pipeline.push({
+                    $project: {
+                        [primaryField.name]: 1
+                    }
+                });
+            } else {
+                if (Object.keys(projection).length) {
+                    pipeline.push({$project: projection});
+                }
             }
 
             if (mode === 'has') {
@@ -678,9 +1110,15 @@ export class Database {
                 pipeline.push({$count: 'count'});
             }
 
+            if (findOne()) {
+                pipeline.push({$limit: 1});
+            }
+
             const items = await collection.aggregate(pipeline).toArray();
-            // console.log('pipeline', JSON.stringify(pipeline, null, 4));
-            // console.log('aggregate items', items);
+
+            if (mode === 'ids') {
+                return items.map(v => propertyMongoToClass(query.classSchema.classType, primaryField.name, v[primaryField.name]));
+            }
 
             if (findOne()) {
                 if (items[0]) {
@@ -716,10 +1154,10 @@ export class Database {
         if (mode.startsWith('findOne')) {
             const item = await collection
                 .findOne(
-                    query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {},
+                    query.model.filter ? getMongoFilter(query) : {},
                     {
                         projection: projection,
-                        sort: getSortFromModel(query.model.sort),
+                        sort: this.getSortFromModel(query.model.sort),
                         skip: query.model.skip,
                         limit: query.model.limit,
                     } as FindOneOptions
@@ -740,22 +1178,26 @@ export class Database {
 
         if (mode === 'count') {
             return await collection
-                .countDocuments(query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {});
+                .countDocuments(query.model.filter ? getMongoFilter(query) : {});
         }
 
         if (mode === 'has') {
             return await collection
-                .countDocuments(query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {}) > 0;
+                .countDocuments(query.model.filter ? getMongoFilter(query) : {}) > 0;
         }
 
-        if (mode === 'find' || mode === 'findField') {
+        if (mode === 'find' || mode === 'findField' || mode === 'ids') {
             let items = await collection
-                .find(query.model.filter ? convertClassQueryToMongo(query.classSchema.classType, query.model.filter) : {})
-                .project(projection);
+                .find(query.model.filter ? getMongoFilter(query) : {})
+                .project(mode === 'ids' ? {[primaryField.name]: 1} : projection);
 
-            if (query.model.sort !== undefined) items = items.sort(getSortFromModel(query.model.sort));
+            if (query.model.sort !== undefined) items = items.sort(this.getSortFromModel(query.model.sort));
             if (query.model.skip !== undefined) items = items.skip(query.model.skip);
             if (query.model.limit !== undefined) items = items.skip(query.model.limit);
+
+            if (mode === 'ids') {
+                return items.map(v => propertyMongoToClass(query.classSchema.classType, primaryField.name, v[primaryField.name])).toArray();
+            }
 
             if (mode === 'findField') {
                 return items.map(v => formatter.hydrate(v)[query.model.getFirstSelect()]).toArray();
@@ -772,7 +1214,7 @@ export class Database {
     public query<T>(classType: ClassType<T>): DatabaseQuery<T> {
         const schema = getClassSchema(classType);
 
-        return new DatabaseQuery(schema, this.resolveQuery.bind(this));
+        return new DatabaseQuery(schema, this.resolveQueryFetcher.bind(this), this.resolveQueryModifier.bind(this));
     }
 
     public getCollectionName<T>(classType: ClassType<T>): string {
@@ -791,103 +1233,85 @@ export class Database {
     }
 
     /**
-     * Removes ONE item from the database that has the given id. You need to use @ID() decorator
+     * Removes ONE item from the database that has the given id. You need to use @f.primary() decorator
      * for at least and max one property at your entity to use this method.
      */
-    public async remove<T>(classType: ClassType<T>, id: string): Promise<boolean> {
-        const collection = await this.getCollection(classType);
-        const idName = getIdField(classType);
-        if (!idName) return false;
+    public async remove<T>(item: T): Promise<boolean> {
+        const classSchema = getClassSchema(getClassTypeFromInstance(item));
+        const collection = await this.getCollection(classSchema.classType);
 
-        const filter: { [name: string]: any } = {};
-        filter[idName] = id;
+        const pk = classSchema.getPrimaryField();
+        const filter: { [name: string]: any } = {
+            [pk.name]: item[pk.name]
+        };
 
-        const result = await collection.deleteOne(convertClassQueryToMongo(classType, filter));
+        const result = await collection.deleteOne(convertClassQueryToMongo(classSchema.classType, filter));
+        this.entityRegistry.delete(classSchema, classSchema.getPrimaryFieldRepresentation(item));
 
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
-    /**
-     * Removes ONE item from the database that matches given filter.
-     */
-    public async deleteOne<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
-        const collection = await this.getCollection(classType);
-        await collection.deleteOne(convertClassQueryToMongo(classType, filter));
+    public isKnownItem<T>(item: T): boolean {
+        const classSchema = getClassSchema(getClassTypeFromInstance(item));
+        return this.entityRegistry.isKnown(classSchema, item);
     }
 
     /**
-     * Removes ALL items from the database that matches given filter.
+     * Adds or updates the item in the database. Populates primary key if necessary.
      */
-    public async deleteMany<T>(classType: ClassType<T>, filter: { [field: string]: any }) {
-        const collection = await this.getCollection(classType);
-        await collection.deleteMany(convertClassQueryToMongo(classType, filter));
-    }
+    public async persist<T>(item: T): Promise<void> {
+        const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
-    /**
-     * @see add
-     */
-    public async addEntity<T>(item: T): Promise<boolean> {
-        return this.add(getClassTypeFromInstance(item), item);
-    }
-
-    /**
-     * Adds a new item to the database. Sets _id if defined at your entity.
-     */
-    public async add<T>(classType: ClassType<T>, item: T): Promise<boolean> {
-        //todo, check WeakMap if that was already added
-        const collection = await this.getCollection(classType);
-
-        const id = getIdField(classType);
-        const obj = classToMongo(classType, item);
-
-        const result = await collection.insertOne(obj);
-        //todo add to WeakMap, so we know we already added it
-
-        if (id === '_id' && result.insertedId) {
-            const {type} = getReflectionType(classType, id);
-
-            if (type === 'objectId' && result.insertedId && result.insertedId.toHexString) {
-                (<any>item)['_id'] = result.insertedId.toHexString();
+        //make sure all reference are already added as well
+        for (const relation of classSchema.references) {
+            if (relation.isReference) {
+                if (item[relation.name]) {
+                    if (relation.isArray) {
+                        // (item[relation.name] as any[]).forEach(v => this.add(v));
+                        //todo, implement that feature, and create a foreignKey as (primaryKey)[].
+                        throw new Error('Owning reference as arrays are not possible.');
+                    } else {
+                        if (undefined === (item[relation.name] as any).__database) {
+                            //no proxy instances will be saved.
+                            this.persist(item[relation.name]);
+                        }
+                    }
+                } else if (!relation.isOptional) {
+                    throw new Error(`Relation ${relation.name} in ${classSchema.getClassName()} is not set. If its optional, use @f.optional().`)
+                }
             }
         }
 
-        return true;
-    }
+        const collection = await this.getCollection(classSchema.classType);
 
-    /**
-     * Updates an entity in the database and returns the new version number if successful, or null if not successful.
-     *
-     * If no filter is given, the ID of `update` is used.
-     */
-    public async update<T>(classType: ClassType<T>, update: T, filter?: { [field: string]: any }): Promise<number | undefined> {
-        const collection = await this.getCollection(classType);
+        const mongoItem = classToMongo(classSchema.classType, item);
 
-        const updateStatement: { [name: string]: any } = {
-            $inc: {version: +1},
-        };
+        if (!this.entityRegistry.isKnown(classSchema, item)) {
+            const result = await collection.insertOne(mongoItem);
 
-        updateStatement['$set'] = classToMongo(classType, update);
-        delete updateStatement['$set']['version'];
-
-        const filterQuery = filter ? convertClassQueryToMongo(classType, filter) : this.buildFindCriteria(classType, update);
-
-        const response = await collection.findOneAndUpdate(filterQuery, updateStatement, {
-            projection: {version: 1},
-            returnOriginal: false
-        });
-
-        const doc = response.value;
-
-        if (!doc) {
-            return undefined;
+            if (result.insertedId) {
+                if (classSchema.getPrimaryField().type === 'objectId' && result.insertedId && result.insertedId.toHexString) {
+                    (<any>item)[classSchema.getPrimaryField().name] = result.insertedId.toHexString();
+                }
+            }
+            this.entityRegistry.store(classSchema, item);
+            return;
         }
 
-        (<any>update)['version'] = (<any>doc)['version'];
+        const updateStatement: { [name: string]: any } = {};
+        updateStatement['$set'] = mongoItem;
+        const filterQuery = this.buildFindCriteria(classSchema.classType, item);
+        await collection.updateOne(filterQuery, updateStatement);
 
-        return (<any>update)['version'];
+        const oldPk = this.entityRegistry.lastKnownPkInDB.get(item);
+        const newPk = item[classSchema.getPrimaryField().name];
+        if (newPk !== oldPk) {
+            this.entityRegistry.delete(classSchema, oldPk);
+            this.entityRegistry.store(classSchema, item);
+        }
     }
 
-    private buildFindCriteria<T>(classType: ClassType<T>, data: T): { [name: string]: any } {
+    protected buildFindCriteria<T>(classType: ClassType<T>, item: T): { [name: string]: any } {
         const criteria: { [name: string]: any } = {};
         const id = getIdField(classType);
 
@@ -895,73 +1319,8 @@ export class Database {
             throw new NoIDDefinedError(`Class ${getClassName(classType)} has no @f.primary() defined.`);
         }
 
-        criteria[id] = propertyClassToMongo(classType, id, (<any>data)[id]);
+        criteria[id] = propertyClassToMongo(classType, id, this.entityRegistry.getLastKnownPkInDB(item));
 
         return criteria;
-    }
-
-    /**
-     * Patches a single entity in the collection and returns the new version number if successful, or null if not successful.
-     * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
-     *
-     * Example
-     *
-     * await patch(SimpleEntity, {
-     *     ['children.0.label']: 'Changed label'
-     * });
-     */
-    public async patch<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number | undefined> {
-        const collection = await this.getCollection(classType);
-
-        const patchStatement: { [name: string]: any } = {
-            $inc: {version: +1}
-        };
-
-        delete (<any>patch)['id'];
-        delete (<any>patch)['_id'];
-        delete (<any>patch)['version'];
-
-        patchStatement['$set'] = partialClassToMongo(classType, patch);
-
-        const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), patchStatement, {
-            projection: {version: 1},
-            returnOriginal: false
-        });
-
-        const doc = response.value;
-
-        if (!doc) {
-            return undefined;
-        }
-
-        return (<any>doc)['version'];
-    }
-
-    /**
-     * Patches all items in the collection and returns the count of modified items.
-     * It's possible to provide nested key-value pairs, where the path should be based on dot symbol separation.
-     *
-     * Example
-     *
-     * await patch(SimpleEntity, {
-     *     ['children.0.label']: 'Changed label'
-     * });
-     */
-    public async patchAll<T>(classType: ClassType<T>, filter: { [field: string]: any }, patch: Partial<T>): Promise<number> {
-        const collection = await this.getCollection(classType);
-
-        const patchStatement: { [name: string]: any } = {
-            $inc: {version: +1}
-        };
-
-        delete (<any>patch)['id'];
-        delete (<any>patch)['_id'];
-        delete (<any>patch)['version'];
-
-        patchStatement['$set'] = partialClassToMongo(classType, patch);
-
-        const response = await collection.updateMany(convertClassQueryToMongo(classType, filter), patchStatement, {});
-
-        return response.modifiedCount;
     }
 }

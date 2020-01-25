@@ -21,10 +21,12 @@
   "dependencies": {
     "@marcj/estdlib": "^0.1.17",
     "@marcj/marshal": "^1.0.3",
-    "mongo-uuid": "^1.0.0"
+    "mongo-uuid": "^1.0.0",
+    "weak-napi": "^1.0.3"
   },
   "devDependencies": {
     "@types/mongodb": "^3.1.12",
+    "@types/weak-napi": "^1.0.0",
     "buffer": "^5.2.1",
     "moment": "^2.0.0",
     "mongodb": "^3.1.13",

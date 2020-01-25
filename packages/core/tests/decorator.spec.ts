@@ -93,7 +93,7 @@ test('test invalid usage', async () => {
 
     expect(() => {
         getClassSchema(Base).getProperty('id').getResolvedClassType();
-    }).toThrowError('No classType given for id');
+    }).toThrowError('No ClassType given for field id');
 
     expect(() => {
         getClassSchema(Base).getProperty('bla');

@@ -1,6 +1,6 @@
 module.exports = {
-    "mode": "modules",
-    "out": "docs",
+    mode: 'modules',
+    out: 'docs',
     exclude: [
         '**/node_modules/**',
         '**/*.spec.ts',
@@ -9,5 +9,4 @@ module.exports = {
     lernaExclude: ['@marcj/benchmark'],
     name: 'marshal.ts',
     excludePrivate: true,
-    skipInternal: true,
 };
