@@ -36,7 +36,7 @@ export const MarshalGlobal = {unpopulatedCheckActive: true};
  * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths (like mongoDB)
  */
 export type PartialField<T> = {
-    [P in keyof T]: T[P]
+    [P in keyof T]?: T[P]
 } & {
     //it's currently not possible to further define it
     //https://github.com/Microsoft/TypeScript/issues/12754
@@ -87,9 +87,22 @@ export class PropertySchema {
     type: Types = 'any';
     isArray: boolean = false;
     isMap: boolean = false;
+
+    /**
+     * Whether its a owning reference.
+     */
     isReference: boolean = false;
-    isReferenceKey: boolean = false;
+
+    /**
+     * Whether its a back reference.
+     */
     backReference?: BackReferenceOptions<any>;
+
+    /**
+     * Whether its a foreign key from a owning reference.
+     */
+    isReferenceKey: boolean = false;
+
     index?: IndexOptions;
 
     /**
@@ -247,8 +260,18 @@ export class PropertySchema {
         }
     }
 
+    /**
+     * Internal note: for multi pk support, this will return a string[] in the future.
+     */
     getForeignKeyName(): string {
         return this.name + capitalizeFirstLetter(this.getResolvedClassSchema().getPrimaryField().name);
+    }
+
+    /**
+     * When this.classType is referenced, this returns the fields necessary to instantiate a proxy object.
+     */
+    getRequiredForeignFieldsForProxy(): PropertySchema[] {
+        return [this.getResolvedClassSchema().getPrimaryField(), ...this.getResolvedClassSchema().getMethodProperties('constructor')]
     }
 
     getResolvedClassSchema(): ClassSchema {
@@ -333,7 +356,7 @@ export class PropertySchema {
         }
 
         if (!this.classType) {
-            throw new Error(`No classType given for ${this.name}. Use @f.forward(() => MyClass) for circular dependencies.`);
+            throw new Error(`No ClassType given for field ${this.name}. Use @f.forward(() => MyClass) for circular dependencies.`);
         }
 
         return this.classType;
@@ -375,13 +398,21 @@ export class ClassSchema<T = any> {
 
     indices: EntityIndex[] = [];
 
+    /**
+     * Contains all references, owning reference and back references.
+     */
     public readonly references = new Set<PropertySchema>();
+
     protected referenceInitialized = false;
 
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
 
     constructor(classType: ClassType<any>) {
         this.classType = classType;
+    }
+
+    public getClassName(): string {
+        return getClassName(this.classType);
     }
 
     public addIndex(name: string, options?: IndexOptions) {
@@ -443,9 +474,19 @@ export class ClassSchema<T = any> {
         return this.methods[name];
     }
 
+    /**
+     * Returns a perfect hash from the primary key(s).
+     */
+    public getPrimaryFieldRepresentation(item: T): any {
+        return item[this.getPrimaryField().name];
+    }
+
+    /**
+     * Internal note: for multi pk support, this will return a PropertySchema[] in the future.
+     */
     public getPrimaryField(): PropertySchema {
         if (!this.idField) {
-            throw new Error(`Class ${getClassName(this.classType)} has no primary field.`)
+            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @f.primary() to define one.`)
         }
 
         return this.getProperty(this.idField);
