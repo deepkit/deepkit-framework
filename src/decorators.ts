@@ -549,20 +549,22 @@ export class ClassSchema<T = any> {
         if (!this.referenceInitialized) {
             this.referenceInitialized = true;
             for (const reference of this.references.values()) {
-                const schema = reference.getResolvedClassSchema();
-                const name = reference.name + capitalizeFirstLetter(schema.getPrimaryField().name);
+                if (reference.isReference) {
+                    const schema = reference.getResolvedClassSchema();
+                    const name = reference.name + capitalizeFirstLetter(schema.getPrimaryField().name);
 
-                if (!this.classProperties[name]) {
-                    const foreignKey = schema.getPrimaryField().clone();
-                    foreignKey.isReference = false;
-                    foreignKey.backReference = undefined;
-                    foreignKey.index = {...reference.index};
-                    foreignKey.name = name;
-                    this.classProperties[name] = foreignKey;
-                    getClassSchema(this.classType).addIndex(foreignKey.name, foreignKey.index);
+                    if (!this.classProperties[name]) {
+                        const foreignKey = schema.getPrimaryField().clone();
+                        foreignKey.isReference = false;
+                        foreignKey.backReference = undefined;
+                        foreignKey.index = {...reference.index};
+                        foreignKey.name = name;
+                        this.classProperties[name] = foreignKey;
+                        getClassSchema(this.classType).addIndex(foreignKey.name, foreignKey.index);
+                    }
+
+                    this.classProperties[name].isReferenceKey = true;
                 }
-
-                this.classProperties[name].isReferenceKey = true;
             }
         }
     }
