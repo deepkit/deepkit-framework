@@ -213,6 +213,11 @@ export function validatePropSchema<T>(
     propertyPath: string,
     fromObjectLiteral: boolean = false
 ) {
+    if (propSchema.type === 'any') {
+        //any can be anything, nothing to check here.
+        return;
+    }
+
     if (!propSchema.isOptional) {
         if (handleValidator(classType, propSchema, RequiredValidator, propertyValue, propertyName, propertyPath, errors)) {
             //there's no need to continue validation without a value.
@@ -224,7 +229,6 @@ export function validatePropSchema<T>(
         //there's no need to continue validation without a value.
         return;
     }
-
 
     if (propSchema.type === 'class') {
         const targetEntitySchema = getClassSchema(propSchema.getResolvedClassType());
@@ -354,9 +358,15 @@ export function partialValidate<T>(classType: ClassType<T>, item: Partial<T>, pa
         if (!reflection) continue;
 
         let propertyPath = path ? path + '.' + propertyName : propertyName;
+
+        const propertySchema = reflection.propertySchema.clone();
+        propertySchema.isArray = reflection.array;
+        propertySchema.isMap = reflection.map;
+        propertySchema.isPartial = reflection.partial;
+
         validatePropSchema(
             classType,
-            reflection.propertySchema,
+            propertySchema,
             errors,
             item[propertyName],
             propertyName,

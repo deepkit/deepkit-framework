@@ -170,7 +170,7 @@ export class JobGit {
 }
 
 export class JobDocker {
-    runOnVersion?: string;
+    @f runOnVersion?: string;
 }
 
 export class JobDockerImage {
@@ -389,6 +389,9 @@ export class Job {
 
     @f
     title: string = '';
+
+    @f.any().asMap()
+    infos: { [name: string]: any } = {};
 
     @f.map(JobTask)
     tasks: { [name: string]: JobTask } = {};
