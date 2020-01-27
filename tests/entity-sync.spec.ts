@@ -48,7 +48,7 @@ test('test increase', async () => {
         async start() {
             await this.exchangeDatabase.deleteMany(User, {});
             const user = new User('peter');
-            await this.exchangeDatabase.add(User, user);
+            await this.exchangeDatabase.add(user);
         }
 
         @Action()
@@ -97,7 +97,10 @@ test('test entity sync list', async () => {
 
     @Controller('test')
     class TestController {
-        constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
+        constructor(
+            private storage: EntityStorage,
+            private database: ExchangeDatabase,
+        ) {
         }
 
         @Action()
@@ -105,10 +108,10 @@ test('test entity sync list', async () => {
             await this.database.deleteMany(User, {});
             const peter = new User('Peter 1');
 
-            await this.database.add(User, peter);
-            await this.database.add(User, new User('Peter 2'));
-            await this.database.add(User, new User('Guschdl'));
-            await this.database.add(User, new User('Ingrid'));
+            await this.database.add(peter);
+            await this.database.add(new User('Peter 2'));
+            await this.database.add(new User('Guschdl'));
+            await this.database.add(new User('Ingrid'));
 
             const ids = await this.database.getIds(User);
             expect(ids[0]).toBe(peter.id);
@@ -116,7 +119,7 @@ test('test entity sync list', async () => {
 
             setTimeout(async () => {
                 console.log('Peter 3 added');
-                await this.database.add(User, new User('Peter 3'));
+                await this.database.add(new User('Peter 3'));
             }, 500);
 
             setTimeout(async () => {
@@ -131,7 +134,7 @@ test('test entity sync list', async () => {
 
         @Action()
         async addUser(name: string) {
-            await this.database.add(User, new User(name));
+            await this.database.add(new User(name));
             return false;
         }
     }
@@ -189,8 +192,8 @@ test('test entity sync list: remove', async () => {
         async users(): Promise<Collection<User>> {
             await this.database.deleteMany(User, {});
 
-            await this.database.add(User, new User('Peter 1'));
-            await this.database.add(User, new User('Peter 2'));
+            await this.database.add(new User('Peter 1'));
+            await this.database.add(new User('Peter 2'));
 
             return await this.storage.collection(User).filter({
                 name: {$regex: /Peter/}
@@ -210,7 +213,7 @@ test('test entity sync list: remove', async () => {
         @Action()
         async addUser(name: string): Promise<string> {
             const user = new User(name);
-            await this.database.add(User, user);
+            await this.database.add(user);
             return user.id;
         }
     }
@@ -266,10 +269,10 @@ test('test entity sync item', async () => {
         @Action()
         async user(): Promise<EntitySubject<User>> {
             await this.database.deleteMany(User, {});
-            await this.database.add(User, new User('Guschdl'));
+            await this.database.add(new User('Guschdl'));
 
             const peter = new User('Peter 1');
-            await this.database.add(User, peter);
+            await this.database.add(peter);
 
             this.connection.setTimeout(async () => {
                 await this.database.patch(User, peter.id, {name: 'Peter patched'});
@@ -346,10 +349,10 @@ test('test entity sync item undefined', async () => {
         @Action()
         async user(): Promise<EntitySubject<User> | undefined> {
             await this.database.deleteMany(User, {});
-            await this.database.add(User, new User('Guschdl'));
+            await this.database.add(new User('Guschdl'));
 
             const peter = new User('Peter 1');
-            await this.database.add(User, peter);
+            await this.database.add(peter);
 
             return await this.storage.findOneOrUndefined(User, {
                 name: {$regex: /Marie/}
@@ -384,17 +387,17 @@ test('test entity sync count', async () => {
         @Action()
         async userCount(): Promise<Observable<number>> {
             await this.database.deleteMany(User, {});
-            await this.database.add(User, new User('Guschdl'));
+            await this.database.add(new User('Guschdl'));
             const peter1 = new User('Peter 1');
 
             this.connection.setTimeout(async () => {
                 console.log('add peter1');
-                await this.database.add(User, peter1);
+                await this.database.add(peter1);
             }, 100);
 
             this.connection.setTimeout(async () => {
                 console.log('add peter2');
-                await this.database.add(User, new User('Peter 2'));
+                await this.database.add(new User('Peter 2'));
             }, 150);
 
             this.connection.setTimeout(async () => {
@@ -463,7 +466,7 @@ test('test entity collection unsubscribe + findOne', async () => {
 
     @Entity('jobTest')
     class Job implements IdInterface {
-        @f.uuid()
+        @f.primary().uuid()
         id: string = uuid();
 
         @f
@@ -487,12 +490,12 @@ test('test entity collection unsubscribe + findOne', async () => {
         @Action()
         async init() {
             await this.exchangeDatabase.deleteMany(Job, {});
-            await this.exchangeDatabase.add(Job, new Job('Peter 1'));
-            await this.exchangeDatabase.add(Job, new Job('Peter 2'));
-            await this.exchangeDatabase.add(Job, new Job('Peter 3'));
+            await this.exchangeDatabase.add(new Job('Peter 1'));
+            await this.exchangeDatabase.add(new Job('Peter 2'));
+            await this.exchangeDatabase.add(new Job('Peter 3'));
 
-            await this.exchangeDatabase.add(Job, new Job('Marie 1'));
-            await this.exchangeDatabase.add(Job, new Job('Marie 2'));
+            await this.exchangeDatabase.add(new Job('Marie 1'));
+            await this.exchangeDatabase.add(new Job('Marie 2'));
         }
 
         @Action()
@@ -504,7 +507,7 @@ test('test entity collection unsubscribe + findOne', async () => {
 
         @Action()
         async addJob(name: string): Promise<void> {
-            return await this.exchangeDatabase.add(Job, new Job(name));
+            return await this.exchangeDatabase.add(new Job(name));
         }
 
         @Action()
@@ -692,18 +695,18 @@ test('test entity collection reactive find', async () => {
         async init() {
             await this.exchangeDatabase.deleteMany(User, {});
             await this.exchangeDatabase.deleteMany(Team, {});
-            await this.database.deleteMany(UserTeam, {});
+            await this.database.query(UserTeam).deleteMany();
 
             const teamA = new Team('Team a');
             const teamB = new Team('Team b');
 
-            await this.database.add(Team, teamA);
-            await this.database.add(Team, teamB);
+            await this.database.add(teamA);
+            await this.database.add(teamB);
 
             const addUser = async (name: string, team: Team) => {
                 const user = new User(name);
-                await this.database.add(User, user);
-                await this.database.add(UserTeam, new UserTeam(team.id, user.id));
+                await this.database.add(user);
+                await this.database.add(new UserTeam(team.id, user.id));
             };
 
             await addUser('Peter 1', teamA);
@@ -715,8 +718,8 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async unAssignUser(userName: string, teamName: string) {
-            const user = await this.database.get(User, {name: userName});
-            const team = await this.database.get(Team, {name: teamName});
+            const user = await this.database.query(User).filter({name: userName}).findOne();
+            const team = await this.database.query(Team).filter({name: teamName}).findOne();
 
             if (!user) throw new Error(`User ${userName} not found`);
             if (!team) throw new Error(`Team ${teamName} not found`);
@@ -726,7 +729,7 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async getUserId(userName: string): Promise<string> {
-            const user = await this.database.get(User, {name: userName});
+            const user = await this.database.query(User).filter({name: userName}).findOne();
             if (!user) throw new Error(`User ${userName} not found`);
 
             return user.id;
@@ -734,18 +737,18 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async assignUser(userName: string, teamName: string) {
-            const user = await this.database.get(User, {name: userName});
-            const team = await this.database.get(Team, {name: teamName});
+            const user = await this.database.query(User).filter({name: userName}).findOne();
+            const team = await this.database.query(Team).filter({name: teamName}).findOne();
 
             if (!user) throw new Error(`User ${userName} not found`);
             if (!team) throw new Error(`Team ${teamName} not found`);
 
-            await this.exchangeDatabase.add(UserTeam, new UserTeam(team.id, user.id));
+            await this.exchangeDatabase.add(new UserTeam(team.id, user.id));
         }
 
         @Action()
         async removeTeam(teamName: string) {
-            const team = await this.database.get(Team, {name: teamName});
+            const team = await this.database.query(Team).filter({name: teamName}).findOne();
             if (!team) throw new Error(`Team ${teamName} not found`);
 
             await this.exchangeDatabase.deleteOne(Team, {id: team.id});
@@ -857,14 +860,14 @@ test('test entity collection pagination', async () => {
 
         @Action()
         async init() {
-            await this.database.deleteMany(Item, {});
+            await this.database.query(Item).deleteMany();
 
             const promises: Promise<any>[] = [];
             const clazzes = ['a', 'b', 'c'];
             const owners = ['3f63154d-4121-4f5c-a297-afc1f8f453fd', '4c349fe0-fa33-4e10-bb17-e25f13e4740e'];
 
             for (let i = 0; i < 100; i++) {
-                promises.push(this.database.add(Item, new Item('name_' + i, i, clazzes[i % 3], owners[i % 2])));
+                promises.push(this.database.add(new Item('name_' + i, i, clazzes[i % 3], owners[i % 2])));
             }
 
             await Promise.all(promises);
@@ -873,7 +876,7 @@ test('test entity collection pagination', async () => {
         @Action()
         async add(clazz: string, nr: number): Promise<void> {
             const item = new Item('name_' + nr, nr, clazz, '3f63154d-4121-4f5c-a297-afc1f8f453fd');
-            await this.exchangeDatabase.add(Item, item);
+            await this.exchangeDatabase.add(item);
         }
 
         @Action()

@@ -118,7 +118,7 @@ export async function createServerClientPair(
         }
 
         console.log('server close ...');
-        await db.dropDatabase(dbName);
+        // await db.dropDatabase(dbName);
         closed = true;
 
         for (const client of createdClients) {
