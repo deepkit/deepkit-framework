@@ -485,8 +485,8 @@ test('test decorated', async () => {
         @f
         name: string;
 
-        @f.any()
-        value: any;
+        @f
+        value: string;
 
         constructor(name: string, value: any) {
             this.name = name;
