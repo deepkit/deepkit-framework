@@ -114,9 +114,9 @@ export class DatabaseSession {
                 if (join.propertySchema.backReference) {
                     if (join.propertySchema.backReference.via) {
                     } else {
-                        const backReference = foreignSchema.findForReference(
+                        const backReference = foreignSchema.findReverseReference(
                             join.classSchema.classType,
-                            join.propertySchema.backReference.mappedBy as string
+                            join.propertySchema,
                         );
 
                         joinPipeline.push({
@@ -157,9 +157,10 @@ export class DatabaseSession {
                         const viaClassType = resolveClassTypeOrForward(join.propertySchema.backReference.via);
                         const as = join.propertySchema.name;
 
-                        const backReference = getClassSchema(viaClassType).findForReference(
+                        const backReference = getClassSchema(viaClassType).findReverseReference(
                             join.classSchema.classType,
-                            //mappedBy is not for picot tables. We would need 2 different mappedBy
+                            join.propertySchema,
+                            //mappedBy is not for pivot tables. We would need 2 different mappedBy
                             // join.propertySchema.backReference.mappedBy as string
                         );
 
@@ -175,9 +176,10 @@ export class DatabaseSession {
                         });
 
                         const foreignSchema = join.propertySchema.getResolvedClassSchema();
-                        const backReferenceForward = getClassSchema(viaClassType).findForReference(
+                        const backReferenceForward = getClassSchema(viaClassType).findReverseReference(
                             foreignSchema.classType,
-                            //mappedBy is not for picot tables. We would need 2 different mappedBy
+                            join.propertySchema,
+                            //mappedBy is not for pivot tables. We would need 2 different mappedBy
                             // join.propertySchema.backReference.mappedBy as string
                         );
 
@@ -622,7 +624,7 @@ export class DatabaseSession {
 
             if (query.model.sort !== undefined) items = items.sort(this.getSortFromModel(query.model.sort));
             if (query.model.skip !== undefined) items = items.skip(query.model.skip);
-            if (query.model.limit !== undefined) items = items.skip(query.model.limit);
+            if (query.model.limit !== undefined) items = items.limit(query.model.limit);
 
             if (mode === 'ids') {
                 return items.map(v => propertyMongoToClass(query.classSchema.classType, primaryField.name, v[primaryField.name])).toArray();

@@ -1,6 +1,6 @@
 import 'jest';
 import 'jest-extended';
-import {Entity, f, getClassSchema, MarshalGlobal, uuid} from "@marcj/marshal";
+import {Entity, f, getClassSchema, uuid} from "@marcj/marshal";
 import {createDatabase} from "./utils";
 import {hydrateEntity} from "..";
 import {getLastKnownPKInDatabase} from "../src/entity-register";
@@ -29,7 +29,7 @@ class Organisation {
     @f.uuid().primary()
     id: string = uuid();
 
-    @f.array(User).backReference({via: () => OrganisationMembership})
+    @f.array(User).backReference({mappedBy: 'organisations', via: () => OrganisationMembership})
     users: User[] = [];
 
     constructor(
@@ -50,6 +50,55 @@ class OrganisationMembership {
     ) {
     }
 }
+
+test('test reverse ref', async () => {
+    const userSchema = getClassSchema(User);
+    const organisationSchema = getClassSchema(Organisation);
+    const pivotSchema = getClassSchema(OrganisationMembership);
+
+    {
+        const backRef = userSchema.findBackReference(User, userSchema.getProperty('managedUsers'));
+        expect(backRef.name).toBe('manager');
+    }
+
+    {
+        const backRef = userSchema.findBackReference(User, userSchema.getProperty('manager'));
+        expect(backRef.name).toBe('managedUsers');
+    }
+
+    {
+        const backRef = organisationSchema.findBackReference(User, userSchema.getProperty('organisations'));
+        expect(backRef.name).toBe('users');
+    }
+
+    {
+        //test pivot resolution
+        //from user.organisations, OrganisationMembership->User (join to the left)
+        const backRef = pivotSchema.findBackReference(User, userSchema.getProperty('organisations'));
+        expect(backRef.name).toBe('user');
+    }
+
+    {
+        //test pivot resolution
+        //from user.organisations, OrganisationMembership->Organisation (join to the right)
+        const backRef = pivotSchema.findBackReference(Organisation, userSchema.getProperty('organisations'));
+        expect(backRef.name).toBe('organisation');
+    }
+
+
+    {
+        //test regular OrganisationMembership->Organisation, from Organisation.users
+        const backRef = pivotSchema.findBackReference(Organisation, organisationSchema.getProperty('users'));
+        expect(backRef.name).toBe('organisation');
+    }
+
+    //probably wrong
+    {
+        const backRef = userSchema.findBackReference(Organisation, organisationSchema.getProperty('owner'));
+        //todo, this is probably not correct
+        expect(backRef.name).toBe('organisations');
+    }
+});
 
 async function setupTestCase(name: string) {
     const database = await createDatabase(name);
@@ -643,11 +692,15 @@ test('joins', async () => {
             expect(items[0].name).toBe('marc');
             expect(items[0].organisations).toBeArrayOfSize(1);
             expect(items[0].organisations[0].name).toBe('Microsoft');
-            expect(() => {expect(items[0].organisations[0].owner.name).toBeUndefined();}).toThrow('was not completely populated');
+            expect(() => {
+                expect(items[0].organisations[0].owner.name).toBeUndefined();
+            }).toThrow('was not completely populated');
             expect(items[1].name).toBe('marcel');
             expect(items[1].organisations).toBeArrayOfSize(1);
             expect(items[1].organisations[0].name).toBe('Microsoft');
-            expect(() => {expect(items[1].organisations[0].owner.name).toBeUndefined();}).toThrow('was not completely populated');
+            expect(() => {
+                expect(items[1].organisations[0].owner.name).toBeUndefined();
+            }).toThrow('was not completely populated');
         }
 
         {
