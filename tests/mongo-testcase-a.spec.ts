@@ -57,44 +57,44 @@ test('test reverse ref', async () => {
     const pivotSchema = getClassSchema(OrganisationMembership);
 
     {
-        const backRef = userSchema.findBackReference(User, userSchema.getProperty('managedUsers'));
+        const backRef = userSchema.findReverseReference(User, userSchema.getProperty('managedUsers'));
         expect(backRef.name).toBe('manager');
     }
 
     {
-        const backRef = userSchema.findBackReference(User, userSchema.getProperty('manager'));
+        const backRef = userSchema.findReverseReference(User, userSchema.getProperty('manager'));
         expect(backRef.name).toBe('managedUsers');
     }
 
     {
-        const backRef = organisationSchema.findBackReference(User, userSchema.getProperty('organisations'));
+        const backRef = organisationSchema.findReverseReference(User, userSchema.getProperty('organisations'));
         expect(backRef.name).toBe('users');
     }
 
     {
         //test pivot resolution
         //from user.organisations, OrganisationMembership->User (join to the left)
-        const backRef = pivotSchema.findBackReference(User, userSchema.getProperty('organisations'));
+        const backRef = pivotSchema.findReverseReference(User, userSchema.getProperty('organisations'));
         expect(backRef.name).toBe('user');
     }
 
     {
         //test pivot resolution
         //from user.organisations, OrganisationMembership->Organisation (join to the right)
-        const backRef = pivotSchema.findBackReference(Organisation, userSchema.getProperty('organisations'));
+        const backRef = pivotSchema.findReverseReference(Organisation, userSchema.getProperty('organisations'));
         expect(backRef.name).toBe('organisation');
     }
 
 
     {
         //test regular OrganisationMembership->Organisation, from Organisation.users
-        const backRef = pivotSchema.findBackReference(Organisation, organisationSchema.getProperty('users'));
+        const backRef = pivotSchema.findReverseReference(Organisation, organisationSchema.getProperty('users'));
         expect(backRef.name).toBe('organisation');
     }
 
     //probably wrong
     {
-        const backRef = userSchema.findBackReference(Organisation, organisationSchema.getProperty('owner'));
+        const backRef = userSchema.findReverseReference(Organisation, organisationSchema.getProperty('owner'));
         //todo, this is probably not correct
         expect(backRef.name).toBe('organisations');
     }
