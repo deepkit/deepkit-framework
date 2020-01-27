@@ -627,13 +627,59 @@ export class ClassSchema<T = any> {
         return Boolean(this.classProperties[name]);
     }
 
-    public findForReference(classType: ClassType<any>, name?: string): PropertySchema {
-        if (name) return this.getProperty(name);
-        for (const property of each(this.getClassProperties())) {
-            if (property.getResolvedClassTypeForValidType() === classType) return property;
+    /**
+     * All references have a counter-part. This methods finds it and errors if not possible.
+     *
+     * If the given reference is a owning reference it finds the correct backReference,
+     *    which can be found by checking all reference options.mappedBy.
+     *
+     * If the given reference is a back reference it finds the owning reference,
+     *    which can be found by using its options.mappedBy.
+     *
+     * Alternatively we simply check for resolvedClassType to be given `classType`, and if only one
+     * found, we return it. When more than one found, we throw an error saying the user he
+     * should make its relation mapping not ambiguous.
+     */
+    public findReverseReference(toClassType: ClassType<any>, fromReference: PropertySchema): PropertySchema {
+        if (fromReference.backReference && fromReference.backReference.mappedBy) {
+            if (fromReference.getResolvedClassTypeForValidType() === this.classType) {
+                return this.getProperty(fromReference.backReference.mappedBy as string);
+            }
         }
 
-        throw new Error(`No reference found to class ${getClassName(classType)}`);
+        const candidates: PropertySchema[] = [];
+        for (const backRef of this.references) {
+            if (backRef === fromReference) continue;
+
+            //backRef points to something completely different
+            if (backRef.getResolvedClassTypeForValidType() !== toClassType) continue;
+
+            //we found the perfect match, manually annotated
+            if (backRef.backReference && backRef.backReference.mappedBy) {
+                if (backRef.backReference.mappedBy === fromReference.name) {
+                    return backRef;
+                }
+                continue;
+            }
+
+            //add to candidates if possible
+            if (fromReference.backReference && fromReference.backReference.via && backRef.backReference && backRef.backReference.via) {
+                if (resolveClassTypeOrForward(fromReference.backReference.via) === resolveClassTypeOrForward(backRef.backReference.via)) {
+                    candidates.push(backRef);
+                }
+            } else {
+                candidates.push(backRef);
+            }
+        }
+
+        if (candidates.length > 1) {
+            throw new Error(`Class ${getClassName(this.classType)} has multiple potential reverse references [${candidates.map(v => v.name).join(', ')}] for ${fromReference.name} to class ${getClassName(toClassType)}. ` +
+                `Please specify each back reference by using 'mappedBy', e.g. @f.backReference({mappedBy: 'fieldNameOnTheOtherSide'} so its not ambiguous anymore.`);
+        }
+
+        if (candidates.length === 1) return candidates[0];
+
+        throw new Error(`Class ${getClassName(this.classType)} has no reference to class ${getClassName(toClassType)} defined.`);
     }
 
     public getProperty(name: string): PropertySchema {
@@ -768,10 +814,19 @@ export function DatabaseName<T>(name: string) {
     };
 }
 
-export type BackReferenceOptions<T> = {
+export interface BackReferenceOptions<T> {
+    /**
+     * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
+     */
     via?: ClassType<any> | ForwardRefFn<ClassType<any>>,
-    mappedBy?: keyof T,
-};
+
+    /**
+     * A reference/backReference can define which reference on the other side
+     * reference back. This is necessary when multiple outgoing references
+     * to the same
+     */
+    mappedBy?: T extends ClassType<infer K> ? keyof K : '',
+}
 
 export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<ClassType<any>>): ClassType<any> {
     return isFunction(type) ? (type as Function)() : type;
@@ -804,15 +859,12 @@ export interface FieldDecoratorResult<T> {
      *              using the `via` option. Make sure that the given class in `via` contains both reference
      *              (one back to this class and one to the actual foreign class).
      *
-     * options.mappedBy: Explicitly set the name of the reference of the foreign class.
+     * options.mappedBy: Explicitly set the name of the @f.reference() of the foreign class to which this backReference belongs to.
      *                   Per default it is automatically detected, but will fail if you the foreign class contains more
-     *                   than one references to the current class.
+     *                   than one @f.reference() to this class.
      * @param options
      */
-    backReference(options?: {
-        via?: ClassType<any> | ForwardRefFn<any>,
-        mappedBy?: keyof T,
-    }): this;
+    backReference(options?: BackReferenceOptions<T>): this;
 
     /**
      * Marks this field as optional. The validation requires field values per default, this makes it optional.

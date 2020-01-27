@@ -56,6 +56,7 @@ export class DatabaseQueryModel<T> {
     public filter?: { [field: string]: any };
     public select: Set<string> = new Set<string>();
     public joins: {
+        //this is the parent classSchema, the foreign classSchema is stored in `query`
         classSchema: ClassSchema<any>,
         propertySchema: PropertySchema,
         type: 'left' | 'inner',
