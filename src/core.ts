@@ -92,12 +92,18 @@ export class ReactiveSubQuery<T> {
     constructor(public classType: ClassType<T>, public query: FilterQuery<T>, public field: string) {
     }
 
+    /**
+     * Uses the `id` per default as localKey.
+     */
     static create<T>(classType: ClassType<T>, query: FilterQuery<T>): ReactiveSubQuery<T> {
         return new ReactiveSubQuery(classType, query, 'id');
     }
 
-    static createField<T>(classType: ClassType<T>, field: string, query: FilterQuery<T>) {
-        return new ReactiveSubQuery(classType, query, field);
+    /**
+     * With custom localKey.
+     */
+    static createField<T>(classType: ClassType<T>, localKey: string, query: FilterQuery<T>) {
+        return new ReactiveSubQuery(classType, query, localKey);
     }
 }
 
