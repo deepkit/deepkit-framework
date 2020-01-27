@@ -16,7 +16,7 @@ jest.setTimeout(100_000);
 
 let fs = 0;
 
-async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
+async function createFs(name?: string) {
     fs++;
     const connection = await createConnection({
         type: "mongodb",
@@ -47,15 +47,57 @@ async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
     await database.dropDatabase('fs-test-' + fs);
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 
-    return [new FS(FileType.forDefault(), exchange, accountDb, new ProcessLocker(), localDir), async function () {
-        await exchange.disconnect();
-        await database.close();
-        exchangeServer.close();
-    }];
+    return {
+        fs: new FS(FileType.forDefault(), exchange, database, accountDb, new ProcessLocker(), localDir),
+        exchange, database,
+        disconnect: async function () {
+            await exchange.disconnect();
+            await database.close();
+            exchangeServer.close();
+        }
+    };
 }
 
+test('which is faster: exchange-server get or mongodb fetchOne', async () => {
+    const {fs, disconnect, exchange, database} = await createFs();
+
+    for (let i = 0; i < 1000; i++) {
+        await fs.write('file' + i + '.txt', 'myfetter content ' + i);
+    }
+
+    const testCount = 1000;
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < testCount; i++) {
+            const item = await database.query(fs.fileType.classType).filter({path: 'file10.txt'}).ids();
+            // console.log('item', item.md5);
+        }
+
+        console.log('db findOne() took', performance.now() - start, 'ms for', testCount, 'items');
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < testCount; i++) {
+            await exchange.get('file-meta/file10.txt');
+        }
+
+        console.log('exchange get', performance.now() - start, 'ms for', testCount, 'items');
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < testCount; i++) {
+            await fs.getFileMetaCache('file10.txt');
+        }
+
+        console.log('fs.getFileId via exchange took', performance.now() - start, 'ms for', testCount, 'items');
+    }
+});
+
 // test('performance', async () => {
-//     const [fs, disconnect] = await createFs('performance');
+//     const {fs, disconnect} = await createFs('performance');
 //     await fs.remove('logfile.txt');
 //
 //     const start = performance.now();
@@ -71,7 +113,7 @@ async function createFs(name?: string): Promise<[FS<GlutFile>, Function]> {
 // });
 
 test('test fs storage based on md5', async () => {
-    const [fs, disconnect] = await createFs();
+    const {fs, disconnect} = await createFs();
     const content = new Buffer('TestString ' + Math.random());
 
     const md5 = getMd5(content);
@@ -107,7 +149,7 @@ test('test fs storage based on md5', async () => {
 });
 
 test('test fs storage change content of files with same md5', async () => {
-    const [fs, disconnect] = await createFs();
+    const {fs, disconnect} = await createFs();
     const content = new Buffer('TestString ' + Math.random());
 
     let file1 = await fs.write('file1.txt', content);
@@ -131,7 +173,7 @@ test('test fs storage change content of files with same md5', async () => {
 });
 
 test('test fs single deletion', async () => {
-    const [fs, disconnect] = await createFs();
+    const {fs, disconnect} = await createFs();
     const content = new Buffer('TestString ' + Math.random());
     const file1 = await fs.write('file1.txt', content);
 
@@ -147,7 +189,7 @@ test('test fs single deletion', async () => {
 });
 
 test('test fs fork', async () => {
-    const [fs, disconnect] = await createFs();
+    const {fs, disconnect} = await createFs();
     const content = new Buffer('TestString ' + Math.random());
     const file1 = await fs.write('file1.txt', content);
 
@@ -175,7 +217,7 @@ test('test fs fork', async () => {
 });
 
 test('test fs stream', async () => {
-    const [fs, disconnect] = await createFs();
+    const {fs, disconnect} = await createFs();
 
     await fs.stream('filestream.txt', new Buffer('start\n'));
 

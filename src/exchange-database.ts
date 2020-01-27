@@ -1,5 +1,5 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from '@marcj/marshal';
+import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, getClassTypeFromInstance} from '@marcj/marshal';
 import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
@@ -28,34 +28,18 @@ export class ExchangeDatabase {
         return await this.database.getCollection(classType);
     }
 
-    private notifyChanges<T>(classType: ClassType<T>): boolean {
+    protected notifyChanges<T>(classType: ClassType<T>): boolean {
         return this.exchangeNotifyPolicy.notifyChanges(classType);
     }
 
-    public async get<T extends IdInterface>(
-        classType: ClassType<T>,
-        filter: FilterQuery<T>
-    ): Promise<T | undefined> {
-        return await this.database.get(classType, filter);
-    }
-
-    public async find<T extends IdInterface>(
-        classType: ClassType<T>,
-        filter: FilterQuery<T>,
-        toClass = true
-    ): Promise<T[]> {
-        return await this.database.find(classType, filter, toClass) as T[];
-    }
-
-    public async has<T extends IdInterface>(
-        classType: ClassType<T>,
-        filter: FilterQuery<T>
-    ): Promise<boolean> {
-        return this.database.has(classType, filter);
+    public query() {
+        //todo implement that
+        // and remove `remove`, `deleteMany`, `ids`, `deleteOne`
+        // add hook to know when to sent sync data to the exchange
     }
 
     public async remove<T extends IdInterface>(classType: ClassType<T>, id: string) {
-        await this.database.deleteOne(classType, {id: id});
+        await this.database.query(classType).filter({id: id}).deleteOne();
 
         if (this.notifyChanges(classType)) {
             this.exchange.publishEntity(classType, {
@@ -67,8 +51,7 @@ export class ExchangeDatabase {
     }
 
     public async getIds<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<string[]> {
-        const cursor = await this.rawPlainCursor(classType, filter || {}, ['id']);
-        return (await cursor.toArray()).map(v => v.id);
+        return (await this.database.query(classType).select(['id']).filter(filter).find()).map(v => v.id);
     }
 
     public async deleteOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>) {
@@ -83,7 +66,7 @@ export class ExchangeDatabase {
         const ids = await this.getIds(classType, filter);
 
         if (ids.length > 0) {
-            await this.database.deleteMany(classType, {id: {$in: ids}});
+            await this.database.query(classType).filter({id: {$in: ids}}).deleteMany();
 
             if (this.notifyChanges(classType)) {
                 this.exchange.publishEntity(classType, {
@@ -95,13 +78,14 @@ export class ExchangeDatabase {
     }
 
     public async add<T extends IdInterface>(
-        classType: ClassType<T>,
         item: T,
         options?: {
             advertiseAs?: ClassType<T>,
         }
     ): Promise<void> {
-        await this.database.add(classType, item);
+        item.version = 0;
+        await this.database.add(item);
+        const classType = getClassTypeFromInstance(item);
 
         const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
 
@@ -109,7 +93,7 @@ export class ExchangeDatabase {
             this.exchange.publishEntity(advertiseAs, {
                 type: 'add',
                 id: item.id,
-                version: 1,
+                version: 0,
                 item:
                     advertiseAs === classType ?
                         classToPlain(advertiseAs, item) :
@@ -120,14 +104,11 @@ export class ExchangeDatabase {
         }
     }
 
-    public async count<T extends IdInterface>(classType: ClassType<T>, filter?: FilterQuery<T>): Promise<number> {
-        return await this.database.count(classType, filter);
-    }
-
     /**
-     * Returns a new Observable that resolves the id as soon as and item in the database of given filter criteria is found.
+     * Returns a new Observable that resolves the id as soon as an item in the database of given filter criteria is found.
      */
     public onCreation<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Observable<string> {
+
         return new Observable((observer) => {
             (async () => {
                 const sub = await this.exchange.subscribeEntity(classType, (message) => {
@@ -179,17 +160,15 @@ export class ExchangeDatabase {
     }
 
     public async update<T extends IdInterface>(
-        classType: ClassType<T>,
         item: T,
         options?: {
             advertiseAs?: ClassType<T>,
         }
     ): Promise<number> {
-        const version = await this.database.update(classType, item);
-
-        if (!version) {
-            throw new Error('Could not update entity');
-        }
+        //at some point we need to implement https://github.com/automerge/automerge
+        item.version = await this.exchange.version();
+        await this.database.update(item);
+        const classType = getClassTypeFromInstance(item);
 
         const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
 
@@ -197,7 +176,7 @@ export class ExchangeDatabase {
             this.exchange.publishEntity(advertiseAs, {
                 type: 'update',
                 id: item.id,
-                version: version, //this is the new version in the db, which we end up having when `data` is applied.
+                version: item.version, //this is the new version in the db, which we end up having when `data` is applied.
                 item:
                     advertiseAs === classType ?
                         classToPlain(advertiseAs, item) :
@@ -207,12 +186,12 @@ export class ExchangeDatabase {
             });
         }
 
-        return version;
+        return item.version;
     }
+
 
     /**
      * Increases one or multiple fields atomic and returns the new value. Only changes on item in the collection.
-     * This does not send patches to the exchange.
      */
     public async increase<T extends IdInterface, F extends { [field: string]: number }>(
         classType: ClassType<T>,
@@ -226,7 +205,8 @@ export class ExchangeDatabase {
         const collection = await this.collection(classType);
         const projection: { [key: string]: number } = {};
         const statement: { [name: string]: any } = {
-            $inc: {}
+            $inc: {},
+            $set: {},
         };
 
         for (const [i, v] of eachPair(fields)) {
@@ -238,9 +218,9 @@ export class ExchangeDatabase {
             projection[field] = 1;
         }
 
-        statement.$inc['version'] = 1;
+        const version = await this.exchange.version();
+        statement.$set['version'] = version;
         projection['id'] = 1;
-        projection['version'] = 1;
 
         const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
         const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
@@ -273,7 +253,7 @@ export class ExchangeDatabase {
             this.exchange.publishEntity(advertiseAs, {
                 type: 'patch',
                 id: plain.id,
-                version: plain.version, //this is the new version in the db, which we end up having when `patch` is applied.
+                version: version, //this is the new version in the db, which we end up having when `patch` is applied.
                 item: partialMongoToPlain(advertiseAs, doc),
                 patch: jsonPatches,
             });
@@ -292,10 +272,11 @@ export class ExchangeDatabase {
             advertiseAs?: ClassType<T>,
         }
     ): Promise<{ [field: string]: any }> {
+        //at some point we need to implement https://github.com/automerge/automerge
         const collection = await this.collection(classType);
 
+        const version = await this.exchange.version();
         const patchStatement: { [name: string]: any } = {
-            $inc: {version: +1}
         };
 
         delete (<any>patches)['id'];
@@ -308,6 +289,8 @@ export class ExchangeDatabase {
             patchStatement['$set'] = partialClassToMongo(classType, patches);
         }
 
+        patchStatement['$set']['version'] = version;
+
         if (Object.keys(patchStatement['$set']).length === 0) {
             throw new Error('No patches given. ' + JSON.stringify(patches));
         }
@@ -317,7 +300,6 @@ export class ExchangeDatabase {
         const filter = {id: id};
         const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
         const projection: { [key: string]: number } = {
-            version: 1,
         };
 
         for (const field of subscribedFields) {
@@ -346,15 +328,13 @@ export class ExchangeDatabase {
 
         delete doc._id;
 
-        const newVersion = (<any>doc)['version'];
-
         const jsonPatches: EntityPatches = partialClassToPlain(classType, patches);
 
         if (this.notifyChanges(advertiseAs)) {
             this.exchange.publishEntity(advertiseAs, {
                 type: 'patch',
                 id: id,
-                version: newVersion, //this is the new version in the db, which we end up having when `patch` is applied.
+                version: version, //this is the new version in the db, which we end up having when `patch` is applied.
                 item: partialMongoToPlain(advertiseAs, doc),
                 patch: jsonPatches,
             });

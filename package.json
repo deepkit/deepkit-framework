@@ -49,6 +49,7 @@
     "@types/redis": "^2.8.8",
     "@types/redlock": "^3.0.2",
     "@types/ws": "^6.0.1",
+    "@types/node": "^12.12.6",
     "awesome-typescript-loader": "^5.2.1",
     "bson-ext": "^2.0.3",
     "buffer": "^5.2.1",

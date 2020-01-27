@@ -62,7 +62,7 @@ export class ProcessLock {
         return this.holding;
     }
 
-    public async tryLock(timeout?: number) {
+    public tryLock(timeout?: number) {
         this.holding = false;
 
         if (!LOCKS[this.id]) {
@@ -82,7 +82,7 @@ export class ProcessLock {
         return this.holding;
     }
 
-    public async unlock() {
+    public unlock() {
         if (!this.holding) {
             return;
         }
@@ -121,7 +121,7 @@ export class ProcessLocker {
     public async tryLock(id: string, timeout?: number): Promise<ProcessLock | undefined> {
         const lock = new ProcessLock(id);
 
-        if (await lock.tryLock(timeout)) {
+        if (lock.tryLock(timeout)) {
             return lock;
         }
 

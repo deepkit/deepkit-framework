@@ -23,7 +23,7 @@ class IncrementEntity {
     public i: number = 0;
 }
 
-async function createExchangeDatabase(name?: string): Promise<[ExchangeDatabase, Function]> {
+async function createExchangeDatabase(name?: string) {
     i++;
     const connection = await createConnection({
         type: "mongodb",
@@ -52,29 +52,29 @@ async function createExchangeDatabase(name?: string): Promise<[ExchangeDatabase,
 
     const database = new Database(connection, "database-test-" + (name || i));
     await database.dropDatabase("database-test-" + (name || i));
-    const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
+    const exchangeDatabase = new ExchangeDatabase(notifyPolicy, database, exchange);
 
-    return [accountDb, async function () {
+    return {exchangeDatabase: exchangeDatabase, database, disconnect: async function () {
         await exchange.disconnect();
         await database.close();
-    }];
+    }};
 }
 
 test('test increment', async () => {
-    const [db, disconnect] = await createExchangeDatabase('increment');
+    const {exchangeDatabase, database, disconnect} = await createExchangeDatabase('increment');
 
     const item = new IncrementEntity;
-    await db.add(IncrementEntity, item);
+    await exchangeDatabase.add(item);
 
     const start = performance.now();
     const times = 1_000;
     const all: Promise<any>[] = [];
     for (let i = 0; i < times; i++) {
-        all.push(db.increase(IncrementEntity, {}, {i: 1}));
+        all.push(exchangeDatabase.increase(IncrementEntity, {}, {i: 1}));
     }
 
     await Promise.all(all);
     console.log('increment took for ', times, performance.now() - start, 'ms', ', per item=', (performance.now() - start) / times, 'ms');
-    console.log('result item', await db.get(IncrementEntity, {id: item.id}));
+    console.log('result item', await database.query(IncrementEntity).filter({id: item.id}).findOne());
     disconnect();
 });

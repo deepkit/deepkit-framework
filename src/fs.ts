@@ -7,6 +7,9 @@ import {eachKey, eachPair} from "@marcj/estdlib";
 import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
 import {ProcessLocker} from "./process-locker";
+import {Database} from "@marcj/marshal-mongo";
+import {partialClassToPlain} from "@marcj/marshal";
+import {decodePayloadAsJson, encodePayloadAsJSONArrayBuffer} from "./exchange-prot";
 
 export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
 
@@ -26,6 +29,7 @@ export class FS<T extends GlutFile> {
     constructor(
         public readonly fileType: FileType<T>,
         private exchange: Exchange,
+        private database: Database,
         private exchangeDatabase: ExchangeDatabase,
         private locker: ProcessLocker,
         @Inject('fs.path') private fileDir: string /* .glut/data/files/ */,
@@ -37,7 +41,7 @@ export class FS<T extends GlutFile> {
     }
 
     public async removeAll(filter: FilterQuery<T>): Promise<boolean> {
-        const files = await this.exchangeDatabase.find(this.fileType.classType, filter);
+        const files = await this.database.query(this.fileType.classType).filter(filter).find();
         return this.removeFiles(files);
     }
 
@@ -114,15 +118,15 @@ export class FS<T extends GlutFile> {
     }
 
     public async ls(filter: FilterQuery<T>): Promise<T[]> {
-        return await this.exchangeDatabase.find(this.fileType.classType, filter);
+        return await this.database.query(this.fileType.classType).filter(filter).find();
     }
 
     public async findOne(path: string, filter: FilterQuery<T> = {}): Promise<T | undefined> {
-        return await this.exchangeDatabase.get(this.fileType.classType, {path: path, ...filter} as T);
+        return await this.database.query(this.fileType.classType).filter({path: path, ...filter} as T).findOneOrUndefined();
     }
 
     public async registerFile(md5: string, path: string, fields: Partial<T> = {}): Promise<T> {
-        const file = await this.exchangeDatabase.get(this.fileType.classType, {md5: md5} as T);
+        const file = await this.database.query(this.fileType.classType).filter({md5: md5} as T).findOneOrUndefined();
 
         if (!file) {
             throw new Error(`No file with '${md5}' found.`);
@@ -139,7 +143,7 @@ export class FS<T extends GlutFile> {
             for (const i of eachKey(fields)) {
                 (newFile as any)[i] = (fields as any)[i];
             }
-            await this.exchangeDatabase.add(this.fileType.classType, newFile);
+            await this.exchangeDatabase.add(newFile);
             return newFile;
         } else {
             throw new Error(`File with md5 '${md5}' not found (content deleted).`);
@@ -152,7 +156,7 @@ export class FS<T extends GlutFile> {
     }
 
     public async hasMd5(md5: string) {
-        const file = await this.exchangeDatabase.get(this.fileType.classType, {md5: md5} as T);
+        const file = await this.database.query(this.fileType.classType).filter({md5: md5} as T).findOneOrUndefined();
 
         if (file && file.md5) {
             const localPath = this.getLocalPathForMd5(md5);
@@ -225,8 +229,8 @@ export class FS<T extends GlutFile> {
      * Adds a new file or updates an existing one.
      */
     public async write(path: string, data: string | Buffer, fields: Partial<T> = {}): Promise<PartialFile> {
-        // tslint:disable-next-line:prefer-const
-        let {id, md5, version} = await this.exchangeDatabase.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id', 'md5']);
+        let version = await this.exchange.version();
+        const meta = await this.getFileMetaCache(path, fields);
 
         if ('string' === typeof data) {
             data = Buffer.from(data, 'utf8');
@@ -234,35 +238,34 @@ export class FS<T extends GlutFile> {
 
         const newMd5 = getMd5(data);
 
-        if (!id) {
+        if (!meta.id) {
             const file = new this.fileType.classType(path);
             file.md5 = getMd5(data);
             for (const i of eachKey(fields)) {
                 (file as any)[i] = (fields as any)[i];
             }
             file.size = data.byteLength;
-            id = file.id;
+            meta.id = file.id;
             version = 0;
-            await this.exchangeDatabase.add(this.fileType.classType, file);
+            await this.exchangeDatabase.add(file);
         } else {
             //when md5 changes, it's important to move
             //the local file as well, since local path is based on md5.
             //when there is still an file with that md5 in the database, do not remove the old one.
-            if (md5 && md5 !== newMd5) {
-                // file.md5 = md5;
-                // file.size = data.byteLength;
-
-                //todo, there might be a race condition between .increase and .patch in high-load scenarios.
-                // How to solve that?
-                // and changed updated field
-                await this.exchangeDatabase.patch(this.fileType.classType, id, {md5: newMd5, size: data.byteLength} as T);
+            if (meta.md5 && meta.md5 !== newMd5) {
+                await this.exchangeDatabase.patch(this.fileType.classType, meta.id, {md5: newMd5, size: data.byteLength} as T);
+                await this.refreshFileMetaCache(path, fields, meta.id, newMd5);
 
                 //we need to check whether the local file needs to be removed
-                if (!await this.hasMd5InDb(md5)) {
+                if (!await this.hasMd5InDb(meta.md5)) {
                     //there's no db-file anymore linking using this local file, so remove it
-                    const localPath = this.getLocalPathForMd5(md5);
+                    const localPath = this.getLocalPathForMd5(meta.md5);
                     if (await pathExists(localPath)) {
-                        await unlink(localPath);
+                        try {
+                            await unlink(localPath);
+                        } catch (e) {
+                            //Race condition could happen, but we don't care really.
+                        }
                     }
                 }
             }
@@ -276,7 +279,7 @@ export class FS<T extends GlutFile> {
         try {
             await writeFile(localPath, data);
 
-            this.exchange.publishFile(id, {
+            this.exchange.publishFile(meta.id, {
                 type: 'set',
                 version: version,
                 path: path,
@@ -286,12 +289,37 @@ export class FS<T extends GlutFile> {
         }
 
         return {
-            id: id,
+            id: meta.id,
             mode: FileMode.closed,
             path: path,
             version: version,
             md5: newMd5
         };
+    }
+
+    public async refreshFileMetaCache(path: string, fields: Partial<T> = {}, id: string, md5?: string) {
+        const filter = {path, ...fields};
+        const cacheKey = JSON.stringify(partialClassToPlain(this.fileType.classType, filter));
+
+        await this.exchange.set('file-meta/' + cacheKey, encodePayloadAsJSONArrayBuffer({id, md5}));
+    }
+
+    public async getFileMetaCache(path: string, fields: Partial<T> = {}): Promise<{ id?: string, md5?: string }> {
+        const filter = {path, ...fields};
+        const cacheKey = JSON.stringify(partialClassToPlain(this.fileType.classType, filter));
+
+        const fromCache = await this.exchange.get('file-meta/' + cacheKey);
+        if (fromCache) {
+            return decodePayloadAsJson(fromCache);
+        }
+
+        const item = await this.database.query(this.fileType.classType).filter({path, ...fields}).findOneOrUndefined();
+        if (item) {
+            await this.refreshFileMetaCache(path, fields, item.id, item.md5);
+            return {id: item.id, md5: item.md5};
+        }
+
+        return {};
     }
 
     /**
@@ -307,26 +335,24 @@ export class FS<T extends GlutFile> {
         } = {}
     ) {
         const lock = await this.locker.acquireLock('file:' + path);
-
-        let {id, version} = await this.exchangeDatabase.increase(this.fileType.classType, {path, ...fields}, {version: 1}, ['id']);
+        let version = await this.exchange.version();
+        const meta = await this.getFileMetaCache(path, fields);
 
         try {
             let file: T | undefined;
 
-            if (!id) {
+            if (!meta.id) {
                 file = new this.fileType.classType(path);
                 for (const i of eachKey(fields)) {
                     (file as any)[i] = (fields as any)[i];
                 }
                 file.mode = FileMode.streaming;
-                id = file.id;
-                if (!id) {
-                    throw new Error('New file got no id? wtf');
-                }
+                meta.id = file.id;
                 version = 0;
             }
 
-            const localPath = this.getLocalPathForId(id);
+            const localPath = this.getLocalPathForId(meta.id);
+
             const localDir = dirname(localPath);
             if (!await pathExists(localDir)) {
                 await ensureDir(localDir);
@@ -346,10 +372,11 @@ export class FS<T extends GlutFile> {
             if (file) {
                 //when a subscribes is listening to this file,
                 //we publish this only when the file is written to disk.
-                await this.exchangeDatabase.add(this.fileType.classType, file);
+                await this.exchangeDatabase.add(file);
+                this.refreshFileMetaCache(path, fields, meta.id, undefined);
             }
 
-            this.exchange.publishFile(id, {
+            this.exchange.publishFile(meta.id, {
                 type: 'append',
                 version: version,
                 path: path,

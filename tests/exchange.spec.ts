@@ -1,30 +1,14 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {Exchange} from "../src/exchange";
-import {GlutFile} from "@marcj/glut-core";
 import {ExchangeServer} from "../src/exchange-server";
 import {sleep} from '@marcj/estdlib';
-import {decodeMessage, encodeMessage} from "../src/exchange-prot";
-
-const closers: Function[] = [];
+import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer, str2ab} from "../src/exchange-prot";
+import {closeCreatedExchange, createExchange} from "./utils";
 
 afterAll(async () => {
-    for (const close of closers) {
-        close();
-    }
+    closeCreatedExchange();
 });
-
-async function createExchange(): Promise<Exchange> {
-    const server = new ExchangeServer();
-    await server.start();
-
-    closers.push(() => {
-        server.close();
-    });
-    const client = new Exchange(server.port);
-    await client.connect();
-    return client;
-}
 
 test('test basic', async () => {
     const server = new ExchangeServer();
@@ -45,15 +29,15 @@ test('test basic', async () => {
 
 test('test lock early release', async () => {
     const locker = await createExchange();
-    const started = +new Date;
+    const started = Date.now();
     const lock1 = await locker.lock('test-early-lock1', 1);
     setTimeout(async () => {
         await lock1.unlock();
     }, 500);
 
     const lock2 = await locker.lock('test-early-lock1', 1);
-    expect(+new Date - started).toBeLessThan(1000);
-    expect(+new Date - started).toBeGreaterThan(499);
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(Date.now() - started).toBeGreaterThan(499);
 });
 
 test('test lock timeout accum', async () => {
@@ -72,29 +56,92 @@ test('test lock timeout accum', async () => {
 });
 
 
+test('test encoding/decoding', async () => {
+    const payload = encodePayloadAsJSONArrayBuffer({data: true});
+
+    {
+        const e = encodeMessage(0, 'publish', 'channel-name');
+        const header = 0 + '.' + 'publish' + ':' + JSON.stringify('channel-name') + '\0';
+        expect(e.byteLength).toBe(header.length);
+
+        const d = decodeMessage(e);
+        expect(d.id).toBe(0);
+        expect(d.type).toBe('publish');
+        expect(d.arg).toBe('channel-name');
+        expect(d.payload.byteLength).toBe(0);
+    }
+
+    {
+        const e = encodeMessage(0, 'publish', 'channel-name', new ArrayBuffer(0));
+        const header = 0 + '.' + 'publish' + ':' + JSON.stringify('channel-name') + '\0';
+        expect(e.byteLength).toBe(header.length); //still same length
+
+        const d = decodeMessage(e);
+        expect(d.id).toBe(0);
+        expect(d.type).toBe('publish');
+        expect(d.arg).toBe('channel-name');
+        expect(d.payload.byteLength).toBe(0);
+    }
+
+    {
+        const e = encodeMessage(0, 'publish', 'channel-name', payload);
+        const header = 0 + '.' + 'publish' + ':' + JSON.stringify('channel-name') + '\0';
+        expect(e.byteLength).toBe(header.length + payload.byteLength);
+
+        const d = decodeMessage(e);
+        expect(d.id).toBe(0);
+        expect(d.type).toBe('publish');
+        expect(d.arg).toBe('channel-name');
+        expect(d.payload.byteLength).toBe(payload.byteLength);
+        expect(decodePayloadAsJson(d.payload)).toEqual({data: true});
+    }
+});
+
 test('test encoding perf', async () => {
-    const start = performance.now();
+    const count = 10_000;
 
-    const count = 100;
-    for (let i = 0; i < count; i++) {
-        const m = encodeMessage(i, 'publish', 'channel-name', {data: true});
-    }
-    console.log(count, 'encodeMessage took', performance.now() - start, (performance.now() - start) / count);
+    const payload = encodePayloadAsJSONArrayBuffer({data: true});
 
-    const m = encodeMessage(0, 'publish', 'channel-name', {data: true});
-    console.log('m', typeof m, m);
-    const start2 = performance.now();
-    for (let i = 0; i < count; i++) {
-        decodeMessage(m);
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            encodeMessage(i, 'publish', 'channel-name', payload);
+        }
+        console.log(count, 'encodeMessage took', performance.now() - start, 'ms', (performance.now() - start) / count);
     }
-    console.log(count, 'decodeMessage took', performance.now() - start2, (performance.now() - start2) / count);
+
+    {
+        const m = encodeMessage(0, 'publish', 'channel-name', payload);
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            decodeMessage(m);
+        }
+        console.log(count, 'decodeMessage took', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            encodeMessage(i, 'publish', 'channel-name', payload);
+        }
+        console.log(count, 'encodeMessage no payload took', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const m = encodeMessage(0, 'publish', 'channel-name');
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            decodeMessage(m);
+        }
+        console.log(count, 'decodeMessage no payload took', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
 });
 
 test('test lock performance', async () => {
     const locker = await createExchange();
     const start = performance.now();
 
-    const count = 2000;
+    const count = 2_000;
     for (let i = 0; i < count; i++) {
         const lock1 = await locker.lock('test-perf-' + i, 0.01);
         await lock1.unlock();
@@ -102,7 +149,107 @@ test('test lock performance', async () => {
 
     //0.0035 takes native lock per item
     //this takes 0.203
-    console.log(count, 'locks took', performance.now() - start, (performance.now() - start) / count);
+    console.log(count, 'locks took', performance.now() - start, 'ms', (performance.now() - start) / count);
+});
+
+
+test('test str2ab performance', async () => {
+    const count = 10_000;
+    const header = '0.version.\nNot much';
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            str2ab(header);
+        }
+        console.log(count, 'str2ab took', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            Buffer.from(header, 'utf8');
+        }
+        console.log(count, 'buffer.from took', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+});
+
+test('test version', async () => {
+    const client = await createExchange();
+    const start = performance.now();
+
+    const count = 10_000;
+    const all: Promise<any>[] = [];
+    for (let i = 0; i < count; i++) {
+        all.push(client.version());
+    }
+    await Promise.all(all);
+
+    //20000 nanoclick took 768.7665319 ms
+    console.log(count, 'version took', performance.now() - start, 'ms', (performance.now() - start) / count);
+});
+
+
+test('test get/set', async () => {
+    const client = await createExchange();
+
+    await client.set('myKey', encodePayloadAsJSONArrayBuffer({nix: 'data'}));
+
+    expect(decodePayloadAsJson(await client.get('myKey')).nix).toBe('data');
+
+    await client.set('myKey2', encodePayloadAsJSONArrayBuffer({nix: 'data2'}));
+    expect(decodePayloadAsJson(await client.get('myKey')).nix).toBe('data');
+    expect(decodePayloadAsJson(await client.get('myKey2')).nix).toBe('data2');
+
+    await client.del('myKey2');
+    expect(decodePayloadAsJson(await client.get('myKey')).nix).toBe('data');
+    expect(decodePayloadAsJson(await client.get('myKey2'))).toBeUndefined();
+});
+
+test('test get/set benchmark', async () => {
+    const client = await createExchange();
+    const count = 1_000;
+
+    {
+        const start = performance.now();
+        const payload = encodePayloadAsJSONArrayBuffer({nix: 'data'});
+        for (let i = 0; i < count; i++) {
+            await client.set(String(i), payload);
+        }
+        console.log(count, 'client.set', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            await client.set(String(i), encodePayloadAsJSONArrayBuffer({nix: 'data'}));
+        }
+        console.log(count, 'client.set & encode', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            await client.get(String(i));
+        }
+        console.log(count, 'client.get', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            decodePayloadAsJson(await client.get(String(i)));
+        }
+        console.log(count, 'client.get & decode', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            await client.get(String(i));
+        }
+        console.log(count, 'client.get', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
 });
 
 

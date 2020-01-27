@@ -1,14 +1,23 @@
 import {Exchange} from "./exchange";
 import {getEntityName} from "@marcj/marshal";
 import {Observable, Subject, Subscription} from "rxjs";
-import {convertPlainQueryToMongo, convertQueryToMongo, mongoToPlain, partialMongoToPlain} from "@marcj/marshal-mongo";
-import {Collection, CollectionSort, EntitySubject, ExchangeEntity, FilterParameters, FilterQuery, IdInterface, JSONObjectCollection, ReactiveSubQuery, ConnectionWriter} from "@marcj/glut-core";
+import {convertPlainQueryToMongo, convertQueryToMongo, Database, DatabaseQuery} from "@marcj/marshal-mongo";
+import {
+    Collection,
+    CollectionSort,
+    ConnectionWriter,
+    EntitySubject,
+    ExchangeEntity,
+    FilterParameters,
+    FilterQuery,
+    IdInterface,
+    JSONObjectCollection,
+    ReactiveSubQuery
+} from "@marcj/glut-core";
 import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@marcj/estdlib";
 import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
-import {ExchangeDatabase} from "./exchange-database";
 import {Injectable} from "injection-js";
-import {Cursor} from "typeorm";
-import { findQuerySatisfied } from "./utils";
+import {findQuerySatisfied} from "./utils";
 
 interface SentState {
     lastSentVersion?: number;
@@ -50,6 +59,9 @@ export class FindOptions<T extends IdInterface> {
         return this._fields.length > 0;
     }
 
+    /**
+     * Disable automatic syncing of entity changes to the client.
+     */
     public disableEntityChangeFeed(): FindOptions<T> {
         this._disableEntityChangeFeed = true;
         return this;
@@ -57,12 +69,14 @@ export class FindOptions<T extends IdInterface> {
 
     public parameter(name: string, value?: any): FindOptions<T> {
         this._filterParameters[name] = value;
+        //why does setting a parameter enable pagination?
         this._pagination = true;
         return this;
     }
 
     public parameters(values: FilterParameters = {}): FindOptions<T> {
         this._filterParameters = values;
+        //why does setting a parameter enable pagination?
         this._pagination = true;
         return this;
     }
@@ -230,7 +244,8 @@ export class ReactiveQuery<T> {
             this.subs.add = jsonCollection.subscribe((v: any) => {
                 // console.log('change', provider.name, provider.field, v.map((i: any) => i[provider.field]));
 
-                //WARNING: usually `filter` is class parameters based, but we pass here json parameters (since find() return json parameters). we should probably convert that here
+                //WARNING: usually `filter` is class parameters based, but we pass here json parameters (since find()
+                // return json parameters). we should probably convert that here
                 this._changeParameter(provider.name, {$in: v.map((i: any) => i[provider.field])});
             });
         }
@@ -282,7 +297,7 @@ export class EntityStorage {
     constructor(
         protected readonly writer: ConnectionWriter,
         protected readonly exchange: Exchange,
-        protected readonly exchangeDatabase: ExchangeDatabase,
+        protected readonly database: Database,
     ) {
     }
 
@@ -584,20 +599,13 @@ export class EntityStorage {
                     }
                 });
 
-                const cursor = (await this.exchangeDatabase.rawPlainCursor(classType, filter))
-                    .project({id: 1})
-                    .map((v: any) => mongoToPlain(classType, v))
-                    .batchSize(64);
 
-                while (running && await cursor.hasNext()) {
-                    const next = await cursor.next();
-                    if (!next) continue;
-                    const item = partialMongoToPlain(classType, next);
+                const items = await this.database.query(classType).filter(filter).select(['id']).find();
+
+                for (const item of items) {
                     counter++;
                     knownIDs[item.id] = true;
                 }
-
-                await cursor.close();
 
                 observer.next(counter);
             })();
@@ -614,7 +622,7 @@ export class EntityStorage {
     }
 
     public async findOneOrUndefined<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T> | undefined> {
-        const item = await this.exchangeDatabase.get(classType, filter);
+        const item = await this.database.query(classType).filter(filter).findOneOrUndefined();
 
         if (item) {
             const foundId = item.id;
@@ -630,20 +638,16 @@ export class EntityStorage {
     }
 
     public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T>> {
-        const item = await this.exchangeDatabase.get(classType, filter);
+        const item = await this.database.query(classType).filter(filter).findOne();
 
-        if (item) {
-            const foundId = item.id;
-            this.increaseUsage(classType, foundId);
-            this.setSent(classType, item.id, item.version);
-            this.subscribeEntity(classType);
+        const foundId = item.id;
+        this.increaseUsage(classType, foundId);
+        this.setSent(classType, item.id, item.version);
+        this.subscribeEntity(classType);
 
-            return new EntitySubject(item, () => {
-                this.decreaseUsage(classType, foundId);
-            });
-        } else {
-            throw new Error('Item not found');
-        }
+        return new EntitySubject(item, () => {
+            this.decreaseUsage(classType, foundId);
+        });
     }
 
     collection<T extends IdInterface>(classType: ClassType<T>) {
@@ -685,35 +689,41 @@ export class EntityStorage {
 
         let currentQuery = initialClassQuery.query;
 
-        const getCursor = async (fields?: (keyof T | string)[]): Promise<Cursor<T>> => {
+        const getCursor = (fields?: (keyof T | string)[]): DatabaseQuery<T> => {
             if (!fields) {
                 fields = options._fields;
             }
 
             if (fields && fields.length > 0) {
-                return await this.exchangeDatabase.rawPlainCursor(options.classType, currentQuery, [...fields, 'id', 'version']);
+                return this.database.query(options.classType)
+                    .filter(currentQuery)
+                    .select([...fields, 'id', 'version'] as string[])
+                    .asJSON()
+                ;
             }
 
-            return await this.exchangeDatabase.rawPlainCursor(options.classType, currentQuery);
+            return this.database.query(options.classType).filter(currentQuery).asJSON();
         };
 
-        const getItem = async (id: string) => {
-            const cursor = await this.exchangeDatabase
-                .rawPlainCursor(options.classType, {id: id} as FilterQuery<T>, options.isPartial() ? [...options._fields, 'id', 'version'] : []);
-            return (await cursor.limit(1).toArray())[0];
+        const getJsonItem = async (id: string) => {
+            return this.database.query(options.classType)
+                .filter({id: id})
+                .select((options.isPartial() ? [...options._fields, 'id', 'version'] : []) as string[])
+                .asJSON()
+                .findOne();
         };
 
-        const applyPagination = (cursor: Cursor<any>) => {
+        const applyPagination = <T>(query: DatabaseQuery<T>) => {
             if (jsonCollection.pagination.isActive()) {
-                cursor.limit(jsonCollection.pagination.getItemsPerPage());
-                cursor.skip((jsonCollection.pagination.getPage() * jsonCollection.pagination.getItemsPerPage()) - jsonCollection.pagination.getItemsPerPage());
+                query.limit(jsonCollection.pagination.getItemsPerPage());
+                query.skip((jsonCollection.pagination.getPage() * jsonCollection.pagination.getItemsPerPage()) - jsonCollection.pagination.getItemsPerPage());
 
                 if (jsonCollection.pagination.hasSort()) {
-                    const sort: { [path: string]: 1 | -1 } = {};
+                    const sort: { [path: string]: 'asc' | 'desc' } = {};
                     for (const order of jsonCollection.pagination.getSort()) {
-                        sort[order.field] = order.direction === 'asc' ? 1 : -1;
+                        sort[order.field] = order.direction;
                     }
-                    cursor.sort(sort);
+                    query.sort(sort);
                 }
             }
         };
@@ -762,12 +772,11 @@ export class EntityStorage {
                     currentQuery = reactiveQuery.getClassQuery().query;
 
                     const cursor = await getCursor(['id']);
-                    const total = await cursor.count(false);
+                    const total = await cursor.clone().count();
 
                     applyPagination(cursor);
 
-                    const items = await cursor.toArray();
-                    await cursor.close();
+                    const items = await cursor.find();
 
                     // console.log('updateCollection needUpdate=true', getClassName(reactiveQuery.classType), currentQuery, items);
 
@@ -785,7 +794,7 @@ export class EntityStorage {
                                     this.increaseUsage(options.classType, item.id);
                                 }
 
-                                const fullItem = await getItem(item.id);
+                                const fullItem = await getJsonItem(item.id);
 
                                 //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
                                 if (fullItem) {
@@ -929,7 +938,7 @@ export class EntityStorage {
                         let itemToSend = message.item;
                         if (message.type === 'patch') {
                             //message.item is not complete when message.type === 'patch', so load it
-                            itemToSend = await getItem(message.id);
+                            itemToSend = await getJsonItem(message.id);
                         }
 
                         //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
@@ -962,12 +971,11 @@ export class EntityStorage {
         });
 
         const cursor = await getCursor();
-        const total = await cursor.count(false);
+        const total = await cursor.clone().count();
         jsonCollection.pagination.setTotal(total);
         applyPagination(cursor);
 
-        const items = await cursor.toArray();
-        await cursor.close();
+        const items = await cursor.find();
 
         for (const item of items) {
             knownIDs[item.id] = true;
