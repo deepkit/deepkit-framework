@@ -5,7 +5,7 @@ import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
 import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
 import {ClassType, eachPair, eachKey} from '@marcj/estdlib';
-import {Observable} from 'rxjs';
+import {Observable, Subscription} from 'rxjs';
 import {findQuerySatisfied} from './utils';
 
 export interface ExchangeNotifyPolicy {
@@ -107,24 +107,37 @@ export class ExchangeDatabase {
     /**
      * Returns a new Observable that resolves the id as soon as an item in the database of given filter criteria is found.
      */
-    public onCreation<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T>): Observable<string> {
-
+    public onCreation<T extends IdInterface>(
+        classType: ClassType<T>,
+        filter: FilterQuery<T>,
+        initialCheck: boolean = true,
+        stopOnFind: boolean = true,
+    ): Observable<string> {
         return new Observable((observer) => {
+            let sub: Subscription | undefined;
+
             (async () => {
-                const sub = await this.exchange.subscribeEntity(classType, (message) => {
+                sub = await this.exchange.subscribeEntity(classType, (message) => {
                     if (message.type === 'add' && findQuerySatisfied(message.item, filter)) {
                         observer.next(message.id);
-                        sub.unsubscribe();
+                        if (stopOnFind && sub) sub.unsubscribe();
                     }
                 });
 
-                const items = await (await this.rawPlainCursor(classType, filter, ['id'])).toArray();
-                if (items.length) {
-                    observer.next(items[0].id);
-                    sub.unsubscribe();
+                if (initialCheck) {
+                    const items = await (await this.rawPlainCursor(classType, filter, ['id'])).toArray();
+                    if (items.length) {
+                        observer.next(items[0].id);
+                        if (stopOnFind) sub.unsubscribe();
+                    }
                 }
             })();
 
+            return {
+                unsubscribe() {
+                    if (sub) sub.unsubscribe();
+                }
+            };
         });
     }
 
@@ -276,8 +289,7 @@ export class ExchangeDatabase {
         const collection = await this.collection(classType);
 
         const version = await this.exchange.version();
-        const patchStatement: { [name: string]: any } = {
-        };
+        const patchStatement: { [name: string]: any } = {};
 
         delete (<any>patches)['id'];
         delete (<any>patches)['_id'];
@@ -299,8 +311,7 @@ export class ExchangeDatabase {
 
         const filter = {id: id};
         const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
-        const projection: { [key: string]: number } = {
-        };
+        const projection: { [key: string]: number } = {};
 
         for (const field of subscribedFields) {
             projection[field] = 1;

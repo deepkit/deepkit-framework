@@ -210,11 +210,12 @@ export class ClientConnection {
                             const {value, encoding} = await this.action(message.controller, message.action, message.args);
                             await this.connectionMiddleware.actionMessageOut(message, value, encoding, message.controller, message.action, this.writer);
                         } catch (error) {
+                            console.debug(`Error in action ${message.controller}.${message.action}:`, error);
                             await this.writer.sendError(message.id, error);
                         }
                     }
                 } catch (error) {
-                    console.debug(`Error in ${message.controller}.${message.action}`, error);
+                    console.debug(`Error in action wrapper ${message.controller}.${message.action}:`, error);
                 }
                 return;
             }

@@ -1,4 +1,3 @@
-
 /**
  * A message of exchange-server has a very simple frame:
  *
@@ -14,7 +13,7 @@ export function decodeMessage(array: ArrayBuffer): {id: number, type: string, ar
     const type = String.fromCharCode.apply(null, uintArray.slice(posDot + 1, posColon) as any);
 
     const posNull = uintArray.indexOf(0); //0=\0
-    const arg = JSON.parse(String.fromCharCode.apply(null, uintArray.slice(posColon + 1, posNull) as any));
+    const arg = decodePayloadAsJson(uintArray.slice(posColon + 1, posNull));
 
     return {
         id, type, arg, payload: uintArray.slice(posNull + 1).buffer
@@ -39,7 +38,12 @@ export function encodeMessage(messageId: number, type: string, arg: any, payload
 export function decodePayloadAsJson(payload?: ArrayBuffer): any {
     if (!payload) return undefined;
     if (!payload.byteLength) return undefined;
-    return JSON.parse(arrayBufferToString(payload));
+    try {
+        return JSON.parse(arrayBufferToString(payload));
+    } catch (e) {
+        console.error('Could not parse JSON payload', e, arrayBufferToString(payload));
+        throw e;
+    }
 }
 
 export function encodePayloadAsJSONArrayBuffer(data: object): ArrayBuffer {
@@ -47,14 +51,9 @@ export function encodePayloadAsJSONArrayBuffer(data: object): ArrayBuffer {
 }
 
 export function arrayBufferToString(arrayBuffer: ArrayBuffer): string {
-    //see https://jsperf.com/converting-a-uint8array-to-a-string/13
-    return String.fromCharCode.apply(null, new Uint8Array(arrayBuffer) as any);
+    return Buffer.from(arrayBuffer).toString('utf8');
 }
 
 export function str2ab(str: string): ArrayBuffer {
-    const array = new Uint8Array(str.length);
-    for (let i = 0; i < str.length; i++) {
-        array[i] = str.charCodeAt(i);
-    }
-    return array.buffer;
+    return Buffer.from(str, 'utf8');
 }

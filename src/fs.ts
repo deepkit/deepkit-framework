@@ -447,13 +447,16 @@ export class FS<T extends GlutFile> {
         } else {
             subject.next(undefined);
 
-            this.exchangeDatabase.onCreation(this.fileType.classType, {
+            const sub = this.exchangeDatabase.onCreation(this.fileType.classType, {
                 path: path,
                 ...fields
             }).subscribe((id) => {
                 if (!subject.isStopped) {
                     streamContent(id);
                 }
+            });
+            subject.addTearDown(() => {
+                if (sub) sub.unsubscribe();
             });
         }
 
