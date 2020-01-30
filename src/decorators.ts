@@ -57,6 +57,7 @@ typedArrayMap.set(Int32Array, 'Int32Array');
 typedArrayMap.set(Uint32Array, 'Uint32Array');
 typedArrayMap.set(Float32Array, 'Float32Array');
 typedArrayMap.set(Float64Array, 'Float64Array');
+typedArrayMap.set(ArrayBuffer, 'arrayBuffer');
 
 export const typedArrayNamesMap = new Map<Types, any>();
 typedArrayNamesMap.set('Int8Array', Int8Array);

@@ -1,4 +1,4 @@
-import {isOptional, validate, ValidationFailed} from "./validation";
+import {validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
@@ -12,6 +12,7 @@ import {
 } from "./decorators";
 import {
     ClassType,
+    each,
     eachKey,
     eachPair,
     getClassName,
@@ -22,8 +23,7 @@ import {
     isArray,
     isObject,
     isUndefined,
-    isValidEnumValue,
-    each
+    isValidEnumValue
 } from "@marcj/estdlib";
 
 export type Types =
@@ -44,6 +44,7 @@ export type Types =
     | 'Uint32Array'
     | 'Float32Array'
     | 'Float64Array'
+    | 'arrayBuffer'
     | 'number'
     | 'enum'
     | 'any';
@@ -352,6 +353,10 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             return Buffer.from(value).toString('base64');
         }
 
+        if (type === 'arrayBuffer') {
+            return Buffer.from(value).toString('base64');
+        }
+
         return value;
     }
 
@@ -487,6 +492,10 @@ export function propertyPlainToClass<T>(
         if (value && isTypedArray(type) && 'string' === typeof value) {
             const clazz = typedArrayNamesMap.get(type);
             return new clazz(Buffer.from(value, 'base64'));
+        }
+
+        if (value && type === 'arrayBuffer' && 'string' === typeof value) {
+            return new Uint8Array(Buffer.from(value, 'base64')).buffer;
         }
 
         return value;
