@@ -193,6 +193,30 @@ test('complex', () => {
     expect(Object.keys(names)).toEqual(['price', 'id']);
 });
 
+
+test('complex 2', () => {
+    const names = {};
+    const date = new Date();
+    class NodeCluster {
+        @f connected: boolean = false;
+        @f disabled: boolean = false;
+        @f lastConnectionTry?: Date;
+    }
+
+    const m = convertPlainQueryToMongo(NodeCluster, {
+        $and: [
+            {connected: false, disabled: {$ne: true}},
+            {$or: [{lastConnectionTry: {$exists: false}}, {lastConnectionTry: {$lt: date}}]}
+        ]
+    }, names);
+
+    expect(m).toEqual({$and: [
+            {connected: false, disabled: {$ne: true}},
+            {$or: [{lastConnectionTry: {$exists: false}}, {lastConnectionTry: {$lt: date}}]}
+        ]});
+    expect(Object.keys(names)).toEqual(['connected', 'disabled', 'lastConnectionTry']);
+});
+
 test('$or', () => {
     const m = convertPlainQueryToMongo(Simple, {$and: [{$or: [{id: 1}]}]});
     expect(m).toEqual({$and: [{$or: [{id: 1}]}]});

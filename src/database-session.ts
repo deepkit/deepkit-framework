@@ -77,7 +77,11 @@ export class DatabaseSession {
             throw new NoIDDefinedError(`Class ${getClassName(classType)} has no @f.primary() defined.`);
         }
 
-        criteria[id] = propertyClassToMongo(classType, id, getLastKnownPKInDatabase(item));
+        if (isItemKnownInDatabase(item)) {
+            criteria[id] = propertyClassToMongo(classType, id, getLastKnownPKInDatabase(item));
+        } else {
+            criteria[id] = propertyClassToMongo(classType, id, item[id]);
+        }
 
         return criteria;
     }
@@ -274,7 +278,7 @@ export class DatabaseSession {
         const primaryField = query.classSchema.getPrimaryField();
 
         const collection = await this.getCollection(query.classSchema.classType);
-        const mongoFilter = {id: {$in: ids.map(v => propertyClassToMongo(query.classSchema.classType, primaryField.name, v))}};
+        const mongoFilter = {[primaryField.name]: {$in: ids.map(v => propertyClassToMongo(query.classSchema.classType, primaryField.name, v))}};
 
         if (mode === 'deleteOne') {
             await collection.deleteOne(mongoFilter);
