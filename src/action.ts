@@ -1,4 +1,4 @@
-import {eachKey, isPromise, eachPair, getClassName} from "@marcj/estdlib";
+import {isPromise, eachPair} from "@marcj/estdlib";
 import {propertyPlainToClass, PropertySchema, getClassSchema, ValidationError, validatePropSchema} from "@marcj/marshal";
 import {ValidationParameterError, ValidationErrorItem} from "./core";
 
@@ -12,9 +12,6 @@ export async function executeAction(
     args: any[]): Promise<{ value: any, encoding: PropertySchema }> {
 
     for (const [i, p] of eachPair(actionTypes.parameters)) {
-
-        // console.log(p, args[i]);
-
         if (!p.typeSet && p.type === 'any' && args[i] && args[i].constructor === Object) {
             throw new Error(
                 `${controllerName}::${methodName} argument ${i} is an Object with unknown structure. Please declare the type using the @f decorator.`
