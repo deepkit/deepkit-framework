@@ -18,7 +18,6 @@ import {
     isNumber,
     isObject,
     isPlainObject,
-    each
 } from '@marcj/estdlib';
 import {Buffer} from "buffer";
 import * as getParameterNames from "get-parameter-names";
@@ -42,6 +41,39 @@ export type PartialField<T> = {
     //https://github.com/Microsoft/TypeScript/issues/12754
     [path: string]: any
 }
+
+export const typedArrayMap = new Map<any, Types>();
+typedArrayMap.set(String, 'string');
+typedArrayMap.set(Number, 'number');
+typedArrayMap.set(Date, 'date');
+typedArrayMap.set(Buffer, 'binary');
+typedArrayMap.set(Boolean, 'boolean');
+typedArrayMap.set(Int8Array, 'Int8Array');
+typedArrayMap.set(Uint8Array, 'Uint8Array');
+typedArrayMap.set(Uint8ClampedArray, 'Uint8ClampedArray');
+typedArrayMap.set(Int16Array, 'Int16Array');
+typedArrayMap.set(Uint16Array, 'Uint16Array');
+typedArrayMap.set(Int32Array, 'Int32Array');
+typedArrayMap.set(Uint32Array, 'Uint32Array');
+typedArrayMap.set(Float32Array, 'Float32Array');
+typedArrayMap.set(Float64Array, 'Float64Array');
+
+export const typedArrayNamesMap = new Map<Types, any>();
+typedArrayNamesMap.set('Int8Array', Int8Array);
+typedArrayNamesMap.set('Uint8Array', Uint8Array);
+typedArrayNamesMap.set('Uint8ClampedArray', Uint8ClampedArray);
+typedArrayNamesMap.set('Int16Array', Int16Array);
+typedArrayNamesMap.set('Uint16Array', Uint16Array);
+typedArrayNamesMap.set('Int32Array', Int32Array);
+typedArrayNamesMap.set('Uint32Array', Uint32Array);
+typedArrayNamesMap.set('Float32Array', Float32Array);
+typedArrayNamesMap.set('Float64Array', Float64Array);
+
+export function isTypedArray(type: Types): boolean {
+    return type === 'Int8Array' || type === 'Uint8Array' || type === 'Uint8ClampedArray' || type === 'Int16Array'
+        || type === 'Uint16Array' || type === 'Uint32Array' || type === 'Float32Array' || type === 'Float64Array';
+}
+
 
 export interface PropertyValidator {
     validate<T>(value: any, target: ClassType<T>, propertyName: string, propertySchema: PropertySchema): PropertyValidatorError | void;
@@ -214,16 +246,8 @@ export class PropertySchema {
     }
 
     static getTypeFromJSType(type: any): Types {
-        if (type === String) {
-            return 'string';
-        } else if (type === Number) {
-            return 'number';
-        } else if (type === Date) {
-            return 'date';
-        } else if (type === Buffer) {
-            return 'binary';
-        } else if (type === Boolean) {
-            return 'boolean';
+        if (type && typedArrayMap.has(type)) {
+            return typedArrayMap.get(type)!;
         }
 
         return 'any';
@@ -247,7 +271,9 @@ export class PropertySchema {
             && type !== Buffer
             && type !== Boolean
             && type !== Any
-            && type !== Object;
+            && type !== Object
+            && !typedArrayMap.has(type)
+        ;
 
         if (isCustomObject) {
             this.type = 'class';
@@ -1581,6 +1607,7 @@ function Field(oriType?: FieldTypes) {
             && type !== Boolean
             && type !== Any
             && type !== Object
+            && !typedArrayMap.has(type)
             && !(type instanceof ForwardedRef);
 
         if (type && !options.map && !options.partial && isCustomObject && returnType === Object) {

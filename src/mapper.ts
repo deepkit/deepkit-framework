@@ -2,7 +2,14 @@ import {isOptional, validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
 import {Buffer} from 'buffer';
-import {getClassSchema, getClassTypeFromInstance, MarshalGlobal, PropertySchema} from "./decorators";
+import {
+    getClassSchema,
+    getClassTypeFromInstance,
+    isTypedArray,
+    MarshalGlobal,
+    PropertySchema,
+    typedArrayNamesMap
+} from "./decorators";
 import {
     ClassType,
     eachKey,
@@ -28,6 +35,15 @@ export type Types =
     | 'date'
     | 'string'
     | 'boolean'
+    | 'Int8Array'
+    | 'Uint8Array'
+    | 'Uint8ClampedArray'
+    | 'Int16Array'
+    | 'Uint16Array'
+    | 'Int32Array'
+    | 'Uint32Array'
+    | 'Float32Array'
+    | 'Float64Array'
     | 'number'
     | 'enum'
     | 'any';
@@ -332,6 +348,10 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             return value.toJSON();
         }
 
+        if (isTypedArray(type)) {
+            return Buffer.from(value).toString('base64');
+        }
+
         return value;
     }
 
@@ -464,6 +484,11 @@ export function propertyPlainToClass<T>(
             return toClass(typeValue, value, propertyPlainToClass, parents, incomingLevel, state);
         }
 
+        if (value && isTypedArray(type) && 'string' === typeof value) {
+            const clazz = typedArrayNamesMap.get(type);
+            return new clazz(Buffer.from(value, 'base64'));
+        }
+
         return value;
     }
 
@@ -502,7 +527,7 @@ export function cloneClass<T>(target: T, parents?: any[]): T {
 /**
  * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
  */
-export function classToPlain<T>(classType: ClassType<T>, target: T, options?: {excludeReferences?: boolean}): any {
+export function classToPlain<T>(classType: ClassType<T>, target: T, options?: { excludeReferences?: boolean }): any {
     const result: any = {};
 
 
