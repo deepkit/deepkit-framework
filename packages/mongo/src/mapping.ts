@@ -9,10 +9,10 @@ import {
     getRegisteredProperties,
     getResolvedReflection,
     isEnumAllowLabelsAsValue,
-    isOptional, MarshalGlobal,
+    isOptional, isTypedArray, MarshalGlobal,
     moment,
     toClass,
-    ToClassState
+    ToClassState, typedArrayNamesMap
 } from "@marcj/marshal";
 import {
     ClassType,
@@ -123,6 +123,10 @@ export function propertyMongoToPlain<T>(
             return value.toJSON();
         }
 
+        if (isTypedArray(type) && value instanceof Binary) {
+            return Buffer.from(value.buffer).toString('base64');
+        }
+
         return value;
     }
 
@@ -192,6 +196,10 @@ export function propertyClassToMongo<T>(
 
         if (type === 'class') {
             return classToMongo(typeValue, value);
+        }
+
+        if (isTypedArray(type) && value) {
+            return new Binary(Buffer.from(value));
         }
 
         return value;
@@ -291,6 +299,10 @@ export function propertyPlainToMongo<T>(
 
                 value[property] = propertyPlainToMongo(typeValue, property, value[property]);
             }
+        }
+
+        if (isTypedArray(type) && 'string' === typeof value) {
+            return new Binary(Buffer.from(value, 'base64'));
         }
 
         return value;
@@ -396,6 +408,11 @@ export function propertyMongoToClass<T>(
             }
 
             return toClass(typeValue, clone(value, false, 1), propertyMongoToClass, parents, incomingLevel, state);
+        }
+
+        if (value && isTypedArray(type) && value instanceof Binary) {
+            const clazz = typedArrayNamesMap.get(type);
+            return new clazz(value.buffer);
         }
 
         return value;

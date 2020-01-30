@@ -26,9 +26,10 @@ However Marshal.ts helps also for traditional REST APIs.
 ## Features
 
 * Supported types: String, Number, Boolean, Date, Binary, custom classes, Array, object maps, any.
-* Fast marshalling of class instance from and to JSON object
+* Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
+* Fast marshalling of class instance from and to JSON object (for use with JSON.stringify())
 * Fast marshalling of class instance from and to MongoDB record
-* Constructor support (required property can be placed in constructor)
+* Constructor support (required property can be placed in constructor) making it suitable for Typescript strict compiling
 * Validation: Built-in, custom class and inline validators
 * Decorated property value (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
 * Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/) and the like)
@@ -36,15 +37,13 @@ However Marshal.ts helps also for traditional REST APIs.
 * Supports getters
 * Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
 * NestJS validation pipe
-* MongoDB database abstraction
+* MongoDB database abstraction and query builder with relation support
 
 ## Todo
 
 * Add type support for: Map<T, K>, Set<T> (WeakMap<T, K>, and Set<T>)
-* Add type support for: BigInt, Big?Array, Float?Array, Int?Array, Uint?Array,
 * Add more built-in validators
 * Support discriminators (union class types)
-* Add support for TypeORM types completely (so we support MySQL, Postgres, SQLiTe, etc.) including relations.
 * Further performance boost by creating JIT serialization functions
 * Add automatic tests IE11+ (help is welcome)
 
