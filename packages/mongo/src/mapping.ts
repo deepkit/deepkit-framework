@@ -124,7 +124,11 @@ export function propertyMongoToPlain<T>(
         }
 
         if (isTypedArray(type) && value instanceof Binary) {
-            return Buffer.from(value.buffer).toString('base64');
+            return value.buffer.toString('base64');
+        }
+
+        if (type === 'arrayBuffer' && value instanceof Binary) {
+            return value.buffer.toString('base64');
         }
 
         return value;
@@ -199,6 +203,10 @@ export function propertyClassToMongo<T>(
         }
 
         if (isTypedArray(type) && value) {
+            return new Binary(Buffer.from(value));
+        }
+
+        if (type === 'arrayBuffer' && value) {
             return new Binary(Buffer.from(value));
         }
 
@@ -302,6 +310,11 @@ export function propertyPlainToMongo<T>(
         }
 
         if (isTypedArray(type) && 'string' === typeof value) {
+            return new Binary(Buffer.from(value, 'base64'));
+        }
+
+
+        if (type === 'arrayBuffer' && value) {
             return new Binary(Buffer.from(value, 'base64'));
         }
 
@@ -413,6 +426,10 @@ export function propertyMongoToClass<T>(
         if (value && isTypedArray(type) && value instanceof Binary) {
             const clazz = typedArrayNamesMap.get(type);
             return new clazz(value.buffer);
+        }
+
+        if (type === 'arrayBuffer') {
+            return new Uint8Array(value.buffer).buffer;
         }
 
         return value;
