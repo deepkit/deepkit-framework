@@ -464,7 +464,7 @@ export function classToMongo<T>(classType: ClassType<T>, target: T, omitUndefine
     const result: any = {};
 
     if (!(target instanceof classType)) {
-        throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
+        throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}, got ${getClassName(target)}`);
     }
 
     const decoratorName = getDecorator(classType);
