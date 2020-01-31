@@ -314,7 +314,6 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     }
 
     const {type, typeValue, array, map, partial} = reflection;
-    console.log('type', type, array, map);
 
     function convert(value: any) {
         if ('string' === type) {
