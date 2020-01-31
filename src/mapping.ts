@@ -121,17 +121,17 @@ export function propertyMongoToPlain<T>(
             return (<ObjectID>value).toHexString();
         }
 
-        //Date automatically is converted since it has toJSON() method.
-        if (value && 'function' === typeof value.toJSON) {
-            return value.toJSON();
-        }
-
         if (isTypedArray(type) && value instanceof Binary) {
             return value.buffer.toString('base64');
         }
 
         if (type === 'arrayBuffer' && value instanceof Binary) {
             return value.buffer.toString('base64');
+        }
+
+        //Date automatically is converted since it has toJSON() method.
+        if (value && 'function' === typeof value.toJSON) {
+            return value.toJSON();
         }
 
         return value;
