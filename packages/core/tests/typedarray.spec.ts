@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {f, getClassSchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
-import {classToPlain, plainToClass} from "../src/mapper";
+import {f, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
+import {classToPlain, plainToClass, propertyClassToPlain} from "../src/mapper";
 import {eachPair} from '@marcj/estdlib';
 import {Buffer} from 'buffer';
 import {base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "..";
@@ -172,4 +172,22 @@ test('arrayBuffer', async () => {
     expect(clazz2.ints!.byteLength).toBe(2);
     expect(new Int8Array(clazz2.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz2.ints!)[1]).toBe(64);
+});
+
+
+test('Buffer compat', () => {
+    const p = new PropertySchema('result');
+    const v = Buffer.from('Peter', 'utf8');
+
+    p.setFromJSValue(v);
+
+    expect(p.type).toBe('Uint8Array');
+    const transport =  {
+        encoding: p.toJSON(),
+        value: propertyClassToPlain(Object, 'result', v, p),
+    };
+
+    expect(isTypedArray(p.type)).toBe(true);
+    expect(transport.encoding.type).toBe('Uint8Array');
+    expect(transport.value).toBe(v.toString('base64'));
 });

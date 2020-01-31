@@ -21,6 +21,7 @@ import {
 } from '@marcj/estdlib';
 import * as getParameterNames from "get-parameter-names";
 import {capitalizeFirstLetter} from "./utils";
+import {Buffer} from "buffer";
 
 /**
  * Registry of all registered entity that used the @Entity('name') decorator.
@@ -47,6 +48,7 @@ typedArrayMap.set(Number, 'number');
 typedArrayMap.set(Date, 'date');
 typedArrayMap.set(Boolean, 'boolean');
 typedArrayMap.set(Int8Array, 'Int8Array');
+typedArrayMap.set(Buffer, 'Uint8Array');
 typedArrayMap.set(Uint8Array, 'Uint8Array');
 typedArrayMap.set(Uint8ClampedArray, 'Uint8ClampedArray');
 typedArrayMap.set(Int16Array, 'Int16Array');
@@ -69,8 +71,7 @@ typedArrayNamesMap.set('Float32Array', Float32Array);
 typedArrayNamesMap.set('Float64Array', Float64Array);
 
 export function isTypedArray(type: Types): boolean {
-    return type === 'Int8Array' || type === 'Uint8Array' || type === 'Uint8ClampedArray' || type === 'Int16Array'
-        || type === 'Uint16Array' || type === 'Uint32Array' || type === 'Float32Array' || type === 'Float64Array';
+    return typedArrayNamesMap.has(type);
 }
 
 

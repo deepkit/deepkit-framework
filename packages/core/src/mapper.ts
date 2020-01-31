@@ -314,6 +314,7 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
     }
 
     const {type, typeValue, array, map, partial} = reflection;
+    console.log('type', type, array, map);
 
     function convert(value: any) {
         if ('string' === type) {
@@ -339,17 +340,17 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             return classToPlain(typeValue, value);
         }
 
-        //Date/moment automatically is converted since it has toJSON() method.
-        if (value && 'function' === typeof value.toJSON) {
-            return value.toJSON();
-        }
-
         if (isTypedArray(type)) {
             return typedArrayToBase64(value);
         }
 
         if (type === 'arrayBuffer') {
             return arrayBufferToBase64(value);
+        }
+
+        //Date/moment automatically is converted since it has toJSON() method.
+        if (value && 'function' === typeof value.toJSON) {
+            return value.toJSON();
         }
 
         return value;
