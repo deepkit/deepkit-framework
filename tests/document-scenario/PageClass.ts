@@ -2,7 +2,6 @@ import {PageCollection} from "./PageCollection";
 import {DocumentClass} from "./DocumentClass";
 import {Entity, f, ParentReference} from "../../src/decorators";
 import {uuid} from "../../src/utils";
-import {Buffer} from 'buffer';
 
 @Entity('PageClass')
 export class PageClass {
@@ -12,8 +11,8 @@ export class PageClass {
     @f.forward(() => PageCollection)
     children: PageCollection = new PageCollection;
 
-    @f.type(Buffer)
-    picture?: Buffer;
+    @f.type(ArrayBuffer)
+    picture?: ArrayBuffer;
 
     @f.forward(() => PageClass).optional()
     @ParentReference()
@@ -23,7 +22,6 @@ export class PageClass {
         @f.forward(() => DocumentClass)
         @ParentReference()
         public readonly document: DocumentClass,
-
         @f
         public readonly name: string
     ) {

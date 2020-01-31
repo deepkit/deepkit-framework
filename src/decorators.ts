@@ -19,7 +19,6 @@ import {
     isObject,
     isPlainObject,
 } from '@marcj/estdlib';
-import {Buffer} from "buffer";
 import * as getParameterNames from "get-parameter-names";
 import {capitalizeFirstLetter} from "./utils";
 
@@ -46,7 +45,6 @@ export const typedArrayMap = new Map<any, Types>();
 typedArrayMap.set(String, 'string');
 typedArrayMap.set(Number, 'number');
 typedArrayMap.set(Date, 'date');
-typedArrayMap.set(Buffer, 'binary');
 typedArrayMap.set(Boolean, 'boolean');
 typedArrayMap.set(Int8Array, 'Int8Array');
 typedArrayMap.set(Uint8Array, 'Uint8Array');
@@ -265,15 +263,9 @@ export class PropertySchema {
 
         this.type = PropertySchema.getTypeFromJSType(type);
 
-        const isCustomObject = type !== String
-            && type !== String
-            && type !== Number
-            && type !== Date
-            && type !== Buffer
-            && type !== Boolean
+        const isCustomObject = !typedArrayMap.has(type)
             && type !== Any
             && type !== Object
-            && !typedArrayMap.has(type)
         ;
 
         if (isCustomObject) {
@@ -1551,7 +1543,6 @@ function Field(oriType?: FieldTypes) {
             if (t === Number) return 'Number';
             if (t === Boolean) return 'Boolean';
             if (t instanceof ForwardedRef) return 'ForwardedRef';
-            if (t === Buffer) return 'Buffer';
             if (t === Date) return 'Date';
             if (t === undefined) return 'undefined';
 
@@ -1600,15 +1591,9 @@ function Field(oriType?: FieldTypes) {
             }
         }
 
-        const isCustomObject = type !== String
-            && type !== String
-            && type !== Number
-            && type !== Date
-            && type !== Buffer
-            && type !== Boolean
+        const isCustomObject = !typedArrayMap.has(type)
             && type !== Any
             && type !== Object
-            && !typedArrayMap.has(type)
             && !(type instanceof ForwardedRef);
 
         if (type && !options.map && !options.partial && isCustomObject && returnType === Object) {
@@ -1888,8 +1873,8 @@ export interface MainDecorator {
  *   @f.array(String)
  *   tags: string[] = [];
  *
- *   @f.type(Buffer).optional() //binary
- *   picture?: Buffer;
+ *   @f.type(ArrayBuffer).optional() //binary
+ *   picture?: ArrayBuffer;
  *
  *   @f
  *   type: number = 0;

@@ -145,15 +145,6 @@ test('test propertySchema serialization', () => {
 
 });
 
-test('test binary', () => {
-    class User {
-        @f.type(Buffer) picture?: Buffer
-    }
-
-    const schema = getClassSchema(User);
-    expect(schema.getProperty('picture').type).toBe('binary');
-});
-
 test('test asName', () => {
     class User {
         constructor(

@@ -1,7 +1,6 @@
 import {validate, ValidationFailed} from "./validation";
 import * as clone from 'clone';
 import * as getParameterNames from 'get-parameter-names';
-import {Buffer} from 'buffer';
 import {
     getClassSchema,
     getClassTypeFromInstance,
@@ -25,11 +24,11 @@ import {
     isUndefined,
     isValidEnumValue
 } from "@marcj/estdlib";
+import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from "./core";
 
 export type Types =
     'objectId'
     | 'uuid'
-    | 'binary'
     | 'class'
     | 'moment'
     | 'date'
@@ -326,10 +325,6 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
             return value;
         }
 
-        if ('binary' === type && value.toString) {
-            return value.toString('base64');
-        }
-
         if ('any' === type) {
             return clone(value, false);
         }
@@ -350,11 +345,11 @@ export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: s
         }
 
         if (isTypedArray(type)) {
-            return Buffer.from(value).toString('base64');
+            return typedArrayToBase64(value);
         }
 
         if (type === 'arrayBuffer') {
-            return Buffer.from(value).toString('base64');
+            return arrayBufferToBase64(value);
         }
 
         return value;
@@ -451,10 +446,6 @@ export function propertyPlainToClass<T>(
             return +value;
         }
 
-        if ('binary' === type && 'string' === typeof value) {
-            return Buffer.from(value, 'base64');
-        }
-
         if ('boolean' === type && 'boolean' !== typeof value) {
             if ('true' === value || '1' === value || 1 === value) return true;
             if ('false' === value || '0' === value || 0 === value) return false;
@@ -490,12 +481,11 @@ export function propertyPlainToClass<T>(
         }
 
         if (value && isTypedArray(type) && 'string' === typeof value) {
-            const clazz = typedArrayNamesMap.get(type);
-            return new clazz(Buffer.from(value, 'base64'));
+            return base64ToTypedArray(value, typedArrayNamesMap.get(type));
         }
 
         if (value && type === 'arrayBuffer' && 'string' === typeof value) {
-            return new Uint8Array(Buffer.from(value, 'base64')).buffer;
+            return base64ToArrayBuffer(value);
         }
 
         return value;
