@@ -2,19 +2,22 @@ import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {
+    arrayBufferFrom,
     classToPlain,
     DatabaseName,
     Entity,
-    f, getClassSchema, getClassTypeFromInstance,
+    f,
+    getClassSchema,
     getDatabaseName,
     getEntityName,
-    plainToClass, PropertySchema, uuid,
+    plainToClass,
+    PropertySchema,
+    uuid,
 } from "@marcj/marshal";
 import {Binary, ObjectID} from "mongodb";
 import {Database} from "../src/database";
 import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {plainToMongo, uuid4Stringify} from "../src/mapping";
-import {Buffer} from "buffer";
 import * as moment from "moment";
 import {isPlainObject} from '@marcj/estdlib';
 import {createConnection} from 'typeorm';
@@ -323,8 +326,8 @@ test('second object id', async () => {
         @f
         name?: string;
 
-        @f.type(Buffer)
-        preview: Buffer = Buffer.from('FooBar', 'utf8');
+        @f.type(ArrayBuffer)
+        preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
 
         @f.mongoId()
         secondId?: string;

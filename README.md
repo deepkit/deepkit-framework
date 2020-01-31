@@ -25,7 +25,7 @@ However Marshal.ts helps also for traditional REST APIs.
 
 ## Features
 
-* Supported types: String, Number, Boolean, Date, Binary, custom classes, Array, object maps, any.
+* Supported types: String, Number, Boolean, Date, ArrayBuffer (binary), custom classes, Array, object maps, any.
 * Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
 * Fast marshalling of class instance from and to JSON object (for use with JSON.stringify())
 * Fast marshalling of class instance from and to MongoDB record
@@ -55,7 +55,7 @@ However Marshal.ts helps also for traditional REST APIs.
 npm install @marcj/marshal reflect-metadata
 ```
 
-Install `buffer` as well if you want to have Binary support.
+Install `buffer` as well if you want to have binary (ArrayBuffer, TypedArrays) support in browsers.
 
 ## Example Entity
 
@@ -65,7 +65,6 @@ import {
     plainToClass,
     uuid,
 } from '@marcj/marshal';
-import {Buffer} from 'buffer';
 
 class SubModel {
     @f label: string;
@@ -84,8 +83,8 @@ class SimpleModel {
     @f.array(String)
     tags: string[] = [];
 
-    @f.type(Buffer).optional() //binary
-    picture?: Buffer;
+    @f.optional() //binary
+    picture?: ArrayBuffer;
 
     @f
     type: number = 0;

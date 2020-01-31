@@ -1,10 +1,13 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
+    arrayBufferFrom,
+    arrayBufferTo,
+    arrayBufferToBase64,
     f,
-    forwardRef,
     getResolvedReflection,
-    ParentReference, PropertySchema,
+    ParentReference,
+    PropertySchema,
 } from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
@@ -13,7 +16,8 @@ import {
     mongoToClass,
     partialClassToMongo,
     partialMongoToPlain,
-    partialPlainToMongo, plainToMongo
+    partialPlainToMongo,
+    plainToMongo
 } from "../src/mapping";
 import {Buffer} from "buffer";
 import {DocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
@@ -140,12 +144,12 @@ test('convert IDs and invalid values', () => {
 
 test('binary', () => {
     class Model {
-        @f.type(Buffer)
-        preview: Buffer = Buffer.from('FooBar', 'utf8');
+        @f.type(ArrayBuffer)
+        preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
     const i = new Model();
-    expect(i.preview.toString('utf8')).toBe('FooBar');
+    expect(Buffer.from(i.preview).toString('utf8')).toBe('FooBar');
 
     const mongo = classToMongo(Model, i);
     expect(mongo.preview).toBeInstanceOf(Binary);
@@ -155,16 +159,16 @@ test('binary', () => {
 
 test('binary from mongo', () => {
     class Model {
-        @f.type(Buffer)
-        preview: Buffer = Buffer.from('FooBar', 'utf8');
+        @f.type(ArrayBuffer)
+        preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
     const i = mongoToClass(Model, {
         preview: new Binary(Buffer.from('FooBar', 'utf8'))
     });
 
-    expect(i.preview.length).toBe(6);
-    expect(i.preview.toString('utf8')).toBe('FooBar');
+    expect(i.preview.byteLength).toBe(6);
+    expect(arrayBufferTo(i.preview, 'utf8')).toBe('FooBar');
 });
 
 
@@ -384,8 +388,8 @@ test('partial mongo to plain ', () => {
         @f.array(String)
         tags?: string[];
 
-        @f.type(Buffer)
-        picture?: Buffer;
+        @f
+        picture?: ArrayBuffer;
 
         @f.forward(() => User).optional()
         @ParentReference()
@@ -420,7 +424,7 @@ test('partial mongo to plain ', () => {
         expect(u.parent).toBeUndefined();
     }
 
-    const bin = Buffer.from('Hello', 'utf8');
+    const bin = arrayBufferFrom('Hello', 'utf8');
 
     {
         const m = partialMongoToPlain(User, {
@@ -450,12 +454,12 @@ test('partial mongo to plain ', () => {
 
     {
         const m = partialMongoToPlain(User, {
-            picture: new Binary(bin),
+            picture: new Binary(Buffer.from(bin)),
             name: 'peter'
         });
 
         expect(m.name).toBe('peter');
-        expect(m.picture).toBe(bin.toString('base64'));
+        expect(m.picture).toBe(arrayBufferToBase64(bin));
     }
 
     {
@@ -466,19 +470,19 @@ test('partial mongo to plain ', () => {
 
         expect(m.name).toBe('peter');
         expect(m.picture).toBeInstanceOf(Binary);
-        expect(m.picture.buffer.toString('base64')).toBe(bin.toString('base64'));
+        expect(m.picture.buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
     }
 
     {
         const m = partialPlainToMongo(User, {
-            picture: bin.toString('base64'),
+            picture: arrayBufferToBase64(bin),
             name: 'peter',
             tags: {}
         });
 
         expect(m.name).toBe('peter');
         expect(m.picture).toBeInstanceOf(Binary);
-        expect(m.picture.buffer.toString('base64')).toBe(bin.toString('base64'));
+        expect(m.picture.buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
         expect(m.tags).toBeArray();
     }
 });

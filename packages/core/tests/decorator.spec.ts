@@ -16,7 +16,7 @@ import {
     plainToClass,
     RegisteredEntities,
     isOptional,
-    isRegisteredEntity, PropertySchema,
+    isRegisteredEntity, PropertySchema, arrayBufferFrom,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
@@ -148,15 +148,6 @@ test('test uuid', () => {
     const schema = getClassSchema(SimpleModel);
     expect(schema.getProperty('id').type).toBe('uuid');
     expect(schema.getProperty('id').isId).toBe(true);
-});
-
-test('test binary', () => {
-    class User {
-        @f.type(Buffer) picture?: Buffer
-    }
-
-    const schema = getClassSchema(User);
-    expect(schema.getProperty('picture').type).toBe('binary');
 });
 
 test('test asName', () => {
@@ -416,23 +407,23 @@ test('more array/map', () => {
 
 test('binary', () => {
     class Model {
-        @f.type(Buffer)
-        preview: Buffer = Buffer.from('FooBar', 'utf8');
+        @f.type(ArrayBuffer)
+        preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
     const {type, typeValue} = getReflectionType(Model, 'preview');
-    expect(type).toBe('binary');
+    expect(type).toBe('arrayBuffer');
     expect(typeValue).toBeUndefined();
 
     const i = new Model();
-    expect(i.preview.toString('utf8')).toBe('FooBar');
+    expect(Buffer.from(i.preview).toString('utf8')).toBe('FooBar');
 
     const plain = classToPlain(Model, i);
     expect(plain.preview).toBe('Rm9vQmFy');
     expect(plain.preview).toBe(Buffer.from('FooBar', 'utf8').toString('base64'));
 
     const back = plainToClass(Model, plain);
-    expect(back.preview).toBeInstanceOf(Buffer);
-    expect(back.preview.toString('utf8')).toBe('FooBar');
-    expect(back.preview.length).toBe(6);
+    expect(back.preview).toBeInstanceOf(ArrayBuffer);
+    expect(Buffer.from(back.preview).toString('utf8')).toBe('FooBar');
+    expect(back.preview.byteLength).toBe(6);
 });
