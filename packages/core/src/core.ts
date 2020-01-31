@@ -89,7 +89,7 @@ export function typedArrayToBase64(typedArray: TypedArray): string {
  * Same as Buffer.from() but creates a ArrayBuffer that is not shared.
  */
 export function arrayBufferFrom(data: string, encoding?: string) {
-    return nodeBufferToArrayType(Buffer.from(data, encoding));
+    return nodeBufferToArrayType(Buffer.from(data, encoding as any));
 }
 
 
