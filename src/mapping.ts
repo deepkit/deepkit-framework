@@ -3,19 +3,27 @@ import * as clone from "clone";
 import * as mongoUuid from "mongo-uuid";
 import {
     classToPlain,
-    deleteExcludedPropertiesFor, getClassSchema,
+    deleteExcludedPropertiesFor,
+    getClassSchema,
     getDecorator,
     getParentReferenceClass,
     getRegisteredProperties,
     getResolvedReflection,
     isEnumAllowLabelsAsValue,
-    isOptional, isTypedArray, MarshalGlobal,
+    isOptional,
+    isTypedArray,
+    MarshalGlobal,
     moment,
+    nodeBufferToArrayType,
+    nodeBufferToTypedArray,
     toClass,
-    ToClassState, typedArrayNamesMap
+    ToClassState,
+    typedArrayNamesMap,
+    typedArrayToBuffer
 } from "@marcj/marshal";
 import {
     ClassType,
+    each,
     eachKey,
     getClassName,
     getClassPropertyName,
@@ -25,8 +33,7 @@ import {
     isObject,
     isPlainObject,
     isUndefined,
-    isValidEnumValue,
-    each
+    isValidEnumValue
 } from "@marcj/estdlib";
 
 export function uuid4Binary(u?: string): Binary {
@@ -114,10 +121,6 @@ export function propertyMongoToPlain<T>(
             return (<ObjectID>value).toHexString();
         }
 
-        if ('binary' === type && value instanceof Binary) {
-            return value.buffer.toString('base64');
-        }
-
         //Date automatically is converted since it has toJSON() method.
         if (value && 'function' === typeof value.toJSON) {
             return value.toJSON();
@@ -194,16 +197,12 @@ export function propertyClassToMongo<T>(
             return value;
         }
 
-        if ('binary' === type) {
-            return new Binary(value);
-        }
-
         if (type === 'class') {
             return classToMongo(typeValue, value);
         }
 
         if (isTypedArray(type) && value) {
-            return new Binary(Buffer.from(value));
+            return new Binary(typedArrayToBuffer(value));
         }
 
         if (type === 'arrayBuffer' && value) {
@@ -277,10 +276,6 @@ export function propertyPlainToMongo<T>(
 
         if ('number' === type && 'number' !== typeof value) {
             return +value;
-        }
-
-        if ('binary' === type && 'string' === typeof value) {
-            return new Binary(Buffer.from(value, 'base64'));
         }
 
         if ('boolean' === type && 'boolean' !== typeof value) {
@@ -383,10 +378,6 @@ export function propertyMongoToClass<T>(
             return moment(value);
         }
 
-        if ('binary' === type && value instanceof Binary) {
-            return value.buffer;
-        }
-
         if ('any' === type) {
             return clone(value, false);
         }
@@ -424,12 +415,13 @@ export function propertyMongoToClass<T>(
         }
 
         if (value && isTypedArray(type) && value instanceof Binary) {
-            const clazz = typedArrayNamesMap.get(type);
-            return new clazz(value.buffer);
+            //value.buffer might be a pooled buffer
+            return nodeBufferToTypedArray(value.buffer, typedArrayNamesMap.get(type));
         }
 
-        if (type === 'arrayBuffer') {
-            return new Uint8Array(value.buffer).buffer;
+        if (type === 'arrayBuffer' && value instanceof Binary) {
+            //value.buffer might be a pooled buffer
+            return nodeBufferToArrayType(value.buffer);
         }
 
         return value;

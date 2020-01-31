@@ -1,6 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {classToPlain, f, getClassSchema, plainToClass} from "@marcj/marshal";
+import {classToPlain, f, getClassSchema} from "@marcj/marshal";
 import {classToMongo, mongoToClass, plainToMongo} from "..";
 import {Binary} from 'mongodb';
 
@@ -59,6 +59,7 @@ test('arrayBuffer', async () => {
     const clazz2 = mongoToClass(Clazz, mongo);
     expect(clazz2.ints).not.toBeInstanceOf(Int8Array);
     expect(clazz2.ints).toBeInstanceOf(ArrayBuffer);
+    expect(clazz2.ints!.byteLength).toBe(2);
     expect(new Int8Array(clazz2.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz2.ints!)[1]).toBe(64);
 

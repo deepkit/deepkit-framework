@@ -1,17 +1,17 @@
 import {
+    getClassSchema,
     getCollectionName,
     getDatabaseName,
     getEntityName,
-    getClassSchema,
     getIdField,
     getParentReferenceClass,
-    getRegisteredProperties,
     getResolvedReflection,
     isExcluded,
-    isOptional
+    isOptional,
+    typedArrayNamesMap
 } from "@marcj/marshal";
 import {ColumnType, EntitySchema, EntitySchemaColumnOptions, EntitySchemaIndexOptions} from "typeorm";
-import {ClassType, getEnumValues, each} from "@marcj/estdlib";
+import {ClassType, each, getEnumValues} from "@marcj/estdlib";
 
 function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: string): EntitySchemaColumnOptions {
     const reflection = getResolvedReflection(classType, propertyName)!;
@@ -29,7 +29,7 @@ function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: strin
             type = 'number';
         }
 
-        if (reflection.type === 'binary') {
+        if (reflection.type === 'arrayBuffer' || typedArrayNamesMap.has(reflection.type)) {
             type = 'binary';
         }
 
