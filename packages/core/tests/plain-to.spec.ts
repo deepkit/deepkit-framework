@@ -3,152 +3,95 @@ import 'reflect-metadata';
 import {JobTaskQueue, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {
     classToPlain,
-    getReflectionType,
-    getResolvedReflection,
     partialClassToPlain,
     partialPlainToClass,
     plainToClass
 } from "../src/mapper";
-import {f, ParentReference, PropertySchema} from "..";
+import {f, getClassSchema, ParentReference, PropertySchema} from "..";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from "./document-scenario/PageClass";
 import {PageCollection} from "./document-scenario/PageCollection";
+import {printToClassJitFunction, resolvePropertyCompilerSchema} from "../src/jit";
 
-test('getResolvedReflection simple', () => {
-    expect(getResolvedReflection(SimpleModel, 'id')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'id')!.resolvedPropertyName).toBe('id');
-    expect(getResolvedReflection(SimpleModel, 'id')!.type).toBe('uuid');
-    expect(getResolvedReflection(SimpleModel, 'id')!.typeValue).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'id')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'id')!.map).toBe(false);
+test('resolvePropertyCompilerSchema simple', () => {
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'id')!.type).toBe('uuid');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'id')!.resolveClassType).toBeUndefined();
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'id')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'id')!.isArray).toBe(false);
 
-    expect(getResolvedReflection(SimpleModel, 'plan')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'plan')!.resolvedPropertyName).toBe('plan');
-    expect(getResolvedReflection(SimpleModel, 'plan')!.type).toBe('enum');
-    expect(getResolvedReflection(SimpleModel, 'plan')!.typeValue).toBe(Plan);
-    expect(getResolvedReflection(SimpleModel, 'plan')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'plan')!.map).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'plan')!.type).toBe('enum');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'plan')!.resolveClassType).toBe(Plan);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'plan')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'plan')!.isMap).toBe(false);
 
-    expect(getResolvedReflection(SimpleModel, 'children')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'children')!.resolvedPropertyName).toBe('children');
-    expect(getResolvedReflection(SimpleModel, 'children')!.type).toBe('class');
-    expect(getResolvedReflection(SimpleModel, 'children')!.typeValue).toBe(SubModel);
-    expect(getResolvedReflection(SimpleModel, 'children')!.array).toBe(true);
-    expect(getResolvedReflection(SimpleModel, 'children')!.map).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.type).toBe('class');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.resolveClassType).toBe(SubModel);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.isArray).toBe(true);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.isMap).toBe(false);
 
-    expect(getResolvedReflection(SimpleModel, 'childrenMap')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap')!.resolvedPropertyName).toBe('childrenMap');
-    expect(getResolvedReflection(SimpleModel, 'childrenMap')!.type).toBe('class');
-    expect(getResolvedReflection(SimpleModel, 'childrenMap')!.typeValue).toBe(SubModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap')!.map).toBe(true);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.type).toBe('class');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.resolveClassType).toBe(SubModel);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.isMap).toBe(true);
 });
 
-test('getResolvedReflection deep', () => {
-    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.resolvedClassType).toBe(SubModel);
-    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.resolvedPropertyName).toBe('label');
-    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.type).toBe('string');
-    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.typeValue).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'children.0.label')!.map).toBe(false);
+test('resolvePropertyCompilerSchema deep', () => {
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children.0.label')!.type).toBe('string');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children.0.label')!.resolveClassType).toBeUndefined();
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children.0.label')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children.0.label')!.isMap).toBe(false);
 
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.resolvedClassType).toBe(SubModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.resolvedPropertyName).toBe('label');
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.type).toBe('string');
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.typeValue).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.label')!.map).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.type).toBe('string');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.resolveClassType).toBeUndefined();
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.isMap).toBe(false);
 
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.added')).not.toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.added')!.resolvedClassType).toBe(JobTaskQueue);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.added')!.type).toBe('date');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.queue.added')).not.toBeUndefined();
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.queue.added')!.type).toBe('date');
 
-    expect(getResolvedReflection(SimpleModel, '')).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'unknown.unknown')).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'childrenMap')).not.toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'selfChild.childrenMap')).not.toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'yesNo.unknown')).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'types.index')).not.toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'selfChild.unknown')).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')).not.toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.unknown')).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.queue.unknown')).toBeUndefined();
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), '')).toThrow('Invalid path  in class SimpleModel');
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'unknown.unknown')).toThrow('Invalid path unknown.unknown in class SimpleModel');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')).not.toBeUndefined();
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'selfChild.childrenMap')).not.toBeUndefined();
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'yesNo.unknown')).toThrow('Invalid path yesNo.unknown in class SimpleModel');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'types.index')).not.toBeUndefined();
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'selfChild.unknown')).toThrow('Property SimpleModel.unknown not found');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo')).not.toBeUndefined();
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.unknown')).toThrow('Property SubModel.unknown not found');
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.queue.unknown')).toThrow('Property JobTaskQueue.unknown not found');
 
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo.unknown')).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'child.unknown')).toBeUndefined();
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo.unknown')).toThrow('Property SubModel.unknown not found');
+    expect(() => resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'child.unknown')).toThrow('Property SubModel.unknown not found');
 
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.resolvedPropertyName).toBe('childrenMap');
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.type).toBe('class');
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.typeValue).toBe(SubModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'childrenMap.foo')!.map).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.type).toBe('class');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.resolveClassType).toBe(SubModel);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.isMap).toBe(false);
 
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')).not.toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.resolvedPropertyName).toBe('childrenCollection');
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.type).toBe('class');
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.typeValue).toBe(SubModel);
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!.map).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenCollection.0')).not.toBeUndefined();
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.type).toBe('class');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.resolveClassType).toBe(SubModel);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.isMap).toBe(false);
 });
 
 
-test('getResolvedReflection deep decorator', () => {
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0')!).toEqual({
-        "propertySchema": PropertySchema.fromJSON({
-            "classType": "sub",
-            "isArray": true,
-            "isDecorated": true,
-            "name": "items",
-            "type": "class",
-            "typeSet": true,
-        }),
-        resolvedClassType: SimpleModel,
-        resolvedPropertyName: 'childrenCollection',
+test('resolvePropertyCompilerSchema decorator string', () => {
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection')).toMatchObject({
         type: 'class',
-        typeValue: SubModel,
-        array: false,
-        map: false,
-        partial: false,
+        resolveClassType: StringCollectionWrapper
     });
-
-    expect(getResolvedReflection(SimpleModel, 'childrenCollection.0.label')!).toEqual({
-        "propertySchema": PropertySchema.fromJSON({
-            "name": "label",
-            "type": "string",
-            "typeSet": true,
-        }),
-        resolvedClassType: SubModel,
-        resolvedPropertyName: 'label',
-        type: 'string',
-        typeValue: undefined,
-        array: false,
-        map: false,
-        partial: false,
-    });
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.type).toBe('class');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.resolveClassType).toBe(StringCollectionWrapper);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.isMap).toBe(false);
 });
 
-test('getResolvedReflection decorator string', () => {
-    expect(getReflectionType(SimpleModel, 'stringChildrenCollection')).toEqual({
-        type: 'class',
-        typeValue: StringCollectionWrapper
-    });
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.resolvedPropertyName).toBe('stringChildrenCollection');
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.type).toBe('class');
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.typeValue).toBe(StringCollectionWrapper);
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection')!.map).toBe(false);
-});
-
-test('getResolvedReflection deep decorator string', () => {
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.resolvedClassType).toBe(SimpleModel);
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.resolvedPropertyName).toBe('stringChildrenCollection');
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.type).toBe('string');
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.typeValue).toBeUndefined();
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.array).toBe(false);
-    expect(getResolvedReflection(SimpleModel, 'stringChildrenCollection.0')!.map).toBe(false);
+test('resolvePropertyCompilerSchema deep decorator string', () => {
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.type).toBe('string');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.resolveClassType).toBeUndefined();
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.isArray).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.isMap).toBe(false);
 });
 
 test('plain-to test simple model', () => {
@@ -250,47 +193,37 @@ test('partial document', () => {
         'pages.0.children.0.name': 6,
         'pages.0.children': [{name: 7}],
     }, [docParent]);
+    console.log('document', document);
     expect(document['pages.0.name']).toBe('5');
     expect(document['pages.0.children.0.name']).toBe('6');
     expect(document['pages.0.children']).toBeInstanceOf(PageCollection);
     expect(document['pages.0.children'].get(0).name).toBe('7');
 
-    expect(getResolvedReflection(DocumentClass, 'pages.0.name')).toEqual({
-        "propertySchema": PropertySchema.fromJSON({
-            "name": "name",
-            "type": "string",
-            "typeSet": true,
-        }),
-        resolvedClassType: PageClass,
-        resolvedPropertyName: 'name',
-        type: 'string',
-        typeValue: undefined,
-        array: false,
-        map: false,
-        partial: false,
-    });
-
     {
-        const a = getResolvedReflection(DocumentClass, 'pages.0.children');
-        expect(a!.resolvedClassType).toBe(PageClass);
-        expect(a!.resolvedPropertyName).toBe('children');
-        expect(a!.type).toBe('class');
-        expect(a!.typeValue).toBe(PageCollection);
-        expect(a!.array).toBe(false);
-        expect(a!.map).toBe(false);
-        expect(a!.partial).toBe(false);
+        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.name');
+        expect(prop.type).toBe('string');
+        expect(prop.resolveClassType).toBe(undefined);
+        expect(prop.isPartial).toBe(false);
+        expect(prop.isArray).toBe(false);
+        expect(prop.isMap).toBe(false);
     }
 
+    {
+        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children');
+        expect(prop.type).toBe('class');
+        expect(prop.resolveClassType).toBe(PageCollection);
+        expect(prop.isPartial).toBe(false);
+        expect(prop.isArray).toBe(false);
+        expect(prop.isMap).toBe(false);
+    }
 
     {
-        const a = getResolvedReflection(DocumentClass, 'pages.0.children.0.name');
-        expect(a!.resolvedClassType).toBe(PageClass);
-        expect(a!.resolvedPropertyName).toBe('name');
-        expect(a!.type).toBe('string');
-        expect(a!.typeValue).toBe(undefined);
-        expect(a!.array).toBe(false);
-        expect(a!.map).toBe(false);
-        expect(a!.partial).toBe(false);
+        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children.0.name');
+        expect(prop.type).toBe('string');
+        expect(prop.resolveClassType).toBe(undefined);
+        expect(prop.isPartial).toBe(false);
+        expect(prop.isArray).toBe(false);
+        expect(prop.isMap).toBe(false);
     }
 });
 
@@ -380,30 +313,31 @@ test('partial edge cases', () => {
         parent?: User;
     }
 
-    {
-        const u = plainToClass(User, {
-            name: 'peter',
-            tags: {},
-            parent: {name: 'Marie'}
-        });
-
-        expect(u.name).toBe('peter');
-        expect(u.tags).toEqual([]);
-        expect(u.parent).toBeUndefined();
-    }
-
-    {
-        const user = new User();
-        user.name = null as any;
-        user.tags = {} as any;
-        user.parent = {} as any;
-
-        const u = classToPlain(User, user);
-
-        expect(u.name).toBe(null);
-        expect(u.tags).toEqual([]);
-        expect(u.parent).toBeUndefined();
-    }
+    // {
+    //     const u = plainToClass(User, {
+    //         name: 'peter',
+    //         tags: {},
+    //         parent: {name: 'Marie'}
+    //     });
+    //
+    //     expect(u.name).toBe('peter');
+    //     expect(u.tags).toEqual(undefined);
+    //     expect(u.parent).toBeUndefined();
+    // }
+    //
+    // {
+    //     const user = new User();
+    //     user.name = null as any;
+    //     user.tags = {} as any;
+    //     user.parent = {} as any;
+    //
+    //     const u = classToPlain(User, user);
+    //
+    //     expect(u.name).toBe(null);
+    //     //we dont transform when coming from class. We trust TS system, if the user overwrites, its his fault.
+    //     expect(u.tags).toEqual({});
+    //     expect(u.parent).toBeUndefined();
+    // }
 
     {
         const m = partialClassToPlain(User, {
@@ -413,7 +347,8 @@ test('partial edge cases', () => {
         });
 
         expect(m.name).toBe(undefined);
-        expect(m.tags).toBeArray()
+        expect(m['picture']).toBe(undefined);
+        expect(m.tags).toBeUndefined();
     }
 
     const m = partialPlainToClass(User, {
@@ -423,10 +358,11 @@ test('partial edge cases', () => {
         tags: {}
     });
 
-    expect(() => {
+    {
         const user = new User();
         user.config = {} as any;
 
         const m = classToPlain(User, user);
-    }).toThrow('Could not convert User::config since target is not a class instance of Config. Got Object');
+        expect(user.config).toEqual({});
+    }
 });

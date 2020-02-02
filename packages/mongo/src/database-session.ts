@@ -348,62 +348,62 @@ export class DatabaseSession {
      *  - Persists references recursively if necessary.
      *  - Removes unlinked reference items from the database (when cascade is enabled).
      */
-    public async persist<T>(item: T): Promise<void> {
-        if (this.disabledInstancePooling) {
-            throw new Error(`DatabaseSession.persist is not possible with disabled instance pooling.`);
-        }
-
-        const classSchema = getClassSchema(getClassTypeFromInstance(item));
-        await this.ensureRelationsAreStored(classSchema, item);
-
-        const collection = await this.getCollection(classSchema.classType);
-        const mongoItem = classToMongo(classSchema.classType, item);
-
-        //we can not use entityRegistry.isKnown as we allow
-        //cross session entity item assignment.
-        if (!isItemKnownInDatabase(item)) {
-            await this.add(item);
-            const result = await collection.insertOne(mongoItem);
-
-            if (result.insertedId) {
-                if (classSchema.getPrimaryField().type === 'objectId' && result.insertedId && result.insertedId.toHexString) {
-                    (<any>item)[classSchema.getPrimaryField().name] = result.insertedId.toHexString();
-                }
-            }
-            this.entityRegistry.store(classSchema, item);
-            return;
-        }
-
-        this.update(item);
-        const updateStatement: { [name: string]: any } = {};
-        updateStatement['$set'] = mongoItem;
-        const filterQuery = this.buildFindCriteria(classSchema.classType, item);
-        await collection.updateOne(filterQuery, updateStatement);
-
-        markItemAsKnownInDatabase(classSchema, item);
-    }
-
-    protected async ensureRelationsAreStored<T>(classSchema: ClassSchema<T>, item: T) {
-        //make sure all owning references are persisted as well
-        for (const relation of classSchema.references) {
-            if (relation.isReference) {
-                if (item[relation.name]) {
-                    if (relation.isArray) {
-                        // (item[relation.name] as any[]).forEach(v => this.add(v));
-                        //todo, implement that feature, and create a foreignKey as (primaryKey)[].
-                        throw new Error('Owning reference as arrays are not possible.');
-                    } else {
-                        if (isHydrated(item[relation.name])) {
-                            //no proxy instances will be saved.
-                            await this.persist(item[relation.name]);
-                        }
-                    }
-                } else if (!relation.isOptional) {
-                    throw new Error(`Relation ${relation.name} in ${classSchema.getClassName()} is not set. If its optional, use @f.optional().`)
-                }
-            }
-        }
-    }
+    // public async persist<T>(item: T): Promise<void> {
+    //     if (this.disabledInstancePooling) {
+    //         throw new Error(`DatabaseSession.persist is not possible with disabled instance pooling.`);
+    //     }
+    //
+    //     const classSchema = getClassSchema(getClassTypeFromInstance(item));
+    //     await this.ensureRelationsAreStored(classSchema, item);
+    //
+    //     const collection = await this.getCollection(classSchema.classType);
+    //     const mongoItem = classToMongo(classSchema.classType, item);
+    //
+    //     //we can not use entityRegistry.isKnown as we allow
+    //     //cross session entity item assignment.
+    //     if (!isItemKnownInDatabase(item)) {
+    //         await this.add(item);
+    //         const result = await collection.insertOne(mongoItem);
+    //
+    //         if (result.insertedId) {
+    //             if (classSchema.getPrimaryField().type === 'objectId' && result.insertedId && result.insertedId.toHexString) {
+    //                 (<any>item)[classSchema.getPrimaryField().name] = result.insertedId.toHexString();
+    //             }
+    //         }
+    //         this.entityRegistry.store(classSchema, item);
+    //         return;
+    //     }
+    //
+    //     this.update(item);
+    //     const updateStatement: { [name: string]: any } = {};
+    //     updateStatement['$set'] = mongoItem;
+    //     const filterQuery = this.buildFindCriteria(classSchema.classType, item);
+    //     await collection.updateOne(filterQuery, updateStatement);
+    //
+    //     markItemAsKnownInDatabase(classSchema, item);
+    // }
+    //
+    // protected async ensureRelationsAreStored<T>(classSchema: ClassSchema<T>, item: T) {
+    //     //make sure all owning references are persisted as well
+    //     for (const relation of classSchema.references) {
+    //         if (relation.isReference) {
+    //             if (item[relation.name]) {
+    //                 if (relation.isArray) {
+    //                     // (item[relation.name] as any[]).forEach(v => this.add(v));
+    //                     //todo, implement that feature, and create a foreignKey as (primaryKey)[].
+    //                     throw new Error('Owning reference as arrays are not possible.');
+    //                 } else {
+    //                     if (isHydrated(item[relation.name])) {
+    //                         //no proxy instances will be saved.
+    //                         await this.persist(item[relation.name]);
+    //                     }
+    //                 }
+    //             } else if (!relation.isOptional) {
+    //                 throw new Error(`Relation ${relation.name} in ${classSchema.getClassName()} is not set. If its optional, use @f.optional().`)
+    //             }
+    //         }
+    //     }
+    // }
 
     /**
      * Low level: add one item to the database.

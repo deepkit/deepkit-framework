@@ -10,6 +10,7 @@ import {
     plainToClass,
     validateMethodArgs
 } from "..";
+import {printToClassJitFunction} from "../src/jit";
 
 test('Basic array', () => {
     class Other {
@@ -25,7 +26,7 @@ test('Basic array', () => {
         const prop = s.getProperty('bar');
         expect(prop.name).toBe('bar');
         expect(prop.type).toBe('class');
-        expect(prop.classType).toBe(Other);
+        expect(prop.resolveClassType).toBe(Other);
         expect(prop.isArray).toBe(true);
     }
 });
@@ -256,6 +257,7 @@ test('partial', () => {
         }
     });
 
+    printToClassJitFunction(User);
     expect(u.config).not.toBeInstanceOf(Config);
     expect(u.config.name).toBe('peter');
     expect(u.config.prio).toBeUndefined();
@@ -549,7 +551,7 @@ test('PropertySchema setFromJSValue', () => {
         const p = new PropertySchema('');
         p.setFromJSValue(new Peter);
         expect(p.type).toBe('class');
-        expect(p.classType).toBe(Peter);
+        expect(p.resolveClassType).toBe(Peter);
     }
 });
 

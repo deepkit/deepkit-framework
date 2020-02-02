@@ -4,8 +4,8 @@
 [![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
-Marshal is a library written in and for TypeScript to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
-JSON-representable data from JSON object to class instance to database records and vice versa.
+Marshal is **the by far fastest** Javascript implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
+JSON-representable data from JSON object to class instance to database records and vice versa, written in and for TypeScript.
 
 Marshal introduces the concept of decorating your entity class or class methods *once* with all
 necessary annotations (like type declaration, indices, and relations) using only Marshal's TypeScript decorators
@@ -19,20 +19,17 @@ Marshal shines particularly when you have an application written in Typescript e
 This allows you to save tons of time by moving your entities, DTO, query parameter signature, etc all as Marshal decorated classes in a `common`
 package (super simple with [Lerna](https://github.com/lerna/lerna)). You then use and import these classes in your frontend, cli, backend, or whatever you develop.
 
-By using a new client-server framework entirely written in and for TypeScript like [glut.ts](https://github.com/marcj/glut.ts) which is based on Marshal.ts
-you enter a new world of developing web applications by not caring anymore at all about hand-made serialization and validation.
-However Marshal.ts helps also for traditional REST APIs.
 
 ## Features
 
-* Supported types: String, Number, Boolean, Date, ArrayBuffer (binary), custom classes, Array, object maps, any.
+* Fastest serialization thanks to a JIT engine
+* Supported types: String, Number, Boolean, Date, Momemt.js, ArrayBuffer (binary), custom classes, Array, object maps, any.
 * Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
-* Fast marshalling of class instance from and to JSON object (for use with JSON.stringify())
-* Fast marshalling of class instance from and to MongoDB record
+* Cross referencing/Circular references using `@f.forwardRef`
 * Constructor support (required property can be placed in constructor) making it suitable for Typescript strict compiling
 * Validation: Built-in, custom class and inline validators
-* Decorated property value (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
-* Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/) and the like)
+* Decorated property values (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
+* Partial/Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/) and the like)
 * Complex models with parent references
 * Supports getters
 * Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
@@ -41,10 +38,9 @@ However Marshal.ts helps also for traditional REST APIs.
 
 ## Todo
 
-* Add type support for: Map<T, K>, Set<T> (WeakMap<T, K>, and Set<T>)
+* Add type support for: Map<T, K>, Set<T>
 * Add more built-in validators
 * Support discriminators (union class types)
-* Further performance boost by creating JIT serialization functions
 * Add automatic tests IE11+ (help is welcome)
 
 ![Diagram](https://raw.github.com/marcj/marshal.ts/master/assets/diagram.png)

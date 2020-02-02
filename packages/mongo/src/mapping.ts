@@ -35,6 +35,7 @@ import {
     isUndefined,
     isValidEnumValue
 } from "@marcj/estdlib";
+import {createJITConverterFromCompilerSchema, resolvePropertyCompilerSchema} from "@marcj/marshal/src/jit";
 
 export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);
@@ -145,91 +146,7 @@ export function propertyClassToMongo<T>(
     propertyName: string,
     propertyValue: any
 ) {
-    const reflection = getResolvedReflection(classType, propertyName);
-
-    if (!reflection) return propertyValue;
-
-    const {resolvedClassType, resolvedPropertyName, type, typeValue, array, map} = reflection;
-
-    if (isUndefined(propertyValue)) {
-        return undefined;
-    }
-
-    if (null === propertyValue) {
-        return null;
-    }
-
-    if (getParentReferenceClass(resolvedClassType, resolvedPropertyName)) {
-        return undefined;
-    }
-
-    function convert(value: any) {
-        if (value && 'objectId' === type && 'string' === typeof value) {
-            try {
-                return new ObjectID(value);
-            } catch (e) {
-                throw new Error(`Invalid ObjectID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
-            }
-        }
-
-        if (value && 'uuid' === type && 'string' === typeof value) {
-            try {
-                return uuid4Binary(value);
-            } catch (e) {
-                throw new Error(`Invalid UUID given in property ${getClassPropertyName(resolvedClassType, resolvedPropertyName)}: '${value}'`);
-            }
-        }
-
-        if ('moment' === type) {
-            return value.toDate();
-        }
-
-        if ('string' === type) {
-            return String(value);
-        }
-
-        if ('number' === type) {
-            return Number(value);
-        }
-
-        if ('enum' === type) {
-            //the class instance itself can only have the actual value which can be used in plain as well
-            return value;
-        }
-
-        if (type === 'class') {
-            return classToMongo(typeValue, value);
-        }
-
-        if (isTypedArray(type) && value) {
-            return new Binary(typedArrayToBuffer(value));
-        }
-
-        if (type === 'arrayBuffer' && value) {
-            return new Binary(Buffer.from(value));
-        }
-
-        return value;
-    }
-
-    if (array) {
-        if (isArray(propertyValue)) {
-            return propertyValue.map(v => convert(v));
-        }
-        return [];
-    }
-
-    if (map) {
-        const result: { [name: string]: any } = {};
-        if (isObject(propertyValue)) {
-            for (const i of eachKey(propertyValue)) {
-                result[i] = convert((<any>propertyValue)[i]);
-            }
-        }
-        return result;
-    }
-
-    return convert(propertyValue);
+    createJITConverterFromCompilerSchema('plain', 'class', resolvePropertyCompilerSchema(schema, i))(partial[i])
 }
 
 export function propertyPlainToMongo<T>(

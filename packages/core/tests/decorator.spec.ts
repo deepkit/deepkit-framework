@@ -8,8 +8,6 @@ import {
     getDatabaseName,
     getEntityName,
     getClassSchema,
-    getParentReferenceClass,
-    getReflectionType,
     isArrayType,
     isMapType,
     ParentReference,
@@ -24,6 +22,7 @@ import {PageClass} from "./document-scenario/PageClass";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {getClassTypeFromInstance} from '../src/decorators';
+import {resolvePropertyCompilerSchema} from "../src/jit";
 
 test('test invalid usage decorator', async () => {
     expect(() => {
@@ -82,10 +81,6 @@ test('test invalid usage', async () => {
         getClassSchema(Base).getProperty('ohwe').getResolvedClassType();
     }).toThrowError('ForwardRef returns no value');
 
-    expect(() => {
-        getReflectionType(Base, 'ohwe');
-    }).toThrowError('Base::ohwe: Error: ForwardRef returns no value. () => undefined');
-
     expect(getClassSchema(Base).getProperty('config').getResolvedClassType()).toBe(Config);
 
     //second call uses cached one
@@ -97,7 +92,7 @@ test('test invalid usage', async () => {
 
     expect(() => {
         getClassSchema(Base).getProperty('bla');
-    }).toThrowError('Property bla not found');
+    }).toThrowError('Property Base.bla not found');
 });
 
 test('test circular', async () => {
@@ -181,21 +176,6 @@ test('test no entity throw error', () => {
     }).toThrowError('No @Entity() defined for class Model');
 });
 
-test('test decorator ParentReference without class', () => {
-    class Sub {
-    }
-
-    expect(() => {
-        class Model {
-            @ParentReference()
-            sub?: Sub;
-        }
-
-        getParentReferenceClass(Model, 'sub');
-        expect(getClassSchema(Model).getProperty('sub').isResolvedClassTypeIsDecorated()).toBe(false);
-    }).toThrowError('Model::sub has @ParentReference but no @Entity defined.');
-});
-
 test('test No decorated property found', () => {
     expect(() => {
         class Model {
@@ -242,7 +222,9 @@ test('test decorator circular', () => {
             sub?: Sub;
         }
 
-        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        const schema = resolvePropertyCompilerSchema(getClassSchema(Model), 'sub');
+        expect(schema.type).toBe('class');
+        expect(schema.resolveClassType).toBe(Sub);
     }
 
     {
@@ -251,7 +233,7 @@ test('test decorator circular', () => {
             sub?: { [l: string]: Sub };
         }
 
-        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({type: 'class', resolveClassType: Sub});
         expect(isMapType(Model, 'sub')).toBeTrue();
     }
 
@@ -261,7 +243,7 @@ test('test decorator circular', () => {
             sub?: Sub[];
         }
 
-        expect(getReflectionType(Model, 'sub')).toEqual({type: 'class', typeValue: Sub});
+        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({type: 'class', resolveClassType: Sub});
         expect(isArrayType(Model, 'sub')).toBeTrue();
     }
 });
@@ -292,37 +274,37 @@ test('test properties', () => {
     }
 
     {
-        const {type, typeValue} = getReflectionType(Model, '_id');
+        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), '_id');
         expect(type).toBe('objectId');
-        expect(typeValue).toBeUndefined()
+        expect(resolveClassType).toBeUndefined()
     }
 
     {
-        const {type, typeValue} = getReflectionType(Model, 'data');
+        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), 'data');
         expect(type).toBe('class');
-        expect(typeValue).toBe(DataValue)
+        expect(resolveClassType).toBe(DataValue)
     }
 
-    {
-        const {type, typeValue} = getReflectionType(Model, 'data2');
+    expect(() => {
+        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), 'data2');
         expect(type).toBeUndefined();
-        expect(typeValue).toBeUndefined();
-    }
+        expect(resolveClassType).toBeUndefined();
+    }).toThrow('Property Model.data2 not found');
 
     {
-        const {type, typeValue} = getReflectionType(SubModel, '_id');
+        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(SubModel), '_id');
         expect(type).toBe('objectId');
-        expect(typeValue).toBeUndefined()
+        expect(resolveClassType).toBeUndefined()
     }
     {
-        const {type, typeValue} = getReflectionType(SubModel, 'data');
+        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(SubModel), 'data');
         expect(type).toBe('class');
-        expect(typeValue).toBe(DataValue)
+        expect(resolveClassType).toBe(DataValue)
     }
     {
-        const {type, typeValue} = getReflectionType(SubModel, 'data2');
+        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(SubModel), 'data2');
         expect(type).toBe('class');
-        expect(typeValue).toBe(DataValue2)
+        expect(resolveClassType).toBe(DataValue2)
     }
 });
 
@@ -411,9 +393,9 @@ test('binary', () => {
         preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
-    const {type, typeValue} = getReflectionType(Model, 'preview');
+    const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), 'preview');
     expect(type).toBe('arrayBuffer');
-    expect(typeValue).toBeUndefined();
+    expect(resolveClassType).toBeUndefined();
 
     const i = new Model();
     expect(Buffer.from(i.preview).toString('utf8')).toBe('FooBar');

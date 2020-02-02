@@ -104,7 +104,7 @@ test('test propertySchema serialization', () => {
             'isPartial',
             'methodName',
             'allowLabelsAsValue',
-            'classType',
+            'resolveClassType',
         ];
         for (const k of compare) {
             expect(p1[k]).toBe(p2[k]);
@@ -137,7 +137,7 @@ test('test propertySchema serialization', () => {
         expect(p1.name).toBe('map');
         expect(p1.isId).toBe(false);
         expect(p1.getResolvedClassType()).toBe(Config);
-        expect(p1.classType).toBe(Config);
+        expect(p1.getResolvedClassTypeForValidType()).toBe(Config);
         expect(p1.isMap).toBe(true);
         expect(p1.type).toBe('class');
         compare(p1, p2);

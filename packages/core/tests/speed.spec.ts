@@ -1,8 +1,8 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {classToPlain, getCachedParameterNames, getRegisteredProperties, plainToClass} from "../src/mapper";
+import {classToPlain, plainToClass} from "../src/mapper";
 import {Job} from "./big-entity";
-import {SimpleModel, SuperSimple} from "./entities";
+import { SuperSimple} from "./entities";
 
 function benchTime(title: string): () => void {
     const started = performance.now();
