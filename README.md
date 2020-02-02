@@ -1,6 +1,8 @@
 # Marshal.ts
 
+<div align="center">
 ![Marshal](https://raw.github.com/marcj/marshal.ts/feature/jit/assets/marshal-logo.png)
+</div>
 
 [![Build Status](https://travis-ci.com/marcj/marshal.ts.svg?branch=master)](https://travis-ci.com/marcj/marshal.ts)
 [![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
