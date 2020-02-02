@@ -35,7 +35,9 @@ export class ClassTransformerSuperSimple {
 }
 
 test('benchmark plainToClass', () => {
-    bench(10000, 'Marshal plainToClass SuperSimple', (i) => {
+    const count = 1_000_000;
+
+    bench(count, 'Marshal plainToClass SuperSimple', (i) => {
         plainToClass(MarshalModel, {
             name: 'name' + i,
             id: i,
@@ -45,7 +47,7 @@ test('benchmark plainToClass', () => {
         });
     });
 
-    bench(10000, 'Marshal jitPlainToClass SuperSimple', (i) => {
+    bench(count, 'Marshal jitPlainToClass SuperSimple', (i) => {
         jitPlainToClass(MarshalModel, {
             name: 'name' + i,
             id: i,
@@ -55,7 +57,7 @@ test('benchmark plainToClass', () => {
         });
     });
 
-    bench(10000, 'ClassTransformer plainToClass SuperSimple', (i) => {
+    bench(count, 'ClassTransformer plainToClass SuperSimple', (i) => {
         classTransformerPlainToClass(ClassTransformerSuperSimple, {
             name: 'name' + i,
             id: i,
@@ -67,6 +69,8 @@ test('benchmark plainToClass', () => {
 });
 
 test('benchmark classToPlain', () => {
+    const count = 100_000;
+
     const b = jitPlainToClass(MarshalModel, {
         name: 'name1',
         id: 1,
@@ -75,15 +79,15 @@ test('benchmark classToPlain', () => {
         ready: true,
     });
 
-    bench(10000, 'Marshal classToPlain SuperSimple', (i) => {
+    bench(count, 'Marshal classToPlain SuperSimple', (i) => {
         classToPlain(MarshalModel, b);
     });
 
-    bench(10000, 'Marshal jitClassToPlain SuperSimple', (i) => {
+    bench(count, 'Marshal jitClassToPlain SuperSimple', (i) => {
         jitClassToPlain(MarshalModel, b);
     });
 
-    bench(10000, 'ClassTransformer classToPlain SuperSimple', (i) => {
+    bench(count, 'ClassTransformer classToPlain SuperSimple', (i) => {
         classTransformerClassToPlain(b);
     });
 });
