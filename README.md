@@ -9,24 +9,17 @@
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
 Marshal is the **by far fastest** Javascript serialization implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
-JSON-representable data from JSON object to class instance to database records and vice versa, written in and for TypeScript.
+JSON-representable data from JSON object to class instance to database records and vice versa, written in and for TypeScript. Marshal uses
+a JIT engine, generating highly optimized serialization functions on the fly.
 
 Marshal introduces the concept of decorating your entity class or class methods *once* with all
-necessary annotations (like type declaration, indices, and relations) using only Marshal's TypeScript decorators
+necessary decorators (like type declaration, indices, and relations) using only Marshal's TypeScript decorators
 agnostic to any serialization target by saving only the meta data,
-and then use it everywhere: frontend, backend, http-transport, rpc serialization, query parameter, DTOs, and database, including validations.
-
-The goal is to support all types of structures/use-cases where you need to serialize and validate data in a very user-friendly
-way while providing the fastest possible serializer for all platforms, NodeJS and browsers.
-
-Marshal shines particularly when you have an application written in Typescript entirely, frontend, CLI, and backend.
-This allows you to save tons of time by moving your entities, DTO, query parameter signature, etc all as Marshal decorated classes in a `common`
-package (super simple with [Lerna](https://github.com/lerna/lerna)). You then use and import these classes in your frontend, cli, backend, or whatever you develop.
-
+and then use it everywhere: frontend, backend, CLI, database records, http-transport, rpc serialization, query parameter, DTOs, and database, including validations.
 
 ## Features
 
-* Fastest serialization thanks to a JIT engine
+* Fastest serialization thanks to a JIT engine. It's the the by far fastest serialization library for both, Nodejs and browsers.
 * Supported types: String, Number, Boolean, Date, Momemt.js, ArrayBuffer (binary), custom classes, Array, object maps, any.
 * Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
 * Cross referencing/Circular references using `@f.forwardRef`
@@ -35,7 +28,10 @@ package (super simple with [Lerna](https://github.com/lerna/lerna)). You then us
 * Decorated property values (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
 * Partial/Patch marshalling (ideal for serialising [JSON Patch](http://jsonpatch.com/) and the like)
 * Complex models with parent references
+* Support declaring method arguments and return type for method serialization
+* Implicit type detection as far as Typescript allows it technically
 * Supports getters
+* Soft type castings (so implicit cast from number -> string, if necessary)
 * Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
 * NestJS validation pipe
 * MongoDB database abstraction and query builder with relation support
@@ -161,11 +157,13 @@ export class MarshalModel {
 }
 ```
 
-Converting 100,000 elements from json to class instances takes about 0.00067 ms per item, in total 7ms.
+Converting 100,000 elements from json to class instances takes about **0.00067 ms per item**, in total 7ms.
 
-Converting 100,00 elements from class instances to JSON objects takes about 0.00040ms per item, in total 4ms.
+Converting 100,00 elements from class instances to JSON objects takes about **0.00040ms per item**, in total 4ms.
 
 For comparison: This is up to 6,000% faster than class-transformer.
+Another comparison: Creating manually new class instances and assign properties is only barely faster.
+Creating manually 100,000 class instances and assigning property values take 4ms manually instead of 8ms with Marshal.
 
 
 ## Usage
