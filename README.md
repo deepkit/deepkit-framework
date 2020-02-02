@@ -1,10 +1,12 @@
-# Marshal
+# Marshal.ts
+
+![Marshal](https://raw.github.com/marcj/marshal.ts/feature/jit/assets/marshal-logo.png)
 
 [![Build Status](https://travis-ci.com/marcj/marshal.ts.svg?branch=master)](https://travis-ci.com/marcj/marshal.ts)
 [![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
-Marshal is **the by far fastest** Javascript implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
+Marshal is the **by far fastest** Javascript serialization implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
 JSON-representable data from JSON object to class instance to database records and vice versa, written in and for TypeScript.
 
 Marshal introduces the concept of decorating your entity class or class methods *once* with all
@@ -126,6 +128,43 @@ console.log(instance);
     }
 */
 ```
+
+## Benchmark
+
+This library uses a JIT engine to convert data between class instances -> JSON objects and vice-versa. This means
+it builds JS functions in the background once you request a serialization for a certain class. The build JS is
+optimized by the JS engine itself and then executed. By using as much as information during build-time possible
+to generate the smallest and fastest code possible allows to achieve the best performance yet available for serialization
+in Javascript.
+
+See [bench.spec.ts](https://github.com/marcj/marshal.ts/blob/feature/jit/packages/benchmark/bench.spec.ts) for more details:
+
+The class structure in question:
+```typescript
+```typescript
+import {f} from "@marcj/marshal";
+
+export class MarshalModel {
+    @f ready?: boolean;
+
+    @f.array(String) tags: string[] = [];
+
+    @f priority: number = 0;
+
+    constructor(
+        @f public id: number,
+        @f public name: string
+    ) {
+    }
+}
+```
+
+Converting 100,000 elements from json to class instances takes about 0.00067 ms per item, in total 7ms.
+
+Converting 100,00 elements from class instances to JSON objects takes about 0.00040ms per item, in total 4ms.
+
+For comparison: This is up to 6,000% faster than class-transformer.
+
 
 ## Usage
 
