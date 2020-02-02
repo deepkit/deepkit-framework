@@ -1,22 +1,8 @@
-import {
-    ClassSchema,
-    getClassSchema,
-    MarshalGlobal,
-    PropertyCompilerSchema,
-    PropertySchema,
-    typedArrayNamesMap, Types
-} from "./decorators";
+import {ClassSchema, getClassSchema, MarshalGlobal, PropertyCompilerSchema, PropertySchema, Types} from "./decorators";
 import {getDecorator, isExcluded} from "./mapper";
-import {
-    ClassType,
-    getClassName,
-    getClassPropertyName,
-    getEnumValues,
-    getValidEnumValue,
-    isValidEnumValue,
-    getEnumLabels
-} from "@marcj/estdlib";
-import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from "./core";
+import {ClassType, getClassName, getClassPropertyName} from "@marcj/estdlib";
+import './compiler-templates';
+import {compilerRegistry} from "./compiler-registry";
 
 export let moment: any = () => {
     throw new Error('Moment.js not installed')
@@ -47,12 +33,9 @@ export const JITToClassFN = new Map<any, any>();
 const JITToPlainCache = new Map<any, any>();
 export const JITToPlainCacheFN = new Map<any, any>();
 
-const JITPartialCache = new Map<any, any>();
-
 export type TypeConverterCompilerContext = { [name: string]: any };
 export type TypeConverterCompiler = (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable: () => string) => string | { template: string, context: TypeConverterCompilerContext };
 
-const compilerRegistry = new Map<string, TypeConverterCompiler>();
 
 const resolvedReflectionCaches = new Map<ClassType<any>, { [path: string]: PropertyCompilerSchema }>();
 
@@ -126,65 +109,94 @@ export function resolvePropertyCompilerSchema<T>(schema: ClassSchema<T>, propert
     throw new Error(`Invalid path ${propertyPath} in class ${schema.getClassName()}.`);
 }
 
-export function resolvePropertyCompilerSchemaOrUndefined<T>(schema: ClassSchema<T>, propertyPath: string): PropertyCompilerSchema | undefined {
-    try {
-        return resolvePropertyCompilerSchema(schema, propertyPath);
-    } catch (error) {
+const cacheJitProperty = new Map<string, WeakMap<PropertySchema, any>>();
+const cacheJitVirtualProperty = new Map<string, Map<string, any>>();
+
+/**
+ * Creates a new JIT compiled function to convert given property schema for certain paths.
+ * Paths can be deep paths making it possible to convert patch-like/mongo structure
+ *
+ * Note: If fromFormat -> toFormat has no compiler templates registered,
+ * the generated function does virtually nothing.
+ */
+class JitPropertyConverter {
+    protected schema: ClassSchema<any>;
+    protected cacheJitVirtualPropertyMap: Map<string, any>;
+    protected cacheJitPropertyMap: WeakMap<PropertyCompilerSchema, any>;
+
+    constructor(
+        public readonly fromFormat: string,
+        public readonly toFormat: string,
+        classType: ClassType<any>
+    ) {
+        this.schema = getClassSchema(classType);
+        this.schema.initializeProperties();
+
+        this.cacheJitPropertyMap = cacheJitProperty.get(fromFormat + ':' + toFormat)!;
+        if (!this.cacheJitPropertyMap) {
+            this.cacheJitPropertyMap = new WeakMap<PropertySchema, any>();
+            cacheJitProperty.set(fromFormat + ':' + toFormat, this.cacheJitPropertyMap);
+        }
+
+        this.cacheJitVirtualPropertyMap = cacheJitVirtualProperty.get(fromFormat + ':' + toFormat)!;
+        if (!this.cacheJitVirtualPropertyMap) {
+            this.cacheJitVirtualPropertyMap = new Map<string, any>();
+            cacheJitVirtualProperty.set(fromFormat + ':' + toFormat, this.cacheJitVirtualPropertyMap);
+        }
+    }
+
+    convert(path: string, value: any, parents?: any[]): any {
+        let property: PropertyCompilerSchema = this.schema.classProperties.get(path) || resolvePropertyCompilerSchema(this.schema, path);
+
+        const jit = property.isRealProperty()
+            ? this.cacheJitPropertyMap.get(property) : this.cacheJitVirtualPropertyMap.get(property.getCacheKey());
+
+        if (jit) {
+            return jit(value, parents);
+        }
+
+        const context = new Map<any, any>();
+
+        const functionCode = `
+        var result;
+        return function(value, _parents) {
+            if (!_parents) _parents = [];
+            ${getDataConverterJS('result', 'value', property, this.fromFormat, this.toFormat, context)}
+            return result;
+        }
+        `;
+
+        const compiled = new Function(...context.keys(), functionCode);
+        const fn = compiled.bind(undefined, ...context.values())();
+        if (property.isRealProperty()) {
+            this.cacheJitPropertyMap.set(property, fn);
+        } else {
+            this.cacheJitVirtualPropertyMap.set(property.getCacheKey(), fn);
+        }
+
+        return fn(value, parents);
     }
 }
 
 /**
- * Registers a new compiler function for a certain type in certain direction
- * (plain to class, class to plain for example).
  *
- * Note: Don't use isArray/isMap/isPartial at `property` as those are already handled before your compiler code
- * is called. Focus on marshalling the given type as fast and clear as possible. Note that when you come
- * from `class` to x property values are guaranteed to have certain value types since the TS system enforces it.
- * If a user overwrites with `as any` its not our business to convert them implicitly.
- *
- * WARNING: However, coming from `plain` to `x` the property values usually come from user input which makes
- * it necessary to check the type and convert it if necessary. This is extremely important to not
- * introduce security issues.
- *
- * Note: Context is shared across types, so make either your usage unique or work around it.
- * Don't store `property` specific values into it, since it's shared and would be overwritten/invalid.
+ * @param fromFormat
+ * @param toFormat
+ * @param property
  */
-export function registerConverterCompiler(
+export function createJITConverterFromPropertySchema(
     fromFormat: string,
     toFormat: string,
-    type: Types,
-    compiler: TypeConverterCompiler
-) {
-    compilerRegistry.set(fromFormat + ':' + toFormat + ':' + type, compiler);
-}
-
-function noop() {}
-
-export function createJITConverterFromCompilerSchema(
-    fromFormat: string,
-    toFormat: string,
-    property?: PropertyCompilerSchema
+    property: PropertySchema
 ): (value: any, parents?: any[]) => any {
-    if (!property) return noop;
-
-    //note: this key length forces v8's map implementation to a low performance. If we find
-    // a way to build way smaller keys we can increase performance here by a good factor.
-    //currently we get 180ms per 100k elements, but when keys are small we come down to 60ms.
-    //just try `const cacheKey  = property.type;` and see.
-
-    const cacheKey = fromFormat + ':' + toFormat + ':' + property.getCacheKey();
-
-    let cache = JITPartialCache;
-
-    if (property.type === 'class' || property.type === 'enum') {
-        cache = JITPartialCache.get(property.resolveClassType);
-        if (!cache) {
-            cache = new Map();
-            JITPartialCache.set(property.resolveClassType, cache);
-        }
+    let cacheJitPropertyMap = cacheJitProperty.get(fromFormat + ':' + toFormat)!;
+    if (!cacheJitPropertyMap) {
+        cacheJitPropertyMap = new WeakMap<PropertySchema, any>();
+        cacheJitProperty.set(fromFormat + ':' + toFormat, cacheJitPropertyMap);
     }
 
-    let jit = cache.get(cacheKey);
+    const jit = cacheJitPropertyMap.get(property);
+
     if (jit) {
         return jit;
     }
@@ -192,167 +204,20 @@ export function createJITConverterFromCompilerSchema(
     const context = new Map<any, any>();
 
     const functionCode = `
-    var result;
-    return function(value, _parents) {
-        if (!_parents) _parents = [];
-        ${getDataConverterJS('result', 'value', property, fromFormat, toFormat, context)}
-        return result;
-    }
-    `;
+        var result;
+        return function(value, _parents) {
+            if (!_parents) _parents = [];
+            ${getDataConverterJS('result', 'value', property, fromFormat, toFormat, context)}
+            return result;
+        }
+        `;
 
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled.bind(undefined, ...context.values())();
-    cache.set(cacheKey, fn);
+    cacheJitPropertyMap.set(property, fn);
 
-    return cache.get(cacheKey);
+    return fn;
 }
-
-registerConverterCompiler('plain', 'class', 'string', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : String(${accessor});`;
-});
-
-registerConverterCompiler('plain', 'class', 'number', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `${setter} = typeof ${accessor} === 'number' ? ${accessor} : +${accessor};`;
-});
-
-registerConverterCompiler('plain', 'class', 'date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `${setter} = new Date(${accessor});`;
-});
-
-registerConverterCompiler('plain', 'class', 'moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return {
-        template: `${setter} = moment(${accessor});`,
-        context: {moment}
-    };
-});
-
-registerConverterCompiler('plain', 'class', 'boolean', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `
-    if ('boolean' === typeof ${accessor}) {
-        ${setter} = ${accessor};
-    } else {
-        if ('true' === ${accessor} || '1' === ${accessor} || 1 === ${accessor}) ${setter} = true;
-        if ('false' === ${accessor} || '0' === ${accessor} || 0 === ${accessor}) ${setter} = false;
-    }
-    `;
-});
-
-registerConverterCompiler('plain', 'class', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-    const classType = reserveVariable();
-
-    return {
-        template: `
-            ${setter} = createXToClassFunction(${classType}, 'plain')(${accessor}, _parents);
-        `,
-        context: {
-            [classType]: property.resolveClassType,
-            createXToClassFunction
-        }
-    };
-});
-
-
-registerConverterCompiler('plain', 'class', 'enum', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-    //this a candidate where we can extract ENUM information during build time and check very fast during
-    //runtime, so we don't need a call to getResolvedClassTypeForValidType(), isValidEnumValue(), etc in runtime anymore.
-    const allowLabelsAsValue = property.allowLabelsAsValue;
-    const typeValue = reserveVariable();
-    return {
-        template: `
-        var typeValue = ${typeValue};
-        if (undefined !== ${accessor} && !isValidEnumValue(typeValue, ${accessor}, ${allowLabelsAsValue})) {
-            const valids = getEnumValues(typeValue);
-            if (${allowLabelsAsValue}) {
-                for (const label of getEnumLabels(typeValue)) {
-                    valids.push(label);
-                }
-            }
-            throw new Error('Invalid ENUM given in property ${property.name}: ' + ${accessor} + ', valid: ' + valids.join(','));
-        }
-        ${setter} = getValidEnumValue(typeValue, ${accessor}, ${allowLabelsAsValue});
-    `,
-        context: {
-            [typeValue]: property.resolveClassType,
-            isValidEnumValue: isValidEnumValue,
-            getEnumValues: getEnumValues,
-            getEnumLabels: getEnumLabels,
-            getValidEnumValue: getValidEnumValue
-        }
-    };
-});
-
-const convertTypedArrayToClass = (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return {
-        template: `${setter} = base64ToTypedArray(${accessor}, typedArrayNamesMap.get('${property.type}'));`,
-        context: {
-            base64ToTypedArray,
-            typedArrayNamesMap
-        }
-    };
-};
-
-registerConverterCompiler('plain', 'class', 'Int8Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Uint8Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Uint8Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Uint8ClampedArray', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Int16Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Uint16Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Int32Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Int32Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Uint32Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Float32Array', convertTypedArrayToClass);
-registerConverterCompiler('plain', 'class', 'Float64Array', convertTypedArrayToClass);
-
-registerConverterCompiler('plain', 'class', 'arrayBuffer', (setter, getter) => {
-    return {
-        template: `${setter} = base64ToArrayBuffer(${getter});`,
-        context: {base64ToArrayBuffer}
-    };
-});
-
-const convertTypedArrayToPlain = (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return {
-        template: `${setter} = typedArrayToBase64(${accessor});`,
-        context: {
-            typedArrayToBase64
-        }
-    };
-};
-registerConverterCompiler('class', 'plain', 'Int8Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Uint8Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Uint8Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Uint8ClampedArray', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Int16Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Uint16Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Int32Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Int32Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Uint32Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Float32Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'Float64Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'arrayBuffer', (setter, getter) => {
-    return {
-        template: `${setter} = arrayBufferToBase64(${getter});`,
-        context: {arrayBufferToBase64}
-    };
-});
-
-const convertToPlainUsingToJson = (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `${setter} = ${accessor}.toJSON();`;
-};
-
-registerConverterCompiler('class', 'plain', 'date', convertToPlainUsingToJson);
-registerConverterCompiler('class', 'plain', 'moment', convertToPlainUsingToJson);
-
-registerConverterCompiler('class', 'plain', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-    const classType = reserveVariable();
-    return {
-        template: `${setter} = createClassToXFunction(${classType}, 'plain')(${accessor});`,
-        context: {
-            [classType]: property.resolveClassType,
-            createClassToXFunction,
-        }
-    }
-});
 
 function reserveVariable(
     rootContext: Map<string, any>,
@@ -433,7 +298,7 @@ function getDataConverterJS(
         return `
             if (${accessor} && ${accessor}.length) {
                  var l = ${accessor}.length;
-                 var a = ${accessor}.slice(0);
+                 var a = ${accessor}.slice();
                  while (l--) {
                     //make sure all elements have the correct type
                     ${executeCompiler(rootContext, compiler, `a[l]`, `a[l]`, property)}
@@ -518,33 +383,27 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
         }
 
         functionCode = `
+        return function(_instance) {
             const _data = {};
             MarshalGlobal.unpopulatedCheckActive = false;
             ${convertProperties.join('\n')}
             MarshalGlobal.unpopulatedCheckActive = true;
             return _data;
+        }
         `;
     }
 
+
     try {
-        jit = new Function('_classType', '_instance', 'MarshalGlobal', ...context.keys(), functionCode);
+        const compiled = new Function('_classType', 'MarshalGlobal', ...context.keys(), functionCode);
+        const fn = compiled(classType, MarshalGlobal, ...context.values());
+        JITToPlainCache.set(classType, fn);
+
+        return fn;
     } catch (error) {
-        console.log('failed to build jit function', error, functionCode);
+        console.log('jit code', functionCode);
+        throw error;
     }
-
-    JITToPlainCacheFN.set(classType, jit);
-
-    const additionalContext = [...context.values()];
-    JITToPlainCache.set(classType, function (instance: any) {
-        try {
-            return jit(classType, instance, MarshalGlobal, ...additionalContext);
-        } catch (error) {
-            console.debug('jit code', jit.toString());
-            throw error;
-        }
-    });
-
-    return JITToPlainCache.get(classType);
 }
 
 export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
@@ -612,42 +471,41 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
         }
     }
 
+    let fullLoadHookPre = '';
+    let fullLoadHookPost = '';
+    if (schema.hasFullLoadHooks()) {
+        fullLoadHookPre = `var hadInstance = !!_state;`;
+        fullLoadHookPost = `
+            if (!hadInstance) {
+                //we are at the end, so call fullLoad hooks
+                for (const cb of _state.onFullLoadCallbacks) cb();
+            }
+        `;
+    }
+
     const functionCode = `
-        ${constructorArguments.join('\n')}
-        const _instance = new _classType(${constructorArgumentNames.join(', ')});
-        ${setProperties.join('\n')}
-        ${registerLifeCircleEvents.join('\n')}
-        return _instance;
+        return function(_data, _parents, _state) {
+            ${fullLoadHookPre}
+            _state = _state || new ToClassState();
+            ${constructorArguments.join('\n')}
+            const _instance = new _classType(${constructorArgumentNames.join(', ')});
+            ${setProperties.join('\n')}
+            ${registerLifeCircleEvents.join('\n')}
+            ${fullLoadHookPost}
+            return _instance;
+        }
     `;
 
     try {
-        jit = new Function('_classType', '_data', '_parents', '_state', ...context.keys(), functionCode);
+        const compiled = new Function('_classType', 'ToClassState', ...context.keys(), functionCode);
+        const fn = compiled(classType, ToClassState, ...context.values());
+        JITToClassCache.set(classType, fn);
+
+        return fn;
     } catch (error) {
-        console.log('failed to build jit function', error, functionCode);
+        console.log('jit code', functionCode);
+        throw error;
     }
-
-    JITToClassFN.set(classType, jit);
-
-    const additionalContext = [...context.values()];
-    JITToClassCache.set(classType, function (data: any, parents?: any[], state?: ToClassState) {
-        try {
-            let hadInstance = !!state;
-            state = state || new ToClassState();
-            const instance = jit(classType, data, parents || [], state, ...additionalContext);
-            if (!hadInstance) {
-                //we are at the end, so call fullLoad hooks
-                for (const cb of state.onFullLoadCallbacks) {
-                    cb();
-                }
-            }
-            return instance;
-        } catch (error) {
-            console.debug('Jit code', jit.toString());
-            throw error;
-        }
-    });
-
-    return JITToClassCache.get(classType);
 }
 
 export function jitPlainToClass<T>(classType: ClassType<T>, data: any, parents?: any[]): T {
@@ -671,11 +529,12 @@ export function jitPartial<T, K extends keyof T>(
     parents?: any[]
 ): Partial<{ [F in K]: any }> {
     const result: Partial<{ [F in K]: any }> = {};
-    const schema = getClassSchema(classType);
+    const jitConverter = new JitPropertyConverter(fromFormat, toFormat, classType);
 
     for (const i in partial) {
         if (!partial.hasOwnProperty(i)) continue;
-        result[i] = createJITConverterFromCompilerSchema(fromFormat, toFormat, resolvePropertyCompilerSchemaOrUndefined(schema, i))(partial[i], parents);
+        result[i] =
+            result[i] = jitConverter.convert(i, partial[i], parents);
     }
 
     return result;

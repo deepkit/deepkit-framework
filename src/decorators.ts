@@ -168,6 +168,14 @@ export class PropertyCompilerSchema {
         return this.classType;
     }
 
+    /**
+     * a PropertySchema could be a definition of a real property (of a class)
+     * or a virtual property which is generated when resolving paths like `configs.0`.
+     */
+    isRealProperty(): boolean {
+        return false;
+    }
+
     getCacheKey(): string {
         if (this.cacheKey) return this.cacheKey;
 
@@ -400,6 +408,10 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
     }
 
+    isRealProperty(): boolean {
+        return true;
+    }
+
     get resolveClassType(): ClassType<any> | undefined {
         return this.getResolvedClassTypeForValidType();
     }
@@ -494,6 +506,10 @@ export class ClassSchema<T = any> {
 
     public getClassName(): string {
         return getClassName(this.classType);
+    }
+
+    hasFullLoadHooks(): boolean {
+        return !!this.onLoad.find(v => v.options.fullLoad);
     }
 
     public addIndex(name: string, options?: IndexOptions) {
@@ -626,7 +642,10 @@ export class ClassSchema<T = any> {
         return this.methodProperties.get(name)!;
     }
 
-    protected initializeProperties() {
+    /**
+     * Before accessing `classProperties`, its necessary to call this method.
+     */
+    public initializeProperties() {
         if (!this.referenceInitialized) {
             this.referenceInitialized = true;
             for (const reference of this.references.values()) {

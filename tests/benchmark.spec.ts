@@ -28,7 +28,7 @@ export class MarshalModel {
 }
 
 
-test('benchmark', () => {
+test('benchmark plainToClass', () => {
     const count = 100_000;
 
     bench(count, 'plainToClass non-jit', (i) => {
@@ -113,38 +113,6 @@ test('benchmark classToPlain', () => {
     expect(plain.ready).toBe(true);
 });
 
-test('benchmark map/obj', () => {
-    const count = 100_000 * 6;
-    const map = new Map<string, number>();
-    const obj: any = {};
-    const array = [1, 2, 3, 4, 5];
-    map.set('any', 0);
-    map.set('class:plain:Uint8Array', 1);
-    map.set('class:plain:Float32Array', 2);
-    map.set('class:plain:number', 3);
-    map.set('class:plain:8Array', 4);
-    map.set('class', 5);
-    map.set('boolean', 6);
-    map.set('class:plain:Buffer', 7);
-    map.set('string', 8);
-    map.set('enum', 9);
-    for (const [k, v] of map.entries()) {
-        obj[k] = v;
-    }
-
-    bench(count, 'map', (i) => {
-        map.get('class:plain:number');
-    });
-
-    bench(count, 'obj', (i) => {
-        const v = obj['class:plain:number'];
-    });
-
-    bench(count, 'array', (i) => {
-        const v = array[1];
-    });
-
-});
 test('benchmark partialPlainToClass', () => {
     const partial = {
         name: 'name1',
