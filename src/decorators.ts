@@ -1,4 +1,3 @@
-import {Types} from "./mapper";
 import {
     BooleanValidator,
     DateValidator,
@@ -28,6 +27,29 @@ import {Buffer} from "buffer";
  */
 export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
 export const MarshalGlobal = {unpopulatedCheckActive: true};
+
+export type Types =
+    'objectId'
+    | 'uuid'
+    | 'class'
+    | 'moment'
+    | 'date'
+    | 'string'
+    | 'boolean'
+    | 'Int8Array'
+    | 'Uint8Array'
+    | 'Uint8ClampedArray'
+    | 'Int16Array'
+    | 'Uint16Array'
+    | 'Int32Array'
+    | 'Uint32Array'
+    | 'Float32Array'
+    | 'Float64Array'
+    | 'arrayBuffer'
+    | 'number'
+    | 'enum'
+    | 'any';
+
 
 /**
  * Type for @f.partial().
@@ -76,7 +98,7 @@ export function isTypedArray(type: Types): boolean {
 
 
 export interface PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, propertyName: string, propertySchema: PropertySchema): PropertyValidatorError | void;
+    validate<T>(value: any, target: ClassType<T>, propertyName: string, propertySchema: PropertyCompilerSchema): PropertyValidatorError | void;
 }
 
 export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
@@ -110,16 +132,85 @@ export interface PropertySchemaSerialized {
     classType?: string;
 }
 
-/**
- * Represents a class property or method argument definition.
- */
-export class PropertySchema {
-    name: string;
+export function propertySchemaCacheKey(p: PropertyCompilerSchema) {
+}
 
+/**
+ * Contains all resolved information from PropertySchema necessary to feat compiler functions.
+ *
+ * Internal note: It's on purpose aligned with PropertySchema.
+ */
+export class PropertyCompilerSchema {
     type: Types = 'any';
     isArray: boolean = false;
     isMap: boolean = false;
 
+    /**
+     * Whether given classType can be populated partially (for example in patch mechanisms).
+     */
+    isPartial: boolean = false;
+
+    isOptional: boolean = false;
+    //for enums
+    allowLabelsAsValue: boolean = false;
+
+    validators: ClassType<PropertyValidator>[] = [];
+
+    protected cacheKey?: string;
+
+    constructor(
+        public name: string,
+        protected classType?: ClassType<any>
+    ) {
+    }
+
+    get resolveClassType(): ClassType<any> | undefined {
+        return this.classType;
+    }
+
+    getCacheKey(): string {
+        if (this.cacheKey) return this.cacheKey;
+
+        if (this.isMap) {
+            this.cacheKey =  'm' + this.type;
+        } else if (this.isArray) {
+            this.cacheKey =  'a' + this.type;
+        } else if (this.isPartial) {
+            this.cacheKey =  'p' + this.type;
+        } else {
+            this.cacheKey = this.type;
+        }
+
+        return this.cacheKey;
+    }
+
+    static createFromPropertySchema(
+        propertySchema: PropertySchema,
+        isArray?: boolean,
+        isMap?: boolean,
+        isPartial?: boolean,
+    ): PropertyCompilerSchema {
+        const i = new PropertyCompilerSchema(
+            propertySchema.name,
+            propertySchema.getResolvedClassTypeForValidType()
+        );
+        i.type = propertySchema.type;
+        i.isMap = propertySchema.isMap;
+        i.isArray = propertySchema.isArray;
+        i.validators = propertySchema.validators;
+        i.isOptional = propertySchema.isOptional;
+        i.allowLabelsAsValue = propertySchema.allowLabelsAsValue;
+        if (isArray !== undefined) i.isArray = isArray;
+        if (isMap !== undefined) i.isMap = isMap;
+        if (isPartial !== undefined) i.isPartial = isPartial;
+        return i;
+    }
+}
+
+/**
+ * Represents a class property or method argument definition.
+ */
+export class PropertySchema extends PropertyCompilerSchema {
     /**
      * Whether its a owning reference.
      */
@@ -148,36 +239,26 @@ export class PropertySchema {
     isDecorated: boolean = false;
 
     isParentReference: boolean = false;
-    isOptional: boolean = false;
     isId: boolean = false;
-
-    /**
-     * Whether given classType can be populated partially (for example in patch mechanisms).
-     */
-    isPartial: boolean = false;
 
     /**
      * When this property belongs to method as argument then this contains the name of the method.
      */
     methodName?: string;
 
-    readonly validators: ClassType<PropertyValidator>[] = [];
-
-    /**
-     * For enums.
-     */
-    allowLabelsAsValue: boolean = false;
-
     exclude?: 'all' | 'mongo' | 'plain';
 
     templateArgs?: PropertySchema[];
 
-    classType?: ClassType<any>;
-    classTypeForwardRef?: ForwardedRef<any>;
-    classTypeResolved?: ClassType<any>;
+    protected classTypeForwardRef?: ForwardedRef<any>;
+    protected classTypeResolved?: ClassType<any>;
 
     constructor(name: string) {
-        this.name = name;
+        super(name);
+    }
+
+    setClassType(classType?: ClassType<any>) {
+        this.classType = classType;
     }
 
     toJSON(): PropertySchemaSerialized {
@@ -319,32 +400,8 @@ export class PropertySchema {
         }
     }
 
-    getValidators(): ClassType<PropertyValidator>[] {
-        if (this.type === 'string') {
-            return [StringValidator, ...this.validators];
-        }
-
-        if (this.type === 'date') {
-            return [DateValidator, ...this.validators];
-        }
-
-        if (this.type === 'number') {
-            return [NumberValidator, ...this.validators];
-        }
-
-        if (this.type === 'uuid') {
-            return [UUIDValidator, ...this.validators];
-        }
-
-        if (this.type === 'objectId') {
-            return [ObjectIdValidator, ...this.validators];
-        }
-
-        if (this.type === 'boolean') {
-            return [BooleanValidator, ...this.validators];
-        }
-
-        return this.validators;
+    get resolveClassType(): ClassType<any> | undefined {
+        return this.getResolvedClassTypeForValidType();
     }
 
     getResolvedClassTypeForValidType(): ClassType<any> | undefined {
@@ -395,6 +452,10 @@ export class ClassSchema<T = any> {
     collectionName?: string;
     databaseName?: string;
 
+    /**
+     * Name of the property which this class is decorating.
+     * As soon as someone use this class, the actual value of this property is used to serialize.
+     */
     decorator?: string;
 
     /**
@@ -408,7 +469,7 @@ export class ClassSchema<T = any> {
      */
     protected initializedMethods: { [name: string]: true } = {};
 
-    classProperties: { [name: string]: PropertySchema } = {};
+    classProperties = new Map<string, PropertySchema>();
 
     idField?: string;
     propertyNames: string[] = [];
@@ -446,9 +507,9 @@ export class ClassSchema<T = any> {
         s.databaseName = this.databaseName;
         s.decorator = this.decorator;
 
-        s.classProperties = {};
-        for (const [i, v] of eachPair(this.classProperties)) {
-            s.classProperties[i] = v.clone();
+        s.classProperties = new Map();
+        for (const [i, v] of this.classProperties.entries()) {
+            s.classProperties.set(i, v.clone());
         }
 
         s.methodProperties = new Map();
@@ -573,31 +634,23 @@ export class ClassSchema<T = any> {
                     const schema = reference.getResolvedClassSchema();
                     const name = reference.name + capitalizeFirstLetter(schema.getPrimaryField().name);
 
-                    if (!this.classProperties[name]) {
+                    if (!this.classProperties.has(name)) {
                         const foreignKey = schema.getPrimaryField().clone();
                         foreignKey.isReference = false;
                         foreignKey.backReference = undefined;
                         foreignKey.index = {...reference.index};
                         foreignKey.name = name;
-                        this.classProperties[name] = foreignKey;
+                        this.classProperties.set(name, foreignKey);
                         getClassSchema(this.classType).addIndex(foreignKey.name, foreignKey.index);
                     }
 
-                    this.classProperties[name].isReferenceKey = true;
+                    this.classProperties.get(name)!.isReferenceKey = true;
                 }
             }
         }
     }
 
-    public getAllReferences(): PropertySchema[] {
-        this.initializeProperties();
-        return Object.values(this.classProperties).filter(v => {
-            return v.backReference || v.isReference;
-        });
-    }
-
-
-    public getClassProperties(): { [name: string]: PropertySchema } {
+    public getClassProperties(): Map<string, PropertySchema> {
         this.initializeProperties();
         return this.classProperties;
     }
@@ -638,13 +691,11 @@ export class ClassSchema<T = any> {
 
     public getPropertyOrUndefined(name: string): PropertySchema | undefined {
         this.initializeProperties();
-        if (this.classProperties[name]) {
-            return this.classProperties[name];
-        }
+        return this.classProperties.get(name);
     }
 
     public hasProperty(name: string): boolean {
-        return Boolean(this.classProperties[name]);
+        return this.classProperties.has(name);
     }
 
     /**
@@ -704,11 +755,11 @@ export class ClassSchema<T = any> {
 
     public getProperty(name: string): PropertySchema {
         this.initializeProperties();
-        if (!this.classProperties[name]) {
-            throw new Error(`Property ${name} not found`);
+        if (!this.classProperties.has(name)) {
+            throw new Error(`Property ${this.getClassName()}.${name} not found`);
         }
 
-        return this.classProperties[name];
+        return this.classProperties.get(name)!;
     }
 }
 
@@ -1207,12 +1258,12 @@ function createFieldDecoratorResult<T>(
             if (isNumber(parameterIndexOrDescriptor)) {
                 //decorator is used on a method argument. Might be on constructor or any other method.
                 if (methodName === 'constructor') {
-                    if (!schema.classProperties[givenPropertyName]) {
-                        schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
+                    if (!schema.classProperties.has(givenPropertyName)) {
+                        schema.classProperties.set(givenPropertyName, new PropertySchema(givenPropertyName));
                         schema.propertyNames.push(givenPropertyName);
                     }
 
-                    propertySchema = schema.classProperties[givenPropertyName];
+                    propertySchema = schema.classProperties.get(givenPropertyName)!;
                     argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
                 } else {
                     if (!argumentsProperties[parameterIndexOrDescriptor]) {
@@ -1227,12 +1278,12 @@ function createFieldDecoratorResult<T>(
                     throw new Error(`Could not resolve property name for class property on ${getClassName(target)}`);
                 }
 
-                if (!schema.classProperties[givenPropertyName]) {
-                    schema.classProperties[givenPropertyName] = new PropertySchema(givenPropertyName);
+                if (!schema.classProperties.has(givenPropertyName)) {
+                    schema.classProperties.set(givenPropertyName, new PropertySchema(givenPropertyName));
                     schema.propertyNames.push(givenPropertyName);
                 }
 
-                propertySchema = schema.classProperties[givenPropertyName];
+                propertySchema = schema.classProperties.get(givenPropertyName)!;
             }
         }
 
@@ -1969,7 +2020,7 @@ function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return FieldDecoratorWrapper((target, property, returnType?: any) => {
         if (property) {
             Type('enum')(target, property);
-            property.classType = type;
+            property.setClassType(type);
             property.allowLabelsAsValue = allowLabelsAsValue;
         }
     });

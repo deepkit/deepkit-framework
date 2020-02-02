@@ -42,5 +42,5 @@ test('test minimized code', async () => {
         ) {
         }
     }
-    expect(getClassSchema(ClusterNodeCredentials).classProperties['e']).toBeUndefined();
+    expect(getClassSchema(ClusterNodeCredentials).classProperties.get('e')).toBeUndefined();
 });
