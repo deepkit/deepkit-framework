@@ -2,7 +2,7 @@ import {validate, ValidationFailed} from "./validation";
 import {getClassSchema, getClassTypeFromInstance} from "./decorators";
 import {ClassType, eachKey, getClassName, isObject} from "@marcj/estdlib";
 import {
-    createJITConverterFromCompilerSchema,
+    createJITConverterFromPropertySchema,
     jitClassToPlain,
     jitPartialClassToPlain,
     jitPartialPlainToClass,
@@ -14,7 +14,7 @@ import {
  */
 export function argumentClassToPlain<T>(classType: ClassType<T>, methodName: string, argument: number, value: any): any {
     const schema = getClassSchema(classType);
-    return createJITConverterFromCompilerSchema('class', 'plain', schema.getMethodProperties(methodName)[argument])(value);
+    return createJITConverterFromPropertySchema('class', 'plain', schema.getMethodProperties(methodName)[argument])(value);
 }
 
 /**
@@ -22,7 +22,7 @@ export function argumentClassToPlain<T>(classType: ClassType<T>, methodName: str
  */
 export function methodResultClassToPlain<T>(classType: ClassType<T>, methodName: string, value: any): any {
     const schema = getClassSchema(classType);
-    return createJITConverterFromCompilerSchema('class', 'plain', schema.getMethod(methodName))(value);
+    return createJITConverterFromPropertySchema('class', 'plain', schema.getMethod(methodName))(value);
 }
 
 /**
@@ -30,7 +30,7 @@ export function methodResultClassToPlain<T>(classType: ClassType<T>, methodName:
  */
 export function argumentPlainToClass<T>(classType: ClassType<T>, methodName: string, argument: number, value: any): any {
     const schema = getClassSchema(classType);
-    return createJITConverterFromCompilerSchema('plain', 'class', schema.getMethodProperties(methodName)[argument])(value);
+    return createJITConverterFromPropertySchema('plain', 'class', schema.getMethodProperties(methodName)[argument])(value);
 }
 
 /**
@@ -38,7 +38,7 @@ export function argumentPlainToClass<T>(classType: ClassType<T>, methodName: str
  */
 export function methodResultPlainToClass<T>(classType: ClassType<T>, methodName: string, value: any): any {
     const schema = getClassSchema(classType);
-    return createJITConverterFromCompilerSchema('plain', 'class', schema.getMethod(methodName))(value);
+    return createJITConverterFromPropertySchema('plain', 'class', schema.getMethod(methodName))(value);
 }
 
 /**

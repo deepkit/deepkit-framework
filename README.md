@@ -31,6 +31,7 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 * Support declaring method arguments and return type for method serialization
 * Implicit type detection as far as Typescript allows it technically
 * Supports getters
+* One decorator for all. Best and mist efficient UX possible, with full type hinting support
 * Soft type castings (so implicit cast from number -> string, if necessary)
 * Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
 * NestJS validation pipe
@@ -130,17 +131,19 @@ console.log(instance);
 ## Benchmark
 
 This library uses a JIT engine to convert data between class instances -> JSON objects and vice-versa. This means
-it builds JS functions in the background once you request a serialization for a certain class. The build JS is
-optimized by the JS engine itself and then executed. By using as much as information during build-time possible
-to generate the smallest and fastest code possible allows to achieve the best performance yet available for serialization
+it builds JS functions in the background once you request a serialization for a certain class. The JIT code is
+then optimized further by the JS engine itself and then executed. By using as much information as possible
+during during build-time allows to achieve the best performance available for serialization
 in Javascript.
 
 See [bench.spec.ts](https://github.com/marcj/marshal.ts/blob/feature/jit/packages/benchmark/bench.spec.ts) for more details:
 
+Tests were conducted on a Macbook Pro i9 with 2,9 GHz.
+On real server hardware with Linux this numbers are easily halved.
+
 The class structure in question:
 ```typescript
-```typescript
-import {f} from "@marcj/marshal";
+import {f, plainToClass} from "@marcj/marshal";
 
 export class MarshalModel {
     @f ready?: boolean;
@@ -155,16 +158,38 @@ export class MarshalModel {
     ) {
     }
 }
+
+plainToClass(MarshalModel, {
+    name: 'name',
+    id: 1,
+    tags: ['a', 'b', 'c'],
+    priority: 5,
+    ready: true,
+});
 ```
 
-Converting 100,000 elements from json to class instances takes about **0.00067 ms per item**, in total 7ms.
+Converting **100,000 elements** from json to class instances (plainToClass) takes about **0.000184ms per item**, in total 18ms.
 
-Converting 100,00 elements from class instances to JSON objects takes about **0.00040ms per item**, in total 4ms.
+Converting **100,000 elements** from class instances to JSON objects (classToPlain) takes about **0.000123 per item**, in total 12ms.
 
-For comparison: This is up to 6,000% faster than class-transformer.
+**Compared to class-transformer**:
+ 1. classToPlain takes 2748ms. Marshal is up to 22,900% faster.
+ 2. plainToClass takes 2605ms. Marshal is up to 21,700% faster.
+
 Another comparison: Creating manually new class instances and assign properties is only barely faster.
-Creating manually 100,000 class instances and assigning property values take 4ms manually instead of 8ms with Marshal.
 
+```typescript
+const instance = new MarshalModel(1, 'name');
+instance.tags = ['a', 'b', 'c'];
+instance.priority = 5;
+instance.ready = true;
+````
+
+Doing this 100,000 times take 12.349ms instead of 18.483ms with Marshal. But at that cost Marshal made
+already sure all the types are correct, which the code above doesn't when data is coming from somewhere else.
+
+Note: There's no validation involved here, but only soft implicit type converting (number to string for example).
+Use `const errors = validate(MyClass, instance)` to do validation whe necessary. Validation is not yet optimized with the JIT engine.
 
 ## Usage
 
