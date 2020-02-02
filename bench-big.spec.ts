@@ -1,9 +1,17 @@
 import 'jest';
 import 'reflect-metadata';
-import {classToPlain, f, plainToClass} from "../core";
-import {plainToClass as classTransformerPlainToClass, classToPlain as classTransformerClassToPlain, Exclude as ctExclude, Transform, Type} from "class-transformer";
+import {classToPlain, plainToClass} from "../core/src/mapper-old";
+import {
+    classToPlain as classTransformerClassToPlain,
+    Exclude as ctExclude,
+    plainToClass as classTransformerPlainToClass,
+    Transform,
+    Type
+} from "class-transformer";
 import {bench} from "./util";
 import {Plan, SubModel} from "@marcj/marshal/tests/entities";
+import {jitClassToPlain, jitPlainToClass} from "../core/src/jit";
+import {f} from "@marcj/marshal";
 
 export class SimpleModel {
     @f
@@ -76,35 +84,41 @@ export class ClassTransformerSimpleModel {
 
 
 test('benchmark plainToClass', () => {
-    bench('Marshal: 10000x plainToClass Big Entity', () => {
-        for (let i = 0; i < 10000; i++) {
-            plainToClass(SimpleModel, {
-                name: 'name' + i,
-                type: 2,
-                plan: Plan.ENTERPRISE,
-                children: {label: 'label'},
-                childrenMap: {'sub': {label: 'label'}},
-                types: ['a', 'b', 'c']
-            });
-        }
+    bench(10000, 'Marshal: plainToClass Big Entity', (i) => {
+        plainToClass(SimpleModel, {
+            name: 'name' + i,
+            type: 2,
+            plan: Plan.ENTERPRISE,
+            children: {label: 'label'},
+            childrenMap: {'sub': {label: 'label'}},
+            types: ['a', 'b', 'c']
+        });
+    });
+    bench(10000, 'Marshal: jitPlainToClass Big Entity', (i) => {
+        jitPlainToClass(SimpleModel, {
+            name: 'name' + i,
+            type: 2,
+            plan: Plan.ENTERPRISE,
+            children: {label: 'label'},
+            childrenMap: {'sub': {label: 'label'}},
+            types: ['a', 'b', 'c']
+        });
     });
 
-    bench('ClassTransformer: 10000x plainToClass Big Entity', () => {
-        for (let i = 0; i < 10000; i++) {
-            classTransformerPlainToClass(ClassTransformerSimpleModel, {
-                name: 'name' + i,
-                type: 2,
-                plan: Plan.ENTERPRISE,
-                children: {label: 'label'},
-                childrenMap: {'sub': {label: 'label'}},
-                types: ['a', 'b', 'c']
-            });
-        }
+    bench(10000, 'ClassTransformer: plainToClass Big Entity', (i) => {
+        classTransformerPlainToClass(ClassTransformerSimpleModel, {
+            name: 'name' + i,
+            type: 2,
+            plan: Plan.ENTERPRISE,
+            children: {label: 'label'},
+            childrenMap: {'sub': {label: 'label'}},
+            types: ['a', 'b', 'c']
+        });
     });
 });
 
 test('benchmark classToPlain', () => {
-    bench('Marshal: 10000x classToPlain Big Entity', () => {
+    {
         const item = new SimpleModel('name');
         item.type = 2;
         item.plan = Plan.ENTERPRISE;
@@ -112,22 +126,26 @@ test('benchmark classToPlain', () => {
         item.childrenMap['sub'] = new SubModel('sub');
         item.types = ['a', 'b', 'c'];
 
-        for (let i = 0; i < 10000; i++) {
+        bench(10000, 'Marshal: classToPlain Big Entity', (i) => {
             item.name = 'item_' + i;
             classToPlain(SimpleModel, item);
-        }
-    });
+        });
 
-    bench('ClassTransformer: 10000x classToPlain Big Entity', () => {
+        bench(10000, 'Marshal: jitClassToPlain Big Entity', (i) => {
+            item.name = 'item_' + i;
+            jitClassToPlain(SimpleModel, item);
+        });
+    }
+
+    {
         const item = new ClassTransformerSimpleModel();
         item.type = 2;
         item.plan = Plan.ENTERPRISE;
         item.children.push(new SubModel('sub'));
         item.childrenMap['sub'] = new SubModel('sub');
         item.types = ['a', 'b', 'c'];
-
-        for (let i = 0; i < 10000; i++) {
+        bench(10000, 'ClassTransformer: classToPlain Big Entity', (i) => {
             classTransformerClassToPlain(item);
-        }
-    });
+        });
+    }
 });
