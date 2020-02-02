@@ -209,7 +209,7 @@ export class Formatter {
                     for (const propName of classSchema.propertyNames) {
                         if (propName === classSchema.idField) continue;
 
-                        const prop = classSchema.classProperties[propName];
+                        const prop = classSchema.classProperties.get(propName)!;
                         if (prop.isReference || prop.backReference) continue;
 
                         Object.defineProperty(item, propName, {
