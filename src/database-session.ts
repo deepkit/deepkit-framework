@@ -71,7 +71,7 @@ export class DatabaseSession {
 
     protected buildFindCriteria<T>(classType: ClassType<T>, item: T): { [name: string]: any } {
         const criteria: { [name: string]: any } = {};
-        const id = getIdField(classType);
+        const id = getIdField(classType) as string;
 
         if (!id) {
             throw new NoIDDefinedError(`Class ${getClassName(classType)} has no @f.primary() defined.`);

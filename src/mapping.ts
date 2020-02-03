@@ -61,11 +61,11 @@ export function partialMongoToPlain<T, K extends keyof T>(
     return partialClassToPlain(classType, partialMongoToClass(classType, target));
 }
 
-export function propertyClassToMongo<T>(classType: ClassType<T>, name: keyof T & string, value: any): any {
+export function propertyClassToMongo<T>(classType: ClassType<T>, name: (keyof T & string) | string, value: any): any {
     return createJITConverterFromPropertySchema('class', 'mongo', getClassSchema(classType).getProperty(name))(value);
 }
 
-export function propertyMongoToClass<T>(classType: ClassType<T>, name: keyof T & string, value: any): any {
+export function propertyMongoToClass<T>(classType: ClassType<T>, name: (keyof T & string) | string, value: any): any {
     return createJITConverterFromPropertySchema('mongo', 'class', getClassSchema(classType).getProperty(name))(value);
 }
 
