@@ -20,7 +20,7 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 ## Features
 
 * Fastest serialization thanks to a JIT engine. It's the the by far fastest serialization library for both, Nodejs and browsers.
-* Supported types: String, Number, Boolean, Date, Momemt.js, ArrayBuffer (binary), custom classes, Array, object maps, any.
+* Supported types: String, Number, Boolean, Date, Moment.js, ArrayBuffer (binary), custom classes, Array, object maps, any.
 * Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
 * Cross referencing/Circular references using `@f.forwardRef`
 * Constructor support (required property can be placed in constructor) making it suitable for Typescript strict compiling
