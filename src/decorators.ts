@@ -493,7 +493,7 @@ export class ClassSchema<T = any> {
 
     classProperties = new Map<string, PropertySchema>();
 
-    idField?: string;
+    idField?: keyof T & string;
     propertyNames: string[] = [];
 
     protected methodsParamNames = new Map<string, string[]>();
@@ -840,7 +840,7 @@ export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): Class
 /**
  * Returns meta information / schema about given entity class.
  */
-export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema {
+export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema<T> {
     const classType = classTypeIn['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
     if (!ClassSchemas.has(classType.prototype)) {
