@@ -4,6 +4,7 @@ import {BaseQuery, DatabaseQueryModel} from "./query";
 import {ClassType, getClassName} from "@marcj/estdlib";
 import {DatabaseSession} from "./database-session";
 import {markItemAsKnownInDatabase} from "./entity-register";
+import has = Reflect.has;
 
 /**
  * Returns true if item is hydrated. Returns false when its a unpopulated proxy.
@@ -168,7 +169,9 @@ export class Formatter {
         const args: any[] = [];
 
         for (const prop of foreignSchema.getMethodProperties('constructor')) {
-            args.push(propertyMongoToClass(classSchema.classType, prop.name, dbItem[prop.name]));
+            args.push(
+                dbItem[prop.name] !== undefined && dbItem[prop.name] !== null ?
+                    propertyMongoToClass(classSchema.classType, prop.name, dbItem[prop.name]) : dbItem[prop.name]);
         }
 
         MarshalGlobal.unpopulatedCheckActive = false;
@@ -222,12 +225,13 @@ export class Formatter {
                     //check if we got new reference data we can apply to the instance
                     for (const join of model.joins) {
                         if (join.populate) {
-                            if (value[join.propertySchema.name] !== undefined && value[join.propertySchema.name] !== null) {
+                            const refName = join.as || join.propertySchema.name;
+                            if (value[refName] !== undefined && value[refName] !== null) {
                                 if (join.propertySchema.backReference) {
                                     Object.defineProperty(item, join.propertySchema.name, {
                                         enumerable: true,
                                         configurable: true,
-                                        value: value[join.propertySchema.name].map(item => {
+                                        value: value[refName].map(item => {
                                             return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
                                         }),
                                     });
@@ -236,7 +240,7 @@ export class Formatter {
                                         enumerable: true,
                                         configurable: true,
                                         value: this.hydrateModel(
-                                            join.query.model, join.propertySchema.getResolvedClassSchema(), value[join.propertySchema.name]
+                                            join.query.model, join.propertySchema.getResolvedClassSchema(), value[refName]
                                         ),
                                     });
                                 }
@@ -272,17 +276,24 @@ export class Formatter {
         const handledRelation: { [name: string]: true } = {};
         for (const join of model.joins) {
             handledRelation[join.propertySchema.name] = true;
+            const refName = join.as || join.propertySchema.name;
+
             if (join.populate) {
-                if (value[join.propertySchema.name] !== undefined && value[join.propertySchema.name] !== null) {
-                    if (join.propertySchema.backReference && join.propertySchema.isArray) {
-                        converted[join.propertySchema.name] = value[join.propertySchema.name].map(item => {
+                const hasValue = value[refName] !== undefined && value[refName] !== null;
+                if (join.propertySchema.backReference && join.propertySchema.isArray) {
+                    if (hasValue) {
+                        converted[join.propertySchema.name] = value[refName].map(item => {
                             return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
                         });
                     } else {
-                        converted[join.propertySchema.name] = this.hydrateModel(
-                            join.query.model, join.propertySchema.getResolvedClassSchema(), value[join.propertySchema.name]
-                        );
+                        converted[join.propertySchema.name] = [];
                     }
+                } else if (hasValue) {
+                    converted[join.propertySchema.name] = this.hydrateModel(
+                        join.query.model, join.propertySchema.getResolvedClassSchema(), value[refName]
+                    );
+                } else {
+                    converted[join.propertySchema.name] = undefined;
                 }
             } else {
                 //not populated

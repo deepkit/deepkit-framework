@@ -4,8 +4,6 @@ import {
     getDatabaseName,
     getEntityName,
     getIdField,
-    getParentReferenceClass,
-    getResolvedReflection,
     isExcluded,
     isOptional,
     typedArrayNamesMap
@@ -14,51 +12,52 @@ import {ColumnType, EntitySchema, EntitySchemaColumnOptions, EntitySchemaIndexOp
 import {ClassType, each, getEnumValues} from "@marcj/estdlib";
 
 function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: string): EntitySchemaColumnOptions {
-    const reflection = getResolvedReflection(classType, propertyName)!;
+    const schema = getClassSchema(classType);
+    const property = schema.getProperty(propertyName);
 
     const nullable = isOptional(classType, propertyName);
     let type: ColumnType = 'json';
     let enumValues: any[] | undefined;
 
-    if (!reflection.array && !reflection.map) {
-        if (reflection.type === 'string') {
+    if (!property.isArray && !property.isMap) {
+        if (property.type === 'string') {
             type = 'string';
         }
 
-        if (reflection.type === 'number') {
+        if (property.type === 'number') {
             type = 'number';
         }
 
-        if (reflection.type === 'arrayBuffer' || typedArrayNamesMap.has(reflection.type)) {
+        if (property.type === 'arrayBuffer' || typedArrayNamesMap.has(property.type)) {
             type = 'binary';
         }
 
-        if (reflection.type === 'date') {
+        if (property.type === 'date') {
             type = 'date';
         }
 
-        if (reflection.type === 'boolean') {
+        if (property.type === 'boolean') {
             type = 'boolean';
         }
 
-        if (reflection.type === 'uuid') {
+        if (property.type === 'uuid') {
             type = 'uuid';
         }
 
-        if (reflection.type === 'objectId') {
+        if (property.type === 'objectId') {
             type = 'string';
         }
 
-        if (reflection.type === 'enum') {
+        if (property.type === 'enum') {
             type = 'enum';
-            enumValues = getEnumValues(reflection.typeValue);
+            enumValues = getEnumValues(property.resolveClassType);
         }
     }
 
     return {
         name: propertyName,
         type: type,
-        objectId: reflection.type === 'objectId',
+        objectId: property.type === 'objectId',
         enum: enumValues,
         primary: getIdField(classType) === propertyName,
         nullable: nullable,
@@ -82,15 +81,13 @@ export function getTypeOrmEntity<T>(classType: ClassType<T>): EntitySchema<T> {
         [P in keyof T]?: EntitySchemaColumnOptions;
     } = {};
 
-    for (const property of each(schema.getClassProperties())) {
-        if (getParentReferenceClass(classType, property.name)) {
+    for (const property of schema.getClassProperties().values()) {
+        if (property.isParentReference) {
             //we do not export parent references, as this would lead to an circular reference
             continue;
         }
 
-        if (isExcluded(classType, property.name, 'mongo')) {
-            continue;
-        }
+        if (property.exclude && property.exclude !== 'plain') continue;
 
         if (property.isReference) continue;
 

@@ -61,6 +61,9 @@ export class DatabaseQueryModel<T> {
         propertySchema: PropertySchema,
         type: 'left' | 'inner',
         populate: boolean,
+        //defines the field name under which the database engine populated the results
+        //necessary for the formatter to pick it up, convert and set correct to the real field name
+        as?: string,
         query: JoinDatabaseQuery<any, any>,
         foreignPrimaryKey: PropertySchema,
     }[] = [];
