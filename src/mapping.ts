@@ -13,6 +13,24 @@ import {
 import {ClassType, eachKey, isPlainObject, getClassName} from "@marcj/estdlib";
 import './compiler-templates';
 
+export function mongoToClass<T>(classType: ClassType<T>, record: any, parents?: any[]): T {
+    return createXToClassFunction(classType, 'mongo')(record, parents);
+}
+
+export function classToMongo<T>(classType: ClassType<T>, instance: T): any {
+    if (!(instance instanceof classType)) {
+        throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
+    }
+    return createClassToXFunction(classType, 'mongo')(instance);
+}
+
+export function mongoToPlain<T>(classType: ClassType<T>, record: any) {
+    return classToPlain(classType, mongoToClass(classType, record));
+}
+
+export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: any }): any {
+    return classToMongo(classType, plainToClass(classType, target));
+}
 
 export function partialClassToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
@@ -29,7 +47,6 @@ export function partialMongoToClass<T, K extends keyof T>(
     return jitPartial('mongo', 'class', classType, partial, parents);
 }
 
-
 export function partialPlainToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
@@ -44,31 +61,11 @@ export function partialMongoToPlain<T, K extends keyof T>(
     return partialClassToPlain(classType, partialMongoToClass(classType, target));
 }
 
-
-export function mongoToClass<T>(classType: ClassType<T>, target: any, parents?: any[]): T {
-    return createXToClassFunction(classType, 'mongo')(target, parents);
-}
-
-export function classToMongo<T>(classType: ClassType<T>, instance: T): any {
-    if (!(instance instanceof classType)) {
-        throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
-    }
-    return createClassToXFunction(classType, 'mongo')(instance);
-}
-
-export function mongoToPlain<T>(classType: ClassType<T>, target: any) {
-    return classToPlain(classType, mongoToClass(classType, target));
-}
-
-export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: any }): any {
-    return classToMongo(classType, plainToClass(classType, target));
-}
-
-export function propertyClassToMongo(classType: ClassType<any>, name: string, value: any): any {
+export function propertyClassToMongo<T>(classType: ClassType<T>, name: keyof T & string, value: any): any {
     return createJITConverterFromPropertySchema('class', 'mongo', getClassSchema(classType).getProperty(name))(value);
 }
 
-export function propertyMongoToClass(classType: ClassType<any>, name: string, value: any): any {
+export function propertyMongoToClass<T>(classType: ClassType<T>, name: keyof T & string, value: any): any {
     return createJITConverterFromPropertySchema('mongo', 'class', getClassSchema(classType).getProperty(name))(value);
 }
 
@@ -171,8 +168,8 @@ export function convertQueryToMongo<T, K extends keyof T>(
                         // if (property && property.isReference) {
                         //     targetI = i;
                         // } else {
-                            //don't transform
-                            fieldNamesMap[targetI] = true;
+                        //don't transform
+                        fieldNamesMap[targetI] = true;
                         // }
                     } else {
                         fieldNamesMap[targetI] = true;
