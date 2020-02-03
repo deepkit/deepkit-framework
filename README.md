@@ -358,7 +358,7 @@ class MyModel {
     @f.optional().index()
     name?: string;
 
-    @f()
+    @f
     created: Date = new Date;
     
     @f.moment()
@@ -401,7 +401,7 @@ class Controller {
     }
     
     @f.array(Number) //return type. Necessary to specify array, since `number[]` is not inferable
-    another(@f.array(String) names: string): number[] {
+    another(@f.array(String) names: string[]): number[] {
         return [1, 2];
     }
 }
@@ -520,11 +520,11 @@ example `string[]` => `ChildrenCollection`.
 ```typescript
 import {f} from '@marcj/marshal';
 class ChildrenCollection {
-    @f.array(String).decorated()
-    items: string[];
     
-    constructor(items: string[]) {
-        this.items = items;
+    constructor(
+        @f.array(String).decorated()
+        public items: string[]
+    ) {
     }
     
     public add(item: string) {
@@ -534,7 +534,7 @@ class ChildrenCollection {
 
 class MyEntity {
     @f.primary().mongoId()
-    id: string;
+    _id: string;
     
     //in *toMongo and *toPlain is children the value of ChildrenCollection::items
     @f.type(ChildrenCollection)
@@ -634,9 +634,42 @@ expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 
 In Marshal everything is compiled down to a highly optimized JS function. That means when you
 want to add another serialization target, you have to write compiler templates. But it sounds
-scarier than it is. Here's an example on how to convert
+scarier than it is. Here's an example on how to convert a date to a ISO format for json transportation.
 
+```typescript
+import {registerConverterCompiler} from '@marcj/marshal';
 
+//from class instance values to your MyTarget type, which will be a string here
+registerConverterCompiler('class', 'MyTarget', 'date', (setter: string, accessor: string) => {
+    return `${setter} = ${accessor}.toJSON();`;
+});
+
+//from your MyTarget type to class instance values 
+registerConverterCompiler('MyTarget', 'class', 'date', (setter: string, accessor: string) => {
+    return `${setter} = new Date(${accessor});`;
+});
+```
+
+To use your custom traget, you can use these jit functions:
+
+```typescript
+import {ClassType, getClassName} from "@marcj/estdlib";
+import {createClassToXFunction, createXToClassFunction} from '@marcj/marshal';
+export function classToMyTarget<T>(classType: ClassType<T>, instance: T): any {
+    if (!(instance instanceof classType)) {
+        throw new Error(`Could not classToMyTarget since target is not a class instance of ${getClassName(classType)}`);
+    }
+    return createClassToXFunction(classType, 'MyTarget')(instance);
+}
+
+export function myTargetToClass<T>(classType: ClassType<T>, record: any, parents?: any[]): T {
+    return createXToClassFunction(classType, 'MyTarget')(record, parents);
+}
+```
+
+See [compiler templates of mongodb](https://github.com/marcj/marshal.ts/blob/master/packages/mongo/src/compiler-templates.ts)
+and its [user facing API](https://github.com/marcj/marshal.ts/blob/master/packages/mongo/src/mapping.ts)
+to get more examples.
 
 ### TypeORM
 
