@@ -145,14 +145,6 @@ export function getIdField<T>(classType: ClassType<T>): string | undefined {
 /**
  * @hidden
  */
-export function getIdFieldValue<T>(classType: ClassType<T>, target: any): any {
-    const id = getIdField(classType);
-    return id ? target[id] : undefined;
-}
-
-/**
- * @hidden
- */
 export function getDecorator<T>(classType: ClassType<T>): string | undefined {
     return getClassSchema(classType).decorator;
 }

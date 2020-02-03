@@ -1,17 +1,11 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {JobTaskQueue, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
-import {
-    classToPlain,
-    partialClassToPlain,
-    partialPlainToClass,
-    plainToClass
-} from "../src/mapper";
-import {f, getClassSchema, ParentReference, PropertySchema} from "..";
+import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
+import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from "../src/mapper";
+import {f, getClassSchema, ParentReference} from "..";
 import {DocumentClass} from "./document-scenario/DocumentClass";
-import {PageClass} from "./document-scenario/PageClass";
 import {PageCollection} from "./document-scenario/PageCollection";
-import {printToClassJitFunction, resolvePropertyCompilerSchema} from "../src/jit";
+import {resolvePropertyCompilerSchema} from "../src/jit";
 
 test('resolvePropertyCompilerSchema simple', () => {
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'id')!.type).toBe('uuid');
@@ -348,7 +342,7 @@ test('partial edge cases', () => {
 
         expect(m.name).toBe(undefined);
         expect(m['picture']).toBe(undefined);
-        expect(m.tags).toBeUndefined();
+        expect(m.tags).toEqual([]);
     }
 
     const m = partialPlainToClass(User, {

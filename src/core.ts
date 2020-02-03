@@ -34,7 +34,7 @@ export interface TypedArray {
 }
 
 export function nodeBufferToTypedArray<K>(buf: Buffer, type: TypedArrayClassType<K>): K {
-    return new type(buf.buffer, buf.byteOffset, buf.length / type.BYTES_PER_ELEMENT)
+    return new type(buf.buffer, buf.byteOffset, buf.length / type.BYTES_PER_ELEMENT);
 }
 
 /**
@@ -55,7 +55,7 @@ export function base64ToTypedArray<K>(base64: string, type: TypedArrayClassType<
  * sure a copy happens and the ArrayBuffer is not shared.
  */
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-    return nodeBufferToArrayType(Buffer.from(base64, 'base64'));
+    return nodeBufferToArrayBuffer(Buffer.from(base64, 'base64'));
 }
 
 /**
@@ -64,7 +64,7 @@ export function base64ToArrayBuffer(base64: string): ArrayBuffer {
  *
  * This makes a copy.
  */
-export function nodeBufferToArrayType<K>(buf: Buffer): ArrayBuffer {
+export function nodeBufferToArrayBuffer<K>(buf: Buffer): ArrayBuffer {
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
@@ -88,8 +88,8 @@ export function typedArrayToBase64(typedArray: TypedArray): string {
 /**
  * Same as Buffer.from() but creates a ArrayBuffer that is not shared.
  */
-export function arrayBufferFrom(data: string, encoding?: string) {
-    return nodeBufferToArrayType(Buffer.from(data, encoding as any));
+export function arrayBufferFrom(data: string, encoding?: string): ArrayBuffer {
+    return nodeBufferToArrayBuffer(Buffer.from(data, encoding as any));
 }
 
 
