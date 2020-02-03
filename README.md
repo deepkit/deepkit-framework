@@ -6,7 +6,7 @@
 
 [![Build Status](https://travis-ci.com/marcj/marshal.ts.svg?branch=master)](https://travis-ci.com/marcj/marshal.ts)
 [![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
-[![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master#)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
 Marshal is the **by far fastest** Javascript serialization implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
 JSON-representable data from JSON object to class instance to database records and vice versa, written in and for TypeScript. Marshal uses
@@ -184,8 +184,7 @@ instance.priority = 5;
 instance.ready = true;
 ````
 
-Doing this 100,000 times take 12.349ms instead of 18.483ms with Marshal. But at that cost Marshal made
-already sure all the types are correct, which the code above doesn't when data is coming from somewhere else.
+Doing this 100,000 times takes 12.349ms instead of 18.483ms with Marshal.
 
 Note: There's no validation involved here, but only soft implicit type converting (number to string for example).
 Use `const errors = validate(MyClass, instance)` to do validation whe necessary. Validation is not yet optimized with the JIT engine.
