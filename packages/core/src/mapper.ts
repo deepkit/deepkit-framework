@@ -138,7 +138,7 @@ export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: an
 /**
  * @hidden
  */
-export function getIdField<T>(classType: ClassType<T>): string | undefined {
+export function getIdField<T>(classType: ClassType<T>): (keyof T & string) | undefined {
     return getClassSchema(classType).idField;
 }
 
