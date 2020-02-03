@@ -14,7 +14,8 @@
   "dependencies": {
     "@marcj/marshal": "^2.0.0",
     "buffer": "^5.2.1",
-    "class-transformer": "^0.2.0"
+    "class-transformer": "^0.2.0",
+    "cerialize": "^2.0.1"
   },
   "jest": {
     "testURL": "http://localhost/",

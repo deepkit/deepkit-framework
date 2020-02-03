@@ -8,6 +8,8 @@ import {
 import {bench} from "./util";
 import {jitClassToPlain, jitPlainToClass} from "../core/src/jit";
 import {f} from "@marcj/marshal";
+import {autoserializeAs, autoserializeAsArray, DeserializeRaw, Deserialize, Serialize} from "cerialize";
+import instantiate = WebAssembly.instantiate;
 
 export class MarshalModel {
     @f ready?: boolean;
@@ -23,7 +25,7 @@ export class MarshalModel {
     }
 }
 
-export class ClassTransformerSuperSimple {
+export class ClassTransformerModel {
     public id?: number;
     public name?: string;
 
@@ -34,8 +36,19 @@ export class ClassTransformerSuperSimple {
     priority: number = 0;
 }
 
+export class CerializeModel {
+    @autoserializeAs(Number) id?: number;
+    @autoserializeAs(String) public name: string;
+
+    @autoserializeAs(Boolean) ready?: boolean;
+
+    @autoserializeAsArray(String) tags: string[] = [];
+
+    @autoserializeAs(Number) priority: number = 0;
+}
+
 test('benchmark plainToClass', () => {
-    const count = 1_000_000;
+    const count = 100_000;
 
     bench(count, 'Marshal plainToClass SuperSimple', (i) => {
         plainToClass(MarshalModel, {
@@ -58,13 +71,23 @@ test('benchmark plainToClass', () => {
     });
 
     bench(count, 'ClassTransformer plainToClass SuperSimple', (i) => {
-        classTransformerPlainToClass(ClassTransformerSuperSimple, {
+        classTransformerPlainToClass(ClassTransformerModel, {
             name: 'name' + i,
             id: i,
             tags: ['a', 'b', 'c'],
             priority: 5,
             ready: true,
         });
+    });
+
+    bench(count, 'Cerialize Deserialize SuperSimple', (i) => {
+        Deserialize({
+            name: 'name' + i,
+            id: i,
+            tags: ['a', 'b', 'c'],
+            priority: 5,
+            ready: true,
+        }, CerializeModel);
     });
 });
 
@@ -89,5 +112,9 @@ test('benchmark classToPlain', () => {
 
     bench(count, 'ClassTransformer classToPlain SuperSimple', (i) => {
         classTransformerClassToPlain(b);
+    });
+
+    bench(count, 'Cerialize Serialize SuperSimple', (i) => {
+        Serialize(b, CerializeModel);
     });
 });
