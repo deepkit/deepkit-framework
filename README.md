@@ -1,7 +1,7 @@
 # Marshal.ts
 
 <div align="center">
-<img src="https://raw.github.com/marcj/marshal.ts/feature/jit/assets/marshal-logo.png" />
+<img src="https://raw.github.com/marcj/marshal.ts/master/assets/marshal-logo.png" />
 </div>
 
 [![Build Status](https://travis-ci.com/marcj/marshal.ts.svg?branch=master)](https://travis-ci.com/marcj/marshal.ts)
@@ -133,10 +133,9 @@ console.log(instance);
 This library uses a JIT engine to convert data between class instances -> JSON objects and vice-versa. This means
 it builds JS functions in the background once you request a serialization for a certain class. The JIT code is
 then optimized further by the JS engine itself and then executed. By using as much information as possible
-during during build-time allows to achieve the best performance available for serialization
-in Javascript.
+during during build-time allows to achieve the best performance possible.
 
-See [bench.spec.ts](https://github.com/marcj/marshal.ts/blob/feature/jit/packages/benchmark/bench.spec.ts) for more details:
+See [bench.spec.ts](https://github.com/marcj/marshal.ts/blob/master/packages/benchmark/bench.spec.ts) for more details:
 
 Tests were conducted on a Macbook Pro i9 with 2,9 GHz.
 On real server hardware with Linux this numbers are easily halved.
@@ -173,8 +172,8 @@ Converting **100,000 elements** from json to class instances (plainToClass) take
 Converting **100,000 elements** from class instances to JSON objects (classToPlain) takes about **0.000089 per item**, in total 9ms.
 
 **Compared to class-transformer**:
- 1. classToPlain takes 2748ms. Marshal is up to 30,500% faster.
- 2. plainToClass takes 2605ms. Marshal is up to 21,700% faster.
+ 1. classToPlain takes 2748ms. Marshal is up to 30,500.-% faster.
+ 2. plainToClass takes 2605ms. Marshal is up to 21,700.-% faster.
 
 Another comparison: Creating manually new class instances and assign properties is only barely faster.
 
@@ -580,7 +579,7 @@ entity.children instanceof ChildrenCollection; //true
 entity.children.add('Bar2'); 
 ```
 
-### Patch transformations
+### Patch serialization
 
 If you work with rather big entities, your probably want to utilise some
 kind of patch mechanism. Marshal supports to transform partial objects as well
@@ -631,6 +630,14 @@ expect(plain['childrenCollection']).toEqual([{label: 'Bar3'}]);
 expect(plain['childrenCollection.1']).toEqual({label: 'Bar4'});
 expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 ```
+
+### Custom serialization target
+
+In Marshal everything is compiled down to a highly optimized JS function. That means when you
+want to add another serialization target, you have to write compiler templates. But it sounds
+scarier than it is. Here's an example on how to convert
+
+
 
 ### TypeORM
 
