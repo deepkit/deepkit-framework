@@ -86,7 +86,7 @@ class SimpleModel {
     @f
     type: number = 0;
 
-    @f.enum(Plan)
+    @f.enum(Plan, /*allowLabelsAsValue=*/ true)
     plan: Plan = Plan.DEFAULT;
 
     @f
