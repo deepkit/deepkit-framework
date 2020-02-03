@@ -154,7 +154,14 @@ export class PropertyCompilerSchema {
     //for enums
     allowLabelsAsValue: boolean = false;
 
+    isParentReference: boolean = false;
+
     validators: ClassType<PropertyValidator>[] = [];
+
+    /**
+     * Whether its a owning reference.
+     */
+    isReference: boolean = false;
 
     protected cacheKey?: string;
 
@@ -166,6 +173,10 @@ export class PropertyCompilerSchema {
 
     get resolveClassType(): ClassType<any> | undefined {
         return this.classType;
+    }
+
+    public isActualOptional(): boolean {
+        return this.isOptional || this.type === 'any';
     }
 
     /**
@@ -208,6 +219,8 @@ export class PropertyCompilerSchema {
         i.validators = propertySchema.validators;
         i.isOptional = propertySchema.isOptional;
         i.allowLabelsAsValue = propertySchema.allowLabelsAsValue;
+        i.isReference = propertySchema.isReference;
+        i.isParentReference = propertySchema.isParentReference;
         if (isArray !== undefined) i.isArray = isArray;
         if (isMap !== undefined) i.isMap = isMap;
         if (isPartial !== undefined) i.isPartial = isPartial;
@@ -219,10 +232,6 @@ export class PropertyCompilerSchema {
  * Represents a class property or method argument definition.
  */
 export class PropertySchema extends PropertyCompilerSchema {
-    /**
-     * Whether its a owning reference.
-     */
-    isReference: boolean = false;
 
     /**
      * Whether its a back reference.
@@ -246,7 +255,6 @@ export class PropertySchema extends PropertyCompilerSchema {
      */
     isDecorated: boolean = false;
 
-    isParentReference: boolean = false;
     isId: boolean = false;
 
     /**
@@ -254,7 +262,7 @@ export class PropertySchema extends PropertyCompilerSchema {
      */
     methodName?: string;
 
-    exclude?: 'all' | 'mongo' | 'plain';
+    exclude?: 'all' | 'plain' | string;
 
     templateArgs?: PropertySchema[];
 
@@ -373,7 +381,9 @@ export class PropertySchema extends PropertyCompilerSchema {
      * Internal note: for multi pk support, this will return a string[] in the future.
      */
     getForeignKeyName(): string {
-        return this.name + capitalizeFirstLetter(this.getResolvedClassSchema().getPrimaryField().name);
+        //we stop using capitalizeFirstLetter(this.getResolvedClassSchema().getPrimaryField().name)
+        //because that making things easier in the class:mongo compiler templates
+        return this.name;
     }
 
     /**
@@ -499,6 +509,7 @@ export class ClassSchema<T = any> {
     protected referenceInitialized = false;
 
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
+    protected hasFullLoadHooksCheck = false;
 
     constructor(classType: ClassType<any>) {
         this.classType = classType;
@@ -509,6 +520,15 @@ export class ClassSchema<T = any> {
     }
 
     hasFullLoadHooks(): boolean {
+        if (this.hasFullLoadHooksCheck) return false;
+        this.hasFullLoadHooksCheck = true;
+        for (const prop of this.classProperties.values()) {
+            if (prop.type === 'class' && prop.getResolvedClassSchema().hasFullLoadHooks()) {
+                return true;
+            }
+        }
+        this.hasFullLoadHooksCheck = false;
+
         return !!this.onLoad.find(v => v.options.fullLoad);
     }
 
@@ -562,7 +582,7 @@ export class ClassSchema<T = any> {
     public getMethodProperties(name: string): PropertySchema[] {
         this.initializeMethod(name);
 
-        return this.methodProperties.get(name)!;
+        return this.methodProperties.get(name) || [];
     }
 
     public getMethod(name: string): PropertySchema {
@@ -965,7 +985,7 @@ export interface FieldDecoratorResult<T> {
      * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
      * PlainToClass or mongoToClass is not effected by this.
      */
-    exclude(t?: 'all' | 'mongo' | 'plain'): this;
+    exclude(t?: 'all' | 'database' | 'plain' | string): this;
 
     /**
      * Marks this field as an ID aka primary.
@@ -1544,7 +1564,7 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
 /**
  * @internal
  */
-function Exclude(t: 'all' | 'mongo' | 'plain' = 'all') {
+function Exclude(t: 'all' | string = 'all') {
     return (target: Object, property: PropertySchema) => {
         property.exclude = t;
     };

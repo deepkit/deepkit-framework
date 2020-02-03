@@ -17,11 +17,12 @@ import {
 import {Binary, ObjectID} from "mongodb";
 import {Database} from "../src/database";
 import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
-import {plainToMongo, uuid4Stringify} from "../src/mapping";
+import {plainToMongo} from "../src/mapping";
 import * as moment from "moment";
 import {isPlainObject} from '@marcj/estdlib';
 import {createConnection} from 'typeorm';
 import {resolveCollectionName} from "../src/database-session";
+import {uuid4Stringify} from "../src/compiler-templates";
 
 let database: Database;
 
@@ -439,7 +440,7 @@ test('references back', async () => {
         expect(isPlainObject(marcFromDb)).toBeTrue();
         expect(marcFromDb.id).toBeString();
         expect(marcFromDb.name).toBe('marc');
-        expect(marcFromDb.images).toEqual([]);
+        expect(marcFromDb.images).toBeUndefined();
     }
 
     {

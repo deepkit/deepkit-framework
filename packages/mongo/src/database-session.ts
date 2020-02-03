@@ -1,5 +1,4 @@
 import {
-    ClassSchema,
     getClassSchema,
     getClassTypeFromInstance,
     getCollectionName,
@@ -16,7 +15,7 @@ import {
     propertyMongoToClass
 } from "./mapping";
 import {NoIDDefinedError, NotFoundError} from "./database";
-import {Formatter, isHydrated, markAsHydrated} from "./formatter";
+import {Formatter, markAsHydrated} from "./formatter";
 import {ClassType, eachPair, getClassName} from "@marcj/estdlib";
 import {FindOneOptions} from "mongodb";
 import {BaseQuery, DatabaseQuery, QueryMode, SORT} from "./query";
@@ -25,7 +24,8 @@ import {
     EntityRegistry,
     getLastKnownPKInDatabase,
     isItemKnownInDatabase,
-    markItemAsKnownInDatabase, unmarkItemAsKnownInDatabase
+    markItemAsKnownInDatabase,
+    unmarkItemAsKnownInDatabase
 } from "./entity-register";
 
 /*
@@ -155,11 +155,13 @@ export class DatabaseSession {
                     joinPipeline.push({$project: {[foreignSchema.getPrimaryField().name]: 1}});
                 }
 
+                join.as = '__ref_' + join.propertySchema.name;
+
                 if (join.propertySchema.backReference) {
                     if (join.propertySchema.backReference.via) {
                         //many-to-many
                         const viaClassType = resolveClassTypeOrForward(join.propertySchema.backReference.via);
-                        const as = join.propertySchema.name;
+                        const subAs = join.propertySchema.name;
 
                         const backReference = getClassSchema(viaClassType).findReverseReference(
                             join.classSchema.classType,
@@ -175,7 +177,7 @@ export class DatabaseSession {
                                 pipeline: [
                                     {$match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$localField']}}}
                                 ],
-                                as: as,
+                                as: subAs,
                             },
                         });
 
@@ -188,17 +190,17 @@ export class DatabaseSession {
                         );
 
                         pipeline.push({
-                            $addFields: {[as]: '$' + as + '.' + backReferenceForward.getForeignKeyName()},
+                            $addFields: {[subAs]: '$' + subAs + '.' + backReferenceForward.getForeignKeyName()},
                         });
 
                         pipeline.push({
                             $lookup: {
                                 from: resolveCollectionName(foreignSchema.classType),
-                                let: {localField: '$' + as},
+                                let: {localField: '$' + subAs},
                                 pipeline: [
                                     {$match: {$expr: {$in: ['$' + foreignSchema.getPrimaryField().name, '$$localField']}}}
                                 ].concat(joinPipeline),
-                                as: join.propertySchema.name,
+                                as: join.as,
                             },
                         });
                     } else {
@@ -208,7 +210,7 @@ export class DatabaseSession {
                                 from: resolveCollectionName(foreignSchema.classType),
                                 let: {foreign_id: '$' + foreignSchema.getPrimaryField().name},
                                 pipeline: joinPipeline,
-                                as: join.propertySchema.name,
+                                as: join.as,
                             },
                         });
                     }
@@ -218,7 +220,7 @@ export class DatabaseSession {
                             from: resolveCollectionName(foreignSchema.classType),
                             let: {foreign_id: '$' + join.propertySchema.getForeignKeyName()},
                             pipeline: joinPipeline,
-                            as: join.propertySchema.name,
+                            as: join.as,
                         },
                     });
                 }
@@ -227,14 +229,14 @@ export class DatabaseSession {
                 if (!join.propertySchema.isArray) {
                     pipeline.push({
                         $unwind: {
-                            path: '$' + join.propertySchema.name,
+                            path: '$' + join.as,
                             preserveNullAndEmptyArrays: join.type === 'left'
                         }
                     });
                 } else {
                     if (join.type === 'inner') {
                         pipeline.push({
-                            $match: {[join.propertySchema.name]: {$ne: []}}
+                            $match: {[join.as]: {$ne: []}}
                         })
                     }
                 }
@@ -297,10 +299,7 @@ export class DatabaseSession {
         }
 
         if (mode === 'updateOne') {
-            const updateStatement: { [name: string]: any } = {};
-            updateStatement['$set'] = classToMongo(query.classSchema.classType, arg1);
-            delete updateStatement['$set']['version'];
-            await collection.updateOne(mongoFilter, updateStatement);
+            await collection.findOneAndReplace(mongoFilter, classToMongo(query.classSchema.classType, arg1));
             if (!this.disabledInstancePooling) {
                 this.entityRegistry.delete(query.classSchema, ids[0]);
                 this.entityRegistry.store(query.classSchema, arg1);
@@ -418,7 +417,7 @@ export class DatabaseSession {
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
         const collection = await this.getCollection(classSchema.classType);
-        const mongoItem = classToMongo(classSchema.classType, item, true);
+        const mongoItem = classToMongo(classSchema.classType, item);
 
         const result = await collection.insertOne(mongoItem);
 
@@ -450,13 +449,8 @@ export class DatabaseSession {
 
         const collection = await this.getCollection(classSchema.classType);
         const mongoItem = classToMongo(classSchema.classType, item);
-        const updateStatement: { [name: string]: any } = {};
-        updateStatement['$set'] = mongoItem;
-
-        await collection.updateOne(
-            this.buildFindCriteria(classSchema.classType, item),
-            updateStatement
-        );
+        const filter  = this.buildFindCriteria(classSchema.classType, item);
+        await collection.findOneAndReplace(filter, mongoItem);
 
         markItemAsKnownInDatabase(classSchema, item);
 

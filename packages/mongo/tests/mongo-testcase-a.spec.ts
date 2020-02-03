@@ -301,12 +301,12 @@ test('joins', async () => {
     expect(await database.query(Organisation).count()).toBe(2);
     expect(await database.query(OrganisationMembership).count()).toBe(4);
 
-    expect(await database.query(OrganisationMembership).filter({userId: marc.id}).count()).toBe(2);
-    expect(await database.query(OrganisationMembership).filter({userId: peter.id}).count()).toBe(1);
-    expect(await database.query(OrganisationMembership).filter({userId: marcel.id}).count()).toBe(1);
+    expect(await database.query(OrganisationMembership).filter({user: marc.id}).count()).toBe(2);
+    expect(await database.query(OrganisationMembership).filter({user: peter.id}).count()).toBe(1);
+    expect(await database.query(OrganisationMembership).filter({user: marcel.id}).count()).toBe(1);
 
-    expect(await database.query(OrganisationMembership).filter({organisationId: apple.id}).count()).toBe(1);
-    expect(await database.query(OrganisationMembership).filter({organisationId: microsoft.id}).count()).toBe(3);
+    expect(await database.query(OrganisationMembership).filter({organisation: apple.id}).count()).toBe(1);
+    expect(await database.query(OrganisationMembership).filter({organisation: microsoft.id}).count()).toBe(3);
 
     expect(() => {
         database.query(Organisation).join('id');
@@ -416,14 +416,14 @@ test('joins', async () => {
     }
 
     {
-        const items = await database.query(OrganisationMembership).filter({userId: peter.id}).joinWith('user').find();
+        const items = await database.query(OrganisationMembership).filter({user: peter.id}).joinWith('user').find();
         expect(items.length).toBe(1);
         expect(items[0].user.id).toBe(peter.id);
         expect(items[0].organisation.id).toBe(microsoft.id);
     }
 
     {
-        const item = await database.query(OrganisationMembership).filter({userId: peter.id}).joinWith('user').findOne();
+        const item = await database.query(OrganisationMembership).filter({user: peter.id}).joinWith('user').findOne();
         expect(item).not.toBeUndefined();
         expect(item.user.id).toBe(peter.id);
         expect(item.user.name).toBe(peter.name);
@@ -432,15 +432,15 @@ test('joins', async () => {
             item.organisation.name;
         }).toThrow('not completely populated');
 
-        const count1 = await database.query(OrganisationMembership).filter({userId: peter.id}).joinWith('user').count();
+        const count1 = await database.query(OrganisationMembership).filter({user: peter.id}).joinWith('user').count();
         expect(count1).toBe(1);
 
-        const count2 = await database.query(OrganisationMembership).filter({userId: peter.id}).count();
+        const count2 = await database.query(OrganisationMembership).filter({user: peter.id}).count();
         expect(count2).toBe(1);
     }
 
     {
-        const item = await database.query(OrganisationMembership).filter({userId: peter.id}).findOne();
+        const item = await database.query(OrganisationMembership).filter({user: peter.id}).findOne();
         expect(item).not.toBeUndefined();
         expect(item.user.id).toBe(peter.id);
         expect(item.organisation.id).toBe(microsoft.id);
@@ -448,7 +448,7 @@ test('joins', async () => {
             item.user.name;
         }).toThrow('not completely populated');
         expect(() => {
-            item.organisation.name;
+            item.organisation.name;;
         }).toThrow('not completely populated');
     }
 
@@ -643,7 +643,7 @@ test('joins', async () => {
     await database.remove(peter);
 
     {
-        const query = database.query(OrganisationMembership).joinWith('user').filter({userId: peter.id});
+        const query = database.query(OrganisationMembership).joinWith('user').filter({user: peter.id});
         const items = await query.find();
         expect(items.length).toBe(1);
         expect(await query.count()).toBe(1);
@@ -658,8 +658,8 @@ test('joins', async () => {
     }
 
     {
-        expect(await database.query(OrganisationMembership).innerJoin('user').filter({userId: peter.id}).count()).toBe(0);
-        expect(await database.query(OrganisationMembership).innerJoinWith('user').filter({userId: peter.id}).count()).toBe(0);
+        expect(await database.query(OrganisationMembership).innerJoin('user').filter({user: peter.id}).count()).toBe(0);
+        expect(await database.query(OrganisationMembership).innerJoinWith('user').filter({user: peter.id}).count()).toBe(0);
     }
 
     {

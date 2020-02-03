@@ -5,9 +5,9 @@ import {
     arrayBufferTo,
     arrayBufferToBase64,
     f,
-    getResolvedReflection,
     ParentReference,
     PropertySchema,
+    createClassToXFunction, partialPlainToClass,
 } from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
@@ -23,6 +23,7 @@ import {Buffer} from "buffer";
 import {DocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
+import {uuid4Binary} from "../src/compiler-templates";
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');
@@ -132,13 +133,13 @@ test('convert IDs and invalid values', () => {
         const instance = new Model();
         instance.id2 = 'notavalidId';
         const mongo = classToMongo(Model, instance);
-    }).toThrow('Invalid ObjectID given in property');
+    }).toThrow('Invalid ObjectID given in property id2');
 
     expect(() => {
         const instance = new Model();
         instance.uuid = 'notavalidId';
         const mongo = classToMongo(Model, instance);
-    }).toThrow('Invalid UUID given in property');
+    }).toThrow('Invalid UUID v4 given');
 });
 
 
@@ -200,10 +201,17 @@ test('partial 2', () => {
             'children.0.label': 2
         })).toEqual({'children.0.label': '2'});
 
-        const i = partialPlainToMongo(SimpleModel, {
+
+        const i = partialPlainToClass(SimpleModel, {
             'children.0': {label: 3}
         });
+        expect(i['children.0']).toBeInstanceOf(SubModel);
         expect(i['children.0'].label).toBe('3');
+
+        const i2 = partialPlainToMongo(SimpleModel, {
+            'children.0': {label: 3}
+        });
+        expect(i2['children.0'].label).toBe('3');
     }
 });
 
@@ -224,13 +232,11 @@ test('partial 3', () => {
     }
 });
 
-test('partial with required', () => {
+test('partial with required doesnt throw', () => {
     {
-        expect(() => {
             partialPlainToMongo(SimpleModel, {
                 'children': [{}]
             })
-        }).toThrow('Missing value in SimpleModel::children for SubModel::label');
     }
 });
 
@@ -302,25 +308,25 @@ test('partial invalid', () => {
         partialPlainToMongo(SimpleModel, {
             id: 'invalid-id'
         });
-    }).toThrow('Invalid UUID given in property SimpleModel::id');
+    }).toThrow('Invalid UUID v4 given in property id');
 
     expect(() => {
         partialClassToMongo(SimpleModel, {
             id: 'invalid-id'
         });
-    }).toThrow('Invalid UUID given in property SimpleModel::id');
+    }).toThrow('Invalid UUID v4 given in property id');
 
     expect(() => {
         partialPlainToMongo(DocumentClass, {
             _id: 'invalid-id'
         });
-    }).toThrow('Invalid ObjectID given in property DocumentClass::_id');
+    }).toThrow('Invalid ObjectID given in property _id');
 
     expect(() => {
         partialClassToMongo(DocumentClass, {
             _id: 'invalid-id'
         });
-    }).toThrow('Invalid ObjectID given in property DocumentClass::_id');
+    }).toThrow('Invalid ObjectID given in property _id');
 
     {
         const m = partialClassToMongo(DocumentClass, {
@@ -346,30 +352,26 @@ test('partial invalid', () => {
     });
 });
 
-test('partial fail ', () => {
-    expect(() => {
-        plainToMongo(SimpleModel, new SimpleModel('peter'));
-    }).toThrow('Could not plainToMongo since target');
+test('partial does not fail, that is the job of validation', () => {
+    plainToMongo(SimpleModel, new SimpleModel('peter'));
 
     mongoToClass(SimpleModel, {
         name: 'peter',
         children: [new SubModel('p')]
     });
 
-    expect(() => {
-        plainToMongo(SimpleModel, {
-            name: 'peter',
-            children: [
-                {name: 'p'},
-                {age: 2},
-                {}
-            ]
-        });
-    }).toThrow('Missing value in SimpleModel::children for SubModel::label');
+    plainToMongo(SimpleModel, {
+        name: 'peter',
+        children: [
+            {name: 'p'},
+            {age: 2},
+            {}
+        ]
+    });
 });
 
 
-test('partial any copy ', () => {
+test('partial any does not copy ', () => {
     const anyV = {'peter': 1};
 
     const m = plainToMongo(SimpleModel, {
@@ -377,7 +379,7 @@ test('partial any copy ', () => {
         anyField: anyV
     });
 
-    expect(m.anyField).not.toBe(anyV);
+    expect(m.anyField).toBe(anyV);
 });
 
 test('partial mongo to plain ', () => {
@@ -388,7 +390,7 @@ test('partial mongo to plain ', () => {
         @f.array(String)
         tags?: string[];
 
-        @f
+        @f.optional()
         picture?: ArrayBuffer;
 
         @f.forward(() => User).optional()
@@ -405,7 +407,7 @@ test('partial mongo to plain ', () => {
         });
 
         expect(u.name).toBe('peter');
-        expect(u.picture).toBe(null);
+        expect(u.picture).toBe(undefined);
         expect(u.tags).toEqual([]);
         expect(u.parent).toBeUndefined();
     }
@@ -435,7 +437,7 @@ test('partial mongo to plain ', () => {
 
         expect(m.name).toBe(undefined);
         expect(m.picture).toBe(null);
-        expect(m.tags).toBeObject(); //because we trust mongo
+        expect(m.tags).toBeArray();
     }
 
     {
@@ -498,40 +500,4 @@ test('partial document', () => {
     expect(document['pages.0.children.0.name']).toBe('6');
     expect(document['pages.0.children']).toBeInstanceOf(Array);
     expect(document['pages.0.children'][0].name).toBe('7');
-
-    expect(getResolvedReflection(DocumentClass, 'pages.0.name')).toEqual({
-        "propertySchema": PropertySchema.fromJSON({
-            "name": "name",
-            "type": "string",
-            "typeSet": true,
-        }),
-        resolvedClassType: PageClass,
-        resolvedPropertyName: 'name',
-        type: 'string',
-        typeValue: undefined,
-        array: false,
-        map: false,
-        partial: false,
-    });
-
-    {
-        const a1 = getResolvedReflection(DocumentClass, 'pages.0.children');
-        expect(a1!.resolvedClassType).toBe(PageClass);
-        expect(a1!.resolvedPropertyName).toBe('children');
-        expect(a1!.type).toBe('class');
-        expect(a1!.typeValue).toBe(PageCollection);
-        expect(a1!.array).toBe(false);
-        expect(a1!.map).toBe(false);
-        expect(a1!.partial).toBe(false);
-    }
-
-    {
-        const a1 = getResolvedReflection(DocumentClass, 'pages.0.children.0.name');
-        expect(a1!.resolvedClassType).toBe(PageClass);
-        expect(a1!.resolvedPropertyName).toBe('name');
-        expect(a1!.type).toBe('string');
-        expect(a1!.typeValue).toBe(undefined);
-        expect(a1!.array).toBe(false);
-        expect(a1!.map).toBe(false);
-        expect(a1!.partial).toBe(false);
-    } });
+});

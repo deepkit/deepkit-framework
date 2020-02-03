@@ -1,6 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {classToPlain, f, getClassSchema} from "@marcj/marshal";
+import {classToPlain, f, getClassSchema} from "../../core";
 import {classToMongo, mongoToClass, plainToMongo} from "..";
 import {Binary} from 'mongodb';
 

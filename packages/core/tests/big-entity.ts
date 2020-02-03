@@ -34,7 +34,7 @@ export class JobTaskCommand {
 }
 
 export class JobTaskConfigBase {
-    @f.array(String)
+    @f.array(String).optional()
     install?: string[];
 
     @f

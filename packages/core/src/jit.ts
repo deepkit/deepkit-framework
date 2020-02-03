@@ -1,8 +1,7 @@
-import {ClassSchema, getClassSchema, MarshalGlobal, PropertyCompilerSchema, PropertySchema, Types} from "./decorators";
+import {ClassSchema, getClassSchema, MarshalGlobal, PropertyCompilerSchema, PropertySchema} from "./decorators";
 import {getDecorator, isExcluded} from "./mapper";
 import {ClassType, getClassName, getClassPropertyName} from "@marcj/estdlib";
-import './compiler-templates';
-import {compilerRegistry} from "./compiler-registry";
+import {getDataConverterJS, reserveVariable} from "./compiler-registry";
 
 export let moment: any = () => {
     throw new Error('Moment.js not installed')
@@ -20,6 +19,7 @@ try {
  * @hidden
  */
 export function findParent<T>(parents: any[], parentType: ClassType<T>): T | undefined {
+    if (!parents) return;
     for (let i = parents.length - 1; i >= 0; i--) {
         if (parents[i] instanceof parentType) {
             return parents[i];
@@ -27,21 +27,13 @@ export function findParent<T>(parents: any[], parentType: ClassType<T>): T | und
     }
 }
 
-const JITToClassCache = new Map<any, any>();
-export const JITToClassFN = new Map<any, any>();
+const JITPlainToClassCache = new Map<any, any>();
+const JITXToClassCache = new Map<any, Map<any, any>>();
 
-const JITToPlainCache = new Map<any, any>();
-export const JITToPlainCacheFN = new Map<any, any>();
-
-export type TypeConverterCompilerContext = { [name: string]: any };
-export type TypeConverterCompiler = (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable: () => string) => string | { template: string, context: TypeConverterCompilerContext };
-
+const JITClassToPlainCache = new Map<any, any>();
+const JITClassToXCache = new Map<any, Map<any, any>>();
 
 const resolvedReflectionCaches = new Map<ClassType<any>, { [path: string]: PropertyCompilerSchema }>();
-
-export function printToClassJitFunction(classType: ClassType<any>) {
-    console.log(getClassName(classType), 'jit ', JITToClassFN.has(classType) ? JITToClassFN.get(classType)!.toString() : undefined);
-}
 
 /**
  * This resolves the PropertyCompilerSchema for a property path.
@@ -113,13 +105,35 @@ const cacheJitProperty = new Map<string, WeakMap<PropertySchema, any>>();
 const cacheJitVirtualProperty = new Map<string, Map<string, any>>();
 
 /**
+ * A handy utility class that allows fast access to a JitPropertyConverter class.
+ */
+export class CacheJitPropertyConverter {
+    protected cache = new Map<ClassType<any>, JitPropertyConverter>();
+
+    constructor(
+        public readonly fromFormat: string,
+        public readonly toFormat: string
+    ) {
+    }
+
+    getJitPropertyConverter(classType: ClassType<any>): JitPropertyConverter {
+        let converter = this.cache.get(classType);
+        if (converter) return converter;
+        converter = new JitPropertyConverter(this.fromFormat, this.toFormat, classType);
+        this.cache.set(classType, converter);
+        return converter;
+    }
+}
+
+
+/**
  * Creates a new JIT compiled function to convert given property schema for certain paths.
  * Paths can be deep paths making it possible to convert patch-like/mongo structure
  *
  * Note: If fromFormat -> toFormat has no compiler templates registered,
  * the generated function does virtually nothing.
  */
-class JitPropertyConverter {
+export class JitPropertyConverter {
     protected schema: ClassSchema<any>;
     protected cacheJitVirtualPropertyMap: Map<string, any>;
     protected cacheJitPropertyMap: WeakMap<PropertyCompilerSchema, any>;
@@ -146,7 +160,21 @@ class JitPropertyConverter {
     }
 
     convert(path: string, value: any, parents?: any[]): any {
-        let property: PropertyCompilerSchema = this.schema.classProperties.get(path) || resolvePropertyCompilerSchema(this.schema, path);
+        let property: PropertyCompilerSchema;
+
+        try {
+            property = this.schema.classProperties.get(path) || resolvePropertyCompilerSchema(this.schema, path)
+        } catch (error) {
+            return;
+        }
+
+        return this.convertProperty(property, value, parents);
+    }
+
+    convertProperty(property: PropertyCompilerSchema, value: any, parents?: any[]): any {
+        if (property.isParentReference) {
+            return;
+        }
 
         const jit = property.isRealProperty()
             ? this.cacheJitPropertyMap.get(property) : this.cacheJitVirtualPropertyMap.get(property.getCacheKey());
@@ -158,10 +186,18 @@ class JitPropertyConverter {
         const context = new Map<any, any>();
 
         const functionCode = `
-        var result;
         return function(value, _parents) {
+            var result, _state;
+            function getParents() {
+                return _parents;
+            }
             if (!_parents) _parents = [];
-            ${getDataConverterJS('result', 'value', property, this.fromFormat, this.toFormat, context)}
+            if (value === null) {
+                result = null;
+            } else if (value !== undefined) {
+                //convertProperty ${property.name} ${this.fromFormat}:${this.toFormat}:${property.type} ${property.isRealProperty()}
+                ${getDataConverterJS('result', 'value', property, this.fromFormat, this.toFormat, context)}
+            }
             return result;
         }
         `;
@@ -180,9 +216,7 @@ class JitPropertyConverter {
 
 /**
  *
- * @param fromFormat
- * @param toFormat
- * @param property
+ * Creates a new JIT compiled function to convert given property schema. Deep paths are not allowed.
  */
 export function createJITConverterFromPropertySchema(
     fromFormat: string,
@@ -204,10 +238,18 @@ export function createJITConverterFromPropertySchema(
     const context = new Map<any, any>();
 
     const functionCode = `
-        var result;
         return function(value, _parents) {
+            var result, _state;
+            function getParents() {
+                return _parents;
+            }
             if (!_parents) _parents = [];
-            ${getDataConverterJS('result', 'value', property, fromFormat, toFormat, context)}
+            if (value === null) {
+                result = null;
+            } else if (value !== undefined) {
+                //createJITConverterFromPropertySchema ${property.name} ${fromFormat}:${toFormat}:${property.type} ${property.isRealProperty()}
+                ${getDataConverterJS('result', 'value', property, fromFormat, toFormat, context)}
+            }
             return result;
         }
         `;
@@ -217,19 +259,6 @@ export function createJITConverterFromPropertySchema(
     cacheJitPropertyMap.set(property, fn);
 
     return fn;
-}
-
-function reserveVariable(
-    rootContext: Map<string, any>,
-) {
-    for (let i = 0; i < 10000; i++) {
-        const candidate = 'var_' + i;
-        if (!rootContext.has(candidate)) {
-            rootContext.set(candidate, undefined);
-            return candidate;
-        }
-    }
-    throw new Error('Too many context variables');
 }
 
 function getParentResolverJS<T>(
@@ -244,7 +273,7 @@ function getParentResolverJS<T>(
 
     const code = `${setter} = findParent(_parents, ${varClassType});`;
 
-    if (property.isOptional) {
+    if (property.isActualOptional()) {
         return code;
     }
 
@@ -256,88 +285,24 @@ function getParentResolverJS<T>(
     `;
 }
 
-function executeCompiler(
-    rootContext: Map<string, any>,
-    compiler: TypeConverterCompiler,
-    setter: string,
-    getter: string,
-    property: PropertyCompilerSchema,
-): string {
-
-    const res = compiler(setter, getter, property, reserveVariable.bind(undefined, rootContext));
-    if ('string' === typeof res) {
-        return res;
-    } else {
-        for (const i in res.context) {
-            if (!res.context.hasOwnProperty(i)) continue;
-            rootContext.set(i, res.context[i]);
-        }
-        return res.template;
-    }
-}
-
-function getDataConverterJS(
-    setter: string,
-    accessor: string,
-    property: PropertyCompilerSchema,
-    fromFormat: string,
-    toFormat: string,
-    rootContext: Map<string, any>
-): string {
-    let compiler = compilerRegistry.get(fromFormat + ':' + toFormat + ':' + property.type);
-
-    if (property.isArray) {
-        //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
-        if (!compiler) {
-            return `
-                if (${accessor} && ${accessor}.length) {
-                     ${setter} = ${accessor}.slice();
-                }
-            `
-        }
-        return `
-            if (${accessor} && ${accessor}.length) {
-                 var l = ${accessor}.length;
-                 var a = ${accessor}.slice();
-                 while (l--) {
-                    //make sure all elements have the correct type
-                    ${executeCompiler(rootContext, compiler, `a[l]`, `a[l]`, property)}
-                 } 
-                 ${setter} = a;
-            }
-        `;
-    } else if (property.isMap) {
-        const line = compiler ? executeCompiler(rootContext, compiler, `a[i]`, `${accessor}[i]`, property) : `a[i] = ${accessor}[i];`;
-        return `
-            var a = {};
-            if (${accessor} && 'object' === typeof ${accessor}) {
-                for (var i in ${accessor}) {
-                    if (!${accessor}.hasOwnProperty(i)) continue;
-                    ${line}
-                }
-                ${setter} = a;
-            }
-        `;
-    } else if (property.isPartial) {
-        const varClassType = reserveVariable(rootContext);
-        rootContext.set('jitPartial', jitPartial);
-        rootContext.set(varClassType, property.resolveClassType);
-        return `${setter} = jitPartial('${fromFormat}', '${toFormat}', ${varClassType}, ${accessor})`;
-    } else if (compiler) {
-        return executeCompiler(rootContext, compiler, setter, accessor, property);
-    } else {
-        return `${setter} = ${accessor};`;
-    }
-}
-
 export class ToClassState {
     onFullLoadCallbacks: (() => void)[] = [];
 }
 
 export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: string | 'plain')
     : (instance: T) => any {
-    let jit = JITToPlainCache.get(classType);
-    if (jit) return jit;
+    if (toFormat === 'plain') {
+        let jit = JITClassToPlainCache.get(classType);
+        if (jit) return jit;
+    } else {
+        let cache = JITClassToXCache.get(toFormat);
+        if (!cache) {
+            cache = new Map();
+            JITClassToXCache.set(toFormat, cache);
+        }
+        let jit = cache.get(classType);
+        if (jit) return jit;
+    }
 
     const schema = getClassSchema(classType);
     const context = new Map<string, any>();
@@ -348,26 +313,26 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
         const property = schema.getProperty(decoratorName);
 
         functionCode = `
+        return function(_instance) {
             if (_instance.${decoratorName} === null) return null;
             if (_instance.${decoratorName} === undefined) return;
-            var result;
+            var result, _state;
             ${getDataConverterJS(`result`, `_instance.${decoratorName}`, property, 'class', toFormat, context)}
             return result;
+        }
         `;
         // return propertyClassToPlain(classType, decoratorName, (target as any)[decoratorName]);
     } else {
 
         const convertProperties: string[] = [];
 
-        // const excludeReferences = options ? options.excludeReferences === true : false;
-        const excludeReferences = true;
-
         for (const property of schema.classProperties.values()) {
             if (property.isParentReference) {
                 //we do not export parent references, as this would lead to an circular reference
                 continue;
             }
-            if (excludeReferences && (property.isReference || property.backReference || property.isReferenceKey)) continue;
+
+            if (property.backReference) continue;
 
             if (isExcluded(classType, property.name, toFormat)) {
                 continue
@@ -397,7 +362,11 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
     try {
         const compiled = new Function('_classType', 'MarshalGlobal', ...context.keys(), functionCode);
         const fn = compiled(classType, MarshalGlobal, ...context.values());
-        JITToPlainCache.set(classType, fn);
+        if (toFormat === 'plain') {
+            JITClassToPlainCache.set(classType, fn);
+        } else {
+            JITClassToXCache.get(toFormat)!.set(classType, fn);
+        }
 
         return fn;
     } catch (error) {
@@ -408,8 +377,18 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
 export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
     : (data: { [name: string]: any }, parents?: any[], state?: ToClassState) => T {
-    let jit = JITToClassCache.get(classType);
-    if (jit) return jit;
+    if (fromTarget === 'plain') {
+        let jit = JITPlainToClassCache.get(classType);
+        if (jit) return jit;
+    } else {
+        let cache = JITXToClassCache.get(fromTarget);
+        if (!cache) {
+            cache = new Map();
+            JITXToClassCache.set(fromTarget, cache);
+        }
+        let jit = cache.get(classType);
+        if (jit) return jit;
+    }
 
     const schema = getClassSchema(classType);
     const context = new Map<string, any>();
@@ -431,7 +410,7 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
             `);
         } else if (property.isParentReference) {
             //parent resolver
-            setProperties.push(`var c_${property.name}; ` + getParentResolverJS(classType, `_${property.name}`, property, context));
+            constructorArguments.push(`var c_${property.name}; ` + getParentResolverJS(classType, `c_${property.name}`, property, context));
         } else {
             constructorArguments.push(`var c_${property.name} = _data.${property.name}; 
                 if (undefined !== c_${property.name} && null !== c_${property.name}) {
@@ -471,12 +450,23 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
         }
     }
 
+    // const valueChecks: string[] = [];
+    // for (const property of schema.classProperties.values()) {
+    //     if (!property.isActualOptional()) {
+    //         valueChecks.push(`
+    //         if (undefined === _instance.${property.name} || null === _instance.${property.name}) {
+    //             throw new TypeError('Property ${schema.getClassName()}.${property.name} has no value.');
+    //         }
+    //         `)
+    //     }
+    // }
+
     let fullLoadHookPre = '';
     let fullLoadHookPost = '';
     if (schema.hasFullLoadHooks()) {
-        fullLoadHookPre = `var hadInstance = !!_state;`;
+        fullLoadHookPre = `var hadState = !!_state;`;
         fullLoadHookPost = `
-            if (!hadInstance) {
+            if (!hadState && _state.onFullLoadCallbacks.length) {
                 //we are at the end, so call fullLoad hooks
                 for (const cb of _state.onFullLoadCallbacks) cb();
             }
@@ -485,10 +475,17 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
 
     const functionCode = `
         return function(_data, _parents, _state) {
+            var _instance, parentsWithItem;
+            function getParents() {
+                if (parentsWithItem) return parentsWithItem;
+                parentsWithItem = _parents ? _parents.slice(0) : [];
+                parentsWithItem.push(_instance);
+                return parentsWithItem;
+            }
             ${fullLoadHookPre}
             _state = _state || new ToClassState();
             ${constructorArguments.join('\n')}
-            const _instance = new _classType(${constructorArgumentNames.join(', ')});
+            _instance = new _classType(${constructorArgumentNames.join(', ')});
             ${setProperties.join('\n')}
             ${registerLifeCircleEvents.join('\n')}
             ${fullLoadHookPost}
@@ -499,7 +496,11 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     try {
         const compiled = new Function('_classType', 'ToClassState', ...context.keys(), functionCode);
         const fn = compiled(classType, ToClassState, ...context.values());
-        JITToClassCache.set(classType, fn);
+        if (fromTarget === 'plain') {
+            JITPlainToClassCache.set(classType, fn);
+        } else {
+            JITXToClassCache.get(fromTarget)!.set(classType, fn);
+        }
 
         return fn;
     } catch (error) {
@@ -533,8 +534,7 @@ export function jitPartial<T, K extends keyof T>(
 
     for (const i in partial) {
         if (!partial.hasOwnProperty(i)) continue;
-        result[i] =
-            result[i] = jitConverter.convert(i, partial[i], parents);
+        result[i] = result[i] = jitConverter.convert(i, partial[i], parents);
     }
 
     return result;

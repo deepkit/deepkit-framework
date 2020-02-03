@@ -52,9 +52,8 @@ test('partial 2', () => {
 });
 
 test('partial unknown', () => {
-    expect(() => {
-        const partial = partialClassToPlain(SimpleModel, {
-            'unknown': 'asd',
-        });
-    }).toThrow('Property SimpleModel.unknown not found');
+    const partial = partialClassToPlain(SimpleModel, {
+        'unknown': 'asd',
+    });
+    expect(partial['unknown']).toBeUndefined();
 });

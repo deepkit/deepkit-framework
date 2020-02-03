@@ -4,19 +4,20 @@ import {createClassToXFunction, createXToClassFunction, moment} from "./jit";
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from "@marcj/estdlib";
 import {registerConverterCompiler} from "./compiler-registry";
 
-const toStringCompiler = (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : String(${accessor});`;
-};
-registerConverterCompiler('plain', 'class', 'string', toStringCompiler);
-registerConverterCompiler('class', 'plain', 'string', toStringCompiler);
+}
+
+registerConverterCompiler('plain', 'class', 'string', compilerToString);
+registerConverterCompiler('class', 'plain', 'string', compilerToString);
 
 
-const toNumberCompiler = (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+export function compilerToNumber(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'number' ? ${accessor} : +${accessor};`;
-};
+}
 
-registerConverterCompiler('plain', 'class', 'number', toNumberCompiler);
-registerConverterCompiler('class', 'plain', 'number', toNumberCompiler);
+registerConverterCompiler('plain', 'class', 'number', compilerToNumber);
+registerConverterCompiler('class', 'plain', 'number', compilerToNumber);
 
 registerConverterCompiler('plain', 'class', 'date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = new Date(${accessor});`;
@@ -39,21 +40,6 @@ registerConverterCompiler('plain', 'class', 'boolean', (setter: string, accessor
     }
     `;
 });
-
-registerConverterCompiler('plain', 'class', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-    const classType = reserveVariable();
-
-    return {
-        template: `
-            ${setter} = createXToClassFunction(${classType}, 'plain')(${accessor}, _parents);
-        `,
-        context: {
-            [classType]: property.resolveClassType,
-            createXToClassFunction
-        }
-    };
-});
-
 
 registerConverterCompiler('plain', 'class', 'enum', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
     //this a candidate where we can extract ENUM information during build time and check very fast during
@@ -132,12 +118,14 @@ registerConverterCompiler('class', 'plain', 'Int32Array', convertTypedArrayToPla
 registerConverterCompiler('class', 'plain', 'Uint32Array', convertTypedArrayToPlain);
 registerConverterCompiler('class', 'plain', 'Float32Array', convertTypedArrayToPlain);
 registerConverterCompiler('class', 'plain', 'Float64Array', convertTypedArrayToPlain);
-registerConverterCompiler('class', 'plain', 'arrayBuffer', (setter, getter) => {
+
+const convertArrayBufferToPlain = (setter, getter) => {
     return {
         template: `${setter} = arrayBufferToBase64(${getter});`,
         context: {arrayBufferToBase64}
     };
-});
+};
+registerConverterCompiler('class', 'plain', 'arrayBuffer', convertArrayBufferToPlain);
 
 const convertToPlainUsingToJson = (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = ${accessor}.toJSON();`;
@@ -146,13 +134,33 @@ const convertToPlainUsingToJson = (setter: string, accessor: string, property: P
 registerConverterCompiler('class', 'plain', 'date', convertToPlainUsingToJson);
 registerConverterCompiler('class', 'plain', 'moment', convertToPlainUsingToJson);
 
-registerConverterCompiler('class', 'plain', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-    const classType = reserveVariable();
-    return {
-        template: `${setter} = createClassToXFunction(${classType}, 'plain')(${accessor});`,
-        context: {
-            [classType]: property.resolveClassType,
-            createClassToXFunction,
+export function compilerConvertClassToX(toFormat: string) {
+    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
+        const classType = reserveVariable();
+        return {
+            template: `${setter} = createClassToXFunction(${classType}, '${toFormat}')(${accessor});`,
+            context: {
+                [classType]: property.resolveClassType,
+                createClassToXFunction,
+            }
         }
     }
-});
+}
+registerConverterCompiler('class', 'plain', 'class', compilerConvertClassToX('plain'));
+
+export function compilerXToClass(fromFormat: string) {
+    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
+        const classType = reserveVariable();
+
+        return {
+            template: `
+            ${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, getParents(), _state);
+        `,
+            context: {
+                [classType]: property.resolveClassType,
+                createXToClassFunction
+            }
+        };
+    }
+}
+registerConverterCompiler('plain', 'class', 'class', compilerXToClass('plain'));

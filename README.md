@@ -170,10 +170,10 @@ plainToClass(MarshalModel, {
 
 Converting **100,000 elements** from json to class instances (plainToClass) takes about **0.000184ms per item**, in total 18ms.
 
-Converting **100,000 elements** from class instances to JSON objects (classToPlain) takes about **0.000123 per item**, in total 12ms.
+Converting **100,000 elements** from class instances to JSON objects (classToPlain) takes about **0.000089 per item**, in total 9ms.
 
 **Compared to class-transformer**:
- 1. classToPlain takes 2748ms. Marshal is up to 22,900% faster.
+ 1. classToPlain takes 2748ms. Marshal is up to 30,500% faster.
  2. plainToClass takes 2605ms. Marshal is up to 21,700% faster.
 
 Another comparison: Creating manually new class instances and assign properties is only barely faster.

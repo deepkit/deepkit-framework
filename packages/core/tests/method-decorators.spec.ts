@@ -10,7 +10,6 @@ import {
     plainToClass,
     validateMethodArgs
 } from "..";
-import {printToClassJitFunction} from "../src/jit";
 
 test('Basic array', () => {
     class Other {
@@ -257,7 +256,6 @@ test('partial', () => {
         }
     });
 
-    printToClassJitFunction(User);
     expect(u.config).not.toBeInstanceOf(Config);
     expect(u.config.name).toBe('peter');
     expect(u.config.prio).toBeUndefined();

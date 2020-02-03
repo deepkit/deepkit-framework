@@ -66,9 +66,9 @@ test('reference object query', () => {
         configRef: new SimpleConfigRef(2),
     }, fieldNames);
 
-    expect(m['configRefId']).toBe(2);
-    expect(Object.keys(m)).toEqual(['configRefId']);
-    expect(Object.keys(fieldNames)).toEqual(['configRefId']);
+    expect(Object.keys(m)).toEqual(['configRef']);
+    expect(m['configRef']).toBe(2);
+    expect(Object.keys(fieldNames)).toEqual(['configRef']);
 });
 
 test('reference object query $in', () => {
@@ -78,9 +78,9 @@ test('reference object query $in', () => {
         configRef: {$in: [new SimpleConfigRef(2)]},
     }, fieldNames);
 
-    expect(m['configRefId']['$in']).toEqual([2]);
-    expect(Object.keys(m)).toEqual(['configRefId']);
-    expect(Object.keys(fieldNames)).toEqual(['configRefId']);
+    expect(m['configRef']['$in']).toEqual([2]);
+    expect(Object.keys(m)).toEqual(['configRef']);
+    expect(Object.keys(fieldNames)).toEqual(['configRef']);
 });
 
 test('simple class query array', () => {
@@ -98,8 +98,8 @@ test('simple class query array', () => {
     expect(m['$and'][0]['id']['$qt']).toBe(1);
     expect(m['$or'][0]['id']['$qt']).toBe(1);
     expect(m['$nor'][0]['id']['$qt']).toBe(1);
-    expect(m['$not'][0]['configRefId']['$qt']).toBe(2);
-    expect(Object.keys(fieldNames)).toEqual(['id', 'configRefId']);
+    expect(m['$not'][0]['configRef']['$qt']).toBe(2);
+    expect(Object.keys(fieldNames)).toEqual(['id', 'configRef']);
 });
 
 test('convertClassQueryToMongo customMapping', () => {
