@@ -9,8 +9,8 @@
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master#)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
 Marshal is the **by far fastest** Javascript serialization implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
-JSON-representable data from JSON object to class instance to database records and vice versa, written in and for TypeScript. Marshal uses
-a JIT engine, generating highly optimized serialization functions on the fly.
+JSON-representable data from JSON objects to class instances to database records and vice versa, written in and for TypeScript. Marshal uses
+a JIT engine, generating highly optimized serialization functions on the fly. Marshal is an addition to JSON.parse(), not a replacement.
 
 Marshal introduces the concept of decorating your entity class or class methods *once* with all
 necessary decorators (like type declaration, indices, and relations) using only Marshal's TypeScript decorators
