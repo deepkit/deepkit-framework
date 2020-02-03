@@ -1,6 +1,6 @@
 {
   "name": "@marcj/marshal-mongo",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "Marshal's Mongo database management.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,21 +15,21 @@
   "license": "MIT",
   "peerDependencies": {
     "mongodb": "^3.1.13",
-    "typeorm": "^0.2.14",
-    "rxjs": "~6.5.3"
+    "rxjs": "~6.5.3",
+    "typeorm": "^0.2.14"
   },
   "dependencies": {
-    "buffer": "^5.4.3",
     "@marcj/estdlib": "^0.1.17",
-    "@marcj/marshal": "^1.0.3",
+    "@marcj/marshal": "^2.0.0",
+    "buffer": "^5.4.3",
     "mongo-uuid": "^1.0.0"
   },
   "devDependencies": {
     "@types/mongodb": "^3.1.12",
     "moment": "^2.0.0",
     "mongodb": "^3.1.13",
-    "typeorm": "^0.2.14",
-    "rxjs": "~6.5.3"
+    "rxjs": "~6.5.3",
+    "typeorm": "^0.2.14"
   },
   "jest": {
     "testURL": "http://localhost/",
