@@ -1,13 +1,6 @@
-import {ClassType, eachKey, getClassName, isArray, isObject, isPlainObject, typeOf, eachPair} from "@marcj/estdlib";
-import {applyDefaultValues, getRegisteredProperties} from "./mapper";
-import {
-    getClassSchema,
-    getClassTypeFromInstance,
-    getOrCreateEntitySchema, PropertyCompilerSchema,
-    PropertySchema,
-    PropertyValidator,
-} from "./decorators";
-import {resolvePropertyCompilerSchema} from "./jit";
+import {ClassType, typeOf} from "@marcj/estdlib";
+import {getClassSchema, PropertyCompilerSchema, PropertyValidator,} from "./decorators";
+import {jitValidate, jitValidateProperty} from "./jit-validation";
 
 export class PropertyValidatorError {
     constructor(
@@ -15,126 +8,6 @@ export class PropertyValidatorError {
         public readonly message: string,
     ) {
     }
-}
-
-/**
- * @hidden
- */
-export class BooleanValidator implements PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
-        if ('boolean' !== typeof value) {
-            if (value === '1' || value === '0' || value === 'true' || value === 'false' || value === 0 || value === 1) {
-                return;
-            }
-
-            return new PropertyValidatorError('invalid_boolean', 'No Boolean given');
-        }
-    }
-}
-
-
-const objectIdValidation = new RegExp(/^[a-fA-F0-9]{24}$/);
-
-/**
- * @hidden
- */
-export class ObjectIdValidator implements PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
-        if ('string' !== typeof value) {
-            return new PropertyValidatorError('invalid_objectid', 'No Mongo ObjectID given');
-        }
-
-        if (!value.match(objectIdValidation)) {
-            return new PropertyValidatorError('invalid_objectid', 'No Mongo ObjectID given');
-        }
-    }
-}
-
-const uuidValidation = new RegExp(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
-
-/**
- * @hidden
- */
-export class UUIDValidator implements PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
-        if ('string' !== typeof value) {
-            return new PropertyValidatorError('invalid_uuid', 'No UUID given');
-        }
-
-        if (!value.match(uuidValidation)) {
-            return new PropertyValidatorError('invalid_uuid', 'No UUID given');
-        }
-    }
-}
-
-/**
- * @hidden
- */
-export class NumberValidator implements PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
-        value = parseFloat(value);
-
-        if (!Number.isFinite(value)) {
-            return new PropertyValidatorError('invalid_number', 'No Number given');
-        }
-    }
-}
-
-/**
- * @hidden
- */
-export class StringValidator implements PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
-        if ('string' !== typeof value) {
-            return new PropertyValidatorError('invalid_string', 'No String given');
-        }
-    }
-}
-
-/**
- * @hidden
- */
-export class DateValidator implements PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, property: string, propertySchema: PropertySchema): PropertyValidatorError | void {
-        if (value instanceof Date) {
-            if (isNaN(new Date(value).getTime())) {
-                return new PropertyValidatorError('invalid_date', 'No valid Date given');
-            }
-
-            return;
-        }
-
-        if ('string' !== typeof value || !value) {
-            return new PropertyValidatorError('invalid_date', 'No Date string given');
-        }
-
-        if (isNaN(new Date(value).getTime())) {
-            return new PropertyValidatorError('invalid_date', 'No valid Date string given');
-        }
-    }
-}
-
-/**
- * @hidden
- */
-export class RequiredValidator implements PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
-        if (undefined === value) {
-            return new PropertyValidatorError('required', 'Required value is undefined');
-        }
-
-        if (null === value) {
-            //todo, we should add a decorator that allows to place null values.
-            return new PropertyValidatorError('required', 'Required value is null');
-        }
-    }
-}
-
-/**
- * @hidden
- */
-export function isOptional<T>(classType: ClassType<T>, propertyName: string): boolean {
-    return getOrCreateEntitySchema(classType).getProperty(propertyName).isOptional;
 }
 
 /**
@@ -173,133 +46,20 @@ export class ValidationFailed {
     }
 }
 
-function handleValidator<T>(
-    classType: ClassType<T>,
+export function handleCustomValidator<T>(
     propSchema: PropertyCompilerSchema,
-    validatorType: ClassType<PropertyValidator>,
+    validator: PropertyValidator,
     value: any,
-    propertyName: string,
     propertyPath: string,
     errors: ValidationError[]
-): boolean {
-    const instance = new validatorType;
-
-    if (propSchema.isArray && isArray(value) || (propSchema.isMap && isObject(value))) {
-        for (const i of eachKey(value)) {
-            if ('string' !== typeof value[i]) {
-                const result = instance.validate(value[i], classType, propertyName, propSchema);
-
-                if (result instanceof PropertyValidatorError) {
-                    errors.push(new ValidationError(propertyPath + '.' + i, result.code, result.message));
-                }
-            }
-        }
-    } else {
-        const result = instance.validate(value, classType, propertyName, propSchema);
+) {
+    try {
+        const result = validator.validate(value, propSchema);
         if (result instanceof PropertyValidatorError) {
             errors.push(new ValidationError(propertyPath, result.code, result.message));
-            return true;
         }
-    }
-
-    return false;
-}
-
-function getValidators(property: PropertyCompilerSchema): ClassType<PropertyValidator>[] {
-    if (property.type === 'string') {
-        return [StringValidator, ...property.validators];
-    }
-
-    if (property.type === 'date') {
-        return [DateValidator, ...property.validators];
-    }
-
-    if (property.type === 'number') {
-        return [NumberValidator, ...property.validators];
-    }
-
-    if (property.type === 'uuid') {
-        return [UUIDValidator, ...property.validators];
-    }
-
-    if (property.type === 'objectId') {
-        return [ObjectIdValidator, ...property.validators];
-    }
-
-    if (property.type === 'boolean') {
-        return [BooleanValidator, ...property.validators];
-    }
-
-    return property.validators;
-}
-
-export function validatePropSchema<T>(
-    classType: ClassType<T>,
-    propSchema: PropertyCompilerSchema,
-    errors: ValidationError[],
-    propertyValue: any,
-    propertyName: string,
-    propertyPath: string,
-    fromObjectLiteral: boolean = false
-) {
-    if (propSchema.type === 'any') {
-        //any can be anything, nothing to check here.
-        return;
-    }
-
-    if (!propSchema.isOptional) {
-        if (handleValidator(classType, propSchema, RequiredValidator, propertyValue, propertyName, propertyPath, errors)) {
-            //there's no need to continue validation without a value.
-            return;
-        }
-    }
-
-    if (undefined === propertyValue || null === propertyValue) {
-        //there's no need to continue validation without a value.
-        return;
-    }
-
-    if (propSchema.type === 'class') {
-        const targetEntitySchema = getClassSchema(propSchema.resolveClassType!);
-        if (targetEntitySchema.decorator && fromObjectLiteral) {
-            //the required type is actual the type of the decorated field
-            //when we come from objectLiteral (from JSON)
-            propSchema = targetEntitySchema.getDecoratedPropertySchema();
-        }
-    }
-
-    const validators = getValidators(propSchema);
-
-    if (propSchema.isArray) {
-        if (!isArray(propertyValue)) {
-            errors.push(ValidationError.createInvalidType(propertyPath, 'array', propertyValue));
-            return;
-        }
-    } else {
-        if (propSchema.type === 'class' || propSchema.isMap || propSchema.isPartial) {
-            if (!isObject(propertyValue)) {
-                errors.push(ValidationError.createInvalidType(propertyPath, 'object', propertyValue));
-                return;
-            }
-        }
-    }
-
-    for (const validatorType of validators) {
-        handleValidator(classType, propSchema, validatorType, propertyValue, propertyName, propertyPath, errors);
-    }
-
-    if (propSchema.type === 'class') {
-        if (propSchema.isMap || propSchema.isArray) {
-            for (const i in propertyValue) {
-                const deepPropertyPath = propertyPath + '.' + i;
-                errors.push(...validate(propSchema.resolveClassType!, propertyValue[i], deepPropertyPath));
-            }
-        } else if (propSchema.isPartial) {
-            errors.push(...partialValidate(propSchema.resolveClassType!, propertyValue, propertyPath));
-        } else {
-            //deep validation
-            errors.push(...validate(propSchema.resolveClassType!, propertyValue, propertyPath));
-        }
+    } catch (error) {
+        errors.push(new ValidationError(propertyPath, 'error', error.message || String(error)));
     }
 }
 
@@ -308,17 +68,16 @@ export function validatePropSchema<T>(
  */
 export function validateMethodArgs<T>(classType: ClassType<T>, methodName: string, args: any[]): ValidationError[] {
     const errors: ValidationError[] = [];
-    const properties = getClassSchema(classType).getMethodProperties(methodName);
+    const schema = getClassSchema(classType);
+    schema.loadHasDefaults();
 
-    for (const [i, property] of eachPair(properties)) {
-        validatePropSchema(
-            classType,
-            property,
-            errors,
+    const properties = schema.getMethodProperties(methodName);
+
+    for (const i in properties) {
+        jitValidateProperty(properties[i])(
             args[i],
-            String(i),
             '#' + String(i),
-            false
+            errors
         );
     }
 
@@ -334,70 +93,6 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * ```
  */
 export function validate<T>(classType: ClassType<T>, item: { [name: string]: any } | T, path?: string): ValidationError[] {
-    const properties = getRegisteredProperties(classType);
-    const errors: ValidationError[] = [];
-    const schema = getClassSchema(classType);
-    let fromObjectLiteral = false;
-
-    if (!schema.decorator) {
-        if (isPlainObject(item)) {
-            fromObjectLiteral = true;
-            item = applyDefaultValues(classType, item as object);
-        } else if (isObject(item) && !(item instanceof classType)) {
-            throw new Error(`Given item is from the wrong class type. Expected ${getClassName(classType)}, got ${getClassTypeFromInstance(item)}.`)
-        }
-    }
-
-    for (const propertyName of properties) {
-        let propertyPath = path ? path + '.' + propertyName : propertyName;
-
-        if (schema.decorator) {
-            //when classType is a decorator, we only check the decorated field
-            //and omit that field name in the propertyPath.
-            if (schema.decorator !== propertyName) {
-                continue;
-            }
-
-            propertyPath = path ? path : '';
-        }
-
-        validatePropSchema(
-            classType,
-            schema.getProperty(propertyName),
-            errors,
-            item[propertyName],
-            propertyName,
-            propertyPath,
-            fromObjectLiteral
-        );
-    }
-
-    return errors;
+    return jitValidate(classType)(item, path);
 }
 
-/**
- * Validates a Partial<T> object.
- */
-export function partialValidate<T>(classType: ClassType<T>, item: Partial<T>, path?: string): ValidationError[] {
-    const errors: ValidationError[] = [];
-    const schema = getClassSchema(classType);
-
-    for (const propertyName of eachKey(item)) {
-        const propertySchema = resolvePropertyCompilerSchema(schema, propertyName);
-        if (!propertySchema) continue;
-
-        let propertyPath = path ? path + '.' + propertyName : propertyName;
-
-        validatePropSchema(
-            classType,
-            propertySchema,
-            errors,
-            item[propertyName],
-            propertyName,
-            propertyPath,
-            false,
-        );
-    }
-
-    return errors;
-}

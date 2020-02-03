@@ -42,9 +42,10 @@ export function registerConverterCompiler(
 
 export function reserveVariable(
     rootContext: TypeConverterCompilerContext,
+    name: string = 'var'
 ) {
     for (let i = 0; i < 10000; i++) {
-        const candidate = 'var_' + i;
+        const candidate = name + '_' + i;
         if (!rootContext.has(candidate)) {
             rootContext.set(candidate, undefined);
             return candidate;
@@ -89,24 +90,32 @@ export function getDataConverterJS(
         let setDefault = property.isOptional ? '' : `${setter} = [];`;
         if (!compiler) {
             return `
-                if (${accessor} && ${accessor}.length >= 0) {
-                     ${setter} = ${accessor}.slice();
-                } else {
-                    ${setDefault}
-                }
+            if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
+                ${setDefault}
+            } else {
+                ${setter} = ${accessor}.slice();
+            }
             `
         }
         return `
-            if (${accessor} && ${accessor}.length >= 0) {
+            if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
+                ${setDefault}
+            } else {
                  var l = ${accessor}.length;
                  var a = ${accessor}.slice();
                  while (l--) {
                     //make sure all elements have the correct type
-                    ${executeCompiler(rootContext, compiler, `a[l]`, `a[l]`, property)}
+                    if (${accessor}[l] !== undefined && ${accessor}[l] !== null) {
+                        var value;
+                        ${executeCompiler(rootContext, compiler, `value`, `a[l]`, property)}
+                        if (value === undefined) {
+                            a.splice(l, 1);
+                        } else {
+                            a[l] = value;   
+                        }
+                    }
                  } 
                  ${setter} = a;
-            } else {
-                ${setDefault}
             }
         `;
     } else if (property.isMap) {
@@ -114,10 +123,13 @@ export function getDataConverterJS(
         let setDefault = property.isOptional ? '' : `${setter} = {};`;
         return `
             var a = {};
-            if (${accessor} && 'object' === typeof ${accessor}) {
+            //we make sure its a object and not an array
+            if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
                 for (var i in ${accessor}) {
                     if (!${accessor}.hasOwnProperty(i)) continue;
-                    ${line}
+                    if (${accessor}[i] !== undefined && ${accessor}[i] !== null) {
+                        ${line}
+                    }
                 }
                 ${setter} = a;
             } else {

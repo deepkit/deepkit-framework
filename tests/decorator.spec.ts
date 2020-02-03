@@ -1,20 +1,20 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {
+    arrayBufferFrom,
     classToPlain,
     DatabaseName,
     Entity,
     f,
+    getClassSchema,
     getDatabaseName,
     getEntityName,
-    getClassSchema,
     isArrayType,
     isMapType,
-    ParentReference,
+    isRegisteredEntity,
     plainToClass,
+    PropertySchema,
     RegisteredEntities,
-    isOptional,
-    isRegisteredEntity, PropertySchema, arrayBufferFrom,
 } from "../";
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
@@ -163,7 +163,7 @@ test('test asName', () => {
 
     expect(user.parent).toBe('a');
     expect(user.neighbor).toBe('b');
-    expect(isOptional(User, 'fieldB')).toBe(true);
+    expect(getClassSchema(User).getProperty('fieldB').isOptional).toBe(true);
 });
 
 test('test no entity throw error', () => {
@@ -188,6 +188,7 @@ test('test No decorated property found', () => {
 
 test('test custom decorator', () => {
     let called = false;
+
     function Decorator(target: Object, property: PropertySchema) {
         called = true;
     }
@@ -233,7 +234,10 @@ test('test decorator circular', () => {
             sub?: { [l: string]: Sub };
         }
 
-        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({type: 'class', resolveClassType: Sub});
+        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({
+            type: 'class',
+            resolveClassType: Sub
+        });
         expect(isMapType(Model, 'sub')).toBeTrue();
     }
 
@@ -243,7 +247,10 @@ test('test decorator circular', () => {
             sub?: Sub[];
         }
 
-        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({type: 'class', resolveClassType: Sub});
+        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({
+            type: 'class',
+            resolveClassType: Sub
+        });
         expect(isArrayType(Model, 'sub')).toBeTrue();
     }
 });

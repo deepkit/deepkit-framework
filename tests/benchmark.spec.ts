@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import {bench} from "../../benchmark/util";
 import {classToPlain, partialPlainToClass, plainToClass} from "../../core/src/mapper-old";
 import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass} from "../src/jit";
-import {f} from "..";
+import {f, validate} from "..";
 
 export class MarshalSuperSimple {
     constructor(
