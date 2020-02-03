@@ -35,7 +35,7 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 * Soft type castings (so implicit cast from number -> string, if necessary)
 * Entity definition export to TypeORM (currently columns + indices), so you don't have to decorate twice.
 * NestJS validation pipe
-* MongoDB database abstraction and query builder with relation support
+* MongoDB database abstraction and query builder with relation and join support
 
 ## Todo
 
