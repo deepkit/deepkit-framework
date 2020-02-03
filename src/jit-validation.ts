@@ -1,7 +1,7 @@
 import {ClassType} from "@marcj/estdlib";
 import {handleCustomValidator, ValidationError} from "./validation";
 import {getClassSchema, PropertyCompilerSchema, PropertyValidator} from "./decorators";
-import {executeCompiler, TypeCheckerCompilerContext, validationRegistry} from "./jit-validation-registry";
+import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from "./jit-validation-registry";
 import './jit-validation-templates';
 import {reserveVariable} from "./compiler-registry";
 import {resolvePropertyCompilerSchema} from "./jit";
@@ -47,7 +47,7 @@ export function getDataCheckerJS(
 
     if (property.isArray) {
         //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
-        const checkItem = compiler ? executeCompiler(`${path} + '.' + l`, rootContext, compiler, `${accessor}[l]`, property) : '';
+        const checkItem = compiler ? executeCheckerCompiler(`${path} + '.' + l`, rootContext, compiler, `${accessor}[l]`, property) : '';
 
         return `
             //property ${property.name}, ${property.type} ${property.isActualOptional()}
@@ -72,7 +72,7 @@ export function getDataCheckerJS(
             }
         `;
     } else if (property.isMap) {
-        const line = compiler ? executeCompiler(`${path} + '.' + i`, rootContext, compiler, `${accessor}[i]`, property) : ``;
+        const line = compiler ? executeCheckerCompiler(`${path} + '.' + i`, rootContext, compiler, `${accessor}[i]`, property) : ``;
         return `
             //property ${property.name}, ${property.type}
             if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
@@ -105,7 +105,7 @@ export function getDataCheckerJS(
     } else if (compiler) {
         return `
             //property ${property.name}, ${property.type}
-            ${executeCompiler(path, rootContext, compiler, accessor, property)}
+            ${executeCheckerCompiler(path, rootContext, compiler, accessor, property)}
             ${getCustomValidatorCode(accessor, path)}
         `;
     } else {
