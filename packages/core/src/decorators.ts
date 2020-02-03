@@ -1,12 +1,4 @@
-import {
-    BooleanValidator,
-    DateValidator,
-    NumberValidator,
-    ObjectIdValidator,
-    PropertyValidatorError,
-    StringValidator,
-    UUIDValidator
-} from "./validation";
+import {PropertyValidatorError} from "./validation";
 import {
     ClassType,
     eachKey,
@@ -98,7 +90,7 @@ export function isTypedArray(type: Types): boolean {
 
 
 export interface PropertyValidator {
-    validate<T>(value: any, target: ClassType<T>, propertyName: string, propertySchema: PropertyCompilerSchema): PropertyValidatorError | void;
+    validate<T>(value: any, propertySchema: PropertyCompilerSchema): PropertyValidatorError | void;
 }
 
 export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
@@ -163,6 +155,8 @@ export class PropertyCompilerSchema {
      */
     isReference: boolean = false;
 
+    hasDefaultValue: boolean = false;
+
     protected cacheKey?: string;
 
     constructor(
@@ -191,11 +185,11 @@ export class PropertyCompilerSchema {
         if (this.cacheKey) return this.cacheKey;
 
         if (this.isMap) {
-            this.cacheKey =  'm' + this.type;
+            this.cacheKey = 'm' + this.type;
         } else if (this.isArray) {
-            this.cacheKey =  'a' + this.type;
+            this.cacheKey = 'a' + this.type;
         } else if (this.isPartial) {
-            this.cacheKey =  'p' + this.type;
+            this.cacheKey = 'p' + this.type;
         } else {
             this.cacheKey = this.type;
         }
@@ -221,6 +215,7 @@ export class PropertyCompilerSchema {
         i.allowLabelsAsValue = propertySchema.allowLabelsAsValue;
         i.isReference = propertySchema.isReference;
         i.isParentReference = propertySchema.isParentReference;
+        i.hasDefaultValue = propertySchema.hasDefaultValue;
         if (isArray !== undefined) i.isArray = isArray;
         if (isMap !== undefined) i.isMap = isMap;
         if (isPartial !== undefined) i.isPartial = isPartial;
@@ -507,12 +502,34 @@ export class ClassSchema<T = any> {
     public readonly references = new Set<PropertySchema>();
 
     protected referenceInitialized = false;
+    protected hasDefaultsInitialized = false;
 
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
     protected hasFullLoadHooksCheck = false;
 
     constructor(classType: ClassType<any>) {
         this.classType = classType;
+    }
+
+    loadHasDefaults() {
+        if (this.hasDefaultsInitialized) return;
+
+        //its important that the class supports calling the constructor without any values
+        //same for proxy instances btw.
+        try {
+            const instance = new this.classType();
+            for (const property of this.classProperties.values()) {
+                if (instance[property.name] !== null && instance[property.name] !== undefined) {
+                    property.hasDefaultValue = true;
+                }
+            }
+        } catch (error) {
+            throw new Error(
+                `Class ${this.getClassName()} constructor is not callable without values. ` +
+                `Make sure not to depend on constructor arguments. This is necessary for default value checking.`
+            );
+        }
+        this.hasDefaultsInitialized = true;
     }
 
     public getClassName(): string {
@@ -1422,16 +1439,12 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, map: true});
     };
 
-    fn.validator = (validator: ClassType<PropertyValidator> | ((value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void)) => {
+    fn.validator = (validator: ClassType<PropertyValidator> | ((value: any) => PropertyValidatorError | void)) => {
         resetIfNecessary();
 
         const validatorClass: ClassType<PropertyValidator> = isPropertyValidator(validator) ? validator : class implements PropertyValidator {
-            validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {
-                try {
-                    return validator(value, target, propertyName);
-                } catch (error) {
-                    return new PropertyValidatorError('error', error.message ? error.message : error);
-                }
+            validate<T>(value: any): PropertyValidatorError | void {
+                return validator(value);
             }
         };
 

@@ -15,7 +15,8 @@
     "@marcj/marshal": "^2.0.0",
     "buffer": "^5.2.1",
     "class-transformer": "^0.2.0",
-    "cerialize": "^2.0.1"
+    "cerialize": "^2.0.1",
+    "runtypes": "^4.1.0"
   },
   "jest": {
     "testURL": "http://localhost/",

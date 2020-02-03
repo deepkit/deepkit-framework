@@ -4,8 +4,6 @@ import {
     getDatabaseName,
     getEntityName,
     getIdField,
-    isExcluded,
-    isOptional,
     typedArrayNamesMap
 } from "@marcj/marshal";
 import {ColumnType, EntitySchema, EntitySchemaColumnOptions, EntitySchemaIndexOptions} from "typeorm";
@@ -15,7 +13,7 @@ function propertyToColumnOptions<T>(classType: ClassType<T>, propertyName: strin
     const schema = getClassSchema(classType);
     const property = schema.getProperty(propertyName);
 
-    const nullable = isOptional(classType, propertyName);
+    const nullable = property.isOptional;
     let type: ColumnType = 'json';
     let enumValues: any[] | undefined;
 

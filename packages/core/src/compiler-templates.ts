@@ -1,4 +1,4 @@
-import {PropertyCompilerSchema, typedArrayNamesMap} from "./decorators";
+import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap} from "./decorators";
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from "./core";
 import {createClassToXFunction, createXToClassFunction, moment} from "./jit";
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from "@marcj/estdlib";
@@ -151,16 +151,28 @@ registerConverterCompiler('class', 'plain', 'class', compilerConvertClassToX('pl
 export function compilerXToClass(fromFormat: string) {
     return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
         const classType = reserveVariable();
+        const context = {
+            [classType]: property.resolveClassType,
+            createXToClassFunction
+        };
+
+        const foreignSchema = getClassSchema(property.resolveClassType!);
+        if (foreignSchema.decorator) {
+            //the actual type checking happens within createXToClassFunction()'s constructor param
+            //so we dont check here for object.
+            return {
+                template: `${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, getParents(), _state);`,
+                context
+            };
+        }
 
         return {
             template: `
-            ${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, getParents(), _state);
-        `,
-            context: {
-                [classType]: property.resolveClassType,
-                createXToClassFunction
+            //object and not an array
+            if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
+                ${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, getParents(), _state);
             }
-        };
+        `, context};
     }
 }
 registerConverterCompiler('plain', 'class', 'class', compilerXToClass('plain'));

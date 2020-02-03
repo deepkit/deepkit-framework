@@ -1,8 +1,9 @@
 import 'reflect-metadata';
 import 'jest-extended'
 import {f, getClassSchema, PropertySchema} from "../src/decorators";
-import {validate, validatePropSchema} from '../src/validation';
-import {Channel, Job, JobTask} from "./big-entity";
+import {validate} from '../src/validation';
+import {Channel, Job} from "./big-entity";
+import {jitValidateProperty} from "../src/jit-validation";
 
 test('test any deep array', async () => {
     class Peter {
@@ -16,7 +17,7 @@ test('test any deep array', async () => {
 
     expect(errors).toEqual([{
         "code": "invalid_string",
-        "message": "No String given",
+        "message": "No string given",
         "path": "names.1",
     }]);
 });
@@ -33,16 +34,7 @@ test('test any deep validation', async () => {
     propSchema.setFromJSType(Job);
     propSchema.isPartial = true;
 
-    const errors: any[] = [];
-    validatePropSchema(
-        Object,
-        propSchema,
-        errors,
-        patches,
-        '0',
-        'propertyPath.0',
-        false
-    );
+    const errors = jitValidateProperty(propSchema)(patches);
 
     expect(errors).toEqual([]);
 });
@@ -52,17 +44,8 @@ test('test array optionalItem value', async () => {
 
     const propSchema = getClassSchema(Channel).getProperty('lastValue');
     expect(propSchema.type).toBe('any');
-    const errors: any[] = [];
 
-    validatePropSchema(
-        Object,
-        propSchema,
-        errors,
-        value,
-        'lastValue',
-        'lastValue',
-        false
-    );
+    const errors = jitValidateProperty(propSchema)(value);
 
     expect(errors).toEqual([]);
 });

@@ -8,8 +8,7 @@ import {
 import {bench} from "./util";
 import {jitClassToPlain, jitPlainToClass} from "../core/src/jit";
 import {f} from "@marcj/marshal";
-import {autoserializeAs, autoserializeAsArray, DeserializeRaw, Deserialize, Serialize} from "cerialize";
-import instantiate = WebAssembly.instantiate;
+import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from "cerialize";
 
 export class MarshalModel {
     @f ready?: boolean;

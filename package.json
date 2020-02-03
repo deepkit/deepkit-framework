@@ -47,6 +47,7 @@
       "!**/tests/**/*",
       "!packages/benchmark/**/*",
       "!packages/core/src/mapper-old.ts",
+      "!packages/core/src/validation-old.ts",
       "!index.ts"
     ],
     "testPathIgnorePatterns": [

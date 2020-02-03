@@ -1,7 +1,6 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {getClassSchema, isOptional, plainToClass, PropertySchema, f, Entity} from "..";
-import {Buffer} from "buffer";
+import {Entity, f, getClassSchema, plainToClass, PropertySchema} from "..";
 import {uuid} from "../src/utils";
 
 test('test optional', () => {
@@ -167,7 +166,7 @@ test('test asName', () => {
 
     expect(user.parent).toBe('a');
     expect(user.neighbor).toBe('b');
-    expect(isOptional(User, 'fieldB')).toBe(true);
+    expect(schema.getProperty('fieldB').isOptional).toBe(true);
 });
 
 test('test asName easy', () => {
