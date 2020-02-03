@@ -38,7 +38,7 @@ export class ClassTransformerModel {
 
 export class CerializeModel {
     @autoserializeAs(Number) id?: number;
-    @autoserializeAs(String) public name: string;
+    @autoserializeAs(String) public name?: string;
 
     @autoserializeAs(Boolean) ready?: boolean;
 
