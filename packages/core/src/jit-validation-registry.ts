@@ -16,7 +16,7 @@ export function registerCheckerCompiler(
     validationRegistry.set(type, compiler);
 }
 
-export function executeCompiler(
+export function executeCheckerCompiler(
     path: string,
     rootContext: TypeCheckerCompilerContext,
     compiler: TypeCheckerCompiler,
