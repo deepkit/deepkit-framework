@@ -191,6 +191,18 @@ Doing this 100,000 times takes 12.349ms instead of 18.483ms with Marshal.
 Validation is equally JIT optimized and by far the [fastest validator in its class](https://github.com/moltar/typescript-runtime-type-benchmarks).
 Validating **100.000 objects** from the model above takes **0.000115ms per item**, in total 12ms.
 
+```typescript
+import {validate} from '@marcj/marshal';
+const data = {
+    name: 'name1',
+    id: 1,
+    tags: ['a', 2, 'c'],
+    priority: 5,
+    ready: true,
+};
+const errors = validate(MarshalModel)(data);
+```
+
 ![Bar Graph - Node 12.x](https://github.com/moltar/typescript-runtime-type-benchmarks/raw/master/results/bar-graph-12.x.svg?sanitize=true)
 
 ## Usage
