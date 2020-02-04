@@ -8,7 +8,7 @@
 [![npm version](https://badge.fury.io/js/%40marcj%2Fmarshal.svg)](https://badge.fury.io/js/%40marcj%2Fmarshal)
 [![Coverage Status](https://coveralls.io/repos/github/marcj/marshal.ts/badge.svg?branch=master#)](https://coveralls.io/github/marcj/marshal.ts?branch=master)
 
-Marshal is the **by far fastest** Javascript serialization implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
+Marshal is the **by far fastest** Javascript validation and serialization implementation to [marshal](https://en.wikipedia.org/wiki/Marshalling_(computer_science))
 JSON-representable data from JSON objects to class instances to database records and vice versa, written in and for TypeScript. Marshal uses
 a JIT engine, generating highly optimized serialization functions on the fly. Marshal is an addition to JSON.parse(), not a replacement.
 
@@ -19,7 +19,7 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 
 ## Features
 
-* Fastest serialization thanks to a JIT engine. It's the the by far fastest serialization library for both, Nodejs and browsers.
+* [Fastest serialization and validation](#benchmark) thanks to a JIT engine. It's the the by far fastest serialization library for both, Nodejs and browsers.
 * Supported types: String, Number, Boolean, Date, Moment.js, ArrayBuffer (binary), custom classes, Array, object maps, any.
 * Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
 * Cross referencing/Circular references using `@f.forwardRef`
@@ -186,8 +186,12 @@ instance.ready = true;
 
 Doing this 100,000 times takes 12.349ms instead of 18.483ms with Marshal.
 
-Note: There's no validation involved here, but only soft implicit type converting (number to string for example).
-Use `const errors = validate(MyClass, instance)` to do validation whe necessary. Validation is not yet optimized with the JIT engine.
+**Validation**:
+
+Validation is equally JIT optimized and by far the [fastest validator in its class](https://github.com/moltar/typescript-runtime-type-benchmarks).
+Validating **100.000 objects** from the model above takes **0.000115ms per item**, in total 12ms.
+
+![Bar Graph - Node 12.x](https://github.com/moltar/typescript-runtime-type-benchmarks/raw/master/results/bar-graph-12.x.svg?sanitize=true)
 
 ## Usage
 
