@@ -28,7 +28,7 @@ export class Connection {
             password: this.password,
         } : undefined;
 
-        this.client = await MongoClient.connect(`mongodb://${this.host}/exampleDb`, {
+        this.client = await MongoClient.connect(`mongodb://${this.host}/${this.defaultDatabase}`, {
             auth: auth,
             useNewUrlParser: true,
         } as MongoClientOptions);
