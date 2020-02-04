@@ -1,9 +1,10 @@
-import {App, us_listen_socket, us_listen_socket_close, WebSocket} from "uWebSockets.js";
+// import {App, us_listen_socket, us_listen_socket_close, WebSocket} from "uWebSockets.js";
 import {decodeMessage, encodeMessage} from "./exchange-prot";
 import {ProcessLock, ProcessLocker} from "./process-locker";
 import {Injectable} from "injection-js";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Subscription} from "rxjs";
+import * as WebSocket from 'ws';
 
 interface StatePerConnection {
     subs: Subscriptions;
@@ -13,7 +14,6 @@ interface StatePerConnection {
 
 @Injectable()
 export class ExchangeServer {
-    protected listen?: us_listen_socket;
     protected locker = new ProcessLocker;
     protected locks: { [name: string]: ProcessLock } = {};
     protected storage: { [key: string]: any } = {};
@@ -23,6 +23,10 @@ export class ExchangeServer {
 
     protected version = 0;
 
+    protected server?: WebSocket.Server;
+
+    protected subscriptions = new Map<string, Set<WebSocket>>();
+
     constructor(
         public readonly host = '127.0.0.1',
         public port = 8561,
@@ -31,30 +35,32 @@ export class ExchangeServer {
     }
 
     close() {
-        if (this.listen) {
-            us_listen_socket_close(this.listen);
-            this.listen = undefined;
+        if (this.server) {
+            this.server.close();
         }
     }
 
     async start() {
-        const app = App().ws('/*', {
-            /* Options */
-            compression: 0,
-            maxPayloadLength: 50 * 1024 * 1024, //50mb
-            idleTimeout: 0,
-            /* Handlers */
-            open: (ws, req) => {
-                this.statePerConnection.set(ws, {
-                    subs: new Subscriptions(),
-                    locks: new Map(),
-                    subscribedEntityFields: new Map(),
-                });
-            },
-            message: async (ws, message: ArrayBuffer, isBinary) => {
-                this.onMessage(ws, message, this.statePerConnection.get(ws)!);
-            },
-            close: (ws, code, message) => {
+        this.server = new WebSocket.Server({
+            host: this.host,
+            port: this.port,
+        });
+
+        this.server.on('connection', (ws, req) => {
+            this.statePerConnection.set(ws, {
+                subs: new Subscriptions(),
+                locks: new Map(),
+                subscribedEntityFields: new Map(),
+            });
+
+            ws.on('message', (message) => {
+                // console.log('message', typeof message, getClassName(message), message instanceof ArrayBuffer);
+                if (message instanceof Buffer) {
+                    this.onMessage(ws, message, this.statePerConnection.get(ws)!);
+                }
+            });
+
+            ws.on('close', () => {
                 const statePerConnection = this.statePerConnection.get(ws)!;
 
                 //clean up stuff that hasn't been freed
@@ -67,40 +73,58 @@ export class ExchangeServer {
                 }
 
                 this.statePerConnection.delete(ws);
-            }
+            });
         });
 
-        while (!await new Promise((resolve, reject) => {
-            app.listen(this.host, this.port, (token) => {
-                if (token) {
-                    console.log('listen on', this.host, this.port);
-                    this.listen = token;
-                    resolve(true);
-                } else {
-                    resolve(false);
-                }
-            });
-        })) {
-            this.port++;
-        }
+        await new Promise((resolve, reject) => {
+            if (this.server) {
+                this.server.on("listening", () => {
+                    resolve();
+                });
+                this.server.on("error", (err) => {
+                    reject(err);
+                });
+            }
+        });
     }
 
-    protected async onMessage(ws: WebSocket, message: ArrayBuffer, state: StatePerConnection) {
+    protected async onMessage(ws: WebSocket, message: Buffer, state: StatePerConnection) {
         const m = decodeMessage(message);
         // console.log('server message', message.toString(), m);
 
         if (m.type === 'subscribe') {
-            ws.subscribe(m.arg);
+            let store = this.subscriptions.get(m.arg);
+            if (!store) {
+                store = new Set<WebSocket>();
+                this.subscriptions.set(m.arg, store);
+            }
+            store.add(ws);
             return;
         }
 
         if (m.type === 'unsubscribe') {
-            ws.unsubscribe(m.arg);
+            const store = this.subscriptions.get(m.arg);
+            if (store) {
+                store.delete(ws);
+                if (store.size === 0) {
+                    this.subscriptions.delete(m.arg);
+                }
+            }
+            return;
+        }
+
+        if (m.type === 'publish') {
+            const store = this.subscriptions.get(m.arg);
+            if (store) {
+                for (const otherWS of store) {
+                    otherWS.send(message, {binary: true});
+                }
+            }
             return;
         }
 
         if (m.type === 'get') {
-            ws.send(encodeMessage(m.id, m.type, m.arg, this.storage[m.arg]), true);
+            ws.send(encodeMessage(m.id, m.type, m.arg, this.storage[m.arg]), {binary: true});
             return;
         }
 
@@ -158,12 +182,7 @@ export class ExchangeServer {
 
         if (m.type === 'get-entity-subscribe-fields') {
             const reply = encodeMessage(m.id, m.type, Object.keys(this.entityFields[m.arg] || {}));
-            ws.send(reply, true);
-            return;
-        }
-
-        if (m.type === 'publish') {
-            ws.publish(m.arg, message, true);
+            ws.send(reply, {binary: true});
             return;
         }
 
@@ -171,7 +190,7 @@ export class ExchangeServer {
             const [name, timeout] = m.arg;
             this.locks[name] = await this.locker.acquireLock(name, timeout);
             state.locks.set(m.arg, this.locks[name]);
-            ws.send(encodeMessage(m.id, m.type, true), true);
+            ws.send(encodeMessage(m.id, m.type, true), {binary: true});
             return;
         }
 
@@ -186,13 +205,13 @@ export class ExchangeServer {
 
         if (m.type === 'isLocked') {
             const isLocked = !!this.locks[m.arg];
-            ws.send(encodeMessage(m.id, m.type, isLocked), true);
+            ws.send(encodeMessage(m.id, m.type, isLocked), {binary: true});
             return;
         }
 
         if (m.type === 'version') {
             // const t = process.hrtime.bigint()
-            ws.send(encodeMessage(m.id, m.type, ++this.version), true);
+            ws.send(encodeMessage(m.id, m.type, ++this.version), {binary: true});
         }
     }
 }

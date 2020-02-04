@@ -16,15 +16,14 @@
   },
   "peerDependencies": {
     "@marcj/glut-core": "0.0.1",
-    "@marcj/marshal": "^1.0.3",
-    "@marcj/marshal-mongo": "^1.0.3",
+    "@marcj/marshal": "^2.1.0",
+    "@marcj/marshal-mongo": "^2.1.0",
     "bson-ext": "^2.0.3",
     "buffer": "^5.2.1",
     "mongodb": "^3.3.2",
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3",
-    "typeorm": "^0.2.18",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v16.0.0"
+    "typeorm": "^0.2.18"
   },
   "dependencies": {
     "@marcj/estdlib": "^0.1.17",
@@ -37,12 +36,12 @@
     "redis": "^2.8.0",
     "redlock": "^3.1.2",
     "sift": "^7.0.1",
-    "ws": "^6.1.2"
+    "ws": "^7.2.1"
   },
   "devDependencies": {
     "@marcj/glut-core": "^0.0.25",
-    "@marcj/marshal": "^1.0.3",
-    "@marcj/marshal-mongo": "^1.0.3",
+    "@marcj/marshal": "^2.1.0",
+    "@marcj/marshal-mongo": "^2.1.0",
     "@types/clone": "^0.1.30",
     "@types/fs-extra": "^5.0.2",
     "@types/mongodb": "^3.1.14",
@@ -59,8 +58,7 @@
     "rxjs": "~6.5.3",
     "source-map": "^0.7.3",
     "source-map-support": "^0.5.9",
-    "typeorm": "^0.2.18",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v16.0.0"
+    "typeorm": "^0.2.18"
   },
   "jest": {
     "moduleFileExtensions": [

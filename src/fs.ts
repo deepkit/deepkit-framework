@@ -323,7 +323,7 @@ export class FS<T extends GlutFile> {
     }
 
     /**
-     * Streams content by always appending data to the file's content.
+     * Streams content by always appending data to the file's content and publishes the data to the exchange change feed.
      */
     public async stream(
         path: string,
@@ -381,17 +381,17 @@ export class FS<T extends GlutFile> {
                 version: version,
                 path: path,
                 size: stats.size,
-                content: data.toString(), //todo, support binary
+                content: data.toString('base64'),
             });
         } finally {
             await lock.unlock();
         }
     }
 
-    public async subscribe(path: string, fields?: Partial<T>, encoding?: 'binary'): Promise<StreamBehaviorSubject<Buffer | undefined>>;
+    public async subscribe(path: string, fields?: Partial<T>, encoding?: 'binary'): Promise<StreamBehaviorSubject<Uint8Array | undefined>>;
     public async subscribe(path: string, fields: Partial<T>, encoding: 'utf8'): Promise<StreamBehaviorSubject<string | undefined>>;
     public async subscribe(path: string, fields: Partial<T> = {}, encoding: 'binary' | 'utf8' = 'binary'):
-        Promise<StreamBehaviorSubject<Buffer | undefined> | StreamBehaviorSubject<string | undefined>> {
+        Promise<StreamBehaviorSubject<Uint8Array | undefined> | StreamBehaviorSubject<string | undefined>> {
 
         const subject = new StreamBehaviorSubject<any>(undefined);
 
@@ -424,7 +424,6 @@ export class FS<T extends GlutFile> {
                         //this means we could track to avoid race conditions, but for the moment we use a lock.
                         //lock is acquired in stream() and makes sure we don't get file appends during
                         //reading and subscribing
-
                         subject.append(message.content);
                     } else if (message.type === 'remove') {
                         subject.next(undefined);

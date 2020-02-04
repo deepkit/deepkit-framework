@@ -1,4 +1,4 @@
-import {propertyClassToPlain, PropertySchema, uuid} from "@marcj/marshal";
+import {PropertySchema, uuid, createJITConverterFromPropertySchema} from "@marcj/marshal";
 import {Exchange} from "./exchange";
 import {
     ActionTypes,
@@ -200,7 +200,7 @@ export class InternalClientConnection {
                 const types = await this.getActionTypes(controller, name);
 
                 for (const i of eachKey(args)) {
-                    args[i] = propertyClassToPlain(Object, name, args[i], types.parameters[i]);
+                    args[i] = createJITConverterFromPropertySchema('class', 'plain', types.parameters[i])(args[i]);
                 }
 
                 const subject = this.sendMessage<ServerMessageResult>(controller, {

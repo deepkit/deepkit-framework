@@ -20,7 +20,7 @@ import {ExchangeServer} from "./exchange-server";
 export class ApplicationServerConfig {
     host: string = '127.0.0.1';
 
-    port: number | 'auto' = 8080;
+    port: number = 8080;
 
     workers: number = 1;
 
@@ -256,7 +256,7 @@ export class ApplicationServer {
                 host: this.config.host,
                 port: this.config.port,
             });
-            this.port = await this.masterWorker!.run();
+            await this.masterWorker!.run();
             this.done();
         }
     }
