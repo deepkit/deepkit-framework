@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 import 'jest-extended'
-import {f, getClassSchema, PropertySchema} from "../src/decorators";
-import {validate} from '../src/validation';
+import {f, getClassSchema, PropertySchema, PropertyValidator} from "../src/decorators";
+import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from "./big-entity";
 import {jitValidateProperty} from "../src/jit-validation";
+import {uuid, validatedPlainToClass} from "..";
 
 test('test any deep array', async () => {
     class Peter {
@@ -48,4 +49,42 @@ test('test array optionalItem value', async () => {
     const errors = jitValidateProperty(propSchema)(value);
 
     expect(errors).toEqual([]);
+});
+
+
+test('test custom validator on array items', async () => {
+    class MyCustomValidator implements PropertyValidator {
+        validate<T>(value: any): PropertyValidatorError | void {
+            if (value.length > 10) {
+                return new PropertyValidatorError('too_long', 'Too long :()');
+            }
+        };
+    }
+
+    class SimpleModel {
+        @f.primary().uuid()
+        id: string = uuid();
+
+        @f.validator(MyCustomValidator)
+        @f.array(String)
+        tags!: string[];
+
+        @f.validator(MyCustomValidator)
+        tag!: string;
+    }
+
+    try {
+        const instance = validatedPlainToClass(SimpleModel, {
+            name: 'myName',
+            tags: ['foowererererefdrwerer', 'bar'],
+            tag: 'foowererererefdrwerer',
+        });
+        fail('This should fail');
+    } catch (error) {
+        expect(error).toBeInstanceOf(ValidationFailed);
+        expect(error.errors).toEqual([
+            {code: "too_long", message: "Too long :()", path: "tags.0"},
+            {code: "too_long", message: "Too long :()", path: "tag"},
+        ])
+    }
 });
