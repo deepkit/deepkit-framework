@@ -1,4 +1,4 @@
-import {plainToClass, propertyPlainToClass, RegisteredEntities} from "@marcj/marshal";
+import {partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "../index";
 import {set} from 'dot-prop';
 import {ClassType, eachPair, getClassName} from "@marcj/estdlib";
@@ -187,13 +187,11 @@ export class EntityState {
 
                 if (item && (toVersion === 0 || item.version < toVersion)) {
 
-                    const patches: { [path: string]: any } = {};
+                    const patches = partialPlainToClass(classType, stream.patch);
 
                     //it's important to not patch old versions
-                    for (const [i, v] of eachPair(stream.patch)) {
-                        const vc = propertyPlainToClass(classType, i, v, [], 0, {onFullLoadCallbacks: []});
-                        patches[i] = vc;
-                        set(item, i, vc);
+                    for (const [i, v] of eachPair(patches)) {
+                        set(item, i, v);
                     }
 
                     item.version = toVersion;

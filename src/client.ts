@@ -3,7 +3,7 @@ import {first} from "rxjs/operators";
 import {ClientMessageWithoutId, ServerMessageComplete, ServerMessageError, ServerMessageResult} from "./contract";
 import {getUnserializedError, StreamBehaviorSubject} from "./core";
 import {Collection, CollectionPaginationEvent} from "./collection";
-import {PropertySchemaSerialized, propertyPlainToClass, PropertySchema, RegisteredEntities} from "@marcj/marshal";
+import {PropertySchemaSerialized, PropertySchema, RegisteredEntities, createJITConverterFromPropertySchema} from "@marcj/marshal";
 import {each} from "@marcj/estdlib";
 import {EntityState} from "./entity-state";
 
@@ -105,12 +105,7 @@ export function handleActiveSubject(
     let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
     function deserializeResult(encoding: PropertySchemaSerialized, next: any): any {
-        return propertyPlainToClass(
-            Object,
-            name,
-            next, [], 1, {onFullLoadCallbacks: []},
-            PropertySchema.fromJSON(encoding),
-        );
+        return createJITConverterFromPropertySchema('plain', 'class', PropertySchema.fromJSON(encoding))(next);
     }
 
     activeSubject.subscribe((reply: ServerMessageResult) => {

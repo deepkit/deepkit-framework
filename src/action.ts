@@ -1,6 +1,6 @@
-import {isPromise, eachPair} from "@marcj/estdlib";
-import {propertyPlainToClass, PropertySchema, getClassSchema, ValidationError, validatePropSchema} from "@marcj/marshal";
-import {ValidationParameterError, ValidationErrorItem} from "./core";
+import {eachPair, isPromise} from "@marcj/estdlib";
+import {createJITConverterFromPropertySchema, getClassSchema, jitValidateProperty, PropertySchema, ValidationError} from "@marcj/marshal";
+import {ValidationErrorItem, ValidationParameterError} from "./core";
 
 export type ActionTypes = { parameters: PropertySchema[] };
 
@@ -20,15 +20,7 @@ export async function executeAction(
 
         const errors: ValidationError[] = [];
 
-        validatePropSchema(
-            Object,
-            p,
-            errors,
-            args[i],
-            String(i),
-            methodName + '#' + String(i),
-            false
-        );
+        jitValidateProperty(p)(args[i], methodName + '#' + String(i), errors);
 
         if (errors.length > 0) {
             throw new ValidationParameterError(
@@ -38,13 +30,7 @@ export async function executeAction(
                 errors.map(error => new ValidationErrorItem(error.path, error.message, error.code)));
         }
 
-        args[i] = propertyPlainToClass(
-            Object,
-            methodName,
-            args[i],
-            [], 1, {onFullLoadCallbacks: []},
-            p
-        );
+        args[i] = createJITConverterFromPropertySchema('plain', 'class', p)(args[i]);
     }
 
     let result = (controllerInstance as any)[methodName](...args);

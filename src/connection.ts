@@ -3,12 +3,12 @@ import {ClientMessageAll, CollectionStream, ServerMessageAll} from "./contract";
 import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./core";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
-import {ClassType, each} from "@marcj/estdlib";
-import {propertyClassToPlain, PropertySchema, PropertySchemaSerialized, getEntityName, classToPlain} from "@marcj/marshal";
+import {ClassType, each, sleep} from "@marcj/estdlib";
+import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized} from "@marcj/marshal";
 import {skip} from "rxjs/operators";
 
 export interface ConnectionWriterStream {
-    send(v: string): void;
+    send(v: any): Promise<boolean>;
 }
 
 function encodeValue(v: any, p: PropertySchema | undefined, prefixMessage: string): { encoding: PropertySchemaSerialized, value: any } {
@@ -30,7 +30,7 @@ function encodeValue(v: any, p: PropertySchema | undefined, prefixMessage: strin
     try {
         return {
             encoding: p.toJSON(),
-            value: propertyClassToPlain(Object, 'result', v, p),
+            value: createJITConverterFromPropertySchema('class', 'plain', p)(v),
         };
     } catch (error) {
         console.log('could not parse value', v, p);
@@ -79,7 +79,26 @@ export class ConnectionWriter extends SimpleConnectionWriter {
         super();
     }
 
-    public write(message: ServerMessageAll) {
+    /**
+     * This function handles backpressure and waits if necessary
+     */
+    public async delayedWrite(data: string): Promise<void> {
+        let sent = await this.socket.send(data);
+        let tries = 1;
+
+        while (!sent) {
+            console.log('sending failed, wait', data.substr(0, 20));
+            await sleep(0.01);
+            sent = await this.socket.send(data);
+            tries++;
+        }
+
+        if (tries > 1) {
+            console.log('sending succeeded after', tries, 'tries', data.substr(0, 20));
+        }
+    }
+
+    public async write(message: ServerMessageAll) {
         const json = JSON.stringify(message);
 
         const chunkSize = 1024 * 100;
@@ -88,15 +107,18 @@ export class ConnectionWriter extends SimpleConnectionWriter {
             const chunkId = this.chunkIds++;
 
             let position = 0;
-            this.socket.send("@batch-start:" + ((message as any)['id'] || 0) + ":" + chunkId + ":" + json.length);
+            await this.delayedWrite("@batch-start:" + ((message as any)['id'] || 0) + ":" + chunkId + ":" + json.length);
             while (position * chunkSize < json.length) {
                 const chunk = json.substr(position * (chunkSize), chunkSize);
                 position++;
-                this.socket.send("@batch:" + chunkId + ":" + chunk);
+                //maybe we should add here additional delay after x MB, so other connection/messages get their time as well.
+                // console.log('sent chunk', chunkId, position, chunk.substr(0, 20));
+                await this.delayedWrite("@batch:" + chunkId + ":" + chunk);
             }
-            this.socket.send("@batch-end:" + chunkId);
+            // console.log('chunk done', chunkId, position);
+            await this.delayedWrite("@batch-end:" + chunkId);
         } else {
-            this.socket.send(json);
+            await this.delayedWrite(json);
         }
     }
 
@@ -254,6 +276,7 @@ export class ConnectionMiddleware {
         //     StreamBehaviorSubject: result instanceof StreamBehaviorSubject,
         //     Collection: result instanceof Collection,
         //     Observable: result instanceof Observable,
+        //     className: getClassName(result),
         // }, result);
 
         if (result instanceof Promise) {
