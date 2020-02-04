@@ -1,5 +1,6 @@
 import 'jest';
 import 'jest-extended';
+import 'reflect-metadata';
 import {Entity, f, getClassSchema, uuid} from "@marcj/marshal";
 import {createDatabase} from "./utils";
 import {hydrateEntity} from "..";

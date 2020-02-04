@@ -1,10 +1,8 @@
-import {Connection} from 'typeorm';
 import {ClassType} from '@marcj/estdlib';
-import {DatabaseSession, resolveCollectionName} from "./database-session";
+import {DatabaseSession} from "./database-session";
 import {DatabaseQuery} from "./query";
-import {Collection} from "typeorm";
-import {getDatabaseName} from "@marcj/marshal";
 import {getHydratedDatabaseSession, isHydrated} from "./formatter";
+import {Connection} from "./connection";
 
 export class NotFoundError extends Error {
 }
@@ -26,36 +24,16 @@ export async function hydrateEntity<T>(item: T) {
  * Simple abstraction for MongoDB.
  */
 export class Database {
-    protected rootSession: DatabaseSession = new DatabaseSession(this.connection, this.defaultDatabaseName, true);
+    protected rootSession: DatabaseSession = new DatabaseSession(this.connection, true);
 
     constructor(
-        protected connection: Connection,
+        public readonly connection: Connection,
         protected defaultDatabaseName = 'app',
     ) {
     }
 
-    /**
-     * @deprecated We will move that to mongo coupled classes.
-     * @hidden
-     */
-    public getCollection<T>(classType: ClassType<T>): Collection<T> {
-        const mongoConnection = this.connection.mongoManager.queryRunner.databaseConnection;
-        const db = mongoConnection.db(getDatabaseName(classType) || this.defaultDatabaseName);
-        return db.collection(resolveCollectionName(classType));
-    }
-
-    /**
-     * @deprecated We will move that to mongo coupled classes.
-     * @hidden
-     */
-    public async dropDatabase(dbName: string) {
-        const mongoConnection = this.connection.mongoManager.queryRunner.databaseConnection;
-        await mongoConnection.db(dbName).dropDatabase();
-    }
-
-    public async close() {
-        await this.connection.mongoManager.queryRunner.databaseConnection.close(true);
-        await this.connection.close();
+    public async close(force?: boolean) {
+        await this.connection.close(force);
     }
 
     /**
@@ -65,7 +43,7 @@ export class Database {
      * All entity instances creating during this session are cached and tracked.
      */
     public createSession(): DatabaseSession {
-        return new DatabaseSession(this.connection, this.defaultDatabaseName);
+        return new DatabaseSession(this.connection);
     }
 
     /**

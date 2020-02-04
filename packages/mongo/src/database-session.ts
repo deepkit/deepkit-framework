@@ -2,7 +2,6 @@ import {
     getClassSchema,
     getClassTypeFromInstance,
     getCollectionName,
-    getDatabaseName,
     getEntityName,
     getIdField,
     resolveClassTypeOrForward
@@ -17,9 +16,8 @@ import {
 import {NoIDDefinedError, NotFoundError} from "./database";
 import {Formatter, markAsHydrated} from "./formatter";
 import {ClassType, eachPair, getClassName} from "@marcj/estdlib";
-import {FindOneOptions} from "mongodb";
+import {FilterQuery, FindOneOptions} from "mongodb";
 import {BaseQuery, DatabaseQuery, QueryMode, SORT} from "./query";
-import {Collection, Connection} from "typeorm";
 import {
     EntityRegistry,
     getLastKnownPKInDatabase,
@@ -27,6 +25,7 @@ import {
     markItemAsKnownInDatabase,
     unmarkItemAsKnownInDatabase
 } from "./entity-register";
+import {Connection} from "./connection";
 
 /*
  * This file is hard coupled to MongoDB. We could decouple it to allow other database as well, like MySQL/PostgreSQL & co.
@@ -55,7 +54,6 @@ export class DatabaseSession {
 
     constructor(
         protected connection: Connection,
-        protected defaultDatabaseName = 'app',
         public disabledInstancePooling = false,
     ) {
     }
@@ -89,20 +87,21 @@ export class DatabaseSession {
     public async hydrateEntity<T>(item: T) {
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
-        const dbItem = await this.getCollection(classSchema.classType)
+        const dbItem = await (await this.connection.getCollection(classSchema.classType))
             .findOne(this.buildFindCriteria(classSchema.classType, item));
 
-        for (const propName of classSchema.propertyNames) {
-            if (propName === classSchema.idField) continue;
-
-            Object.defineProperty(item, propName, {
-                enumerable: true,
-                configurable: true,
-                value: propertyMongoToClass(classSchema.classType, propName, dbItem[propName]),
-            });
+        for (const property of classSchema.classProperties.values()) {
+            if (property.name === classSchema.idField) continue;
+            if (property.isReference || property.backReference) continue;
 
             //todo, what about its relations?
             // currently the entity item is not correctly instantiated, since access to relations result in an error.
+
+            Object.defineProperty(item, property.name, {
+                enumerable: true,
+                configurable: true,
+                value: propertyMongoToClass(classSchema.classType, property.name, dbItem[property.name]),
+            });
         }
 
         markAsHydrated(item);
@@ -279,7 +278,7 @@ export class DatabaseSession {
 
         const primaryField = query.classSchema.getPrimaryField();
 
-        const collection = await this.getCollection(query.classSchema.classType);
+        const collection = await this.connection.getCollection(query.classSchema.classType);
         const mongoFilter = {[primaryField.name]: {$in: ids.map(v => propertyClassToMongo(query.classSchema.classType, primaryField.name, v))}};
 
         if (mode === 'deleteOne') {
@@ -328,13 +327,6 @@ export class DatabaseSession {
             await collection.updateMany(mongoFilter, updateStatement);
             return;
         }
-    }
-
-
-    public getCollection<T>(classType: ClassType<T>): Collection<T> {
-        const mongoConnection = this.connection.mongoManager.queryRunner.databaseConnection;
-        const db = mongoConnection.db(getDatabaseName(classType) || this.defaultDatabaseName);
-        return db.collection(resolveCollectionName(classType));
     }
 
     /**
@@ -416,7 +408,7 @@ export class DatabaseSession {
     public async add<T>(item: T): Promise<boolean> {
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
-        const collection = await this.getCollection(classSchema.classType);
+        const collection = await this.connection.getCollection(classSchema.classType);
         const mongoItem = classToMongo(classSchema.classType, item);
 
         const result = await collection.insertOne(mongoItem);
@@ -447,9 +439,9 @@ export class DatabaseSession {
     public async update<T>(item: T): Promise<boolean> {
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
-        const collection = await this.getCollection(classSchema.classType);
+        const collection = await this.connection.getCollection(classSchema.classType);
         const mongoItem = classToMongo(classSchema.classType, item);
-        const filter  = this.buildFindCriteria(classSchema.classType, item);
+        const filter = this.buildFindCriteria(classSchema.classType, item);
         await collection.findOneAndReplace(filter, mongoItem);
 
         markItemAsKnownInDatabase(classSchema, item);
@@ -471,7 +463,7 @@ export class DatabaseSession {
      */
     public async remove<T>(item: T): Promise<boolean> {
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
-        const collection = await this.getCollection(classSchema.classType);
+        const collection = await this.connection.getCollection(classSchema.classType);
 
         const result = await collection.deleteOne(this.buildFindCriteria(classSchema.classType, item));
 
@@ -486,9 +478,9 @@ export class DatabaseSession {
 
 
     public async resolveQueryFetcher<T>(mode: QueryMode, query: BaseQuery<T>) {
-        let collection: Collection<T> = await this.getCollection(query.classSchema.classType);
+        const collection = await this.connection.getCollection(query.classSchema.classType);
 
-        //todo, use it from the DatabaseSession
+        //todo, use it from the DatabaseSession to share identity-map
         const formatter = new Formatter(this, query);
 
         function findOne() {
@@ -606,13 +598,11 @@ export class DatabaseSession {
         }
 
         if (mode === 'count') {
-            return await collection
-                .countDocuments(query.model.filter ? getMongoFilter(query) : {});
+            return await collection.countDocuments((query.model.filter ? getMongoFilter(query) : {}) as FilterQuery<any>);
         }
 
         if (mode === 'has') {
-            return await collection
-                .countDocuments(query.model.filter ? getMongoFilter(query) : {}) > 0;
+            return await collection.countDocuments((query.model.filter ? getMongoFilter(query) : {}) as FilterQuery<any>) > 0;
         }
 
         if (mode === 'find' || mode === 'findField' || mode === 'ids') {
