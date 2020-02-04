@@ -96,6 +96,17 @@ const RuntypeModel = Record({
     }),
 });
 
+test('benchmark freezed delete', () => {
+    const data = ({...DATA}) as any;
+    delete data.boolean;
+
+    const errors = jitValidate(MarshalModel)(Object.freeze(data));
+    expect(errors).toEqual([
+        {code: 'required', message: 'Required value is undefined or null', path: 'boolean'}
+    ]);
+});
+
+
 test('benchmark validation', () => {
     const count = 100_000;
 
