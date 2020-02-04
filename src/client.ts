@@ -1,5 +1,5 @@
 import {BehaviorSubject, Subject} from "rxjs";
-import {propertyClassToPlain, PropertySchema} from "@marcj/marshal";
+import {PropertySchema, createJITConverterFromPropertySchema} from "@marcj/marshal";
 import {
     Batcher,
     ClientMessageAll,
@@ -482,7 +482,7 @@ export class SocketClient {
             const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
             for (const i of eachKey(args)) {
-                args[i] = propertyClassToPlain(Object, name, args[i], types.parameters[i]);
+                args[i] = createJITConverterFromPropertySchema('class', 'plain', types.parameters[i])(args[i]);
             }
 
             const activeSubject = this.sendMessage<ServerMessageResult>({

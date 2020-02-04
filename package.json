@@ -15,7 +15,7 @@
   },
   "peerDependencies": {
     "@marcj/glut-core": "0.0.2",
-    "@marcj/marshal": "^1.0.3",
+    "@marcj/marshal": "^2.1.0",
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3"
   },
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@marcj/glut-core": "^0.0.25",
-    "@marcj/marshal": "^1.0.3",
+    "@marcj/marshal": "^2.1.0",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
     "reflect-metadata": "^0.1.13"
