@@ -4,4 +4,3 @@ export * from './src/entity-register';
 export * from './src/formatter';
 export * from './src/query';
 export * from './src/mapping';
-export * from './src/typeorm';

@@ -1,4 +1,5 @@
 import 'jest';
+import 'reflect-metadata';
 import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
 import {f} from "@marcj/marshal/src/decorators";
 

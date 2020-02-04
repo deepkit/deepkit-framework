@@ -20,23 +20,17 @@ import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
 import {plainToMongo} from "../src/mapping";
 import * as moment from "moment";
 import {isPlainObject} from '@marcj/estdlib';
-import {createConnection} from 'typeorm';
 import {resolveCollectionName} from "../src/database-session";
 import {uuid4Stringify} from "../src/compiler-templates";
+import {Connection} from "../src/connection";
 
 let database: Database;
 
 async function createDatabase(dbName: string = 'testing'): Promise<Database> {
     dbName = dbName.replace(/\s+/g, '-');
-    const connection = await createConnection({
-        type: "mongodb",
-        host: "localhost",
-        port: 27017,
-        database: "test",
-        useNewUrlParser: true,
-    });
+    const connection = new Connection('localhost', dbName);
     database = new Database(connection, dbName);
-    await database.dropDatabase(dbName);
+    await (await connection.connect()).db(dbName).dropDatabase();
     return database;
 }
 
@@ -78,7 +72,7 @@ test('test save undefined values', async () => {
         }
     }
 
-    const collection = database.getCollection(Model);
+    const collection = await database.connection.getCollection(Model);
 
     {
         await collection.deleteMany({});
@@ -119,7 +113,7 @@ test('test save model', async () => {
 
     await expect(database.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOne()).rejects.toThrowError('item not found');
 
-    const collection = database.getCollection(SimpleModel);
+    const collection = await database.connection.getCollection(SimpleModel);
     const mongoItem = await collection.find().toArray();
 
     expect(mongoItem).toBeArrayOfSize(1);
@@ -265,7 +259,7 @@ test('test super simple model', async () => {
 
 test('test databaseName', async () => {
     const database = await createDatabase('testing');
-    await database.dropDatabase('testing2');
+    await (await database.connection.connect()).db('testing2').dropDatabase();
 
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing2')
@@ -288,7 +282,7 @@ test('test databaseName', async () => {
     await database.add(instance);
     expect(instance._id).not.toBeUndefined();
 
-    const collection = database.getCollection(DifferentDataBase);
+    const collection = await database.connection.getCollection(DifferentDataBase);
     expect(await collection.countDocuments({})).toBe(1);
 
     const items = await database.query(DifferentDataBase).find();
@@ -365,7 +359,7 @@ test('second object id', async () => {
     const dbItemBySecondId = await database.query(SecondObjectId).filter({secondId: '5bf4a1ccce060e0b38864c9e'}).findOne();
     expect(dbItemBySecondId!.name).toBe('myName');
 
-    const collection = database.getCollection(SecondObjectId);
+    const collection = await database.connection.getCollection(SecondObjectId);
     const mongoItem = await collection.find().toArray();
     expect(mongoItem).toBeArrayOfSize(1);
     expect(mongoItem[0].name).toBe('myName');
