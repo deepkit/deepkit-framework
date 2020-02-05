@@ -106,15 +106,15 @@ export function getDataConverterJS(
                  while (l--) {
                     //make sure all elements have the correct type
                     if (${accessor}[l] !== undefined && ${accessor}[l] !== null) {
-                        var value;
-                        ${executeCompiler(rootContext, compiler, `value`, `a[l]`, property)}
-                        if (value === undefined) {
+                        var itemValue;
+                        ${executeCompiler(rootContext, compiler, `itemValue`, `a[l]`, property)}
+                        if (itemValue === undefined) {
                             a.splice(l, 1);
                         } else {
-                            a[l] = value;   
+                            a[l] = itemValue;   
                         }
                     }
-                 } 
+                 }
                  ${setter} = a;
             }
         `;

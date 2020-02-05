@@ -186,17 +186,17 @@ export class JitPropertyConverter {
         const context = new Map<any, any>();
 
         const functionCode = `
-        return function(value, _parents) {
+        return function(_value, _parents) {
             var result, _state;
             function getParents() {
                 return _parents;
             }
             if (!_parents) _parents = [];
-            if (value === null) {
+            if (_value === null) {
                 result = null;
-            } else if (value !== undefined) {
+            } else if (_value !== undefined) {
                 //convertProperty ${property.name} ${this.fromFormat}:${this.toFormat}:${property.type} ${property.isRealProperty()}
-                ${getDataConverterJS('result', 'value', property, this.fromFormat, this.toFormat, context)}
+                ${getDataConverterJS('result', '_value', property, this.fromFormat, this.toFormat, context)}
             }
             return result;
         }
@@ -238,17 +238,17 @@ export function createJITConverterFromPropertySchema(
     const context = new Map<any, any>();
 
     const functionCode = `
-        return function(value, _parents) {
+        return function(_value, _parents) {
             var result, _state;
             function getParents() {
                 return _parents;
             }
             if (!_parents) _parents = [];
-            if (value === null) {
+            if (_value === null) {
                 result = null;
-            } else if (value !== undefined) {
+            } else if (_value !== undefined) {
                 //createJITConverterFromPropertySchema ${property.name} ${fromFormat}:${toFormat}:${property.type} ${property.isRealProperty()}
-                ${getDataConverterJS('result', 'value', property, fromFormat, toFormat, context)}
+                ${getDataConverterJS('result', '_value', property, fromFormat, toFormat, context)}
             }
             return result;
         }
