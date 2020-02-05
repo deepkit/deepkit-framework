@@ -4,14 +4,31 @@ import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./co
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
 import {ClassType, each, sleep} from "@marcj/estdlib";
-import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized} from "@marcj/marshal";
+import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from "@marcj/marshal";
 import {skip} from "rxjs/operators";
 
 export interface ConnectionWriterStream {
     send(v: any): Promise<boolean>;
 }
 
+export class AlreadyEncoded {
+    constructor(
+        public type: Types,
+        public value: any,
+    ) {
+    }
+}
+
 function encodeValue(v: any, p: PropertySchema | undefined, prefixMessage: string): { encoding: PropertySchemaSerialized, value: any } {
+    if (v instanceof AlreadyEncoded) {
+        p = new PropertySchema('result');
+        p.type = v.type;
+        return {
+            encoding: p.toJSON(),
+            value: v.value,
+        };
+    }
+
     if (!p) {
         p = new PropertySchema('result');
 

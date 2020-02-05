@@ -1,8 +1,11 @@
-import {BehaviorSubject, TeardownLogic, Subject, Observable} from "rxjs";
+import {BehaviorSubject, Observable, Subject, TeardownLogic} from "rxjs";
 import {tearDown} from "@marcj/estdlib-rxjs";
 import {IdInterface} from "./contract";
 import {ClassType} from "@marcj/estdlib";
-import {Entity, f, getClassSchema, classToPlain, RegisteredEntities, plainToClass} from "@marcj/marshal";
+import {Buffer} from 'buffer';
+import {classToPlain, Entity, f, getClassSchema, plainToClass, RegisteredEntities} from "@marcj/marshal";
+import {map, skip} from "rxjs/operators";
+import {arrayBufferTo} from "@marcj/marshal";
 
 @Entity('@error:json')
 export class JSONError {
@@ -27,7 +30,7 @@ export class ValidationError {
     ) {
     }
 
-    static from(errors: { path: string, message: string, code?: string}[]) {
+    static from(errors: { path: string, message: string, code?: string }[]) {
         return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '')));
     }
 
@@ -202,11 +205,45 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         this.nextOnAppend = true;
     }
 
+    toUTF8() {
+        const subject = new StreamBehaviorSubject(this.value instanceof Uint8Array ? arrayBufferTo(this.value, 'utf8') : '');
+        const sub1 = this.pipe(skip(1)).subscribe(v => {
+            subject.next(v instanceof Uint8Array ? arrayBufferTo(v, 'utf8') : '');
+        });
+        const sub2 = this.appendSubject.subscribe(v => {
+            subject.append(v instanceof Uint8Array ? arrayBufferTo(v, 'utf8') : '');
+        });
+
+        subject.nextOnAppend = this.nextOnAppend;
+        // const that = this;
+        // Object.defineProperty(subject, 'nextStateChange', {
+        //     get() {
+        //         console.log('utf8 nextStateChange');
+        //         return that.nextStateChange;
+        //     }
+        // });
+
+        subject.addTearDown(() => {
+            sub1.unsubscribe();
+            sub2.unsubscribe();
+        });
+
+        return subject;
+    }
+
     append(value: T): void {
         this.appendSubject.next(value);
 
         if (this.nextOnAppend) {
-            this.next(this.getValue() as any + value);
+            if (value instanceof Uint8Array) {
+                if (this.value instanceof Uint8Array) {
+                    this.next(Buffer.concat([this.value as any, value as any]) as any);
+                } else {
+                    this.next(value as any);
+                }
+            } else {
+                this.next((this.getValue() as any + value) as any as T);
+            }
         } else {
             if ('string' === typeof value) {
                 if (!(this as any)._value) ((this as any)._value as any) = '';
