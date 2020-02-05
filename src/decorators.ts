@@ -2005,6 +2005,16 @@ export interface MainDecorator {
 export const f: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 
 /**
+ * Alias for `f`.
+ */
+export const field: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
+
+/**
+ * Alias for `f`.
+ */
+export const type: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
+
+/**
  * @hidden
  */
 function Type<T>(type: Types) {
