@@ -56,6 +56,9 @@ export class Worker {
                                 });
                                 return true;
                             }
+                            bufferedAmount(): number {
+                                return ws.bufferedAmount;
+                            }
                         });
                     }
                 },
