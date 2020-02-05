@@ -16,6 +16,7 @@
     "buffer": "^5.2.1",
     "cerialize": "^2.0.1",
     "class-transformer": "^0.2.0",
+    "ajv": "^6.11.0",
     "runtypes": "^4.1.0"
   },
   "jest": {
