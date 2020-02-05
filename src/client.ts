@@ -51,16 +51,29 @@ export class OfflineError extends Error {
 
 let _clientId = 0;
 
+export class ClientProgressStack {
+    downloadProgress: Progress[] = [];
+    uploadProgress: Progress[] = [];
+}
+
 export class ClientProgress {
-    static downloadProgress: Progress[] = [];
-    static uploadProgress: Progress[] = [];
+    static currentStack = new ClientProgressStack();
+
+    /**
+     * Returns the current stack and sets a new one.
+     */
+    static fork() {
+        const old = this.currentStack;
+        ClientProgress.currentStack = new ClientProgressStack();
+        return old;
+    }
 
     /**
      * @deprecated not implemented yet
      */
     static trackUpload() {
         const progress = new Progress;
-        ClientProgress.uploadProgress.push(progress);
+        ClientProgress.currentStack.uploadProgress.push(progress);
         return progress;
     }
 
@@ -69,7 +82,7 @@ export class ClientProgress {
      */
     static trackDownload() {
         const progress = new Progress;
-        ClientProgress.downloadProgress.push(progress);
+        ClientProgress.currentStack.downloadProgress.push(progress);
         return progress;
     }
 }
@@ -479,6 +492,8 @@ export class SocketClient {
         return asyncOperation<any>(async (resolve, reject) => {
             const timeoutInSeconds = options && options.timeoutInSeconds ? options.timeoutInSeconds : 0;
 
+            const clientProgressStack = ClientProgress.fork();
+
             const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
             for (const i of eachKey(args)) {
@@ -491,7 +506,11 @@ export class SocketClient {
                 action: name,
                 args: args,
                 timeout: timeoutInSeconds,
-            }, {timeout: timeoutInSeconds, progressable: true});
+            }, {
+                timeout: timeoutInSeconds,
+                progressable: true,
+                clientProgressStack,
+            });
 
             if (controller.startsWith('_peer/')) {
                 activeSubject.setSendMessageModifier((m: any) => {
@@ -504,6 +523,7 @@ export class SocketClient {
                 });
             }
 
+            options = options || {};
             handleActiveSubject(activeSubject, resolve, reject, controller, name, this.entityState, options);
         });
     }
@@ -527,13 +547,15 @@ export class SocketClient {
             connectionId?: number,
             timeout?: number,
             progressable?: boolean,
+            clientProgressStack?: ClientProgressStack
         }
     ): MessageSubject<K> {
         this.messageId++;
 
-        if (options && options.progressable && ClientProgress.downloadProgress.length > 0) {
-            this.batcher.registerProgress(this.messageId, ClientProgress.downloadProgress);
-            ClientProgress.downloadProgress = [];
+        if (options && options.progressable && options.clientProgressStack) {
+            if (options.clientProgressStack.downloadProgress.length) {
+                this.batcher.registerProgress(this.messageId, options.clientProgressStack.downloadProgress);
+            }
         }
 
         const messageId = this.messageId;
