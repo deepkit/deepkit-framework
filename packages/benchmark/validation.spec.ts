@@ -5,6 +5,7 @@ import {bench} from "./util";
 import {Boolean, Number as RuntypeNumber, Record, String as RuntypeString} from "runtypes";
 import {jitValidate} from "@marcj/marshal/src/jit-validation";
 import {validate} from "@marcj/marshal/src/validation-old";
+import * as Ajv from 'ajv';
 
 class IsNegative implements PropertyValidator {
     validate<T>(value: number) {
@@ -29,6 +30,7 @@ function MinLengthFactory(minLength: number) {
         }
     };
 }
+
 export const DATA = Object.freeze({
     number: 1,
     negNumber: -1,
@@ -96,17 +98,6 @@ const RuntypeModel = Record({
     }),
 });
 
-test('benchmark freezed delete', () => {
-    const data = ({...DATA}) as any;
-    delete data.boolean;
-
-    const errors = jitValidate(MarshalModel)(Object.freeze(data));
-    expect(errors).toEqual([
-        {code: 'required', message: 'Required value is undefined or null', path: 'boolean'}
-    ]);
-});
-
-
 test('benchmark validation', () => {
     const count = 100_000;
 
@@ -121,6 +112,56 @@ test('benchmark validation', () => {
     bench(count, 'validation runtype', (i) => {
         const spaceObject = RuntypeModel.check(DATA);
     });
+
+    {
+        const schema = {
+            "$id": "http://example.com/schemas/defs.json",
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer"},
+                "negNumber": {"type": "integer", "maximum": 0},
+                "maxNumber": {"type": "integer"},
+                "string": {"type": "string"},
+                "longString": {
+                    "type": "string",
+                    "minLength": 100
+                },
+                "boolean": {"type": "boolean"},
+                "deeplyNested": {"$ref": "#/definitions/deeplyNested"},
+            },
+            "required": ["number", "negNumber", "maxNumber", "string", "longString", "boolean", "deeplyNested"],
+            "definitions": {
+                "deeplyNested": {
+                    "type": "object",
+                    "properties": {
+                        "foo": {"type": "string"},
+                        "num": {"type": "number"},
+                        "bool": {"type": "boolean"}
+                    },
+                    "required": ["foo", "num", "bool"]
+                }
+            }
+        };
+        const ajv = new Ajv();
+        const validate = ajv.compile(schema);
+        const valid = validate(DATA);
+        expect(valid).toBe(true);
+
+        bench(count, 'validation ajv', (i) => {
+            const valid = validate(DATA);
+        });
+    }
+});
+
+
+test('benchmark freezed delete', () => {
+    const data = ({...DATA}) as any;
+    delete data.boolean;
+
+    const errors = jitValidate(MarshalModel)(Object.freeze(data));
+    expect(errors).toEqual([
+        {code: 'required', message: 'Required value is undefined or null', path: 'boolean'}
+    ]);
 });
 
 
