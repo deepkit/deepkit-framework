@@ -6,7 +6,7 @@
 import {ReplaySubject, Subject, TeardownLogic} from "rxjs";
 import {IdInterface} from "./contract";
 import {tearDown} from "@marcj/estdlib-rxjs";
-import {ClassType, getClassName, each} from "@marcj/estdlib";
+import {ClassType, each, getClassName} from "@marcj/estdlib";
 import {EntitySubject} from "./core";
 
 export type FilterParameters = {[name: string]: any | undefined};
@@ -254,6 +254,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     protected itemsMapped: { [id: string]: T } = {};
 
     public readonly deepChange = new Subject<T>();
+
     protected nextChange?: Subject<void>;
 
     public readonly pagination: CollectionPagination<T> = new CollectionPagination(this);

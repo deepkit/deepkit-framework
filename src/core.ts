@@ -3,9 +3,8 @@ import {tearDown} from "@marcj/estdlib-rxjs";
 import {IdInterface} from "./contract";
 import {ClassType} from "@marcj/estdlib";
 import {Buffer} from 'buffer';
-import {classToPlain, Entity, f, getClassSchema, plainToClass, RegisteredEntities} from "@marcj/marshal";
-import {map, skip} from "rxjs/operators";
-import {arrayBufferTo} from "@marcj/marshal";
+import {arrayBufferTo, classToPlain, Entity, f, getClassSchema, plainToClass, RegisteredEntities} from "@marcj/marshal";
+import {skip} from "rxjs/operators";
 
 @Entity('@error:json')
 export class JSONError {
@@ -226,6 +225,7 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         subject.addTearDown(() => {
             sub1.unsubscribe();
             sub2.unsubscribe();
+            this.unsubscribe();
         });
 
         return subject;

@@ -3,12 +3,13 @@ import {ClientMessageAll, CollectionStream, ServerMessageAll} from "./contract";
 import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./core";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Observable, Subscription} from "rxjs";
-import {ClassType, each, sleep} from "@marcj/estdlib";
+import {ClassType, each, sleep, stack} from "@marcj/estdlib";
 import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from "@marcj/marshal";
 import {skip} from "rxjs/operators";
 
 export interface ConnectionWriterStream {
     send(v: any): Promise<boolean>;
+    bufferedAmount(): number;
 }
 
 export class AlreadyEncoded {
@@ -58,6 +59,8 @@ function encodeValue(v: any, p: PropertySchema | undefined, prefixMessage: strin
 export interface ConnectionWriterInterface {
     write(message: ServerMessageAll): void;
 
+    cancelMessage(id: number): void;
+
     complete(id: number): void;
 
     ack(id: number): void;
@@ -68,6 +71,10 @@ export interface ConnectionWriterInterface {
 export class SimpleConnectionWriter implements ConnectionWriterInterface {
     public write(message: ServerMessageAll) {
         throw new Error('Not implemented');
+    }
+
+    cancelMessage(messageId: number) {
+
     }
 
     public complete(id: number) {
@@ -89,6 +96,7 @@ export class SimpleConnectionWriter implements ConnectionWriterInterface {
 
 export class ConnectionWriter extends SimpleConnectionWriter {
     protected chunkIds = 0;
+    protected cancelSending: {[messageId: number]: () => void} = {};
 
     constructor(
         protected socket: ConnectionWriterStream,
@@ -100,14 +108,22 @@ export class ConnectionWriter extends SimpleConnectionWriter {
      * This function handles backpressure and waits if necessary
      */
     public async delayedWrite(data: string): Promise<void> {
+        while (this.socket.bufferedAmount() > 1024 * 300) {
+            await sleep(0.01);
+        }
+
         let sent = await this.socket.send(data);
         let tries = 1;
 
         while (!sent) {
             console.log('sending failed, wait', data.substr(0, 20));
-            await sleep(0.01);
+            await sleep(0.1);
             sent = await this.socket.send(data);
             tries++;
+            if (tries > 10) {
+                console.log('sending errored after', tries, 'tries', data.substr(0, 20));
+                return;
+            }
         }
 
         if (tries > 1) {
@@ -115,6 +131,17 @@ export class ConnectionWriter extends SimpleConnectionWriter {
         }
     }
 
+    /**
+     * Queued writes will be canceled.
+     * @param messageId
+     */
+    public cancelMessage(messageId: number) {
+        if (this.cancelSending[messageId]) {
+            this.cancelSending[messageId]();
+        }
+    }
+
+    @stack()
     public async write(message: ServerMessageAll) {
         const json = JSON.stringify(message);
 
@@ -122,18 +149,35 @@ export class ConnectionWriter extends SimpleConnectionWriter {
 
         if (json.length > chunkSize) {
             const chunkId = this.chunkIds++;
+            let sending = true;
+            let id = 0;
+            if (message.type === 'channel' || message.type === 'entity/patch' || message.type === 'entity/remove'
+                || message.type === 'entity/removeMany' || message.type === 'entity/update' || message.type === 'push-message') {
+            } else {
+                id = message.id;
+            }
+            if (id) {
+                this.cancelSending[id] = () => {
+                    sending = false;
+                };
+            }
 
             let position = 0;
             await this.delayedWrite("@batch-start:" + ((message as any)['id'] || 0) + ":" + chunkId + ":" + json.length);
-            while (position * chunkSize < json.length) {
+            while (sending && position * chunkSize < json.length) {
                 const chunk = json.substr(position * (chunkSize), chunkSize);
                 position++;
                 //maybe we should add here additional delay after x MB, so other connection/messages get their time as well.
                 // console.log('sent chunk', chunkId, position, chunk.substr(0, 20));
                 await this.delayedWrite("@batch:" + chunkId + ":" + chunk);
             }
-            // console.log('chunk done', chunkId, position);
-            await this.delayedWrite("@batch-end:" + chunkId);
+            if (sending) {
+                // console.log('chunk done', chunkId, position);
+                await this.delayedWrite("@batch-end:" + chunkId);
+            }
+            if (id) {
+                delete this.cancelSending[id];
+            }
         } else {
             await this.delayedWrite(json);
         }
@@ -348,6 +392,7 @@ export class ConnectionMiddleware {
             });
 
             this.subjectSubscriptions[message.id] = new Subscriptions(async () => {
+                writer.cancelMessage(message.id);
                 await result.unsubscribe();
                 delete this.subjectSubscriptions[message.id];
             });
@@ -415,6 +460,7 @@ export class ConnectionMiddleware {
             }
 
             this.collectionSubscriptions[message.id] = new Subscriptions(() => {
+                writer.cancelMessage(message.id);
                 collection.unsubscribe();
                 delete this.collections[message.id];
                 delete this.collectionSubscriptions[message.id];

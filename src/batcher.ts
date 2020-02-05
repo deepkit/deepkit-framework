@@ -57,16 +57,23 @@ export class Progress extends BehaviorSubject<Progress> {
         this.next(this);
     }
 
-    get progress() {
+    get progress(): number {
         if (this.done) return 1;
         if (this.total === 0) return 0;
         return this.current / this.total;
     }
 
+    next(progress: this) {
+        this.total = progress.total;
+        this.current = progress.current;
+        this.done = progress.done;
+
+        super.next(this);
+    }
+
     public setDone() {
         this.done = true;
         this.next(this);
-        this.complete();
     }
 }
 
@@ -125,7 +132,7 @@ export class Batcher {
                 }
             }
         } else if (message.startsWith('@batch-end:')) {
-            //@batch-start:<chunkId>
+            //@batch-end:<chunkId>
             const [chunkId] = extractParams(message, 1);
             if (!this.batches[chunkId]) {
                 throw new Error(`Chunk with id ${chunkId} does not exists`);
@@ -139,12 +146,12 @@ export class Batcher {
                 for (const p of this.progress[id]) {
                     p.setDone();
                 }
-                delete this.progress[id];
             }
         } else {
             this.messageComplete(message);
         }
     }
+
 
     protected messageComplete(message: string) {
         const decoded = JSON.parse(message, jsonParser);
@@ -153,12 +160,12 @@ export class Batcher {
         }
         const id = decoded['id'] || 0;
         const type = decoded['type'] || '';
+        const returnType = decoded['returnType'] || '';
 
-        if (type.startsWith('next/') && this.progress[id]) {
+        if ((type.startsWith('next/') || (type === 'type' && returnType === 'subject')) && this.progress[id]) {
             for (const p of this.progress[id]) {
                 p.setDone();
             }
-            delete this.progress[id];
         }
         this.callback(decoded);
     }
