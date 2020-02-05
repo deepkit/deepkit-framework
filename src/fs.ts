@@ -2,7 +2,7 @@ import {dirname, join} from "path";
 import {appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, writeFile} from "fs-extra";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
-import {FileMode, FileType, FilterQuery, GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
+import {FileMode, FileType, FilterQuery, GlutFile, StreamBehaviorSubject, AlreadyEncoded} from "@marcj/glut-core";
 import {eachKey, eachPair} from "@marcj/estdlib";
 import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
@@ -388,11 +388,7 @@ export class FS<T extends GlutFile> {
         }
     }
 
-    public async subscribe(path: string, fields?: Partial<T>, encoding?: 'binary'): Promise<StreamBehaviorSubject<Uint8Array | undefined>>;
-    public async subscribe(path: string, fields: Partial<T>, encoding: 'utf8'): Promise<StreamBehaviorSubject<string | undefined>>;
-    public async subscribe(path: string, fields: Partial<T> = {}, encoding: 'binary' | 'utf8' = 'binary'):
-        Promise<StreamBehaviorSubject<Uint8Array | undefined> | StreamBehaviorSubject<string | undefined>> {
-
+    public async subscribe(path: string, fields: Partial<T> = {}): Promise<StreamBehaviorSubject<Uint8Array | undefined>> {
         const subject = new StreamBehaviorSubject<any>(undefined);
 
         const file = await this.findOne(path, fields);
@@ -411,20 +407,21 @@ export class FS<T extends GlutFile> {
                     return;
                 }
 
-                subject.next(data ? (encoding === 'binary' ? data : data.toString('utf8')) : undefined);
+                subject.next(data);
 
                 //it's important that this callback is called right after we returned the subject,
                 //and subscribed to the subject, otherwise append won't work correctly and might be hit by a race-condition.
                 const exchangeSubscription = await this.exchange.subscribeFile(id, async (message) => {
                     if (message.type === 'set') {
                         const data = await this.read(path, fields);
-                        subject.next(data ? (encoding === 'binary' ? data : data.toString('utf8')) : undefined);
+                        subject.next(data);
                     } else if (message.type === 'append') {
                         //message.size contains the new size after this append has been applied.
                         //this means we could track to avoid race conditions, but for the moment we use a lock.
                         //lock is acquired in stream() and makes sure we don't get file appends during
                         //reading and subscribing
-                        subject.append(message.content);
+                        //ConnectionMiddleware converts AlreadyEncoded correct: Meaning it doesnt touch it
+                        subject.append(new AlreadyEncoded('Uint8Array', message.content) as any);
                     } else if (message.type === 'remove') {
                         subject.next(undefined);
                     }

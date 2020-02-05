@@ -1,7 +1,6 @@
 import {Injectable, Injector} from "injection-js";
 import {ClassType} from "@marcj/estdlib";
 import {GlutFile} from "@marcj/glut-core";
-import { EntitySchema } from "typeorm";
 
 export class Session {
     constructor(

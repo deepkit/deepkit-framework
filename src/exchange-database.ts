@@ -1,12 +1,12 @@
 import {Injectable} from 'injection-js';
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, getClassTypeFromInstance} from '@marcj/marshal';
-import {Collection, Cursor} from "typeorm";
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
 import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
 import {ClassType, eachPair, eachKey} from '@marcj/estdlib';
 import {Observable, Subscription} from 'rxjs';
 import {findQuerySatisfied} from './utils';
+import {Collection, Cursor} from 'mongodb';
 
 export interface ExchangeNotifyPolicy {
     notifyChanges<T>(classType: ClassType<T>): boolean;
@@ -25,7 +25,7 @@ export class ExchangeDatabase {
     }
 
     public async collection<T>(classType: ClassType<T>): Promise<Collection<T>> {
-        return await this.database.getCollection(classType);
+        return await this.database.connection.getCollection(classType);
     }
 
     protected notifyChanges<T>(classType: ClassType<T>): boolean {
@@ -160,8 +160,7 @@ export class ExchangeDatabase {
             }
         }
 
-        const cursor = this.database
-            .getCollection(classType)
+        const cursor = (await this.database.connection.getCollection(classType))
             .find(filter ? convertClassQueryToMongo(classType, filter) : undefined)
             .map((v: any) => hasProjection ? partialMongoToPlain(classType, v) : mongoToPlain(classType, v));
 
@@ -253,7 +252,7 @@ export class ExchangeDatabase {
             return {};
         }
 
-        delete doc._id;
+        delete (doc as any)._id;
 
         if (this.notifyChanges(advertiseAs)) {
             const plain = partialMongoToPlain(classType, response.value || {});
@@ -337,7 +336,7 @@ export class ExchangeDatabase {
             throw new Error('Could not patch entity');
         }
 
-        delete doc._id;
+        delete (doc as any)._id;
 
         const jsonPatches: EntityPatches = partialClassToPlain(classType, patches);
 

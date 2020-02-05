@@ -12,6 +12,7 @@ afterAll(async () => {
 
 test('test basic', async () => {
     const server = new ExchangeServer();
+    server.allowToPickFreePort = true;
     await server.start();
 
     const client = new Exchange(server.port);

@@ -3,8 +3,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Exchange, ExchangeDatabase, ExchangeNotifyPolicy} from "..";
 import {remove} from "fs-extra";
-import {createConnection} from 'typeorm';
-import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
+import {Database, Connection} from '@marcj/marshal-mongo';
 import {ClassType} from '@marcj/estdlib';
 import {f, uuid, Entity} from '@marcj/marshal';
 import {ExchangeServer} from "../src/exchange-server";
@@ -25,21 +24,13 @@ class IncrementEntity {
 
 async function createExchangeDatabase(name?: string) {
     i++;
-    const connection = await createConnection({
-        type: "mongodb",
-        host: "localhost",
-        port: 27017,
-        name: 'database-test-' + (name || i),
-        database: "database-test-" + (name || i),
-        useNewUrlParser: true,
-        synchronize: true,
-        entities: [getTypeOrmEntity(IncrementEntity)]
-    });
-
+    const dbName = 'database-test-' + (name || i);
+    const connection = new Connection('localhost', dbName);
     const localDir = '/tmp/deepkit/testing/';
     await remove(localDir);
 
     const exchangeServer = new ExchangeServer();
+    exchangeServer.allowToPickFreePort = true;
     await exchangeServer.start();
 
     const exchange = new Exchange(exchangeServer.port);
@@ -50,8 +41,8 @@ async function createExchangeDatabase(name?: string) {
         }
     };
 
-    const database = new Database(connection, "database-test-" + (name || i));
-    await database.dropDatabase("database-test-" + (name || i));
+    const database = new Database(connection, dbName);
+    await (await database.connection.connect()).db(dbName).dropDatabase();
     const exchangeDatabase = new ExchangeDatabase(notifyPolicy, database, exchange);
 
     return {exchangeDatabase: exchangeDatabase, database, disconnect: async function () {

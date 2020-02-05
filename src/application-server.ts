@@ -6,10 +6,9 @@ import {FS} from "./fs";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase, ExchangeNotifyPolicy} from "./exchange-database";
 import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
-import {Database, getTypeOrmEntity} from "@marcj/marshal-mongo";
+import {Database, Connection} from "@marcj/marshal-mongo";
 import {Application} from "./application";
 import {applyDefaults, each, eachPair} from "@marcj/estdlib";
-import {createConnection, Connection} from "typeorm";
 import {FileType} from "@marcj/glut-core";
 import {ProcessLocker} from "./process-locker";
 import {InternalClient} from "./internal-client";
@@ -108,7 +107,7 @@ export class ApplicationServer {
             if (this.masterWorker) {
 
                 if (this.connection) {
-                    this.connection.mongoManager.queryRunner.databaseConnection.close(true);
+                    this.connection.close(true);
                 }
 
                 (this.getInjector().get(ExchangeServer) as ExchangeServer).close();
@@ -130,22 +129,10 @@ export class ApplicationServer {
     }
 
     protected async bootstrap() {
-        const entities = this.entities.map(v => getTypeOrmEntity(v));
-
-        for (const entity of entities) {
-            entity.options.database = this.config.mongoDbName;
-        }
-
-        this.connection = await createConnection({
-            type: "mongodb",
-            host: this.config.mongoHost,
-            port: this.config.mongoPort,
-            database: this.config.mongoDbName,
-            name: this.config.mongoConnectionName,
-            useNewUrlParser: true,
-            synchronize: this.config.mongoSynchronize,
-            entities: entities
-        });
+        this.connection = new Connection(
+            this.config.mongoHost + ':' + this.config.mongoPort,
+            this.config.mongoDbName,
+        );
 
         const self = this;
         const baseInjectors: Provider[] = [
@@ -217,10 +204,7 @@ export class ApplicationServer {
             console.log(error);
             process.exit(1);
         });
-
-        if (this.config.port === 'auto' && this.config.workers > 1) {
-            throw new Error('Automatic port is only available for single workers');
-        }
+        console.log('start', this.config);
 
         if (this.config.workers > 1) {
             if (cluster.isMaster) {

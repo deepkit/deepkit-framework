@@ -3,12 +3,11 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {FS, getMd5} from "../src/fs";
 import {Exchange} from "../src/exchange";
-import {readFile, pathExists, remove} from 'fs-extra';
+import {pathExists, readFile, remove} from 'fs-extra';
 import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
-import {ClassType, sleep} from '@marcj/estdlib';
-import {Database, getTypeOrmEntity} from '@marcj/marshal-mongo';
-import {createConnection} from 'typeorm';
-import {FileType, GlutFile} from "@marcj/glut-core";
+import {ClassType} from '@marcj/estdlib';
+import {Connection, Database} from '@marcj/marshal-mongo';
+import {FileType} from "@marcj/glut-core";
 import {ProcessLocker} from "../src/process-locker";
 import {ExchangeServer} from "../src/exchange-server";
 
@@ -18,21 +17,13 @@ let fs = 0;
 
 async function createFs(name?: string) {
     fs++;
-    const connection = await createConnection({
-        type: "mongodb",
-        host: "localhost",
-        port: 27017,
-        name: 'fs-test-' + (name || fs),
-        database: "fs-test-" + (name || fs),
-        useNewUrlParser: true,
-        synchronize: true,
-        entities: [getTypeOrmEntity(GlutFile)]
-    });
-
+    const dbName = "fs-test-" + (name || fs);
+    const connection = new Connection('localhost', dbName);
     const localDir = '/tmp/deepkit/testing/';
     await remove(localDir);
 
     const exchangeServer = new ExchangeServer();
+    exchangeServer.allowToPickFreePort = true;
     await exchangeServer.start();
 
     const exchange = new Exchange(exchangeServer.port);
@@ -43,8 +34,8 @@ async function createFs(name?: string) {
         }
     };
 
-    const database = new Database(connection, 'fs-test-' + fs);
-    await database.dropDatabase('fs-test-' + fs);
+    const database = new Database(connection, dbName);
+    await (await database.connection.connect()).db(dbName).dropDatabase();
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 
     return {

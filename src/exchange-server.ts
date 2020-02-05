@@ -1,4 +1,3 @@
-// import {App, us_listen_socket, us_listen_socket_close, WebSocket} from "uWebSockets.js";
 import {decodeMessage, encodeMessage} from "./exchange-prot";
 import {ProcessLock, ProcessLocker} from "./process-locker";
 import {Injectable} from "injection-js";
@@ -30,6 +29,7 @@ export class ExchangeServer {
     constructor(
         public readonly host = '127.0.0.1',
         public port = 8561,
+        public allowToPickFreePort: boolean = false,
     ) {
 
     }
@@ -41,10 +41,32 @@ export class ExchangeServer {
     }
 
     async start() {
-        this.server = new WebSocket.Server({
-            host: this.host,
-            port: this.port,
-        });
+
+        while (!await new Promise((resolve, reject) => {
+            this.server = new WebSocket.Server({
+                host: this.host,
+                port: this.port,
+            });
+
+            this.server.on("listening", () => {
+                console.log('listen on', this.host, this.port);
+                resolve(true);
+            });
+
+            this.server.on("error", (err) => {
+                if (!this.allowToPickFreePort) {
+                    throw new Error('Could not start exchange server');
+                } else {
+                    resolve(false);
+                }
+            });
+        })) {
+            this.port++;
+        }
+
+        if (!this.server) {
+            throw new Error('Could not start exchange server');
+        }
 
         this.server.on('connection', (ws, req) => {
             this.statePerConnection.set(ws, {
@@ -74,17 +96,6 @@ export class ExchangeServer {
 
                 this.statePerConnection.delete(ws);
             });
-        });
-
-        await new Promise((resolve, reject) => {
-            if (this.server) {
-                this.server.on("listening", () => {
-                    resolve();
-                });
-                this.server.on("error", (err) => {
-                    reject(err);
-                });
-            }
         });
     }
 
