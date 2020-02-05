@@ -147,7 +147,7 @@ test('test basic setup and methods', async () => {
         } catch (error) {
             expect(error).toBeInstanceOf(ValidationParameterError);
             expect((error as ValidationError).errors[0]).toBeInstanceOf(ValidationErrorItem);
-            expect((error as ValidationError).errors[0]).toEqual({code: 'required', message: 'Required value is undefined', path: 'validationError#0.name'});
+            expect((error as ValidationError).errors[0]).toEqual({code: 'required', message: 'Required value is undefined or null', path: 'validationError#0.name'});
         }
     }
 

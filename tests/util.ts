@@ -44,7 +44,7 @@ class MyApp extends Application {
     }
 }
 
-const startPort = 28000;
+const startPort = 2800;
 const portFile = '/tmp/glut-integration-port.txt';
 
 export async function closeAllCreatedServers() {
@@ -75,8 +75,8 @@ export async function createServerClientPair(
     lockFile.lockSync(portFile, {stale: 30000});
     let port = startPort;
     try {
-        port = readJsonSync(portFile, {throws: false}) || startPort;
-        if (port > 50000) {
+        port = parseInt(readJsonSync(portFile, {throws: false}) || startPort, 10);
+        if (port > 5000) {
             port = startPort;
         }
         const thisPort = port + 1;
@@ -85,9 +85,12 @@ export async function createServerClientPair(
         lockFile.unlockSync(portFile);
     }
 
+    console.log('start ApplicationServer on port', port);
+
     const app = new ApplicationServer(appController, {
         host: '127.0.0.1',
         port: port,
+        exchangePort: port + 10_000,
         mongoDbName: dbName,
         mongoConnectionName: dbName,
         mongoSynchronize: false,
@@ -97,7 +100,7 @@ export async function createServerClientPair(
     await app.start();
 
     const db: Database = app.getInjector().get(Database);
-    await db.dropDatabase(dbName);
+    await (await db.connection.connect()).db(dbName).dropDatabase();
 
     const createdClients: SocketClient[] = [];
 

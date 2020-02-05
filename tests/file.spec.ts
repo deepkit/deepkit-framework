@@ -4,6 +4,8 @@ import {Action, Controller, GlutFile, StreamBehaviorSubject} from "@marcj/glut-c
 import {EntityStorage, FS} from "@marcj/glut-server";
 import {closeAllCreatedServers, createServerClientPair} from "./util";
 import {sleep} from '@marcj/estdlib';
+import {Buffer} from 'buffer';
+import {arrayBufferTo} from "@marcj/marshal";
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -39,8 +41,8 @@ test('test file list', async () => {
         }
 
         @Action()
-        async content(path: string): Promise<StreamBehaviorSubject<string | undefined>> {
-            return await this.fs.subscribe(path, {}, 'utf8');
+        async content(path: string) {
+            return await this.fs.subscribe(path, {});
         }
 
         @Action()
@@ -70,11 +72,11 @@ test('test file list', async () => {
 
     const fileContent = await test.content('test1.txt');
     expect(fileContent).toBeInstanceOf(StreamBehaviorSubject);
-    expect(fileContent.getValue()).toBe('Was geht?');
+    expect(arrayBufferTo(fileContent.value!, 'utf8')).toBe('Was geht?');
 
     test.write('test1.txt', 'updated');
     await fileContent.nextStateChange;
-    expect(fileContent.getValue()).toBe('updated');
+    expect(arrayBufferTo(fileContent.value!, 'utf8')).toBe('updated');
 
     await close();
 });
@@ -100,13 +102,8 @@ test('test file stream', async () => {
         }
 
         @Action()
-        async content(path: string): Promise<StreamBehaviorSubject<string | undefined>> {
-            return await this.fs.subscribe(path, {}, 'utf8');
-        }
-
-        @Action()
-        async binary(path: string): Promise<StreamBehaviorSubject<Buffer | undefined>> {
-            return await this.fs.subscribe(path);
+        async content(path: string) {
+            return await this.fs.subscribe(path, {});
         }
     }
 
@@ -120,22 +117,32 @@ test('test file stream', async () => {
     fileContent.activateNextOnAppend();
 
     expect(fileContent).toBeInstanceOf(StreamBehaviorSubject);
-    expect(fileContent.getValue()).toBe('init');
+    expect(Buffer.from(fileContent.value!).toString('utf8')).toBe('init');
 
     test.stream('stream.txt', '\nupdated');
     await fileContent.nextStateChange;
-    expect(fileContent.getValue()).toBe('init\nupdated');
+    expect(Buffer.from(fileContent.value!).toString('utf8')).toBe('init\nupdated');
 
     await fileContent.unsubscribe();
     await test.stream('stream.txt', '\nnext');
 
     await sleep(0.2);
     //content is still the same, since we unsubscribed
-    expect(fileContent.value).toBe('init\nupdated');
+    expect(Buffer.from(fileContent.value!).toString('utf8')).toBe('init\nupdated');
 
-    const binaryContent = await test.binary('stream.txt');
-    expect(binaryContent.value).toBeInstanceOf(Buffer);
-    expect(binaryContent.value!.toString('utf8')).toBe('init\nupdated\nnext');
+    const binaryContent = await test.content('stream.txt');
+    expect(binaryContent.value).toBeInstanceOf(Uint8Array);
+    expect(Buffer.from(binaryContent.value!).toString('utf8')).toBe('init\nupdated\nnext');
+    binaryContent.unsubscribe();
+
+    const fileContentUtf = (await test.content('stream.txt')).toUTF8();
+    fileContentUtf.activateNextOnAppend();
+    expect(fileContentUtf.value).toBe('init\nupdated\nnext');
+
+    console.log('end stream');
+    test.stream('stream.txt', '\nend');
+    await fileContentUtf.nextStateChange;
+    expect(fileContentUtf.value).toBe('init\nupdated\nnext\nend');
 
     await close();
 });
