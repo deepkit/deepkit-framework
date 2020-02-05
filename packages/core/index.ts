@@ -5,6 +5,7 @@ export * from './src/utils';
 export * from './src/validation';
 export * from './src/compiler-registry';
 export * from './src/jit';
+export * from './src/jit-json';
 export * from './src/jit-validation';
 export * from './src/jit-validation-registry';
 //it's important to have this at the end

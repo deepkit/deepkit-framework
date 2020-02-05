@@ -32,7 +32,6 @@ export class Connection {
             auth: auth,
             useNewUrlParser: true,
         } as MongoClientOptions);
-        this.client.db()
 
         return this.client;
     }
