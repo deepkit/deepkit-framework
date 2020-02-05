@@ -124,9 +124,6 @@ export interface PropertySchemaSerialized {
     classType?: string;
 }
 
-export function propertySchemaCacheKey(p: PropertyCompilerSchema) {
-}
-
 /**
  * Contains all resolved information from PropertySchema necessary to feat compiler functions.
  *
@@ -357,7 +354,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         this.type = PropertySchema.getTypeFromJSType(type);
 
         const isCustomObject = !typedArrayMap.has(type)
-            && type !== Any
+            && type !== 'any'
             && type !== Object
         ;
 
@@ -1525,7 +1522,7 @@ function Optional() {
  *     name: string;
  *
  *     @f.forwardArray(() => PageClass) //forward necessary since circular dependency
- *     children: Page[] = [];
+ *     children: PageClass[] = [];
  *
  *     @f.forward(() => PageClass).optional() //forward necessary since circular dependency
  *     @ParentReference()
@@ -1535,6 +1532,8 @@ function Optional() {
  *         this.name = name;
  *     }
  * ```
+ *
+ * todo: Move this to @f api.
  */
 export function ParentReference() {
     return FieldDecoratorWrapper((target, property) => {
@@ -1584,9 +1583,6 @@ function Exclude(t: 'all' | string = 'all') {
 }
 
 type FieldTypes = String | Number | Date | ClassType<any> | ForwardedRef<any>;
-
-class Any {
-}
 
 type ForwardRefFn<T> = () => T;
 
@@ -1649,6 +1645,7 @@ function Field(oriType?: FieldTypes) {
             if (t instanceof ForwardedRef) return 'ForwardedRef';
             if (t === Date) return 'Date';
             if (t === undefined) return 'undefined';
+            if (t === 'any') return 'any';
 
             return getClassName(t);
         }
@@ -1659,7 +1656,7 @@ function Field(oriType?: FieldTypes) {
             return getTypeName(t);
         }
 
-        if (returnType !== Promise && type !== Any) {
+        if (returnType !== Promise && type !== 'any') {
             //we don't want to check for type mismatch when returnType is a Promise.
 
             if (type && options.array && returnType !== Array) {
@@ -1696,11 +1693,12 @@ function Field(oriType?: FieldTypes) {
         }
 
         const isCustomObject = !typedArrayMap.has(type)
-            && type !== Any
+            && type !== 'any'
             && type !== Object
             && !(type instanceof ForwardedRef);
 
         if (type && !options.map && !options.partial && isCustomObject && returnType === Object) {
+            console.log('type', type, oriType);
             throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
                 `The actual type is an Object, but you specified a Class in @f.type(T).\n` +
                 `Please declare a type or use @f.map(${getClassName(type)}) for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
@@ -1766,7 +1764,7 @@ fRaw['map'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, t
 };
 
 fRaw['any'] = function (this: FieldDecoratorResult<any>): FieldDecoratorResult<any> {
-    return Field(Any);
+    return Field('any');
 };
 
 fRaw['type'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
