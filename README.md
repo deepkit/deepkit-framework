@@ -277,7 +277,7 @@ if (errors.length === 0) {
 const page = validatedPlainToClass(Page, {name: 'peter'});
 ````
 
-You can also custom validators
+You can also write custom validators
 
 ```typescript
 import {f, PropertyValidatorError, PropertyValidator} from '@marcj/marshal';
