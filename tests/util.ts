@@ -90,11 +90,7 @@ export async function createServerClientPair(
     const app = new ApplicationServer(appController, {
         host: '127.0.0.1',
         port: port,
-        exchangePort: port + 10_000,
         mongoDbName: dbName,
-        mongoConnectionName: dbName,
-        mongoSynchronize: false,
-        redisPrefix: dbName,
     }, [], [], controllers, [], entityChangeFeeds);
 
     await app.start();
