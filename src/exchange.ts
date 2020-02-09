@@ -3,8 +3,9 @@ import {getEntityName} from "@marcj/marshal";
 import {ExchangeEntity, StreamFileResult} from '@marcj/glut-core';
 import {ClassType, sleep} from '@marcj/estdlib';
 import {Injectable} from "injection-js";
-import {decodeMessage, encodeMessage, decodePayloadAsJson, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
-import { AsyncSubscription } from "@marcj/estdlib-rxjs";
+import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
+import {AsyncSubscription} from "@marcj/estdlib-rxjs";
+import * as WebSocket from "ws";
 
 type Callback<T> = (message: T) => void;
 
@@ -27,8 +28,7 @@ export class Exchange {
     protected replyResolver: { [id: number]: Function } = {};
 
     constructor(
-        protected port: number = 8561,
-        protected host: string = '127.0.0.1',
+        protected path: string = '/tmp/glut-exchange.sock',
     ) {
     }
 
@@ -67,12 +67,13 @@ export class Exchange {
         this.socket = undefined;
 
         return new Promise<void>((resolve, reject) => {
-            this.socket = new WebSocket('ws://' + this.host + ':' + this.port);
+            this.socket = new WebSocket('ws+unix://' + this.path);
             this.socket.binaryType = 'arraybuffer';
 
             this.socket.onerror = (error: any) => {
                 this.socket = undefined;
-                reject(new Error(`Could not connect to ${this.host + ':' + this.port}. Reason: ${error.message || error}`));
+                console.error(error);
+                reject(new Error(`Could not connect to ${this.path}.`));
             };
 
             this.socket.onclose = () => {
@@ -82,8 +83,8 @@ export class Exchange {
                 // process.exit(500);
             };
 
-            this.socket.onmessage = (event: MessageEvent) => {
-                this.onMessage(event.data);
+            this.socket.onmessage = (event: { data: WebSocket.Data; type: string; target: WebSocket }) => {
+                this.onMessage(event.data as ArrayBuffer);
             };
 
             this.socket.onopen = async () => {
@@ -161,12 +162,12 @@ export class Exchange {
         await this.publish(channelName, message);
     }
 
-    public async subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Promise<Subscription> {
+    public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
         const channelName = 'entity/' + getEntityName(classType);
         return this.subscribe(channelName, cb);
     }
 
-    public async subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>): Promise<Subscription> {
+    public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>): Subscription {
         const channelName = 'file/' + fileId;
         return this.subscribe(channelName, cb);
     }
@@ -191,11 +192,15 @@ export class Exchange {
         this.send('publish', channelName, encodePayloadAsJSONArrayBuffer(message));
     }
 
-    public async lock(name: string, timeout = 0): Promise<ExchangeLock> {
-        await this.sendAndWaitForReply('lock', [name, timeout]);
-        return new ExchangeLock(() => {
-            this.send('unlock', name);
-        });
+    public async lock(name: string, ttl: number = 0, timeout = 0): Promise<ExchangeLock> {
+        const {arg} = await this.sendAndWaitForReply('lock', [name, ttl, timeout]);
+        if (arg) {
+            return new ExchangeLock(() => {
+                this.send('unlock', name);
+            });
+        } else {
+            throw new Error('Unable to lock ' + name);
+        }
     }
 
     public async isLocked(name: string): Promise<boolean> {
@@ -206,7 +211,7 @@ export class Exchange {
         return (await this.sendAndWaitForReply('version', '')).arg;
     }
 
-    public async subscribe(channelName: string, callback: Callback<any>): Promise<Subscription> {
+    public subscribe(channelName: string, callback: Callback<any>): Subscription {
         if (!this.subscriptions[channelName]) {
             this.subscriptions[channelName] = [];
             this.subscriptions[channelName].push(callback);

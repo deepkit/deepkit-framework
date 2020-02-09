@@ -294,16 +294,31 @@ export class ExchangeDatabase {
         delete (<any>patches)['_id'];
         delete (<any>patches)['version'];
 
-        if (options && options.plain) {
-            patchStatement['$set'] = partialPlainToMongo(classType, patches);
-        } else {
-            patchStatement['$set'] = partialClassToMongo(classType, patches);
+        let $set: any = {};
+        const $unset: any = {};
+        for (const [i, v] of Object.entries(patches)) {
+            if (v === undefined) {
+                $unset[i] = "";
+            } else {
+                $set[i] = v;
+            }
         }
 
-        patchStatement['$set']['version'] = version;
+        $set['version'] = version;
 
-        if (Object.keys(patchStatement['$set']).length === 0) {
-            throw new Error('No patches given. ' + JSON.stringify(patches));
+        // if (Object.keys(patchStatement['$set']).length === 0) {
+        //     throw new Error('No patches given. ' + JSON.stringify(patches));
+        // }
+
+        if (Object.keys($set).length) {
+            if (options && options.plain) {
+                patchStatement['$set'] = partialPlainToMongo(classType, $set);
+            } else {
+                patchStatement['$set'] = partialClassToMongo(classType, $set);
+            }
+        }
+        if (Object.keys($unset).length) {
+            patchStatement['$unset'] = $unset;
         }
 
         const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
@@ -338,7 +353,7 @@ export class ExchangeDatabase {
 
         delete (doc as any)._id;
 
-        const jsonPatches: EntityPatches = partialClassToPlain(classType, patches);
+        const jsonPatches = partialClassToPlain(classType, $set);
 
         if (this.notifyChanges(advertiseAs)) {
             this.exchange.publishEntity(advertiseAs, {
@@ -346,7 +361,10 @@ export class ExchangeDatabase {
                 id: id,
                 version: version, //this is the new version in the db, which we end up having when `patch` is applied.
                 item: partialMongoToPlain(advertiseAs, doc),
-                patch: jsonPatches,
+                patch: {
+                    set: jsonPatches,
+                    unset: $unset,
+                },
             });
         }
 

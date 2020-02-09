@@ -6,6 +6,7 @@ import {ServerConnectionMiddleware} from "./connection-middleware";
 import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@marcj/glut-core";
 import {Exchange} from "./exchange";
 import * as WebSocket from 'ws';
+import {Server} from "http";
 
 export class Worker {
     protected server?: WebSocket.Server;
@@ -13,7 +14,11 @@ export class Worker {
     constructor(
         protected mainInjector: ReflectiveInjector,
         protected connectionProvider: Provider[],
-        protected options: { host: string, port: number },
+        protected options: {
+            server?: Server,
+            host: string,
+            port: number
+        },
     ) {
     }
 
@@ -28,15 +33,15 @@ export class Worker {
 
         await (this.mainInjector.get(Exchange) as Exchange).connect();
 
-        this.server = new WebSocket.Server({
+        const options = this.options.server ? {server: this.options.server} : {
             host: this.options.host,
             port: this.options.port
-        });
+        };
+
+        this.server = new WebSocket.Server(options);
 
         this.server.on('connection', (ws, req) => {
             const ipString = req.connection.remoteAddress;
-            // const ip = Buffer.from(ws.remoteAddress);
-            // const ipString = ip[0] + '.' + ip[1] + '.' + ip[2] + '.' + ip[3];
 
             const provider: Provider[] = [
                 {provide: 'socket', useValue: ws},
@@ -56,6 +61,7 @@ export class Worker {
                                 });
                                 return true;
                             }
+
                             bufferedAmount(): number {
                                 return ws.bufferedAmount;
                             }

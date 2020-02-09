@@ -22,11 +22,10 @@ async function createFs(name?: string) {
     const localDir = '/tmp/deepkit/testing/';
     await remove(localDir);
 
-    const exchangeServer = new ExchangeServer();
-    exchangeServer.allowToPickFreePort = true;
+    const exchangeServer = new ExchangeServer('auto');
     await exchangeServer.start();
 
-    const exchange = new Exchange(exchangeServer.port);
+    const exchange = new Exchange(exchangeServer.path);
 
     const notifyPolicy = new class implements ExchangeNotifyPolicy {
         notifyChanges<T>(classType: ClassType<T>): boolean {

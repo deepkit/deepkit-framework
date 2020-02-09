@@ -4,6 +4,8 @@ import {Injectable} from "injection-js";
 import {Subscriptions} from "@marcj/estdlib-rxjs";
 import {Subscription} from "rxjs";
 import * as WebSocket from 'ws';
+import {createServer, Server} from "http";
+import {removeSync} from "fs-extra";
 
 interface StatePerConnection {
     subs: Subscriptions;
@@ -18,57 +20,69 @@ export class ExchangeServer {
     protected storage: { [key: string]: any } = {};
     protected entityFields: { [key: string]: { [field: string]: number } } = {};
 
-    protected statePerConnection = new Map<WebSocket, StatePerConnection>();
+    protected statePerConnection = new Map<any, StatePerConnection>();
 
     protected version = 0;
 
-    protected server?: WebSocket.Server;
+    protected server?: Server;
+    protected wsServer?: WebSocket.Server;
 
-    protected subscriptions = new Map<string, Set<WebSocket>>();
+    protected autoPath = '';
+
+    protected subscriptions = new Map<string, Set<any>>();
 
     constructor(
-        public readonly host = '127.0.0.1',
-        public port = 8561,
-        public allowToPickFreePort: boolean = false,
+        protected readonly unixPath: string | 'auto' = '/tmp/glut-exchange.sock',
     ) {
+    }
 
+    get path() {
+        return this.unixPath === 'auto' ? this.autoPath : this.unixPath;
     }
 
     close() {
         if (this.server) {
             this.server.close();
+            if (this.autoPath) {
+                removeSync(this.autoPath);
+            }
         }
     }
 
     async start() {
-
+        let id = 0;
+        let dynamicPath = `/tmp/glut-exchange-${id}.sock`;
         while (!await new Promise((resolve, reject) => {
-            this.server = new WebSocket.Server({
-                host: this.host,
-                port: this.port,
+            this.server = createServer();
+            this.wsServer = new WebSocket.Server({
+                server: this.server
             });
 
-            this.server.on("listening", () => {
-                console.log('listen on', this.host, this.port);
+            this.wsServer.on("listening", () => {
+                this.autoPath = dynamicPath;
+                console.log('exchange listen on', this.path);
                 resolve(true);
             });
 
-            this.server.on("error", (err) => {
-                if (!this.allowToPickFreePort) {
-                    throw new Error('Could not start exchange server');
-                } else {
+            this.wsServer.on("error", (err) => {
+                if (this.unixPath === 'auto') {
                     resolve(false);
+                } else {
+                    reject(new Error('Could not start exchange server: ' + err));
                 }
             });
+
+            this.server.listen(this.unixPath === 'auto' ? dynamicPath : this.unixPath);
         })) {
-            this.port++;
+            id++;
+            dynamicPath = `/tmp/glut-exchange-${id}.sock`;
         }
 
         if (!this.server) {
             throw new Error('Could not start exchange server');
         }
 
-        this.server.on('connection', (ws, req) => {
+        this.wsServer!.on('connection', (ws, req) => {
             this.statePerConnection.set(ws, {
                 subs: new Subscriptions(),
                 locks: new Map(),
@@ -99,7 +113,7 @@ export class ExchangeServer {
         });
     }
 
-    protected async onMessage(ws: WebSocket, message: Buffer, state: StatePerConnection) {
+    protected async onMessage(ws: any, message: Uint8Array, state: StatePerConnection) {
         const m = decodeMessage(message);
         // console.log('server message', message.toString(), m);
 
@@ -198,10 +212,14 @@ export class ExchangeServer {
         }
 
         if (m.type === 'lock') {
-            const [name, timeout] = m.arg;
-            this.locks[name] = await this.locker.acquireLock(name, timeout);
-            state.locks.set(m.arg, this.locks[name]);
-            ws.send(encodeMessage(m.id, m.type, true), {binary: true});
+            const [name, ttl, timeout] = m.arg;
+            try {
+                this.locks[name] = await this.locker.acquireLock(name, ttl, timeout);
+                state.locks.set(m.arg, this.locks[name]);
+                ws.send(encodeMessage(m.id, m.type, true), {binary: true});
+            } catch (error) {
+                ws.send(encodeMessage(m.id, m.type, false), {binary: true});
+            }
             return;
         }
 

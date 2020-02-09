@@ -15,6 +15,7 @@ import {InternalClient} from "./internal-client";
 import {homedir} from "os";
 import {GlobalLocker} from "./global-locker";
 import {ExchangeServer} from "./exchange-server";
+import {Server} from "http";
 
 export class ApplicationServerConfig {
     host: string = '127.0.0.1';
@@ -25,23 +26,15 @@ export class ApplicationServerConfig {
 
     mongoHost: string = 'localhost';
 
-    mongoPort: number = 27017;
+    mongoPort?: number = 27017;
 
     mongoDbName: string = 'glut';
 
-    mongoConnectionName: string = 'default';
-
-    /**
-     * Whether entity definition (mongo indices) should be synchronised on bootstrap.
-     * This could go wrong when indices changed, so use it only in development.
-     */
-    mongoSynchronize: boolean = false;
-
-    exchangePort: number = 8561;
-
-    redisPrefix: string = 'glut';
+    server?: Server;
 
     fsPath: string = '~/.glut/files';
+
+    exchangeUnixPath: string = '/tmp/glut-exchange.sock';
 }
 
 
@@ -125,23 +118,21 @@ export class ApplicationServer {
             console.log('registered controller', name, getClassName(controllerClass));
         }
 
-        console.log(`Server up and running (connection: ${this.config.mongoConnectionName})`);
+        console.log(`Server up and running`);
     }
 
     protected async bootstrap() {
-        this.connection = new Connection(
-            this.config.mongoHost + ':' + this.config.mongoPort,
-            this.config.mongoDbName,
-        );
+        const mongoHost = this.config.mongoHost.startsWith('/') ? encodeURIComponent(this.config.mongoHost) : (this.config.mongoHost + ':' + this.config.mongoPort);
+        this.connection = new Connection(mongoHost, this.config.mongoDbName);
 
         const self = this;
         const baseInjectors: Provider[] = [
             {provide: Application, useClass: this.application},
             {provide: ApplicationServerConfig, useValue: this.config},
             {provide: 'fs.path', useValue: this.config.fsPath},
-            {provide: 'exchange.port', useValue: this.config.exchangePort},
+            {provide: 'exchange.unixPath', useValue: this.config.exchangeUnixPath},
             {provide: 'mongo.dbName', useValue: this.config.mongoDbName},
-            {provide: 'mongo.host', useValue: this.config.mongoHost + ':' + this.config.mongoPort},
+            {provide: 'mongo.host', useValue: mongoHost},
             {
                 provide: FileType, deps: [], useFactory: () => {
                     return FileType.forDefault();
@@ -150,13 +141,13 @@ export class ApplicationServer {
             {provide: Connection, useValue: this.connection},
             {
                 provide: Exchange,
-                deps: ['exchange.port'],
-                useFactory: (port: number) => new Exchange(port)
+                deps: ['exchange.unixPath'],
+                useFactory: (unixPath: string) => new Exchange(unixPath)
             },
             {
                 provide: ExchangeServer,
-                deps: ['exchange.port'],
-                useFactory: (port: number) => new ExchangeServer('127.0.0.1', port)
+                deps: ['exchange.unixPath'],
+                useFactory: (unixPath: string) => new ExchangeServer(unixPath)
             },
             {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {
@@ -204,7 +195,6 @@ export class ApplicationServer {
             console.log(error);
             process.exit(1);
         });
-        console.log('start', this.config);
 
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
@@ -220,6 +210,7 @@ export class ApplicationServer {
                 this.done();
             } else {
                 const worker = new Worker(this.getInjector(), this.connectionProvider, {
+                    server: this.config.server,
                     host: this.config.host,
                     port: this.config.port,
                 });
@@ -237,6 +228,7 @@ export class ApplicationServer {
             await app.bootstrap();
 
             this.masterWorker = new Worker(this.getInjector(), this.connectionProvider, {
+                server: this.config.server,
                 host: this.config.host,
                 port: this.config.port,
             });

@@ -32,6 +32,18 @@ test('test lock early release', async () => {
     expect(+new Date - started).toBeGreaterThan(499);
 });
 
+test('test lock timeout', async () => {
+    const started = +new Date;
+    const lock1 = await locker.acquireLock('test-early-lock1', 2);
+    setTimeout(async () => {
+        await lock1.unlock();
+    }, 500);
+
+    const lock2 = await locker.acquireLock('test-early-lock1', 1);
+    expect(+new Date - started).toBeLessThan(1000);
+    expect(+new Date - started).toBeGreaterThan(499);
+});
+
 test('test lock timeout accum', async () => {
     const start = Date.now();
     const lock1 = await locker.acquireLock('test-timeout-lock1', 1);
@@ -51,7 +63,7 @@ test('test performance', async () => {
 
     const count = 2000;
     for (let i = 0; i < count; i++) {
-        const lock1 = await locker.acquireLock('test-perf', 0.01);
+        const lock1 = await locker.acquireLock('test-perf');
         await lock1.unlock();
     }
 

@@ -1,7 +1,7 @@
 /**
  * A message of exchange-server has a very simple frame:
  *
- * <message-id>.<type>:<arg>\0<payload>
+ * <length><message-id>.<type>:<arg>\0<payload>
  */
 export function decodeMessage(array: ArrayBuffer): {id: number, type: string, arg: any, payload: ArrayBuffer} {
     const uintArray = new Uint8Array(array);

@@ -11,11 +11,10 @@ afterAll(async () => {
 });
 
 test('test basic', async () => {
-    const server = new ExchangeServer();
-    server.allowToPickFreePort = true;
+    const server = new ExchangeServer('auto');
     await server.start();
 
-    const client = new Exchange(server.port);
+    const client = new Exchange(server.path);
     let gotIt = false;
     await client.subscribe('mowla', (m) => {
         console.log('m', m);
@@ -73,12 +72,12 @@ test('test encoding/decoding', async () => {
     }
 
     {
-        const e = encodeMessage(0, 'publish', 'channel-name', new ArrayBuffer(0));
-        const header = 0 + '.' + 'publish' + ':' + JSON.stringify('channel-name') + '\0';
+        const e = encodeMessage(5, 'publish', 'channel-name', new ArrayBuffer(0));
+        const header = '5.' + 'publish' + ':' + JSON.stringify('channel-name') + '\0';
         expect(e.byteLength).toBe(header.length); //still same length
 
         const d = decodeMessage(e);
-        expect(d.id).toBe(0);
+        expect(d.id).toBe(5);
         expect(d.type).toBe('publish');
         expect(d.arg).toBe('channel-name');
         expect(d.payload.byteLength).toBe(0);
@@ -138,18 +137,27 @@ test('test encoding perf', async () => {
     }
 });
 
+test('test lock timeout', async () => {
+    const locker = await createExchange();
+    const lock = await locker.lock('my-timeout');
+
+    await expect(locker.lock('my-timeout', 0, 1)).rejects.toThrow('Unable to lock my-timeout');
+    lock.unlock();
+    await locker.lock('my-timeout', 0, 1);
+});
+
 test('test lock performance', async () => {
     const locker = await createExchange();
     const start = performance.now();
 
     const count = 2_000;
     for (let i = 0; i < count; i++) {
-        const lock1 = await locker.lock('test-perf-' + i, 0.01);
+        const lock1 = await locker.lock('test-perf-' + i);
         await lock1.unlock();
     }
 
     //0.0035 takes native lock per item
-    //this takes 0.203
+    //this takes 0.203, that's the price of communicating via webSockets
     console.log(count, 'locks took', performance.now() - start, 'ms', (performance.now() - start) / count);
 });
 
@@ -185,7 +193,7 @@ test('test version', async () => {
     }
     await Promise.all(all);
 
-    //20000 nanoclick took 768.7665319 ms
+    //20000 version took 768.7665319 ms
     console.log(count, 'version took', performance.now() - start, 'ms', (performance.now() - start) / count);
 });
 
@@ -210,14 +218,14 @@ test('test get/set benchmark', async () => {
     const client = await createExchange();
     const count = 1_000;
 
-    {
-        const start = performance.now();
-        const payload = encodePayloadAsJSONArrayBuffer({nix: 'data'});
-        for (let i = 0; i < count; i++) {
-            await client.set(String(i), payload);
-        }
-        console.log(count, 'client.set', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
+    // {
+    //     const start = performance.now();
+    //     const payload = encodePayloadAsJSONArrayBuffer({nix: 'data'});
+    //     for (let i = 0; i < count; i++) {
+    //         await client.set(String(i), payload);
+    //     }
+    //     console.log(count, 'client.set', performance.now() - start, 'ms', (performance.now() - start) / count);
+    // }
 
     {
         const start = performance.now();
@@ -225,6 +233,14 @@ test('test get/set benchmark', async () => {
             await client.set(String(i), encodePayloadAsJSONArrayBuffer({nix: 'data'}));
         }
         console.log(count, 'client.set & encode', performance.now() - start, 'ms', (performance.now() - start) / count);
+    }
+
+    {
+        const start = performance.now();
+        for (let i = 0; i < count; i++) {
+            await client.get(String(i));
+        }
+        console.log(count, 'client.get', performance.now() - start, 'ms', (performance.now() - start) / count);
     }
 
     {

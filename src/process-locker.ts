@@ -1,4 +1,5 @@
 import {Injectable} from 'injection-js';
+import {arrayRemoveItem} from '@marcj/estdlib';
 
 const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
 
@@ -19,24 +20,31 @@ export class ProcessLock {
     ) {
     }
 
-    public async acquire(timeout?: number) {
+    public async acquire(ttl: number = 0, timeout: number = 0) {
         if (this.holding) {
             throw new Error('Lock already acquired');
         }
-
-        return new Promise<void>((resolve) => {
+        return new Promise<void>((resolve, reject) => {
             const ourTake = () => {
                 LOCKS[this.id].time = Date.now() / 1000;
 
                 this.holding = true;
                 resolve();
 
-                if (timeout) {
+                if (ttl) {
                     setTimeout(() => {
                         this.unlock();
-                    }, timeout * 1000);
+                    }, ttl * 1000);
                 }
             };
+
+            if (timeout > 0) {
+                setTimeout(() => {
+                    arrayRemoveItem(LOCKS[this.id].queue, ourTake);
+                    //reject is never handled when resolve is called first
+                    reject('Lock timed out ' + this.id);
+                }, timeout * 1000);
+            }
 
             if (LOCKS[this.id]) {
                 LOCKS[this.id].queue.push(ourTake);
@@ -49,10 +57,10 @@ export class ProcessLock {
                 this.holding = true;
                 resolve();
 
-                if (timeout) {
+                if (ttl) {
                     setTimeout(() => {
                         this.unlock();
-                    }, timeout * 1000);
+                    }, ttl * 1000);
                 }
             }
         });
@@ -109,11 +117,12 @@ export class ProcessLocker {
     /**
      *
      * @param id
-     * @param timeout optional defines when the times automatically unlocks.
+     * @param ttl optional defines when the times automatically unlocks.
+     * @param timeout if after `timeout` seconds the lock isn't acquired, it throws an error.
      */
-    public async acquireLock(id: string, timeout?: number): Promise<ProcessLock> {
+    public async acquireLock(id: string, ttl: number = 0, timeout: number = 0): Promise<ProcessLock> {
         const lock = new ProcessLock(id);
-        await lock.acquire(timeout);
+        await lock.acquire(ttl, timeout);
 
         return lock;
     }

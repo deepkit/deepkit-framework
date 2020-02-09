@@ -389,7 +389,7 @@ export class EntityStorage {
 
         const entityName = getEntityName(classType);
 
-        this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
+        const sub = this.exchange.subscribeEntity(classType, (message: ExchangeEntity) => {
             if (message.type === 'removeMany') {
                 for (const id of message.ids) {
                     this.rmSentState(classType, id);
@@ -444,9 +444,9 @@ export class EntityStorage {
                     //nothing to do.
                 }
             }
-        }).then((sub) => {
-            this.entitySubscription.set(classType, sub);
         });
+
+        this.entitySubscription.set(classType, sub);
     }
 
     // multiCount<T extends IdInterface>(classType: ClassType<T>, filters: { [p: string]: any }[] = []): Observable<CountResult> {

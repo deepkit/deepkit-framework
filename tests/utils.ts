@@ -8,13 +8,13 @@ export function closeCreatedExchange() {
 }
 
 export async function createExchange(): Promise<Exchange> {
-    const server = new ExchangeServer('127.0.0.1', 8561, true);
+    const server = new ExchangeServer('auto');
     await server.start();
 
     closers.push(() => {
         server.close();
     });
-    const client = new Exchange(server.port);
+    const client = new Exchange(server.path);
     await client.connect();
     return client;
 }
