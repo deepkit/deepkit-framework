@@ -1,6 +1,6 @@
 import {partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "../index";
-import {set} from 'dot-prop';
+import {set, delete as deleteByPath} from 'dot-prop';
 import {ClassType, eachPair, getClassName} from "@marcj/estdlib";
 import {skip} from "rxjs/operators";
 import {ObjectUnsubscribedError, Subject} from "rxjs";
@@ -187,11 +187,15 @@ export class EntityState {
 
                 if (item && (toVersion === 0 || item.version < toVersion)) {
 
-                    const patches = partialPlainToClass(classType, stream.patch);
+                    const patches = partialPlainToClass(classType, stream.patch.set);
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(patches)) {
                         set(item, i, v);
+                    }
+
+                    for (const path of Object.keys(stream.patch.unset)) {
+                        deleteByPath(item, path);
                     }
 
                     item.version = toVersion;

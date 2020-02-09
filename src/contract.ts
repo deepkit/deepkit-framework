@@ -9,7 +9,8 @@ export interface IdInterface {
 }
 
 export interface EntityPatches {
-    [path: string]: any;
+    set: {[path: string]: any};
+    unset: {[path: string]: any};
 }
 
 export interface ExchangeEntityBase {
