@@ -38,13 +38,6 @@ function encodeValue(v: any, p: PropertySchema | undefined, prefixMessage: strin
         }
     }
 
-    if (!p.typeSet && v && v.constructor === Object) {
-        throw new Error(
-            `${prefixMessage} is an Object with unknown structure. Please declare the type using the @f decorator.` +
-            `Please define either an entity using Marshal with @f.type(MyReturnClass) decorator on your method or set the return type of your method ` +
-            `to 'any' by using the @f.any() decorator.`);
-    }
-
     try {
         return {
             encoding: p.toJSON(),
@@ -320,6 +313,10 @@ export class ConnectionMiddleware {
             }
 
             this.observables[message.forId].subscriber[message.subscribeId].unsubscribe();
+            delete this.observables[message.forId].subscriber[message.subscribeId];
+            if (Object.keys(this.observables[message.forId].subscriber).length === 0) {
+                delete this.observables[message.forId];
+            }
             writer.ack(message.forId);
         }
     }

@@ -185,8 +185,9 @@ export class EntityState {
                 const toVersion = stream.version;
                 const item = store.getItem(stream.id);
 
-                if (item && (toVersion === 0 || item.version < toVersion)) {
-
+                //we cant do a version check like `item.version < toVersion`, since exchange issues versions always from 0 when restarted
+                //so we apply all incoming patches.
+                if (item) {
                     const patches = partialPlainToClass(classType, stream.patch.set);
 
                     //it's important to not patch old versions
@@ -196,6 +197,7 @@ export class EntityState {
 
                     for (const path of Object.keys(stream.patch.unset)) {
                         deleteByPath(item, path);
+                        set(patches, path, undefined);
                     }
 
                     item.version = toVersion;
