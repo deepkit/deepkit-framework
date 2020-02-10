@@ -267,7 +267,7 @@ export class ExchangeDatabase {
                 id: plain.id,
                 version: version, //this is the new version in the db, which we end up having when `patch` is applied.
                 item: partialMongoToPlain(advertiseAs, doc),
-                patch: jsonPatches,
+                patch: {set: jsonPatches, unset: {}},
             });
         }
 
@@ -294,7 +294,7 @@ export class ExchangeDatabase {
         delete (<any>patches)['_id'];
         delete (<any>patches)['version'];
 
-        let $set: any = {};
+        const $set: any = {};
         const $unset: any = {};
         for (const [i, v] of Object.entries(patches)) {
             if (v === undefined) {
@@ -343,9 +343,9 @@ export class ExchangeDatabase {
             returnOriginal: false
         });
 
-        const doc = response.value;
+        const doc = response.value || {};
 
-        if (!doc) {
+        if (!response.ok) {
             console.error('patchStatement', patchStatement, filter, projection);
             console.error('response', response);
             throw new Error('Could not patch entity');
