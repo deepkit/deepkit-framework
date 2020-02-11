@@ -8,7 +8,6 @@ import {resolvePropertyCompilerSchema} from "./jit";
 
 const jitFunctions = new WeakMap<ClassType<any>, any>();
 const CacheJitPropertyMap = new Map<PropertyCompilerSchema, any>();
-const CacheJitVirtualPropertyMap = new Map<string, any>();
 const CacheValidatorInstances = new Map<ClassType<PropertyValidator>, PropertyValidator>();
 
 export function getDataCheckerJS(
@@ -125,8 +124,7 @@ export function jitValidateProperty(property: PropertyCompilerSchema): (value: a
         }
     }
 
-    const jit = property.isRealProperty()
-        ? CacheJitPropertyMap.get(property) : CacheJitVirtualPropertyMap.get(property.getCacheKey());
+    const jit = CacheJitPropertyMap.get(property);
     if (jit) return jit;
 
     const context = new Map<any, any>();
@@ -156,11 +154,7 @@ export function jitValidateProperty(property: PropertyCompilerSchema): (value: a
         const compiled = new Function(...context.keys(), functionCode);
         const fn = compiled.bind(undefined, ...context.values())();
         // console.log('jit', property.name, compiled.toString());
-        if (property.isRealProperty()) {
-            CacheJitPropertyMap.set(property, fn);
-        } else {
-            CacheJitVirtualPropertyMap.set(property.getCacheKey(), fn);
-        }
+        CacheJitPropertyMap.set(property, fn);
 
         return fn;
     } catch (error) {

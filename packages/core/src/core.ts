@@ -38,6 +38,21 @@ export function nodeBufferToTypedArray<K>(buf: Buffer, type: TypedArrayClassType
 }
 
 /**
+ * This function is only used in browser context, where atob is actually faster than
+ * using `Buffer.from` by the `buffer.js` library.
+ */
+function base64ToUint8ArrayAtoB(base64: string): Uint8Array {
+    const raw = window.atob(base64);
+    const rawLength = raw.length;
+    const array = new Uint8Array(new ArrayBuffer(rawLength));
+
+    for (let i = 0; i < rawLength; i++) {
+        array[i] = raw.charCodeAt(i);
+    }
+    return array;
+}
+
+/**
  * When using Buffer.from() node is using a buffer from the buffer pool.
  * This makes it necessary to create the given TypedArray using byteOffset and byteLength accordingly.
  *
@@ -46,6 +61,10 @@ export function nodeBufferToTypedArray<K>(buf: Buffer, type: TypedArrayClassType
  * a raw ArrayBuffer that represents the actual data correctly.
  */
 export function base64ToTypedArray<K>(base64: string, type: TypedArrayClassType<K>): K {
+    if ('function' === typeof atob) {
+        return new type(base64ToUint8ArrayAtoB(base64));
+    }
+
     return nodeBufferToTypedArray(Buffer.from(base64, 'base64'), type);
 }
 
@@ -55,6 +74,10 @@ export function base64ToTypedArray<K>(base64: string, type: TypedArrayClassType<
  * sure a copy happens and the ArrayBuffer is not shared.
  */
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+    if ('function' === typeof atob) {
+        return base64ToUint8ArrayAtoB(base64).buffer;
+    }
+
     return nodeBufferToArrayBuffer(Buffer.from(base64, 'base64'));
 }
 
