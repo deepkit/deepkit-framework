@@ -170,30 +170,6 @@ export class PropertyCompilerSchema {
         return this.isOptional || this.type === 'any';
     }
 
-    /**
-     * a PropertySchema could be a definition of a real property (of a class)
-     * or a virtual property which is generated when resolving paths like `configs.0`.
-     */
-    isRealProperty(): boolean {
-        return false;
-    }
-
-    getCacheKey(): string {
-        if (this.cacheKey) return this.cacheKey;
-
-        if (this.isMap) {
-            this.cacheKey = 'm' + this.type;
-        } else if (this.isArray) {
-            this.cacheKey = 'a' + this.type;
-        } else if (this.isPartial) {
-            this.cacheKey = 'p' + this.type;
-        } else {
-            this.cacheKey = this.type;
-        }
-
-        return this.cacheKey;
-    }
-
     static createFromPropertySchema(
         propertySchema: PropertySchema,
         isArray?: boolean,
@@ -410,10 +386,6 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
     }
 
-    isRealProperty(): boolean {
-        return true;
-    }
-
     get resolveClassType(): ClassType<any> | undefined {
         return this.getResolvedClassTypeForValidType();
     }
@@ -543,7 +515,7 @@ export class ClassSchema<T = any> {
         }
         this.hasFullLoadHooksCheck = false;
 
-        return !!this.onLoad.find(v => v.options.fullLoad);
+        return !!this.onLoad.find(v => !!v.options.fullLoad);
     }
 
     public addIndex(name: string, options?: IndexOptions) {

@@ -135,7 +135,6 @@ export class CacheJitPropertyConverter {
  */
 export class JitPropertyConverter {
     protected schema: ClassSchema<any>;
-    protected cacheJitVirtualPropertyMap: Map<string, any>;
     protected cacheJitPropertyMap: WeakMap<PropertyCompilerSchema, any>;
 
     constructor(
@@ -150,12 +149,6 @@ export class JitPropertyConverter {
         if (!this.cacheJitPropertyMap) {
             this.cacheJitPropertyMap = new WeakMap<PropertySchema, any>();
             cacheJitProperty.set(fromFormat + ':' + toFormat, this.cacheJitPropertyMap);
-        }
-
-        this.cacheJitVirtualPropertyMap = cacheJitVirtualProperty.get(fromFormat + ':' + toFormat)!;
-        if (!this.cacheJitVirtualPropertyMap) {
-            this.cacheJitVirtualPropertyMap = new Map<string, any>();
-            cacheJitVirtualProperty.set(fromFormat + ':' + toFormat, this.cacheJitVirtualPropertyMap);
         }
     }
 
@@ -176,9 +169,7 @@ export class JitPropertyConverter {
             return;
         }
 
-        const jit = property.isRealProperty()
-            ? this.cacheJitPropertyMap.get(property) : this.cacheJitVirtualPropertyMap.get(property.getCacheKey());
-
+        const jit = this.cacheJitPropertyMap.get(property);
         if (jit) {
             return jit(value, parents);
         }
@@ -195,7 +186,7 @@ export class JitPropertyConverter {
             if (_value === null) {
                 result = null;
             } else if (_value !== undefined) {
-                //convertProperty ${property.name} ${this.fromFormat}:${this.toFormat}:${property.type} ${property.isRealProperty()}
+                //convertProperty ${property.name} ${this.fromFormat}:${this.toFormat}:${property.type}
                 ${getDataConverterJS('result', '_value', property, this.fromFormat, this.toFormat, context)}
             }
             return result;
@@ -204,11 +195,7 @@ export class JitPropertyConverter {
 
         const compiled = new Function(...context.keys(), functionCode);
         const fn = compiled.bind(undefined, ...context.values())();
-        if (property.isRealProperty()) {
-            this.cacheJitPropertyMap.set(property, fn);
-        } else {
-            this.cacheJitVirtualPropertyMap.set(property.getCacheKey(), fn);
-        }
+        this.cacheJitPropertyMap.set(property, fn);
 
         return fn(value, parents);
     }
@@ -247,7 +234,7 @@ export function createJITConverterFromPropertySchema(
             if (_value === null) {
                 result = null;
             } else if (_value !== undefined) {
-                //createJITConverterFromPropertySchema ${property.name} ${fromFormat}:${toFormat}:${property.type} ${property.isRealProperty()}
+                //createJITConverterFromPropertySchema ${property.name} ${fromFormat}:${toFormat}:${property.type}
                 ${getDataConverterJS('result', '_value', property, fromFormat, toFormat, context)}
             }
             return result;
