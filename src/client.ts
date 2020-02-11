@@ -108,7 +108,7 @@ export function handleActiveSubject(
         return createJITConverterFromPropertySchema('plain', 'class', PropertySchema.fromJSON(encoding))(next);
     }
 
-    activeSubject.subscribe((reply: ServerMessageResult) => {
+    const sub = activeSubject.subscribe((reply: ServerMessageResult) => {
         if (reply.type === 'type') {
             if (reply.returnType === 'subject') {
                 if (options && options.useThisStreamBehaviorSubject) {
@@ -131,6 +131,9 @@ export function handleActiveSubject(
                         name: 'subject/unsubscribe',
                         forId: reply.id,
                     }).firstOrUndefinedThenClose();
+                    streamBehaviorSubject = undefined;
+                    activeSubject.complete();
+                    sub.unsubscribe();
                 });
                 resolve(streamBehaviorSubject);
             }
@@ -150,6 +153,8 @@ export function handleActiveSubject(
                             name: 'entity/unsubscribe',
                             forId: reply.id,
                         }).firstOrUndefinedThenClose();
+                        activeSubject.complete();
+                        sub.unsubscribe();
                     });
 
                     resolve(subject);
@@ -177,6 +182,8 @@ export function handleActiveSubject(
                                 name: 'observable/unsubscribe',
                                 subscribeId: subscriberId
                             }).firstOrUndefinedThenClose();
+                            //we need to keep the activeSubject alive,
+                            //since the user could create new subscriptions.
                         }
                     };
                 });
@@ -225,7 +232,9 @@ export function handleActiveSubject(
                         forId: reply.id,
                         name: 'collection/unsubscribe'
                     }).firstOrUndefinedThenClose();
-                    //activeSubject.complete();
+                    returnValue = undefined;
+                    activeSubject.complete();
+                    sub.unsubscribe();
                 });
                 //do not resolve yet, since we want to wait until the collection has bee populated.
             }
@@ -233,7 +242,6 @@ export function handleActiveSubject(
 
         if (reply.type === 'next/json') {
             resolve(deserializeResult(reply.encoding, reply.next));
-            //activeSubject.complete();
         }
 
         if (reply.type === 'next/observable') {
@@ -269,10 +277,16 @@ export function handleActiveSubject(
         if (reply.type === 'complete') {
             if (returnValue instanceof Collection) {
                 returnValue.complete();
+                returnValue = undefined;
+                activeSubject.complete();
+                sub.unsubscribe();
             }
 
             if (streamBehaviorSubject) {
                 streamBehaviorSubject.complete();
+                streamBehaviorSubject = undefined;
+                activeSubject.complete();
+                sub.unsubscribe();
             }
 
             //activeSubject.complete();
@@ -281,15 +295,18 @@ export function handleActiveSubject(
         if (reply.type === 'error') {
             const error = getUnserializedError(reply.entityName, reply.error, reply.stack, `action ${controller}.${name}`);
 
+            activeSubject.complete();
+            sub.unsubscribe();
+
             if (returnValue instanceof Collection) {
                 returnValue.error(error);
+                returnValue = undefined;
             } else if (streamBehaviorSubject) {
                 streamBehaviorSubject.error(error);
+                streamBehaviorSubject = undefined;
             } else {
                 reject(error);
             }
-
-            //activeSubject.complete();
         }
 
         if (reply.type === 'error/observable') {
@@ -300,6 +317,7 @@ export function handleActiveSubject(
             }
 
             delete subscribers[reply.subscribeId];
+            //we dont end the subject since from the observable we could create new subscriptions
             //activeSubject.complete();
         }
 
@@ -309,7 +327,8 @@ export function handleActiveSubject(
             }
 
             delete subscribers[reply.subscribeId];
-            //activeSubject.complete();
+            //we dont end the subject since from the observable we could create new subscriptions
+            // activeSubject.complete();
         }
     }, (error: any) => {
         reject(error);
