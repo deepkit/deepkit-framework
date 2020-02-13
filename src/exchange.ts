@@ -27,6 +27,8 @@ export class Exchange {
     protected messageId = 1;
     protected replyResolver: { [id: number]: Function } = {};
 
+    protected rawSubscriber = new WeakMap<Function, boolean>();
+
     constructor(
         protected path: string = '/tmp/glut-exchange.sock',
     ) {
@@ -102,10 +104,18 @@ export class Exchange {
         }
 
         if (m.type === 'publish') {
-            if (this.subscriptions[m.arg]) {
-                const data = decodePayloadAsJson(m.payload);
-                for (const cb of this.subscriptions[m.arg].slice(0)) {
-                    cb(data);
+            if (this.subscriptions[m.arg[0]]) {
+                let decodedJson: any;
+                for (const cb of this.subscriptions[m.arg[0]].slice(0)) {
+                    if (this.rawSubscriber.get(cb) === true) {
+                        cb(m.payload);
+                    } else {
+                        if (decodedJson === undefined) {
+                            decodedJson = decodePayloadAsJson(m.payload);
+                        }
+                        cb(decodedJson);
+                    }
+
                 }
             }
         }
@@ -188,8 +198,20 @@ export class Exchange {
         });
     }
 
-    public async publish(channelName: string, message: object) {
-        this.send('publish', channelName, encodePayloadAsJSONArrayBuffer(message));
+    /**
+     * If ttl is given, the channel keeps that last value in memory for ttl seconds and immediately emits it
+     * for new subscribers.
+     */
+    public async publishBinary(channelName: string, message: ArrayBuffer, ttl: number = 0) {
+        this.send('publish', [channelName, ttl], message);
+    }
+
+    /**
+     * If ttl is given, the channel keeps that last value in memory for ttl seconds and immediately emits it
+     * for new subscribers.
+     */
+    public async publish(channelName: string, message: object, ttl: number = 0) {
+        this.send('publish', [channelName, ttl], encodePayloadAsJSONArrayBuffer(message));
     }
 
     public async lock(name: string, ttl: number = 0, timeout = 0): Promise<ExchangeLock> {
@@ -211,7 +233,9 @@ export class Exchange {
         return (await this.sendAndWaitForReply('version', '')).arg;
     }
 
-    public subscribe(channelName: string, callback: Callback<any>): Subscription {
+    public subscribe(channelName: string, callback: Callback<any>, rawMessage: boolean = false): Subscription {
+        this.rawSubscriber.set(callback, rawMessage);
+
         if (!this.subscriptions[channelName]) {
             this.subscriptions[channelName] = [];
             this.subscriptions[channelName].push(callback);
@@ -222,6 +246,7 @@ export class Exchange {
 
         return new Subscription(() => {
             const index = this.subscriptions[channelName].indexOf(callback);
+            this.rawSubscriber.delete(callback);
 
             if (-1 !== index) {
                 this.subscriptions[channelName].splice(index, 1);

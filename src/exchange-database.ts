@@ -337,7 +337,7 @@ export class ExchangeDatabase {
             }
         }
 
-        // console.log('Glut patch', filter, patchStatement);
+        // console.log('Glut patch', filter, $set, patchStatement);
         const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), patchStatement, {
             projection: projection,
             returnOriginal: false

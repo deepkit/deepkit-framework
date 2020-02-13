@@ -19,6 +19,8 @@ export class ExchangeServer {
     protected locks: { [name: string]: ProcessLock } = {};
     protected storage: { [key: string]: any } = {};
     protected entityFields: { [key: string]: { [field: string]: number } } = {};
+    protected keepChannelRecord = new Map<string, any>();
+    protected keepChannelRecordTime = new Map<string, any>();
 
     protected statePerConnection = new Map<any, StatePerConnection>();
 
@@ -119,6 +121,10 @@ export class ExchangeServer {
 
         if (m.type === 'subscribe') {
             let store = this.subscriptions.get(m.arg);
+            const ttlMessage = this.keepChannelRecord.get(m.arg);
+            if (ttlMessage) {
+                ws.send(ttlMessage, {binary: true});
+            }
             if (!store) {
                 store = new Set<WebSocket>();
                 this.subscriptions.set(m.arg, store);
@@ -139,7 +145,16 @@ export class ExchangeServer {
         }
 
         if (m.type === 'publish') {
-            const store = this.subscriptions.get(m.arg);
+            const [channelName, ttl] = m.arg;
+            if (ttl > 0) {
+                this.keepChannelRecord.set(channelName, message);
+                const oldTimer = this.keepChannelRecordTime.get(channelName);
+                if (oldTimer) clearTimeout(oldTimer);
+                this.keepChannelRecordTime.set(channelName, setTimeout(() => {
+                    this.keepChannelRecord.delete(channelName);
+                }, ttl * 1000));
+            }
+            const store = this.subscriptions.get(channelName);
             if (store) {
                 for (const otherWS of store) {
                     otherWS.send(message, {binary: true});
