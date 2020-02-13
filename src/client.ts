@@ -252,20 +252,18 @@ export function handleActiveSubject(
 
         if (reply.type === 'next/subject') {
             if (streamBehaviorSubject) {
-                if (streamBehaviorSubject.isUnsubscribed()) {
-                    throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
+                if (!streamBehaviorSubject.isUnsubscribed()) {
+                    streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.next));
                 }
-                streamBehaviorSubject.next(deserializeResult(reply.encoding, reply.next));
             }
         }
 
         if (reply.type === 'append/subject') {
             if (streamBehaviorSubject) {
-                if (streamBehaviorSubject.isUnsubscribed()) {
-                    throw new Error('Next StreamBehaviorSubject failed due to already unsubscribed.');
+                if (!streamBehaviorSubject.isUnsubscribed()) {
+                    const append = deserializeResult(reply.encoding, reply.append);
+                    streamBehaviorSubject.append(append);
                 }
-                const append = deserializeResult(reply.encoding, reply.append);
-                streamBehaviorSubject.append(append);
             }
         }
 
