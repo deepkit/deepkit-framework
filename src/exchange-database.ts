@@ -327,6 +327,9 @@ export class ExchangeDatabase {
         const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
         const projection: { [key: string]: number } = {};
 
+        //we need at least the ID, so that findOneAndUpdate does not return the whole object
+        projection['id'] = 1;
+
         for (const field of subscribedFields) {
             projection[field] = 1;
         }

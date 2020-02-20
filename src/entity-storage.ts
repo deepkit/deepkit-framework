@@ -628,7 +628,9 @@ export class EntityStorage {
             const foundId = item.id;
 
             this.increaseUsage(classType, foundId);
-            this.setSent(classType, item.id, item.version);
+            //we must start with version 0, since exchange issues from 0
+            //we don't care about the item.version
+            this.setSent(classType, item.id, 0);
             this.subscribeEntity(classType);
 
             return new EntitySubject<T>(item, () => {
@@ -642,7 +644,10 @@ export class EntityStorage {
 
         const foundId = item.id;
         this.increaseUsage(classType, foundId);
-        this.setSent(classType, item.id, item.version);
+
+        //we must start with version 0, since exchange issues from 0
+        //we don't care about the item.version
+        this.setSent(classType, item.id, 0);
         this.subscribeEntity(classType);
 
         return new EntitySubject(item, () => {
