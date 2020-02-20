@@ -34,12 +34,12 @@ test('test lock early release', async () => {
 
 test('test lock timeout', async () => {
     const started = +new Date;
-    const lock1 = await locker.acquireLock('test-early-lock1', 2);
+    const lock1 = await locker.acquireLock('test-early-lock2', 2);
     setTimeout(async () => {
         await lock1.unlock();
     }, 500);
 
-    const lock2 = await locker.acquireLock('test-early-lock1', 1);
+    const lock2 = await locker.acquireLock('test-early-lock2', 1);
     expect(+new Date - started).toBeLessThan(1000);
     expect(+new Date - started).toBeGreaterThan(499);
 });
