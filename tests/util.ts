@@ -1,14 +1,12 @@
 import 'jest';
-import {arrayRemoveItem, ClassType} from "@marcj/estdlib";
+import {arrayRemoveItem, ClassType, sleep} from "@marcj/estdlib";
 import {Application, ApplicationServer, Session} from "@marcj/glut-server";
 import {SocketClient} from "@marcj/glut-client";
 import {RemoteController} from "@marcj/glut-core";
 import {Observable} from "rxjs";
-import {sleep} from "@marcj/estdlib";
 import {Injector} from 'injection-js';
 import {Database} from '@marcj/marshal-mongo';
-import * as lockFile from 'proper-lockfile';
-import {pathExistsSync, readJsonSync, writeJSONSync} from "fs-extra";
+import {createServer} from "http";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -68,29 +66,20 @@ export async function createServerClientPair(
 }> {
     const dbName = 'glut_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
 
-    if (!pathExistsSync(portFile)) {
-        writeJSONSync(portFile, startPort);
-    }
+    const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
+    const exchangeSocketPath = socketPath + '_exchange';
 
-    lockFile.lockSync(portFile, {stale: 30000});
-    let port = startPort;
-    try {
-        port = parseInt(readJsonSync(portFile, {throws: false}) || startPort, 10);
-        if (port > 5000) {
-            port = startPort;
-        }
-        const thisPort = port + 1;
-        writeJSONSync(portFile, thisPort);
-    } finally {
-        lockFile.unlockSync(portFile);
-    }
-
-    console.log('start ApplicationServer on port', port);
+    const server = createServer();
+    await new Promise((resolve) => {
+        server.listen(socketPath, function () {
+            resolve();
+        });
+    });
 
     const app = new ApplicationServer(appController, {
-        host: '127.0.0.1',
-        port: port,
+        server: server,
         mongoDbName: dbName,
+        exchangeUnixPath: exchangeSocketPath
     }, [], [], controllers, [], entityChangeFeeds);
 
     await app.start();
@@ -101,8 +90,7 @@ export async function createServerClientPair(
     const createdClients: SocketClient[] = [];
 
     const socket = new SocketClient({
-        host: '127.0.0.1',
-        port: port,
+        host: 'ws+unix://' + socketPath
     });
 
     createdClients.push(socket);
@@ -141,16 +129,14 @@ export async function createServerClientPair(
         client: socket,
         createClient: () => {
             const client = new SocketClient({
-                host: '127.0.0.1',
-                port: port,
+                host: 'ws+unix://' + socketPath
             });
             createdClients.push(client);
             return client;
         },
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
             const client = new SocketClient({
-                host: '127.0.0.1',
-                port: port,
+                host: 'ws+unix://' + socketPath
             });
             createdClients.push(client);
             return client.controller<T>(controllerName);

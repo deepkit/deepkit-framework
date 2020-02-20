@@ -62,7 +62,7 @@ test('test increase', async () => {
         }
     }
 
-    const {client} = await createServerClientPair('test increase', [TestController], [User]);
+    const {client, close} = await createServerClientPair('test increase', [TestController], [User]);
     const testController = client.controller<TestController>('test');
 
     await testController.start();
@@ -88,6 +88,8 @@ test('test increase', async () => {
 
     expect(user.value.name).toBe('peter');
     expect(user.value.connections).toBe(-3);
+
+    await close();
 });
 
 test('test entity sync list', async () => {
