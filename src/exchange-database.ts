@@ -1,9 +1,9 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass, getClassTypeFromInstance} from '@marcj/marshal';
+import {classToPlain, getClassTypeFromInstance, partialClassToPlain, partialPlainToClass, plainToClass} from '@marcj/marshal';
 import {Exchange} from "./exchange";
 import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
-import {EntityPatches, FilterQuery, IdInterface} from "@marcj/glut-core";
-import {ClassType, eachPair, eachKey} from '@marcj/estdlib';
+import {FilterQuery, IdInterface} from "@marcj/glut-core";
+import {ClassType, eachKey, eachPair} from '@marcj/estdlib';
 import {Observable, Subscription} from 'rxjs';
 import {findQuerySatisfied} from './utils';
 import {Collection, Cursor} from 'mongodb';
