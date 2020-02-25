@@ -10,7 +10,7 @@ afterAll(async () => {
     closeCreatedExchange();
 });
 
-jest.setTimeout(10000);
+jest.setTimeout(30000);
 
 test('test basic', async () => {
     const server = new ExchangeServer('auto');
@@ -152,7 +152,7 @@ test('test lock performance', async () => {
     const locker = await createExchange();
     const start = performance.now();
 
-    const count = 10_000;
+    const count = 1_000;
     for (let i = 0; i < count; i++) {
         const lock1 = await locker.lock('test-perf-' + i);
         await lock1.unlock();
@@ -167,7 +167,7 @@ test('test lock performance concurrent', async () => {
     const locker = await createExchange();
     const start = performance.now();
 
-    const count = 10_000;
+    const count = 1_000;
     const all: Promise<void>[] = [];
     for (let i = 0; i < count; i++) {
         all.push(locker.lock('test-perf-' + i).then((v) => {
