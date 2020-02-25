@@ -2,9 +2,8 @@ import 'jest-extended'
 import 'reflect-metadata';
 import {f, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
 import {classToPlain, plainToClass} from "../src/mapper";
-import {eachPair} from '@marcj/estdlib';
 import {Buffer} from 'buffer';
-import {base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "..";
+import {base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "..";
 import {propertyClassToPlain} from "../src/mapper-old";
 
 const someText = `Loµ˚∆¨¥§∞¢´´†¥¨¨¶§∞¢®©˙∆rem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.`;
@@ -111,6 +110,9 @@ test('Float32Array', async () => {
     expect(getClassSchema(Clazz).getProperty('floats').type).toBe('Float32Array');
 
     expect(typedArrayToBase64(clazz.floats)).toBe('AACAQ+Tqs0Y=');
+    expect(base64ToArrayBuffer('AACAQ+Tqs0Y=').byteLength).toBe(8);
+    expect(new Float32Array(base64ToArrayBuffer('AACAQ+Tqs0Y=')).length).toBe(2);
+    expect(base64ToTypedArray('AACAQ+Tqs0Y=', Float32Array).length).toBe(2);
 
     const plain = classToPlain(Clazz, clazz);
     expect(plain.floats).toBeString();
@@ -139,8 +141,8 @@ test('Float32Array', async () => {
     expect(typedArrayToBase64(clazz2.floats)).toBe('AACAQ+Tqs0Y=');
 
     expect(Buffer.from(clazz2.floats).toString('base64')).not.toBe('AACAQ+Tqs0Y=');
-    //since node uses Buffer pooling, the underlying buffer is way bigger
-    expect(Buffer.from(clazz2.floats.buffer).toString('base64')).not.toBe('AACAQ+Tqs0Y=');
+    // since node uses Buffer pooling, the underlying buffer is way bigger
+    // expect(Buffer.from(clazz2.floats.buffer).toString('base64')).not.toBe('AACAQ+Tqs0Y=');
 
     expect(clazz2.floats.length).toBe(2);
     expect(clazz2.floats.byteLength).toBe(8);
