@@ -77,7 +77,12 @@ export class Worker {
                 await injectorMap.get(ws)!.get(ClientConnection).onMessage(json);
             });
 
+            const interval = setInterval(() => {
+                ws.ping();
+            }, 15_000);
+
             ws.on('close', async () => {
+                clearInterval(interval);
                 injectorMap.get(ws)!.get(ClientConnection).destroy();
                 injectorMap.get(ws)!.get(EntityStorage).destroy();
                 injectorMap.delete(ws);
