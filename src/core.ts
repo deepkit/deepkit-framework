@@ -62,7 +62,7 @@ function base64ToUint8ArrayAtoB(base64: string): Uint8Array {
  */
 export function base64ToTypedArray<K>(base64: string, type: TypedArrayClassType<K>): K {
     if ('function' === typeof atob) {
-        return new type(base64ToUint8ArrayAtoB(base64));
+        return new type(base64ToUint8ArrayAtoB(base64).buffer);
     }
 
     return nodeBufferToTypedArray(Buffer.from(base64, 'base64'), type);
