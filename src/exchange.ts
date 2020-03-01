@@ -203,7 +203,7 @@ export class Exchange {
      * for new subscribers.
      */
     public async publishBinary(channelName: string, message: ArrayBuffer, ttl: number = 0) {
-        this.send('publish', [channelName, ttl], message);
+        return await this.send('publish', [channelName, ttl], message);
     }
 
     /**
@@ -211,7 +211,7 @@ export class Exchange {
      * for new subscribers.
      */
     public async publish(channelName: string, message: object, ttl: number = 0) {
-        this.send('publish', [channelName, ttl], encodePayloadAsJSONArrayBuffer(message));
+        this.sendAndWaitForReply('publish', [channelName, ttl], encodePayloadAsJSONArrayBuffer(message));
     }
 
     public async lock(name: string, ttl: number = 0, timeout = 0): Promise<ExchangeLock> {

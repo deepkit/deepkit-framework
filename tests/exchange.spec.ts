@@ -100,7 +100,7 @@ test('test encoding/decoding', async () => {
 });
 
 test('test encoding perf', async () => {
-    const count = 10_000;
+    const count = 1_000;
 
     const payload = encodePayloadAsJSONArrayBuffer({data: true});
 

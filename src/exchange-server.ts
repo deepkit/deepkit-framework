@@ -160,6 +160,7 @@ export class ExchangeServer {
                     otherWS.send(message, {binary: true});
                 }
             }
+            ws.send(encodeMessage(m.id, 'ok', null), {binary: true});
             return;
         }
 

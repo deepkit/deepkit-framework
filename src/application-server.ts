@@ -32,6 +32,8 @@ export class ApplicationServerConfig {
 
     server?: Server;
 
+    maxPayload?: number;
+
     fsPath: string = '~/.glut/files';
 
     exchangeUnixPath: string = '/tmp/glut-exchange.sock';
@@ -213,6 +215,7 @@ export class ApplicationServer {
                     server: this.config.server,
                     host: this.config.host,
                     port: this.config.port,
+                    maxPayload: this.config.maxPayload,
                 });
 
                 cluster.on('exit', (w) => {
@@ -231,6 +234,7 @@ export class ApplicationServer {
                 server: this.config.server,
                 host: this.config.host,
                 port: this.config.port,
+                maxPayload: this.config.maxPayload,
             });
             await this.masterWorker!.run();
             this.done();

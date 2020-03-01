@@ -286,91 +286,96 @@ export class ExchangeDatabase {
     ): Promise<{ [field: string]: any }> {
         //at some point we need to implement https://github.com/automerge/automerge
         const collection = await this.collection(classType);
+        const lock = await this.exchange.lock('entity/' + id);
 
-        const version = await this.exchange.version();
-        const patchStatement: { [name: string]: any } = {};
+        try {
+            const version = await this.exchange.version();
+            const patchStatement: { [name: string]: any } = {};
 
-        delete (<any>patches)['id'];
-        delete (<any>patches)['_id'];
-        delete (<any>patches)['version'];
+            delete (<any>patches)['id'];
+            delete (<any>patches)['_id'];
+            delete (<any>patches)['version'];
 
-        const $set: any = {};
-        const $unset: any = {};
-        for (const [i, v] of Object.entries(patches)) {
-            if (v === undefined) {
-                $unset[i] = "";
-            } else {
-                $set[i] = v;
+            const $set: any = {};
+            const $unset: any = {};
+            for (const [i, v] of Object.entries(patches)) {
+                if (v === undefined) {
+                    $unset[i] = "";
+                } else {
+                    $set[i] = v;
+                }
             }
-        }
 
-        $set['version'] = version;
+            $set['version'] = version;
 
-        // if (Object.keys(patchStatement['$set']).length === 0) {
-        //     throw new Error('No patches given. ' + JSON.stringify(patches));
-        // }
+            // if (Object.keys(patchStatement['$set']).length === 0) {
+            //     throw new Error('No patches given. ' + JSON.stringify(patches));
+            // }
 
-        if (Object.keys($set).length) {
-            if (options && options.plain) {
-                patchStatement['$set'] = partialPlainToMongo(classType, $set);
-            } else {
-                patchStatement['$set'] = partialClassToMongo(classType, $set);
+            if (Object.keys($set).length) {
+                if (options && options.plain) {
+                    patchStatement['$set'] = partialPlainToMongo(classType, $set);
+                } else {
+                    patchStatement['$set'] = partialClassToMongo(classType, $set);
+                }
             }
-        }
-        if (Object.keys($unset).length) {
-            patchStatement['$unset'] = $unset;
-        }
+            if (Object.keys($unset).length) {
+                patchStatement['$unset'] = $unset;
+            }
 
-        const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
+            const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
 
-        const filter = {id: id};
-        const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
-        const projection: { [key: string]: number } = {};
+            const filter = {id: id};
+            const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
+            const projection: { [key: string]: number } = {};
 
-        //we need at least the ID, so that findOneAndUpdate does not return the whole object
-        projection['id'] = 1;
+            //we need at least the ID, so that findOneAndUpdate does not return the whole object
+            projection['id'] = 1;
 
-        for (const field of subscribedFields) {
-            projection[field] = 1;
-        }
-
-        if (options && options.additionalProjection) {
-            for (const field of options.additionalProjection) {
+            for (const field of subscribedFields) {
                 projection[field] = 1;
             }
-        }
 
-        // console.log('Glut patch', filter, $set, patchStatement);
-        const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), patchStatement, {
-            projection: projection,
-            returnOriginal: false
-        });
+            if (options && options.additionalProjection) {
+                for (const field of options.additionalProjection) {
+                    projection[field] = 1;
+                }
+            }
 
-        const doc = response.value || {};
-
-        if (!response.ok) {
-            console.error('patchStatement', patchStatement, filter, projection);
-            console.error('response', response);
-            throw new Error('Could not patch entity');
-        }
-
-        delete (doc as any)._id;
-
-        const jsonPatches = partialClassToPlain(classType, $set);
-
-        if (this.notifyChanges(advertiseAs)) {
-            this.exchange.publishEntity(advertiseAs, {
-                type: 'patch',
-                id: id,
-                version: version, //this is the new version in the db, which we end up having when `patch` is applied.
-                item: partialMongoToPlain(advertiseAs, doc),
-                patch: {
-                    set: jsonPatches,
-                    unset: $unset,
-                },
+            // console.log('Glut patch', filter, $set, patchStatement);
+            const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), patchStatement, {
+                projection: projection,
+                returnOriginal: false
             });
-        }
 
-        return partialPlainToClass(classType, partialMongoToPlain(classType, doc || {}));
+            const doc = response.value || {};
+
+            if (!response.ok) {
+                console.error('patchStatement', patchStatement, filter, projection);
+                console.error('response', response);
+                throw new Error('Could not patch entity');
+            }
+
+            delete (doc as any)._id;
+
+            const jsonPatches = partialClassToPlain(classType, $set);
+
+            if (this.notifyChanges(advertiseAs)) {
+                await this.exchange.publishEntity(advertiseAs, {
+                    type: 'patch',
+                    id: id,
+                    version: version, //this is the new version in the db, which we end up having when `patch` is applied.
+                    item: partialMongoToPlain(advertiseAs, doc),
+                    patch: {
+                        set: jsonPatches,
+                        unset: $unset,
+                    },
+                });
+            }
+
+            return partialPlainToClass(classType, partialMongoToPlain(classType, doc || {}));
+        } finally {
+            lock.unlock();
+        }
     }
 }

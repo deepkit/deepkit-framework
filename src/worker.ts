@@ -6,20 +6,21 @@ import {ServerConnectionMiddleware} from "./connection-middleware";
 import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@marcj/glut-core";
 import {Exchange} from "./exchange";
 import * as WebSocket from 'ws';
-import {Server} from "http";
 
 export class Worker {
     protected server?: WebSocket.Server;
+    protected options: WebSocket.ServerOptions;
 
     constructor(
         protected mainInjector: ReflectiveInjector,
         protected connectionProvider: Provider[],
-        protected options: {
-            server?: Server,
-            host: string,
-            port: number
-        },
+        options: WebSocket.ServerOptions,
     ) {
+        this.options = {...options};
+        if (this.options.server) {
+            delete this.options.host;
+            delete this.options.port;
+        }
     }
 
     close() {
@@ -33,12 +34,7 @@ export class Worker {
 
         await (this.mainInjector.get(Exchange) as Exchange).connect();
 
-        const options = this.options.server ? {server: this.options.server} : {
-            host: this.options.host,
-            port: this.options.port
-        };
-
-        this.server = new WebSocket.Server(options);
+        this.server = new WebSocket.Server(this.options);
 
         this.server.on('connection', (ws, req) => {
             const ipString = req.connection.remoteAddress;
@@ -75,6 +71,10 @@ export class Worker {
             ws.on('message', async (message: any) => {
                 const json = Buffer.from(message).toString();
                 await injectorMap.get(ws)!.get(ClientConnection).onMessage(json);
+            });
+
+            ws.on('error', async (error: any) => {
+                console.error('Error in WS', error);
             });
 
             const interval = setInterval(() => {

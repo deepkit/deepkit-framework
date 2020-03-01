@@ -376,7 +376,7 @@ export class FS<T extends GlutFile> {
                 this.refreshFileMetaCache(path, fields, meta.id, undefined);
             }
 
-            this.exchange.publishFile(meta.id, {
+            await this.exchange.publishFile(meta.id, {
                 type: 'append',
                 version: version,
                 path: path,
