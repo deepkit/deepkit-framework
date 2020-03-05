@@ -682,33 +682,6 @@ See [compiler templates of mongodb](https://github.com/marcj/marshal.ts/blob/mas
 and its [user facing API](https://github.com/marcj/marshal.ts/blob/master/packages/mongo/src/mapping.ts)
 to get more examples.
 
-### TypeORM
-
-The meta information about your entity can be exported to TypeORM EntitySchema.
-
-```typescript
-// typeorm.js
-import {getTypeOrmEntity} from "@marcj/marshal-mongo";
-
-const TypeOrmSchema = getTypeOrmEntity(MyEntity);
-module.exports = {
-    type: "mongodb",
-    host: "localhost",
-    port: 27017,
-    database: "test",
-    useNewUrlParser: true,
-    synchronize: true,
-    entities: [TypeOrmSchema]
-}
-```
-
-Marshal.ts uses only TypeORM for connection abstraction and to generate a `EntitySchema` for your typeOrm use-cases.
-You need in most cases only to use the `@f` decorator with some additional function calls (primary, index, etc) on your entity.
-
-You can generate a schema for Typeorm using  `getTypeOrmEntity` and then pass this to your `createConnection` call,
-which makes it possible to sync the schema defined only with Marshal decorators with your database managed by Typeorm.
-
-
 ## Mongo ORM / Database abstraction
 
 Marshal's MongoDB database abstraction makes it super easy to
@@ -723,23 +696,14 @@ npm install @marcj/marshal-mongo
 ```
 
 ```typescript
-import {Database} from "@marcj/marshal-mongo";
-import {createConnection} from "typeorm";
+import {Database, Connection} from "@marcj/marshal-mongo";
 
-(async () => {
-const connection = await createConnection({
-    type: "mongodb",
-    host: "localhost",
-    port: 27017,
-    database: "testing",
-    useNewUrlParser: true,
-});
-const database = new Database(connection, 'testing');
+const database = new Database(new Connection('localhost', 'mydb', 'username', 'password'));
 
 const instance = new SimpleModel('My model');
 await database.add(instance);
 
-const list = await database.find(SimpleModel).find();
+const list = await database.query(SimpleModel).find();
 const oneItem = await database.query(SimpleModel).filter({id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}).findOne();
 ```
 

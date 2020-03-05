@@ -29,7 +29,7 @@ let database: Database;
 async function createDatabase(dbName: string = 'testing'): Promise<Database> {
     dbName = dbName.replace(/\s+/g, '-');
     const connection = new Connection('localhost', dbName);
-    database = new Database(connection, dbName);
+    database = new Database(connection);
     await (await connection.connect()).db(dbName).dropDatabase();
     return database;
 }
