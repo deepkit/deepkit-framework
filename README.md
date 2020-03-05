@@ -741,7 +741,7 @@ class MyController {
         @Body(ValidationPipe({transform: true})) body: SimpleModel,
     ) {
         body instanceof SimpleModel; // true;
-        const versionNumber = await this.database.add(body);
+        await this.database.add(body);
         
         return body.id;
     }
