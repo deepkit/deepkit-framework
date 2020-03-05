@@ -8,37 +8,19 @@ data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
 
 ```
-npm install @marcj/marshal-mongo reflect-metadata mongodb typeorm
+npm install @marcj/marshal @marcj/marshal-mongo reflect-metadata mongodb
 ```
 
-Install `buffer` as well if you want binary support.
-
 ```typescript
-import {plainToClass} from "@marcj/marshal";
-import {Database} from "@marcj/marshal-mongo";
-import {createConnection} from "typeorm";
 
-(async () => {
-const connection = await createConnection({
-    type: "mongodb",
-    host: "localhost",
-    port: 27017,
-    database: "testing",
-    useNewUrlParser: true,
-});
-const database = new Database(connection, 'testing');
+import {Database, Connection} from "@marcj/marshal-mongo";
 
-const instance: SimpleModel = plainToClass(SimpleModel, {
-    id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038',
-    name: 'myName',
-});
+const database = new Database(new Connection('localhost', 'mydb', 'username', 'password'));
 
-await database.save(SimpleModel, instance);
+const instance = new SimpleModel('My model');
+await database.add(instance);
 
-const list: SimpleModel[] = await database.find(SimpleModel);
-const oneItem: SimpleModel = await database.get(
-    SimpleModel,
-    {id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}
-);
-});
+const list = await database.query(SimpleModel).find();
+const oneItem = await database.query(SimpleModel).filter({id: 'f2ee05ad-ca77-49ea-a571-8f0119e03038'}).findOne();
+
 ```

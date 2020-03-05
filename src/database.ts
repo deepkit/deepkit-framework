@@ -28,7 +28,6 @@ export class Database {
 
     constructor(
         public readonly connection: Connection,
-        protected defaultDatabaseName = 'app',
     ) {
     }
 

@@ -6,8 +6,7 @@ import {
     arrayBufferToBase64,
     f,
     ParentReference,
-    PropertySchema,
-    createClassToXFunction, partialPlainToClass,
+    partialPlainToClass,
 } from "@marcj/marshal";
 import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
@@ -23,7 +22,6 @@ import {Buffer} from "buffer";
 import {DocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
 import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
 import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
-import {uuid4Binary} from "../src/compiler-templates";
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');
