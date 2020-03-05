@@ -734,29 +734,21 @@ import {ValidationPipe} from "@marcj/marshal-nest";
 
 @Controller()
 class MyController {
-    private database: Database;
-    
-    private getDatabase() {
-        if (!this.database) {
-            this.database = new Database(new Connection('localhost', 'testing');
-        }
+    private database = new Database(new Connection('localhost', 'testing');
 
-        return this.database;
-    }
-    
     @Post('/save')
     async save(
         @Body(ValidationPipe({transform: true})) body: SimpleModel,
     ) {
         body instanceof SimpleModel; // true;
-        const versionNumber = await this.getDatabase().add(body);
+        const versionNumber = await this.database.add(body);
         
         return body.id;
     }
     
     @Get('/get/:id')
     async get(@Param('id') id: string) {
-        const instance = await this.getDatabase().query(SimpleModel).filter({_id: id}).findOne();
+        const instance = await this.database.query(SimpleModel).filter({_id: id}).findOne();
 
         return classToPlain(SimpleModel, instance);
     }
