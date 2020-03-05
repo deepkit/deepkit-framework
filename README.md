@@ -727,26 +727,20 @@ import {
     Controller, Get, Param, Post, Body
 } from '@nestjs/common';
 
+import {Database, Connection} from "@marcj/marshal-mongo";
 import {SimpleModel} from "@marcj/marshal/tests/entities";
-import {Database, classToPlain} from "@marcj/marshal";
+import {classToPlain} from "@marcj/marshal";
 import {ValidationPipe} from "@marcj/marshal-nest";
 
 @Controller()
 class MyController {
     private database: Database;
     
-    private async getDatabase() {
+    private getDatabase() {
         if (!this.database) {
-            const connection = await createConnection({
-                type: "mongodb",
-                host: "localhost",
-                port: 27017,
-                database: "testing",
-                useNewUrlParser: true,
-            });
-            this.database = new Database(connection, 'testing');
+            this.database = new Database(new Connection('localhost', 'testing');
         }
-        
+
         return this.database;
     }
     
@@ -755,14 +749,14 @@ class MyController {
         @Body(ValidationPipe({transform: true})) body: SimpleModel,
     ) {
         body instanceof SimpleModel; // true;
-        const versionNumber = await (await this.getDatabase()).save(SimpleModel, body);
+        const versionNumber = await this.getDatabase().add(body);
         
         return body.id;
     }
     
     @Get('/get/:id')
     async get(@Param('id') id: string) {
-        const instance = await (await this.getDatabase()).get(SimpleModel, {_id: id});
+        const instance = await this.getDatabase().query(SimpleModel).filter({_id: id}).findOne();
 
         return classToPlain(SimpleModel, instance);
     }
