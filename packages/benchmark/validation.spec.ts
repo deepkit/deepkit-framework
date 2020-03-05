@@ -2,7 +2,6 @@ import 'jest';
 import 'reflect-metadata';
 import {f, PropertyValidator, PropertyValidatorError} from "@marcj/marshal";
 import {bench} from "./util";
-import {Boolean, Number as RuntypeNumber, Record, String as RuntypeString} from "runtypes";
 import {jitValidate} from "@marcj/marshal/src/jit-validation";
 import {validate} from "@marcj/marshal/src/validation-old";
 import * as Ajv from 'ajv';
@@ -84,19 +83,6 @@ class MarshalModel implements Data {
     deeplyNested!: DeeplyNestedType;
 }
 
-const RuntypeModel = Record({
-    number: RuntypeNumber,
-    negNumber: RuntypeNumber.withConstraint(n => n < 0),
-    maxNumber: RuntypeNumber,
-    string: RuntypeString,
-    longString: RuntypeString.withConstraint(s => s.length > 100),
-    boolean: Boolean,
-    deeplyNested: Record({
-        foo: RuntypeString,
-        num: RuntypeNumber,
-        bool: Boolean,
-    }),
-});
 
 test('benchmark validation', () => {
     const count = 100_000;
@@ -107,10 +93,6 @@ test('benchmark validation', () => {
 
     bench(count, 'validation jit on plain', (i) => {
         const errors = jitValidate(MarshalModel)(DATA);
-    });
-
-    bench(count, 'validation runtype', (i) => {
-        const spaceObject = RuntypeModel.check(DATA);
     });
 
     {
