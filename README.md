@@ -645,7 +645,7 @@ expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 
 In Marshal everything is compiled down to a highly optimized JS function. That means when you
 want to add another serialization target, you have to write compiler templates. But it sounds
-scarier than it is. Here's an example on how to convert a date to a ISO format for json transportation.
+scarier than it is. Here's an example on how to convert a date to a ISO format for JSON transportation.
 
 ```typescript
 import {registerConverterCompiler} from '@marcj/marshal';
@@ -661,7 +661,7 @@ registerConverterCompiler('MyTarget', 'class', 'date', (setter: string, accessor
 });
 ```
 
-To use your custom traget, you can use these jit functions:
+To use your custom target, you can use these JIT functions:
 
 ```typescript
 import {ClassType, getClassName} from "@marcj/estdlib";
