@@ -184,8 +184,8 @@ Converting **100,000 elements** from json to class instances (plainToClass) take
 Converting **100,000 elements** from class instances to JSON objects (classToPlain) takes about **0.000089 per item**, in total 9ms.
 
 **Compared to class-transformer**:
- 1. classToPlain takes 2748ms. Marshal is up to 30,500.-% faster.
- 2. plainToClass takes 2605ms. Marshal is up to 21,700.-% faster.
+ 1. classToPlain takes 2748ms. Marshal is up to 30500% faster.
+ 2. plainToClass takes 2605ms. Marshal is up to 21700% faster.
 
 Another comparison: Creating manually new class instances and assign properties is only barely faster.
 
