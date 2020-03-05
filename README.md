@@ -52,9 +52,22 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 npm install @marcj/marshal reflect-metadata
 ```
 
-Install `buffer` as well if you want to have binary (ArrayBuffer, TypedArrays) support in browsers.
+Make sure you have `experimentalDecorators` and `emitDecoratorMetadata` enabled in tsconfig.json:
 
-## Example Entity
+```
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle: false`), which is the default.
+This is important to support constructor assignment. You can alternatively use asName() to hard code the constructor param names
+as strings.
+
+## Example
 
 ```typescript
 import {
@@ -207,23 +220,6 @@ const errors = validate(MarshalModel)(data);
 
 ## Usage
 
-### Config
-
-Make sure you have `experimentalDecorators` and `emitDecoratorMetadata` enabled in tsconfig.json:
-
-```
-{
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
-  }
-}
-```
-
-If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle: false`), which is the default.  
-This is important to support constructor assignment. You can alternatively use asName() to hard code the constructor param names
-as strings.
-
 ### Definition
 
 Once your have defined your entity (see above) using the [@f decorators](https://marshal.marcj.dev/modules/_marcj_marshal.html#f) you can use one of Marshal's core methods
@@ -268,7 +264,7 @@ const errors = validate(Page, {name: 'peter'});
 expect(errors.length).toBe(1);
 expect(errors[0]).toBeInstanceOf(ValidationError);
 expect(errors[0].path).toBe('age');
-expect(errors[0].message).toBe('Required value is undefined');
+expect(errors[0].message).toBe('Required value is undefined or null');
 if (errors.length === 0) {
     const page = plainToClass(Page, {name: 'peter'});
 }
