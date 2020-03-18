@@ -16,6 +16,7 @@ import {homedir} from "os";
 import {GlobalLocker} from "./global-locker";
 import {ExchangeServer} from "./exchange-server";
 import {Server} from "http";
+import {isAbsolute} from "path";
 
 export class ApplicationServerConfig {
     host: string = '127.0.0.1';
@@ -124,7 +125,7 @@ export class ApplicationServer {
     }
 
     protected async bootstrap() {
-        const mongoHost = this.config.mongoHost.startsWith('/') ? encodeURIComponent(this.config.mongoHost) : (this.config.mongoHost + ':' + this.config.mongoPort);
+        const mongoHost = isAbsolute(this.config.mongoHost) ? encodeURIComponent(this.config.mongoHost) : (this.config.mongoHost + ':' + this.config.mongoPort);
         this.connection = new Connection(mongoHost, this.config.mongoDbName);
 
         const self = this;
