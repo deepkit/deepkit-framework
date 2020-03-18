@@ -37,7 +37,8 @@ export class ApplicationServerConfig {
 
     fsPath: string = '~/.glut/files';
 
-    exchangeUnixPath: string = '/tmp/glut-exchange.sock';
+    /** or port number **/
+    exchangeUnixPath: string | number = '/tmp/glut-exchange.sock';
 }
 
 
@@ -145,12 +146,12 @@ export class ApplicationServer {
             {
                 provide: Exchange,
                 deps: ['exchange.unixPath'],
-                useFactory: (unixPath: string) => new Exchange(unixPath)
+                useFactory: (unixPath: string | number) => new Exchange(unixPath)
             },
             {
                 provide: ExchangeServer,
                 deps: ['exchange.unixPath'],
-                useFactory: (unixPath: string) => new ExchangeServer(unixPath)
+                useFactory: (unixPath: string | number) => new ExchangeServer(unixPath)
             },
             {
                 provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {

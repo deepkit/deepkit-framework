@@ -30,7 +30,7 @@ export class Exchange {
     protected rawSubscriber = new WeakMap<Function, boolean>();
 
     constructor(
-        protected path: string = '/tmp/glut-exchange.sock',
+        protected pathOrPort: string | number = '/tmp/glut-exchange.sock',
     ) {
     }
 
@@ -69,13 +69,14 @@ export class Exchange {
         this.socket = undefined;
 
         return new Promise<void>((resolve, reject) => {
-            this.socket = new WebSocket('ws+unix://' + this.path);
+            const url = 'string' === typeof this.pathOrPort ? 'ws+unix://' + this.pathOrPort : 'ws://localhost:' + this.pathOrPort;
+            this.socket = new WebSocket(url);
             this.socket.binaryType = 'arraybuffer';
 
             this.socket.onerror = (error: any) => {
                 this.socket = undefined;
                 console.error(error);
-                reject(new Error(`Could not connect to ${this.path}.`));
+                reject(new Error(`Could not connect to ${this.pathOrPort}.`));
             };
 
             this.socket.onclose = () => {

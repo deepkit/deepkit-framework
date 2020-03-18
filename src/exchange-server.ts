@@ -34,7 +34,7 @@ export class ExchangeServer {
     protected subscriptions = new Map<string, Set<any>>();
 
     constructor(
-        protected readonly unixPath: string | 'auto' = '/tmp/glut-exchange.sock',
+        protected readonly unixPath: string | number | 'auto' = '/tmp/glut-exchange.sock',
     ) {
     }
 
