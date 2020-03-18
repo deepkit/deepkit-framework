@@ -1,6 +1,6 @@
 {
   "name": "@marcj/glut-integration",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "main": "src",
   "module": "src",
   "license": "MIT",
@@ -13,9 +13,9 @@
   "dependencies": {
     "@marcj/estdlib": "^0.1.17",
     "@marcj/estdlib-rxjs": "^0.1.17",
-    "@marcj/glut-client": "^0.0.31",
-    "@marcj/glut-core": "^0.0.31",
-    "@marcj/glut-server": "^0.0.31",
+    "@marcj/glut-client": "^0.0.32",
+    "@marcj/glut-core": "^0.0.32",
+    "@marcj/glut-server": "^0.0.32",
     "@marcj/marshal": "^2.1.1",
     "@marcj/marshal-mongo": "^2.1.1",
     "@types/proper-lockfile": "^4.1.1",
