@@ -563,6 +563,28 @@ export class ClassSchema<T = any> {
     }
 
     /**
+     * Adds dynamically new properties to the class schema definition.
+     * Use the `f` decorator as you already do at the class directly.
+     *
+     * Note: Once a transform method is called like plainToClass/classToPlain etc
+     * this method has no effect since compiler templates are then already built.
+     * So make sure to call this addProperty() before calling transform methods.
+     *
+     * @example
+     * ```typescript
+     * const schema = getClassSchema(MyClass);
+     * //or
+     * const schema = createClassSchema(MyClass);
+     *
+     * schema.addProperty('anotherOne', f.type(String));
+     * ```
+     */
+    public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
+        //apply decorator, which adds properties automatically
+        decorator(this.classType, name);
+    }
+
+    /**
      * Returns all annotated arguments as PropertSchema for given method name.
      */
     public getMethodProperties(name: string): PropertySchema[] {
@@ -849,6 +871,43 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSche
     }
 
     return ClassSchemas.get(classType.prototype)!;
+}
+
+/**
+ * Creates a new ClassSchema for a given external class (you might have no write access to),
+ * which can be used to transform data for the given class. You can dynamically add properties
+ * and use then the external class as usual with plainToClass, classToPlain, etc.
+ *
+ * @example
+ * ```typescript
+ * class ExternalClass {
+ *     id!: string;
+ *     version!: number;
+ *     lists!: number[];
+ * }
+ *
+ * const schema = createClassSchema(ExternalClass);
+ * schema.addProperty('id', f.type(String));
+ * schema.addProperty('version', f.type(Number));
+ * schema.addProperty('lists', f.array(Number));
+ *
+ * const obj = plainToClass(ExternalClass, {
+ *     id: '23',
+ *     version: 1,
+ *     lists: [12, 23]
+ * });
+ * ```
+ */
+export function createClassSchema<T = any>(clazz: ClassType<T>, name: string = ''): ClassSchema<T> {
+    //this is necessary to give the class a dynamic name if has none
+    const o = {
+        [name]: clazz
+    };
+
+    const classSchema = getOrCreateEntitySchema(o[name]);
+    classSchema.name = name;
+
+    return classSchema;
 }
 
 /**
@@ -1628,7 +1687,7 @@ function Field(oriType?: FieldTypes) {
             return getTypeName(t);
         }
 
-        if (returnType !== Promise && type !== 'any') {
+        if (returnType !== Promise && returnType !== undefined && type !== 'any') {
             //we don't want to check for type mismatch when returnType is a Promise.
 
             if (type && options.array && returnType !== Array) {
