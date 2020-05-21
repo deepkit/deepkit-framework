@@ -6,6 +6,9 @@ import {jitValidate} from "@marcj/marshal/src/jit-validation";
 import {validate} from "@marcj/marshal/src/validation-old";
 import * as Ajv from 'ajv';
 
+//we use `e` and not `v` because Marshal supports out of the box error explanations, which quartet does only with `e`.
+import { e } from 'quartet';
+
 class IsNegative implements PropertyValidator {
     validate<T>(value: number) {
         if (value > 0) {
@@ -34,7 +37,7 @@ export const DATA = Object.freeze({
     number: 1,
     negNumber: -1,
     maxNumber: Number.MAX_VALUE,
-    string: 'string',
+    strings: ['string1', 'string2'],
     longString:
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Vivendum intellegat et qui, ei denique consequuntur vix. Semper aeterno percipit ut his, sea ex utinam referrentur repudiandae. No epicuri hendrerit consetetur sit, sit dicta adipiscing ex, in facete detracto deterruisset duo. Quot populo ad qui. Sit fugit nostrum et. Ad per diam dicant interesset, lorem iusto sensibus ut sed. No dicam aperiam vis. Pri posse graeco definitiones cu, id eam populo quaestio adipiscing, usu quod malorum te. Ex nam agam veri, dicunt efficiantur ad qui, ad legere adversarium sit. Commune platonem mel id, brute adipiscing duo an. Vivendum intellegat et qui, ei denique consequuntur vix. Offendit eleifend moderatius ex vix, quem odio mazim et qui, purto expetendis cotidieque quo cu, veri persius vituperata ei nec. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
     boolean: true,
@@ -70,8 +73,8 @@ class MarshalModel implements Data {
     @f
     maxNumber!: number;
 
-    @f
-    string!: string;
+    @f.array(String)
+    strings!: string[];
 
     @f.validator(MinLengthFactory(100))
     longString!: string;
@@ -83,6 +86,21 @@ class MarshalModel implements Data {
     deeplyNested!: DeeplyNestedType;
 }
 
+const QuartetModelChecker = e<MarshalModel>({
+    number: e.number,
+    negNumber: e.and(e.number, e.negative),
+    maxNumber: e.number,
+    strings: e.arrayOf(e.string),
+    longString: e.and(e.string, e.minLength(100)),
+    boolean: e.boolean,
+    deeplyNested: {
+        foo: e.string,
+        num: e.number,
+        bool: e.boolean,
+    }
+});
+
+const MarshalModelValidation = jitValidate(MarshalModel);
 
 test('benchmark validation', () => {
     const count = 100_000;
@@ -92,7 +110,7 @@ test('benchmark validation', () => {
     });
 
     bench(count, 'validation jit on plain', (i) => {
-        const errors = jitValidate(MarshalModel)(DATA);
+        const errors = MarshalModelValidation(DATA);
     });
 
     {
@@ -103,7 +121,7 @@ test('benchmark validation', () => {
                 "number": {"type": "integer"},
                 "negNumber": {"type": "integer", "maximum": 0},
                 "maxNumber": {"type": "integer"},
-                "string": {"type": "string"},
+                "strings": {"type": "array", "items": { "type": "string" }},
                 "longString": {
                     "type": "string",
                     "minLength": 100
@@ -111,7 +129,7 @@ test('benchmark validation', () => {
                 "boolean": {"type": "boolean"},
                 "deeplyNested": {"$ref": "#/definitions/deeplyNested"},
             },
-            "required": ["number", "negNumber", "maxNumber", "string", "longString", "boolean", "deeplyNested"],
+            "required": ["number", "negNumber", "maxNumber", "strings", "longString", "boolean", "deeplyNested"],
             "definitions": {
                 "deeplyNested": {
                     "type": "object",
@@ -133,6 +151,10 @@ test('benchmark validation', () => {
             const valid = validate(DATA);
         });
     }
+
+    bench(count, 'validation quartet', (i) => {
+        const valid = QuartetModelChecker(DATA);
+    });
 });
 
 
