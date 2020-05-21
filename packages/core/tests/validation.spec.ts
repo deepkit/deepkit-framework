@@ -6,6 +6,8 @@ import {
     PropertyValidatorError,
     validate,
     validatedPlainToClass,
+    validates,
+    validatesFactory,
     ValidationError,
     ValidationFailed
 } from "../";
@@ -19,6 +21,21 @@ test('test simple', async () => {
             @f public age: number,
         ) {
         }
+
+        test1() {}
+    }
+
+    const data = {name: 'peter'};
+
+    expect(validates(Page, data)).toBe(false);
+    if (validates(Page, data)) {
+        data.age = 1;
+    }
+
+    const pageValidates = validatesFactory(Page);
+    expect(pageValidates(data)).toBe(false);
+    if (pageValidates(data)) {
+        data.age = 1;
     }
 
     const errors = validate(Page, {name: 'peter'});
