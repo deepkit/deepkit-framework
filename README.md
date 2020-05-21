@@ -200,7 +200,7 @@ Doing this 100,000 times takes 12.349ms instead of 18.483ms with Marshal.
 
 **Validation**:
 
-Validation is equally JIT optimized and by far the [fastest validator in its class](https://github.com/moltar/typescript-runtime-type-benchmarks).
+Validation is equally JIT optimized and by far the fastest validator for real use-cases (type and content validation with arrays, not only type checking).
 Validating **100.000 objects** from the model above takes **0.000115ms per item**, in total 12ms.
 
 In real-life code Marshal is way faster than ajv aka "The fastest JSON Schema Validator".
