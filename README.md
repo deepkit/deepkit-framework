@@ -209,7 +209,7 @@ that Marshal is 27x faster than `ajv` and 2x faster than `quartet`.
 Example:
 
 ```typescript
-import {validate} from '@marcj/marshal';
+import {jitValidate} from '@marcj/marshal';
 const data = {
     name: 'name1',
     id: 1,
@@ -217,7 +217,7 @@ const data = {
     priority: 5,
     ready: true,
 };
-const validateMarshalModel = validate(MarshalModel);
+const validateMarshalModel = jitValidate(MarshalModel);
 const errors = validateMarshalModel(data);
 ```
 
