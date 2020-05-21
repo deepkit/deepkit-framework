@@ -203,7 +203,10 @@ Doing this 100,000 times takes 12.349ms instead of 18.483ms with Marshal.
 Validation is equally JIT optimized and by far the fastest validator for real use-cases (type and content validation with arrays, not only type checking).
 Validating **100.000 objects** from the model above takes **0.000115ms per item**, in total 12ms.
 
-In real-life code Marshal is way faster than ajv aka "The fastest JSON Schema Validator".
+Our [validation benchmark indicates](https://github.com/marcj/marshal.ts/blob/master/packages/benchmark/validation.spec.ts)
+that Marshal is 27x faster than `ajv` and 2x faster than `quartet`.
+
+Example:
 
 ```typescript
 import {validate} from '@marcj/marshal';
@@ -214,7 +217,8 @@ const data = {
     priority: 5,
     ready: true,
 };
-const errors = validate(MarshalModel)(data);
+const validateMarshalModel = validate(MarshalModel);
+const errors = validateMarshalModel(data);
 ```
 
 ## Usage
