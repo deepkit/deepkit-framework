@@ -204,7 +204,7 @@ Validation is equally JIT optimized and by far the fastest validator for real us
 Validating **100.000 objects** from the model above takes **0.000115ms per item**, in total 12ms.
 
 Our [validation benchmark indicates](https://github.com/marcj/marshal.ts/blob/master/packages/benchmark/validation.spec.ts)
-that Marshal is 27x faster than `ajv` and 2x faster than `quartet`.
+that Marshal is 64x faster than `ajv` and 3.6x faster than `quartet`.
 
 Example:
 

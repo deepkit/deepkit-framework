@@ -41,27 +41,10 @@ export const DATA = Object.freeze({
     longString:
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Vivendum intellegat et qui, ei denique consequuntur vix. Semper aeterno percipit ut his, sea ex utinam referrentur repudiandae. No epicuri hendrerit consetetur sit, sit dicta adipiscing ex, in facete detracto deterruisset duo. Quot populo ad qui. Sit fugit nostrum et. Ad per diam dicant interesset, lorem iusto sensibus ut sed. No dicam aperiam vis. Pri posse graeco definitiones cu, id eam populo quaestio adipiscing, usu quod malorum te. Ex nam agam veri, dicunt efficiantur ad qui, ad legere adversarium sit. Commune platonem mel id, brute adipiscing duo an. Vivendum intellegat et qui, ei denique consequuntur vix. Offendit eleifend moderatius ex vix, quem odio mazim et qui, purto expetendis cotidieque quo cu, veri persius vituperata ei nec. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
     boolean: true,
-    deeplyNested: {
-        foo: 'bar',
-        num: 1,
-        bool: false,
-    },
 });
 
 export type Data = typeof DATA;
 
-type DeeplyNested = Data['deeplyNested'];
-
-class DeeplyNestedType implements DeeplyNested {
-    @f
-    foo!: string;
-
-    @f
-    num!: number;
-
-    @f
-    bool!: boolean;
-}
 
 class MarshalModel implements Data {
     @f
@@ -81,9 +64,6 @@ class MarshalModel implements Data {
 
     @f
     boolean!: boolean;
-
-    @f.type(DeeplyNestedType)
-    deeplyNested!: DeeplyNestedType;
 }
 
 const QuartetModelChecker = e<MarshalModel>({
@@ -93,11 +73,6 @@ const QuartetModelChecker = e<MarshalModel>({
     strings: e.arrayOf(e.string),
     longString: e.and(e.string, e.minLength(100)),
     boolean: e.boolean,
-    deeplyNested: {
-        foo: e.string,
-        num: e.number,
-        bool: e.boolean,
-    }
 });
 
 const MarshalModelValidation = jitValidate(MarshalModel);
@@ -105,11 +80,11 @@ const MarshalModelValidation = jitValidate(MarshalModel);
 test('benchmark validation', () => {
     const count = 100_000;
 
-    bench(count, 'validation non-jit on plain', (i) => {
+    bench(count, 'validation Marshal old', (i) => {
         const errors = validate(MarshalModel, DATA);
     });
 
-    bench(count, 'validation jit on plain', (i) => {
+    bench(count, 'validation Marshal', (i) => {
         const errors = MarshalModelValidation(DATA);
     });
 
@@ -127,20 +102,8 @@ test('benchmark validation', () => {
                     "minLength": 100
                 },
                 "boolean": {"type": "boolean"},
-                "deeplyNested": {"$ref": "#/definitions/deeplyNested"},
             },
-            "required": ["number", "negNumber", "maxNumber", "strings", "longString", "boolean", "deeplyNested"],
-            "definitions": {
-                "deeplyNested": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {"type": "string"},
-                        "num": {"type": "number"},
-                        "bool": {"type": "boolean"}
-                    },
-                    "required": ["foo", "num", "bool"]
-                }
-            }
+            "required": ["number", "negNumber", "maxNumber", "strings", "longString", "boolean"],
         };
         const ajv = new Ajv();
         const validate = ajv.compile(schema);
