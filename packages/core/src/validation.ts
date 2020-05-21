@@ -86,6 +86,7 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
 
 /**
  * Validates a object or class instance and returns all errors.
+ * Returns an empty array if not errors found and validation succeeded.
  *
  * @example
  * ```
@@ -108,7 +109,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
  * }
  * ```
  */
-export function validates<T>(classType: ClassType<T>, item: { [name: string]: any } | T): item is T {
+export function validates<T>(classType: ClassType<T>, item: { [name: string]: any }): item is T {
     return jitValidate(classType)(item).length === 0;
 }
 
@@ -125,9 +126,9 @@ export function validates<T>(classType: ClassType<T>, item: { [name: string]: an
  * }
  * ```
  */
-export function validatesFactory<T>(classType: ClassType<T>): (item: { [name: string]: any } | T) => item is T {
+export function validatesFactory<T>(classType: ClassType<T>): (item: { [name: string]: any }) => item is T {
     const validation = jitValidate(classType);
-    return (item: { [name: string]: any } | T): item is T => {
+    return (item: { [name: string]: any }): item is T => {
         return validation(item).length === 0;
     };
 }
