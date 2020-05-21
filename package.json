@@ -1,6 +1,6 @@
 {
   "name": "@marcj/benchmark",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "Benchmark stuff.",
   "sideEffects": false,
   "private": true,
@@ -12,12 +12,12 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@marcj/marshal": "^2.1.3",
+    "@marcj/marshal": "^2.1.4",
     "ajv": "^6.11.0",
     "buffer": "^5.2.1",
     "cerialize": "^2.0.1",
-    "quartet": "^9.1.13",
-    "class-transformer": "^0.2.0"
+    "class-transformer": "^0.2.0",
+    "quartet": "^9.1.13"
   },
   "jest": {
     "testURL": "http://localhost/",
