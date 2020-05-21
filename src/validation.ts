@@ -96,12 +96,10 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
     return jitValidate(classType)(item, path);
 }
 
-type RemovedMethodsKeys<T> = ({[P in keyof T]: T[P] extends Function ? never : P })[keyof T];
-type OnlyDataProperties<T> = Pick<T, RemovedMethodsKeys<T>>;
-
-
 /**
  * A type guarded way of using Marshal.
+ *
+ * Note: Methods are not type guarded.
  *
  * @example
  * ```
@@ -110,12 +108,14 @@ type OnlyDataProperties<T> = Pick<T, RemovedMethodsKeys<T>>;
  * }
  * ```
  */
-export function validates<T>(classType: ClassType<T>, item: { [name: string]: any } | T): item is OnlyDataProperties<T> {
+export function validates<T>(classType: ClassType<T>, item: { [name: string]: any } | T): item is T {
     return jitValidate(classType)(item).length === 0;
 }
 
 /**
  * A type guarded way of using Marshal as factory for faster access.
+ *
+ * Note: Methods are not type guarded.
  *
  * @example
  * ```
@@ -125,9 +125,9 @@ export function validates<T>(classType: ClassType<T>, item: { [name: string]: an
  * }
  * ```
  */
-export function validatesFactory<T>(classType: ClassType<T>): (item: { [name: string]: any } | T) => item is OnlyDataProperties<T> {
+export function validatesFactory<T>(classType: ClassType<T>): (item: { [name: string]: any } | T) => item is T {
     const validation = jitValidate(classType);
-    return (item: { [name: string]: any } | T): item is OnlyDataProperties<T> => {
+    return (item: { [name: string]: any } | T): item is T => {
         return validation(item).length === 0;
     };
 }
