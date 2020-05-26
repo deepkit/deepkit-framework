@@ -11,7 +11,7 @@ import {
     isPlainObject,
 } from '@marcj/estdlib';
 import * as getParameterNames from "get-parameter-names";
-import {capitalizeFirstLetter} from "./utils";
+import {capitalizeFirstLetter, isArray} from "./utils";
 import {Buffer} from "buffer";
 
 /**
@@ -24,6 +24,7 @@ export type Types =
     'objectId'
     | 'uuid'
     | 'class'
+    | 'union'
     | 'moment'
     | 'date'
     | 'string'
@@ -140,6 +141,8 @@ export class PropertyCompilerSchema {
     isPartial: boolean = false;
 
     isOptional: boolean = false;
+    isDiscriminant: boolean = false;
+
     //for enums
     allowLabelsAsValue: boolean = false;
 
@@ -154,16 +157,22 @@ export class PropertyCompilerSchema {
 
     hasDefaultValue: boolean = false;
 
+    defaultValue: any;
+
     protected cacheKey?: string;
 
     constructor(
         public name: string,
-        protected classType?: ClassType<any>
+        protected classType?: ClassType<any> | ClassType<any>[]
     ) {
     }
 
     get resolveClassType(): ClassType<any> | undefined {
-        return this.classType;
+        return isArray(this.classType) ? undefined : this.classType;
+    }
+
+    get resolveUnionTypes(): ClassType<any>[] {
+        return isArray(this.classType) ? this.classType : [];
     }
 
     public isActualOptional(): boolean {
@@ -185,6 +194,7 @@ export class PropertyCompilerSchema {
         i.isArray = propertySchema.isArray;
         i.validators = propertySchema.validators;
         i.isOptional = propertySchema.isOptional;
+        i.isDiscriminant = propertySchema.isDiscriminant;
         i.allowLabelsAsValue = propertySchema.allowLabelsAsValue;
         i.isReference = propertySchema.isReference;
         i.isParentReference = propertySchema.isParentReference;
@@ -237,6 +247,9 @@ export class PropertySchema extends PropertyCompilerSchema {
     protected classTypeForwardRef?: ForwardedRef<any>;
     protected classTypeResolved?: ClassType<any>;
 
+    protected unionTypes?: (ClassType<any> | ForwardedRef<any>)[];
+    protected unionResolved?: ClassType<any>[];
+
     constructor(name: string) {
         super(name);
     }
@@ -254,6 +267,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (this.isArray) props['isArray'] = true;
         if (this.isMap) props['isMap'] = true;
         if (this.isDecorated) props['isDecorated'] = true;
+        if (this.isDiscriminant) props['isDiscriminant'] = true;
         if (this.isParentReference) props['isParentReference'] = true;
         if (this.isOptional) props['isOptional'] = true;
         if (this.isId) props['isId'] = true;
@@ -287,6 +301,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (props['isMap']) p.isMap = true;
         if (props['isDecorated']) p.isDecorated = true;
         if (props['isParentReference']) p.isParentReference = true;
+        if (props['isDiscriminant']) p.isDiscriminant = true;
         if (props['isOptional']) p.isOptional = true;
         if (props['isId']) p.isId = true;
         if (props['isPartial']) p.isPartial = true;
@@ -322,6 +337,11 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (value === undefined || value === null) return;
 
         this.setFromJSType(value.constructor);
+    }
+
+    setUnionTypes(types: (ClassType<any> | ForwardedRef<any>)[]) {
+        this.type = 'union';
+        this.unionTypes = types;
     }
 
     setFromJSType(type: any) {
@@ -387,12 +407,26 @@ export class PropertySchema extends PropertyCompilerSchema {
     }
 
     get resolveClassType(): ClassType<any> | undefined {
-        return this.getResolvedClassTypeForValidType();
-    }
-
-    getResolvedClassTypeForValidType(): ClassType<any> | undefined {
         if (this.type === 'class' || this.type === 'enum') {
             return this.getResolvedClassType();
+        }
+    }
+
+    get resolveUnionTypes(): ClassType<any>[] {
+        if (this.type === 'union') {
+            return this.getResolvedUnionTypes();
+        }
+
+        return [];
+    }
+
+    getResolvedClassTypeForValidType(): ClassType<any>[] | ClassType<any> | undefined {
+        if (this.type === 'class' || this.type === 'enum') {
+            return this.getResolvedClassType();
+        }
+
+        if (this.type === 'union') {
+            return this.getResolvedUnionTypes();
         }
     }
 
@@ -403,6 +437,21 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
 
         return false;
+    }
+
+    getResolvedUnionTypes(): ClassType<any>[] {
+        if (this.unionResolved) {
+            return this.unionResolved;
+        }
+
+        this.unionResolved = [];
+        if (this.unionTypes) {
+            for (const v of this.unionTypes) {
+                this.unionResolved.push(v instanceof ForwardedRef ? v.forward() : v);
+            }
+        }
+
+        return this.unionResolved;
     }
 
     getResolvedClassType(): ClassType<any> {
@@ -418,7 +467,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             throw new Error(`ForwardRef returns no value. ${this.classTypeForwardRef.forward}`);
         }
 
-        if (!this.classType) {
+        if (!this.classType || isArray(this.classType)) {
             throw new Error(`No ClassType given for field ${this.name}. Use @f.forward(() => MyClass) for circular dependencies.`);
         }
 
@@ -443,6 +492,12 @@ export class ClassSchema<T = any> {
      * As soon as someone use this class, the actual value of this property is used to serialize.
      */
     decorator?: string;
+
+    /**
+     * Name of the property that is a discriminant of this class.
+     * This is automatically set when at least one property has @f.discriminant.
+     */
+    discriminant?: string;
 
     /**
      * Each method can have its own PropertySchema definition for each argument, where map key = method name.
@@ -480,7 +535,12 @@ export class ClassSchema<T = any> {
         this.classType = classType;
     }
 
-    loadHasDefaults() {
+    resetInitialized() {
+        this.referenceInitialized = false;
+        this.hasDefaultsInitialized = false;
+    }
+
+    loadDefaults() {
         if (this.hasDefaultsInitialized) return;
 
         //its important that the class supports calling the constructor without any values
@@ -490,6 +550,7 @@ export class ClassSchema<T = any> {
             for (const property of this.classProperties.values()) {
                 if (instance[property.name] !== null && instance[property.name] !== undefined) {
                     property.hasDefaultValue = true;
+                    property.defaultValue = instance[property.name];
                 }
             }
         } catch (error) {
@@ -718,6 +779,14 @@ export class ClassSchema<T = any> {
         if (!this.methodsParamNamesAutoResolved.has(methodName)) this.methodsParamNamesAutoResolved.set(methodName, []);
 
         return this.methodsParamNamesAutoResolved.get(methodName)!;
+    }
+
+    public getDiscriminantPropertySchema(): PropertySchema {
+        if (!this.discriminant) {
+            throw new Error(`No discriminant property found at class ${this.getClassName()}`);
+        }
+
+        return this.getProperty(this.discriminant);
     }
 
     public getDecoratedPropertySchema(): PropertySchema {
@@ -1025,6 +1094,12 @@ export interface FieldDecoratorResult<T> {
      * Marks this field as optional. The validation requires field values per default, this makes it optional.
      */
     optional(): this;
+
+    /**
+     * Marks this field as discriminant for the discriminator in union types.
+     * See @f.union()
+     */
+    discriminant(): this;
 
     /**
      * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
@@ -1392,6 +1467,11 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Optional()], modifiedOptions);
     };
 
+    fn.discriminant = () => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Discriminant()], modifiedOptions);
+    };
+
     fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)], modifiedOptions);
@@ -1521,6 +1601,16 @@ function IDField() {
 function Optional() {
     return (target: Object, property: PropertySchema) => {
         property.isOptional = true;
+    };
+}
+
+/**
+ * @internal
+ */
+function Discriminant() {
+    return (target: Object, property: PropertySchema) => {
+        getOrCreateEntitySchema(target).discriminant = property.name;
+        property.isDiscriminant = true;
     };
 }
 
@@ -1659,11 +1749,11 @@ interface FieldOptions {
 /**
  * Decorator to define a field for an entity.
  */
-function Field(oriType?: FieldTypes) {
+function Field(...oriType: [FieldTypes] | (ClassType<any>|ForwardedRef<any>)[]) {
     return FieldDecoratorWrapper((target, property, returnType, options) => {
         if (property.typeSet) return;
         property.typeSet = true;
-        let type = oriType;
+        let type: FieldTypes | (ClassType<any>|ForwardedRef<any>)[] = oriType.length <= 1 ? oriType[0] as any : oriType;
 
         const propertyName = property.name;
         const id = getClassName(target) + (property.methodName ? '::' + property.methodName : '') + '::' + propertyName;
@@ -1677,6 +1767,7 @@ function Field(oriType?: FieldTypes) {
             if (t === Date) return 'Date';
             if (t === undefined) return 'undefined';
             if (t === 'any') return 'any';
+            if (t === 'union') return 'union';
 
             return getClassName(t);
         }
@@ -1687,7 +1778,7 @@ function Field(oriType?: FieldTypes) {
             return getTypeName(t);
         }
 
-        if (returnType !== Promise && returnType !== undefined && type !== 'any') {
+        if (!isArray(type) && returnType !== Promise && returnType !== undefined && type !== 'any') {
             //we don't want to check for type mismatch when returnType is a Promise.
 
             if (type && options.array && returnType !== Array) {
@@ -1728,7 +1819,7 @@ function Field(oriType?: FieldTypes) {
             && type !== Object
             && !(type instanceof ForwardedRef);
 
-        if (type && !options.map && !options.partial && isCustomObject && returnType === Object) {
+        if (type && !isArray(type) && !options.map && !options.partial && isCustomObject && returnType === Object) {
             console.log('type', type, oriType);
             throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
                 `The actual type is an Object, but you specified a Class in @f.type(T).\n` +
@@ -1779,19 +1870,25 @@ function Field(oriType?: FieldTypes) {
         }
 
         if (property.type === 'any') {
-            property.setFromJSType(type);
+            //any is given when a class is provided for example
+            //type is then set to 'class'
+            if (isArray(type)) {
+                property.setUnionTypes(type);
+            } else {
+                property.setFromJSType(type);
+            }
         }
     }, true);
 }
 
 const fRaw: any = Field();
 
-fRaw['array'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
-    return Field(type).asArray();
+fRaw['array'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any>|ForwardedRef<any>)[]): FieldDecoratorResult<T> {
+    return Field(...type).asArray();
 };
 
-fRaw['map'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
-    return Field(type).asMap();
+fRaw['map'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any>|ForwardedRef<any>)[]): FieldDecoratorResult<T> {
+    return Field(...type).asMap();
 };
 
 fRaw['any'] = function (this: FieldDecoratorResult<any>): FieldDecoratorResult<any> {
@@ -1800,6 +1897,14 @@ fRaw['any'] = function (this: FieldDecoratorResult<any>): FieldDecoratorResult<a
 
 fRaw['type'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field(type);
+};
+
+fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any>|ForwardedRef<any>)[]): FieldDecoratorResult<T> {
+    return Field(...types);
+};
+
+fRaw['discriminant'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
+    return Field(type).discriminant();
 };
 
 fRaw['partial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
@@ -1845,6 +1950,40 @@ export interface MainDecorator {
     type<T extends FieldTypes>(type: T): FieldDecoratorResult<T>;
 
     /**
+     * Defines discriminated union types.
+     *
+     * ```typescript
+     * class ConfigA {
+     *     @f.discriminator()
+     *     kind: string = 'a';
+     *
+     *     @f
+     *     myValue: string = '';
+     * }
+     *
+     * class ConfigB {
+     *     @f.discriminator()
+     *     kind: string = 'b';
+     *
+     *     @f
+     *     myValue2: string = '';
+     * }
+     *
+     * class User {
+     *     @f.types(ConfigA, ConfigB)
+     *     config: ConfigA | ConfigB = new ConfigA;
+     * }
+     * ```
+     */
+    union<T extends ClassType<any>, K extends ForwardedRef<any>>(...type: T[] | K[]): FieldDecoratorResult<void>;
+
+    /**
+     * Marks a field as discriminant. This field MUST have a default value.
+     * The default value is used to discriminate this class type when used in a union type. See @f.union.
+     */
+    discriminant<T>(): FieldDecoratorResult<T>;
+
+    /**
      * Marks a field as array.
      *
      * ```typescript
@@ -1854,7 +1993,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    array<T extends FieldTypes>(type: T): FieldDecoratorResult<T>;
+    array<T extends FieldTypes>(...type: [T] | FieldTypes[]): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as enum.
@@ -1926,7 +2065,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    map<T extends FieldTypes>(type: T): FieldDecoratorResult<T>;
+    map<T extends FieldTypes>(...type: [T] | FieldTypes[]): FieldDecoratorResult<T>;
 
     /**
      * Forward references a type, required for circular reference.

@@ -174,7 +174,7 @@ export function jitValidate<T>(classType: ClassType<T>): (value: any, path?: str
 
     const checks: string[] = [];
 
-    schema.loadHasDefaults();
+    schema.loadDefaults();
     for (let property of schema.classProperties.values()) {
         const originProperty = property;
         let isDecorated = false;
@@ -236,7 +236,7 @@ export function jitValidatePartial<T, K extends keyof T>(
 ): ValidationError[] {
     errors = errors ? errors : [];
     const schema = getClassSchema(classType);
-    schema.loadHasDefaults();
+    schema.loadDefaults();
 
     for (const i in partial) {
         if (!partial.hasOwnProperty(i)) continue;

@@ -176,3 +176,43 @@ export function compilerXToClass(fromFormat: string) {
     }
 }
 registerConverterCompiler('plain', 'class', 'class', compilerXToClass('plain'));
+
+export function compilerXToUnionClass(fromFormat: string) {
+    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
+        const context = {
+            createXToClassFunction
+        };
+
+        const discriminatorClassVarName = reserveVariable();
+        let discriminator = `${discriminatorClassVarName} = undefined;\n`;
+        const discriminants: string[] = [];
+
+        for (const type of property.resolveUnionTypes) {
+            const typeSchema = getClassSchema(type);
+            typeSchema.loadDefaults();
+
+            const discriminant = typeSchema.getDiscriminantPropertySchema();
+            if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
+                throw new Error(`Discriminant ${discriminant.name} has no default value.`);
+            }
+
+            discriminants.push(`${discriminant.name}=${JSON.stringify(discriminant.defaultValue)}`)
+            const typeVarName = reserveVariable();
+            context[typeVarName] = type;
+            discriminator += `if (${accessor}.${discriminant.name} === ${JSON.stringify(discriminant.defaultValue)}) ${discriminatorClassVarName} = ${typeVarName};\n`;
+        }
+
+        return {
+            template: `
+            if (${accessor}) {
+                ${discriminator}
+                if (!${discriminatorClassVarName}) {
+                    throw new Error('No valid discriminant was found, so could not determine class type. discriminants: [${discriminants.join(',')}].');
+                }
+                ${setter} = createXToClassFunction(${discriminatorClassVarName}, '${fromFormat}')(${accessor});
+            }
+        `, context};
+    };
+}
+
+registerConverterCompiler('plain', 'class', 'union', compilerXToUnionClass('plain'));

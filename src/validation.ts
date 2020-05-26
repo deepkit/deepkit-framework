@@ -69,7 +69,7 @@ export function handleCustomValidator<T>(
 export function validateMethodArgs<T>(classType: ClassType<T>, methodName: string, args: any[]): ValidationError[] {
     const errors: ValidationError[] = [];
     const schema = getClassSchema(classType);
-    schema.loadHasDefaults();
+    schema.loadDefaults();
 
     const properties = schema.getMethodProperties(methodName);
 
