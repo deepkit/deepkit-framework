@@ -1,6 +1,5 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {getEntityName, getIdField, getParentReferenceClass} from "../src/mapper-old";
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, cloneClass, isExcluded, plainToClass} from '../src/mapper';
 import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid} from "..";
@@ -10,10 +9,9 @@ import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from 
 import {PageCollection} from "./document-scenario/PageCollection";
 
 test('test simple model', () => {
-    expect(getEntityName(SimpleModel)).toBe('SimpleModel');
-    expect(getIdField(SimpleModel)).toBe('id');
-
-    expect(getIdField(SubModel)).toBe(undefined);
+    const schema = getClassSchema(SimpleModel);
+    expect(schema.name).toBe('SimpleModel');
+    expect(schema.idField).toBe('id');
 
     const instance = plainToClass(SimpleModel, {
         name: 'myName',
@@ -29,10 +27,6 @@ test('test simple model', () => {
 });
 
 test('test simple model all fields', () => {
-    expect(getEntityName(SimpleModel)).toBe('SimpleModel');
-    expect(getIdField(SimpleModel)).toBe('id');
-
-    expect(getIdField(SubModel)).toBe(undefined);
 
     const instance = plainToClass(SimpleModel, {
         name: 'myName',
@@ -94,10 +88,7 @@ test('test simple model all fields', () => {
 });
 
 test('test simple model all fields plainToMongo', () => {
-    expect(getEntityName(SimpleModel)).toBe('SimpleModel');
-    expect(getIdField(SimpleModel)).toBe('id');
-
-    expect(getIdField(SubModel)).toBe(undefined);
+    expect(getClassSchema(SubModel).idField).toBe(undefined);
 
     const item = plainToClass(SimpleModel, {
         name: 'myName',
@@ -421,8 +412,6 @@ test('test @Decorated with parent', async () => {
         type: 'class',
         resolveClassType: PageCollection
     });
-
-    expect(getParentReferenceClass(PageClass, 'parent')).toBe(PageClass);
 
     expect(() => {
         const instance = plainToClass(ClassWithUnmetParent, {});

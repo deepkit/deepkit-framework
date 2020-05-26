@@ -1,7 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
 import {bench} from "../../benchmark/util";
-import {classToPlain, partialPlainToClass, plainToClass} from "../../core/src/mapper-old";
 import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass} from "../src/jit";
 import {f, validate} from "..";
 
@@ -30,16 +29,6 @@ export class MarshalModel {
 
 test('benchmark plainToClass', () => {
     const count = 100_000;
-
-    bench(count, 'plainToClass non-jit', (i) => {
-        const instance = plainToClass(MarshalModel, {
-            name: 'name' + i,
-            id: i,
-            tags: ['a', 'b', 'c'],
-            priority: 5,
-            ready: true,
-        });
-    });
 
     bench(count, 'plainToClass manual new MarshalModel', (i) => {
         const instance = new MarshalModel(i, name + 'i');
@@ -86,10 +75,6 @@ test('benchmark classToPlain', () => {
         ready: true,
     });
 
-    bench(count, 'classToPlain non-jit', (i) => {
-        const plain = classToPlain(MarshalModel, b);
-    });
-
     bench(count, 'classToPlain manual obj = {}', (i) => {
         const obj = {};
         obj['name'] = b.name;
@@ -123,10 +108,6 @@ test('benchmark partialPlainToClass', () => {
     };
 
     const count = 100_000;
-
-    bench(count, 'partialPlainToClass non-jit', (i) => {
-        const partialWithClassValues = partialPlainToClass(MarshalModel, partial);
-    });
 
     bench(count, 'partialPlainToClass jit', (i) => {
         const partialWithClassValues = jitPartialPlainToClass(MarshalModel, partial);

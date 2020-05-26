@@ -1,5 +1,5 @@
 import {validate, ValidationFailed} from "./validation";
-import {getClassSchema, getClassTypeFromInstance} from "./decorators";
+import {getClassSchema, getClassTypeFromInstance, PropertySchema} from "./decorators";
 import {ClassType, eachKey, getClassName, isObject} from "@marcj/estdlib";
 import {
     createJITConverterFromPropertySchema,
@@ -31,6 +31,13 @@ export function methodResultClassToPlain<T>(classType: ClassType<T>, methodName:
 export function argumentPlainToClass<T>(classType: ClassType<T>, methodName: string, argument: number, value: any): any {
     const schema = getClassSchema(classType);
     return createJITConverterFromPropertySchema('plain', 'class', schema.getMethodProperties(methodName)[argument])(value);
+}
+
+/**
+ * Converts a single property value.
+ */
+export function propertyClassToPlain<T>(classType: ClassType<T>, propertyName: string, propertyValue: any, propertySchema?: PropertySchema) {
+    return createJITConverterFromPropertySchema('class', 'plain', propertySchema || getClassSchema(classType).getProperty(propertyName))(propertyValue);
 }
 
 /**
