@@ -1,10 +1,9 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {f, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
-import {classToPlain, plainToClass} from "../src/mapper";
+import {classToPlain, plainToClass, propertyClassToPlain} from "../src/mapper";
 import {Buffer} from 'buffer';
 import {base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "..";
-import {propertyClassToPlain} from "../src/mapper-old";
 
 const someText = `Loµ˚∆¨¥§∞¢´´†¥¨¨¶§∞¢®©˙∆rem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.`;
 

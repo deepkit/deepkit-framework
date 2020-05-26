@@ -1,6 +1,5 @@
 import 'jest';
 import 'reflect-metadata';
-import {classToPlain, plainToClass} from "../core/src/mapper-old";
 import {
     classToPlain as classTransformerClassToPlain,
     Exclude as ctExclude,
@@ -84,16 +83,6 @@ export class ClassTransformerSimpleModel {
 
 
 test('benchmark plainToClass', () => {
-    bench(10000, 'Marshal: plainToClass Big Entity', (i) => {
-        plainToClass(SimpleModel, {
-            name: 'name' + i,
-            type: 2,
-            plan: Plan.ENTERPRISE,
-            children: {label: 'label'},
-            childrenMap: {'sub': {label: 'label'}},
-            types: ['a', 'b', 'c']
-        });
-    });
     bench(10000, 'Marshal: jitPlainToClass Big Entity', (i) => {
         jitPlainToClass(SimpleModel, {
             name: 'name' + i,
@@ -125,11 +114,6 @@ test('benchmark classToPlain', () => {
         item.children.push(new SubModel('sub'));
         item.childrenMap['sub'] = new SubModel('sub');
         item.types = ['a', 'b', 'c'];
-
-        bench(10000, 'Marshal: classToPlain Big Entity', (i) => {
-            item.name = 'item_' + i;
-            classToPlain(SimpleModel, item);
-        });
 
         bench(10000, 'Marshal: jitClassToPlain Big Entity', (i) => {
             item.name = 'item_' + i;

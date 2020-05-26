@@ -1,32 +1,9 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {
-    classToPlain,
-    cloneClass,
-    f,
-    getEntityName,
-    getIdField,
-    isExcluded,
-    plainToClass,
-    uuid,
-    ParentReference,
-    OnLoad, resolvePropertyCompilerSchema, getClassSchema
-} from "@marcj/marshal";
-import {
-    now,
-    SimpleModel,
-    Plan,
-    SubModel,
-    CollectionWrapper,
-    StringCollectionWrapper,
-} from "@marcj/marshal/tests/entities";
+import {classToPlain, cloneClass, f, getEntityName, getIdField, isExcluded, plainToClass, uuid} from "@marcj/marshal";
+import {now, Plan, SimpleModel, StringCollectionWrapper, SubModel,} from "@marcj/marshal/tests/entities";
 import {Binary} from "mongodb";
-import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
-import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
-import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
 import {classToMongo, mongoToClass, mongoToPlain, plainToMongo} from "../src/mapping";
-import {getEnumLabels, getEnumValues, isValidEnumValue, getValidEnumValue} from '@marcj/estdlib';
-import {getParentReferenceClass} from "@marcj/marshal/src/mapper-old";
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');

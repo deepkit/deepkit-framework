@@ -967,10 +967,10 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSche
  * });
  * ```
  */
-export function createClassSchema<T = any>(clazz: ClassType<T>, name: string = ''): ClassSchema<T> {
-    //this is necessary to give the class a dynamic name if has none
+export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = ''): ClassSchema<T> {
+    //this is necessary to give the class a dynamic name if it has none
     const o = {
-        [name]: clazz
+        [name]: clazz || new class {}
     };
 
     const classSchema = getOrCreateEntitySchema(o[name]);
