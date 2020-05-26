@@ -1,6 +1,5 @@
 import 'jest';
 import 'reflect-metadata';
-import {classToPlain, plainToClass} from "../core/src/mapper-old";
 import {
     classToPlain as classTransformerClassToPlain,
     plainToClass as classTransformerPlainToClass
@@ -49,16 +48,6 @@ export class CerializeModel {
 test('benchmark plainToClass', () => {
     const count = 100_000;
 
-    bench(count, 'Marshal plainToClass SuperSimple', (i) => {
-        plainToClass(MarshalModel, {
-            name: 'name' + i,
-            id: i,
-            tags: ['a', 'b', 'c'],
-            priority: 5,
-            ready: true,
-        });
-    });
-
     bench(count, 'Marshal jitPlainToClass SuperSimple', (i) => {
         jitPlainToClass(MarshalModel, {
             name: 'name' + i,
@@ -99,10 +88,6 @@ test('benchmark classToPlain', () => {
         tags: ['a', 2, 'c'],
         priority: 5,
         ready: true,
-    });
-
-    bench(count, 'Marshal classToPlain SuperSimple', (i) => {
-        classToPlain(MarshalModel, b);
     });
 
     bench(count, 'Marshal jitClassToPlain SuperSimple', (i) => {

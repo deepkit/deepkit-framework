@@ -3,7 +3,6 @@ import 'reflect-metadata';
 import {f, PropertyValidator, PropertyValidatorError} from "@marcj/marshal";
 import {bench} from "./util";
 import {jitValidate} from "@marcj/marshal/src/jit-validation";
-import {validate} from "@marcj/marshal/src/validation-old";
 import * as Ajv from 'ajv';
 
 //we use `e` and not `v` because Marshal supports out of the box error explanations, which quartet does only with `e`.
@@ -79,10 +78,6 @@ const MarshalModelValidation = jitValidate(MarshalModel);
 
 test('benchmark validation', () => {
     const count = 100_000;
-
-    bench(count, 'validation Marshal old', (i) => {
-        const errors = validate(MarshalModel, DATA);
-    });
 
     bench(count, 'validation Marshal', (i) => {
         const errors = MarshalModelValidation(DATA);
