@@ -1,6 +1,7 @@
-import {PropertyCompilerSchema} from "./decorators";
+import {getClassSchema, PropertyCompilerSchema} from "./decorators";
 import {registerCheckerCompiler} from "./jit-validation-registry";
 import {jitValidate} from "./jit-validation";
+import getOwnPropertyDescriptor = Reflect.getOwnPropertyDescriptor;
 
 registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerSchema, utils) => {
     return `
@@ -84,5 +85,43 @@ registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSc
             [classType]: property.resolveClassType,
             jitValidate
         }
+    };
+});
+
+registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSchema, utils) => {
+    const discriminatorClassVarName = utils.reserveVariable();
+    let discriminator = `${discriminatorClassVarName} = undefined;\n`;
+    const context = {
+        jitValidate
+    };
+
+    for (const type of property.resolveUnionTypes) {
+        const typeSchema = getClassSchema(type);
+        typeSchema.loadDefaults();
+
+        const discriminant = typeSchema.getDiscriminantPropertySchema();
+        if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
+            throw new Error(`Discriminant ${discriminant.name} has no default value.`);
+        }
+
+        const typeVarName = utils.reserveVariable();
+        context[typeVarName] = type;
+        discriminator += `if (${accessor}.${discriminant.name} === ${JSON.stringify(discriminant.defaultValue)}) ${discriminatorClassVarName} = ${typeVarName};\n`;
+    }
+
+    return {
+        template: `
+            if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
+                ${discriminator}
+                if (!${discriminatorClassVarName}) {
+                    ${utils.raise('invalid_type', 'Invalid union type given. No valid discriminant was found.')};
+                } else {
+                    jitValidate(${discriminatorClassVarName})(${accessor}, ${utils.path}, _errors);
+                }
+            } else {
+                ${utils.raise('invalid_type', 'Type is not an object')};
+            }
+        `,
+        context: context
     };
 });

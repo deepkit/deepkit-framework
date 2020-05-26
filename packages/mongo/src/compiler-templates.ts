@@ -1,6 +1,7 @@
 import {
     compilerToNumber,
     compilerToString,
+    compilerXToUnionClass,
     createClassToXFunction,
     createXToClassFunction,
     getClassSchema,
@@ -118,6 +119,9 @@ registerConverterCompiler('mongo', 'class', 'class', (setter: string, accessor: 
         }
     };
 });
+
+registerConverterCompiler('mongo', 'class', 'union', compilerXToUnionClass('mongo'));
+
 registerConverterCompiler('class', 'mongo', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
     //When property is a reference we store the actual primary (as foreign key) of the referenced instance instead of the actual instance.
     //This way we implemented basically relations in mongodb

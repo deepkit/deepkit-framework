@@ -102,7 +102,6 @@ export function resolvePropertyCompilerSchema<T>(schema: ClassSchema<T>, propert
 }
 
 const cacheJitProperty = new Map<string, WeakMap<PropertySchema, any>>();
-const cacheJitVirtualProperty = new Map<string, Map<string, any>>();
 
 /**
  * A handy utility class that allows fast access to a JitPropertyConverter class.

@@ -38,10 +38,8 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 
 ## Todo
 
-* Add type support for: Map<T, K>, Set<T>
+* Add type support for native Map<T, K> and Set<T> classes
 * Add more built-in validators
-* Support discriminators (union class types)
-* Add automatic tests IE11+ (help is welcome)
 
 ![Diagram](https://raw.github.com/marcj/marshal.ts/master/assets/diagram.png)
 
@@ -66,9 +64,12 @@ If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle:
 This is important to support constructor assignment. You can alternatively use asName() to hard code the constructor param names
 as strings.
 
+Make sure to import 'reflect-metadata' in your entry point scripts.
+
 ## Example
 
 ```typescript
+import 'reflect-metadata';
 import {
     f,
     plainToClass,
@@ -154,6 +155,7 @@ On real server hardware with Linux this numbers are easily halved.
 
 The class structure in question:
 ```typescript
+import 'reflect-metadata';
 import {f, plainToClass} from "@marcj/marshal";
 
 export class MarshalModel {
@@ -253,6 +255,7 @@ First make sure you have some validators attached to your fields you want to val
 
 ```typescript
 import 'jest';
+import 'reflect-metadata';
 import {f, validate, ValidationError, validatedPlainToClass, plainToClass} from '@marcj/marshal';
 
 class Page {
@@ -364,7 +367,7 @@ More examples:
 
 ```typescript
 import {f, uuid} from '@marcj/marshal';
-import * as moment from 'moment';
+importas moment from 'moment';
 
 class MyModel {
     @f.primary().uuid()
@@ -438,7 +441,7 @@ In MongoDB it's stored as `Date`. In JSON its encoded as ISO8601 string.
 
 ```typescript
 import {f} from '@marcj/marshal';
-import * as moment from 'moment';
+importas moment from 'moment';
 
 class MyModel {
     @f.moment()
@@ -593,6 +596,93 @@ entity.children instanceof ChildrenCollection; //true
 entity.children.add('Bar2'); 
 ```
 
+### Discriminated Union
+
+`union` lets you define discriminated unions.
+
+```typescript
+class ConfigA {
+    @f.discriminant()
+    kind: 'a' = 'a';
+
+    @f
+    myValue: string = '';
+}
+
+class ConfigB {
+    @f.discriminant()
+    kind: 'b' = 'b';
+
+    @f
+    myValue2: string = '';
+}
+
+class User {
+    @f.union(ConfigA, ConfigB)
+    config: ConfigA | ConfigB = new ConfigA;
+}
+```
+
+It's important to define always a default value for discriminants, otherwise you get an error.
+
+You can use union types in array and map as well.
+
+```typescript
+
+class User {
+    @f.map(ConfigA, ConfigB)
+    configMap: {[name: string]: ConfigA | ConfigB) = {};
+
+    @f.array(ConfigA, ConfigB)
+    configs: (ConfigA | ConfigB)[] = [];
+}
+```
+
+### External classes and interface serialization
+
+Sometimes you need to work with external classes and are not able to decorate them directly. You can use `createClassSchema`
+to create dynamically new class schemas for existing external classes or anonymouse classes.a
+
+```typescript
+class ExternalClass {
+    id!: string;
+    version!: number;
+    lists!: number[];
+}
+
+const schema = createClassSchema(ExternalClass);
+schema.addProperty('id', f.type(String));
+schema.addProperty('version', f.type(Number));
+schema.addProperty('lists', f.array(Number));
+
+const obj = plainToClass(ExternalClass, {
+    id: '23',
+    version: 1,
+    lists: [12, 23]
+});
+```
+
+And with anonymous classes when you work with interfaces only.
+
+```typescript
+interface JustInterface {
+    id!: string;
+    version!: number;
+    lists!: number[];
+}
+
+const schema = createClassSchema(class {});
+schema.addProperty('id', f.type(String));
+schema.addProperty('version', f.type(Number));
+schema.addProperty('lists', f.array(Number));
+
+const obj = plainToClass(schema.classType, {
+    id: '23',
+    version: 1,
+    lists: [12, 23]
+});
+```
+
 ### Patch serialization
 
 If you work with rather big entities, your probably want to utilise some
@@ -600,6 +690,10 @@ kind of patch mechanism. Marshal supports to transform partial objects as well
 with deep path properties. All of following partial* methods maintain the
 structure of your object and only transform the value. We resolve the dot symbol
 to retrieve type information, so you can use this also in combination with JSON-Patch.
+
+Note: partial* methods expect always a plain object and return always a plain object. For Example
+`partialPlainToClass` indicates that all values *within* that plain object needs to be plain (JSON, e.g. string for dates).
+`partialClassToString` indicates that all values *within* that plain object needs to be class instances (javascript, e.g. `Date` for dates).
 
 #### partialPlainToClass
 
@@ -727,6 +821,7 @@ npm install @marcj/marshal-nest
 ```
 
 ```typescript
+import 'reflect-metadata';
 import {
     Controller, Get, Param, Post, Body
 } from '@nestjs/common';
