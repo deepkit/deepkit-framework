@@ -810,6 +810,30 @@ test('enums', () => {
     })).toEqual([{
         code: 'invalid_enum', message: 'Invalid enum value received. Allowed: 200,100', path: 'enum3'
     }]);
+
+    expect(validate(Model, {
+        enum1: 0
+    })).toEqual([]);
+
+    expect(validate(Model, {
+        enum1: 1
+    })).toEqual([]);
+
+    expect(validate(Model, {
+        enumLabels: 200
+    })).toEqual([]);
+
+    expect(validate(Model, {
+        enumLabels: 'x'
+    })).toEqual([]);
+
+    expect(validate(Model, {
+        enumLabels: 'first'
+    })).toEqual([]);
+
+    expect(validate(Model, {
+        enumLabels: 'second'
+    })).toEqual([]);
 });
 
 test('enums arrays', () => {
