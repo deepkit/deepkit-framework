@@ -1,7 +1,7 @@
 import {getClassSchema, PropertyCompilerSchema} from "./decorators";
 import {registerCheckerCompiler} from "./jit-validation-registry";
 import {jitValidate} from "./jit-validation";
-import getOwnPropertyDescriptor = Reflect.getOwnPropertyDescriptor;
+import {isValidEnumValue, getEnumValues, getEnumLabels, getValidEnumValue} from "@marcj/estdlib";
 
 registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerSchema, utils) => {
     return `
@@ -19,6 +19,35 @@ registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerS
 
 registerCheckerCompiler('string', (accessor: string, property: PropertyCompilerSchema, utils) => {
     return `if ('string' !== typeof ${accessor}) ${utils.raise('invalid_string', 'No string given')};`;
+});
+
+registerCheckerCompiler('enum', (accessor: string, property: PropertyCompilerSchema, utils) => {
+    //this a candidate where we can extract ENUM information during build time and check very fast during
+    //runtime, so we don't need a call to getResolvedClassTypeForValidType(), isValidEnumValue(), etc in runtime anymore.
+    const allowLabelsAsValue = property.allowLabelsAsValue;
+    const typeValue = utils.reserveVariable();
+
+    const valids = getEnumValues(property.resolveClassType);
+    if (allowLabelsAsValue) {
+        for (const label of getEnumLabels(property.resolveClassType)) {
+            valids.push(label);
+        }
+    }
+    return {
+        template: `
+        var typeValue = ${typeValue};
+        if (undefined !== ${accessor} && !isValidEnumValue(typeValue, ${accessor}, ${allowLabelsAsValue})) {
+            ${utils.raise('invalid_enum', `Invalid enum value received. Allowed: ${valids.join(',')}`)};
+        }
+    `,
+        context: {
+            [typeValue]: property.resolveClassType,
+            isValidEnumValue: isValidEnumValue,
+            getEnumValues: getEnumValues,
+            getEnumLabels: getEnumLabels,
+            getValidEnumValue: getValidEnumValue
+        }
+    };
 });
 
 registerCheckerCompiler('boolean', (accessor: string, property: PropertyCompilerSchema, utils) => {
