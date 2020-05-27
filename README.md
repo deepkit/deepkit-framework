@@ -102,6 +102,9 @@ class SimpleModel {
     @f.enum(Plan, /*allowLabelsAsValue=*/ true)
     plan: Plan = Plan.DEFAULT;
 
+    @f.enum(Plan).asArray()
+    plans: Plan[] = [];
+
     @f
     created: Date = new Date;
 
