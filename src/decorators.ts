@@ -126,7 +126,7 @@ export interface PropertySchemaSerialized {
 }
 
 /**
- * Contains all resolved information from PropertySchema necessary to feat compiler functions.
+ * Contains all resolved information from PropertySchema necessary to feed compiler functions.
  *
  * Internal note: It's on purpose aligned with PropertySchema.
  */
@@ -158,8 +158,6 @@ export class PropertyCompilerSchema {
     hasDefaultValue: boolean = false;
 
     defaultValue: any;
-
-    protected cacheKey?: string;
 
     constructor(
         public name: string,
@@ -2247,12 +2245,10 @@ export function MultiIndex(fields: string[], options: IndexOptions, name?: strin
  * @internal
  */
 function EnumField<T>(type: any, allowLabelsAsValue = false) {
-    return FieldDecoratorWrapper((target, property, returnType?: any) => {
-        if (property) {
-            Type('enum')(target, property);
-            property.setClassType(type);
-            property.allowLabelsAsValue = allowLabelsAsValue;
-        }
+    return Field(type).use((target, property) => {
+        property.setClassType(type);
+        property.type = 'enum';
+        property.allowLabelsAsValue = allowLabelsAsValue;
     });
 }
 

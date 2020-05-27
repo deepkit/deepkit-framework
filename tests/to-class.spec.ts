@@ -2,7 +2,7 @@ import 'jest-extended'
 import 'reflect-metadata';
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, cloneClass, isExcluded, plainToClass} from '../src/mapper';
-import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid} from "..";
+import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "..";
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from './document-scenario/PageClass';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@marcj/estdlib';
@@ -665,19 +665,19 @@ test('enums', () => {
     }
 
     class Model {
-        @f.enum(Enum1)
+        @f.enum(Enum1).optional()
         enum1?: Enum1;
 
-        @f.enum(Enum2)
+        @f.enum(Enum2).optional()
         enum2?: Enum2;
 
-        @f.enum(Enum3)
+        @f.enum(Enum3).optional()
         enum3?: Enum3;
 
-        @f.enum(Enum4)
+        @f.enum(Enum4).optional()
         enum4?: Enum4;
 
-        @f.enum(Enum4, true)
+        @f.enum(Enum4, true).optional()
         enumLabels?: Enum4;
     }
 
@@ -792,4 +792,82 @@ test('enums', () => {
             enum3: 4
         });
     }).toThrow('Invalid ENUM given in property');
+
+    expect(validate(Model, {
+        enum1: 2
+    })).toEqual([{
+        code: 'invalid_enum', message: 'Invalid enum value received. Allowed: 0,1', path: 'enum1'
+    }]);
+
+    expect(validate(Model, {
+        enumLabels: 55
+    })).toEqual([{
+        code: 'invalid_enum', message: 'Invalid enum value received. Allowed: 200,x,first,second', path: 'enumLabels'
+    }]);
+
+    expect(validate(Model, {
+        enum3: 4
+    })).toEqual([{
+        code: 'invalid_enum', message: 'Invalid enum value received. Allowed: 200,100', path: 'enum3'
+    }]);
+});
+
+test('enums arrays', () => {
+    enum Enum1 {
+        first,
+        second,
+    }
+
+    enum Enum2 {
+        first = 'z',
+        second = 'x',
+    }
+
+    class Model {
+        @f.enum(Enum1).asArray()
+        enum1: Enum1[] = [];
+
+        @f.enum(Enum2).asArray()
+        enum2: Enum2[] = [];
+    }
+
+    plainToClass(Model, {
+        enum1: [1]
+    });
+
+    plainToClass(Model, {
+        enum2: ['z']
+    });
+
+    const schema = getClassSchema(Model);
+    expect(schema.getProperty('enum1').type).toBe('enum');
+    expect(schema.getProperty('enum1').isArray).toBe(true);
+
+    plainToClass(Model, {
+        enum2: ['x', 'z']
+    });
+
+    expect(() => {
+        plainToClass(Model, {
+            enum1: [2]
+        });
+    }).toThrow('Invalid ENUM given in property');
+
+    expect(plainToClass(Model, {
+        enum2: 2
+    }).enum2).toEqual([]);
+
+    expect(validate(Model, {
+        enum1: [1]
+    })).toEqual([]);
+
+    expect(validate(Model, {
+        enum2: ['z']
+    })).toEqual([]);
+
+    expect(validate(Model, {
+        enum2: ['nope']
+    })).toEqual([
+        {code: 'invalid_enum', message: 'Invalid enum value received. Allowed: z,x', path: 'enum2.0'}
+    ]);
 });
