@@ -1747,11 +1747,11 @@ interface FieldOptions {
 /**
  * Decorator to define a field for an entity.
  */
-function Field(...oriType: [FieldTypes] | (ClassType<any>|ForwardedRef<any>)[]) {
+function Field(...oriType: [FieldTypes | Types] | (ClassType<any>|ForwardedRef<any>)[]) {
     return FieldDecoratorWrapper((target, property, returnType, options) => {
         if (property.typeSet) return;
         property.typeSet = true;
-        let type: FieldTypes | (ClassType<any>|ForwardedRef<any>)[] = oriType.length <= 1 ? oriType[0] as any : oriType;
+        let type: FieldTypes | Types | (ClassType<any>|ForwardedRef<any>)[] = oriType.length <= 1 ? oriType[0] as any : oriType;
 
         const propertyName = property.name;
         const id = getClassName(target) + (property.methodName ? '::' + property.methodName : '') + '::' + propertyName;
@@ -1813,8 +1813,8 @@ function Field(...oriType: [FieldTypes] | (ClassType<any>|ForwardedRef<any>)[]) 
         }
 
         const isCustomObject = !typedArrayMap.has(type)
-            && type !== 'any'
             && type !== Object
+            && typeof type !== 'string'
             && !(type instanceof ForwardedRef);
 
         if (type && !isArray(type) && !options.map && !options.partial && isCustomObject && returnType === Object) {
@@ -1826,6 +1826,10 @@ function Field(...oriType: [FieldTypes] | (ClassType<any>|ForwardedRef<any>)[]) 
 
         if (!type) {
             type = returnType;
+        }
+
+        if ('string' === typeof type) {
+            property.type = type as Types;
         }
 
         if (options.partial) {
@@ -2245,9 +2249,8 @@ export function MultiIndex(fields: string[], options: IndexOptions, name?: strin
  * @internal
  */
 function EnumField<T>(type: any, allowLabelsAsValue = false) {
-    return Field(type).use((target, property) => {
+    return Field('enum').use((target, property) => {
         property.setClassType(type);
-        property.type = 'enum';
         property.allowLabelsAsValue = allowLabelsAsValue;
     });
 }
