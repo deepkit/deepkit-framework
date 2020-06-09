@@ -6,6 +6,15 @@ import {ClassType} from "@marcj/estdlib";
 export class Connection {
     protected client?: MongoClient;
 
+    public srv: boolean = false;
+
+    public ssl: boolean = false;
+    public sslCA?: ReadonlyArray<Buffer | string>;
+    public sslCRL?: ReadonlyArray<Buffer | string>;
+    public sslCert?: Buffer | string;
+    public sslKey?: Buffer | string;
+    public sslPass?: Buffer | string;
+
     constructor(
         public host: string,
         public defaultDatabase: string,
@@ -28,8 +37,15 @@ export class Connection {
             password: this.password,
         } : undefined;
 
-        this.client = await MongoClient.connect(`mongodb://${this.host}/${this.defaultDatabase}`, {
+        const proto = this.srv ? 'mongodb+srv' : 'mongodb';
+        this.client = await MongoClient.connect(`${proto}://${this.host}/${this.defaultDatabase}`, {
             auth: auth,
+            ssl: this.ssl,
+            sslCA: this.sslCA,
+            sslCRL: this.sslCRL,
+            sslCert: this.sslCert,
+            sslKey: this.sslKey,
+            sslPass: this.sslPass,
             useNewUrlParser: true,
         } as MongoClientOptions);
 
