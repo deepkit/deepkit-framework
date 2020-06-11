@@ -783,6 +783,85 @@ See [compiler templates of mongodb](https://github.com/marcj/marshal.ts/blob/mas
 and its [user facing API](https://github.com/marcj/marshal.ts/blob/master/packages/mongo/src/mapping.ts)
 to get more examples.
 
+## Patch / State management (ngRx etc) / Frozen objects
+
+Marshal provides patch functions that enables you to patch class instances efficiently.
+
+`applyPatch` to modify a given object partially and keeps references
+that weren't updated untouched. This is very useful when working
+with state management systems or dirty checking algorithm.
+
+```typescript
+import {applyPatch} from '@marcj/marshal';
+
+class Sub {
+    title: string = '';
+    sub: Sub = new Sub;
+}
+
+class State {
+    sub: Sub = new Sub();
+    otherSub: Sub = new Sub();
+    title: string = '';
+}
+
+const state = new State;
+const newState = patchState(state, (state) => {
+     state.sub.title = 'another-value';
+});
+state === newState //false, always the case
+state.sub === newState.sub //false, because we changed it
+state.otherSub === newState.otherSub //true, since unchanged
+
+const newState2 = patchState(state, (state) => {
+     state.otherSub.sub.title = 'another-value';
+});
+state === newState2 //false, always the case
+state.sub === newState2.sub //true, because we haven't changed it nor its children
+state.otherSub === newState2.otherSub //false, since we deeply changed it
+```
+
+This function is perfect for state managers and complex state models. Normally you would use a syntax like the following
+to update your state:
+
+```typescript
+on(action, (state) => {
+    return {...state, loggedIn: true, user: {...state.user, username: 'peter'};
+}
+```
+
+This works fine as long as your state is very shallow. As soon as your application grows your state does so as well.
+With Marshal you can easily handle very complex state models while maintaining reference integrity of untouched objects,
+necessary for state managers to detect changes. With Marshal this would look like this:
+
+```typescript
+on(action, (state) => {
+    return applyPatch(state, (state) => {
+        state.loggedIn = true;
+        state.user.username = 'peter';
+    })
+}
+```
+
+You see, using such a method allows you to work with very deep nested objects in states.
+
+`applyAndReturnPatches` returns instead of the new object a path->value object of changes made to the object.
+This object can be easily used to feed MongoDB to do only partial updates.
+
+```typescript
+const state = new State;
+const patches = applyAndReturnPatches(state, (state) => {
+     state.sub.title = 'another-value';
+});
+
+patches === {
+    'sub.title' = 'another-value';
+}
+```
+
+This function helps you to generate easily patch objects by just manipulating your
+objects as normal instead of generating this patch object manually.
+
 ## Mongo ORM / Database abstraction
 
 Marshal's MongoDB database abstraction makes it super easy to
