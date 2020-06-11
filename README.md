@@ -789,7 +789,7 @@ Marshal provides patch functions that enables you to patch class instances effic
 
 `applyPatch` to modify a given object partially and keeps references
 that weren't updated untouched. This is very useful when working
-with state management systems or dirty checking algorithm.
+with state management systems or dirty checking algorithms.
 
 ```typescript
 import {applyPatch} from '@marcj/marshal';
@@ -830,9 +830,13 @@ on(action, (state) => {
 }
 ```
 
-This works fine as long as your state is very shallow. As soon as your application grows your state does so as well.
-With Marshal you can easily handle very complex state models while maintaining reference integrity of untouched objects,
-necessary for state managers to detect changes. With Marshal this would look like this:
+Using this approach with the spread operator has 2 main disadvantages:
+1. You lose class instances. E.g. `{...state.user}` creates a new plain object instead of a `User` object.
+2. That works only for shallow models. As soon as your application grows your state does so as well and this ends up in
+very dirty code.
+
+With Marshal you can easily handle very complex state models while keeping your class instances and maintaining reference
+integrity of untouched objects, necessary for state managers to detect changes. With Marshal this would look like this:
 
 ```typescript
 on(action, (state) => {
