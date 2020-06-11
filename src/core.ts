@@ -138,7 +138,7 @@ export function isObject(obj: any): obj is object {
     if (obj === null) {
         return false;
     }
-    return ((typeof obj === 'function') || (typeof obj === 'object' && !isArray(obj)));
+    return (typeof obj === 'object' && !isArray(obj));
 }
 
 /**

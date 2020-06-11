@@ -38,6 +38,8 @@ test('helper isObject', () => {
     expect(isObject(true)).toBeFalse();
     expect(isObject(null)).toBeFalse();
     expect(isObject(undefined)).toBeFalse();
+    expect(isObject(() => {})).toBeFalse();
+    expect(isObject(function() {})).toBeFalse();
     expect(isObject(1)).toBeFalse();
     expect(isObject('1')).toBeFalse();
 
@@ -52,6 +54,8 @@ test('helper isPromise', async () => {
     expect(isPromise(true)).toBeFalse();
     expect(isPromise(null)).toBeFalse();
     expect(isPromise(undefined)).toBeFalse();
+    expect(isPromise(() => {})).toBeFalse();
+    expect(isPromise(function() {})).toBeFalse();
     expect(isPromise(1)).toBeFalse();
     expect(isPromise('1')).toBeFalse();
 
@@ -123,6 +127,8 @@ test('helper isPlainObject', () => {
     expect(isPlainObject(undefined)).toBeFalse();
     expect(isPlainObject(1)).toBeFalse();
     expect(isPlainObject('1')).toBeFalse();
+    expect(isPlainObject(() => {})).toBeFalse();
+    expect(isPlainObject(function() {})).toBeFalse();
 
     expect(isPlainObject(new Date())).toBeFalse();
     expect(isPlainObject(new SimpleClass('asd'))).toBeFalse();
