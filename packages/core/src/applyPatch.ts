@@ -1,7 +1,7 @@
 import {getClassSchema, getClassTypeFromInstance} from "./decorators";
 import {isArray, isObject} from "@marcj/estdlib";
 
-type Mutable<T> = { -readonly [P in keyof T]: Mutable<T[P]> };
+type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 
 /**
  * Shallow clones an object.
