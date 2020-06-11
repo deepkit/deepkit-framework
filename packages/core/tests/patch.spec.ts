@@ -58,6 +58,9 @@ test('check deep patch', () => {
         });
 
         expect(state !== newState).toBeTrue();
+        expect(newState.title).toBe('myState');
+        expect(newState.persistent.id).toBe(12);
+        expect(newState.persistent2.id).toBe(13);
         expect(state.persistent.id).not.toBe(newState.persistent.id);
         expect(state.persistent !== newState.persistent).toBeTrue();
         expect(state.persistent.goal === newState.persistent.goal).toBeTrue();
