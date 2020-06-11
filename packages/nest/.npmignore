@@ -1,4 +1,4 @@
-src
-index.ts
-tsconfig.json
-tests
+/src
+/index.ts
+/tsconfig.json
+/tests

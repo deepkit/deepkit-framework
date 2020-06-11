@@ -1,5 +1,5 @@
-src
-index.ts
-global.d.ts
-tsconfig.json
-tests
+/src
+/index.ts
+/global.d.ts
+/tsconfig.json
+/tests
