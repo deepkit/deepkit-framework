@@ -12,6 +12,10 @@ class PersistentState {
     goal: StateGoal = new StateGoal;
 
     titles: string[] = [];
+
+    getTest(id: string) {
+        return id;
+    }
 }
 
 class Goal {
@@ -23,6 +27,8 @@ class State {
     persistent: PersistentState = new PersistentState;
     persistent2: PersistentState = new PersistentState;
     goals: Goal[] = [];
+
+    map = new Map;
 }
 
 
@@ -38,6 +44,8 @@ test('check deep patch', () => {
         const newState = applyPatch(Object.freeze(state), (state) => {
             state.persistent.id = 12;
             expect(state.persistent.id).toBe(12);
+            expect(state.persistent.getTest('123')).toBe(12);
+            expect(state.map.get('asd')).toBe(12);
         });
 
         expect(state !== newState).toBeTrue();
