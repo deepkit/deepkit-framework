@@ -27,10 +27,34 @@ class State {
     persistent: PersistentState = new PersistentState;
     persistent2: PersistentState = new PersistentState;
     goals: Goal[] = [];
-
-    map = new Map;
 }
 
+class StateWithMap {
+    map: Map<any, any> = new Map();
+}
+
+test('check basics', () => {
+    const state = new State();
+    state.goals.push(new Goal());
+
+    {
+        const newState = applyPatch(Object.freeze(state), (state) => {
+            state.persistent.id = 12;
+            expect(state.persistent.id).toBe(12);
+            expect(state.persistent.getTest('123')).toBe('123');
+        });
+        newState.persistent.id = 12;
+    }
+});
+test('check unsupported', () => {
+    const state = new StateWithMap();
+
+    expect(() => {
+        const newState = applyPatch(Object.freeze(state), (state) => {
+            expect(state.map.get('asd')).toBe(undefined);
+        });
+    }).toThrow('Map and Set not supported');
+});
 
 test('check deep patch', () => {
     const state = new State();
@@ -44,8 +68,6 @@ test('check deep patch', () => {
         const newState = applyPatch(Object.freeze(state), (state) => {
             state.persistent.id = 12;
             expect(state.persistent.id).toBe(12);
-            expect(state.persistent.getTest('123')).toBe(12);
-            expect(state.map.get('asd')).toBe(12);
         });
 
         expect(state !== newState).toBeTrue();

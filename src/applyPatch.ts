@@ -120,6 +120,10 @@ export class Patcher<T extends object> {
                 if (state.has(prop)) return state.get(prop);
                 const fullPath = incomingPath ? incomingPath + '.' + String(prop) : String(prop);
 
+                if (originalItem[prop] instanceof Map || originalItem[prop] instanceof Set) {
+                    throw new Error('Map and Set not supported in Marshal');
+                }
+
                 if (isObject(originalItem[prop])) {
                     const proxy = this.getProxy(fullPath, originalItem[prop], () => {
                         return dereferenceObject(prop);
