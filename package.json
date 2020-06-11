@@ -18,7 +18,7 @@
     "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.17",
+    "@marcj/estdlib": "^0.1.18",
     "@marcj/marshal": "^2.1.11",
     "buffer": "^5.4.3",
     "mongo-uuid": "^1.0.0"
