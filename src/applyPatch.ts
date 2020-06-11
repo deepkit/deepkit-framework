@@ -171,12 +171,12 @@ export function applyAndReturnPatches<T extends object>(item: T, patch: (item: M
 }
 
 /**
- * Applies patches to a (readonly) object while not touch the original object
+ * Applies patches to a (readonly) object while not touching the original object
  * and returns the cloned object while keeping unchanged reference intact.
  *
  * Allows to modify a given object partially and keeps references
  * that weren't updated untouched. This is very useful when working
- * with state management systems or dirty checking algorithm.
+ * with state management systems or dirty checking algorithms.
  *
  * Returns always a new object, but leaves (deep) property references
  * intact when they haven't changed (using the `patcher` modifier).
