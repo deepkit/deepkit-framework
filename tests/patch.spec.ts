@@ -3,23 +3,24 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {applyPatch, applyAndReturnPatches} from "..";
 
-class StateGoal {
+class Goal {
     title: string = '';
 }
 
 class PersistentState {
     id: number = 0;
-    goal: StateGoal = new StateGoal;
+    goal: Goal = new Goal;
+    goals: { [id: string]: Goal } = {};
 
     titles: string[] = [];
+
+    addGoal(id: string, goal: Goal) {
+        this.goals[id] = goal;
+    }
 
     getTest(id: string) {
         return id;
     }
-}
-
-class Goal {
-    title: string = '';
 }
 
 class State {
@@ -46,6 +47,29 @@ test('check basics', () => {
         newState.persistent.id = 12;
     }
 });
+
+test('check object map', () => {
+    const state = new State();
+    state.goals.push(new Goal());
+    state.persistent.goals['foo'] = new Goal();
+
+    {
+        const newGoal = new Goal();
+        expect(Object.keys(state.persistent.goals)).toEqual(['foo']);
+        const newState = applyPatch(Object.freeze(state), (state) => {
+            expect('foo' in state.persistent.goals).toBeTrue();
+            expect(Object.keys(state.persistent.goals)).toEqual(['foo']);
+            state.persistent.addGoal('bar', newGoal);
+            expect('bar' in state.persistent.goals).toBeTrue();
+            expect(Object.keys(state.persistent.goals)).toEqual(['foo', 'bar']);
+            expect(state.persistent.goals['bar'] === newGoal).toBeTrue();
+        });
+        expect('bar' in newState.persistent.goals).toBeTrue();
+        expect(Object.keys(newState.persistent.goals)).toEqual(['foo', 'bar']);
+        expect(newState.persistent.goals['bar'] === newGoal).toBeTrue();
+    }
+});
+
 test('check unsupported', () => {
     const state = new StateWithMap();
 

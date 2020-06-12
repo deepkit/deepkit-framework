@@ -981,16 +981,22 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
  * Returns the ClassType for a given instance.
  */
 export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
-    if (!target
-        || !target['constructor']
-        || Object.getPrototypeOf(target) !== (target as any)['constructor'].prototype
-        || isPlainObject(target)
-        || !isObject(target)
-    ) {
+    if (!isClassInstance(target)) {
         throw new Error('Target does not seem to be a class instance.');
     }
 
     return target['constructor'] as ClassType<T>;
+}
+
+/**
+ * Returns true when target is a class instance.
+ */
+export function isClassInstance(target: any): boolean {
+    return target
+        && target['constructor']
+        && Object.getPrototypeOf(target) === (target as any)['constructor'].prototype
+        && !isPlainObject(target)
+        && isObject(target);
 }
 
 /**
