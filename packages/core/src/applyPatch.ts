@@ -1,5 +1,5 @@
-import {getClassSchema, getClassTypeFromInstance} from "./decorators";
-import {isArray, isObject} from "@marcj/estdlib";
+import {getClassSchema, getClassTypeFromInstance, isClassInstance} from "./decorators";
+import {isArray, isObject, isPlainObject, ClassType} from "@marcj/estdlib";
 
 type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 
@@ -8,17 +8,21 @@ type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mut
  *
  * Supports constructor arguments, but requires to annotate them using @f decorator.
  */
-export function shallowCloneClassItem<T extends object>(item: T): T {
-    const classType = getClassTypeFromInstance(item);
-    const schema = getClassSchema(classType);
-    const constructorParameter = schema.getMethodProperties('constructor');
-    const args = constructorParameter.map(p => item[p.name]);
-    const value = new classType(...args);
-    for (const k in item) {
-        if (!item.hasOwnProperty(k)) continue;
-        value[k] = item[k];
+export function shallowCloneObject<T extends object>(item: T): T {
+    if (isClassInstance(item)) {
+        const classType = getClassTypeFromInstance(item);
+        const schema = getClassSchema(classType);
+        const constructorParameter = schema.getMethodProperties('constructor');
+        const args = constructorParameter.map(p => item[p.name]);
+        const value = new classType(...args);
+        for (const k in item) {
+            if (!item.hasOwnProperty(k)) continue;
+            value[k] = item[k];
+        }
+        return value;
+    } else {
+        return {...item};
     }
-    return value;
 }
 
 /**
@@ -51,7 +55,7 @@ export class Patcher<T extends object> {
     protected readonly proxies = new Map<any, any>();
 
     constructor(public readonly item: T) {
-        this.value = shallowCloneClassItem(item);
+        this.value = shallowCloneObject(item);
 
         this.proxy = this.getProxy('', item, () => {
             return this.value;
@@ -81,20 +85,26 @@ export class Patcher<T extends object> {
         });
     }
 
-    protected getProxy(incomingPath: string, originalItem: any, dereferenceParent: () => object) {
+    protected getProxy(incomingPath: string, originalItem: any, dereferenceOriginalItem: () => object) {
         let proxy = this.proxies.get(originalItem);
         if (proxy) return proxy;
 
         const dereferencedObjects = new Map<string | number | symbol, any>();
         const dereferencedArrays = new Map<string | number | symbol, any>();
 
+        let dereferencedOriginalItem: any = undefined;
+        function dereferenceOriginalItemAndCache() {
+            dereferencedOriginalItem = dereferenceOriginalItem();
+            return dereferencedOriginalItem;
+        }
+
         const dereferenceObject = (path: string | number | symbol = '') => {
             let ref = dereferencedObjects.get(path);
             if (ref) return ref;
 
-            ref = shallowCloneClassItem(originalItem[path]);
+            ref = shallowCloneObject(originalItem[path]);
             dereferencedObjects.set(path, ref);
-            const parent = dereferenceParent();
+            const parent = dereferenceOriginalItemAndCache();
             parent[path] = ref;
             return ref;
         }
@@ -107,17 +117,17 @@ export class Patcher<T extends object> {
             ref = originalItem[path].slice(0);
             this.patches[fullPath] = ref;
             dereferencedArrays.set(path, ref);
-            const parent = dereferenceParent();
+            const parent = dereferenceOriginalItemAndCache();
             parent[path] = ref;
             return ref;
         }
 
-        const state = new Map<any, any>();
+        const state: object = {};
         let parentDereferenced = false;
 
         proxy = new Proxy({}, {
             get: (target, prop) => {
-                if (state.has(prop)) return state.get(prop);
+                if (state.hasOwnProperty(prop)) return state[prop];
                 const fullPath = incomingPath ? incomingPath + '.' + String(prop) : String(prop);
 
                 if (originalItem[prop] instanceof Map || originalItem[prop] instanceof Set) {
@@ -128,7 +138,7 @@ export class Patcher<T extends object> {
                     const proxy = this.getProxy(fullPath, originalItem[prop], () => {
                         return dereferenceObject(prop);
                     });
-                    state.set(prop, proxy);
+                    state[prop] = proxy;
                     return proxy;
                 }
 
@@ -136,24 +146,36 @@ export class Patcher<T extends object> {
                     const proxy = this.getArrayProxy(originalItem[prop], () => {
                         return dereferenceArray(prop);
                     });
-                    state.set(prop, proxy);
+                    state[prop] = proxy;
                     return proxy;
                 }
 
                 return (dereferencedObjects.get(prop) || originalItem)[prop];
             },
+            has(target, p): boolean {
+                return Reflect.has(dereferencedOriginalItem || originalItem, p);
+            },
+            enumerate(target): PropertyKey[] {
+                return Reflect.ownKeys(dereferencedOriginalItem || originalItem);
+            },
+            ownKeys(target): PropertyKey[] {
+                return Reflect.ownKeys(dereferencedOriginalItem || originalItem);
+            },
+            getOwnPropertyDescriptor(target, p) {
+                return Object.getOwnPropertyDescriptor(dereferencedOriginalItem || originalItem, p);
+            },
             set: (target, prop, value) => {
                 //we dont trigger a change when same value
                 // if (!parentDereferenced && value !== undefined && value === originalItem[prop]) return true;
-                if (value !== undefined && value === state.get(prop)) return true;
+                if (value !== undefined && value === state[prop]) return true;
 
                 const fullPath = incomingPath ? incomingPath + '.' + String(prop) : String(prop);
 
-                const ref = dereferenceParent();
+                const ref = dereferenceOriginalItemAndCache();
                 parentDereferenced = true;
                 this.patches[fullPath] = value;
                 ref[prop] = value;
-                state.set(prop, value);
+                state[prop] = value;
                 return true;
             }
         });
