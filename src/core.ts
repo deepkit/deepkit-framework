@@ -123,7 +123,7 @@ export function isPromise(obj: any): obj is Promise<any> {
  */
 export function isClass(obj: any): obj is ClassType<any> {
     if ('function' === typeof obj) {
-        return obj.toString().startsWith('class ');
+        return obj.toString().startsWith('class ') || obj.toString().startsWith('class{');
     }
 
     return false;
