@@ -186,7 +186,7 @@ test('partial document', () => {
         'pages.0.name': 5,
         'pages.0.children.0.name': 6,
         'pages.0.children': [{name: 7}],
-    }, [docParent]);
+    }, {parents: [docParent]});
     console.log('document', document);
     expect(document['pages.0.name']).toBe('5');
     expect(document['pages.0.children.0.name']).toBe('6');
