@@ -3,7 +3,7 @@ import {
     classToPlain,
     createClassToXFunction, createJITConverterFromPropertySchema,
     createXToClassFunction,
-    getClassSchema,
+    getClassSchema, JitConverterOptions,
     jitPartial,
     partialClassToPlain,
     partialPlainToClass,
@@ -13,15 +13,15 @@ import {
 import {ClassType, eachKey, isPlainObject, getClassName} from "@marcj/estdlib";
 import './compiler-templates';
 
-export function mongoToClass<T>(classType: ClassType<T>, record: any, parents?: any[]): T {
-    return createXToClassFunction(classType, 'mongo')(record, parents);
+export function mongoToClass<T>(classType: ClassType<T>, record: any, options: JitConverterOptions = {}): T {
+    return createXToClassFunction(classType, 'mongo')(record, options);
 }
 
-export function classToMongo<T>(classType: ClassType<T>, instance: T): any {
+export function classToMongo<T>(classType: ClassType<T>, instance: T, options: JitConverterOptions = {}): any {
     if (!(instance instanceof classType)) {
         throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
     }
-    return createClassToXFunction(classType, 'mongo')(instance);
+    return createClassToXFunction(classType, 'mongo')(instance, options);
 }
 
 export function mongoToPlain<T>(classType: ClassType<T>, record: any) {
@@ -35,30 +35,33 @@ export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: 
 export function partialClassToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     partial: { [path: string]: any },
+    options: JitConverterOptions = {}
 ): { [path: string]: any } {
-    return jitPartial('class', 'mongo', classType, partial);
+    return jitPartial('class', 'mongo', classType, partial, options);
 }
 
 export function partialMongoToClass<T, K extends keyof T>(
     classType: ClassType<T>,
     partial: { [path: string]: any },
-    parents: any[] = [],
+    options: JitConverterOptions = {}
 ): { [path: string]: any } {
-    return jitPartial('mongo', 'class', classType, partial, parents);
+    return jitPartial('mongo', 'class', classType, partial, options);
 }
 
 export function partialPlainToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
+    options: JitConverterOptions = {}
 ): { [path: string]: any } {
-    return partialClassToMongo(classType, partialPlainToClass(classType, target));
+    return partialClassToMongo(classType, partialPlainToClass(classType, target), options);
 }
 
 export function partialMongoToPlain<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
+    options: JitConverterOptions = {}
 ): { [path: string]: any } {
-    return partialClassToPlain(classType, partialMongoToClass(classType, target));
+    return partialClassToPlain(classType, partialMongoToClass(classType, target), options);
 }
 
 export function propertyClassToMongo<T>(classType: ClassType<T>, name: (keyof T & string) | string, value: any): any {
