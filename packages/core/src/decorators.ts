@@ -547,14 +547,19 @@ export class ClassSchema<T = any> {
             const instance = new this.classType();
             for (const property of this.classProperties.values()) {
                 if (instance[property.name] !== null && instance[property.name] !== undefined) {
-                    property.hasDefaultValue = true;
-                    property.defaultValue = instance[property.name];
+                    try {
+                        property.defaultValue = instance[property.name];
+                        property.hasDefaultValue = true;
+                    } catch (error) {
+                        //we simply ignore it
+                    }
                 }
             }
         } catch (error) {
             throw new Error(
                 `Class ${this.getClassName()} constructor is not callable without values. ` +
-                `Make sure not to depend on constructor arguments. This is necessary for default value checking.`
+                `Make sure not to depend on constructor arguments. This is necessary for default value checking. ` +
+                `Error: ${error}`
             );
         }
         this.hasDefaultsInitialized = true;
