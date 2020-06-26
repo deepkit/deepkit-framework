@@ -20,7 +20,7 @@
     "moment": "^2.0.0"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.18",
+    "@marcj/estdlib": "^0.1.19",
     "buffer": "^5.4.3",
     "clone": "^2.1.2",
     "get-parameter-names": "^0.3.0",
