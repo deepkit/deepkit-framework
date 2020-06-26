@@ -428,7 +428,7 @@ test('test @Decorated with parent', async () => {
 
         const instance = plainToClass(PageClass, {
             name: 'myName'
-        }, [doc]);
+        }, {parents: [doc]});
 
         expect(instance.document).toBe(doc);
     }
@@ -538,7 +538,7 @@ test('test @Decorated with parent', async () => {
         const clone = cloneClass(instance.page);
     }).toThrow('PageClass::document is defined as');
 
-    const clone = cloneClass(instance.page, [instance]);
+    const clone = cloneClass(instance.page, {parents: [instance]});
     expect(clone).toBeInstanceOf(PageClass);
     expect(clone!.document).toBe(instance);
     expect(clone!.parent).toBeUndefined();

@@ -135,6 +135,8 @@ export class PropertyCompilerSchema {
     isArray: boolean = false;
     isMap: boolean = false;
 
+    groupNames: string[] = [];
+
     /**
      * Whether given classType can be populated partially (for example in patch mechanisms).
      */
@@ -273,6 +275,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (this.allowLabelsAsValue) props['allowLabelsAsValue'] = true;
         if (this.typeSet) props['typeSet'] = true;
         if (this.methodName) props['methodName'] = this.methodName;
+        props['groupNames'] = this.groupNames;
 
         if (this.templateArgs) {
             props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
@@ -306,6 +309,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (props['allowLabelsAsValue']) p.allowLabelsAsValue = true;
         if (props['typeSet']) p.typeSet = true;
         if (props['methodName']) p.methodName = props['methodName'];
+        if (props['groupNames']) p.groupNames = props['groupNames'];
 
         if (props['templateArgs']) {
             p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v));
@@ -872,6 +876,21 @@ export class ClassSchema<T = any> {
         throw new Error(`Class ${getClassName(this.classType)} has no reference to class ${getClassName(toClassType)} defined.`);
     }
 
+    public getPropertiesByGroup(...groupNames: string[]): PropertySchema[] {
+        const result: PropertySchema[] = [];
+        this.initializeProperties();
+        for (const property of this.classProperties.values()) {
+            for (const groupName of property.groupNames) {
+                if (groupNames.includes(groupName)) {
+                    result.push(property);
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
     public getProperty(name: string): PropertySchema {
         this.initializeProperties();
         if (!this.classProperties.has(name)) {
@@ -1111,8 +1130,11 @@ export interface FieldDecoratorResult<T> {
     discriminant(): this;
 
     /**
-     * Used to define a field as excluded when serialized from class to different targets (currently to Mongo or JSON).
+     * Used to define a field as excluded when serialized from class to different targets (like mongo or plain).
      * PlainToClass or mongoToClass is not effected by this.
+     * This exclusion is during compile time, if you need a runtime exclude/include mechanism,
+     * please use @f.group('groupName') and use in classToPain/partialClassToPlain the options
+     * argument to filter, e.g. {groupsExclude: ['groupName']}.
      */
     exclude(t?: 'all' | 'database' | 'plain' | string): this;
 
@@ -1161,6 +1183,31 @@ export interface FieldDecoratorResult<T> {
      * Used to define an index on a field.
      */
     index(options?: IndexOptions, name?: string): this;
+
+    /**
+     * Puts the property into one or multiple groups.
+     * Groups can be used to serialize only a subset of properties.
+     * It's recommended to use enums to make sure you don't have magic
+     * untyped strings.
+     *
+     * ```typescript
+     * enum Group {
+     *     confidential = 'confidential';
+     * }
+     *
+     * class User {
+     *     @f username: string;
+     *     @f.group(Group.confidential) password: string;
+     *
+     *     @f.group('bar') foo: string;
+     * }
+     *
+     * const user = new User();
+     *
+     * const plain = partialClassToPlain(User, user, {groupsExclude: [Group.confidential]});
+     * ```
+     */
+    group(...names: string[]): this;
 
     /**
      * Used to define a field as MongoDB ObjectId. This decorator is necessary if you want to use Mongo's _id.
@@ -1496,6 +1543,11 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Index(options, name)], modifiedOptions);
     };
 
+    fn.group = (...names: string[]) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, GroupName(...names)], modifiedOptions);
+    };
+
     fn.mongoId = () => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, MongoIdField()], modifiedOptions);
@@ -1620,6 +1672,15 @@ function Discriminant() {
     return (target: Object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).discriminant = property.name;
         property.isDiscriminant = true;
+    };
+}
+
+/**
+ * @internal
+ */
+function GroupName(...names: string[]) {
+    return (target: Object, property: PropertySchema) => {
+        property.groupNames = names;
     };
 }
 

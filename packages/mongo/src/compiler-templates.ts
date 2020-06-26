@@ -140,14 +140,13 @@ registerConverterCompiler('class', 'mongo', 'class', (setter: string, accessor: 
             `,
             context: {
                 [classType]: property.resolveClassType,
-                createClassToXFunction,
             }
         }
     }
 
     const classType = reserveVariable();
     return {
-        template: `${setter} = createClassToXFunction(${classType}, 'mongo')(${accessor});`,
+        template: `${setter} = createClassToXFunction(${classType}, 'mongo')(${accessor}, _options);`,
         context: {
             [classType]: property.resolveClassType,
             createClassToXFunction,
