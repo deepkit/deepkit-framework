@@ -182,24 +182,7 @@ export class JitPropertyConverter {
             return;
         }
 
-        if (this.options.groups) {
-            let found = false;
-            for (const groupName of property.groupNames) {
-                if (this.options.groups.includes(groupName)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) return;
-        }
-
-        if (this.options.groupsExclude) {
-            for (const groupName of property.groupNames) {
-                if (this.options.groupsExclude.includes(groupName)) {
-                    return;
-                }
-            }
-        }
+        if (!isGroupAllowed(this.options, property.groupNames)) return;
 
         if (result) {
             result[path] = this.convertProperty(property, value);
@@ -269,7 +252,7 @@ export function createJITConverterFromPropertySchema(
     const context = new Map<any, any>();
 
     const functionCode = `
-        return function(_value, _parents) {
+        return function(_value, _parents, _options) {
             var result, _state;
             function getParents() {
                 return _parents;
@@ -533,9 +516,9 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     }
 
     const functionCode = `
-        return function(_data, _options, _state) {
+        return function(_data, _options, _parents, _state) {
             var _instance, parentsWithItem;
-            var _parents = _options ? _options.parents : [];
+            _parents = _parents || _options.parents;
             function getParents() {
                 if (parentsWithItem) return parentsWithItem;
                 parentsWithItem = _parents ? _parents.slice(0) : [];

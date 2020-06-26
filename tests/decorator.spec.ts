@@ -485,7 +485,19 @@ test('group', () => {
     }
 
     {
+        const plain = classToPlain(User, user, {groupsExclude: ['theme']});
+        expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
+        expect(Object.keys(plain.config)).toEqual(['language']);
+    }
+
+    {
         const plain = partialClassToPlain(User, user, {groups: ['theme', 'details']});
+        expect(Object.keys(plain)).toEqual(['config']);
+        expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily']);
+    }
+
+    {
+        const plain = classToPlain(User, user, {groups: ['theme', 'details']});
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily']);
     }
@@ -495,4 +507,49 @@ test('group', () => {
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['fontSize', 'fontFamily']);
     }
+
+    {
+        const plain = classToPlain(User, user, {groups: ['text', 'details']});
+        expect(Object.keys(plain)).toEqual(['config']);
+        expect(Object.keys(plain.config)).toEqual(['fontSize', 'fontFamily']);
+    }
+
+    const plain = {foo: 'bar2', username: 'peter2', password: 'password2', config: {color: 'blue'}};
+
+    {
+        const user2 = plainToClass(User, plain);
+        expect(user2.foo).toBe('bar2');
+        expect(user2.username).toBe('peter2');
+        expect(user2.password).toBe('password2');
+        expect(user2.config.color).toBe('blue');
+        expect(user2.config.fontFamily).toBe('Arial');
+    }
+
+    {
+        const user2 = plainToClass(User, plain, {groups: ['confidential']});
+        expect(user2.foo).toBe(user.foo);
+        expect(user2.username).toBe(user.username);
+        expect(user2.password).toBe('password2');
+        expect(user2.config.color).toBe(user.config.color);
+        expect(user2.config.fontFamily).toBe(user.config.fontFamily);
+    }
+
+    {
+        const user2 = plainToClass(User, plain, {groups: ['theme', 'details']});
+        expect(user2.foo).toBe(user.foo);
+        expect(user2.username).toBe(user.username);
+        expect(user2.password).toBe(user.password);
+        expect(user2.config.color).toBe('blue');
+        expect(user2.config.fontFamily).toBe(user.config.fontFamily);
+    }
+
+    {
+        const user2 = plainToClass(User, plain, {groupsExclude: ['confidential']});
+        expect(user2.foo).toBe('bar2');
+        expect(user2.username).toBe('peter2');
+        expect(user2.password).toBe(user.password);
+        expect(user2.config.color).toBe('blue');
+        expect(user2.config.fontFamily).toBe('Arial');
+    }
+
 });

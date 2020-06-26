@@ -161,7 +161,7 @@ export function compilerXToClass(fromFormat: string) {
             //the actual type checking happens within createXToClassFunction()'s constructor param
             //so we dont check here for object.
             return {
-                template: `${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, getParents(), _state);`,
+                template: `${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, _options, getParents(), _state);`,
                 context
             };
         }
@@ -170,7 +170,7 @@ export function compilerXToClass(fromFormat: string) {
             template: `
             //object and not an array
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                ${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, getParents(), _state);
+                ${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, _options, getParents(), _state);
             }
         `, context};
     }
@@ -209,7 +209,7 @@ export function compilerXToUnionClass(fromFormat: string) {
                 if (!${discriminatorClassVarName}) {
                     throw new Error('No valid discriminant was found, so could not determine class type. discriminants: [${discriminants.join(',')}].');
                 }
-                ${setter} = createXToClassFunction(${discriminatorClassVarName}, '${fromFormat}')(${accessor});
+                ${setter} = createXToClassFunction(${discriminatorClassVarName}, '${fromFormat}')(${accessor}, _options, getParents(), _state);
             }
         `, context};
     };
