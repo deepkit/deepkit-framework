@@ -3,7 +3,7 @@ import {getClassSchema, getClassTypeFromInstance, PropertySchema} from "./decora
 import {ClassType, eachKey, getClassName, isObject} from "@marcj/estdlib";
 import {
     createJITConverterFromPropertySchema,
-    jitClassToPlain,
+    jitClassToPlain, JitConverterOptions,
     jitPartialClassToPlain,
     jitPartialPlainToClass,
     jitPlainToClass
@@ -51,16 +51,15 @@ export function methodResultPlainToClass<T>(classType: ClassType<T>, methodName:
 /**
  * Clones a class instance deeply.
  */
-export function cloneClass<T>(target: T, parents?: any[]): T {
-    return plainToClass(getClassTypeFromInstance(target), classToPlain(getClassTypeFromInstance(target), target), parents);
+export function cloneClass<T>(target: T, options: JitConverterOptions = {}): T {
+    return plainToClass(getClassTypeFromInstance(target), classToPlain(getClassTypeFromInstance(target), target), options);
 }
 
 /**
  * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
  */
-export function classToPlain<T>(classType: ClassType<T>, target: T, options?: { excludeReferences?: boolean }): any {
-    //todo use options again?
-    return jitClassToPlain(classType, target);
+export function classToPlain<T>(classType: ClassType<T>, target: T, options: JitConverterOptions = {}): any {
+    return jitClassToPlain(classType, target, options);
 }
 
 
@@ -69,8 +68,12 @@ export function classToPlain<T>(classType: ClassType<T>, target: T, options?: { 
  *
  * Returns a new regular object again.
  */
-export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, target: { [path: string]: any }, parents?: any[]): Partial<{ [F in K]: any }> {
-    return jitPartialPlainToClass(classType, target, parents);
+export function partialPlainToClass<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target: { [path: string]: any },
+    options: JitConverterOptions = {}
+): Partial<{ [F in K]: any }> {
+    return jitPartialPlainToClass(classType, target, options);
 }
 
 
@@ -79,8 +82,12 @@ export function partialPlainToClass<T, K extends keyof T>(classType: ClassType<T
  *
  * Returns a new regular object again.
  */
-export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T>, target: { [path: string]: any }): Partial<{ [F in K]: any }> {
-    return jitPartialClassToPlain(classType, target);
+export function partialClassToPlain<T, K extends keyof T>(
+    classType: ClassType<T>,
+    target: { [path: string]: any },
+    options: JitConverterOptions = {}
+): Partial<{ [F in K]: any }> {
+    return jitPartialClassToPlain(classType, target, options);
 }
 
 
@@ -99,9 +106,9 @@ export function partialClassToPlain<T, K extends keyof T>(classType: ClassType<T
 export function plainToClass<T>(
     classType: ClassType<T>,
     data: object,
-    parents?: any[]
+    options: JitConverterOptions = {}
 ): T {
-    return jitPlainToClass(classType, data, parents);
+    return jitPlainToClass(classType, data, options);
 }
 
 /**
@@ -121,14 +128,14 @@ export function plainToClass<T>(
 export function validatedPlainToClass<T>(
     classType: ClassType<T>,
     data: object,
-    parents?: any[]
+    options: JitConverterOptions = {}
 ): T {
     const errors = validate(classType, data);
     if (errors.length) {
         throw new ValidationFailed(errors);
     }
 
-    return plainToClass(classType, data, parents);
+    return plainToClass(classType, data, options);
 }
 
 /**

@@ -11,7 +11,7 @@ import {
     getEntityName,
     isArrayType,
     isMapType,
-    isRegisteredEntity,
+    isRegisteredEntity, partialClassToPlain,
     plainToClass,
     PropertySchema,
     RegisteredEntities,
@@ -415,4 +415,84 @@ test('binary', () => {
     expect(back.preview).toBeInstanceOf(ArrayBuffer);
     expect(Buffer.from(back.preview).toString('utf8')).toBe('FooBar');
     expect(back.preview.byteLength).toBe(6);
+});
+
+
+test('group', () => {
+    class Config {
+        @f.group('theme') color: string = 'red';
+        @f.group('theme', 'text') fontSize: number = 12;
+
+        @f.group('theme', 'text') fontFamily: string = 'Arial';
+
+        @f.group('language') language: string = 'en';
+    }
+
+    class User {
+        @f username: string = 'username';
+
+        @f.group('confidential') password: string = 'pw';
+
+        @f.group('details') config: Config = new Config;
+
+        @f foo: string = 'bar';
+    }
+
+    const schema = getClassSchema(User);
+    expect(schema.getProperty('username').groupNames).toEqual([]);
+    expect(schema.getProperty('password').groupNames).toEqual(['confidential']);
+    expect(schema.getProperty('config').groupNames).toEqual(['details']);
+
+    expect(schema.getPropertiesByGroup('confidential')).toBeArrayOfSize(1);
+    expect(schema.getPropertiesByGroup('confidential')[0].name).toBe('password');
+
+    expect(schema.getPropertiesByGroup('details')).toBeArrayOfSize(1);
+    expect(schema.getPropertiesByGroup('details')[0].name).toBe('config');
+
+    const user = new User();
+
+    {
+        const plain = partialClassToPlain(User, user);
+        expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
+        expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily', 'language']);
+    }
+
+    {
+        const plain = partialClassToPlain(User, user, {groups: ['confidential']});
+        expect(Object.keys(plain)).toEqual(['password']);
+    }
+
+    {
+        const plain = classToPlain(User, user, {groups: ['confidential']});
+        expect(Object.keys(plain)).toEqual(['password']);
+    }
+
+    {
+        const plain = partialClassToPlain(User, user, {groupsExclude: ['confidential']});
+        expect(Object.keys(plain)).toEqual(['username', 'config', 'foo']);
+        expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily', 'language']);
+    }
+
+    {
+        const plain = partialClassToPlain(User, user, {groupsExclude: ['confidential', 'details']});
+        expect(Object.keys(plain)).toEqual(['username', 'foo']);
+    }
+
+    {
+        const plain = partialClassToPlain(User, user, {groupsExclude: ['theme']});
+        expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
+        expect(Object.keys(plain.config)).toEqual(['language']);
+    }
+
+    {
+        const plain = partialClassToPlain(User, user, {groups: ['theme', 'details']});
+        expect(Object.keys(plain)).toEqual(['config']);
+        expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily']);
+    }
+
+    {
+        const plain = partialClassToPlain(User, user, {groups: ['text', 'details']});
+        expect(Object.keys(plain)).toEqual(['config']);
+        expect(Object.keys(plain.config)).toEqual(['fontSize', 'fontFamily']);
+    }
 });

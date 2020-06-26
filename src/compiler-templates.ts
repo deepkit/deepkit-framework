@@ -138,7 +138,7 @@ export function compilerConvertClassToX(toFormat: string) {
     return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
         const classType = reserveVariable();
         return {
-            template: `${setter} = createClassToXFunction(${classType}, '${toFormat}')(${accessor});`,
+            template: `${setter} = createClassToXFunction(${classType}, '${toFormat}')(${accessor}, _options);`,
             context: {
                 [classType]: property.resolveClassType,
                 createClassToXFunction,

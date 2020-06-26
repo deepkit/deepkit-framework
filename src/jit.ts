@@ -124,6 +124,27 @@ export class CacheJitPropertyConverter {
     }
 }
 
+export interface JitConverterOptions {
+    /**
+     * Which groups to include. If a property is not assigned to
+     * a given group, it will be excluded.
+     */
+    groups?: string[];
+
+    /**
+     * Which groups to exclude. If a property is assigned to at least
+     * one given group, it will be excluded. Basically the opposite of
+     * `groups`, but you can combine both.
+     */
+    groupsExclude?: string[];
+
+    /**
+     * When target is class instance and a property has @ParentReference you can
+     * pass instances so the reference can be resolved, for cases
+     * where its impossible to resolve otherwise.
+     */
+    parents?: any[];
+}
 
 /**
  * Creates a new JIT compiled function to convert given property schema for certain paths.
@@ -139,7 +160,8 @@ export class JitPropertyConverter {
     constructor(
         public readonly fromFormat: string,
         public readonly toFormat: string,
-        classType: ClassType<any>
+        private classType: ClassType<any>,
+        private options: JitConverterOptions = {}
     ) {
         this.schema = getClassSchema(classType);
         this.schema.initializeProperties();
@@ -151,7 +173,7 @@ export class JitPropertyConverter {
         }
     }
 
-    convert(path: string, value: any, parents?: any[]): any {
+    convert(path: string, value: any, result?: any): any {
         let property: PropertyCompilerSchema;
 
         try {
@@ -160,23 +182,46 @@ export class JitPropertyConverter {
             return;
         }
 
-        return this.convertProperty(property, value, parents);
+        if (this.options.groups) {
+            let found = false;
+            for (const groupName of property.groupNames) {
+                if (this.options.groups.includes(groupName)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return;
+        }
+
+        if (this.options.groupsExclude) {
+            for (const groupName of property.groupNames) {
+                if (this.options.groupsExclude.includes(groupName)) {
+                    return;
+                }
+            }
+        }
+
+        if (result) {
+            result[path] = this.convertProperty(property, value);
+        } else {
+            return this.convertProperty(property, value);
+        }
     }
 
-    convertProperty(property: PropertyCompilerSchema, value: any, parents?: any[]): any {
+    convertProperty(property: PropertyCompilerSchema, value: any): any {
         if (property.isParentReference) {
             return;
         }
 
         const jit = this.cacheJitPropertyMap.get(property);
         if (jit) {
-            return jit(value, parents);
+            return jit(value, this.options.parents, this.options);
         }
 
         const context = new Map<any, any>();
 
         const functionCode = `
-        return function(_value, _parents) {
+        return function(_value, _parents, _options) {
             var result, _state;
             function getParents() {
                 return _parents;
@@ -196,7 +241,7 @@ export class JitPropertyConverter {
         const fn = compiled.bind(undefined, ...context.values())();
         this.cacheJitPropertyMap.set(property, fn);
 
-        return fn(value, parents);
+        return fn(value, this.options.parents, this.options);
     }
 }
 
@@ -275,8 +320,32 @@ export class ToClassState {
     onFullLoadCallbacks: (() => void)[] = [];
 }
 
+function isGroupAllowed(options: JitConverterOptions, groupNames: string[]): boolean {
+    if (!options.groups && !options.groupsExclude) return true;
+
+    if (options.groupsExclude && options.groupsExclude.length) {
+        for (const groupName of groupNames) {
+            if (options.groupsExclude.includes(groupName)) {
+                return false;
+            }
+        }
+    }
+
+    if (options.groups && options.groups.length) {
+        for (const groupName of groupNames) {
+            if (options.groups.includes(groupName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    return true;
+}
+
 export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: string | 'plain')
-    : (instance: T) => any {
+    : (instance: T, options?: JitConverterOptions) => any {
     if (toFormat === 'plain') {
         let jit = JITClassToPlainCache.get(classType);
         if (jit) return jit;
@@ -299,7 +368,7 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
         const property = schema.getProperty(decoratorName);
 
         functionCode = `
-        return function(_instance) {
+        return function(_instance, _options) {
             if (_instance.${decoratorName} === null) return null;
             if (_instance.${decoratorName} === undefined) return;
             var result, _state;
@@ -325,16 +394,18 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
             }
 
             convertProperties.push(`
+            if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){ 
                 if (_instance.${property.name} === null) {
                     _data.${property.name} = null;
                 } else if (_instance.${property.name} !== undefined){
                     ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, 'class', toFormat, context)}
                 }
+            }
         `);
         }
 
         functionCode = `
-        return function(_instance) {
+        return function(_instance, _options) {
             const _data = {};
             MarshalGlobal.unpopulatedCheckActive = false;
             ${convertProperties.join('\n')}
@@ -346,8 +417,8 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
 
     try {
-        const compiled = new Function('_classType', 'MarshalGlobal', ...context.keys(), functionCode);
-        const fn = compiled(classType, MarshalGlobal, ...context.values());
+        const compiled = new Function('_classType', 'MarshalGlobal', 'isGroupAllowed', ...context.keys(), functionCode);
+        const fn = compiled(classType, MarshalGlobal, isGroupAllowed, ...context.values());
         if (toFormat === 'plain') {
             JITClassToPlainCache.set(classType, fn);
         } else {
@@ -362,7 +433,7 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 }
 
 export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
-    : (data: { [name: string]: any }, parents?: any[], state?: ToClassState) => T {
+    : (data: { [name: string]: any }, options?: JitConverterOptions, state?: ToClassState) => T {
     if (fromTarget === 'plain') {
         let jit = JITPlainToClassCache.get(classType);
         if (jit) return jit;
@@ -416,8 +487,10 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
             setProperties.push(getParentResolverJS(classType, `_instance.${property.name}`, property, context));
         } else {
             setProperties.push(`
+            if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
             if (undefined !== _data.${property.name} && null !== _data.${property.name}) {
                 ${getDataConverterJS(`_instance.${property.name}`, `_data.${property.name}`, property, fromTarget, 'class', context)}
+            }
             }
             `);
         }
@@ -460,8 +533,9 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     }
 
     const functionCode = `
-        return function(_data, _parents, _state) {
+        return function(_data, _options, _state) {
             var _instance, parentsWithItem;
+            var _parents = _options ? _options.parents : [];
             function getParents() {
                 if (parentsWithItem) return parentsWithItem;
                 parentsWithItem = _parents ? _parents.slice(0) : [];
@@ -480,8 +554,8 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     `;
 
     try {
-        const compiled = new Function('_classType', 'ToClassState', ...context.keys(), functionCode);
-        const fn = compiled(classType, ToClassState, ...context.values());
+        const compiled = new Function('_classType', 'ToClassState', 'isGroupAllowed', ...context.keys(), functionCode);
+        const fn = compiled(classType, ToClassState, isGroupAllowed, ...context.values());
         if (fromTarget === 'plain') {
             JITPlainToClassCache.set(classType, fn);
         } else {
@@ -495,17 +569,17 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     }
 }
 
-export function jitPlainToClass<T>(classType: ClassType<T>, data: any, parents?: any[]): T {
-    return createXToClassFunction(classType, 'plain')(data, parents);
+export function jitPlainToClass<T>(classType: ClassType<T>, data: any, options: JitConverterOptions = {}): T {
+    return createXToClassFunction(classType, 'plain')(data, options);
 }
 
 
-export function jitClassToPlain<T>(classType: ClassType<T>, instance: T): Partial<T> {
+export function jitClassToPlain<T>(classType: ClassType<T>, instance: T, options: JitConverterOptions = {}): Partial<T> {
     if (!(instance instanceof classType)) {
         throw new Error(`Could not classToPlain since target is not a class instance of ${getClassName(classType)}`);
     }
 
-    return createClassToXFunction(classType, 'plain')(instance);
+    return createClassToXFunction(classType, 'plain')(instance, options);
 }
 
 export function jitPartial<T, K extends keyof T>(
@@ -513,24 +587,31 @@ export function jitPartial<T, K extends keyof T>(
     toFormat: string,
     classType: ClassType<T>,
     partial: { [name: string]: any },
-    parents?: any[]
+    options: JitConverterOptions = {}
 ): Partial<{ [F in K]: any }> {
     const result: Partial<{ [F in K]: any }> = {};
-    const jitConverter = new JitPropertyConverter(fromFormat, toFormat, classType);
+    const jitConverter = new JitPropertyConverter(fromFormat, toFormat, classType, options);
 
     for (const i in partial) {
         if (!partial.hasOwnProperty(i)) continue;
-        result[i] = result[i] = jitConverter.convert(i, partial[i], parents);
+        jitConverter.convert(i, partial[i], result);
     }
 
     return result;
 }
 
-
-export function jitPartialClassToPlain<T, K extends keyof T>(classType: ClassType<T>, partial: { [name: string]: any }): Partial<{ [F in K]: any }> {
-    return jitPartial('class', 'plain', classType, partial);
+export function jitPartialClassToPlain<T, K extends keyof T>(
+    classType: ClassType<T>,
+    partial: { [name: string]: any },
+    options: JitConverterOptions = {}
+): Partial<{ [F in K]: any }> {
+    return jitPartial('class', 'plain', classType, partial, options);
 }
 
-export function jitPartialPlainToClass<T, K extends keyof T>(classType: ClassType<T>, partial: { [name: string]: any }, parents?: any[]): Partial<{ [F in K]: any }> {
-    return jitPartial('plain', 'class', classType, partial, parents);
+export function jitPartialPlainToClass<T, K extends keyof T>(
+    classType: ClassType<T>,
+    partial: { [name: string]: any },
+    options: JitConverterOptions = {}
+): Partial<{ [F in K]: any }> {
+    return jitPartial('plain', 'class', classType, partial, options);
 }

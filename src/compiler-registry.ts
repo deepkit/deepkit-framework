@@ -140,7 +140,7 @@ export function getDataConverterJS(
         const varClassType = reserveVariable(rootContext);
         rootContext.set('jitPartial', jitPartial);
         rootContext.set(varClassType, property.resolveClassType);
-        return `${setter} = jitPartial('${fromFormat}', '${toFormat}', ${varClassType}, ${accessor})`;
+        return `${setter} = jitPartial('${fromFormat}', '${toFormat}', ${varClassType}, ${accessor}, _options)`;
     } else if (compiler) {
         return executeCompiler(rootContext, compiler, setter, accessor, property);
     } else {
