@@ -111,7 +111,7 @@ registerConverterCompiler('mongo', 'class', 'class', (setter: string, accessor: 
 
     return {
         template: `
-            ${setter} = createXToClassFunction(${classType}, 'mongo')(${accessor}, getParents(), _state);
+            ${setter} = createXToClassFunction(${classType}, 'mongo')(${accessor}, _options, getParents(), _state);
         `,
         context: {
             [classType]: property.resolveClassType,
