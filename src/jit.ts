@@ -416,7 +416,7 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 }
 
 export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
-    : (data: { [name: string]: any }, options?: JitConverterOptions, state?: ToClassState) => T {
+    : (data: { [name: string]: any }, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
     if (fromTarget === 'plain') {
         let jit = JITPlainToClassCache.get(classType);
         if (jit) return jit;
