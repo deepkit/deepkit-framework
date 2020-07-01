@@ -568,3 +568,65 @@ test('set any param', () => {
         expect(props[1].type).toBe('any');
     }
 });
+
+
+test('set array result', () => {
+    function DummyDecorator() {
+        return (target: Object, property: string) => {
+        };
+    }
+
+    class Item {
+        constructor(
+            @f public title: string
+        ) {
+        }
+    }
+
+    class Controller {
+        @DummyDecorator()
+        items1(): Item[] {
+            return [];
+        }
+
+        @DummyDecorator()
+        async items2(): Promise<Item[]> {
+            return [];
+        }
+
+        @f.any()
+        items3(): Item[] {
+            return [];
+        }
+
+        @f.any()
+        async items4(): Promise<Item[]> {
+            return [];
+        }
+    }
+    const s = getClassSchema(Controller);
+
+    {
+        const prop = s.getMethod('items1');
+        expect(prop.type).toBe('any');
+        expect(prop.isArray).toBe(true);
+    }
+
+    {
+        const prop = s.getMethod('items2');
+        expect(prop.type).toBe('any');
+        expect(prop.isArray).toBe(false);
+    }
+
+    {
+        const prop = s.getMethod('items3');
+        expect(prop.type).toBe('any');
+        expect(prop.isArray).toBe(false); //because we explicitly set any()
+    }
+
+    {
+        const prop = s.getMethod('items4');
+        expect(prop.type).toBe('any');
+        expect(prop.isArray).toBe(false);
+    }
+});
