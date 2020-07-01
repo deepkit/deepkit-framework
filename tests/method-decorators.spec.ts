@@ -218,7 +218,7 @@ test('no decorators', () => {
         const s = getClassSchema(Controller);
         s.getMethodProperties('foo');
 
-    }).toThrow('Method foo has no decorators used, so reflection does not work');
+    }).toThrow('Method foo has no decorators used');
 });
 
 test('partial', () => {
@@ -439,21 +439,27 @@ test('hasMethod and templateArgs', () => {
     }
 
     const s = getClassSchema(Controller);
-    expect(s.hasMethod('foo')).toBe(false);
+    expect(s.hasMethod('unknown')).toBe(false);
+    expect(s.hasMethod('foo')).toBe(true);
     expect(s.hasMethod('foo2')).toBe(true);
     expect(s.hasMethod('foo3')).toBe(true);
-    expect(s.hasMethod('foo4')).toBe(false);
+    expect(s.hasMethod('foo4')).toBe(true);
 
     expect(s.getMethod('foo3').getTemplateArg(0)!.type).toBe('boolean');
     expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
 
+    expect(() => {
+        expect(s.getMethod('unknown')).toBeUndefined();
+    }).toThrow('Method unknown has no decorators used or is not defined')
+
     s.getMethodProperties('foo2');
     s.getMethodProperties('foo3');
     s.getMethodProperties('foo4');
-    expect(s.hasMethod('foo')).toBe(false);
+    expect(s.hasMethod('unknown')).toBe(false);
+    expect(s.hasMethod('foo')).toBe(true);
     expect(s.hasMethod('foo2')).toBe(true);
     expect(s.hasMethod('foo3')).toBe(true);
-    expect(s.hasMethod('foo4')).toBe(false);
+    expect(s.hasMethod('foo4')).toBe(true);
 
     expect(s.getMethod('foo3').getTemplateArg(0)!.type).toBe('boolean');
     expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
