@@ -698,6 +698,10 @@ export class ClassSchema<T = any> {
      * Returns true if the method got a @f decorator.
      */
     public hasMethod(name: string): boolean {
+        try {
+            this.initializeMethod(name);
+        } catch {}
+
         return !!this.methods[name];
     }
 
@@ -708,7 +712,7 @@ export class ClassSchema<T = any> {
     protected initializeMethod(name: string) {
         if (!this.initializedMethods[name]) {
             if (!Reflect.hasMetadata('design:returntype', this.classType.prototype, name)) {
-                throw new Error(`Method ${name} has no decorators used, so reflection does not work. Use @f on the method or arguments.`);
+                throw new Error(`Method ${name} has no decorators used or is not defined, so reflection does not work. Use @f on the method or arguments.`);
             }
 
             if (!this.methods[name]) {
