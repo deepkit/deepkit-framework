@@ -351,10 +351,19 @@ export class PropertySchema extends PropertyCompilerSchema {
 
         this.type = PropertySchema.getTypeFromJSType(type);
 
+        if (type === Array) {
+            //array doesnt have any other options, so we only know its an array
+            //of any type
+            this.isArray = true;
+            return;
+        }
+
         const isCustomObject = !typedArrayMap.has(type)
             && type !== 'any'
+            && type !== Array
             && type !== Object
         ;
+
 
         if (isCustomObject) {
             this.type = 'class';
@@ -709,6 +718,9 @@ export class ClassSchema<T = any> {
                     //we assume no meta data is given when Promise is defined, as it basically tells us nothing.
                     this.methods[name] = new PropertySchema(name);
                     this.methods[name].setFromJSType(returnType);
+                } else {
+                    //any per default
+                    this.methods[name] = new PropertySchema(name);
                 }
             }
 
