@@ -1,0 +1,58 @@
+{
+  "name": "@marcj/marshal",
+  "version": "2.1.13",
+  "description": "Marshal is a library to marshal JSON-representable data from JSON to class instance to Mongo and vice versa.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "repository": "https://github.com/marcj/marshal",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "peerDependencies": {
+    "moment": "^2.0.0"
+  },
+  "optionalDependencies": {
+    "moment": "^2.0.0"
+  },
+  "dependencies": {
+    "@marcj/estdlib": "^0.1.19",
+    "buffer": "^5.4.3",
+    "clone": "^2.1.2",
+    "get-parameter-names": "^0.3.0",
+    "uuid": "^3.2.1"
+  },
+  "devDependencies": {
+    "@types/clone": "^0.1.30",
+    "@types/moment": "^2.0.0",
+    "moment": "^2.0.0"
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "collectCoverageFrom": [
+      "**/*.{ts}",
+      "!**/node_modules/**",
+      "!**/lib/**/*",
+      "!**/*.d.ts",
+      "!index.ts"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/*.spec.ts"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
