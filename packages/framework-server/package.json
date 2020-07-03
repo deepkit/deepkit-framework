@@ -1,0 +1,83 @@
+{
+  "name": "@marcj/glut-server",
+  "version": "0.0.33",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "author": "Kamille Team",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "peerDependencies": {
+    "@marcj/glut-core": "0.0.1",
+    "@marcj/marshal": "^2.1.1",
+    "@marcj/marshal-mongo": "^2.1.1",
+    "bson-ext": "^2.0.3",
+    "buffer": "^5.2.1",
+    "mongodb": "^3.3.2",
+    "reflect-metadata": "^0.1.12",
+    "rxjs": "~6.5.3"
+  },
+  "dependencies": {
+    "@marcj/estdlib": "^0.1.17",
+    "@marcj/estdlib-rxjs": "^0.1.17",
+    "clone": "^2.1.1",
+    "fs-extra": "^6.0.1",
+    "injection-js": "^2.2.1",
+    "live-mutex": "^0.1.1066",
+    "md5": "^2.2.1",
+    "redis": "^2.8.0",
+    "redlock": "^3.1.2",
+    "sift": "^7.0.1",
+    "ws": "^7.2.1"
+  },
+  "devDependencies": {
+    "@marcj/glut-core": "^0.0.33",
+    "@marcj/marshal": "^2.1.1",
+    "@marcj/marshal-mongo": "^2.1.1",
+    "@types/clone": "^0.1.30",
+    "@types/fs-extra": "^5.0.2",
+    "@types/mongodb": "^3.1.14",
+    "@types/node": "^12.12.6",
+    "@types/redis": "^2.8.8",
+    "@types/redlock": "^3.0.2",
+    "@types/ws": "^6.0.1",
+    "awesome-typescript-loader": "^5.2.1",
+    "bson-ext": "^2.0.3",
+    "buffer": "^5.2.1",
+    "cache-loader": "^1.2.2",
+    "mongodb": "^3.3.2",
+    "reflect-metadata": "^0.1.12",
+    "rxjs": "~6.5.3",
+    "source-map": "^0.7.3",
+    "source-map-support": "^0.5.9"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@marcj/glut-*)"
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfig": "tsconfig.run.json"
+    }
+  }
+}
