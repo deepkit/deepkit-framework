@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "es2016",
+    "preserveSymlinks": true
+  },
+  "include": [
+    "src/",
+    "node_modules/@marcj/glut-*/index.ts",
+    "node_modules/@marcj/glut-*/src/**/*.ts"
+  ]
+}
