@@ -1,0 +1,55 @@
+{
+  "name": "@marcj/glut-core",
+  "version": "0.0.33",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Kamille Team",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "peerDependencies": {
+    "@marcj/marshal": "^2.1.1",
+    "buffer": "^5.2.1",
+    "reflect-metadata": "^0.1.12",
+    "rxjs": "~6.5.3"
+  },
+  "dependencies": {
+    "@marcj/estdlib": "^0.1.17",
+    "@marcj/estdlib-rxjs": "^0.1.17",
+    "fast-json-patch": "^2.1.0"
+  },
+  "devDependencies": {
+    "@marcj/marshal": "^2.1.1",
+    "@types/fs-extra": "^5.0.4",
+    "buffer": "^5.2.1",
+    "rxjs": "~6.5.3"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@deepkit)"
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfigFile": "tsconfig.json"
+    }
+  }
+}
