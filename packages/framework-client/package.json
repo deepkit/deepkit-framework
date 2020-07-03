@@ -1,0 +1,57 @@
+{
+  "name": "@marcj/glut-client",
+  "version": "0.0.33",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Kamille Team",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "peerDependencies": {
+    "@marcj/glut-core": "0.0.2",
+    "@marcj/marshal": "^2.1.1",
+    "reflect-metadata": "^0.1.12",
+    "rxjs": "~6.5.3"
+  },
+  "dependencies": {
+    "@marcj/estdlib": "^0.1.17",
+    "@marcj/estdlib-rxjs": "^0.1.17",
+    "dot-prop": "^4.2.0",
+    "ws": "^6.1.2"
+  },
+  "devDependencies": {
+    "@marcj/glut-core": "^0.0.33",
+    "@marcj/marshal": "^2.1.1",
+    "@types/dot-prop": "^4.2.0",
+    "@types/ws": "^6.0.1",
+    "reflect-metadata": "^0.1.13"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@marcj/glut-*)"
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupTestFrameworkScriptFile": "jest-extended"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfig": "tsconfig.run.json"
+    }
+  }
+}
