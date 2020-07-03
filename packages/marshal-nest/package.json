@@ -1,0 +1,47 @@
+{
+  "name": "@marcj/marshal-nest",
+  "version": "2.1.13",
+  "description": "A plugin for NestJS to convert HTTP Body to your class instance with validation using Marshal",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "peerDependencies": {
+    "@marcj/marshal": "^0.8.3",
+    "@nestjs/common": "^5.0.0",
+    "rxjs": "^6.0.0"
+  },
+  "devDependencies": {
+    "@marcj/marshal": "^2.1.13",
+    "@nestjs/common": "^5.0.0",
+    "rxjs": "^6.0.0"
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/node_modules/**",
+      "!**/lib/**/*",
+      "!**/*.d.ts",
+      "!index.ts"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/*.spec.ts"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
