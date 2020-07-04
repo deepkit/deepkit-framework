@@ -5,6 +5,8 @@ projects like complex admin interfaces, games, desktop and mobile apps.
 
 Super Hornet consists of many components that can be used alone or in combination with the Super Hornet framework.
 
+**NOTE**: We have only recently created this project. Website and docs will follow soon.
+
 ## Components:
 
 ### super-hornet/framework
