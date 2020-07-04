@@ -1,6 +1,7 @@
-import sift, {SiftQuery} from "sift";
-import {FilterQuery} from "@marcj/glut-core";
+import sift, {SiftQuery, SupportedTypes} from "sift";
+import {FilterQuery} from "@super-hornet/framework-core";
 
-export function findQuerySatisfied<T extends { [index: string]: any }>(target: { [index: string]: any }, query: FilterQuery<T>): boolean {
-    return sift(query as SiftQuery<T[]>, [target]).length > 0;
+export function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: FilterQuery<T>): boolean {
+    //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."
+    return sift(query as any, [target] as any[]).length > 0;
 }

@@ -1,6 +1,6 @@
 import {ClassSchema, getClassSchema, MarshalGlobal, PropertyCompilerSchema, PropertySchema} from "./decorators";
 import {getDecorator, isExcluded} from "./mapper";
-import {ClassType, getClassName, getClassPropertyName} from "@marcj/estdlib";
+import {ClassType, getClassName, getClassPropertyName} from "@super-hornet/core";
 import {getDataConverterJS, reserveVariable} from "./compiler-registry";
 
 export let moment: any = () => {

@@ -1,6 +1,6 @@
 import {IdInterface} from "./contract";
-import {Entity, f, uuid} from "@marcj/marshal";
-import {ClassType, eachKey} from "@marcj/estdlib";
+import {Entity, f, uuid} from "@super-hornet/marshal";
+import {ClassType, eachKey} from "@super-hornet/core";
 
 export enum FileMode {
     closed,
@@ -8,7 +8,7 @@ export enum FileMode {
 }
 
 @Entity('file', 'files')
-export class GlutFile implements IdInterface {
+export class File implements IdInterface {
     @f.primary().uuid()
     id: string = uuid();
 
@@ -96,14 +96,14 @@ export class GlutFile implements IdInterface {
     }
 }
 
-export class FileType<T extends GlutFile> {
+export class FileType<T extends File> {
     constructor(public readonly classType: ClassType<T>) {}
 
     static forDefault() {
-        return new FileType(GlutFile);
+        return new FileType(File);
     }
 
-    static forCustomType<T extends GlutFile>(classType: ClassType<T>) {
+    static forCustomType<T extends File>(classType: ClassType<T>) {
         return new FileType(classType);
     }
 

@@ -8,7 +8,7 @@ your MongoDB or somewhere else. With Marshal this scenario is super
 simple and you do not need any manual transformations.
 
 ```
-npm install @marcj/marshal @marcj/marshal-mongo @marcj/marshal-nest
+npm install @super-hornet/marshal @super-hornet/marshal-mongo @super-hornet/marshal-nest
 ```
 
 ```typescript
@@ -16,9 +16,9 @@ import {
     Controller, Get, Param, Post, Body
 } from '@nestjs/common';
 
-import {SimpleModel} from "@marcj/marshal/tests/entities";
-import {plainToClass, Database, classToPlain} from "@marcj/marshal";
-import {ValidationPipe} from "@marcj/marshal-nest";
+import {SimpleModel} from "@super-hornet/marshal/tests/entities";
+import {plainToClass, Database, classToPlain} from "@super-hornet/marshal";
+import {ValidationPipe} from "@super-hornet/marshal-nest";
 import {createConnection} from "typeorm";
 
 @Controller()

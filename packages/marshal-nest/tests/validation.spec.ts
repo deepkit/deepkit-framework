@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import 'jest-extended'
-import {validate, f} from "@marcj/marshal";
+import {validate, f} from "@super-hornet/marshal";
 import {ValidationPipe} from '../';
 import {BadRequestException} from '@nestjs/common';
 

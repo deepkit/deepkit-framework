@@ -4,7 +4,7 @@ import {performance} from 'perf_hooks';
 
 (async () => {
     {
-        const client = new Exchange('/tmp/glut-lock-benchmark');
+        const client = new Exchange('/tmp/super-hornet-lock-benchmark');
         await client.connect();
 
         const start = performance.now();
@@ -22,7 +22,7 @@ import {performance} from 'perf_hooks';
     }
 
     {
-        const client = new Exchange('/tmp/glut-lock-benchmark');
+        const client = new Exchange('/tmp/super-hornet-lock-benchmark');
         await client.connect();
         const start = performance.now();
 

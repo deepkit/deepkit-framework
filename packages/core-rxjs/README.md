@@ -6,14 +6,14 @@
 ### Installation
 
 ```
-npm install @marcj/estdlib-rxjs
+npm install @super-hornet/core-rxjs
 ```
 
 
 ### Usage example
 
 ```typescript
-import {Subscriptions} from "@marcj/estdlib-rxjs";
+import {Subscriptions} from "@super-hornet/core-rxjs";
 
 class MyComponent implements OnDestroy, OnInit {
     private subs = new Subscriptions;

@@ -5,7 +5,7 @@ import {
     getEntityName,
     getIdField,
     resolveClassTypeOrForward
-} from "@marcj/marshal";
+} from "@super-hornet/marshal";
 import {
     classToMongo,
     convertClassQueryToMongo,
@@ -15,7 +15,7 @@ import {
 } from "./mapping";
 import {NoIDDefinedError, NotFoundError} from "./database";
 import {Formatter, markAsHydrated} from "./formatter";
-import {ClassType, eachPair, getClassName} from "@marcj/estdlib";
+import {ClassType, eachPair, getClassName} from "@super-hornet/core";
 import {FilterQuery, FindOneOptions} from "mongodb";
 import {BaseQuery, DatabaseQuery, QueryMode, SORT} from "./query";
 import {

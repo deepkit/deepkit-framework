@@ -1,4 +1,4 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
 import {
     Action,
@@ -6,15 +6,15 @@ import {
     ValidationError,
     ValidationErrorItem,
     ValidationParameterError
-} from "@marcj/glut-core";
+} from "@super-hornet/framework-core";
 import {closeAllCreatedServers, createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount, first, skip} from "rxjs/operators";
-import {Entity, f, getClassSchema, PropertySchema} from '@marcj/marshal';
-import {ObserverTimer} from "@marcj/estdlib-rxjs";
-import {isArray} from '@marcj/estdlib';
-import {JSONError} from "@marcj/glut-core";
-import {ClientProgress} from "@marcj/glut-client";
+import {Entity, f, getClassSchema, PropertySchema} from '@super-hornet/marshal';
+import {ObserverTimer} from "@super-hornet/core-rxjs";
+import {isArray} from '@super-hornet/core';
+import {JSONError} from "@super-hornet/framework-core";
+import {ClientProgress} from "@super-hornet/framework-client";
 
 afterAll(async () => {
     await closeAllCreatedServers();
@@ -23,7 +23,7 @@ afterAll(async () => {
 // @ts-ignore
 global['WebSocket'] = require('ws');
 
-@Entity('user')
+@Entity('controller-basic/user')
 class User {
     constructor(@f public name: string) {
         this.name = name;
@@ -40,7 +40,7 @@ class MyCustomError {
     }
 }
 
-test('test basic setup and methods', async () => {
+test('basic setup and methods', async () => {
     @Controller('test')
     class TestController {
         @Action()
@@ -82,10 +82,10 @@ test('test basic setup and methods', async () => {
         expect(u).toBeInstanceOf(PropertySchema);
         expect(u.type).toBe('class');
         expect(u.classType).toBe(User);
-        expect(u.toJSON()).toEqual({name: '0', type: 'class', classType: 'user'});
+        expect(u.toJSON()).toEqual({name: '0', type: 'class', classType: 'controller-basic/user'});
     }
 
-    const {client, close} = await createServerClientPair('test basic setup and methods', [TestController]);
+    const {client, close} = await createServerClientPair('basic setup and methods', [TestController]);
     {
         const types = await client.getActionTypes('test', 'names');
         expect(types.parameters[0].type).toBe('string');
@@ -159,7 +159,7 @@ test('test basic setup and methods', async () => {
 });
 
 
-test('test basic serialisation: primitives', async () => {
+test('basic serialisation: primitives', async () => {
     @Controller('test')
     class TestController {
         @Action()
@@ -169,7 +169,7 @@ test('test basic serialisation: primitives', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test basic setup primitives', [TestController]);
+    const {client, close} = await createServerClientPair('basic setup primitives', [TestController]);
 
     const test = client.controller<TestController>('test');
     const names = await test.names(16 as any as string);
@@ -179,7 +179,7 @@ test('test basic serialisation: primitives', async () => {
     await close();
 });
 
-test('test basic serialisation return: entity', async () => {
+test('basic serialisation return: entity', async () => {
     @Controller('test')
     class TestController {
         @Action()
@@ -219,7 +219,7 @@ test('test basic serialisation return: entity', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test basic serialisation return: entity', [TestController]);
+    const {client, close} = await createServerClientPair('basic serialisation entity', [TestController]);
 
     const test = client.controller<TestController>('test');
     const user = await test.user('peter');
@@ -258,7 +258,7 @@ test('test basic serialisation return: entity', async () => {
     await close();
 });
 
-test('test basic serialisation param: entity', async () => {
+test('basic serialisation param: entity', async () => {
     @Controller('test')
     class TestController {
         @Action()
@@ -267,7 +267,7 @@ test('test basic serialisation param: entity', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test basic serialisation param: entity', [TestController]);
+    const {client, close} = await createServerClientPair('serialisation param: entity', [TestController]);
 
     const test = client.controller<TestController>('test');
     const userValid = await test.user(new User('peter2'));
@@ -276,7 +276,7 @@ test('test basic serialisation param: entity', async () => {
     await close();
 });
 
-test('test basic serialisation partial param: entity', async () => {
+test('basic serialisation partial param: entity', async () => {
     @Entity('user3')
     class User {
         @f
@@ -319,7 +319,7 @@ test('test basic serialisation partial param: entity', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test basic serialisation partial param: entity', [TestController]);
+    const {client, close} = await createServerClientPair('serialisation partial param: entity', [TestController]);
 
     const test = client.controller<TestController>('test');
     //

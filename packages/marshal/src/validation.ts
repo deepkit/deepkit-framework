@@ -1,4 +1,4 @@
-import {ClassType, typeOf} from "@marcj/estdlib";
+import {ClassType, typeOf} from "@super-hornet/core";
 import {getClassSchema, PropertyCompilerSchema, PropertyValidator,} from "./decorators";
 import {jitValidate, jitValidateProperty} from "./jit-validation";
 

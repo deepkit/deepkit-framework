@@ -1,7 +1,7 @@
 import {Collection, MongoClient, MongoClientOptions} from "mongodb";
-import {getDatabaseName} from "@marcj/marshal";
+import {getDatabaseName} from "@super-hornet/marshal";
 import {resolveCollectionName} from "./database-session";
-import {ClassType} from "@marcj/estdlib";
+import {ClassType} from "@super-hornet/core";
 
 export class Connection {
     protected client?: MongoClient;

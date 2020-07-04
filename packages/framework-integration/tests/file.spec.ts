@@ -1,11 +1,11 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
-import {Action, Controller, GlutFile, StreamBehaviorSubject} from "@marcj/glut-core";
-import {EntityStorage, FS} from "@marcj/glut-server";
+import {Action, Controller, File, StreamBehaviorSubject} from "@super-hornet/framework-core";
+import {EntityStorage, FS} from "@super-hornet/framework-server";
 import {closeAllCreatedServers, createServerClientPair} from "./util";
-import {sleep} from '@marcj/estdlib';
+import {sleep} from '@super-hornet/core';
 import {Buffer} from 'buffer';
-import {arrayBufferTo} from "@marcj/marshal";
+import {arrayBufferTo} from "@super-hornet/marshal";
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -19,7 +19,7 @@ test('test file list', async () => {
     class TestController {
         constructor(
             private storage: EntityStorage,
-            private fs: FS<GlutFile>,
+            private fs: FS<File>,
         ) {
 
         }
@@ -52,7 +52,7 @@ test('test file list', async () => {
 
         @Action()
         async files() {
-            return this.storage.collection(GlutFile).filter({
+            return this.storage.collection(File).filter({
                 path: {$regex: /^test2/}
             }).find();
         }
@@ -86,7 +86,7 @@ test('test file stream', async () => {
     class TestController {
         constructor(
             private storage: EntityStorage,
-            private fs: FS<GlutFile>,
+            private fs: FS<File>,
         ) {
 
         }

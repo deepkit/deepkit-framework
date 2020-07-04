@@ -1,4 +1,4 @@
-import {Entity, f, uuid} from "@marcj/marshal";
+import {Entity, f, uuid} from "@super-hornet/marshal";
 import {User} from "./user";
 
 @Entity('b-user-credentials')

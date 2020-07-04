@@ -1,5 +1,5 @@
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from "@marcj/marshal";
-import {ClassType, getClassName} from "@marcj/estdlib";
+import {ClassSchema, getClassTypeFromInstance} from "@super-hornet/marshal";
+import {ClassType, getClassName} from "@super-hornet/core";
 
 const globalKnownInDB = new WeakMap<any, {
     lastKnownPK: any,

@@ -1,4 +1,4 @@
-import {PropertySchema, uuid, createJITConverterFromPropertySchema} from "@marcj/marshal";
+import {PropertySchema, uuid, createJITConverterFromPropertySchema} from "@super-hornet/marshal";
 import {Exchange} from "./exchange";
 import {
     ActionTypes,
@@ -12,9 +12,9 @@ import {
     ServerMessageErrorGeneral,
     ServerMessageResult,
     EntityState
-} from "@marcj/glut-core";
+} from "@super-hornet/framework-core";
 import {Subscription} from "rxjs";
-import {each, eachKey} from "@marcj/estdlib";
+import {each, eachKey} from "@super-hornet/core";
 import {Injectable} from "injection-js";
 import {ProcessLocker} from "./process-locker";
 

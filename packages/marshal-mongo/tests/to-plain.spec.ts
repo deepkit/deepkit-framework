@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import {ObjectID} from "mongodb";
-import {f} from "@marcj/marshal";
+import {f} from "@super-hornet/marshal";
 import {mongoToPlain, partialMongoToPlain} from "../src/mapping";
 import {uuid4Binary} from "../src/compiler-templates";
 

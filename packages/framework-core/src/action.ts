@@ -1,5 +1,5 @@
-import {eachPair, isPromise} from "@marcj/estdlib";
-import {createJITConverterFromPropertySchema, getClassSchema, jitValidateProperty, PropertySchema, ValidationError} from "@marcj/marshal";
+import {eachPair, isPromise} from "@super-hornet/core";
+import {createJITConverterFromPropertySchema, getClassSchema, jitValidateProperty, PropertySchema, ValidationError} from "@super-hornet/marshal";
 import {ValidationErrorItem, ValidationParameterError} from "./core";
 
 export type ActionTypes = { parameters: PropertySchema[] };

@@ -9,9 +9,10 @@ import {
     partialPlainToClass,
     plainToClass,
     resolvePropertyCompilerSchema,
-} from "@marcj/marshal";
-import {ClassType, eachKey, isPlainObject, getClassName} from "@marcj/estdlib";
+} from "@super-hornet/marshal";
+import {ClassType, eachKey, isPlainObject, getClassName} from "@super-hornet/core";
 import './compiler-templates';
+import {FilterQuery} from "mongodb";
 
 export function mongoToClass<T>(classType: ClassType<T>, record: any, options: JitConverterOptions = {}): T {
     return createXToClassFunction(classType, 'mongo')(record, options);
@@ -80,15 +81,15 @@ export type QueryCustomFields = { [name: string]: (name: string, value: any, fie
  * Takes a mongo filter query and converts its class values to classType's mongo types, so you
  * can use it to send it to mongo.
  */
-export function convertClassQueryToMongo<T, K extends keyof T>(
+export function convertClassQueryToMongo<T, K extends keyof T, Q extends FilterQuery<T>>(
     classType: ClassType<T>,
-    target: { [path: string]: any },
+    query: Q,
     fieldNamesMap: QueryFieldNames = {},
     customMapping: { [name: string]: (name: string, value: any, fieldNamesMap: { [name: string]: boolean }) => any } = {},
-): { [path: string]: any } {
+): Q {
     const cacheJitPropertyConverter = new CacheJitPropertyConverter('class', 'mongo');
 
-    return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
+    return convertQueryToMongo(classType, query, (convertClassType: ClassType<any>, path: string, value: any) => {
         return cacheJitPropertyConverter.getJitPropertyConverter(convertClassType).convert(path, value);
     }, fieldNamesMap, customMapping);
 }
@@ -99,7 +100,7 @@ export function convertClassQueryToMongo<T, K extends keyof T>(
  */
 export function convertPlainQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
-    target: { [path: string]: any },
+    target: FilterQuery<T>,
     fieldNamesMap: QueryFieldNames = {},
     customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
@@ -114,13 +115,13 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
     }, fieldNamesMap, customMapping);
 }
 
-export function convertQueryToMongo<T, K extends keyof T>(
+export function convertQueryToMongo<T, K extends keyof T, Q extends FilterQuery<T>>(
     classType: ClassType<T>,
-    target: { [path: string]: any },
+    target: Q,
     converter: Converter,
     fieldNamesMap: QueryFieldNames = {},
     customMapping: QueryCustomFields = {},
-): { [path: string]: any } {
+): Q {
     const result: { [i: string]: any } = {};
     const schema = getClassSchema(classType);
 
@@ -198,5 +199,5 @@ export function convertQueryToMongo<T, K extends keyof T>(
         }
     }
 
-    return result;
+    return result as Q;
 }

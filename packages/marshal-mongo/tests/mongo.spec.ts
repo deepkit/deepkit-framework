@@ -1,4 +1,3 @@
-import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {
@@ -13,13 +12,13 @@ import {
     plainToClass,
     PropertySchema,
     uuid,
-} from "@marcj/marshal";
+} from "@super-hornet/marshal";
 import {Binary, ObjectID} from "mongodb";
 import {Database} from "../src/database";
-import {SimpleModel, SuperSimple} from "@marcj/marshal/tests/entities";
+import {SimpleModel, SuperSimple} from "@super-hornet/marshal/tests/entities";
 import {plainToMongo} from "../src/mapping";
 import * as moment from "moment";
-import {isPlainObject} from '@marcj/estdlib';
+import {isPlainObject} from '@super-hornet/core';
 import {resolveCollectionName} from "../src/database-session";
 import {uuid4Stringify} from "../src/compiler-templates";
 import {Connection} from "../src/connection";

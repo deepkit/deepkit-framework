@@ -3,8 +3,8 @@ import {first} from "rxjs/operators";
 import {ClientMessageWithoutId, ServerMessageComplete, ServerMessageError, ServerMessageResult} from "./contract";
 import {getUnserializedError, StreamBehaviorSubject} from "./core";
 import {Collection, CollectionPaginationEvent} from "./collection";
-import {PropertySchemaSerialized, PropertySchema, RegisteredEntities, createJITConverterFromPropertySchema} from "@marcj/marshal";
-import {each} from "@marcj/estdlib";
+import {PropertySchemaSerialized, PropertySchema, RegisteredEntities, createJITConverterFromPropertySchema} from "@super-hornet/marshal";
+import {each} from "@super-hornet/core";
 import {EntityState} from "./entity-state";
 
 export class MessageSubject<T> extends Subject<T> {

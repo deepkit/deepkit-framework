@@ -1,13 +1,13 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
-import {GlutFile} from '../src/glutFile';
+import {File} from '../src/file';
 
 test('file', () => {
-    const files: GlutFile[] = [
-        new GlutFile('root.txt'),
-        new GlutFile('dir/text1.txt'),
-        new GlutFile('dir/text2.txt'),
-        new GlutFile('anotherone/text1.txt'),
+    const files: File[] = [
+        new File('root.txt'),
+        new File('dir/text1.txt'),
+        new File('dir/text2.txt'),
+        new File('anotherone/text1.txt'),
     ];
 
     expect(files[0].getDirectory()).toBe('/');

@@ -1,4 +1,4 @@
-import {ClassType} from "@marcj/estdlib";
+import {ClassType} from "@super-hornet/core";
 import {handleCustomValidator, ValidationError} from "./validation";
 import {getClassSchema, PropertyCompilerSchema, PropertyValidator} from "./decorators";
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from "./jit-validation-registry";

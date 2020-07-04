@@ -1,4 +1,4 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
 import {
     classToPlain as classTransformerClassToPlain,
@@ -8,9 +8,9 @@ import {
     Type
 } from "class-transformer";
 import {bench} from "./util";
-import {Plan, SubModel} from "@marcj/marshal/tests/entities";
-import {jitClassToPlain, jitPlainToClass} from "../core/src/jit";
-import {f} from "@marcj/marshal";
+import {Plan, SubModel} from "@super-hornet/marshal/tests/entities";
+import {jitClassToPlain, jitPlainToClass} from "@super-hornet/marshal";
+import {f} from "@super-hornet/marshal";
 
 export class SimpleModel {
     @f

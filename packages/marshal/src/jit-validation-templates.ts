@@ -1,7 +1,7 @@
 import {getClassSchema, PropertyCompilerSchema} from "./decorators";
 import {registerCheckerCompiler} from "./jit-validation-registry";
 import {jitValidate} from "./jit-validation";
-import {isValidEnumValue, getEnumValues, getEnumLabels, getValidEnumValue} from "@marcj/estdlib";
+import {isValidEnumValue, getEnumValues, getEnumLabels, getValidEnumValue} from "@super-hornet/core";
 
 registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerSchema, utils) => {
     return `

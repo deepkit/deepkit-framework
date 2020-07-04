@@ -1,5 +1,5 @@
 import {Injectable} from 'injection-js';
-import {arrayRemoveItem} from '@marcj/estdlib';
+import {arrayRemoveItem} from '@super-hornet/core';
 
 const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
 

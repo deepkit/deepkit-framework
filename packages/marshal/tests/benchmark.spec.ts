@@ -1,6 +1,6 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
-import {bench} from "../../benchmark/util";
+import {bench} from "../../marshal-benchmark/util";
 import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass} from "../src/jit";
 import {f, validate} from "..";
 

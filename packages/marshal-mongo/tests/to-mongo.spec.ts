@@ -7,8 +7,8 @@ import {
     f,
     ParentReference,
     partialPlainToClass,
-} from "@marcj/marshal";
-import {Plan, SimpleModel, SubModel} from "@marcj/marshal/tests/entities";
+} from "@super-hornet/marshal";
+import {Plan, SimpleModel, SubModel} from "@super-hornet/marshal/tests/entities";
 import {Binary, ObjectID} from "mongodb";
 import {
     classToMongo,
@@ -19,9 +19,9 @@ import {
     plainToMongo
 } from "../src/mapping";
 import {Buffer} from "buffer";
-import {DocumentClass} from "@marcj/marshal/tests/document-scenario/DocumentClass";
-import {PageCollection} from "@marcj/marshal/tests/document-scenario/PageCollection";
-import {PageClass} from "@marcj/marshal/tests/document-scenario/PageClass";
+import {DocumentClass} from "@super-hornet/marshal/tests/document-scenario/DocumentClass";
+import {PageCollection} from "@super-hornet/marshal/tests/document-scenario/PageCollection";
+import {PageClass} from "@super-hornet/marshal/tests/document-scenario/PageClass";
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');

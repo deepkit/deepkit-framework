@@ -8,12 +8,12 @@ data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
 
 ```
-npm install @marcj/marshal @marcj/marshal-mongo reflect-metadata mongodb
+npm install @super-hornet/marshal @super-hornet/marshal-mongo reflect-metadata mongodb
 ```
 
 ```typescript
 
-import {Database, Connection} from "@marcj/marshal-mongo";
+import {Database, Connection} from "@super-hornet/marshal-mongo";
 
 const database = new Database(new Connection('localhost', 'mydb', 'username', 'password'));
 

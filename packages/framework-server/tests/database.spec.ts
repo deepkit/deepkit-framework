@@ -3,9 +3,9 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Exchange, ExchangeDatabase, ExchangeNotifyPolicy} from "..";
 import {remove} from "fs-extra";
-import {Database, Connection} from '@marcj/marshal-mongo';
-import {ClassType} from '@marcj/estdlib';
-import {f, uuid, Entity} from '@marcj/marshal';
+import {Database, Connection} from '@super-hornet/marshal-mongo';
+import {ClassType} from '@super-hornet/core';
+import {f, uuid, Entity} from '@super-hornet/marshal';
 import {ExchangeServer} from "../src/exchange-server";
 
 let i = 0;
@@ -40,7 +40,7 @@ async function createExchangeDatabase(name?: string) {
         }
     };
 
-    const database = new Database(connection, dbName);
+    const database = new Database(connection);
     await (await database.connection.connect()).db(dbName).dropDatabase();
     const exchangeDatabase = new ExchangeDatabase(notifyPolicy, database, exchange);
 
@@ -66,5 +66,5 @@ test('test increment', async () => {
     await Promise.all(all);
     console.log('increment took for ', times, performance.now() - start, 'ms', ', per item=', (performance.now() - start) / times, 'ms');
     console.log('result item', await database.query(IncrementEntity).filter({id: item.id}).findOne());
-    disconnect();
+    await disconnect();
 });

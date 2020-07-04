@@ -1,10 +1,10 @@
 {
-  "name": "@marcj/glut-server",
+  "name": "@super-hornet/framework-server",
   "version": "0.0.33",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
-  "author": "Kamille Team",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -15,18 +15,18 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@marcj/glut-core": "0.0.1",
-    "@marcj/marshal": "^2.1.1",
-    "@marcj/marshal-mongo": "^2.1.1",
+    "@super-hornet/framework-core": "0.0.1",
+    "@super-hornet/marshal": "^2.1.1",
+    "@super-hornet/marshal-mongo": "^2.1.1",
     "bson-ext": "^2.0.3",
     "buffer": "^5.2.1",
-    "mongodb": "^3.3.2",
+    "mongodb": "^3.5.9",
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.17",
-    "@marcj/estdlib-rxjs": "^0.1.17",
+    "@super-hornet/core": "^0.1.17",
+    "@super-hornet/core-rxjs": "^0.1.17",
     "clone": "^2.1.1",
     "fs-extra": "^6.0.1",
     "injection-js": "^2.2.1",
@@ -38,12 +38,12 @@
     "ws": "^7.2.1"
   },
   "devDependencies": {
-    "@marcj/glut-core": "^0.0.33",
-    "@marcj/marshal": "^2.1.1",
-    "@marcj/marshal-mongo": "^2.1.1",
+    "@super-hornet/framework-core": "^0.0.33",
+    "@super-hornet/marshal": "^2.1.1",
+    "@super-hornet/marshal-mongo": "^2.1.1",
     "@types/clone": "^0.1.30",
     "@types/fs-extra": "^5.0.2",
-    "@types/mongodb": "^3.1.14",
+    "@types/mongodb": "^3.5.25",
     "@types/node": "^12.12.6",
     "@types/redis": "^2.8.8",
     "@types/redlock": "^3.0.2",
@@ -52,7 +52,7 @@
     "bson-ext": "^2.0.3",
     "buffer": "^5.2.1",
     "cache-loader": "^1.2.2",
-    "mongodb": "^3.3.2",
+    "mongodb": "^3.5.9",
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3",
     "source-map": "^0.7.3",
@@ -68,12 +68,12 @@
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!@marcj/glut-*)"
+      "node_modules/(?!@super-hornet/*)"
     ],
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
     ],
-    "setupTestFrameworkScriptFile": "jest-extended"
+    "setupFilesAfterEnv": ["jest-extended"]
   },
   "globals": {
     "ts-jest": {

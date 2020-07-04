@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
 import * as moment from 'moment';
-import {f} from "@marcj/marshal";
+import {f} from "@super-hornet/marshal";
 import {classToMongo, mongoToClass} from "..";
 
 test('test moment', () => {

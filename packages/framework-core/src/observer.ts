@@ -1,5 +1,5 @@
-import {classToPlain, cloneClass, partialClassToPlain, partialPlainToClass} from "@marcj/marshal";
-import {eachPair, getPathValue, size} from "@marcj/estdlib";
+import {classToPlain, cloneClass, partialClassToPlain, partialPlainToClass} from "@super-hornet/marshal";
+import {eachPair, getPathValue, size} from "@super-hornet/core";
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';
 import { BehaviorSubject } from "rxjs";

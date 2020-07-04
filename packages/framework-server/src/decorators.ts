@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import {Provider} from "injection-js";
 import {Application} from "./application";
-import {ClassType} from "@marcj/estdlib";
+import {ClassType} from "@super-hornet/core";
 import {ApplicationServerConfig} from "./application-server";
 
 export interface ApplicationDecoratorOptions {
@@ -19,14 +19,14 @@ export interface ControllerOptions {
 
 export function ApplicationModule<T extends Application>(config: Partial<ApplicationDecoratorOptions>) {
     return (target: ClassType<T>) => {
-        Reflect.defineMetadata('glut:module', config, target);
+        Reflect.defineMetadata('super-hornet:module', config, target);
     };
 }
 
 export function getApplicationModuleOptions<T extends Application>(target: ClassType<T>): Partial<ApplicationDecoratorOptions> {
-    return Reflect.getMetadata('glut:module', target) || {};
+    return Reflect.getMetadata('super-hornet:module', target) || {};
 }
 
 export function getControllerOptions<T>(target: ClassType<T>): ControllerOptions | undefined {
-    return Reflect.getMetadata('glut:controller', target);
+    return Reflect.getMetadata('super-hornet:controller', target);
 }

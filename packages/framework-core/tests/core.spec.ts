@@ -1,7 +1,7 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
 import {FilterQuery, IdInterface, StreamBehaviorSubject} from "..";
-import {ClassType, sleep} from '@marcj/estdlib';
+import {ClassType, sleep} from '@super-hornet/core';
 import {BehaviorSubject, Subject} from 'rxjs';
 
 function assert<T, U extends T>() {

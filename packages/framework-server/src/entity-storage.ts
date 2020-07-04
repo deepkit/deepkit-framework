@@ -1,7 +1,7 @@
 import {Exchange} from "./exchange";
-import {getEntityName} from "@marcj/marshal";
+import {getEntityName} from "@super-hornet/marshal";
 import {Observable, Subject, Subscription} from "rxjs";
-import {convertPlainQueryToMongo, convertQueryToMongo, Database, DatabaseQuery} from "@marcj/marshal-mongo";
+import {convertPlainQueryToMongo, convertQueryToMongo, Database, DatabaseQuery} from "@super-hornet/marshal-mongo";
 import {
     Collection,
     CollectionSort,
@@ -13,9 +13,9 @@ import {
     IdInterface,
     JSONObjectCollection,
     ReactiveSubQuery
-} from "@marcj/glut-core";
-import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@marcj/estdlib";
-import {AsyncSubscription, Subscriptions} from "@marcj/estdlib-rxjs";
+} from "@super-hornet/framework-core";
+import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@super-hornet/core";
+import {AsyncSubscription, Subscriptions} from "@super-hornet/core-rxjs";
 import {Injectable} from "injection-js";
 import {findQuerySatisfied} from "./utils";
 

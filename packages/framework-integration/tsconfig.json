@@ -6,7 +6,7 @@
   },
   "include": [
     "src/",
-    "node_modules/@marcj/glut-*/index.ts",
-    "node_modules/@marcj/glut-*/src/**/*.ts"
+    "node_modules/@super-hornet/framework-*/index.ts",
+    "node_modules/@super-hornet/framework-*/src/**/*.ts"
   ]
 }

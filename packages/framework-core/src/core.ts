@@ -1,10 +1,19 @@
 import {BehaviorSubject, Observable, Subject, TeardownLogic} from "rxjs";
-import {tearDown} from "@marcj/estdlib-rxjs";
+import {tearDown} from "@super-hornet/core-rxjs";
 import {IdInterface} from "./contract";
-import {ClassType} from "@marcj/estdlib";
+import {ClassType} from "@super-hornet/core";
 import {Buffer} from 'buffer';
-import {arrayBufferTo, classToPlain, Entity, f, getClassSchema, plainToClass, RegisteredEntities} from "@marcj/marshal";
+import {
+    arrayBufferTo,
+    classToPlain,
+    Entity,
+    f,
+    getClassSchema,
+    plainToClass,
+    RegisteredEntities
+} from "@super-hornet/marshal";
 import {skip} from "rxjs/operators";
+import {ExternalQuery, WhereFn} from "sift";
 
 @Entity('@error:json')
 export class JSONError {
@@ -109,35 +118,119 @@ export class ReactiveSubQuery<T> {
     }
 }
 
-export type Query<T> = {
+// export type Query<T> = {
+//     $eq?: T;
+//     $ne?: T;
+//     $or?: Array<FilterQuery<T>>;
+//     $gt?: T;
+//     $gte?: T;
+//     $lt?: T;
+//     $lte?: T;
+//     $mod?: number[];
+//     $in?: Array<T>;
+//     $nin?: Array<T>;
+//     $not?: FilterQuery<T>;
+//     $type?: any;
+//     $all?: Array<Partial<T>>;
+//     $size?: number;
+//     $nor?: Array<FilterQuery<T>>;
+//     $and?: Array<FilterQuery<T>>;
+//     $regex?: RegExp | string;
+//     $exists?: boolean;
+//     $options?: "i" | "g" | "m" | "u";
+//     $elemMatch?: ExternalQuery<T[]>;
+//     $where?: string | WhereFn<T[]>;
+
+// };
+//
+// export type FilterQuery<T> = {
+//     [P in keyof T]?: Query<T[P]> | T[P];
+// } | Query<T>;
+
+type RegExpForString<T> = T extends string ? (RegExp | T): T;
+type MongoAltQuery<T> =
+    T extends Array<infer U> ? (T | RegExpForString<U>):
+        RegExpForString<T>;
+
+export type QuerySelector<T> = {
+    // Comparison
     $eq?: T;
-    $ne?: T;
-    $or?: Array<FilterQuery<T>>;
     $gt?: T;
     $gte?: T;
+    $in?: T[];
     $lt?: T;
     $lte?: T;
-    $mod?: number[];
-    $in?: Array<T>;
-    $nin?: Array<T>;
-    $not?: FilterQuery<T>;
-    $type?: any;
-    $all?: Array<Partial<T>>;
-    $size?: number;
-    $nor?: Array<FilterQuery<T>>;
-    $and?: Array<FilterQuery<T>>;
-    $regex?: RegExp | string;
+    $ne?: T;
+    $nin?: T[];
+    // Logical
+    $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
+    // Element
+    /**
+     * When `true`, `$exists` matches the documents that contain the field,
+     * including documents where the field value is null.
+     */
     $exists?: boolean;
-    $options?: "i" | "g" | "m" | "u";
+    $type?: any;
+    // Evaluation
+    $expr?: any;
+    $jsonSchema?: any;
+    $mod?: T extends number ? [number, number] : never;
+    $regex?: T extends string ? (RegExp | string) : never;
+    $options?: T extends string ? string : never;
+    // Geospatial
+    // TODO: define better types for geo queries
+    $geoIntersects?: { $geometry: object };
+    $geoWithin?: object;
+    $near?: object;
+    $nearSphere?: object;
+    $maxDistance?: number;
+    // Array
+    // TODO: define better types for $all and $elemMatch
+    $all?: T extends Array<infer U> ? any[] : never;
+    $elemMatch?: T extends Array<infer U> ? object : never;
+    $size?: T extends Array<infer U> ? number : never;
+    // Bitwise
+    $bitsAllClear?: any;
+    $bitsAllSet?: any;
+    $bitsAnyClear?: any;
+    $bitsAnySet?: any;
 
-    //special glut types
+    //special super-hornet types
     $sub?: ReactiveSubQuery<any>;
     $parameter?: string;
 };
 
+export type RootQuerySelector<T> = {
+    /** https://docs.mongodb.com/manual/reference/operator/query/and/#op._S_and */
+    $and?: Array<FilterQuery<T>>;
+    /** https://docs.mongodb.com/manual/reference/operator/query/nor/#op._S_nor */
+    $nor?: Array<FilterQuery<T>>;
+    /** https://docs.mongodb.com/manual/reference/operator/query/or/#op._S_or */
+    $or?: Array<FilterQuery<T>>;
+    /** https://docs.mongodb.com/manual/reference/operator/query/text */
+    $text?: {
+        $search: string;
+        $language?: string;
+        $caseSensitive?: boolean;
+        $diacraticSensitive?: boolean;
+    };
+    /** https://docs.mongodb.com/manual/reference/operator/query/where/#op._S_where */
+    $where?: string | Function;
+    /** https://docs.mongodb.com/manual/reference/operator/query/comment/#op._S_comment */
+    $comment?: string;
+    // we could not find a proper TypeScript generic to support nested queries e.g. 'user.friends.name'
+    // this will mark all unrecognized properties as any (including nested queries)
+    [key: string]: any;
+};
+
+export type ObjectQuerySelector<T> = T extends object ? {[key in keyof T]?: QuerySelector<T[key]> } : QuerySelector<T>;
+
+export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
+
 export type FilterQuery<T> = {
-    [P in keyof T]?: Query<T[P]> | T[P];
-} | Query<T>;
+    [P in keyof T]?: Condition<T[P]>;
+} &
+    RootQuerySelector<T>;
 
 
 export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
@@ -312,4 +405,3 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
 export type JSONEntity<T> = {
     [P in keyof T]?: any;
 };
-

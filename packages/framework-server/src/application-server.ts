@@ -1,15 +1,15 @@
 import * as cluster from "cluster";
-import {ClassType, getClassName} from "@marcj/estdlib";
+import {ClassType, getClassName} from "@super-hornet/core";
 import {Worker} from './worker';
 import {Provider, ReflectiveInjector} from "injection-js";
 import {FS} from "./fs";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase, ExchangeNotifyPolicy} from "./exchange-database";
 import {getApplicationModuleOptions, getControllerOptions} from "./decorators";
-import {Database, Connection} from "@marcj/marshal-mongo";
+import {Database, Connection} from "@super-hornet/marshal-mongo";
 import {Application} from "./application";
-import {applyDefaults, each, eachPair} from "@marcj/estdlib";
-import {FileType} from "@marcj/glut-core";
+import {applyDefaults, each, eachPair} from "@super-hornet/core";
+import {FileType} from "@super-hornet/framework-core";
 import {ProcessLocker} from "./process-locker";
 import {InternalClient} from "./internal-client";
 import {homedir} from "os";
@@ -29,16 +29,16 @@ export class ApplicationServerConfig {
 
     mongoPort?: number = 27017;
 
-    mongoDbName: string = 'glut';
+    mongoDbName: string = 'super-hornet';
 
     server?: Server;
 
     maxPayload?: number;
 
-    fsPath: string = '~/.glut/files';
+    fsPath: string = '~/.super-hornet/files';
 
     /** or port number **/
-    exchangeUnixPath: string | number = '/tmp/glut-exchange.sock';
+    exchangeUnixPath: string | number = '/tmp/super-hornet-exchange.sock';
 }
 
 
@@ -154,8 +154,8 @@ export class ApplicationServer {
                 useFactory: (unixPath: string | number) => new ExchangeServer(unixPath)
             },
             {
-                provide: Database, deps: [Connection, 'mongo.dbName'], useFactory: (connection: Connection, dbName: string) => {
-                    return new Database(connection, dbName);
+                provide: Database, deps: [Connection], useFactory: (connection: Connection) => {
+                    return new Database(connection);
                 }
             },
             {

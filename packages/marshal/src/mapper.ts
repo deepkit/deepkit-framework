@@ -1,6 +1,6 @@
 import {validate, ValidationFailed} from "./validation";
 import {getClassSchema, getClassTypeFromInstance, PropertySchema} from "./decorators";
-import {ClassType, eachKey, getClassName, isObject} from "@marcj/estdlib";
+import {ClassType, eachKey, getClassName, isObject} from "@super-hornet/core";
 import {
     createJITConverterFromPropertySchema,
     jitClassToPlain, JitConverterOptions,

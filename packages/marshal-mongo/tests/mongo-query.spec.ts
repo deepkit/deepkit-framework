@@ -1,7 +1,7 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
 import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
-import {f} from "@marcj/marshal/src/decorators";
+import {f} from "@super-hornet/marshal/src/decorators";
 
 class SimpleConfig {
     @f.array(String).decorated()
@@ -38,7 +38,7 @@ class Simple {
 test('simple', () => {
     const fieldNames = {};
     const m = convertPlainQueryToMongo(Simple, {
-        id: {$qt: '1'}
+        id: {$qt: '1'} as any
     }, fieldNames);
 
     expect(m['id']['$qt']).toBe(1);
@@ -51,11 +51,11 @@ test('simple class query', () => {
     const fieldNames = {};
 
     const m = convertClassQueryToMongo(Simple, {
-        id: {$qt: '1'},
+        id: {$qt: '1'} as any,
         config: new SimpleConfig(['a', 'b'])
     }, fieldNames);
 
-    expect(m['id']['$qt']).toBe(1);
+    expect(m.id!['$qt']).toBe(1);
     expect(m['config']).toEqual(['a', 'b']);
     expect(Object.keys(fieldNames)).toEqual(['id', 'config']);
 });
@@ -90,9 +90,9 @@ test('simple class query array', () => {
     const fieldNames = {};
 
     const m = convertClassQueryToMongo(Simple, {
-        $and: [{id: {$qt: '1'}}],
-        $or: [{id: {$qt: '1'}}],
-        $nor: [{id: {$qt: '1'}}],
+        $and: [{id: {$qt: '1'} as any}],
+        $or: [{id: {$qt: '1'} as any}],
+        $nor: [{id: {$qt: '1'} as any}],
         $not: [{configRef: {$qt: new SimpleConfigRef(2)}}],
     }, fieldNames);
 
@@ -107,7 +107,7 @@ test('convertClassQueryToMongo customMapping', () => {
     {
         const fieldNames = {};
         const m = convertClassQueryToMongo(Simple, {
-            $and: [{id: {$join: '1,2,3,4'}}],
+            $and: [{id: {$join: '1,2,3,4'} as any}],
         }, fieldNames, {
             '$join': (name, value, fieldNamesMap) => {
                 return value.split(',').map(v => Number(v));
@@ -120,7 +120,7 @@ test('convertClassQueryToMongo customMapping', () => {
     {
         const fieldNames = {};
         const m = convertClassQueryToMongo(Simple, {
-            $and: [{id: {$join: '1,2,3,4'}}],
+            $and: [{id: {$join: '1,2,3,4'} as any}],
         }, fieldNames, {
             '$join': (name, value, fieldNamesMap) => {
                 fieldNamesMap[name] = true;
@@ -132,7 +132,7 @@ test('convertClassQueryToMongo customMapping', () => {
 
     {
         const m = convertClassQueryToMongo(Simple, {
-            id: {$join: '1,2,3,4'},
+            id: {$join: '1,2,3,4'} as any,
         }, {}, {
             '$join': (name, value) => {
                 return value.split(',').map(v => Number(v));
@@ -143,7 +143,7 @@ test('convertClassQueryToMongo customMapping', () => {
 
     {
         const m = convertClassQueryToMongo(Simple, {
-            id: {$join: '1,2,3,4'},
+            id: {$join: '1,2,3,4'} as any,
         }, {}, {
             '$join': (name, value) => {
                 return undefined;
@@ -154,20 +154,20 @@ test('convertClassQueryToMongo customMapping', () => {
 });
 
 test('simple 2', () => {
-    const m = convertPlainQueryToMongo(Simple, {id: {dif: 1}});
+    const m = convertPlainQueryToMongo(Simple, {id: {dif: 1} as any});
     expect(m).toEqual({id: NaN});
 });
 
 test('regex', () => {
     const fieldNames = {};
-    const m = convertPlainQueryToMongo(Simple, {id: {$regex: /0-9+/}}, fieldNames);
-    expect(m).toEqual({id: {$regex: /0-9+/}});
-    expect(Object.keys(fieldNames)).toEqual(['id']);
+    const m = convertPlainQueryToMongo(Simple, {label: {$regex: /0-9+/}}, fieldNames);
+    expect(m).toEqual({label: {$regex: /0-9+/}});
+    expect(Object.keys(fieldNames)).toEqual(['label']);
 });
 
 test('and', () => {
     const fieldNames = {};
-    const m = convertPlainQueryToMongo(Simple, {$and: [{id: '1'}, {id: '2'}]}, fieldNames);
+    const m = convertPlainQueryToMongo(Simple, {$and: [{id: '1'} as any, {id: '2'} as any]}, fieldNames);
     expect(m).toEqual({$and: [{id: 1}, {id: 2}]});
 
     expect(m['$and'][0]['id']).toBe(1);
@@ -176,19 +176,19 @@ test('and', () => {
 });
 
 test('in', () => {
-    const m = convertPlainQueryToMongo(Simple, {id: {$in: ['1', '2']}});
+    const m = convertPlainQueryToMongo(Simple, {id: {$in: ['1', '2'] as any}});
     expect(m).toEqual({id: {$in: [1, 2]}});
 
-    const m2 = convertPlainQueryToMongo(Simple, {id: {$nin: ['1', '2']}});
+    const m2 = convertPlainQueryToMongo(Simple, {id: {$nin: ['1', '2'] as any}});
     expect(m2).toEqual({id: {$nin: [1, 2]}});
 
-    const m3 = convertPlainQueryToMongo(Simple, {label: {$all: [1, '2']}});
+    const m3 = convertPlainQueryToMongo(Simple, {label: {$all: [1, '2'] as any}});
     expect(m3).toEqual({label: {$all: ['1', '2']}});
 });
 
 test('complex', () => {
     const names = {};
-    const m = convertPlainQueryToMongo(Simple, {$and: [{price: {$ne: '1.99'}}, {price: {$exists: true}}, {id: {$gt: '0'}}]}, names);
+    const m = convertPlainQueryToMongo(Simple, {$and: [{price: {$ne: '1.99'} as any}, {price: {$exists: true}}, {id: {$gt: '0'} as any}]}, names);
 
     expect(m).toEqual({$and: [{price: {$ne: 1.99}}, {price: {$exists: true}}, {id: {$gt: 0}}]});
     expect(Object.keys(names)).toEqual(['price', 'id']);

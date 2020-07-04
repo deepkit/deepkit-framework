@@ -5,9 +5,9 @@ import {FS, getMd5} from "../src/fs";
 import {Exchange} from "../src/exchange";
 import {pathExists, readFile, remove} from 'fs-extra';
 import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
-import {ClassType} from '@marcj/estdlib';
-import {Connection, Database} from '@marcj/marshal-mongo';
-import {FileType} from "@marcj/glut-core";
+import {ClassType} from '@super-hornet/core';
+import {Connection, Database} from '@super-hornet/marshal-mongo';
+import {FileType} from "@super-hornet/framework-core";
 import {ProcessLocker} from "../src/process-locker";
 import {ExchangeServer} from "../src/exchange-server";
 
@@ -33,7 +33,7 @@ async function createFs(name?: string) {
         }
     };
 
-    const database = new Database(connection, dbName);
+    const database = new Database(connection);
     await (await database.connection.connect()).db(dbName).dropDatabase();
     const accountDb = new ExchangeDatabase(notifyPolicy, database, exchange);
 

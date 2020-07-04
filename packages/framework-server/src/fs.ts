@@ -2,13 +2,13 @@ import {dirname, join} from "path";
 import {appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, writeFile} from "fs-extra";
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
-import {FileMode, FileType, FilterQuery, GlutFile, StreamBehaviorSubject, AlreadyEncoded} from "@marcj/glut-core";
-import {eachKey, eachPair} from "@marcj/estdlib";
+import {FileMode, FileType, FilterQuery, File, StreamBehaviorSubject, AlreadyEncoded} from "@super-hornet/framework-core";
+import {ClassType, eachKey, eachPair} from "@super-hornet/core";
 import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
 import {ProcessLocker} from "./process-locker";
-import {Database} from "@marcj/marshal-mongo";
-import {partialClassToPlain} from "@marcj/marshal";
+import {Database} from "@super-hornet/marshal-mongo";
+import {partialClassToPlain} from "@super-hornet/marshal";
 import {decodePayloadAsJson, encodePayloadAsJSONArrayBuffer} from "./exchange-prot";
 
 export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
@@ -25,14 +25,14 @@ export function getMd5(content: string | Buffer): string {
 }
 
 @Injectable()
-export class FS<T extends GlutFile> {
+export class FS<T extends File> {
     constructor(
         public readonly fileType: FileType<T>,
         private exchange: Exchange,
         private database: Database,
         private exchangeDatabase: ExchangeDatabase,
         private locker: ProcessLocker,
-        @Inject('fs.path') private fileDir: string /* .glut/data/files/ */,
+        @Inject('fs.path') private fileDir: string /* .super-hornet/data/files/ */,
     ) {
     }
 
@@ -77,17 +77,17 @@ export class FS<T extends GlutFile> {
             this.exchange.publishFile(file.id, {
                 type: 'remove',
                 path: file.path
-            });
+            }).catch(e => console.error('removeFiles: publishFile errored', e));
         }
 
-        await this.exchangeDatabase.deleteMany(this.fileType.classType, {
+        await this.exchangeDatabase.deleteMany<File>(this.fileType.classType, {
             $and: [{
                 id: {$in: fileIds}
             }]
-        } as unknown as FilterQuery<T>);
+        });
 
         //found which md5s are still linked
-        const fileCollection = await this.exchangeDatabase.collection(this.fileType.classType);
+        const fileCollection = await this.exchangeDatabase.collection<File>(this.fileType.classType as any);
 
         const foundMd5s = await fileCollection.find({
             md5: {$in: Object.keys(md5ToCheckMap)}
@@ -151,12 +151,12 @@ export class FS<T extends GlutFile> {
     }
 
     public async hasMd5InDb(md5: string): Promise<boolean> {
-        const collection = await this.exchangeDatabase.collection(this.fileType.classType);
+        const collection = await this.exchangeDatabase.collection<File>(this.fileType.classType);
         return 0 < await collection.countDocuments({md5: md5});
     }
 
     public async hasMd5(md5: string) {
-        const file = await this.database.query(this.fileType.classType).filter({md5: md5} as T).findOneOrUndefined();
+        const file = await this.database.query(this.fileType.classType).filter({md5: md5}).findOneOrUndefined();
 
         if (file && file.md5) {
             const localPath = this.getLocalPathForMd5(md5);
@@ -253,7 +253,7 @@ export class FS<T extends GlutFile> {
             //the local file as well, since local path is based on md5.
             //when there is still an file with that md5 in the database, do not remove the old one.
             if (meta.md5 && meta.md5 !== newMd5) {
-                await this.exchangeDatabase.patch(this.fileType.classType, meta.id, {md5: newMd5, size: data.byteLength} as T);
+                await this.exchangeDatabase.patch(this.fileType.classType, meta.id, {md5: newMd5, size: data.byteLength});
                 await this.refreshFileMetaCache(path, fields, meta.id, newMd5);
 
                 //we need to check whether the local file needs to be removed
@@ -289,7 +289,7 @@ export class FS<T extends GlutFile> {
         }
 
         return {
-            id: meta.id,
+            id: meta.id!,
             mode: FileMode.closed,
             path: path,
             version: version,
@@ -346,12 +346,12 @@ export class FS<T extends GlutFile> {
                 for (const i of eachKey(fields)) {
                     (file as any)[i] = (fields as any)[i];
                 }
-                file.mode = FileMode.streaming;
-                meta.id = file.id;
+                file!.mode = FileMode.streaming;
+                meta.id = file!.id;
                 version = 0;
             }
 
-            const localPath = this.getLocalPathForId(meta.id);
+            const localPath = this.getLocalPathForId(meta.id!);
 
             const localDir = dirname(localPath);
             if (!await pathExists(localDir)) {
@@ -373,10 +373,10 @@ export class FS<T extends GlutFile> {
                 //when a subscribes is listening to this file,
                 //we publish this only when the file is written to disk.
                 await this.exchangeDatabase.add(file);
-                this.refreshFileMetaCache(path, fields, meta.id, undefined);
+                this.refreshFileMetaCache(path, fields, meta.id!, undefined);
             }
 
-            await this.exchange.publishFile(meta.id, {
+            await this.exchange.publishFile(meta.id!, {
                 type: 'append',
                 version: version,
                 path: path,

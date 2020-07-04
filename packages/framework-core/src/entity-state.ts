@@ -1,7 +1,7 @@
-import {partialPlainToClass, plainToClass, RegisteredEntities} from "@marcj/marshal";
+import {partialPlainToClass, plainToClass, RegisteredEntities} from "@super-hornet/marshal";
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "../index";
 import {set, delete as deleteByPath} from 'dot-prop';
-import {ClassType, eachPair, getClassName} from "@marcj/estdlib";
+import {ClassType, eachPair, getClassName} from "@super-hornet/core";
 import {skip} from "rxjs/operators";
 import {ObjectUnsubscribedError, Subject} from "rxjs";
 

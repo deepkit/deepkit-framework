@@ -1,12 +1,12 @@
 import {Injectable} from 'injection-js';
-import {classToPlain, getClassTypeFromInstance, partialClassToPlain, partialPlainToClass, plainToClass} from '@marcj/marshal';
+import {classToPlain, getClassTypeFromInstance, partialClassToPlain, partialPlainToClass, plainToClass} from '@super-hornet/marshal';
 import {Exchange} from "./exchange";
-import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@marcj/marshal-mongo";
-import {FilterQuery, IdInterface} from "@marcj/glut-core";
-import {ClassType, eachKey, eachPair} from '@marcj/estdlib';
+import {convertClassQueryToMongo, Database, mongoToPlain, partialClassToMongo, partialMongoToPlain, partialPlainToMongo} from "@super-hornet/marshal-mongo";
+import {FilterQuery, IdInterface} from "@super-hornet/framework-core";
+import {ClassType, eachKey, eachPair} from '@super-hornet/core';
 import {Observable, Subscription} from 'rxjs';
 import {findQuerySatisfied} from './utils';
-import {Collection, Cursor} from 'mongodb';
+import {Collection, Cursor, UpdateQuery} from 'mongodb';
 
 export interface ExchangeNotifyPolicy {
     notifyChanges<T>(classType: ClassType<T>): boolean;
@@ -216,13 +216,13 @@ export class ExchangeDatabase {
     ): Promise<{ [k: string]: any }> {
         const collection = await this.collection(classType);
         const projection: { [key: string]: number } = {};
-        const statement: { [name: string]: any } = {
+        const statement: any = {
             $inc: {},
             $set: {},
         };
 
         for (const [i, v] of eachPair(fields)) {
-            statement.$inc[i] = v;
+            statement.$inc[i as any] = v;
             projection[i] = 1;
         }
 
@@ -241,7 +241,7 @@ export class ExchangeDatabase {
             projection[field] = 1;
         }
 
-        const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), statement, {
+        const response = await collection.findOneAndUpdate(convertClassQueryToMongo(classType, filter), statement as UpdateQuery<T>, {
             projection: projection,
             returnOriginal: false
         });
@@ -325,7 +325,7 @@ export class ExchangeDatabase {
 
             const advertiseAs = options && options.advertiseAs ? options.advertiseAs : classType;
 
-            const filter = {id: id};
+            const filter: FilterQuery<any> = {id: id};
             const subscribedFields = await this.exchange.getSubscribedEntityFields(advertiseAs);
             const projection: { [key: string]: number } = {};
 

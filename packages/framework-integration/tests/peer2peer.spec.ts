@@ -1,14 +1,14 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
-import {Action, Controller} from "@marcj/glut-core";
-import {Entity, f} from '@marcj/marshal';
+import {Action, Controller} from "@super-hornet/framework-core";
+import {Entity, f} from '@super-hornet/marshal';
 import {closeAllCreatedServers, createServerClientPair} from "./util";
-import {Application} from "@marcj/glut-server";
-import {Session} from "@marcj/glut-server";
+import {Application} from "@super-hornet/framework-server";
+import {Session} from "@super-hornet/framework-server";
 import {Injector} from 'injection-js';
 import {Observable} from 'rxjs';
-import {InternalClient} from "@marcj/glut-server";
-import {sleep} from '@marcj/estdlib';
+import {InternalClient} from "@super-hornet/framework-server";
+import {sleep} from '@super-hornet/core';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -17,7 +17,7 @@ afterAll(async () => {
     await closeAllCreatedServers();
 });
 
-@Entity('user')
+@Entity('peer2peer/user')
 class User {
     constructor(@f public name: string) {
         this.name = name;

@@ -1,13 +1,13 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
-import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@marcj/glut-core";
-import {ClientConnection, EntityStorage, ExchangeDatabase} from "@marcj/glut-server";
+import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@super-hornet/framework-core";
+import {ClientConnection, EntityStorage, ExchangeDatabase} from "@super-hornet/framework-server";
 import {closeAllCreatedServers, createServerClientPair} from "./util";
-import {Entity, f, getClassSchema, uuid} from '@marcj/marshal';
+import {Entity, f, getClassSchema, uuid} from '@super-hornet/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';
-import {nextValue} from '@marcj/estdlib-rxjs';
-import {sleep} from '@marcj/estdlib';
-import {Database} from '@marcj/marshal-mongo';
+import {nextValue} from '@super-hornet/core-rxjs';
+import {sleep} from '@super-hornet/core';
+import {Database} from '@super-hornet/marshal-mongo';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');

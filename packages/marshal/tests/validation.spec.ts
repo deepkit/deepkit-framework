@@ -11,7 +11,7 @@ import {
     ValidationError,
     ValidationFailed
 } from "../";
-import {CustomError, isPlainObject} from '@marcj/estdlib';
+import {CustomError, isPlainObject} from '@super-hornet/core';
 import {getClassSchema, f} from "../src/decorators";
 
 test('test simple', async () => {

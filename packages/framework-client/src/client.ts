@@ -1,5 +1,5 @@
 import {BehaviorSubject, Subject} from "rxjs";
-import {PropertySchema, createJITConverterFromPropertySchema} from "@marcj/marshal";
+import {PropertySchema, createJITConverterFromPropertySchema} from "@super-hornet/marshal";
 import {
     Batcher,
     ClientMessageAll,
@@ -23,9 +23,9 @@ import {
     SimpleConnectionWriter,
     StreamBehaviorSubject,
     EntityState,
-} from "@marcj/glut-core";
-import {applyDefaults, asyncOperation, ClassType, each, eachKey, sleep} from "@marcj/estdlib";
-import {AsyncSubscription} from "@marcj/estdlib-rxjs";
+} from "@super-hornet/framework-core";
+import {applyDefaults, asyncOperation, ClassType, each, eachKey, sleep} from "@super-hornet/core";
+import {AsyncSubscription} from "@super-hornet/core-rxjs";
 
 export class SocketClientConfig {
     host: string = '127.0.0.1';

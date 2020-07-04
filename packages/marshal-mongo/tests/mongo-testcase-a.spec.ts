@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, f, getClassSchema, uuid} from "@marcj/marshal";
+import {Entity, f, getClassSchema, uuid} from "@super-hornet/marshal";
 import {createDatabase} from "./utils";
 import {hydrateEntity} from "..";
 import {getLastKnownPKInDatabase} from "../src/entity-register";

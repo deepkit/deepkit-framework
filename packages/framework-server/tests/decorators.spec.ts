@@ -1,6 +1,6 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
-import {Controller} from "@marcj/glut-core";
+import {Controller} from "@super-hornet/framework-core";
 import {getControllerOptions} from "../src/decorators";
 
 test('decorators class', () => {

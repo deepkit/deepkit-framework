@@ -1,4 +1,4 @@
-import {Database} from "..";
+import {Database} from "../src/database";
 import {Connection} from "../src/connection";
 
 let database: Database;

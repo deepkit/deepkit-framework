@@ -1,4 +1,4 @@
-import {Timer} from "@marcj/estdlib";
+import {Timer} from "@super-hornet/core";
 import {Observer} from "rxjs";
 
 /**

@@ -1,4 +1,3 @@
-import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {MessageSubject} from "../src/client";

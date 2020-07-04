@@ -1,5 +1,5 @@
 import {EntityStorage} from "./entity-storage";
-import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from "@marcj/glut-core";
+import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from "@super-hornet/framework-core";
 import {Injectable} from "injection-js";
 
 /**

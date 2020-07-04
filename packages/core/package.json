@@ -1,7 +1,7 @@
 {
-  "name": "@marcj/estdlib",
+  "name": "@super-hornet/core",
   "version": "0.1.19",
-  "description": "engineering stdlib for typescript",
+  "description": "Super Hornet core library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -30,7 +30,7 @@
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
     ],
-    "setupTestFrameworkScriptFile": "jest-extended"
+    "setupFilesAfterEnv": ["jest-extended"]
   },
   "globals": {
     "ts-jest": {

@@ -1,9 +1,9 @@
 {
-  "name": "@marcj/glut-core",
+  "name": "@super-hornet/framework-core",
   "version": "0.0.33",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "author": "Kamille Team",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -14,19 +14,19 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@marcj/marshal": "^2.1.1",
+    "@super-hornet/marshal": "^2.1.1",
     "buffer": "^5.2.1",
     "reflect-metadata": "^0.1.12",
     "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@marcj/estdlib": "^0.1.17",
-    "@marcj/estdlib-rxjs": "^0.1.17",
+    "@super-hornet/core": "^0.1.17",
+    "@super-hornet/core-rxjs": "^0.1.17",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {
-    "@marcj/marshal": "^2.1.1",
-    "@types/fs-extra": "^5.0.4",
+    "@super-hornet/marshal": "^2.1.1",
+    "@types/fs-extra": "^5.0.2",
     "buffer": "^5.2.1",
     "rxjs": "~6.5.3"
   },
@@ -45,7 +45,7 @@
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
     ],
-    "setupTestFrameworkScriptFile": "jest-extended"
+    "setupFilesAfterEnv": ["jest-extended"]
   },
   "globals": {
     "ts-jest": {

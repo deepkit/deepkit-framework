@@ -3,7 +3,7 @@ import {SessionStack} from "./application";
 import {ClientConnection} from "./client-connection";
 import {EntityStorage} from "./entity-storage";
 import {ServerConnectionMiddleware} from "./connection-middleware";
-import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@marcj/glut-core";
+import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@super-hornet/framework-core";
 import {Exchange} from "./exchange";
 import * as WebSocket from 'ws';
 

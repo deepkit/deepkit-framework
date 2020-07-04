@@ -1,7 +1,7 @@
 import 'jest-extended'
 import 'reflect-metadata';
-import {classToPlain, cloneClass, f, getEntityName, getIdField, isExcluded, plainToClass, uuid} from "@marcj/marshal";
-import {now, Plan, SimpleModel, StringCollectionWrapper, SubModel,} from "@marcj/marshal/tests/entities";
+import {classToPlain, cloneClass, f, getEntityName, getIdField, isExcluded, plainToClass, uuid} from "@super-hornet/marshal";
+import {now, Plan, SimpleModel, StringCollectionWrapper, SubModel,} from "@super-hornet/marshal/tests/entities";
 import {Binary} from "mongodb";
 import {classToMongo, mongoToClass, mongoToPlain, plainToMongo} from "../src/mapping";
 

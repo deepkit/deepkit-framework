@@ -1,7 +1,7 @@
 import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap} from "./decorators";
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from "./core";
 import {createClassToXFunction, createXToClassFunction, moment} from "./jit";
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from "@marcj/estdlib";
+import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from "@super-hornet/core";
 import {registerConverterCompiler} from "./compiler-registry";
 
 export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {

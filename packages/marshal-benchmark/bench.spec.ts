@@ -1,12 +1,12 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
 import {
     classToPlain as classTransformerClassToPlain,
     plainToClass as classTransformerPlainToClass
 } from "class-transformer";
 import {bench} from "./util";
-import {jitClassToPlain, jitPlainToClass} from "../core/src/jit";
-import {f} from "@marcj/marshal";
+import {jitClassToPlain, jitPlainToClass} from "@super-hornet/marshal";
+import {f} from "@super-hornet/marshal";
 import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from "cerialize";
 
 export class MarshalModel {

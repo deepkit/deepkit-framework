@@ -1,18 +1,18 @@
 {
-  "name": "@marcj/benchmark",
+  "name": "@super-hornet/marshal-benchmark",
   "version": "2.1.13",
-  "description": "Benchmark stuff.",
+  "description": "Marshal Benchmark stuff",
   "sideEffects": false,
   "private": true,
   "scripts": {
     "test": "jest --coverage",
     "tsc": ""
   },
-  "repository": "https://github.com/marcj/marshal",
+  "repository": "https://github.com/super-hornet/super-hornet",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@marcj/marshal": "^2.1.13",
+    "@super-hornet/marshal": "^2.1.13",
     "ajv": "^6.11.0",
     "buffer": "^5.2.1",
     "cerialize": "^2.0.1",

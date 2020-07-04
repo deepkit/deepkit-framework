@@ -5,7 +5,7 @@ import {classToPlain, cloneClass, isExcluded, plainToClass} from '../src/mapper'
 import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "..";
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from './document-scenario/PageClass';
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@marcj/estdlib';
+import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
 import {PageCollection} from "./document-scenario/PageCollection";
 
 test('test simple model', () => {

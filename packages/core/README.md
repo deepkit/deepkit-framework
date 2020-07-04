@@ -6,14 +6,14 @@
 ### Installation
 
 ```
-npm install @marcj/estdlib
+npm install @super-hornet/core
 ```
 
 
 ### Usage example
 
 ```typescript
-import {each} from "@marcj/estdlib";
+import {each} from "@super-hornet/core";
 
 for (const item of each({a: 1, b: 2, c: 3})) {
     console.log(item)

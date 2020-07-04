@@ -1,11 +1,11 @@
 import 'jest';
-import {arrayRemoveItem, ClassType, sleep} from "@marcj/estdlib";
-import {Application, ApplicationServer, Session} from "@marcj/glut-server";
-import {SocketClient} from "@marcj/glut-client";
-import {RemoteController} from "@marcj/glut-core";
+import {arrayRemoveItem, ClassType, sleep} from "@super-hornet/core";
+import {Application, ApplicationServer, Session} from "@super-hornet/framework-server";
+import {SocketClient} from "@super-hornet/framework-client";
+import {RemoteController} from "@super-hornet/framework-core";
 import {Observable} from "rxjs";
 import {Injector} from 'injection-js';
-import {Database} from '@marcj/marshal-mongo';
+import {Database} from '@super-hornet/marshal-mongo';
 import {createServer} from "http";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
@@ -42,9 +42,6 @@ class MyApp extends Application {
     }
 }
 
-const startPort = 2800;
-const portFile = '/tmp/glut-integration-port.txt';
-
 export async function closeAllCreatedServers() {
     for (const close of closer) {
         await close();
@@ -64,7 +61,7 @@ export async function createServerClientPair(
     createControllerClient: <T>(controllerName: string) => RemoteController<T>,
     app: MyApp
 }> {
-    const dbName = 'glut_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
+    const dbName = 'super_hornet_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
 
     const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
     const exchangeSocketPath = socketPath + '_exchange';

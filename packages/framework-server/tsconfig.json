@@ -5,7 +5,9 @@
     "outDir": "./dist"
   },
   "include": [
-    "./src/**/*",
+    "node_modules/@super-hornet/*/**/*.ts",
+    "./src/**/*.ts",
+    "./tests/**/*.ts",
     "./index.ts"
   ]
 }

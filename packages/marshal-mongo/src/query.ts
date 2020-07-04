@@ -1,4 +1,4 @@
-import {ClassSchema, PartialField, PropertySchema} from "@marcj/marshal";
+import {ClassSchema, PartialField, PropertySchema} from "@super-hornet/marshal";
 import {Subject} from "rxjs";
 
 export type Query<T> = {

@@ -1,9 +1,9 @@
 import {Inject, Injectable, Injector} from "injection-js";
 import {Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ActionTypes, ClientMessageAll, ConnectionMiddleware, ConnectionWriter, executeAction, getActionParameters, getActions} from "@marcj/glut-core";
-import {arrayRemoveItem, each} from "@marcj/estdlib";
-import {uuid} from "@marcj/marshal";
+import {ActionTypes, ClientMessageAll, ConnectionMiddleware, ConnectionWriter, executeAction, getActionParameters, getActions} from "@super-hornet/framework-core";
+import {arrayRemoveItem, each} from "@super-hornet/core";
+import {uuid} from "@super-hornet/marshal";
 import {Exchange} from "./exchange";
 import {ProcessLock, ProcessLocker} from "./process-locker";
 

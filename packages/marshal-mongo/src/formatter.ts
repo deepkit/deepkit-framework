@@ -1,7 +1,7 @@
 import {mongoToClass, mongoToPlain, partialMongoToClass, partialMongoToPlain, propertyMongoToClass} from "./mapping";
-import {ClassSchema, MarshalGlobal, PropertySchema} from "@marcj/marshal";
+import {ClassSchema, MarshalGlobal, PropertySchema} from "@super-hornet/marshal";
 import {BaseQuery, DatabaseQueryModel} from "./query";
-import {ClassType, getClassName} from "@marcj/estdlib";
+import {ClassType, getClassName} from "@super-hornet/core";
 import {DatabaseSession} from "./database-session";
 import {markItemAsKnownInDatabase} from "./entity-register";
 import has = Reflect.has;
@@ -46,6 +46,11 @@ export class Formatter {
 
         this.partialConverter = this.query.format === 'class'
             ? partialMongoToClass : (this.query.format === 'json' ? partialMongoToPlain : (c, v) => v);
+
+        if (this.query.format === 'raw') {
+            this.converter = (c, v) => v;
+            this.partialConverter = (c, v) => v;
+        }
     }
 
     protected getInstancePoolForClass(classType: ClassType<any>): Map<any, any> {

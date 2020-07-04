@@ -1,10 +1,10 @@
 import {Collection, JSONObjectCollection} from "./collection";
 import {ClientMessageAll, CollectionStream, ServerMessageAll} from "./contract";
 import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./core";
-import {Subscriptions} from "@marcj/estdlib-rxjs";
+import {Subscriptions} from "@super-hornet/core-rxjs";
 import {Observable, Subscription} from "rxjs";
-import {ClassType, each, sleep, stack} from "@marcj/estdlib";
-import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from "@marcj/marshal";
+import {ClassType, each, sleep, stack} from "@super-hornet/core";
+import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from "@super-hornet/marshal";
 import {skip} from "rxjs/operators";
 
 export interface ConnectionWriterStream {

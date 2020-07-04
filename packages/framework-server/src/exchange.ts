@@ -1,10 +1,10 @@
 import {Subscription} from "rxjs";
-import {getEntityName} from "@marcj/marshal";
-import {ExchangeEntity, StreamFileResult} from '@marcj/glut-core';
-import {ClassType, sleep} from '@marcj/estdlib';
+import {getEntityName} from "@super-hornet/marshal";
+import {ExchangeEntity, StreamFileResult} from '@super-hornet/framework-core';
+import {ClassType, sleep} from '@super-hornet/core';
 import {Injectable} from "injection-js";
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
-import {AsyncSubscription} from "@marcj/estdlib-rxjs";
+import {AsyncSubscription} from "@super-hornet/core-rxjs";
 import * as WebSocket from "ws";
 
 type Callback<T> = (message: T) => void;
@@ -30,7 +30,7 @@ export class Exchange {
     protected rawSubscriber = new WeakMap<Function, boolean>();
 
     constructor(
-        protected pathOrPort: string | number = '/tmp/glut-exchange.sock',
+        protected pathOrPort: string | number = '/tmp/super-hornet-exchange.sock',
     ) {
     }
 

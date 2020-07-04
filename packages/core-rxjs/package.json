@@ -1,7 +1,7 @@
 {
-  "name": "@marcj/estdlib-rxjs",
+  "name": "@super-hornet/core-rxjs",
   "version": "0.1.19",
-  "description": "engineering stdlib for typescript",
+  "description": "Super Hornet core rxjs library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/",
@@ -16,12 +16,12 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@marcj/estdlib": "^0.1.11",
-    "rxjs": "^6.3.3"
+    "@super-hornet/core": "^0.1.11",
+    "rxjs": "~6.5.3"
   },
   "devDependencies": {
-    "@marcj/estdlib": "^0.1.19",
-    "rxjs": "^6.3.3"
+    "@super-hornet/core": "^0.1.19",
+    "rxjs": "~6.5.3"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -36,7 +36,7 @@
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
     ],
-    "setupTestFrameworkScriptFile": "jest-extended"
+    "setupFilesAfterEnv": ["jest-extended"]
   },
   "globals": {
     "ts-jest": {

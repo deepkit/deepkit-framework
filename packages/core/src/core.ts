@@ -87,7 +87,7 @@ export function typeOf(obj: any) {
  * @public
  */
 export function isPlainObject(obj: any): obj is object {
-    return Boolean(obj && typeof obj === 'object' && obj.constructor === Object);
+    return Boolean(obj && typeof obj === 'object' && obj.constructor instanceof obj.constructor);
 }
 
 /**

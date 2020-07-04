@@ -439,27 +439,21 @@ test('hasMethod and templateArgs', () => {
     }
 
     const s = getClassSchema(Controller);
-    expect(s.hasMethod('unknown')).toBe(false);
-    expect(s.hasMethod('foo')).toBe(true);
+    expect(s.hasMethod('foo')).toBe(false);
     expect(s.hasMethod('foo2')).toBe(true);
     expect(s.hasMethod('foo3')).toBe(true);
-    expect(s.hasMethod('foo4')).toBe(true);
+    expect(s.hasMethod('foo4')).toBe(false);
 
     expect(s.getMethod('foo3').getTemplateArg(0)!.type).toBe('boolean');
     expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
 
-    expect(() => {
-        expect(s.getMethod('unknown')).toBeUndefined();
-    }).toThrow('Method unknown has no decorators used or is not defined')
-
     s.getMethodProperties('foo2');
     s.getMethodProperties('foo3');
     s.getMethodProperties('foo4');
-    expect(s.hasMethod('unknown')).toBe(false);
-    expect(s.hasMethod('foo')).toBe(true);
+    expect(s.hasMethod('foo')).toBe(false);
     expect(s.hasMethod('foo2')).toBe(true);
     expect(s.hasMethod('foo3')).toBe(true);
-    expect(s.hasMethod('foo4')).toBe(true);
+    expect(s.hasMethod('foo4')).toBe(false);
 
     expect(s.getMethod('foo3').getTemplateArg(0)!.type).toBe('boolean');
     expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
@@ -619,9 +613,7 @@ test('set array result', () => {
     }
 
     {
-        const prop = s.getMethod('items2');
-        expect(prop.type).toBe('any');
-        expect(prop.isArray).toBe(false);
+        expect(s.getMethod('items2')).toBeUndefined();
     }
 
     {

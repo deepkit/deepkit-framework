@@ -2,8 +2,14 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Exchange} from "../src/exchange";
 import {ExchangeServer} from "../src/exchange-server";
-import {sleep} from '@marcj/estdlib';
-import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer, str2ab} from "../src/exchange-prot";
+import {sleep} from '@super-hornet/core';
+import {
+    decodeMessage,
+    decodePayloadAsJson,
+    encodeMessage,
+    encodePayloadAsJSONArrayBuffer,
+    str2ab
+} from "../src/exchange-prot";
 import {closeCreatedExchange, createExchange} from "./utils";
 
 afterAll(async () => {

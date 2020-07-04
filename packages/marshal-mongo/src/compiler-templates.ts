@@ -13,7 +13,7 @@ import {
     registerConverterCompiler,
     typedArrayNamesMap,
     typedArrayToBuffer
-} from "@marcj/marshal";
+} from "@super-hornet/marshal";
 import {Binary, ObjectID} from "mongodb";
 import * as mongoUuid from "mongo-uuid";
 

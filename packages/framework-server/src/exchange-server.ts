@@ -1,7 +1,7 @@
 import {decodeMessage, encodeMessage} from "./exchange-prot";
 import {ProcessLock, ProcessLocker} from "./process-locker";
 import {Injectable} from "injection-js";
-import {Subscriptions} from "@marcj/estdlib-rxjs";
+import {Subscriptions} from "@super-hornet/core-rxjs";
 import {Subscription} from "rxjs";
 import * as WebSocket from 'ws';
 import {createServer, Server} from "http";
@@ -34,7 +34,7 @@ export class ExchangeServer {
     protected subscriptions = new Map<string, Set<any>>();
 
     constructor(
-        protected readonly unixPath: string | number | 'auto' = '/tmp/glut-exchange.sock',
+        protected readonly unixPath: string | number | 'auto' = '/tmp/super-hornet-exchange.sock',
     ) {
     }
 
@@ -52,8 +52,9 @@ export class ExchangeServer {
     }
 
     async start() {
+        const pid = process.pid;
         let id = 0;
-        let dynamicPath = `/tmp/glut-exchange-${id}.sock`;
+        let dynamicPath = `/tmp/super-hornet-exchange-${pid}-${id}.sock`;
         while (!await new Promise((resolve, reject) => {
             this.server = createServer();
             this.wsServer = new WebSocket.Server({
@@ -77,7 +78,7 @@ export class ExchangeServer {
             this.server.listen(this.unixPath === 'auto' ? dynamicPath : this.unixPath);
         })) {
             id++;
-            dynamicPath = `/tmp/glut-exchange-${id}.sock`;
+            dynamicPath = `/tmp/super-hornet-exchange-${pid}-${id}.sock`;
         }
 
         if (!this.server) {

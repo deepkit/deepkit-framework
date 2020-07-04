@@ -1,8 +1,8 @@
 import {
     Entity, f,
     uuid,
-} from "@marcj/marshal";
-import {each, eachPair} from "@marcj/estdlib";
+} from "@super-hornet/marshal";
+import {each, eachPair} from "@super-hornet/core";
 import {IdInterface} from "..";
 
 @Entity('JobAssignedResourcesGpu')

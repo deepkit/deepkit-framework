@@ -1,4 +1,4 @@
-import {ClassType} from '@marcj/estdlib';
+import {ClassType} from '@super-hornet/core';
 import {DatabaseSession} from "./database-session";
 import {DatabaseQuery} from "./query";
 import {getHydratedDatabaseSession, isHydrated} from "./formatter";

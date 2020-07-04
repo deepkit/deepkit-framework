@@ -9,7 +9,7 @@ import {
     isNumber,
     isObject,
     isPlainObject,
-} from '@marcj/estdlib';
+} from '@super-hornet/core';
 import * as getParameterNames from "get-parameter-names";
 import {capitalizeFirstLetter, isArray} from "./utils";
 import {Buffer} from "buffer";
@@ -163,7 +163,7 @@ export class PropertyCompilerSchema {
 
     constructor(
         public name: string,
-        protected classType?: ClassType<any> | ClassType<any>[]
+        public classType?: ClassType<any> | ClassType<any>[]
     ) {
     }
 
@@ -275,7 +275,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (this.allowLabelsAsValue) props['allowLabelsAsValue'] = true;
         if (this.typeSet) props['typeSet'] = true;
         if (this.methodName) props['methodName'] = this.methodName;
-        props['groupNames'] = this.groupNames;
+        if (this.groupNames.length) props['groupNames'] = this.groupNames;
 
         if (this.templateArgs) {
             props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
@@ -698,10 +698,6 @@ export class ClassSchema<T = any> {
      * Returns true if the method got a @f decorator.
      */
     public hasMethod(name: string): boolean {
-        try {
-            this.initializeMethod(name);
-        } catch {}
-
         return !!this.methods[name];
     }
 
@@ -722,9 +718,6 @@ export class ClassSchema<T = any> {
                     //we assume no meta data is given when Promise is defined, as it basically tells us nothing.
                     this.methods[name] = new PropertySchema(name);
                     this.methods[name].setFromJSType(returnType);
-                } else {
-                    //any per default
-                    this.methods[name] = new PropertySchema(name);
                 }
             }
 
@@ -1338,7 +1331,7 @@ export interface FieldDecoratorResult<T> {
      *
      * @example
      * ```typescript
-     * import {PropertyValidator, PropertyValidatorError} from '@marcj/marshal';
+     * import {PropertyValidator, PropertyValidatorError} from '@super-hornet/marshal';
      *
      * class MyCustomValidator implements PropertyValidator {
      *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {

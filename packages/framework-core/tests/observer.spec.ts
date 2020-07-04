@@ -1,6 +1,6 @@
-import 'jest';
+import 'jest-extended';
 import 'reflect-metadata';
-import {size} from "@marcj/estdlib";
+import {size} from "@super-hornet/core";
 import {observeItem} from "../src/observer";
 import {Job, JobTask, JobTaskStatus} from "./entities";
 import {EntitySubject} from "../src/core";

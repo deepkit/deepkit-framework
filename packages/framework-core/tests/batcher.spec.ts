@@ -1,4 +1,4 @@
-import 'jest';
+import 'jest-extended';
 import {extractParams} from "../src/batcher";
 
 test('batch parse', () => {

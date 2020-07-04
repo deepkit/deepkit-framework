@@ -1,5 +1,5 @@
 import {getClassSchema, getClassTypeFromInstance, isClassInstance} from "./decorators";
-import {isArray, isObject, isPlainObject, ClassType} from "@marcj/estdlib";
+import {isArray, isObject, isPlainObject, ClassType} from "@super-hornet/core";
 
 type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 

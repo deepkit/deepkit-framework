@@ -1,6 +1,6 @@
-import 'jest';
+import 'jest-extended';
 import {Collection} from '../src/collection';
-import {uuid} from '@marcj/marshal';
+import {uuid} from '@super-hornet/marshal';
 
 test('collection basic', () => {
     class Item {
