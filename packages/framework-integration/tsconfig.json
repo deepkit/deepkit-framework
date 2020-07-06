@@ -5,8 +5,6 @@
     "preserveSymlinks": true
   },
   "include": [
-    "src/",
-    "node_modules/@super-hornet/framework-*/index.ts",
-    "node_modules/@super-hornet/framework-*/src/**/*.ts"
+    "src/"
   ]
 }

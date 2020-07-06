@@ -2,7 +2,7 @@ import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap} from "./deco
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from "./core";
 import {createClassToXFunction, createXToClassFunction, moment} from "./jit";
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from "@super-hornet/core";
-import {registerConverterCompiler} from "./compiler-registry";
+import {registerConverterCompiler, TypeConverterCompiler} from "./compiler-registry";
 
 export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : String(${accessor});`;
@@ -119,7 +119,7 @@ registerConverterCompiler('class', 'plain', 'Uint32Array', convertTypedArrayToPl
 registerConverterCompiler('class', 'plain', 'Float32Array', convertTypedArrayToPlain);
 registerConverterCompiler('class', 'plain', 'Float64Array', convertTypedArrayToPlain);
 
-const convertArrayBufferToPlain = (setter, getter) => {
+const convertArrayBufferToPlain = (setter: string, getter: string) => {
     return {
         template: `${setter} = arrayBufferToBase64(${getter});`,
         context: {arrayBufferToBase64}
@@ -134,7 +134,7 @@ const convertToPlainUsingToJson = (setter: string, accessor: string, property: P
 registerConverterCompiler('class', 'plain', 'date', convertToPlainUsingToJson);
 registerConverterCompiler('class', 'plain', 'moment', convertToPlainUsingToJson);
 
-export function compilerConvertClassToX(toFormat: string) {
+export function compilerConvertClassToX(toFormat: string): TypeConverterCompiler {
     return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
         const classType = reserveVariable();
         return {
@@ -148,7 +148,7 @@ export function compilerConvertClassToX(toFormat: string) {
 }
 registerConverterCompiler('class', 'plain', 'class', compilerConvertClassToX('plain'));
 
-export function compilerXToClass(fromFormat: string) {
+export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
     return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
         const classType = reserveVariable();
         const context = {
@@ -177,9 +177,9 @@ export function compilerXToClass(fromFormat: string) {
 }
 registerConverterCompiler('plain', 'class', 'class', compilerXToClass('plain'));
 
-export function compilerXToUnionClass(fromFormat: string) {
+export function compilerXToUnionClass(fromFormat: string): TypeConverterCompiler {
     return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-        const context = {
+        const context: {[key: string]: any} = {
             createXToClassFunction
         };
 

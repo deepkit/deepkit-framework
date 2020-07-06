@@ -4,8 +4,7 @@ import {arrayRemoveItem} from '@super-hornet/core';
 const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
 
 /**
- * This lock mechanism works only for one process.
- * @todo implement a small ws server that can be used a centralized lock server.
+ * This lock mechanism works only for one process (worker).
  *
  * live-mutex: has horrible API and doesn't allow to check if an key is currently locked.
  * proper-filelock: No way to do a correct mutex locking with event-driven blocking acquire() method.

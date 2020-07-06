@@ -1,6 +1,6 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from "@super-hornet/core";
-import {Application, ApplicationServer, Session} from "@super-hornet/framework-server";
+import {Application, ApplicationServer, Session} from "@super-hornet/framework-server/dist/index";
 import {SocketClient} from "@super-hornet/framework-client";
 import {RemoteController} from "@super-hornet/framework-core";
 import {Observable} from "rxjs";

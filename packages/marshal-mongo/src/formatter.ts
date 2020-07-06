@@ -22,7 +22,7 @@ export function setHydratedDatabaseSession(item: any, databaseSession: DatabaseS
     });
 }
 
-export function markAsHydrated(item) {
+export function markAsHydrated(item: any) {
     item.__databaseSession = undefined;
 }
 
@@ -236,7 +236,7 @@ export class Formatter {
                                     Object.defineProperty(item, join.propertySchema.name, {
                                         enumerable: true,
                                         configurable: true,
-                                        value: value[refName].map(item => {
+                                        value: value[refName].map((item: any) => {
                                             return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
                                         }),
                                     });
@@ -287,7 +287,7 @@ export class Formatter {
                 const hasValue = value[refName] !== undefined && value[refName] !== null;
                 if (join.propertySchema.backReference && join.propertySchema.isArray) {
                     if (hasValue) {
-                        converted[join.propertySchema.name] = value[refName].map(item => {
+                        converted[join.propertySchema.name] = value[refName].map((item: any) => {
                             return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
                         });
                     } else {

@@ -1,9 +1,17 @@
 import {Inject, Injectable, Injector} from "injection-js";
 import {Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
-import {ActionTypes, ClientMessageAll, ConnectionMiddleware, ConnectionWriter, executeAction, getActionParameters, getActions} from "@super-hornet/framework-core";
+import {
+    ActionTypes,
+    ClientMessageAll,
+    ConnectionMiddleware,
+    ConnectionWriter,
+    executeAction,
+    getActionParameters,
+    getActions
+} from "@super-hornet/framework-core";
 import {arrayRemoveItem, each} from "@super-hornet/core";
-import {uuid} from "@super-hornet/marshal";
+import {PropertySchema, uuid} from "@super-hornet/marshal";
 import {Exchange} from "./exchange";
 import {ProcessLock, ProcessLocker} from "./process-locker";
 
@@ -108,154 +116,150 @@ export class ClientConnection {
     //     });
     // }
 
-    public async onMessage(raw: string) {
-        if ('string' === typeof raw) {
-            const message = JSON.parse(raw) as ClientMessageAll;
-
-            if (message.name === 'push-message/reply') {
-                if (!this.pushMessageReplies[message.replyId]) {
-                    throw new Error(`No reply callback for push-message ${message.replyId}`);
-                }
-
-                this.pushMessageReplies[message.replyId](message.data);
+    public async onMessage(message: ClientMessageAll) {
+        if (message.name === 'push-message/reply') {
+            if (!this.pushMessageReplies[message.replyId]) {
+                throw new Error(`No reply callback for push-message ${message.replyId}`);
             }
 
-            if (message.name === 'peerController/unregister') {
-                if (!this.registeredPeerControllers[message.controllerName]) {
-                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
-                    return;
-                }
-
-                this.registeredPeerControllers[message.controllerName].sub.unsubscribe();
-                await this.registeredPeerControllers[message.controllerName].lock.unlock();
-                delete this.registeredPeerControllers[message.controllerName];
-            }
-
-            /**
-             * Message from peer controller to client.
-             */
-            if (message.name === 'peerController/message') {
-                if (!this.registeredPeerControllers[message.controllerName]) {
-                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
-                    return;
-                }
-
-                this.exchange.publish('peerController/' + message.controllerName + '/reply/' + message.clientId, message.data);
-                return;
-            }
-
-            /**
-             * Message from client to peer controller.
-             */
-            if (message.name === 'peerMessage') {
-                await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message.message, message.timeout);
-            }
-
-            if (message.name === 'peerController/register') {
-                const access = await this.app.isAllowedToRegisterPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), message.controllerName);
-
-                if (!access) {
-                    this.writer.sendError(message.id, 'Access denied to register controller ' + message.controllerName);
-                    return;
-                }
-
-                try {
-                    if (this.registeredPeerControllers[message.controllerName]) {
-                        this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
-                        return;
-                    }
-
-                    //check if registered
-                    const locked = await this.locker.isLocked('peerController/' + message.controllerName);
-                    if (locked) {
-                        this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered in exchange.`);
-                        return;
-                    }
-
-                    const lock = await this.locker.acquireLock('peerController/' + message.controllerName);
-
-                    try {
-                        const sub = await this.exchange.subscribe('peerController/' + message.controllerName,
-                            (controllerMessage: { clientId: string, data: any }) => {
-                                this.writer.write({
-                                    id: message.id,
-                                    type: 'peerController/message',
-                                    clientId: controllerMessage.clientId,
-                                    data: controllerMessage.data
-                                });
-                            });
-
-                        this.registeredPeerControllers[message.controllerName] = {
-                            sub: sub,
-                            lock: lock,
-                        };
-                    } catch (error) {
-                        await lock.unlock();
-                        throw error;
-                    }
-
-                    this.writer.ack(message.id);
-                } catch (error) {
-                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} could not register. ` + error);
-                }
-                return;
-            }
-
-            if (message.name === 'action') {
-                try {
-                    if (message.controller.startsWith('_peer/')) {
-                        await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message, message.timeout);
-                    } else {
-                        try {
-                            const {value, encoding} = await this.action(message.controller, message.action, message.args);
-                            await this.connectionMiddleware.actionMessageOut(message, value, encoding, message.controller, message.action, this.writer);
-                        } catch (error) {
-                            console.debug(`Error in action ${message.controller}.${message.action}:`, error);
-                            await this.writer.sendError(message.id, error);
-                        }
-                    }
-                } catch (error) {
-                    console.debug(`Error in action wrapper ${message.controller}.${message.action}:`, error);
-                }
-                return;
-            }
-
-            if (message.name === 'actionTypes') {
-                try {
-                    if (message.controller.startsWith('_peer/')) {
-                        await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message, message.timeout);
-                    } else {
-                        const {parameters} = await this.getActionTypes(message.controller, message.action);
-
-                        this.writer.write({
-                            type: 'actionTypes/result',
-                            id: message.id,
-                            parameters: parameters.map(v => v.toJSON()),
-                        });
-                    }
-                } catch (error) {
-                    this.writer.sendError(message.id, error);
-                }
-                return;
-            }
-
-            if (message.name === 'authenticate') {
-                try {
-                    this.sessionStack.setSession(await this.app.authenticate(this.injector, message.token));
-                } catch (error) {
-                    console.error('authentication error', error);
-                }
-
-                this.writer.write({
-                    type: 'authenticate/result',
-                    id: message.id,
-                    result: this.sessionStack.isSet(),
-                });
-                return;
-            }
-
-            await this.connectionMiddleware.messageIn(message, this.writer);
+            this.pushMessageReplies[message.replyId](message.data);
         }
+
+        if (message.name === 'peerController/unregister') {
+            if (!this.registeredPeerControllers[message.controllerName]) {
+                this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
+                return;
+            }
+
+            this.registeredPeerControllers[message.controllerName].sub.unsubscribe();
+            await this.registeredPeerControllers[message.controllerName].lock.unlock();
+            delete this.registeredPeerControllers[message.controllerName];
+        }
+
+        /**
+         * Message from peer controller to client.
+         */
+        if (message.name === 'peerController/message') {
+            if (!this.registeredPeerControllers[message.controllerName]) {
+                this.writer.sendError(message.id, `Controller with name ${message.controllerName} not registered.`);
+                return;
+            }
+
+            this.exchange.publish('peerController/' + message.controllerName + '/reply/' + message.clientId, message.data);
+            return;
+        }
+
+        /**
+         * Message from client to peer controller.
+         */
+        if (message.name === 'peerMessage') {
+            await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message.message, message.timeout);
+        }
+
+        if (message.name === 'peerController/register') {
+            const access = await this.app.isAllowedToRegisterPeerController(this.sessionStack.getSessionOrUndefined(), message.controllerName);
+
+            if (!access) {
+                this.writer.sendError(message.id, 'Access denied to register controller ' + message.controllerName);
+                return;
+            }
+
+            try {
+                if (this.registeredPeerControllers[message.controllerName]) {
+                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered.`);
+                    return;
+                }
+
+                //check if registered
+                const locked = await this.locker.isLocked('peerController/' + message.controllerName);
+                if (locked) {
+                    this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered in exchange.`);
+                    return;
+                }
+
+                const lock = await this.locker.acquireLock('peerController/' + message.controllerName);
+
+                try {
+                    const sub = await this.exchange.subscribe('peerController/' + message.controllerName,
+                        (controllerMessage: { clientId: string, data: any }) => {
+                            this.writer.write({
+                                id: message.id,
+                                type: 'peerController/message',
+                                clientId: controllerMessage.clientId,
+                                data: controllerMessage.data
+                            });
+                        });
+
+                    this.registeredPeerControllers[message.controllerName] = {
+                        sub: sub,
+                        lock: lock,
+                    };
+                } catch (error) {
+                    await lock.unlock();
+                    throw error;
+                }
+
+                this.writer.ack(message.id);
+            } catch (error) {
+                this.writer.sendError(message.id, `Controller with name ${message.controllerName} could not register. ` + error);
+            }
+            return;
+        }
+
+        if (message.name === 'action') {
+            try {
+                if (message.controller.startsWith('_peer/')) {
+                    await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message, message.timeout);
+                } else {
+                    try {
+                        const {value, encoding} = await this.action(message.controller, message.action, message.args);
+                        await this.connectionMiddleware.actionMessageOut(message, value, encoding, message.controller, message.action, this.writer);
+                    } catch (error) {
+                        console.debug(`Error in action ${message.controller}.${message.action}:`, error);
+                        await this.writer.sendError(message.id, error);
+                    }
+                }
+            } catch (error) {
+                console.debug(`Error in action wrapper ${message.controller}.${message.action}:`, error);
+            }
+            return;
+        }
+
+        if (message.name === 'actionTypes') {
+            try {
+                if (message.controller.startsWith('_peer/')) {
+                    await this.sendToPeerController(message.id, message.controller.substring('_peer/'.length), message, message.timeout);
+                } else {
+                    const {parameters} = await this.getActionTypes(message.controller, message.action);
+
+                    this.writer.write({
+                        type: 'actionTypes/result',
+                        id: message.id,
+                        parameters: parameters.map(v => v.toJSON()),
+                    });
+                }
+            } catch (error) {
+                this.writer.sendError(message.id, error);
+            }
+            return;
+        }
+
+        if (message.name === 'authenticate') {
+            try {
+                this.sessionStack.setSession(await this.app.authenticate(message.token));
+            } catch (error) {
+                console.error('authentication error', error);
+            }
+
+            this.writer.write({
+                type: 'authenticate/result',
+                id: message.id,
+                result: this.sessionStack.isSet(),
+            });
+            return;
+        }
+
+        await this.connectionMiddleware.messageIn(message, this.writer);
     }
 
     protected async sendToPeerController(
@@ -264,7 +268,7 @@ export class ClientConnection {
         message: object,
         timeout: number = 20,
     ) {
-        const access = await this.app.isAllowedToSendToPeerController(this.injector, this.sessionStack.getSessionOrUndefined(), controllerName);
+        const access = await this.app.isAllowedToSendToPeerController(this.sessionStack.getSessionOrUndefined(), controllerName);
 
         if (!access) {
             this.writer.sendError(messageId, `Access denied to peer controller ` + controllerName, 'access_denied');
@@ -321,8 +325,6 @@ export class ClientConnection {
                 ...message,
                 controller: controllerName
             }
-        }).catch((error) => {
-            console.error(`Could not publish peerController/${controllerName} message`, error);
         });
     }
 
@@ -341,7 +343,7 @@ export class ClientConnection {
                 throw new Error(`Controller not found for ${controller}`);
             }
 
-            const access = await this.app.hasAccess(this.injector, this.sessionStack.getSessionOrUndefined(), controllerClass, action);
+            const access = await this.app.hasAccess(this.sessionStack.getSessionOrUndefined(), controllerClass, action);
             if (!access) {
                 throw new Error(`Access denied to action ` + action);
             }
@@ -361,14 +363,14 @@ export class ClientConnection {
         return this.cachedActionsTypes[controller][action];
     }
 
-    public async action(controller: string, action: string, args: any[]) {
+    public async action(controller: string, action: string, args: any[]): Promise<{ value: any, encoding: PropertySchema }> {
         const controllerClass = await this.app.resolveController(controller);
 
         if (!controllerClass) {
             throw new Error(`Controller not found for ${controller}`);
         }
 
-        const access = await this.app.hasAccess(this.injector, this.sessionStack.getSessionOrUndefined(), controllerClass, action);
+        const access = await this.app.hasAccess(this.sessionStack.getSessionOrUndefined(), controllerClass, action);
         if (!access) {
             throw new Error(`Access denied to action ` + action);
         }

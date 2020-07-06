@@ -119,8 +119,10 @@ export interface PropertySchemaSerialized {
     isId?: true;
     isPartial?: true;
     typeSet?: true;
+    isDiscriminant?: true;
     allowLabelsAsValue?: true;
     methodName?: string;
+    groupNames?: string[];
     templateArgs?: PropertySchemaSerialized[];
     classType?: string;
 }
@@ -399,7 +401,7 @@ export class PropertySchema extends PropertyCompilerSchema {
     clone(): PropertySchema {
         const s = new PropertySchema(this.name);
         for (const i of eachKey(this)) {
-            s[i] = (this as any)[i];
+            (s as any)[i] = (this as any)[i];
         }
         return s;
     }
@@ -408,7 +410,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         return this.templateArgs ? this.templateArgs[position] : undefined;
     }
 
-    getForeignClassDecorator(): PropertySchema | undefined {
+    getForeignClassDecorator(): PropertySchema | void {
         if (this.type === 'class') {
             const targetClass = this.getResolvedClassType();
             if (getClassSchema(targetClass).decorator) {
@@ -421,6 +423,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (this.type === 'class' || this.type === 'enum') {
             return this.getResolvedClassType();
         }
+        return;
     }
 
     get resolveUnionTypes(): ClassType<any>[] {
@@ -439,6 +442,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (this.type === 'union') {
             return this.getResolvedUnionTypes();
         }
+        return;
     }
 
     isResolvedClassTypeIsDecorated(): boolean {
@@ -557,7 +561,7 @@ export class ClassSchema<T = any> {
         //its important that the class supports calling the constructor without any values
         //same for proxy instances btw.
         try {
-            const instance = new this.classType();
+            const instance: any = new this.classType();
             for (const property of this.classProperties.values()) {
                 if (instance[property.name] !== null && instance[property.name] !== undefined) {
                     try {
@@ -680,7 +684,7 @@ export class ClassSchema<T = any> {
      * Returns a perfect hash from the primary key(s).
      */
     public getPrimaryFieldRepresentation(item: T): any {
-        return item[this.getPrimaryField().name];
+        return (item as any)[this.getPrimaryField().name];
     }
 
     /**
@@ -819,6 +823,7 @@ export class ClassSchema<T = any> {
                 return index;
             }
         }
+        return;
     }
 
     public getPropertyOrUndefined(name: string): PropertySchema | undefined {
@@ -918,7 +923,7 @@ export const ClassSchemas = new Map<object, ClassSchema>();
 /**
  * @hidden
  */
-export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): ClassSchema {
+export function getOrCreateEntitySchema<T>(target: Object | ClassType<T> | any): ClassSchema {
     const proto = target['prototype'] ? target['prototype'] : target;
     const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
 
@@ -949,7 +954,7 @@ export function getOrCreateEntitySchema<T>(target: Object | ClassType<T>): Class
  * Returns meta information / schema about given entity class.
  */
 export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema<T> {
-    const classType = classTypeIn['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+    const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
     if (!ClassSchemas.has(classType.prototype)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
@@ -1018,7 +1023,7 @@ export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
         throw new Error('Target does not seem to be a class instance.');
     }
 
-    return target['constructor'] as ClassType<T>;
+    return (target as any)['constructor'] as ClassType<T>;
 }
 
 /**
@@ -1390,8 +1395,8 @@ function createFieldDecoratorResult<T>(
                 mod(target, propertySchema);
             }
 
-            if (isNumber(parameterIndexOrDescriptor) && target['prototype']) {
-                target = target['prototype'];
+            if (isNumber(parameterIndexOrDescriptor) && (target as any)['prototype']) {
+                target = (target as any)['prototype'];
             }
 
             cb(target, propertySchema!, undefined, {...modifiedOptions});
@@ -1515,8 +1520,8 @@ function createFieldDecoratorResult<T>(
             mod(target, propertySchema);
         }
 
-        if (isNumber(parameterIndexOrDescriptor) && target['prototype']) {
-            target = target['prototype'];
+        if (isNumber(parameterIndexOrDescriptor) && (target as any)['prototype']) {
+            target = (target as any)['prototype'];
         }
 
         cb(target, propertySchema!, returnType, {...modifiedOptions});
@@ -1994,7 +1999,7 @@ fRaw['partial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult
     return Field(type).asPartial();
 };
 
-fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabelsAsValue = false): FieldDecoratorResult<T> {
+fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabelsAsValue: boolean = false): FieldDecoratorResult<T> {
     return EnumField(clazz, allowLabelsAsValue);
 };
 

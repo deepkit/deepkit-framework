@@ -85,6 +85,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
         if (this.valueOrSubject) {
             return this.valueOrSubject instanceof EntitySubject ? this.valueOrSubject.getValue() : this.valueOrSubject;
         }
+        return;
     }
 
     createState(): { [path: string]: any } {
@@ -145,6 +146,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
             this.reset();
             return patches;
         }
+        return;
     }
 
     /**
@@ -156,6 +158,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
             const ops = compare(this.old, newState);
             return this.normalizePatch(ops);
         }
+        return;
     }
 
     /**
@@ -166,6 +169,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
         if (plainPatches) {
             return partialClassToPlain(Object.getPrototypeOf(this._snapshot).constructor, plainPatches);
         }
+        return;
     }
 
     /**

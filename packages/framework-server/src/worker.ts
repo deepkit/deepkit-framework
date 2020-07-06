@@ -42,7 +42,6 @@ export class Worker {
             const provider: Provider[] = [
                 {provide: 'socket', useValue: ws},
                 {provide: 'remoteAddress', useValue: ipString},
-                EntityStorage,
                 SessionStack,
                 ClientConnection,
                 {provide: ConnectionMiddleware, useClass: ServerConnectionMiddleware},
@@ -70,7 +69,7 @@ export class Worker {
 
             ws.on('message', async (message: any) => {
                 const json = Buffer.from(message).toString();
-                await injectorMap.get(ws)!.get(ClientConnection).onMessage(json);
+                await injectorMap.get(ws)!.get(ClientConnection).onMessage(JSON.parse(json));
             });
 
             ws.on('error', async (error: any) => {

@@ -637,6 +637,7 @@ export class EntityStorage {
                 this.decreaseUsage(classType, foundId);
             });
         }
+        return;
     }
 
     public async findOne<T extends IdInterface>(classType: ClassType<T>, filter: FilterQuery<T> = {}): Promise<EntitySubject<T>> {

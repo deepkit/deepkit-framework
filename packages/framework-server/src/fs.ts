@@ -3,7 +3,7 @@ import {appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, write
 import {Exchange} from "./exchange";
 import {ExchangeDatabase} from "./exchange-database";
 import {FileMode, FileType, FilterQuery, File, StreamBehaviorSubject, AlreadyEncoded} from "@super-hornet/framework-core";
-import {ClassType, eachKey, eachPair} from "@super-hornet/core";
+import {eachKey, eachPair} from "@super-hornet/core";
 import * as crypto from "crypto";
 import {Inject, Injectable} from "injection-js";
 import {ProcessLocker} from "./process-locker";
@@ -77,7 +77,7 @@ export class FS<T extends File> {
             this.exchange.publishFile(file.id, {
                 type: 'remove',
                 path: file.path
-            }).catch(e => console.error('removeFiles: publishFile errored', e));
+            });
         }
 
         await this.exchangeDatabase.deleteMany<File>(this.fileType.classType, {

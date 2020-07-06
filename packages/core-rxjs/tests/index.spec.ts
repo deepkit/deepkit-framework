@@ -1,4 +1,4 @@
-import 'jest';
+import 'jest-extended';
 import {BehaviorSubject, Subject, Subscription} from "rxjs";
 import {nextValue, Subscriptions} from "../src/rxjs";
 

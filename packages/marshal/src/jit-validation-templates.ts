@@ -120,7 +120,7 @@ registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSc
 registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSchema, utils) => {
     const discriminatorClassVarName = utils.reserveVariable();
     let discriminator = `${discriminatorClassVarName} = undefined;\n`;
-    const context = {
+    const context: {[key: string]: any} = {
         jitValidate
     };
 

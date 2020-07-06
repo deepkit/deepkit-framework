@@ -18,7 +18,7 @@ try {
  * This is used withing JIT functions.
  * @hidden
  */
-export function findParent<T>(parents: any[], parentType: ClassType<T>): T | undefined {
+export function findParent<T>(parents: any[], parentType: ClassType<T>): T | void {
     if (!parents) return;
     for (let i = parents.length - 1; i >= 0; i--) {
         if (parents[i] instanceof parentType) {

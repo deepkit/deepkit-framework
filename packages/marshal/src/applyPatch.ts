@@ -13,7 +13,7 @@ export function shallowCloneObject<T extends object>(item: T): T {
         const classType = getClassTypeFromInstance(item);
         const schema = getClassSchema(classType);
         const constructorParameter = schema.getMethodProperties('constructor');
-        const args = constructorParameter.map(p => item[p.name]);
+        const args = constructorParameter.map(p => (item as any)[p.name]);
         const value = new classType(...args);
         for (const k in item) {
             if (!item.hasOwnProperty(k)) continue;
@@ -70,16 +70,16 @@ export class Patcher<T extends object> {
                     if (!dereferenced) dereferenced = dereferenceArray();
                 }
 
-                if ('function' === typeof originalArray[prop]) {
-                    return originalArray[prop].bind(dereferenced || originalArray);
+                if ('function' === typeof (originalArray as any)[prop]) {
+                    return (originalArray as any)[prop].bind(dereferenced || originalArray);
                 }
 
-                return (dereferenced || originalArray)[prop];
+                return (dereferenced || originalArray as any)[prop];
             },
             set: (target, prop, value) => {
                 if (!dereferenced) dereferenced = dereferenceArray();
 
-                dereferenced[prop] = value;
+                (dereferenced as any)[prop] = value;
                 return true;
             }
         });
@@ -115,14 +115,14 @@ export class Patcher<T extends object> {
 
             const fullPath = incomingPath ? incomingPath + '.' + String(path) : String(path);
             ref = originalItem[path].slice(0);
-            this.patches[fullPath] = ref;
+            this.patches[fullPath as keyof T] = ref;
             dereferencedArrays.set(path, ref);
             const parent = dereferenceOriginalItemAndCache();
             parent[path] = ref;
             return ref;
         }
 
-        const state: object = {};
+        const state: any = {};
         let parentDereferenced = false;
 
         proxy = new Proxy({}, {
@@ -173,7 +173,7 @@ export class Patcher<T extends object> {
 
                 const ref = dereferenceOriginalItemAndCache();
                 parentDereferenced = true;
-                this.patches[fullPath] = value;
+                this.patches[fullPath as keyof T] = value;
                 ref[prop] = value;
                 state[prop] = value;
                 return true;

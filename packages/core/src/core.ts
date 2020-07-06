@@ -1,4 +1,4 @@
-import {eachPair, eachKey} from "./iterators";
+import {eachPair} from "./iterators";
 import * as dotProp from 'dot-prop';
 
 /**
@@ -44,7 +44,7 @@ export interface ClassType<T> {
  * @public
  */
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
-    const proto = classTypeOrInstance['prototype'] ? classTypeOrInstance['prototype'] : classTypeOrInstance;
+    const proto = (classTypeOrInstance as any)['prototype'] ? (classTypeOrInstance as any)['prototype'] : classTypeOrInstance;
     return proto.constructor.name;
 }
 
@@ -134,7 +134,7 @@ export function isClass(obj: any): obj is ClassType<any> {
  *
  * @public
  */
-export function isObject(obj: any): obj is object {
+export function isObject(obj: any): obj is {[key: string]: any} {
     if (obj === null) {
         return false;
     }
@@ -293,6 +293,7 @@ export function first<T>(v: { [key: string]: T } | T[]): T | undefined {
     if (key) {
         return v[key];
     }
+    return;
 }
 
 /**
@@ -312,6 +313,7 @@ export function last<T>(v: { [key: string]: T } | T[]): T | undefined {
     if (key) {
         return v[key];
     }
+    return;
 }
 
 /**
@@ -389,7 +391,7 @@ export function asyncOperation<T>(executor: (resolve: (value?: T) => void, rejec
     return mergePromiseStack(new Promise<T>(async (resolve, reject) => {
         try {
             const res = executor(resolve, reject);
-            if (res['then']) await res;
+            if ((res as any)['then']) await res;
         } catch (e) {
             reject(e);
         }

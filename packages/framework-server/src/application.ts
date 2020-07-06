@@ -1,4 +1,4 @@
-import {Injectable, Injector} from "injection-js";
+import {Injectable} from "injection-js";
 import {ClassType} from "@super-hornet/core";
 import {File} from "@super-hornet/framework-core";
 
@@ -53,21 +53,21 @@ export class Application {
     /**
      * Method to check whether given session (created by authenticate) has access to controller::action.
      */
-    public async hasAccess<T>(injector: Injector, session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
+    public async hasAccess<T>(session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
         return true;
     }
 
     /**
      * Method to check whether given session (created by authenticate) is allowed to register peer controller of name `controllerName`.
      */
-    public async isAllowedToRegisterPeerController<T>(injector: Injector, session: Session | undefined, controllerName: string): Promise<boolean> {
+    public async isAllowedToRegisterPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
         return true;
     }
 
     /**
      * Method to check whether given session (created by authenticate) is allowed to send messages to peer controller of name `controllerName`.
      */
-    public async isAllowedToSendToPeerController<T>(injector: Injector, session: Session | undefined, controllerName: string): Promise<boolean> {
+    public async isAllowedToSendToPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
         return true;
     }
 
@@ -81,7 +81,7 @@ export class Application {
     /**
      * Authenticates the current connection.
      */
-    public async authenticate(injector: Injector, token: any): Promise<Session> {
+    public async authenticate(token: any): Promise<Session> {
         return new Session('anon', undefined);
     }
 

@@ -2,7 +2,7 @@ import {Injectable} from "injection-js";
 import {Exchange, ExchangeLock} from "./exchange";
 
 @Injectable()
-export class GlobalLocker {
+export class AppLocker {
     constructor(protected exchange: Exchange) {
     }
 

@@ -1,29 +1,32 @@
 {
-  "compileOnSave": true,
-  "compilerOptions": {
-    "sourceMap": true,
-    "strict": true,
-    "noImplicitAny": false,
-    "declaration": true,
-    "module": "commonjs",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "esModuleInterop": false,
-    "moduleResolution": "node",
-    "preserveSymlinks": true,
-    "target": "es2017",
-    "types": [
-      "reflect-metadata"
-    ],
-    "lib": [
-      "es2017",
-      "es2016",
-      "dom"
-    ]
-  },
-  "exclude": [
-    "dist",
-    "node_modules",
-    "**/*.spec.ts"
+  "files": [],
+  "references": [
+    {
+      "path": "packages/core/tsconfig.json"
+    },
+    {
+      "path": "packages/core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "packages/framework-core/tsconfig.json"
+    },
+    {
+      "path": "packages/framework-client/tsconfig.json"
+    },
+    {
+      "path": "packages/framework-server/tsconfig.json"
+    },
+    {
+      "path": "packages/marshal/tsconfig.json"
+    },
+    {
+      "path": "packages/marshal-mongo/tsconfig.json"
+    },
+    {
+      "path": "packages/marshal-nest/tsconfig.json"
+    },
+    {
+      "path": "packages/exchange/tsconfig.json"
+    }
   ]
 }

@@ -7,7 +7,7 @@ const cacheEnumLabels = new Map<Object, string[]>();
  *
  * @public
  */
-export function getEnumLabel(enumType: { [field: string]: any }, id: any) {
+export function getEnumLabel(enumType: { [field: string]: any }, id: any): any {
     for (const i of eachKey(enumType)) {
         if (id === enumType[i]) {
             return i;

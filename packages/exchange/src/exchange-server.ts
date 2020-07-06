@@ -1,11 +1,11 @@
 import {decodeMessage, encodeMessage} from "./exchange-prot";
-import {ProcessLock, ProcessLocker} from "./process-locker";
+import {ProcessLock, ProcessLocker} from "@super-hornet/framework-server";
 import {Injectable} from "injection-js";
 import {Subscriptions} from "@super-hornet/core-rxjs";
 import {Subscription} from "rxjs";
 import * as WebSocket from 'ws';
 import {createServer, Server} from "http";
-import {removeSync} from "fs-extra";
+import {removeSync, existsSync} from "fs-extra";
 
 interface StatePerConnection {
     subs: Subscriptions;
@@ -36,6 +36,9 @@ export class ExchangeServer {
     constructor(
         protected readonly unixPath: string | number | 'auto' = '/tmp/super-hornet-exchange.sock',
     ) {
+        if ('string' === typeof this.unixPath && this.unixPath !== 'auto' && existsSync(this.unixPath)) {
+            removeSync(this.unixPath);
+        }
     }
 
     get path() {
@@ -43,11 +46,22 @@ export class ExchangeServer {
     }
 
     close() {
+        if (this.wsServer) {
+            this.wsServer.close();
+            this.wsServer = undefined;
+        }
+
         if (this.server) {
             this.server.close();
-            if (this.autoPath) {
-                removeSync(this.autoPath);
-            }
+            this.server = undefined;
+        }
+
+        if (this.autoPath) {
+            removeSync(this.autoPath);
+        }
+
+        if ('string' === typeof this.unixPath) {
+            removeSync(this.unixPath);
         }
     }
 

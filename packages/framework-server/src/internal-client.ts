@@ -1,5 +1,5 @@
 import {PropertySchema, uuid, createJITConverterFromPropertySchema} from "@super-hornet/marshal";
-import {Exchange} from "./exchange";
+import {Exchange} from "@super-hornet/exchange";
 import {
     ActionTypes,
     ClientMessageWithoutId,
@@ -15,7 +15,7 @@ import {
 } from "@super-hornet/framework-core";
 import {Subscription} from "rxjs";
 import {each, eachKey} from "@super-hornet/core";
-import {Injectable} from "injection-js";
+import {Injectable, Optional} from "injection-js";
 import {ProcessLocker} from "./process-locker";
 
 /**
@@ -26,7 +26,7 @@ export class InternalClient {
 
     constructor(
         private locker: ProcessLocker,
-        private exchange: Exchange,
+        @Optional() private exchange?: Exchange,
     ) {
     }
 
@@ -64,7 +64,7 @@ export class InternalClientConnection {
 
     constructor(
         private locker: ProcessLocker,
-        private exchange: Exchange,
+        private exchange?: Exchange,
     ) {
     }
 
@@ -100,7 +100,7 @@ export class InternalClientConnection {
                     const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    return t.stream(name, actionName, args, timeoutInSeconds);
+                    return t.stream('_peer/' + name, actionName, args, timeoutInSeconds);
                 };
             }
         });
@@ -109,7 +109,7 @@ export class InternalClientConnection {
     }
 
     protected sendMessage<T = { type: '' }>(
-        controllerName: string,
+        path: string,
         messageWithoutId: ClientMessageWithoutId,
         timeoutInSeconds = 30
     ): MessageSubject<T | ServerMessageComplete | ServerMessageError> {
@@ -117,54 +117,61 @@ export class InternalClientConnection {
         let timer: any;
         const messageId = this.messageId++;
 
-        //todo, move logic from SocketClient.sendMessage to here.
-        //put
-
-        subject.setSendMessageModifier((m: any) => {
-            return {
-                name: 'peerMessage',
-                controller: controllerName,
-                message: m,
-                timeout: timeoutInSeconds,
-            };
-        });
-
-        (async () => {
-            if (!this.controllerSub[controllerName]) {
-                //check if registered
-                const locked = await this.locker.isLocked('peerController/' + controllerName);
-
-                if (!locked) {
-                    const next = {type: 'error', id: 0, error: `Peer controller ${controllerName} not registered`, code: 'peer_not_registered'} as ServerMessageErrorGeneral;
-                    subject.next(next);
-                    return;
-                }
-
-                this.controllerSub[controllerName] = await this.exchange.subscribe(
-                    'peerController/' + controllerName + '/reply/' + this.id, (reply: any) => {
-                        if (this.reply[reply.id] && !this.reply[reply.id].isStopped) {
-                            this.reply[reply.id].next(reply);
-                        }
-                    });
+        if (path.startsWith('_peer/')) {
+            if (!this.exchange) {
+                throw new Error('Could not communication peer2peer without installed @super-hornet/exchange.');
             }
 
-            this.reply[messageId] = subject;
+            const controllerName = path.substr('_peer/'.length);
 
-            timer = setTimeout(() => {
-                if (!subject.isStopped) {
-                    subject.error('Timed out.');
-                }
-            }, timeoutInSeconds * 1000);
-
-            subject.subscribe(() => clearTimeout(timer), () => clearTimeout(timer), () => clearTimeout(timer));
-
-            this.exchange.publish('peerController/' + controllerName, {
-                clientId: this.id,
-                data: {id: messageId, ...messageWithoutId}
+            subject.setSendMessageModifier((m: any) => {
+                return {
+                    name: 'peerMessage',
+                    controller: controllerName,
+                    message: m,
+                    timeout: timeoutInSeconds,
+                };
             });
-        })();
 
-        return subject;
+            (async () => {
+                if (!this.controllerSub[controllerName]) {
+                    //check if registered
+                    const locked = await this.locker.isLocked('peerController/' + controllerName);
+
+                    if (!locked) {
+                        const next = {type: 'error', id: 0, error: `Peer controller ${controllerName} not registered`, code: 'peer_not_registered'} as ServerMessageErrorGeneral;
+                        subject.next(next);
+                        return;
+                    }
+
+                    this.controllerSub[controllerName] = await this.exchange!.subscribe(
+                        'peerController/' + controllerName + '/reply/' + this.id, (reply: any) => {
+                            if (this.reply[reply.id] && !this.reply[reply.id].isStopped) {
+                                this.reply[reply.id].next(reply);
+                            }
+                        });
+                }
+
+                this.reply[messageId] = subject;
+
+                timer = setTimeout(() => {
+                    if (!subject.isStopped) {
+                        subject.error('Timed out.');
+                    }
+                }, timeoutInSeconds * 1000);
+
+                subject.subscribe(() => clearTimeout(timer), () => clearTimeout(timer), () => clearTimeout(timer));
+
+                this.exchange!.publish('peerController/' + controllerName, {
+                    clientId: this.id,
+                    data: {id: messageId, ...messageWithoutId}
+                });
+            })();
+
+            return subject;
+        }
+
+        throw new Error('Non-peer controllers not supported in InternalClient yet');
     }
 
     public async getActionTypes(controller: string, actionName: string, timeoutInSeconds = 60): Promise<ActionTypes> {

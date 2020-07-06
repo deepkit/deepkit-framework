@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {Action, Controller, File, StreamBehaviorSubject} from "@super-hornet/framework-core";
-import {EntityStorage, FS} from "@super-hornet/framework-server";
+import {EntityStorage, FS} from "@super-hornet/framework-server/dist/index";
 import {closeAllCreatedServers, createServerClientPair} from "./util";
 import {sleep} from '@super-hornet/core';
 import {Buffer} from 'buffer';

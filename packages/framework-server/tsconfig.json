@@ -1,13 +1,47 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "es2017",
+
     "baseUrl": ".",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true,
+    "types": [
+      "reflect-metadata"
+    ]
   },
   "include": [
-    "node_modules/@super-hornet/*/**/*.ts",
     "./src/**/*.ts",
-    "./tests/**/*.ts",
     "./index.ts"
+  ],
+  "references": [
+    {
+      "path": "node_modules/@super-hornet/framework-core/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/core/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/marshal/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/marshal-mongo/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/exchange/tsconfig.json"
+    }
   ]
 }

@@ -1,10 +1,31 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist"
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "es2017",
+
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true,
+    "types": [
+      "reflect-metadata"
+    ]
   },
   "include": [
-    "./src",
+    "src",
     "index.ts"
+  ],
+  "references": [
+    {
+      "path": "node_modules/@super-hornet/marshal/tsconfig.json"
+    }
   ]
 }

@@ -159,18 +159,18 @@ export class Exchange {
         const messageId = await this.send('entity-subscribe-fields', [getEntityName(classType), fields]);
 
         return new AsyncSubscription(async () => {
-            this.send('del-entity-subscribe-fields', String(messageId));
+            this.send('del-entity-subscribe-fields', String(messageId)).catch(console.error);
         });
     }
 
-    public async publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
+    public publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
         const channelName = 'entity/' + getEntityName(classType);
-        await this.publish(channelName, message);
+        this.publish(channelName, message);
     }
 
-    public async publishFile<T>(fileId: string, message: StreamFileResult) {
+    public publishFile<T>(fileId: string, message: StreamFileResult) {
         const channelName = 'file/' + fileId;
-        await this.publish(channelName, message);
+        this.publish(channelName, message);
     }
 
     public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
@@ -211,8 +211,8 @@ export class Exchange {
      * If ttl is given, the channel keeps that last value in memory for ttl seconds and immediately emits it
      * for new subscribers.
      */
-    public async publish(channelName: string, message: object, ttl: number = 0) {
-        this.sendAndWaitForReply('publish', [channelName, ttl], encodePayloadAsJSONArrayBuffer(message));
+    public publish(channelName: string, message: object, ttl: number = 0) {
+        this.send('publish', [channelName, ttl], encodePayloadAsJSONArrayBuffer(message)).catch(console.error);
     }
 
     public async lock(name: string, ttl: number = 0, timeout = 0): Promise<ExchangeLock> {

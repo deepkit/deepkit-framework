@@ -1,11 +1,12 @@
 import {BehaviorSubject, Subject} from "rxjs";
-import {PropertySchema, createJITConverterFromPropertySchema} from "@super-hornet/marshal";
+import {createJITConverterFromPropertySchema, PropertySchema} from "@super-hornet/marshal";
 import {
     Batcher,
     ClientMessageAll,
     ClientMessageWithoutId,
     Collection,
     ConnectionMiddleware,
+    EntityState,
     executeAction,
     getActionParameters,
     getActions,
@@ -22,20 +23,9 @@ import {
     ServerMessageResult,
     SimpleConnectionWriter,
     StreamBehaviorSubject,
-    EntityState,
 } from "@super-hornet/framework-core";
-import {applyDefaults, asyncOperation, ClassType, each, eachKey, sleep} from "@super-hornet/core";
+import {asyncOperation, ClassType, eachKey, sleep} from "@super-hornet/core";
 import {AsyncSubscription} from "@super-hornet/core-rxjs";
-
-export class SocketClientConfig {
-    host: string = '127.0.0.1';
-
-    port: number = 8080;
-
-    ssl: boolean = false;
-
-    token: any = undefined;
-}
 
 export class AuthenticationError extends Error {
     constructor(message: string = 'Authentication failed') {
@@ -108,12 +98,16 @@ export class SocketClient {
     private connectionPromise?: Promise<void>;
 
     public readonly entityState = new EntityState();
-    private config: SocketClientConfig;
 
     public readonly disconnected = new Subject<number>();
     public readonly reconnected = new Subject<number>();
 
     public readonly clientId = _clientId++;
+
+    /**
+     * Token object used for authentication purposes, when set.
+     */
+    protected authToken?: any;
 
     protected batcher = new Batcher(this.onDecodedMessage.bind(this));
 
@@ -127,9 +121,8 @@ export class SocketClient {
     } = {};
 
     public constructor(
-        config: SocketClientConfig | Partial<SocketClientConfig> = {},
+        public url: string
     ) {
-        this.config = config instanceof SocketClientConfig ? config : applyDefaults(SocketClientConfig, config);
     }
 
     protected registeredControllers: { [name: string]: { controllerInstance: any, sub: AsyncSubscription } } = {};
@@ -140,6 +133,10 @@ export class SocketClient {
 
     public isLoggedIn(): boolean {
         return this.loggedIn;
+    }
+
+    public setAuthToken(authToken: any) {
+        this.authToken = authToken;
     }
 
     public async registerController<T>(name: string, controllerInstance: T): Promise<AsyncSubscription> {
@@ -217,7 +214,13 @@ export class SocketClient {
                             name: 'peerController/message',
                             controllerName: name,
                             clientId: message.clientId,
-                            data: {type: 'error', id: data.id, stack: undefined, entityName: '@error:default', error: `Peer action ${data.action} does not exist.`}
+                            data: {
+                                type: 'error',
+                                id: data.id,
+                                stack: undefined,
+                                entityName: '@error:default',
+                                error: `Peer action ${data.action} does not exist.`
+                            }
                         });
                         return;
                     }
@@ -335,22 +338,13 @@ export class SocketClient {
     }
 
     protected async doConnect(): Promise<void> {
-        const port = this.config.port;
-
         this.connectionTries++;
-        if (!this.config.host) {
-            throw new Error('No host configured');
-        }
-
-        const url = this.config.host.startsWith('ws+unix') ?
-            this.config.host :
-            ((this.config.ssl ? 'wss://' : 'ws://') + this.config.host + ':' + port);
 
         this.socket = undefined;
 
         return new Promise<void>((resolve, reject) => {
             try {
-                const socket = this.socket = new WebSocket(url);
+                const socket = this.socket = new WebSocket(this.url);
 
                 socket.onmessage = (event: MessageEvent) => {
                     this.onMessage(event);
@@ -387,7 +381,7 @@ export class SocketClient {
 
                     this.currentConnectionId++;
 
-                    reject(new OfflineError(`Could not connect to ${this.config.host}:${port}. Reason: ${error.message || error}`));
+                    reject(new OfflineError(`Could not connect to ${this.url}. Reason: ${error.message || error}`));
                 };
 
                 socket.onopen = async () => {
@@ -395,7 +389,7 @@ export class SocketClient {
                     this.connected = true;
                     this.connectionTries = 0;
 
-                    if (this.config.token) {
+                    if (this.authToken) {
                         if (!await this.authenticate()) {
                             this.connected = false;
                             this.connectionTries = 0;
@@ -634,7 +628,7 @@ export class SocketClient {
 
         const reply = await this.sendMessage<ServerMessageAuthorize>({
             name: 'authenticate',
-            token: this.config.token,
+            token: this.authToken,
         }, {dontWaitForConnection: true}).firstThenClose();
 
         // console.log('authenticate reply', reply);

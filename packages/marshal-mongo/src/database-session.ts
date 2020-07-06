@@ -69,7 +69,7 @@ export class DatabaseSession {
 
     protected buildFindCriteria<T>(classType: ClassType<T>, item: T): { [name: string]: any } {
         const criteria: { [name: string]: any } = {};
-        const id = getIdField(classType) as string;
+        const id = getIdField(classType) as keyof T & string;
 
         if (!id) {
             throw new NoIDDefinedError(`Class ${getClassName(classType)} has no @f.primary() defined.`);
@@ -279,7 +279,7 @@ export class DatabaseSession {
         const primaryField = query.classSchema.getPrimaryField();
 
         const collection = await this.connection.getCollection(query.classSchema.classType);
-        const mongoFilter = {[primaryField.name]: {$in: ids.map(v => propertyClassToMongo(query.classSchema.classType, primaryField.name, v))}};
+        const mongoFilter = {[primaryField.name]: {$in: ids.map((v: any) => propertyClassToMongo(query.classSchema.classType, primaryField.name, v))}};
 
         if (mode === 'deleteOne') {
             await collection.deleteOne(mongoFilter);

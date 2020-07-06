@@ -1,10 +1,38 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist"
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "es2017",
+
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true,
+    "typeRoots": [
+      "types"
+    ],
+    "types": [
+      "reflect-metadata",
+      "mongo-uuid"
+    ]
   },
   "include": [
-    "./src",
+    "src",
     "index.ts"
+  ],
+  "references": [
+    {
+      "path": "node_modules/@super-hornet/core/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/marshal/tsconfig.json"
+    }
   ]
 }

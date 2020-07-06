@@ -234,9 +234,10 @@ export function getCollectionName<T>(classType: ClassType<T>): string | undefine
 export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: string]: any }): object {
     if (!isObject(value)) return {};
 
-    const valueWithDefaults = value;
+    const valueWithDefaults = Object.assign({}, value);
     const instance = plainToClass(classType, value);
     const entitySchema = getClassSchema(classType);
+
 
     for (const [i, v] of entitySchema.getClassProperties().entries()) {
         if (undefined === value[i] || null === value[i]) {
