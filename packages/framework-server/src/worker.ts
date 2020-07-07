@@ -1,10 +1,8 @@
 import {Provider, ReflectiveInjector} from "injection-js";
 import {SessionStack} from "./application";
 import {ClientConnection} from "./client-connection";
-import {EntityStorage} from "./entity-storage";
 import {ServerConnectionMiddleware} from "./connection-middleware";
-import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@super-hornet/framework-core";
-import {Exchange} from "./exchange";
+import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@super-hornet/framework-shared";
 import * as WebSocket from 'ws';
 
 export class Worker {
@@ -31,8 +29,6 @@ export class Worker {
 
     async run(): Promise<void> {
         const injectorMap = new Map<WebSocket, ReflectiveInjector>();
-
-        await (this.mainInjector.get(Exchange) as Exchange).connect();
 
         this.server = new WebSocket.Server(this.options);
 
@@ -68,7 +64,7 @@ export class Worker {
             injectorMap.set(ws, this.mainInjector.resolveAndCreateChild(provider));
 
             ws.on('message', async (message: any) => {
-                const json = Buffer.from(message).toString();
+                const json = 'string' === typeof message ? message : Buffer.from(message).toString();
                 await injectorMap.get(ws)!.get(ClientConnection).onMessage(JSON.parse(json));
             });
 
@@ -83,7 +79,6 @@ export class Worker {
             ws.on('close', async () => {
                 clearInterval(interval);
                 injectorMap.get(ws)!.get(ClientConnection).destroy();
-                injectorMap.get(ws)!.get(EntityStorage).destroy();
                 injectorMap.delete(ws);
             });
         });

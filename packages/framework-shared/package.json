@@ -1,0 +1,54 @@
+{
+  "name": "@super-hornet/framework-shared",
+  "version": "0.0.33",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "peerDependencies": {
+    "@super-hornet/marshal": "^2.1.1",
+    "buffer": "^5.2.1",
+    "rxjs": "~6.5.3"
+  },
+  "dependencies": {
+    "@super-hornet/core": "^0.1.17",
+    "@super-hornet/core-rxjs": "^0.1.17",
+    "fast-json-patch": "^2.1.0"
+  },
+  "devDependencies": {
+    "@super-hornet/marshal": "^2.1.1",
+    "@types/fs-extra": "^5.0.2",
+    "buffer": "^5.2.1",
+    "rxjs": "~6.5.3"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@deepkit)"
+    ],
+    "testMatch": [
+      "**/tests/**/*.+(ts|tsx|js)"
+    ],
+    "setupFilesAfterEnv": ["jest-extended"]
+  },
+  "globals": {
+    "ts-jest": {
+      "tsConfigFile": "tsconfig.json"
+    }
+  }
+}

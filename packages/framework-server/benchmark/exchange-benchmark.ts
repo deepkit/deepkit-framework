@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import {Exchange} from "..";
 import {performance} from 'perf_hooks';
 

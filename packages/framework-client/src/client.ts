@@ -23,7 +23,7 @@ import {
     ServerMessageResult,
     SimpleConnectionWriter,
     StreamBehaviorSubject,
-} from "@super-hornet/framework-core";
+} from "@super-hornet/framework-shared";
 import {asyncOperation, ClassType, eachKey, sleep} from "@super-hornet/core";
 import {AsyncSubscription} from "@super-hornet/core-rxjs";
 

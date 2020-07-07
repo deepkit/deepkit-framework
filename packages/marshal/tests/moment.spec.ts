@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import * as moment from 'moment';
 import {getClassSchema, f, classToPlain, plainToClass} from "..";
 

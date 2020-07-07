@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/framework-core",
+  "name": "@super-hornet/framework-server-common",
   "version": "0.0.33",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,21 +14,13 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@super-hornet/marshal": "^2.1.1",
-    "buffer": "^5.2.1",
-    "reflect-metadata": "^0.1.12",
-    "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@super-hornet/core": "^0.1.17",
-    "@super-hornet/core-rxjs": "^0.1.17",
-    "fast-json-patch": "^2.1.0"
+    "injection-js": "^2.2.1",
+    "@super-hornet/core": "^0.1.17"
   },
   "devDependencies": {
-    "@super-hornet/marshal": "^2.1.1",
-    "@types/fs-extra": "^5.0.2",
-    "buffer": "^5.2.1",
-    "rxjs": "~6.5.3"
+    "@types/fs-extra": "^5.0.2"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -45,7 +37,9 @@
     "testMatch": [
       "**/tests/**/*.+(ts|tsx|js)"
     ],
-    "setupFilesAfterEnv": ["jest-extended"]
+    "setupFilesAfterEnv": [
+      "jest-extended"
+    ]
   },
   "globals": {
     "ts-jest": {

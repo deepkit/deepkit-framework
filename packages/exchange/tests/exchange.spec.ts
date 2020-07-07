@@ -1,5 +1,4 @@
 import 'jest-extended';
-import 'reflect-metadata';
 import {Exchange} from "../src/exchange";
 import {ExchangeServer} from "../src/exchange-server";
 import {sleep} from '@super-hornet/core';

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import 'jest-extended'
 import {getClassSchema, f} from "../src/decorators";
 

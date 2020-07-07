@@ -1,5 +1,4 @@
 import 'jest-extended';
-import 'reflect-metadata';
 import {FilterQuery, IdInterface, StreamBehaviorSubject} from "..";
 import {ClassType, sleep} from '@super-hornet/core';
 import {BehaviorSubject, Subject} from 'rxjs';

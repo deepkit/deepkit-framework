@@ -3,7 +3,7 @@
 Installation:
 
 ```
-npm install @super-hornet/framework-server @super-hornet/framework-core reflect-metadata rxjs buffer
+npm install @super-hornet/framework-server rxjs
 ```
 
 #### Server

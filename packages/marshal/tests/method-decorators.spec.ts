@@ -1,6 +1,5 @@
 import 'jest';
 import 'jest-extended';
-import 'reflect-metadata';
 import {f, getClassSchema, PartialField, PropertySchema} from "../src/decorators";
 import {
     argumentClassToPlain,

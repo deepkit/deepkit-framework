@@ -29,6 +29,7 @@
   "devDependencies": {
     "@types/clone": "^0.1.30",
     "@types/moment": "^2.0.0",
+    "@types/jest": "^26.0.3",
     "moment": "^2.0.0"
   },
   "jest": {

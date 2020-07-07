@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {classToPlain, cloneClass, f, getEntityName, getIdField, isExcluded, plainToClass, uuid} from "@super-hornet/marshal";
 import {now, Plan, SimpleModel, StringCollectionWrapper, SubModel,} from "@super-hornet/marshal/tests/entities";
 import {Binary} from "mongodb";

@@ -11,7 +11,7 @@ import {AppServerModule} from './src/main.server';
 import {APP_BASE_HREF} from '@angular/common';
 import {existsSync} from 'fs';
 import {Application, ApplicationServer, ApplicationServerConfig} from '@super-hornet/framework-server';
-import {Action, Controller} from "@super-hornet/framework-core";
+import {Action, Controller} from "@super-hornet/framework-shared";
 import * as http from "http";
 import {createServer} from "net";
 import {createServer as createHttpServer} from "http";

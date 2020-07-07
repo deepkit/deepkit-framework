@@ -1,6 +1,6 @@
 import {Injectable} from "injection-js";
 import {ClassType} from "@super-hornet/core";
-import {File} from "@super-hornet/framework-core";
+import {File} from "@super-hornet/framework-shared";
 
 export class Session {
     constructor(

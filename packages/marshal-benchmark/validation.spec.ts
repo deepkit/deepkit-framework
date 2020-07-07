@@ -1,5 +1,4 @@
 import 'jest-extended';
-import 'reflect-metadata';
 import {f, PropertyValidator, PropertyValidatorError} from "@super-hornet/marshal";
 import {bench} from "./util";
 import {jitValidate} from "@super-hornet/marshal/src/jit-validation";

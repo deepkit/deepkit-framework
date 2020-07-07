@@ -68,12 +68,12 @@ export function classToPlain<T>(classType: ClassType<T>, target: T, options: Jit
  *
  * Returns a new regular object again.
  */
-export function partialPlainToClass<T, K extends keyof T>(
+export function partialPlainToClass<T, R extends object>(
     classType: ClassType<T>,
-    target: { [path: string]: any },
+    partial: R,
     options: JitConverterOptions = {}
-): Partial<{ [F in K]: any }> {
-    return jitPartialPlainToClass(classType, target, options);
+) {
+    return jitPartialPlainToClass(classType, partial, options);
 }
 
 
@@ -82,12 +82,12 @@ export function partialPlainToClass<T, K extends keyof T>(
  *
  * Returns a new regular object again.
  */
-export function partialClassToPlain<T, K extends keyof T>(
+export function partialClassToPlain<T, R extends object>(
     classType: ClassType<T>,
-    target: { [path: string]: any },
+    partial: R,
     options: JitConverterOptions = {}
-): Partial<{ [F in K]: any }> {
-    return jitPartialClassToPlain(classType, target, options);
+) {
+    return jitPartialClassToPlain(classType, partial, options);
 }
 
 

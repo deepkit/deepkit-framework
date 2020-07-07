@@ -1,12 +1,11 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from "@super-hornet/core";
-import {Application, ApplicationServer, Session} from "@super-hornet/framework-server/dist/index";
+import {ApplicationServer} from "@super-hornet/framework-server";
 import {SocketClient} from "@super-hornet/framework-client";
-import {RemoteController} from "@super-hornet/framework-core";
+import {RemoteController} from "@super-hornet/framework-shared";
 import {Observable} from "rxjs";
-import {Injector} from 'injection-js';
-import {Database} from '@super-hornet/marshal-mongo';
 import {createServer} from "http";
+import {Module} from "@super-hornet/framework-server-common";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -33,15 +32,6 @@ const closer: (() => Promise<void>)[] = [];
 //     }
 // });
 
-class MyApp extends Application {
-    public lastConnectionInjector?: Injector;
-
-    async hasAccess<T>(injector: Injector, session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
-        this.lastConnectionInjector = injector;
-        return super.hasAccess(injector, session, controller, action);
-    }
-}
-
 export async function closeAllCreatedServers() {
     for (const close of closer) {
         await close();
@@ -51,15 +41,12 @@ export async function closeAllCreatedServers() {
 export async function createServerClientPair(
     dbTestName: string,
     controllers: ClassType<any>[],
-    entityChangeFeeds: ClassType<any>[] = [],
-    appController: ClassType<any> = MyApp
 ): Promise<{
     server: ApplicationServer,
     client: SocketClient,
     close: () => Promise<void>,
     createClient: () => SocketClient,
-    createControllerClient: <T>(controllerName: string) => RemoteController<T>,
-    app: MyApp
+    createControllerClient: <T>(controllerName: string) => RemoteController<T>
 }> {
     const dbName = 'super_hornet_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
 
@@ -73,22 +60,24 @@ export async function createServerClientPair(
         });
     });
 
-    const app = new ApplicationServer(appController, {
+    @Module({
+        controllers: controllers
+    })
+    class AppModule {
+
+    }
+
+    const app = new ApplicationServer(AppModule, {
         server: server,
-        mongoDbName: dbName,
-        exchangeUnixPath: exchangeSocketPath
-    }, [], [], controllers, [], entityChangeFeeds);
+        // mongoDbName: dbName,
+        // exchangeUnixPath: exchangeSocketPath
+    });
 
     await app.start();
 
-    const db: Database = app.getInjector().get(Database);
-    await (await db.connection.connect()).db(dbName).dropDatabase();
-
     const createdClients: SocketClient[] = [];
 
-    const socket = new SocketClient({
-        host: 'ws+unix://' + socketPath
-    });
+    const socket = new SocketClient('ws+unix://' + socketPath);
 
     createdClients.push(socket);
 
@@ -125,20 +114,15 @@ export async function createServerClientPair(
         server: app,
         client: socket,
         createClient: () => {
-            const client = new SocketClient({
-                host: 'ws+unix://' + socketPath
-            });
+            const client = new SocketClient('ws+unix://' + socketPath);
             createdClients.push(client);
             return client;
         },
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
-            const client = new SocketClient({
-                host: 'ws+unix://' + socketPath
-            });
+            const client = new SocketClient('ws+unix://' + socketPath);
             createdClients.push(client);
             return client.controller<T>(controllerName);
         },
         close: close,
-        app: app.getApplication()
     };
 }

@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {ObjectID} from "mongodb";
 import {f} from "@super-hornet/marshal";
 import {mongoToPlain, partialMongoToPlain} from "../src/mapping";

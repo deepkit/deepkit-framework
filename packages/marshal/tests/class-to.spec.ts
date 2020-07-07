@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, partialClassToPlain} from "../src/mapper";
 

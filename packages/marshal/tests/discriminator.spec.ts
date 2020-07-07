@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {getClassSchema, f, classToPlain, plainToClass, PropertyCompilerSchema, validates, validate} from "..";
 
 class ConfigA {

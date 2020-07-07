@@ -48,7 +48,7 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 ## Install
 
 ```
-npm install @marcj/marshal reflect-metadata
+npm install @marcj/marshal
 ```
 
 Make sure you have `experimentalDecorators` and `emitDecoratorMetadata` enabled in tsconfig.json:
@@ -66,12 +66,9 @@ If you use Webpack's `UglifyJsPlugin`, make sure names are not mangled (`mangle:
 This is important to support constructor assignment. You can alternatively use asName() to hard code the constructor param names
 as strings.
 
-Make sure to import 'reflect-metadata' in your entry point scripts.
-
 ## Example
 
 ```typescript
-import 'reflect-metadata';
 import {
     f,
     plainToClass,
@@ -160,7 +157,6 @@ On real server hardware with Linux this numbers are easily halved.
 
 The class structure in question:
 ```typescript
-import 'reflect-metadata';
 import {f, plainToClass} from "@marcj/marshal";
 
 export class MarshalModel {
@@ -260,7 +256,6 @@ First make sure you have some validators attached to your fields you want to val
 
 ```typescript
 import 'jest';
-import 'reflect-metadata';
 import {f, validate, ValidationError, validatedPlainToClass, plainToClass} from '@marcj/marshal';
 
 class Page {
@@ -909,7 +904,6 @@ npm install @marcj/marshal-nest
 ```
 
 ```typescript
-import 'reflect-metadata';
 import {
     Controller, Get, Param, Post, Body
 } from '@nestjs/common';

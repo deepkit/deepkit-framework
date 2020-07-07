@@ -13,8 +13,6 @@ Super Hornet consists of many components that can be used alone or in combinatio
 
 A real-time HTTP server-client framework tailored for sophisticated web applications.
 
-[Framework README](packages/framework-core/README.md)
-
 ### super-hornet/marshal
 
 Super Hornet Marshal is the fastest universal TypeScript serializer and validator with JIT engine for frontend,

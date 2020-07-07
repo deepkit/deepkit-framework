@@ -1,4 +1,3 @@
-import {Injectable} from 'injection-js';
 import {arrayRemoveItem} from '@super-hornet/core';
 
 const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
@@ -108,11 +107,7 @@ export class ProcessLock {
     }
 }
 
-@Injectable()
 export class ProcessLocker {
-    constructor() {
-    }
-
     /**
      *
      * @param id

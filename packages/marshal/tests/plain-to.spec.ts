@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from "../src/mapper";
 import {f, getClassSchema, ParentReference} from "..";
@@ -110,8 +109,8 @@ test('partial', () => {
     });
 
     expect(instance).not.toBeInstanceOf(SimpleModel);
-    expect(instance['id']).toBeUndefined();
-    expect(instance['type']).toBeUndefined();
+    expect((instance as any)['id']).toBeUndefined();
+    expect((instance as any)['type']).toBeUndefined();
     expect(instance.name).toBe('Hi');
     expect(instance.children[0]).toBeInstanceOf(SubModel);
     expect(instance.children[0].label).toBe('Foo');
@@ -125,8 +124,8 @@ test('partial 2', () => {
     });
 
     expect(instance).not.toBeInstanceOf(SimpleModel);
-    expect(instance['id']).toBeUndefined();
-    expect(instance['type']).toBeUndefined();
+    expect((instance as any)['id']).toBeUndefined();
+    expect((instance as any)['type']).toBeUndefined();
     expect(instance.name).toBe('Hi');
     expect(instance['children.0.label']).toBe('Foo');
 

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import 'jest-extended'
 import {ClassSchemas, classToPlain, createClassSchema, f, plainToClass} from "..";
 

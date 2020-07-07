@@ -1,13 +1,12 @@
 import 'jest';
 import 'jest-extended';
-import 'reflect-metadata';
 import {FS, getMd5} from "../src/fs";
 import {Exchange} from "../src/exchange";
 import {pathExists, readFile, remove} from 'fs-extra';
 import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
 import {ClassType} from '@super-hornet/core';
 import {Connection, Database} from '@super-hornet/marshal-mongo';
-import {FileType} from "@super-hornet/framework-core";
+import {FileType} from "@super-hornet/framework-shared";
 import {ProcessLocker} from "../src/process-locker";
 import {ExchangeServer} from "../src/exchange-server";
 

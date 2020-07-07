@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {Entity, f, getClassSchema, plainToClass, PropertySchema} from "..";
 import {uuid} from "../src/utils";
 

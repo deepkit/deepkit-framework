@@ -1,5 +1,5 @@
-import {EntityStorage} from "./entity-storage";
-import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from "@super-hornet/framework-core";
+import {EntityStorage} from "@super-hornet/autosync";
+import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from "@super-hornet/framework-shared";
 import {Injectable} from "injection-js";
 
 /**

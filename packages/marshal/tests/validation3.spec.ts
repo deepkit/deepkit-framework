@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import 'jest-extended'
 import {f, getClassSchema, PropertySchema, PropertyValidator} from "../src/decorators";
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';

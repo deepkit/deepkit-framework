@@ -1,5 +1,4 @@
 import 'jest-extended';
-import 'reflect-metadata';
 import {bench} from "../../marshal-benchmark/util";
 import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass} from "../src/jit";
 import {f, validate} from "..";
@@ -76,7 +75,7 @@ test('benchmark classToPlain', () => {
     });
 
     bench(count, 'classToPlain manual obj = {}', (i) => {
-        const obj = {};
+        const obj: any = {};
         obj['name'] = b.name;
         obj['id'] = b.id;
         obj['tags'] = b.tags;

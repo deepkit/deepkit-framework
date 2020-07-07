@@ -648,7 +648,7 @@ export class ClassSchema<T = any> {
      * Use the `f` decorator as you already do at the class directly.
      *
      * Note: Once a transform method is called like plainToClass/classToPlain etc
-     * this method has no effect since compiler templates are then already built.
+     * this method has no effect anymore since compiler templates are then already built.
      * So make sure to call this addProperty() before calling transform methods.
      *
      * @example
@@ -663,6 +663,30 @@ export class ClassSchema<T = any> {
     public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
         //apply decorator, which adds properties automatically
         decorator(this.classType, name);
+    }
+
+    /**
+     * Adds dynamically new properties to the class schema definition.
+     * Use the `f` decorator as you already do at the class directly.
+     *
+     * Note: Once a transform method is called like plainToClass/classToPlain etc
+     * this method has no effect anymore since compiler templates are then already built.
+     * So make sure to call this addMethodProperty() before calling transform methods.
+     *
+     * @example
+     * ```typescript
+     * const schema = getClassSchema(MyClass);
+     * //or
+     * const schema = createClassSchema(MyClass);
+     *
+     * schema.addMethodProperty('constructor', 0, f.type(String));
+     * schema.addMethodProperty('constructor', 1, f.type(String));
+     *
+     * schema.addMethodProperty('myMethod', 0, f.type(String));
+     * ```
+     */
+    public addMethodProperty(name: string, position: number, decorator: FieldDecoratorResult<any>) {
+        decorator(this.classType, name, position);
     }
 
     /**

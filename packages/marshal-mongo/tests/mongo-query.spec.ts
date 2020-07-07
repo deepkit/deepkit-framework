@@ -1,5 +1,4 @@
 import 'jest-extended';
-import 'reflect-metadata';
 import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
 import {f} from "@super-hornet/marshal/src/decorators";
 

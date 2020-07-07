@@ -1,6 +1,5 @@
 import 'jest-extended';
-import 'reflect-metadata';
-import {Controller} from "@super-hornet/framework-core";
+import {Controller} from "@super-hornet/framework-shared";
 import {getControllerOptions} from "../src/decorators";
 
 test('decorators class', () => {

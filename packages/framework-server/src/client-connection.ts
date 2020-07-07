@@ -9,10 +9,10 @@ import {
     executeAction,
     getActionParameters,
     getActions
-} from "@super-hornet/framework-core";
+} from "@super-hornet/framework-shared";
 import {arrayRemoveItem, each} from "@super-hornet/core";
 import {PropertySchema, uuid} from "@super-hornet/marshal";
-import {Exchange} from "./exchange";
+import {Exchange} from "@super-hornet/exchange";
 import {ProcessLock, ProcessLocker} from "./process-locker";
 
 @Injectable()
@@ -171,6 +171,7 @@ export class ClientConnection {
                 }
 
                 //check if registered
+                //todo, replace this.locker with this.exchange.lock()
                 const locked = await this.locker.isLocked('peerController/' + message.controllerName);
                 if (locked) {
                     this.writer.sendError(message.id, `Controller with name ${message.controllerName} already registered in exchange.`);
@@ -194,9 +195,8 @@ export class ClientConnection {
                         sub: sub,
                         lock: lock,
                     };
-                } catch (error) {
+                } finally {
                     await lock.unlock();
-                    throw error;
                 }
 
                 this.writer.ack(message.id);
@@ -312,7 +312,7 @@ export class ClientConnection {
         }, timeout * 1000);
 
         //this subscribe is just for checking timeout
-        const timeoutSub = await this.exchange.subscribe('peerController/' + controllerName + '/reply/' + this.id, (reply: any) => {
+        const timeoutSub = this.exchange.subscribe('peerController/' + controllerName + '/reply/' + this.id, (reply: any) => {
             if (reply.id === messageId) {
                 clearTimeout(timeoutTimer);
                 timeoutSub.unsubscribe();

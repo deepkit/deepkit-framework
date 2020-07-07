@@ -1,17 +1,18 @@
 import * as cluster from "cluster";
-import {applyDefaults, ClassType, each, eachPair, getClassName, isPlainObject} from "@super-hornet/core";
+import {applyDefaults, ClassType, each, getClassName, isClass} from "@super-hornet/core";
 import {Worker} from './worker';
 import {Provider, ReflectiveInjector} from "injection-js";
-import {
-    getControllerOptions,
-    getModuleOptions,
-    HornetModule,
-    isModuleWithProviders,
-    ModuleOptions,
-    ModuleWithProviders
-} from "./decorators";
+import {getControllerOptions,} from "./decorators";
 import {Server} from "http";
 import {HornetBaseModule} from "./hornet-base.module";
+import {
+    getModuleOptions,
+    isModuleWithProviders,
+    isProviderSingleScope,
+    ModuleWithProviders,
+    ProviderWithScope,
+    SuperHornetModule
+} from '@super-hornet/framework-server-common';
 
 export class ApplicationServerConfig {
     host: string = '127.0.0.1';
@@ -27,7 +28,6 @@ export class ApplicationServerConfig {
     maxPayload?: number;
 }
 
-
 export class ApplicationServer {
     protected config: ApplicationServerConfig;
     protected injector?: ReflectiveInjector;
@@ -42,24 +42,28 @@ export class ApplicationServer {
 
     constructor(
         protected appModule: ClassType<any>,
-        config: Partial<ApplicationServerConfig> = {}
+        config: Partial<ApplicationServerConfig> = {},
+        providers: ProviderWithScope[] = [],
+        imports: (ClassType<any> | ModuleWithProviders)[] = []
     ) {
         this.config = applyDefaults(ApplicationServerConfig, config);
 
-        this.processModules(HornetBaseModule);
-        this.processModules(appModule);
+        this.processModule(HornetBaseModule);
+        this.processModule(appModule);
+        this.registerProviders(providers);
+        for (const module of imports) this.processModule(module);
 
-        const providers = this.rootProviders.slice(0);
-        providers.push({provide: ApplicationServerConfig, useValue: this.config});
-        providers.push({provide: 'controllers', useValue: this.controllers});
+        const rootProviders = this.rootProviders.slice(0);
+        rootProviders.push({provide: ApplicationServerConfig, useValue: this.config});
+        rootProviders.push({provide: 'controllers', useValue: this.controllers});
 
-        this.injector = ReflectiveInjector.resolveAndCreate(providers);
+        this.injector = ReflectiveInjector.resolveAndCreate(rootProviders);
         for (const moduleType of this.moduleTypes) {
             this.getInjector().get(moduleType); //just create all modules, to allow to configure them self further.
         }
     }
 
-    protected processModules(appModule: ClassType<any> | ModuleWithProviders) {
+    protected processModule(appModule: ClassType<any> | ModuleWithProviders) {
         let module = isModuleWithProviders(appModule) ? appModule.module : appModule;
         let options = getModuleOptions(module);
         if (!options) return;
@@ -74,22 +78,36 @@ export class ApplicationServer {
         this.moduleTypes.add(module);
 
         if (options.imports) {
-            for (const imp of options.imports) this.processModules(imp);
+            for (const imp of options.imports) this.processModule(imp);
         }
 
         if (options.controllers) {
             for (const controller of options.controllers) this.controllers.add(controller);
         }
 
-        if (providers) {
-            for (const provider of providers) {
-                if (provider.scope === 'session') {
-                    this.sessionProviders.push(provider);
-                } else if (provider.scope === 'request') {
-                    this.requestProviders.push(provider);
-                } else {
-                    this.rootProviders.push(provider);
-                }
+        if (providers) this.registerProviders(providers);
+    }
+
+    protected registerProviders(providers: ProviderWithScope[]) {
+        function normalize(provider: ProviderWithScope): Provider {
+            if (isClass(provider)) {
+                return provider;
+            }
+
+            if (isProviderSingleScope(provider)) {
+                return {provide: provider.provide, useExisting: provider.provide};
+            }
+
+            return provider;
+        }
+
+        for (const provider of providers) {
+            if (provider.scope === 'session') {
+                this.sessionProviders.push(normalize(provider));
+            } else if (provider.scope === 'request') {
+                this.requestProviders.push(normalize(provider));
+            } else {
+                this.rootProviders.push(normalize(provider));
             }
         }
     }
@@ -116,7 +134,7 @@ export class ApplicationServer {
         }
 
         for (const moduleType of this.moduleTypes) {
-            const module = this.getInjector().get(moduleType) as HornetModule;
+            const module = this.getInjector().get(moduleType) as SuperHornetModule;
             if (module.onDestroy) {
                 await module.onDestroy();
             }
@@ -135,7 +153,7 @@ export class ApplicationServer {
 
     protected async bootstrapMain() {
         for (const moduleType of this.moduleTypes) {
-            const module = this.getInjector().get(moduleType) as HornetModule;
+            const module = this.getInjector().get(moduleType) as SuperHornetModule;
             if (module.bootstrapMain) {
                 await module.bootstrapMain();
             }
@@ -144,7 +162,7 @@ export class ApplicationServer {
 
     protected async bootstrap() {
         for (const moduleType of this.moduleTypes) {
-            const module = this.getInjector().get(moduleType) as HornetModule;
+            const module = this.getInjector().get(moduleType) as SuperHornetModule;
             if (module.bootstrap) {
                 await module.bootstrap();
             }

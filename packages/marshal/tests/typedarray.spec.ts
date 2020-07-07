@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {f, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
 import {classToPlain, plainToClass, propertyClassToPlain} from "../src/mapper";
 import {Buffer} from 'buffer';

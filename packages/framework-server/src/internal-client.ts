@@ -12,7 +12,7 @@ import {
     ServerMessageErrorGeneral,
     ServerMessageResult,
     EntityState
-} from "@super-hornet/framework-core";
+} from "@super-hornet/framework-shared";
 import {Subscription} from "rxjs";
 import {each, eachKey} from "@super-hornet/core";
 import {Injectable, Optional} from "injection-js";

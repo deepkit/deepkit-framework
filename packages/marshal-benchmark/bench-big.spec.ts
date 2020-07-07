@@ -1,5 +1,4 @@
 import 'jest-extended';
-import 'reflect-metadata';
 import {
     classToPlain as classTransformerClassToPlain,
     Exclude as ctExclude,

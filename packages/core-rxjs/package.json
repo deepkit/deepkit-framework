@@ -4,6 +4,7 @@
   "description": "Super Hornet core rxjs library",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "type": "module",
   "module": "dist/",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",

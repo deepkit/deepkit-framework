@@ -1,7 +1,7 @@
-import {HornetModule, Module} from "@super-hornet/framework-server";
-import {Exchange} from "./exchange";
 import {ExchangeServer} from "./exchange-server";
+import {Exchange} from './exchange';
 import {AppLocker} from "./app-locker";
+import {Module, SuperHornetModule} from "@super-hornet/framework-server-common";
 
 @Module({
     providers: [
@@ -10,7 +10,7 @@ import {AppLocker} from "./app-locker";
         AppLocker,
     ]
 })
-export class ExchangeModule implements HornetModule {
+export class ExchangeModule implements SuperHornetModule {
     bootstrap(): Promise<void> | void {
         return undefined;
     }

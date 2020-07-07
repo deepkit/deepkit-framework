@@ -6,14 +6,14 @@ import {
     ValidationError,
     ValidationErrorItem,
     ValidationParameterError
-} from "@super-hornet/framework-core";
+} from "@super-hornet/framework-shared";
 import {closeAllCreatedServers, createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount, first, skip} from "rxjs/operators";
 import {Entity, f, getClassSchema, PropertySchema} from '@super-hornet/marshal';
 import {ObserverTimer} from "@super-hornet/core-rxjs";
 import {isArray} from '@super-hornet/core';
-import {JSONError} from "@super-hornet/framework-core";
+import {JSONError} from "@super-hornet/framework-shared";
 import {ClientProgress} from "@super-hornet/framework-client";
 
 afterAll(async () => {
@@ -65,7 +65,7 @@ test('basic setup and methods', async () => {
         }
 
         @Action()
-        myErrorCustom() {
+        myErrorCustom(): any {
             const error = new MyCustomError('Shit dreck');
             error.additional = 'hi';
             throw error;

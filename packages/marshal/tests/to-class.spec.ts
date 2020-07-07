@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, cloneClass, isExcluded, plainToClass} from '../src/mapper';
 import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "..";

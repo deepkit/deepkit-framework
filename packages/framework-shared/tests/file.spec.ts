@@ -1,5 +1,4 @@
 import 'jest-extended';
-import 'reflect-metadata';
 import {File} from '../src/file';
 
 test('file', () => {

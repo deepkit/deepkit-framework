@@ -1,7 +1,6 @@
 import 'jest-extended';
-import 'reflect-metadata';
-import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@super-hornet/framework-core";
-import {ClientConnection, EntityStorage, ExchangeDatabase} from "@super-hornet/framework-server/dist/index";
+import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@super-hornet/framework-shared";
+import {ClientConnection, EntityStorage, ExchangeDatabase} from "@super-hornet/framework-server";
 import {closeAllCreatedServers, createServerClientPair} from "./util";
 import {Entity, f, getClassSchema, uuid} from '@super-hornet/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';

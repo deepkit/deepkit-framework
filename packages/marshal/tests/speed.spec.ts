@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {classToPlain, plainToClass} from "../src/mapper";
 import {Job} from "./big-entity";
 import { SuperSimple} from "./entities";

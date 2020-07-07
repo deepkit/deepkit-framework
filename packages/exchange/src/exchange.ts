@@ -1,6 +1,6 @@
 import {Subscription} from "rxjs";
 import {getEntityName} from "@super-hornet/marshal";
-import {ExchangeEntity, StreamFileResult} from '@super-hornet/framework-core';
+import {ExchangeEntity, StreamFileResult} from '@super-hornet/framework-shared';
 import {ClassType, sleep} from '@super-hornet/core';
 import {Injectable} from "injection-js";
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';

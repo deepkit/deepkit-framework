@@ -1,13 +1,12 @@
 import 'jest-extended';
-import 'reflect-metadata';
-import {Action, Controller} from "@super-hornet/framework-core";
+import {Action, Controller} from "@super-hornet/framework-shared";
 import {Entity, f} from '@super-hornet/marshal';
 import {closeAllCreatedServers, createServerClientPair} from "./util";
-import {Application} from "@super-hornet/framework-server/dist/index";
-import {Session} from "@super-hornet/framework-server/dist/index";
+import {Application} from "@super-hornet/framework-server";
+import {Session} from "@super-hornet/framework-server";
 import {Injector} from 'injection-js';
 import {Observable} from 'rxjs';
-import {InternalClient} from "@super-hornet/framework-server/dist/index";
+import {InternalClient} from "@super-hornet/framework-server";
 import {sleep} from '@super-hornet/core';
 
 // @ts-ignore

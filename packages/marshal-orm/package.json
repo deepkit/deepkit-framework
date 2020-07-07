@@ -1,0 +1,49 @@
+{
+  "name": "@super-hornet/marshal-orm",
+  "version": "2.1.13",
+  "description": "Marshal ORM, the fastest JIT-based ORM for Typescript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "repository": "https://github.com/super-hornet/super-hornet",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "peerDependencies": {
+  },
+  "dependencies": {
+    "@super-hornet/core": "^0.1.19",
+    "@super-hornet/marshal": "^2.1.13",
+    "buffer": "^5.2.1"
+  },
+  "devDependencies": {
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "collectCoverageFrom": [
+      "**/*.{ts}",
+      "!**/node_modules/**",
+      "!**/lib/**/*",
+      "!**/*.d.ts",
+      "!index.ts"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/*.spec.ts"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

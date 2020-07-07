@@ -565,14 +565,14 @@ export function jitClassToPlain<T>(classType: ClassType<T>, instance: T, options
     return createClassToXFunction(classType, 'plain')(instance, options);
 }
 
-export function jitPartial<T, K extends keyof T>(
+export function jitPartial<T, R extends object>(
     fromFormat: string,
     toFormat: string,
     classType: ClassType<T>,
-    partial: { [name: string]: any },
+    partial: R,
     options: JitConverterOptions = {}
-): Partial<{ [F in K]: any }> {
-    const result: Partial<{ [F in K]: any }> = {};
+): { [F in keyof R]?: any } {
+    const result: Partial<{ [F in keyof R]: any }> = {};
     const jitConverter = new JitPropertyConverter(fromFormat, toFormat, classType, options);
 
     for (const i in partial) {
@@ -583,18 +583,18 @@ export function jitPartial<T, K extends keyof T>(
     return result;
 }
 
-export function jitPartialClassToPlain<T, K extends keyof T>(
+export function jitPartialClassToPlain<T, R extends object>(
     classType: ClassType<T>,
-    partial: { [name: string]: any },
+    partial: R,
     options: JitConverterOptions = {}
-): Partial<{ [F in K]: any }> {
+): { [F in keyof R]?: any } {
     return jitPartial('class', 'plain', classType, partial, options);
 }
 
-export function jitPartialPlainToClass<T, K extends keyof T>(
+export function jitPartialPlainToClass<T, R extends object>(
     classType: ClassType<T>,
-    partial: { [name: string]: any },
+    partial: R,
     options: JitConverterOptions = {}
-): Partial<{ [F in K]: any }> {
+): { [F in keyof R]?: any } {
     return jitPartial('plain', 'class', classType, partial, options);
 }

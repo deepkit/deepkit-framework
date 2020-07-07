@@ -1,6 +1,5 @@
 import 'jest';
 import 'jest-extended';
-import 'reflect-metadata';
 import {createDatabase} from "./utils";
 import {User} from "./testcase-b/user";
 

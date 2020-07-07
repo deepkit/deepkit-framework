@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import 'jest-extended'
 import {validate, f} from "@super-hornet/marshal";
 import {ValidationPipe} from '../';

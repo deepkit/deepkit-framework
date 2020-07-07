@@ -11,22 +11,24 @@
     "moduleResolution": "node",
     "importHelpers": true,
     "target": "es2017",
+    "module": "CommonJS",
 
     "baseUrl": ".",
     "outDir": "./dist",
     "declaration": true,
-    "composite": true,
-    "types": [
-      "reflect-metadata"
-    ]
+    "composite": true
   },
   "include": [
-    "./src/**/*.ts",
-    "./index.ts"
+    "src",
+    "test",
+    "index.ts"
   ],
   "references": [
     {
-      "path": "node_modules/@super-hornet/framework-core/tsconfig.json"
+      "path": "node_modules/@super-hornet/framework-shared/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/framework-server-common/tsconfig.json"
     },
     {
       "path": "node_modules/@super-hornet/core/tsconfig.json"
@@ -42,6 +44,9 @@
     },
     {
       "path": "node_modules/@super-hornet/exchange/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/autosync/tsconfig.json"
     }
   ]
 }

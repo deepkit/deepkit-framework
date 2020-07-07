@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import {ExchangeServer} from "../src/exchange-server";
 import {unlinkSync} from "fs";
 

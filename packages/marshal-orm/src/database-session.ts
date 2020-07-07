@@ -91,7 +91,7 @@ export class DatabaseSession {
             .findOne(this.buildFindCriteria(classSchema.classType, item));
 
         for (const property of classSchema.classProperties.values()) {
-            if (property.name === classSchema.idField) continue;
+            if (property.isId) continue;
             if (property.isReference || property.backReference) continue;
 
             //todo, what about its relations?

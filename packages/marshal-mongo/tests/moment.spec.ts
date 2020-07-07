@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import * as moment from 'moment';
 import {f} from "@super-hornet/marshal";
 import {classToMongo, mongoToClass} from "..";

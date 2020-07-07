@@ -8,7 +8,7 @@ data from your JSON or class instance is correctly converted to MongoDB
 specific types and inserted IDs are applied to your class instance.
 
 ```
-npm install @super-hornet/marshal @super-hornet/marshal-mongo reflect-metadata mongodb
+npm install @super-hornet/marshal @super-hornet/marshal-mongo mongodb
 ```
 
 ```typescript

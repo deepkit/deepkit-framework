@@ -1,6 +1,5 @@
 import 'jest';
 import 'jest-extended';
-import 'reflect-metadata';
 import {Exchange, ExchangeDatabase, ExchangeNotifyPolicy} from "..";
 import {remove} from "fs-extra";
 import {Database, Connection} from '@super-hornet/marshal-mongo';

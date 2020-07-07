@@ -4,7 +4,6 @@ import {BaseQuery, DatabaseQueryModel} from "./query";
 import {ClassType, getClassName} from "@super-hornet/core";
 import {DatabaseSession} from "./database-session";
 import {markItemAsKnownInDatabase} from "./entity-register";
-import has = Reflect.has;
 
 /**
  * Returns true if item is hydrated. Returns false when its a unpopulated proxy.

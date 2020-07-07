@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {classToPlain} from "../";
 import {Plan, SimpleModel, SubModel} from "./entities";
 

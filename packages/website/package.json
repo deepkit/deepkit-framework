@@ -32,7 +32,7 @@
     "rxjs": "~6.5.5",
     "tslib": "^2.0.0",
     "zone.js": "~0.10.3",
-    "@super-hornet/framework-core": "^0.0.33",
+    "@super-hornet/framework-shared": "^0.0.33",
     "@super-hornet/marshal": "^2.1.1",
     "@super-hornet/marshal-mongo": "^2.1.1",
     "bson-ext": "^2.0.3",

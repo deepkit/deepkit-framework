@@ -1,5 +1,4 @@
 import 'jest-extended'
-import 'reflect-metadata';
 import {classToMongo} from "../src/mapping";
 import {SimpleModel} from "@super-hornet/marshal/tests/entities";
 
