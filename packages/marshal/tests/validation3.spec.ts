@@ -3,7 +3,7 @@ import {f, getClassSchema, PropertySchema, PropertyValidator} from "../src/decor
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from "./big-entity";
 import {jitValidateProperty} from "../src/jit-validation";
-import {uuid, validatedPlainToClass} from "..";
+import {uuid, validatedPlainToClass} from "../index";
 
 test('test any deep array', async () => {
     class Peter {

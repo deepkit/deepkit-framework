@@ -31,10 +31,5 @@
       "**/tests/**/*.+(ts|tsx|js)"
     ],
     "setupFilesAfterEnv": ["jest-extended"]
-  },
-  "globals": {
-    "ts-jest": {
-      "tsConfigFile": "tsconfig.json"
-    }
   }
 }

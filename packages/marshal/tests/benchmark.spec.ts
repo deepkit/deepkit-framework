@@ -1,7 +1,7 @@
 import 'jest-extended';
-import {bench} from "../../marshal-benchmark/util";
 import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass} from "../src/jit";
-import {f, validate} from "..";
+import {f} from "../index";
+import {bench} from "./util";
 
 export class MarshalSuperSimple {
     constructor(

@@ -1,6 +1,6 @@
 import 'jest-extended'
 import {f, getClassSchema, PropertySchema} from "../src/decorators";
-import {jitValidatePartial, jitValidateProperty, resolvePropertyCompilerSchema} from "..";
+import {jitValidatePartial, jitValidateProperty, resolvePropertyCompilerSchema} from "../index";
 
 test('test partial @f.map(any)', async () => {
     const p = new PropertySchema('#0');

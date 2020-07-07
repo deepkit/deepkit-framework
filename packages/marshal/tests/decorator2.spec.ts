@@ -1,5 +1,5 @@
 import 'jest-extended'
-import {Entity, f, getClassSchema, plainToClass, PropertySchema} from "..";
+import {Entity, f, getClassSchema, plainToClass, PropertySchema} from "../index";
 import {uuid} from "../src/utils";
 
 test('test optional', () => {
@@ -244,15 +244,19 @@ test('test invalid @f', () => {
     expect(() => {
         class User1 {
             @f
+            // @ts-ignore
             notDefined;
         }
     }).toThrowError('User1::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
 
     expect(() => {
+        // @ts-ignore
         var NOTEXIST;
 
         class User2 {
+            // @ts-ignore
             @f.type(NOTEXIST)
+            // @ts-ignore
             notDefined;
         }
     }).toThrowError('User2::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
@@ -319,6 +323,7 @@ test('test invalid @f', () => {
         //works
         class Model {
             @f.any().asMap()
+            // @ts-ignore
             any?;
         }
     }

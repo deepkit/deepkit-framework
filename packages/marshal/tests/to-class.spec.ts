@@ -1,7 +1,7 @@
 import 'jest-extended'
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, cloneClass, isExcluded, plainToClass} from '../src/mapper';
-import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "..";
+import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "../index";
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from './document-scenario/PageClass';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
@@ -250,9 +250,11 @@ test('test allowNull', async () => {
 });
 
 test('test OnLoad', async () => {
+    // @ts-ignore
     let ModelRef;
 
     class Sub {
+        // @ts-ignore
         @f.forward(() => ModelRef)
         @ParentReference()
         parent?: any;

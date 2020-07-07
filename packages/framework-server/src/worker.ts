@@ -1,17 +1,14 @@
-import {Provider, ReflectiveInjector} from "injection-js";
-import {SessionStack} from "./application";
 import {ClientConnection} from "./client-connection";
-import {ServerConnectionMiddleware} from "./connection-middleware";
-import {ConnectionMiddleware, ConnectionWriter, ConnectionWriterStream} from "@super-hornet/framework-shared";
+import {ConnectionWriter, ConnectionWriterStream} from "@super-hornet/framework-shared";
 import * as WebSocket from 'ws';
+import {Injector, Provider, ServiceContainer} from "@super-hornet/framework-server-common";
 
 export class Worker {
     protected server?: WebSocket.Server;
     protected options: WebSocket.ServerOptions;
 
     constructor(
-        protected mainInjector: ReflectiveInjector,
-        protected connectionProvider: Provider[],
+        protected serviceContainer: ServiceContainer,
         options: WebSocket.ServerOptions,
     ) {
         this.options = {...options};
@@ -28,19 +25,15 @@ export class Worker {
     }
 
     async run(): Promise<void> {
-        const injectorMap = new Map<WebSocket, ReflectiveInjector>();
-
         this.server = new WebSocket.Server(this.options);
 
         this.server.on('connection', (ws, req) => {
             const ipString = req.connection.remoteAddress;
 
+
             const provider: Provider[] = [
-                {provide: 'socket', useValue: ws},
+                {provide: WebSocket, useValue: ws},
                 {provide: 'remoteAddress', useValue: ipString},
-                SessionStack,
-                ClientConnection,
-                {provide: ConnectionMiddleware, useClass: ServerConnectionMiddleware},
                 {
                     provide: ConnectionWriter, deps: [], useFactory: () => {
                         return new ConnectionWriter(new class implements ConnectionWriterStream {
@@ -60,12 +53,14 @@ export class Worker {
                     }
                 },
             ];
-            provider.push(...this.connectionProvider);
-            injectorMap.set(ws, this.mainInjector.resolveAndCreateChild(provider));
+
+            //todo, this is not yet the correct way to instantiate a session injector, is it?
+            // controller classes need their own context injector, otherwise module providers are not available.
+            const injector = this.serviceContainer.getRootContext().createInjector('session', provider);
 
             ws.on('message', async (message: any) => {
                 const json = 'string' === typeof message ? message : Buffer.from(message).toString();
-                await injectorMap.get(ws)!.get(ClientConnection).onMessage(JSON.parse(json));
+                await injector.get(ClientConnection).onMessage(JSON.parse(json));
             });
 
             ws.on('error', async (error: any) => {
@@ -78,8 +73,7 @@ export class Worker {
 
             ws.on('close', async () => {
                 clearInterval(interval);
-                injectorMap.get(ws)!.get(ClientConnection).destroy();
-                injectorMap.delete(ws);
+                injector.get(ClientConnection).destroy();
             });
         });
     }

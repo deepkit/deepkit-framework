@@ -238,6 +238,11 @@ export class PropertySchema extends PropertyCompilerSchema {
     isId: boolean = false;
 
     /**
+     * Custom user data.
+     */
+    data: {[name: string]: any} = {};
+
+    /**
      * When this property belongs to method as argument then this contains the name of the method.
      */
     methodName?: string;
@@ -523,7 +528,7 @@ export class ClassSchema<T = any> {
     /**
      * @internal
      */
-    protected initializedMethods: { [name: string]: true } = {};
+    protected initializedMethods = new Set<string>();
 
     classProperties = new Map<string, PropertySchema>();
 
@@ -734,12 +739,12 @@ export class ClassSchema<T = any> {
     }
 
     protected initializeMethod(name: string) {
-        if (!this.initializedMethods[name]) {
-            if (!Reflect.hasMetadata('design:returntype', this.classType.prototype, name)) {
-                throw new Error(`Method ${name} has no decorators used or is not defined, so reflection does not work. Use @f on the method or arguments.`);
+        if (!this.initializedMethods.has(name)) {
+            if (name !== 'constructor' && !Reflect.hasMetadata('design:returntype', this.classType.prototype, name)) {
+                throw new Error(`Method ${name} has no decorators used or is not defined, so reflection does not work. Use @f on the method or arguments. Is emitDecoratorMetadata enabled?`);
             }
 
-            if (!this.methods[name]) {
+            if (name !== 'constructor' && !this.methods[name]) {
                 const returnType = Reflect.getMetadata('design:returntype', this.classType.prototype, name);
                 if (returnType !== Promise) {
                     //Promise is not a legit returnType as this is automatically the case for async functions
@@ -751,7 +756,10 @@ export class ClassSchema<T = any> {
 
             const properties = this.getOrCreateMethodProperties(name);
 
-            const paramtypes = Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
+            const paramtypes = name === 'constructor'
+                ? Reflect.getMetadata('design:paramtypes', this.classType)
+                : Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
+
             for (const [i, t] of eachPair(paramtypes)) {
                 if (!properties[i]) {
                     properties[i] = new PropertySchema(String(i));
@@ -760,7 +768,7 @@ export class ClassSchema<T = any> {
                     }
                 }
             }
-            this.initializedMethods[name] = true;
+            this.initializedMethods.add(name);
         }
     }
 
@@ -947,7 +955,7 @@ export const ClassSchemas = new Map<object, ClassSchema>();
 /**
  * @hidden
  */
-export function getOrCreateEntitySchema<T>(target: Object | ClassType<T> | any): ClassSchema {
+export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any): ClassSchema {
     const proto = target['prototype'] ? target['prototype'] : target;
     const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
 
@@ -1123,7 +1131,7 @@ export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<Cl
 }
 
 export interface FieldDecoratorResult<T> {
-    (target: Object, property?: string, parameterIndexOrDescriptor?: any): void;
+    (target: object, property?: string, parameterIndexOrDescriptor?: any): void;
 
     /**
      * Sets the name of this property. Important for cases where the actual name is lost during compilation.
@@ -1221,6 +1229,11 @@ export interface FieldDecoratorResult<T> {
      * Used to define an index on a field.
      */
     index(options?: IndexOptions, name?: string): this;
+
+    /**
+     * Adds custom data into the property schema.
+     */
+    data(key: string, value: any): this;
 
     /**
      * Puts the property into one or multiple groups.
@@ -1353,7 +1366,7 @@ export interface FieldDecoratorResult<T> {
     /**
      * Uses an additional modifier to change the PropertySchema.
      */
-    use(decorator: (target: Object, property: PropertySchema) => void): this;
+    use(decorator: (target: object, property: PropertySchema) => void): this;
 
     /**
      * Adds a custom validator class or validator callback.
@@ -1393,9 +1406,9 @@ export interface FieldDecoratorResult<T> {
 }
 
 function createFieldDecoratorResult<T>(
-    cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
+    cb: (target: object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
     givenPropertyName: string = '',
-    modifier: ((target: Object, property: PropertySchema) => void)[] = [],
+    modifier: ((target: object, property: PropertySchema) => void)[] = [],
     modifiedOptions: FieldOptions = {},
     root = false,
 ): FieldDecoratorResult<T> {
@@ -1409,8 +1422,13 @@ function createFieldDecoratorResult<T>(
         }
     }
 
-    const fn = (target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
+    const fn = (target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
         resetIfNecessary();
+
+        if (propertyOrMethodName === undefined && parameterIndexOrDescriptor === undefined) {
+            //was used on a class, just exit
+            return;
+        }
 
         if (target === Object) {
             const propertySchema = new PropertySchema(String(parameterIndexOrDescriptor));
@@ -1566,7 +1584,7 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Discriminant()], modifiedOptions);
     };
 
-    fn.exclude = (target: 'all' | 'mongo' | 'plain' = 'all') => {
+    fn.exclude = (target: 'all' | 'mongo' | 'plain' | string = 'all') => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)], modifiedOptions);
     };
@@ -1579,6 +1597,11 @@ function createFieldDecoratorResult<T>(
     fn.index = (options?: IndexOptions, name?: string) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Index(options, name)], modifiedOptions);
+    };
+
+    fn.data = (key: string, value: any) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Data(key, value)], modifiedOptions);
     };
 
     fn.group = (...names: string[]) => {
@@ -1601,7 +1624,7 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Decorated()], modifiedOptions);
     };
 
-    fn.use = (decorator: (target: Object, property: PropertySchema) => void) => {
+    fn.use = (decorator: (target: object, property: PropertySchema) => void) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator], modifiedOptions);
     };
@@ -1655,7 +1678,7 @@ function createFieldDecoratorResult<T>(
             }
         };
 
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: Object, property: PropertySchema) => {
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.validators.push(validatorClass);
         }], modifiedOptions);
     };
@@ -1668,7 +1691,7 @@ function createFieldDecoratorResult<T>(
  * We detect the name by reading the constructor' signature, which would be otherwise lost.
  */
 export function FieldDecoratorWrapper<T>(
-    cb: (target: Object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
+    cb: (target: object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
     root = false
 ): FieldDecoratorResult<T> {
     return createFieldDecoratorResult<T>(cb, '', [], {}, root);
@@ -1678,7 +1701,7 @@ export function FieldDecoratorWrapper<T>(
  * @internal
  */
 function Decorated() {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).decorator = property.name;
         property.isDecorated = true;
     };
@@ -1688,7 +1711,7 @@ function Decorated() {
  * @internal
  */
 function IDField() {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).idField = property.name;
         property.isId = true;
     };
@@ -1698,7 +1721,7 @@ function IDField() {
  * @internal
  */
 function Optional() {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         property.isOptional = true;
     };
 }
@@ -1707,7 +1730,7 @@ function Optional() {
  * @internal
  */
 function Discriminant() {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).discriminant = property.name;
         property.isDiscriminant = true;
     };
@@ -1717,7 +1740,7 @@ function Discriminant() {
  * @internal
  */
 function GroupName(...names: string[]) {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         property.groupNames = names;
     };
 }
@@ -1806,7 +1829,7 @@ export function OnLoad<T>(options: { fullLoad?: boolean } = {}) {
  * @internal
  */
 function Exclude(t: 'all' | string = 'all') {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         property.exclude = t;
     };
 }
@@ -1969,8 +1992,8 @@ function Field(...oriType: [FieldTypes | Types] | (ClassType<any>|ForwardedRef<a
             for (const [i, t] of eachPair(options.template)) {
                 if (isFunction(t) && isFunction(t.asName) && isFunction(t.optional)) {
                     //its a decorator @f()
-                    //target: Object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
-                    t.use((target: Object, incomingProperty: PropertySchema) => {
+                    //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
+                    t.use((target: object, incomingProperty: PropertySchema) => {
                         property.templateArgs!.push(incomingProperty);
                     })(Object, undefined, i);
                 } else {
@@ -2300,7 +2323,7 @@ export const type: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
  * @hidden
  */
 function Type<T>(type: Types) {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         property.type = type;
     };
 }
@@ -2309,7 +2332,7 @@ function Type<T>(type: Types) {
  * @internal
  */
 function MongoIdField() {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         property.type = 'objectId';
     };
 }
@@ -2318,7 +2341,7 @@ function MongoIdField() {
  * @internal
  */
 function UUIDField() {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         property.type = 'uuid';
     };
 }
@@ -2327,7 +2350,7 @@ function UUIDField() {
  * @internal
  */
 function Index(options?: IndexOptions, name?: string) {
-    return (target: Object, property: PropertySchema) => {
+    return (target: object, property: PropertySchema) => {
         const schema = getOrCreateEntitySchema(target);
         if (property.methodName) {
             throw new Error('Index could not be used on method arguments.');
@@ -2339,12 +2362,21 @@ function Index(options?: IndexOptions, name?: string) {
 }
 
 /**
+ * @internal
+ */
+function Data(key: string, value: any) {
+    return (target: object, property: PropertySchema) => {
+        property.data[key] = value;
+    };
+}
+
+/**
  * Used to define an index on a class.
  *
  * @category Decorator
  */
 export function MultiIndex(fields: string[], options: IndexOptions, name?: string) {
-    return (target: Object, property?: string, parameterIndexOrDescriptor?: any) => {
+    return (target: object, property?: string, parameterIndexOrDescriptor?: any) => {
         const classType = (target as any).prototype as ClassType<any>;
         const schema = getOrCreateEntitySchema(classType);
 

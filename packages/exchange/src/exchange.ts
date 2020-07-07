@@ -2,10 +2,10 @@ import {Subscription} from "rxjs";
 import {getEntityName} from "@super-hornet/marshal";
 import {ExchangeEntity, StreamFileResult} from '@super-hornet/framework-shared';
 import {ClassType, sleep} from '@super-hornet/core';
-import {Injectable} from "injection-js";
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
 import {AsyncSubscription} from "@super-hornet/core-rxjs";
 import * as WebSocket from "ws";
+import {injectable} from "@super-hornet/framework-server-common";
 
 type Callback<T> = (message: T) => void;
 
@@ -18,7 +18,7 @@ export class ExchangeLock {
     }
 }
 
-@Injectable()
+@injectable()
 export class Exchange {
     private subscriptions: { [channelName: string]: Callback<any>[] } = {};
     public socket?: WebSocket;

@@ -1,11 +1,11 @@
 import {EntityStorage} from "@super-hornet/autosync";
 import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from "@super-hornet/framework-shared";
-import {Injectable} from "injection-js";
+import {injectable} from "@super-hornet/framework-server-common";
 
 /**
  * Extends the ConnectionMiddleware to make sure entityStorage decrease the usage of EntitySubject when it got unsubscribed.
  */
-@Injectable()
+@injectable()
 export class ServerConnectionMiddleware extends ConnectionMiddleware {
     constructor(
         protected entityStorage: EntityStorage,

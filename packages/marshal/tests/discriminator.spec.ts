@@ -1,5 +1,5 @@
 import 'jest-extended'
-import {getClassSchema, f, classToPlain, plainToClass, PropertyCompilerSchema, validates, validate} from "..";
+import {classToPlain, f, getClassSchema, plainToClass, PropertyCompilerSchema, validate} from "../index";
 
 class ConfigA {
     @f.discriminant()

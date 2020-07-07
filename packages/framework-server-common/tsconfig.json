@@ -7,6 +7,7 @@
     "sourceMap": true,
     "downlevelIteration": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "importHelpers": true,
     "target": "es2017",
@@ -19,11 +20,15 @@
   },
   "include": [
     "src",
+    "tests",
     "index.ts"
   ],
   "references": [
     {
       "path": "node_modules/@super-hornet/core/tsconfig.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
     }
   ]
 }

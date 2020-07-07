@@ -10,11 +10,13 @@ import {
     getEntityName,
     isArrayType,
     isMapType,
-    isRegisteredEntity, partialClassToPlain,
+    isRegisteredEntity,
+    partialClassToPlain,
     plainToClass,
     PropertySchema,
     RegisteredEntities,
-} from "../";
+} from "../index";
+import 'reflect-metadata';
 import {Buffer} from "buffer";
 import {SimpleModel} from "./entities";
 import {PageClass} from "./document-scenario/PageClass";
@@ -22,15 +24,6 @@ import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {getClassTypeFromInstance} from '../src/decorators';
 import {resolvePropertyCompilerSchema} from "../src/jit";
-
-test('test invalid usage decorator', async () => {
-    expect(() => {
-        @f
-        class Base {
-            ohwe: any;
-        }
-    }).toThrow('Could not resolve property name for class property on Base');
-});
 
 test('test getClassTypeFromInstance', async () => {
     {
@@ -550,5 +543,61 @@ test('group', () => {
         expect(user2.config.color).toBe('blue');
         expect(user2.config.fontFamily).toBe('Arial');
     }
+});
 
+test('f on class, constructor resolution', () => {
+    class Connection {}
+    class Connection2 {}
+
+    {
+        @f
+        class MyServer {
+            constructor(private connection: Connection, connection2: Connection2) {
+            }
+        }
+
+        const schema = getClassSchema(MyServer);
+
+        const properties = schema.getMethodProperties('constructor');
+        expect(properties).toBeArrayOfSize(2);
+
+        expect(properties[0].resolveClassType).toBe(Connection);
+        expect(properties[0].isOptional).toBe(false);
+
+        expect(properties[1].resolveClassType).toBe(Connection2);
+        expect(properties[1].isOptional).toBe(false);
+    }
+
+    {
+        @f
+        class MyServer {
+            constructor(private connection: Connection, @f.optional() connection2?: Connection2) {
+            }
+        }
+
+        const schema = getClassSchema(MyServer);
+
+        const properties = schema.getMethodProperties('constructor');
+        expect(properties).toBeArrayOfSize(2);
+
+        expect(properties[0].resolveClassType).toBe(Connection);
+        expect(properties[0].isOptional).toBe(false);
+
+        expect(properties[1].resolveClassType).toBe(Connection2);
+        expect(properties[1].isOptional).toBe(true);
+    }
+
+    {
+        @f
+        class MyServer {
+            constructor(@f.type(Connection).optional() connection2?: Connection2) {
+            }
+        }
+        const schema = getClassSchema(MyServer);
+        const properties = schema.getMethodProperties('constructor');
+        expect(properties).toBeArrayOfSize(1);
+
+        expect(properties[0].resolveClassType).toBe(Connection);
+        expect(properties[0].isOptional).toBe(true);
+    }
 });

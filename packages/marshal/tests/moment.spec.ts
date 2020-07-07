@@ -1,6 +1,6 @@
 import 'jest-extended'
 import * as moment from 'moment';
-import {getClassSchema, f, classToPlain, plainToClass} from "..";
+import {getClassSchema, f, classToPlain, plainToClass} from "../index";
 
 test('test moment', () => {
     class Model {

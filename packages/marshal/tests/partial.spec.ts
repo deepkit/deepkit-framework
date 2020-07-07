@@ -1,6 +1,6 @@
 import 'jest';
 import 'jest-extended';
-import {Entity, f, partialClassToPlain, uuid} from "..";
+import {Entity, f, uuid} from "../index";
 import {JitPropertyConverter} from "../src/jit";
 import {Channel, Job} from "./big-entity";
 

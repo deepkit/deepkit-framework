@@ -1,6 +1,6 @@
 import 'jest-extended';
 import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
-import {f} from "@super-hornet/marshal/src/decorators";
+import {f} from "@super-hornet/marshal";
 
 class SimpleConfig {
     @f.array(String).decorated()

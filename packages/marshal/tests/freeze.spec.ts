@@ -1,6 +1,6 @@
 import 'jest';
 import 'jest-extended';
-import {classToPlain, f, getClassSchema} from "..";
+import {classToPlain, f, getClassSchema} from "../index";
 
 export class StateGoalChecklistItem {
     @f read: boolean = false;

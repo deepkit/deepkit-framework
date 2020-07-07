@@ -1,7 +1,7 @@
-import {Injectable} from "injection-js";
 import {Exchange, ExchangeLock} from "./exchange";
+import {injectable} from "@super-hornet/framework-server-common";
 
-@Injectable()
+@injectable()
 export class AppLocker {
     constructor(protected exchange: Exchange) {
     }

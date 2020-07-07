@@ -21,7 +21,7 @@ test('test basic', async () => {
     const server = new ExchangeServer('auto');
     await server.start();
 
-    const client = new Exchange(server.path);
+    const client = new Exchange(server.getPath());
     let gotIt = false;
     await client.subscribe('mowla', (m) => {
         console.log('m', m);

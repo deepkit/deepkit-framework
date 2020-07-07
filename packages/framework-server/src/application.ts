@@ -1,6 +1,6 @@
-import {Injectable} from "injection-js";
 import {ClassType} from "@super-hornet/core";
 import {File} from "@super-hornet/framework-shared";
+import {injectable} from "@super-hornet/framework-server-common";
 
 export class Session {
     constructor(
@@ -14,7 +14,7 @@ export class Session {
     }
 }
 
-@Injectable()
+@injectable()
 export class SessionStack {
     protected session?: Session;
 
@@ -39,7 +39,7 @@ export class SessionStack {
     }
 }
 
-@Injectable()
+@injectable()
 export class Application {
     public readonly controllers: { [name: string]: ClassType<any> } = {};
     public readonly entityChangeFeeds: ClassType<any>[] = [File];

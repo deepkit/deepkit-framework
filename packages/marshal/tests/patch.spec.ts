@@ -1,6 +1,6 @@
 import 'jest';
 import 'jest-extended';
-import {applyPatch, applyAndReturnPatches} from "..";
+import {applyPatch, applyAndReturnPatches} from "../index";
 
 class Goal {
     title: string = '';

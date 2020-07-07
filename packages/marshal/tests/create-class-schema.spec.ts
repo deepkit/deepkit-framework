@@ -1,5 +1,5 @@
 import 'jest-extended'
-import {ClassSchemas, classToPlain, createClassSchema, f, plainToClass} from "..";
+import {ClassSchemas, classToPlain, createClassSchema, f, plainToClass} from "../index";
 
 test('test createClassSchema', async () => {
 

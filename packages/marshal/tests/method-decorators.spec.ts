@@ -8,7 +8,7 @@ import {
     methodResultPlainToClass,
     plainToClass,
     validateMethodArgs
-} from "..";
+} from "../index";
 
 test('Basic array', () => {
     class Other {
@@ -258,8 +258,8 @@ test('partial', () => {
     expect(u.config).not.toBeInstanceOf(Config);
     expect(u.config.name).toBe('peter');
     expect(u.config.prio).toBeUndefined();
-    expect(u.config['sub.name']).toBe('peter2');
-    expect(u.config['sub.prio']).toBe(3);
+    expect((u.config as any)['sub.name']).toBe('peter2');
+    expect((u.config as any)['sub.prio']).toBe(3);
 });
 
 test('argument partial', () => {

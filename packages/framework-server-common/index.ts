@@ -1,3 +1,4 @@
 export * from './src/module'
-
-export {Injectable} from 'injection-js';
+export * from './src/injector/injector';
+export * from './src/injector/provider';
+export * from './src/service-container';

@@ -1,55 +1,25 @@
-import {Provider} from "injection-js";
-import {ClassType, storeMetaData, retrieveMetaData} from "@super-hornet/core";
-import {ClassProvider, ExistingProvider, FactoryProvider, ValueProvider} from "injection-js/provider";
-
-export interface ProviderScope {
-    scope?: 'root' | 'session' | 'request';
-}
-
-export interface ProviderSingleScope {
-    scope?: 'root' | 'session' | 'request';
-    provide: any;
-}
-
-export type ProviderWithScope = (Provider & ProviderScope) | ProviderSingleScope;
-
-export function isValueProvider(obj: any): obj is ValueProvider {
-    return obj.provide && obj.useValue;
-}
-
-export function isClassProvider(obj: any): obj is ClassProvider {
-    return obj.provide && obj.useClass;
-}
-
-export function isExistingProvider(obj: any): obj is ExistingProvider {
-    return obj.provide && obj.useExisting;
-}
-
-export function isFactoryProvider(obj: any): obj is FactoryProvider {
-    return obj.provide && obj.useFactory;
-}
-
-export function isInjectionProvider(obj: any): obj is Provider {
-    return isValueProvider(obj) || isClassProvider(obj) ||  isExistingProvider(obj) ||  isFactoryProvider(obj);
-}
-
-export function isProviderSingleScope(obj: any): obj is ProviderSingleScope {
-    return obj.provide !== undefined && !isInjectionProvider(obj);
-}
-
-export interface ModuleWithProviders {
-    module: ClassType<any>;
-    providers: ProviderWithScope[];
-}
+import {ClassType, isClass, retrieveMetaData, storeMetaData} from "@super-hornet/core";
+import {InjectToken} from "./injector/injector";
+import {ProviderWithScope} from './service-container';
 
 export interface ModuleOptions {
     providers?: ProviderWithScope[];
+    exports?: (ClassType<any> | InjectToken | string | DynamicModule)[];
     controllers?: ClassType<any>[];
-    imports?: (ClassType<any> | ModuleWithProviders)[];
+    imports?: (ClassType<any> | DynamicModule)[];
 }
 
-export function isModuleWithProviders(obj: any): obj is ModuleWithProviders {
+export interface DynamicModule extends ModuleOptions {
+    root?: boolean;
+    module: ClassType<any>;
+}
+
+export function isDynamicModuleObject(obj: any): obj is DynamicModule {
     return obj.module;
+}
+
+export function isModuleToken(obj: any): obj is (ClassType<any> | DynamicModule) {
+    return (isClass(obj) && undefined !== getModuleOptions(obj)) || isDynamicModuleObject(obj);
 }
 
 export interface SuperHornetModule {

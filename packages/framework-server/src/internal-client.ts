@@ -16,7 +16,7 @@ import {
 import {Subscription} from "rxjs";
 import {each, eachKey} from "@super-hornet/core";
 import {Injectable, Optional} from "injection-js";
-import {ProcessLocker} from "./process-locker";
+import {ProcessLocker} from "@super-hornet/core";
 
 /**
  * Internal client for communication with registered peer controllers of connected clients.

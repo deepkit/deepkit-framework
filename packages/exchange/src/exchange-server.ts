@@ -1,11 +1,11 @@
 import {decodeMessage, encodeMessage} from "./exchange-prot";
-import {ProcessLock, ProcessLocker} from "@super-hornet/framework-server";
-import {Injectable} from "injection-js";
+import {ProcessLock, ProcessLocker} from "@super-hornet/core";
 import {Subscriptions} from "@super-hornet/core-rxjs";
 import {Subscription} from "rxjs";
 import * as WebSocket from 'ws';
 import {createServer, Server} from "http";
 import {removeSync, existsSync} from "fs-extra";
+import {injectable} from "@super-hornet/framework-server-common";
 
 interface StatePerConnection {
     subs: Subscriptions;
@@ -13,7 +13,7 @@ interface StatePerConnection {
     subscribedEntityFields: Map<number, Subscription>;
 }
 
-@Injectable()
+@injectable()
 export class ExchangeServer {
     protected locker = new ProcessLocker;
     protected locks: { [name: string]: ProcessLock } = {};
@@ -41,8 +41,8 @@ export class ExchangeServer {
         }
     }
 
-    get path() {
-        return this.unixPath === 'auto' ? this.autoPath : this.unixPath;
+    getPath(): string {
+        return this.unixPath === 'auto' ? this.autoPath : this.unixPath as string;
     }
 
     close() {
@@ -77,7 +77,7 @@ export class ExchangeServer {
 
             this.wsServer.on("listening", () => {
                 this.autoPath = dynamicPath;
-                console.log('exchange listen on', this.path);
+                console.log('exchange listen on', this.getPath());
                 resolve(true);
             });
 

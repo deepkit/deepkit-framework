@@ -2,7 +2,7 @@ import 'jest-extended'
 import {f, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
 import {classToPlain, plainToClass, propertyClassToPlain} from "../src/mapper";
 import {Buffer} from 'buffer';
-import {base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "..";
+import {base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "../index";
 
 const someText = `Loµ˚∆¨¥§∞¢´´†¥¨¨¶§∞¢®©˙∆rem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.`;
 
@@ -156,8 +156,8 @@ test('arrayBuffer', async () => {
 
     const clazz = new Clazz();
     clazz.ints = new Int8Array(2);
-    clazz.ints[0] = 1;
-    clazz.ints[1] = 64;
+    (clazz.ints as Int8Array)[0] = 1;
+    (clazz.ints as Int8Array)[1] = 64;
 
     expect(getClassSchema(Clazz).getProperty('ints').type).toBe('arrayBuffer');
     expect(new Int8Array(clazz.ints!)[0]).toBe(1);

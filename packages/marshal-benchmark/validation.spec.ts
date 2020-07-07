@@ -1,7 +1,7 @@
 import 'jest-extended';
 import {f, PropertyValidator, PropertyValidatorError} from "@super-hornet/marshal";
 import {bench} from "./util";
-import {jitValidate} from "@super-hornet/marshal/src/jit-validation";
+import {jitValidate} from "@super-hornet/marshal";
 import * as Ajv from 'ajv';
 
 //we use `e` and not `v` because Marshal supports out of the box error explanations, which quartet does only with `e`.

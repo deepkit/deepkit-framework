@@ -1,4 +1,4 @@
-import {Module} from "@super-hornet/framework-server";
+import {Module} from "@super-hornet/framework-server-common";
 
 @Module({
     providers: []

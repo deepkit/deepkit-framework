@@ -20,7 +20,7 @@
       "path": "packages/framework-server-common/tsconfig.json"
     },
     {
-      "path": "packages/marshal/tsconfig.json"
+      "path": "packages/marshal/tsconfig.dist.json"
     },
     {
       "path": "packages/marshal-mongo/tsconfig.json"

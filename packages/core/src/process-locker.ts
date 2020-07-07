@@ -1,4 +1,4 @@
-import {arrayRemoveItem} from '@super-hornet/core';
+import {arrayRemoveItem} from './core';
 
 const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
 

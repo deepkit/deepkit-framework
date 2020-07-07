@@ -1,5 +1,5 @@
-import {Injectable} from '@super-hornet/framework-server-common';
 import {ClassType} from "@super-hornet/core";
+import {injectable} from "@super-hornet/framework-server-common";
 
 // import {Exchange} from "./exchange";
 // import {getEntityName} from "@super-hornet/marshal";
@@ -19,7 +19,6 @@ import {ClassType} from "@super-hornet/core";
 // } from "@super-hornet/framework-shared";
 // import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@super-hornet/core";
 // import {AsyncSubscription, Subscriptions} from "@super-hornet/core-rxjs";
-// import {Injectable} from "injection-js";
 // import {findQuerySatisfied} from "./utils";
 //
 // interface SentState {
@@ -290,7 +289,7 @@ import {ClassType} from "@super-hornet/core";
 // /**
 //  * This is instantiated per connection.
 //  */
-@Injectable()
+@injectable()
 export class EntityStorage {
 //     protected sentEntities = new Map<ClassType<any>, { [id: string]: SentState }>();
 //

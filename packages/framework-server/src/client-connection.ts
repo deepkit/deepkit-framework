@@ -1,4 +1,3 @@
-import {Inject, Injectable, Injector} from "injection-js";
 import {Subscription} from "rxjs";
 import {Application, SessionStack} from "./application";
 import {
@@ -10,12 +9,12 @@ import {
     getActionParameters,
     getActions
 } from "@super-hornet/framework-shared";
-import {arrayRemoveItem, each} from "@super-hornet/core";
+import {arrayRemoveItem, each, ProcessLock, ProcessLocker} from "@super-hornet/core";
 import {PropertySchema, uuid} from "@super-hornet/marshal";
 import {Exchange} from "@super-hornet/exchange";
-import {ProcessLock, ProcessLocker} from "./process-locker";
+import {ControllersRef, inject, injectable} from "@super-hornet/framework-server-common";
 
-@Injectable()
+@injectable()
 export class ClientConnection {
     protected id: string = uuid();
 
@@ -37,12 +36,12 @@ export class ClientConnection {
     constructor(
         protected app: Application,
         protected sessionStack: SessionStack,
-        protected injector: Injector,
         protected locker: ProcessLocker,
         protected exchange: Exchange,
+        protected controllersRef: ControllersRef,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
-        @Inject('remoteAddress') public readonly remoteAddress: string,
+        @inject('remoteAddress') public readonly remoteAddress: string,
     ) {
     }
 
@@ -375,7 +374,7 @@ export class ClientConnection {
             throw new Error(`Access denied to action ` + action);
         }
 
-        const controllerInstance = this.injector.get(controllerClass);
+        const controllerInstance = this.controllersRef.getController(controllerClass);
 
         if (!this.usedControllers[controller]) {
             this.usedControllers[controller] = {

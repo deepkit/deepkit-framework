@@ -37,7 +37,7 @@
       "path": "node_modules/@super-hornet/core-rxjs/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/marshal/tsconfig.json"
+      "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
     },
     {
       "path": "node_modules/@super-hornet/marshal-mongo/tsconfig.json"

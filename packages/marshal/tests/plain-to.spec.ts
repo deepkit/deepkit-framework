@@ -1,7 +1,7 @@
 import 'jest-extended'
 import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from "../src/mapper";
-import {f, getClassSchema, ParentReference} from "..";
+import {f, getClassSchema, ParentReference} from "../index";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {resolvePropertyCompilerSchema} from "../src/jit";

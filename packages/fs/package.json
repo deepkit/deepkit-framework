@@ -14,7 +14,7 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@super-hornet/framework-server": "^0.0.33"
+    "@super-hornet/framework-server-common": "^0.0.33"
   },
   "dependencies": {
     "@super-hornet/framework-shared": "^0.0.33",
@@ -23,7 +23,7 @@
     "ws": "^7.2.1"
   },
   "devDependencies": {
-    "@super-hornet/framework-server": "^0.0.33"
+    "@super-hornet/framework-server-common": "^0.0.33"
   },
   "jest": {
     "moduleFileExtensions": [
