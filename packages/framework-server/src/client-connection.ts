@@ -1,5 +1,5 @@
 import {Subscription} from "rxjs";
-import {Application, SessionStack} from "./application";
+import {SessionStack} from "./application";
 import {
     ActionTypes,
     ClientMessageAll,
@@ -12,7 +12,8 @@ import {
 import {arrayRemoveItem, each, ProcessLock, ProcessLocker} from "@super-hornet/core";
 import {PropertySchema, uuid} from "@super-hornet/marshal";
 import {Exchange} from "@super-hornet/exchange";
-import {ControllersRef, inject, injectable} from "@super-hornet/framework-server-common";
+import {inject, injectable, ControllerContainer, SuperHornetController} from "@super-hornet/framework-server-common";
+import {SecurityStrategy} from "./security";
 
 @injectable()
 export class ClientConnection {
@@ -20,7 +21,7 @@ export class ClientConnection {
 
     protected timeoutTimers: any[] = [];
     protected destroyed = false;
-    protected usedControllers: { [path: string]: { i: any, p: Promise<any> } } = {};
+    protected usedControllers: { [path: string]: { i: SuperHornetController, p: Promise<any> } } = {};
 
     private cachedActionsTypes: {
         [controllerName: string]: { [actionName: string]: ActionTypes }
@@ -34,11 +35,11 @@ export class ClientConnection {
     protected clientUsedPeerControllers: { [controllerName: string]: Subscription } = {};
 
     constructor(
-        protected app: Application,
         protected sessionStack: SessionStack,
+        protected security: SecurityStrategy,
         protected locker: ProcessLocker,
         protected exchange: Exchange,
-        protected controllersRef: ControllersRef,
+        protected controllerContainer: ControllerContainer,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
         @inject('remoteAddress') public readonly remoteAddress: string,
@@ -62,16 +63,16 @@ export class ClientConnection {
             sub.unsubscribe();
         }
 
-        for (const usedController of each(this.usedControllers)) {
-            await usedController.p;
-            if (usedController.i.destroy) {
-                usedController.i.destroy();
-            }
-        }
-
         for (const peer of each(this.registeredPeerControllers)) {
             peer.sub.unsubscribe();
             peer.lock.unlock();
+        }
+
+        for (const usedController of each(this.usedControllers)) {
+            await usedController.p;
+            if (usedController.i.onDestroy) {
+                await usedController.i.onDestroy();
+            }
         }
 
         this.registeredPeerControllers = {};
@@ -156,7 +157,7 @@ export class ClientConnection {
         }
 
         if (message.name === 'peerController/register') {
-            const access = await this.app.isAllowedToRegisterPeerController(this.sessionStack.getSessionOrUndefined(), message.controllerName);
+            const access = await this.security.isAllowedToRegisterPeerController(this.sessionStack.getSessionOrUndefined(), message.controllerName);
 
             if (!access) {
                 this.writer.sendError(message.id, 'Access denied to register controller ' + message.controllerName);
@@ -194,8 +195,9 @@ export class ClientConnection {
                         sub: sub,
                         lock: lock,
                     };
-                } finally {
+                } catch (e) {
                     await lock.unlock();
+                    throw e;
                 }
 
                 this.writer.ack(message.id);
@@ -245,7 +247,7 @@ export class ClientConnection {
 
         if (message.name === 'authenticate') {
             try {
-                this.sessionStack.setSession(await this.app.authenticate(message.token));
+                this.sessionStack.setSession(await this.security.authenticate(message.token));
             } catch (error) {
                 console.error('authentication error', error);
             }
@@ -267,7 +269,7 @@ export class ClientConnection {
         message: object,
         timeout: number = 20,
     ) {
-        const access = await this.app.isAllowedToSendToPeerController(this.sessionStack.getSessionOrUndefined(), controllerName);
+        const access = await this.security.isAllowedToSendToPeerController(this.sessionStack.getSessionOrUndefined(), controllerName);
 
         if (!access) {
             this.writer.sendError(messageId, `Access denied to peer controller ` + controllerName, 'access_denied');
@@ -336,26 +338,22 @@ export class ClientConnection {
 
         if (!this.cachedActionsTypes[controller][action]) {
 
-            const controllerClass = await this.app.resolveController(controller);
+            const {classType} = await this.controllerContainer.resolveController(controller);
 
-            if (!controllerClass) {
-                throw new Error(`Controller not found for ${controller}`);
-            }
-
-            const access = await this.app.hasAccess(this.sessionStack.getSessionOrUndefined(), controllerClass, action);
+            const access = await this.security.hasAccess(this.sessionStack.getSessionOrUndefined(), classType, action);
             if (!access) {
                 throw new Error(`Access denied to action ` + action);
             }
 
-            const actions = getActions(controllerClass);
+            const actions = getActions(classType);
 
             if (!actions[action]) {
-                console.log('Action unknown, but method exists.', action);
+                console.debug('Action unknown, but method exists.', action);
                 throw new Error(`Action unknown ${action}`);
             }
 
             this.cachedActionsTypes[controller][action] = {
-                parameters: getActionParameters(controllerClass, action),
+                parameters: getActionParameters(classType, action),
             };
         }
 
@@ -363,23 +361,19 @@ export class ClientConnection {
     }
 
     public async action(controller: string, action: string, args: any[]): Promise<{ value: any, encoding: PropertySchema }> {
-        const controllerClass = await this.app.resolveController(controller);
+        const {context, classType} = await this.controllerContainer.resolveController(controller);
 
-        if (!controllerClass) {
-            throw new Error(`Controller not found for ${controller}`);
-        }
-
-        const access = await this.app.hasAccess(this.sessionStack.getSessionOrUndefined(), controllerClass, action);
+        const access = await this.security.hasAccess(this.sessionStack.getSessionOrUndefined(), classType, action);
         if (!access) {
             throw new Error(`Access denied to action ` + action);
         }
 
-        const controllerInstance = this.controllersRef.getController(controllerClass);
+        const controllerInstance = this.controllerContainer.getController(context, classType);
 
         if (!this.usedControllers[controller]) {
             this.usedControllers[controller] = {
                 i: controllerInstance,
-                p: controllerInstance.initPerConnection ? controllerInstance.initPerConnection() : Promise.resolve()
+                p: controllerInstance.onInit ? controllerInstance.onInit() : Promise.resolve()
             };
         }
 
@@ -389,10 +383,10 @@ export class ClientConnection {
         const fullName = `${controller}::${action}`;
 
         if ((controllerInstance as any)[methodName]) {
-            const actions = getActions(controllerClass);
+            const actions = getActions(classType);
 
             if (!actions[methodName]) {
-                console.log('Action unknown, but method exists.', fullName);
+                console.debug('Action unknown, but method exists.', fullName);
                 throw new Error(`Action unknown ${fullName}`);
             }
 

@@ -1,13 +1,14 @@
 import 'jest-extended';
+import 'reflect-metadata';
 import {Action, Controller} from "@super-hornet/framework-shared";
 import {Entity, f} from '@super-hornet/marshal';
-import {closeAllCreatedServers, createServerClientPair} from "./util";
-import {Application} from "@super-hornet/framework-server";
+import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from "./util";
 import {Session} from "@super-hornet/framework-server";
-import {Injector} from 'injection-js';
 import {Observable} from 'rxjs';
 import {InternalClient} from "@super-hornet/framework-server";
 import {sleep} from '@super-hornet/core';
+import {Module} from "@super-hornet/framework-server-common";
+import {SecurityStrategy} from "@super-hornet/framework-server/dist/src/security";
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -52,18 +53,28 @@ test('test peer2peer', async () => {
         }
     }
 
-    class MyAppController extends Application {
-        async isAllowedToRegisterPeerController<T>(injector: Injector, session: Session | undefined, controllerName: string): Promise<boolean> {
-            if (controllerName === 'forbiddenToRegister') return false;
-            return true;
-        }
+    @Module({
+        controllers: [TestController],
+        providers: [
+            {
+                provide: SecurityStrategy, useValue: new class extends SecurityStrategy {
+                    async isAllowedToRegisterPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
+                        if (controllerName === 'forbiddenToRegister') return false;
+                        return true;
+                    }
 
-        async isAllowedToSendToPeerController<T>(injector: Injector, session: Session | undefined, controllerName: string): Promise<boolean> {
-            if (controllerName === 'forbiddenToSend') return false;
-            return true;
-        }
+                    async isAllowedToSendToPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
+                        if (controllerName === 'forbiddenToSend') return false;
+                        return true;
+                    }
+                }
+            }
+        ]
+    })
+    class AppModule  {
     }
-    const {client, server, createClient, close} = await createServerClientPair('test peer2peer', [], [], MyAppController);
+
+    const {client, server, createClient, close} = await createServerClientPair('test peer2peer', AppModule);
 
     await client.registerController('test', new TestController);
 
@@ -150,7 +161,7 @@ test('test peer2peer internal client', async () => {
         }
     }
 
-    const {client, server, createClient, close} = await createServerClientPair('test peer2peer internal client', [], []);
+    const {client, server, createClient, close} = await createServerClientPair('test peer2peer internal client', appModuleForControllers([TestController]));
 
     await client.registerController('test', new TestController);
 
@@ -193,7 +204,7 @@ test('test peer2peer offline', async () => {
         }
     }
 
-    const {client, server, createClient, close} = await createServerClientPair('test peer2peer offline', [TestController], []);
+    const {client, server, createClient, close} = await createServerClientPair('test peer2peer offline', appModuleForControllers([TestController]));
 
     const client2 = createClient();
 

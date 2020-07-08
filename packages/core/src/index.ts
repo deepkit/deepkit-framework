@@ -5,3 +5,4 @@ export * from './iterators';
 export * from './timer';
 export * from './meta-data';
 export * from './process-locker';
+export * from './network';

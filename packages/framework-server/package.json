@@ -24,6 +24,7 @@
     "mongodb": "^3.5.9",
     "rxjs": "~6.5.3",
     "@super-hornet/framework-shared": "^0.0.33",
+    "@super-hornet/framework-client": "^0.0.33",
     "@super-hornet/framework-server-common": "^0.0.33",
     "@super-hornet/core": "^0.1.17",
     "@super-hornet/core-rxjs": "^0.1.17",

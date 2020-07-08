@@ -164,8 +164,8 @@ export class Injector {
                     } else {
                         argsCheck.push('?');
                         throw new DependenciesUnmetError(
-                            `Unknown constructor argument ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
-                            `Make sure ${tokenLabel(token)} is provided.`
+                            `Unknown constructor argument no ${argsCheck.length} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
+                            `Make sure '${tokenLabel(token)}' is provided.`
                         )
                     }
                 } else {
@@ -196,23 +196,21 @@ export class Injector {
             }
 
             let resolved = this.resolved.get(token);
-            if (resolved === undefined) {
-                const builder = this.fetcher.get(token);
-                if (builder) {
-                    resolved = builder();
-                } else {
-                    //check first parents before we simply create the class instance
-                    for (const parent of this.parents) {
-                        if (parent.isDefined(token)) return parent.get(token, false);
-                    }
+            if (resolved !== undefined) return resolved;
 
-                    throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
-                }
-
+            const builder = this.fetcher.get(token);
+            if (builder) {
+                resolved = builder();
                 this.resolved.set(token, resolved);
+                return resolved;
             }
 
-            return resolved;
+            //check first parents before we simply create the class instance
+            for (const parent of this.parents) {
+                if (parent.isDefined(token)) return parent.get(token, false);
+            }
+
+            throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
         } finally {
             if (root) CircularDetector.clear();
         }

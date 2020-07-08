@@ -1,10 +1,21 @@
 import {Subject, Subscriber, Observable} from "rxjs";
 import {first} from "rxjs/operators";
-import {ClientMessageWithoutId, ServerMessageComplete, ServerMessageError, ServerMessageResult} from "./contract";
+import {
+    ClientMessageWithoutId,
+    IdInterface,
+    ServerMessageComplete,
+    ServerMessageError,
+    ServerMessageResult
+} from "./contract";
 import {getUnserializedError, StreamBehaviorSubject} from "./core";
 import {Collection, CollectionPaginationEvent} from "./collection";
-import {PropertySchemaSerialized, PropertySchema, RegisteredEntities, createJITConverterFromPropertySchema} from "@super-hornet/marshal";
-import {each} from "@super-hornet/core";
+import {
+    PropertySchemaSerialized,
+    PropertySchema,
+    createJITConverterFromPropertySchema,
+    getClassSchemaByName, hasClassSchemaByName, getKnownClassSchemasNames
+} from "@super-hornet/marshal";
+import {ClassType, each} from "@super-hornet/core";
 import {EntityState} from "./entity-state";
 
 export class MessageSubject<T> extends Subject<T> {
@@ -140,11 +151,11 @@ export function handleActiveSubject(
 
             if (reply.returnType === 'entity') {
                 if (reply.item) {
-                    const classType = RegisteredEntities[reply.entityName || ''];
-
-                    if (!classType) {
-                        throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
+                    if (!hasClassSchemaByName(reply.entityName!)) {
+                        throw new Error(`Entity ${reply.entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
                     }
+
+                    const classType = getClassSchemaByName(reply.entityName!).classType as ClassType<IdInterface>;
 
                     const subject = entityState.handleEntity(classType, reply.item!);
                     subject.addTearDown(async () => {
@@ -191,10 +202,12 @@ export function handleActiveSubject(
             }
 
             if (reply.returnType === 'collection') {
-                const classType = RegisteredEntities[reply.entityName];
-                if (!classType) {
-                    throw new Error(`Entity ${reply.entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
+                if (!hasClassSchemaByName(reply.entityName!)) {
+                    throw new Error(`Entity ${reply.entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
                 }
+
+                const classType = getClassSchemaByName(reply.entityName!).classType as ClassType<IdInterface>;
+
 
                 const collection = new Collection<any>(classType);
 

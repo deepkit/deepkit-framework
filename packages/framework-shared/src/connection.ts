@@ -3,12 +3,12 @@ import {ClientMessageAll, CollectionStream, ServerMessageAll} from "./contract";
 import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./core";
 import {Subscriptions} from "@super-hornet/core-rxjs";
 import {Observable, Subscription} from "rxjs";
-import {ClassType, each, sleep, stack} from "@super-hornet/core";
+import {ClassType, each, isFunction, sleep, stack} from "@super-hornet/core";
 import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from "@super-hornet/marshal";
 import {skip} from "rxjs/operators";
 
 export interface ConnectionWriterStream {
-    send(v: any): Promise<boolean>;
+    send(json: string): Promise<boolean>;
     bufferedAmount(): number;
 }
 
@@ -59,6 +59,10 @@ export interface ConnectionWriterInterface {
     ack(id: number): void;
 
     sendError(id: number, errorObject: any, code?: string): void;
+}
+
+export function isObservable(obj: any): obj is Observable<any> {
+    return obj && isFunction(obj.pipe) && isFunction(obj.subscribe) && isFunction(obj.toPromise);
 }
 
 export class SimpleConnectionWriter implements ConnectionWriterInterface {
@@ -551,7 +555,7 @@ export class ConnectionMiddleware {
                     writer.write({type: 'next/collection', id: message.id, next: nextValue});
                 }
             });
-        } else if (result instanceof Observable) {
+        } else if (isObservable(result)) {
             writer.write({type: 'type', id: message.id, returnType: 'observable'});
             this.observables[message.id] = {observable: result, subscriber: {}, p: propertySchema.getTemplateArg(0), prefix: prefix};
         } else {

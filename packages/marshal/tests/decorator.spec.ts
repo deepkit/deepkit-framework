@@ -1,20 +1,19 @@
 import 'jest-extended'
 import {
-    arrayBufferFrom,
+    arrayBufferFrom, ClassSchema,
     classToPlain,
     DatabaseName,
     Entity,
     f,
-    getClassSchema,
+    getClassSchema, getClassSchemaByName,
     getDatabaseName,
-    getEntityName,
+    getEntityName, getKnownClassSchemasNames, hasClassSchemaByName,
     isArrayType,
     isMapType,
     isRegisteredEntity,
     partialClassToPlain,
     plainToClass,
     PropertySchema,
-    RegisteredEntities,
 } from "../index";
 import 'reflect-metadata';
 import {Buffer} from "buffer";
@@ -24,6 +23,18 @@ import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {getClassTypeFromInstance} from '../src/decorators';
 import {resolvePropertyCompilerSchema} from "../src/jit";
+
+test('getClassSchemaByName', async () => {
+    @Entity('getClassSchemaByName')
+    class Test {}
+
+    expect(getKnownClassSchemasNames()).toContain('getClassSchemaByName');
+    expect(hasClassSchemaByName('getClassSchemaByName')).toBe(true);
+    expect(hasClassSchemaByName('getClassSchemaByName_NOTEXISTS')).toBe(false);
+
+    expect(getClassSchemaByName('getClassSchemaByName')).toBeInstanceOf(ClassSchema);
+    expect(() => getClassSchemaByName('getClassSchemaByName_NOTEXISTS')).toThrow('No Marshal class found with name');
+});
 
 test('test getClassTypeFromInstance', async () => {
     {
@@ -104,7 +115,7 @@ test('test entity database', async () => {
         name?: string;
     }
 
-    expect(RegisteredEntities['DifferentDataBase']).toBe(DifferentDataBase);
+    expect(getClassSchemaByName('DifferentDataBase').classType).toBe(DifferentDataBase);
 
     class Child extends DifferentDataBase {
     }

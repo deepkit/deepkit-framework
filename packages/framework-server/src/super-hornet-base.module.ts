@@ -1,17 +1,19 @@
 import {ProcessLocker} from "@super-hornet/core";
 import {InternalClient} from "./internal-client";
 import {Configuration} from "./configuration";
-import {Module} from "@super-hornet/framework-server-common";
+import {DynamicModule, Module} from "@super-hornet/framework-server-common";
 import {ExchangeModule} from "@super-hornet/exchange";
 import {SessionStack} from "./application";
 import {ClientConnection} from "./client-connection";
 import {ConnectionMiddleware} from "@super-hornet/framework-shared";
+import {SecurityStrategy} from "./security";
 
 @Module({
     providers: [
         ProcessLocker,
         InternalClient,
         Configuration,
+        SecurityStrategy,
 
         {provide: SessionStack, scope: 'session'},
         {provide: ClientConnection, scope: 'session'},
@@ -19,7 +21,13 @@ import {ConnectionMiddleware} from "@super-hornet/framework-shared";
     ],
     imports: [
         ExchangeModule
-    ]
+    ],
 })
-export class HornetBaseModule {
+export class SuperHornetBaseModule {
+    static forRoot(): DynamicModule {
+        return {
+            root: true,
+            module: SuperHornetBaseModule,
+        };
+    }
 }

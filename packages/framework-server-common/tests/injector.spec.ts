@@ -148,3 +148,20 @@ test('injector circular dependency', () => {
     }
 });
 
+test('injector factory', () => {
+
+    class Service {}
+
+    {
+        const injector = new Injector([{provide: Service, useFactory: () => new Service()}]);
+
+        const s1 = injector.get(Service);
+        expect(s1).toBeInstanceOf(Service);
+
+        const s2 = injector.get(Service);
+        expect(s2).toBeInstanceOf(Service);
+        expect(s2).toBe(s1);
+    }
+});
+
+

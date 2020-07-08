@@ -20,10 +20,13 @@
   },
   "include": [
     "src",
-    "test",
+    "tests",
     "index.ts"
   ],
   "references": [
+    {
+      "path": "node_modules/@super-hornet/framework-client/tsconfig.json"
+    },
     {
       "path": "node_modules/@super-hornet/framework-shared/tsconfig.json"
     },

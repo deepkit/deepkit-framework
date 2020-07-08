@@ -1,8 +1,9 @@
 import * as cluster from "cluster";
-import {applyDefaults, ClassType, each} from "@super-hornet/core";
-import {Worker} from './worker';
+import {applyDefaults, ClassType, each, getClassName} from "@super-hornet/core";
+import {WebSocketWorker} from './worker';
 import {Server} from "http";
 import {DynamicModule, ProviderWithScope, ServiceContainer} from '@super-hornet/framework-server-common';
+import {SuperHornetBaseModule} from "./super-hornet-base.module";
 
 export class ApplicationServerConfig {
     host: string = '127.0.0.1';
@@ -20,17 +21,18 @@ export class ApplicationServerConfig {
 
 export class ApplicationServer {
     protected config: ApplicationServerConfig;
-    protected masterWorker?: Worker;
+    protected masterWorker?: WebSocketWorker;
     protected serviceContainer = new ServiceContainer;
 
     constructor(
-        protected appModule: ClassType<any>,
+        appModule: ClassType<any>,
         config: Partial<ApplicationServerConfig> = {},
         providers: ProviderWithScope[] = [],
         imports: (ClassType<any> | DynamicModule)[] = []
     ) {
         this.config = applyDefaults(ApplicationServerConfig, config);
 
+        imports.unshift(SuperHornetBaseModule.forRoot());
         this.serviceContainer.processRootModule(appModule, providers, imports);
     }
 
@@ -59,27 +61,25 @@ export class ApplicationServer {
     }
 
     protected done() {
-        // for (const controller of this.controllers) {
-        //     const options = getControllerOptions(controller.classType);
-        //     if (!options) continue;
-        //     console.log('registered controller', options.name, getClassName(controller));
-        // }
+        for (const [name, controller] of this.serviceContainer.controllerByName.entries()) {
+            console.log('registered controller', name, getClassName(controller));
+        }
 
         console.log(`Server up and running`);
     }
 
     protected async bootstrapMain() {
         for (const module of this.serviceContainer.getRegisteredModules()) {
-            if (module.bootstrapMain) {
-                await module.bootstrapMain();
+            if (module.onBootstrapMain) {
+                await module.onBootstrapMain();
             }
         }
     }
 
     protected async bootstrap() {
         for (const module of this.serviceContainer.getRegisteredModules()) {
-            if (module.bootstrap) {
-                await module.bootstrap();
+            if (module.onBootstrap) {
+                await module.onBootstrap();
             }
         }
     }
@@ -97,7 +97,7 @@ export class ApplicationServer {
 
                 this.done();
             } else {
-                const worker = new Worker(this.serviceContainer, {
+                const worker = new WebSocketWorker(this.serviceContainer, {
                     server: this.config.server,
                     host: this.config.host,
                     port: this.config.port,
@@ -115,7 +115,7 @@ export class ApplicationServer {
         } else {
             await this.bootstrapMain();
 
-            this.masterWorker = new Worker(this.serviceContainer, {
+            this.masterWorker = new WebSocketWorker(this.serviceContainer, {
                 server: this.config.server,
                 host: this.config.host,
                 port: this.config.port,

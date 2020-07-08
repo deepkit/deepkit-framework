@@ -1,5 +1,12 @@
 import {ClassType, getClassName, isClass} from "@super-hornet/core";
-import {DynamicModule, getModuleOptions, isDynamicModuleObject, isModuleToken, SuperHornetModule,} from "./module";
+import {
+    DynamicModule,
+    getControllerOptions,
+    getModuleOptions,
+    isDynamicModuleObject,
+    isModuleToken,
+    SuperHornetModule,
+} from "./module";
 import {
     Injector,
     isClassProvider,
@@ -72,6 +79,10 @@ class Context {
     constructor(public readonly id: number) {
     }
 
+    isRoot(): boolean {
+        return this.id === 0;
+    }
+
     getInjector(): Injector {
         if (!this.injector) {
             const providers = getProviders(this.providers, 'module');
@@ -85,36 +96,66 @@ class Context {
         return this.injector;
     }
 
-    createInjector(scope: string, additionalProviders: Provider[] = []): Injector {
+    createSubInjector(scope: string, additionalProviders: Provider[] = [], rootInjector?: Injector): Injector {
         const providers = getProviders(this.providers, scope);
         providers.push(...additionalProviders);
         if (this.parent) {
-            return new Injector(providers, [this.getInjector(), this.parent.createInjector(scope)]);
+            if (this.parent.isRoot() && rootInjector) {
+                return new Injector(providers, [this.getInjector(), rootInjector]);
+            } else {
+                return new Injector(providers, [this.getInjector(), this.parent.createSubInjector(scope, [], rootInjector)]);
+            }
         } else {
             return new Injector(providers, [this.getInjector()]);
         }
     }
 }
 
-interface ContextAwareInjectorGetter {
-    (context: number, token: any): any;
+export interface OnInit {
+    onInit: () => Promise<void>;
 }
 
-export class ControllersRef {
-    public readonly controllersContext = new Map<ClassType<any>, number>();
+export interface onDestroy {
+    onDestroy: () => Promise<void>;
+}
 
-    constructor(protected getter: ContextAwareInjectorGetter) {
+export type SuperHornetController = {
+    onDestroy?: () => Promise<void>;
+    onInit?: () => Promise<void>;
+}
+
+export class ControllerContainer {
+    protected sessionInjectors = new Map<number, Injector>();
+
+    constructor(protected serviceContainer: ServiceContainer, protected rootInjector?: Injector) {
     }
 
-    public getController<T>(classType: ClassType<T>): T {
-        return this.getter(this.controllersContext.get(classType)!, classType);
+    public resolve<T extends (SuperHornetController | object)>(name: string): T {
+        const {context, classType} = this.resolveController(name);
+        return this.getController(context, classType);
+    }
+
+    public resolveController(name: string): { context: number, classType: ClassType<any> } {
+        const classType = this.serviceContainer.controllerByName.get(name);
+        if (!classType) throw new Error(`Controller not found for ${name}`);
+        const context = this.serviceContainer.controllersContext.get(classType) || 0;
+        return {context, classType};
+    }
+
+    public getController<T extends SuperHornetController>(context: number, classType: ClassType<any>): T {
+        let subInjector = this.sessionInjectors.get(context);
+        if (!subInjector) {
+            subInjector = this.serviceContainer.getContext(context).createSubInjector('session', [], this.rootInjector);
+            this.sessionInjectors.set(context, subInjector);
+        }
+
+        return subInjector.get(classType);
     }
 }
 
 export class ServiceContainer {
-    protected controllersRef = new ControllersRef((context, token) => {
-        return this.getContext(context).getInjector().get(token);
-    });
+    public readonly controllersContext = new Map<ClassType<any>, number>();
+    public readonly controllerByName = new Map<string, ClassType<any>>();
 
     protected currentIndexId = 0;
 
@@ -129,7 +170,6 @@ export class ServiceContainer {
         imports: (ClassType<any> | DynamicModule)[] = []
     ) {
         providers.push({provide: ServiceContainer, useValue: this});
-        providers.push({provide: ControllersRef, useValue: this.controllersRef});
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
     }
@@ -153,7 +193,7 @@ export class ServiceContainer {
         return this.moduleContexts.get(module) || [];
     }
 
-    protected getContext(id: number): Context {
+    public getContext(id: number): Context {
         const context = this.contexts.get(id);
         if (!context) throw new Error(`No context for ${id} found`);
 
@@ -227,7 +267,11 @@ export class ServiceContainer {
 
         if (options.controllers) {
             for (const controller of options.controllers) {
-                this.controllersRef.controllersContext.set(controller, context.id);
+                const options = getControllerOptions(controller);
+                if (!options) throw new Error(`Controller ${getClassName(controller)} has no @Controller() decorator`);
+                providers.unshift(controller);
+                this.controllersContext.set(controller, context.id);
+                this.controllerByName.set(options.name, controller);
             }
         }
 

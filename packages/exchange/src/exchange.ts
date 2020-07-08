@@ -1,11 +1,12 @@
 import {Subscription} from "rxjs";
 import {getEntityName} from "@super-hornet/marshal";
 import {ExchangeEntity, StreamFileResult} from '@super-hornet/framework-shared';
-import {ClassType, sleep} from '@super-hornet/core';
+import {ClassType, ParsedHost, parseHost, sleep} from '@super-hornet/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
 import {AsyncSubscription} from "@super-hornet/core-rxjs";
 import * as WebSocket from "ws";
 import {injectable} from "@super-hornet/framework-server-common";
+import {ExchangeConfig} from "./exchange.config";
 
 type Callback<T> = (message: T) => void;
 
@@ -29,8 +30,10 @@ export class Exchange {
 
     protected rawSubscriber = new WeakMap<Function, boolean>();
 
+    protected host: ParsedHost = parseHost(this.config.hostOrUnixPath);
+
     constructor(
-        protected pathOrPort: string | number = '/tmp/super-hornet-exchange.sock',
+        protected config: ExchangeConfig
     ) {
     }
 
@@ -69,14 +72,13 @@ export class Exchange {
         this.socket = undefined;
 
         return new Promise<void>((resolve, reject) => {
-            const url = 'string' === typeof this.pathOrPort ? 'ws+unix://' + this.pathOrPort : 'ws://localhost:' + this.pathOrPort;
+            const url = this.host.getWebSocketUrl();
             this.socket = new WebSocket(url);
             this.socket.binaryType = 'arraybuffer';
 
             this.socket.onerror = (error: any) => {
                 this.socket = undefined;
-                console.error(error);
-                reject(new Error(`Could not connect to ${this.pathOrPort}.`));
+                reject(new Error(`Could not connect to ${url}: ${error}`));
             };
 
             this.socket.onclose = () => {

@@ -25,6 +25,9 @@
   ],
   "references": [
     {
+      "path": "node_modules/@super-hornet/framework-shared/tsconfig.json"
+    },
+    {
       "path": "node_modules/@super-hornet/core/tsconfig.json"
     },
     {

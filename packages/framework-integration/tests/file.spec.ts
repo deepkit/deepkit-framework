@@ -1,7 +1,7 @@
 import 'jest-extended';
 import {Action, Controller, File, StreamBehaviorSubject} from "@super-hornet/framework-shared";
-import {EntityStorage, FS} from "@super-hornet/framework-server";
-import {closeAllCreatedServers, createServerClientPair} from "./util";
+import {EntityStorage, FS} from "@super-hornet/fs";
+import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from "./util";
 import {sleep} from '@super-hornet/core';
 import {Buffer} from 'buffer';
 import {arrayBufferTo} from "@super-hornet/marshal";
@@ -106,7 +106,7 @@ test('test file stream', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test file stream', [TestController], []);
+    const {client, close} = await createServerClientPair('test file stream', appModuleForControllers([TestController]));
     const test = client.controller<TestController>('test');
     await test.init();
 

@@ -10,7 +10,11 @@ export interface ModuleOptions {
 }
 
 export interface DynamicModule extends ModuleOptions {
+    /**
+     * Imports this module as if the root AppModule has imported it
+     */
     root?: boolean;
+
     module: ClassType<any>;
 }
 
@@ -35,13 +39,13 @@ export interface SuperHornetModule {
      * If you want to bootstrap something only once for your entire distributed
      * stack, consider using @super-hornet/exchange, which has an AppLock.
      */
-    bootstrap?: () => Promise<void> | void;
+    onBootstrap?: () => Promise<void> | void;
 
     /**
      * Called when the application bootstraps only for the main process.
      * The applications waits for the promise to resolve before bootstrapping completely.
      */
-    bootstrapMain?: () => Promise<void> | void;
+    onBootstrapMain?: () => Promise<void> | void;
 
     /**
      * When the applications is destroyed. Clean up open resources to not leak memory

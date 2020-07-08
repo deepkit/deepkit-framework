@@ -14,11 +14,30 @@ import * as getParameterNames from "get-parameter-names";
 import {capitalizeFirstLetter, isArray} from "./utils";
 import {Buffer} from "buffer";
 
-/**
- * Registry of all registered entity that used the @Entity('name') decorator.
- */
-export const RegisteredEntities: { [name: string]: ClassType<any> } = {};
-export const MarshalGlobal = {unpopulatedCheckActive: true};
+interface GlobalStore {
+    RegisteredEntities: { [name: string]: ClassType<any> };
+    unpopulatedCheckActive: boolean;
+    ClassSchemas: Map<object, ClassSchema>;
+}
+
+function getGlobal(): any {
+    if ('undefined' !== typeof globalThis) return globalThis;
+    if ('undefined' !== typeof window) return window;
+    throw Error('No global');
+}
+
+export function getGlobalStore(): GlobalStore {
+    const global = getGlobal();
+    if (!global.MarshalStore) {
+        global.MarshalStore = {
+            RegisteredEntities: {},
+            unpopulatedCheckActive: true,
+            ClassSchemas: new Map<object, ClassSchema>(),
+        } as GlobalStore;
+    }
+
+    return global.MarshalStore;
+}
 
 export type Types =
     'objectId'
@@ -240,7 +259,7 @@ export class PropertySchema extends PropertyCompilerSchema {
     /**
      * Custom user data.
      */
-    data: {[name: string]: any} = {};
+    data: { [name: string]: any } = {};
 
     /**
      * When this property belongs to method as argument then this contains the name of the method.
@@ -323,7 +342,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
 
         if (props['classType']) {
-            const entity = RegisteredEntities[props['classType']];
+            const entity = getGlobalStore().RegisteredEntities[props['classType']];
             if (!entity) {
                 throw new Error(`Could not unserialize type information for ${p.methodName || ''}:${p.name}, got entity name ${props['classType']}. ` +
                     `Make sure given entity is loaded (imported at least once globally).`);
@@ -763,7 +782,7 @@ export class ClassSchema<T = any> {
             for (const [i, t] of eachPair(paramtypes)) {
                 if (!properties[i]) {
                     properties[i] = new PropertySchema(String(i));
-                    if (properties[i].type === 'any' && paramtypes[i] !== Object) {
+                    if (paramtypes[i] !== Object) {
                         properties[i].setFromJSType(t)
                     }
                 }
@@ -950,14 +969,11 @@ export class ClassSchema<T = any> {
 /**
  * @hidden
  */
-export const ClassSchemas = new Map<object, ClassSchema>();
-
-/**
- * @hidden
- */
 export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any): ClassSchema {
     const proto = target['prototype'] ? target['prototype'] : target;
     const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
+
+    const ClassSchemas = getGlobalStore().ClassSchemas;
 
     if (!ClassSchemas.has(proto)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
@@ -983,10 +999,38 @@ export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any):
 }
 
 /**
+ * Returns true if there is a class annotated with @Entity(name).
+ */
+export function hasClassSchemaByName(name: string): boolean {
+    return !!getGlobalStore().RegisteredEntities[name];
+}
+
+/**
+ * Returns the ClassSchema for an class annotated with @Entity(name).
+ * @throws Error if not exists
+ */
+export function getClassSchemaByName<T = object>(name: string): ClassSchema<T> {
+    if (!getGlobalStore().RegisteredEntities[name]) {
+        throw new Error(`No Marshal class found with name '${name}'`);
+    }
+
+    return getClassSchema(getGlobalStore().RegisteredEntities[name]);
+}
+
+/**
+ * Returns all names registered as @Entity() known to Marshal.
+ */
+export function getKnownClassSchemasNames(): string[] {
+    return Object.keys(getGlobalStore().RegisteredEntities);
+}
+
+/**
  * Returns meta information / schema about given entity class.
  */
 export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema<T> {
     const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+
+    const ClassSchemas = getGlobalStore().ClassSchemas;
 
     if (!ClassSchemas.has(classType.prototype)) {
         //check if parent has a EntitySchema, if so clone and use it as base.
@@ -1038,7 +1082,8 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSche
 export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = ''): ClassSchema<T> {
     //this is necessary to give the class a dynamic name if it has none
     const o = {
-        [name]: clazz || new class {}
+        [name]: clazz || new class {
+        }
     };
 
     const classSchema = getOrCreateEntitySchema(o[name]);
@@ -1074,7 +1119,7 @@ export function isClassInstance(target: any): boolean {
  * a Marshal entity.
  */
 export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
-    return ClassSchemas.has(classType.prototype);
+    return getGlobalStore().ClassSchemas.has(classType.prototype);
 }
 
 /**
@@ -1088,13 +1133,13 @@ export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
  */
 export function Entity<T>(name: string, collectionName?: string) {
     return (target: ClassType<T>) => {
-        if (RegisteredEntities[name]) {
+        if (getGlobalStore().RegisteredEntities[name]) {
             throw new Error(`Marshal entity with name '${name}' already registered. 
             This could be caused by the fact that you used a name twice or that you loaded the entity 
             via different imports.`)
         }
 
-        RegisteredEntities[name] = target;
+        getGlobalStore().RegisteredEntities[name] = target;
         getOrCreateEntitySchema(target).name = name;
         getOrCreateEntitySchema(target).collectionName = collectionName;
     };
@@ -1880,11 +1925,11 @@ interface FieldOptions {
 /**
  * Decorator to define a field for an entity.
  */
-function Field(...oriType: [FieldTypes | Types] | (ClassType<any>|ForwardedRef<any>)[]) {
+function Field(...oriType: [FieldTypes | Types] | (ClassType<any> | ForwardedRef<any>)[]) {
     return FieldDecoratorWrapper((target, property, returnType, options) => {
         if (property.typeSet) return;
         property.typeSet = true;
-        let type: FieldTypes | Types | (ClassType<any>|ForwardedRef<any>)[] = oriType.length <= 1 ? oriType[0] as any : oriType;
+        let type: FieldTypes | Types | (ClassType<any> | ForwardedRef<any>)[] = oriType.length <= 1 ? oriType[0] as any : oriType;
 
         const propertyName = property.name;
         const id = getClassName(target) + (property.methodName ? '::' + property.methodName : '') + '::' + propertyName;
@@ -2018,11 +2063,11 @@ function Field(...oriType: [FieldTypes | Types] | (ClassType<any>|ForwardedRef<a
 
 const fRaw: any = Field();
 
-fRaw['array'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any>|ForwardedRef<any>)[]): FieldDecoratorResult<T> {
+fRaw['array'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any> | ForwardedRef<any>)[]): FieldDecoratorResult<T> {
     return Field(...type).asArray();
 };
 
-fRaw['map'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any>|ForwardedRef<any>)[]): FieldDecoratorResult<T> {
+fRaw['map'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any> | ForwardedRef<any>)[]): FieldDecoratorResult<T> {
     return Field(...type).asMap();
 };
 
@@ -2034,7 +2079,7 @@ fRaw['type'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, 
     return Field(type);
 };
 
-fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any>|ForwardedRef<any>)[]): FieldDecoratorResult<T> {
+fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any> | ForwardedRef<any>)[]): FieldDecoratorResult<T> {
     return Field(...types);
 };
 

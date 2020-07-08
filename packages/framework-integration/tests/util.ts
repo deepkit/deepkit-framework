@@ -1,11 +1,12 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from "@super-hornet/core";
 import {ApplicationServer} from "@super-hornet/framework-server";
-import {SocketClient} from "@super-hornet/framework-client";
 import {RemoteController} from "@super-hornet/framework-shared";
 import {Observable} from "rxjs";
 import {createServer} from "http";
 import {Module} from "@super-hornet/framework-server-common";
+import {SuperHornetClient} from "@super-hornet/framework-client";
+import {ExchangeConfig} from "@super-hornet/exchange";
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -38,14 +39,22 @@ export async function closeAllCreatedServers() {
     }
 }
 
+export function appModuleForControllers(controllers: ClassType<any>[]): ClassType<any> {
+    @Module({
+        controllers: controllers
+    })
+    class AppModule {}
+    return AppModule;
+}
+
 export async function createServerClientPair(
     dbTestName: string,
-    controllers: ClassType<any>[],
+    AppModule: ClassType<any>
 ): Promise<{
     server: ApplicationServer,
-    client: SocketClient,
+    client: SuperHornetClient,
     close: () => Promise<void>,
-    createClient: () => SocketClient,
+    createClient: () => SuperHornetClient,
     createControllerClient: <T>(controllerName: string) => RemoteController<T>
 }> {
     const dbName = 'super_hornet_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
@@ -60,24 +69,22 @@ export async function createServerClientPair(
         });
     });
 
-    @Module({
-        controllers: controllers
-    })
-    class AppModule {
-
+    @Module({})
+    class ConfigModule {
+        constructor(exchangeConfig: ExchangeConfig) {
+            exchangeConfig.hostOrUnixPath = exchangeSocketPath;
+        }
     }
 
     const app = new ApplicationServer(AppModule, {
         server: server,
-        // mongoDbName: dbName,
-        // exchangeUnixPath: exchangeSocketPath
-    });
+    }, [], [ConfigModule]);
 
     await app.start();
 
-    const createdClients: SocketClient[] = [];
+    const createdClients: SuperHornetClient[] = [];
 
-    const socket = new SocketClient('ws+unix://' + socketPath);
+    const socket = new SuperHornetClient('ws+unix://' + socketPath);
 
     createdClients.push(socket);
 
@@ -114,12 +121,12 @@ export async function createServerClientPair(
         server: app,
         client: socket,
         createClient: () => {
-            const client = new SocketClient('ws+unix://' + socketPath);
+            const client = new SuperHornetClient('ws+unix://' + socketPath);
             createdClients.push(client);
             return client;
         },
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
-            const client = new SocketClient('ws+unix://' + socketPath);
+            const client = new SuperHornetClient('ws+unix://' + socketPath);
             createdClients.push(client);
             return client.controller<T>(controllerName);
         },

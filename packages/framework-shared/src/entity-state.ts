@@ -1,4 +1,4 @@
-import {partialPlainToClass, plainToClass, RegisteredEntities} from "@super-hornet/marshal";
+import {getClassSchemaByName, partialPlainToClass, plainToClass} from "@super-hornet/marshal";
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "../index";
 import {set, delete as deleteByPath} from 'dot-prop';
 import {ClassType, eachPair, getClassName} from "@super-hornet/core";
@@ -167,7 +167,9 @@ export class EntityState {
     }
 
     public handleEntityMessage<T extends IdInterface>(stream: ServerMessageEntity) {
-        const classType = RegisteredEntities[stream.entityName];
+        const classSchema = getClassSchemaByName(stream.entityName);
+        const classType = classSchema.classType as ClassType<IdInterface>;
+
         const store = this.getStore(classType);
 
         if (stream.type === 'entity/update') {

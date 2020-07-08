@@ -1,4 +1,4 @@
-import {ClassSchema, getClassSchema, MarshalGlobal, PropertyCompilerSchema, PropertySchema} from "./decorators";
+import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema} from "./decorators";
 import {getDecorator, isExcluded} from "./mapper";
 import {ClassType, getClassName, getClassPropertyName} from "@super-hornet/core";
 import {getDataConverterJS, reserveVariable} from "./compiler-registry";
@@ -390,9 +390,9 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
         functionCode = `
         return function(_instance, _options) {
             const _data = {};
-            MarshalGlobal.unpopulatedCheckActive = false;
+            getGlobalStore().unpopulatedCheckActive = false;
             ${convertProperties.join('\n')}
-            MarshalGlobal.unpopulatedCheckActive = true;
+            getGlobalStore().unpopulatedCheckActive = true;
             return _data;
         }
         `;
@@ -400,8 +400,8 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
 
     try {
-        const compiled = new Function('_classType', 'MarshalGlobal', 'isGroupAllowed', ...context.keys(), functionCode);
-        const fn = compiled(classType, MarshalGlobal, isGroupAllowed, ...context.values());
+        const compiled = new Function('_classType', 'getGlobalStore', 'isGroupAllowed', ...context.keys(), functionCode);
+        const fn = compiled(classType, getGlobalStore, isGroupAllowed, ...context.values());
         if (toFormat === 'plain') {
             JITClassToPlainCache.set(classType, fn);
         } else {

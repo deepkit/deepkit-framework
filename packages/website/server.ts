@@ -4,19 +4,13 @@ import "reflect-metadata";
 import {ngExpressEngine} from '@nguniversal/express-engine';
 import * as express from 'express';
 import {join} from 'path';
-
-const {createProxyMiddleware} = require('http-proxy-middleware');
-
 import {AppServerModule} from './src/main.server';
 import {APP_BASE_HREF} from '@angular/common';
 import {existsSync} from 'fs';
-import {Application, ApplicationServer, ApplicationServerConfig} from '@super-hornet/framework-server';
+import {ApplicationServer, ApplicationServerConfig} from '@super-hornet/framework-server';
 import {Action, Controller} from "@super-hornet/framework-shared";
-import * as http from "http";
-import {createServer} from "net";
-import {createServer as createHttpServer} from "http";
-import {format} from "url";
 import {environment} from "./src/environments/environment";
+import {Module} from "@super-hornet/framework-server-common";
 
 (global as any).WebSocket = require('ws');
 
@@ -67,11 +61,14 @@ async function run() {
     }
   }
 
-  class MyApplication extends Application {
+  @Module({
+    controllers: [MyController]
+  })
+  class AppModule {
   }
 
   const config: Partial<ApplicationServerConfig> = {
-      path: '/api'
+    path: '/api'
   };
   if (environment.production) {
     config.server = http;
@@ -79,7 +76,7 @@ async function run() {
     config.port = 5200;
   }
 
-  const superHornet = new ApplicationServer(MyApplication, config, [], [], [MyController]);
+  const superHornet = new ApplicationServer(AppModule, config);
 
   superHornet.start();
 }

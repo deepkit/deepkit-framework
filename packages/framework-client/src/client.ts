@@ -77,30 +77,47 @@ export class ClientProgress {
     }
 }
 
-export class SocketClient {
-    public socket?: WebSocket;
+export interface TransportConnection {
+    send(message: ClientMessageAll): void;
+    disconnect(): void;
+}
 
+export interface TransportConnectionHooks {
+    onConnected(transportConnection: TransportConnection): void;
+
+    onClose(): void;
+
+    onMessage(data: string): void;
+
+    onError(error: any): void;
+}
+
+export interface ClientTransportAdapter {
+    connect(connection: TransportConnectionHooks): Promise<void> | void;
+}
+
+export class Client {
     /**
      * True when the connection established (without authentication)
      */
-    private connected: boolean = false;
-    private loggedIn: boolean = false;
+    protected connected: boolean = false;
+    protected loggedIn: boolean = false;
 
-    private messageId: number = 0;
-    private connectionTries = 0;
+    protected messageId: number = 0;
+    protected connectionTries = 0;
 
-    private currentConnectionId: number = 0;
+    protected currentConnectionId: number = 0;
 
-    private replies: {
+    protected replies: {
         [messageId: string]: (data: any) => void
     } = {};
 
-    private connectionPromise?: Promise<void>;
+    protected connectionPromise?: Promise<void>;
 
     public readonly entityState = new EntityState();
 
-    public readonly disconnected = new Subject<number>();
-    public readonly reconnected = new Subject<number>();
+    protected readonly disconnected = new Subject<number>();
+    protected readonly reconnected = new Subject<number>();
 
     public readonly clientId = _clientId++;
 
@@ -111,6 +128,8 @@ export class SocketClient {
 
     protected batcher = new Batcher(this.onDecodedMessage.bind(this));
 
+    // protected connection?: ClientConnection;
+
     /**
      * true when the connection fully established (after authentication)
      */
@@ -120,9 +139,9 @@ export class SocketClient {
         [controllerName: string]: { [actionName: string]: { types?: { parameters: PropertySchema[] }, promise?: Promise<void> } }
     } = {};
 
-    public constructor(
-        public url: string
-    ) {
+    protected transportConnection?: TransportConnection;
+
+    public constructor(public transport: ClientTransportAdapter) {
     }
 
     protected registeredControllers: { [name: string]: { controllerInstance: any, sub: AsyncSubscription } } = {};
@@ -314,8 +333,8 @@ export class SocketClient {
         return (o as any) as RemoteController<T>;
     }
 
-    protected onMessage(event: MessageEvent) {
-        this.batcher.handle(event.data.toString());
+    protected onMessage(data: string) {
+        this.batcher.handle(data);
     }
 
     protected onDecodedMessage(decoded: any) {
@@ -333,77 +352,75 @@ export class SocketClient {
         }
     }
 
-    public async onConnected(): Promise<void> {
-
-    }
-
     protected async doConnect(): Promise<void> {
         this.connectionTries++;
 
-        this.socket = undefined;
+        if (this.transportConnection) {
+            this.transportConnection.disconnect();
+            this.transportConnection = undefined;
+        }
 
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>(async (resolve, reject) => {
             try {
-                const socket = this.socket = new WebSocket(this.url);
-
-                socket.onmessage = (event: MessageEvent) => {
-                    this.onMessage(event);
-                };
-
-                socket.onclose = () => {
-                    this.cachedActionsTypes = {};
-                    if (this.connected) {
-                        this.connection.next(false);
-                        this.onDisconnect();
-                    }
-                    this.loggedIn = false;
-
-                    if (this.connected) {
-                        this.connected = false;
-                        this.disconnected.next(this.currentConnectionId);
-                    }
-
-                    this.currentConnectionId++;
-                };
-
-                socket.onerror = (error: any) => {
-                    this.cachedActionsTypes = {};
-                    if (this.connected) {
-                        this.connection.next(false);
-                        this.onDisconnect();
-                    }
-
-                    this.loggedIn = false;
-                    if (this.connected) {
-                        this.connected = false;
-                        this.disconnected.next(this.currentConnectionId);
-                    }
-
-                    this.currentConnectionId++;
-
-                    reject(new OfflineError(`Could not connect to ${this.url}. Reason: ${error.message || error}`));
-                };
-
-                socket.onopen = async () => {
-                    //it's important to place it here, since authenticate() sends messages and checks this.connected.
-                    this.connected = true;
-                    this.connectionTries = 0;
-
-                    if (this.authToken) {
-                        if (!await this.authenticate()) {
-                            this.connected = false;
-                            this.connectionTries = 0;
-                            socket.close();
-                            reject(new AuthenticationError());
-                            return;
+                await this.transport.connect({
+                    onClose: () => {
+                        this.cachedActionsTypes = {};
+                        if (this.connected) {
+                            this.connection.next(false);
+                            this.onDisconnect();
                         }
-                    }
+                        this.loggedIn = false;
 
-                    this.connection.next(true);
-                    await this.onConnected();
+                        if (this.connected) {
+                            this.connected = false;
+                            this.disconnected.next(this.currentConnectionId);
+                        }
 
-                    resolve();
-                };
+                        this.currentConnectionId++;
+                    },
+
+                    onConnected: async (transport: TransportConnection) => {
+                        this.transportConnection = transport;
+                        //it's important to place it here, since authenticate() sends messages and checks this.connected.
+                        this.connected = true;
+                        this.connectionTries = 0;
+
+                        if (this.authToken) {
+                            if (!await this.authenticate()) {
+                                this.connected = false;
+                                this.connectionTries = 0;
+                                reject(new AuthenticationError());
+                                return;
+                            }
+                        }
+
+                        this.connection.next(true);
+
+                        resolve();
+                    },
+
+                    onError: (error: any) => {
+                        this.cachedActionsTypes = {};
+                        if (this.connected) {
+                            this.connection.next(false);
+                            this.onDisconnect();
+                        }
+
+                        this.loggedIn = false;
+                        if (this.connected) {
+                            this.connected = false;
+                            this.disconnected.next(this.currentConnectionId);
+                        }
+
+                        this.currentConnectionId++;
+
+                        reject(new OfflineError(`Could not connect: ${String(error)}`));
+                    },
+
+                    onMessage: (data: string) => {
+                        this.onMessage(data);
+                    },
+                });
             } catch (error) {
                 reject(error);
             }
@@ -522,13 +539,13 @@ export class SocketClient {
         });
     }
 
-    public send(message: ClientMessageAll) {
-        if (this.socket === undefined) {
-            throw new Error('Socket not created yet');
+    protected send(message: ClientMessageAll) {
+        if (this.transportConnection === undefined) {
+            throw new Error('Transport connection not created yet');
         }
 
         try {
-            this.socket.send(JSON.stringify(message));
+            this.transportConnection.send(message);
         } catch (error) {
             throw new OfflineError(error);
         }
@@ -644,14 +661,14 @@ export class SocketClient {
         return this.loggedIn;
     }
 
-    protected async onDisconnect() {
+    protected onDisconnect() {
         this.entityState.clear();
         this.registeredControllers = {};
         this.cachedActionsTypes = {};
     }
 
-    public async disconnect() {
-        await this.onDisconnect();
+    public disconnect() {
+        this.onDisconnect();
 
         this.connected = false;
         this.loggedIn = false;
@@ -661,9 +678,8 @@ export class SocketClient {
         this.currentConnectionId++;
         this.connection.next(false);
 
-        if (this.socket) {
-            this.socket.close();
-            delete this.socket;
+        if (this.transportConnection) {
+            this.transportConnection.disconnect();
         }
     }
 }

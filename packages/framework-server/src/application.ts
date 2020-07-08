@@ -1,5 +1,3 @@
-import {ClassType} from "@super-hornet/core";
-import {File} from "@super-hornet/framework-shared";
 import {injectable} from "@super-hornet/framework-server-common";
 
 export class Session {
@@ -36,59 +34,5 @@ export class SessionStack {
         }
 
         return this.session;
-    }
-}
-
-@injectable()
-export class Application {
-    public readonly controllers: { [name: string]: ClassType<any> } = {};
-    public readonly entityChangeFeeds: ClassType<any>[] = [File];
-
-    /**
-     * Method executed in the master process, right before workers are forked.
-     */
-    public async bootstrap() {
-    }
-
-    /**
-     * Method to check whether given session (created by authenticate) has access to controller::action.
-     */
-    public async hasAccess<T>(session: Session | undefined, controller: ClassType<T>, action: string): Promise<boolean> {
-        return true;
-    }
-
-    /**
-     * Method to check whether given session (created by authenticate) is allowed to register peer controller of name `controllerName`.
-     */
-    public async isAllowedToRegisterPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
-        return true;
-    }
-
-    /**
-     * Method to check whether given session (created by authenticate) is allowed to send messages to peer controller of name `controllerName`.
-     */
-    public async isAllowedToSendToPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
-        return true;
-    }
-
-    /**
-     * Resolves a name to a controller.
-     */
-    public async resolveController(name: string): Promise<ClassType<any> | undefined> {
-        return this.controllers[name];
-    }
-
-    /**
-     * Authenticates the current connection.
-     */
-    public async authenticate(token: any): Promise<Session> {
-        return new Session('anon', undefined);
-    }
-
-    /**
-     * Whether changes to that entity should be broadcasted to all subscribers.
-     */
-    notifyChanges<T>(classType: ClassType<T>): boolean {
-        return -1 !== this.entityChangeFeeds.indexOf(classType);
     }
 }

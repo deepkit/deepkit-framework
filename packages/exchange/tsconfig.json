@@ -7,6 +7,7 @@
     "sourceMap": true,
     "downlevelIteration": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "importHelpers": true,
     "target": "es2017",
@@ -22,6 +23,9 @@
     "index.ts"
   ],
   "references": [
+    {
+      "path": "node_modules/@super-hornet/core/tsconfig.json"
+    },
     {
       "path": "node_modules/@super-hornet/framework-server-common/tsconfig.json"
     },

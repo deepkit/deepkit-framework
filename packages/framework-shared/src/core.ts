@@ -8,9 +8,8 @@ import {
     classToPlain,
     Entity,
     f,
-    getClassSchema,
+    getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName,
     plainToClass,
-    RegisteredEntities
 } from "@super-hornet/marshal";
 import {skip} from "rxjs/operators";
 import {ExternalQuery, WhereFn} from "sift";
@@ -89,13 +88,10 @@ export function getUnserializedError(entityName: string, error: any, stack: any,
     }
 
     if (entityName) {
-        const classType = RegisteredEntities[entityName];
-
-        if (!classType) {
-            throw new Error(`Entity ${entityName} not known. (known: ${Object.keys(RegisteredEntities).join(',')})`);
+        if (!hasClassSchemaByName(entityName)) {
+            throw new Error(`Marshal entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
         }
-
-        return plainToClass(classType, error);
+        return plainToClass(getClassSchemaByName(entityName).classType, error);
     }
 }
 

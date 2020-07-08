@@ -1,16 +1,23 @@
 import {decodeMessage, encodeMessage} from "./exchange-prot";
-import {ProcessLock, ProcessLocker} from "@super-hornet/core";
+import {ParsedHost, parseHost, ProcessLock, ProcessLocker} from "@super-hornet/core";
 import {Subscriptions} from "@super-hornet/core-rxjs";
 import {Subscription} from "rxjs";
 import * as WebSocket from 'ws';
 import {createServer, Server} from "http";
-import {removeSync, existsSync} from "fs-extra";
+import {existsSync, removeSync} from "fs-extra";
 import {injectable} from "@super-hornet/framework-server-common";
 
 interface StatePerConnection {
     subs: Subscriptions;
     locks: Map<string, ProcessLock>;
     subscribedEntityFields: Map<number, Subscription>;
+}
+
+@injectable()
+export class ExchangeServerFactory {
+    create(hostOrUnix: string) {
+        return new ExchangeServer(hostOrUnix);
+    }
 }
 
 @injectable()
@@ -33,16 +40,14 @@ export class ExchangeServer {
 
     protected subscriptions = new Map<string, Set<any>>();
 
-    constructor(
-        protected readonly unixPath: string | number | 'auto' = '/tmp/super-hornet-exchange.sock',
-    ) {
-        if ('string' === typeof this.unixPath && this.unixPath !== 'auto' && existsSync(this.unixPath)) {
-            removeSync(this.unixPath);
-        }
-    }
+    protected host: ParsedHost = parseHost(this.hostOrUnix);
 
-    getPath(): string {
-        return this.unixPath === 'auto' ? this.autoPath : this.unixPath as string;
+    constructor(
+        protected hostOrUnix: string
+    ) {
+        if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
+            removeSync(this.host.unixSocket);
+        }
     }
 
     close() {
@@ -60,72 +65,61 @@ export class ExchangeServer {
             removeSync(this.autoPath);
         }
 
-        if ('string' === typeof this.unixPath) {
-            removeSync(this.unixPath);
+        if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
+            removeSync(this.host.unixSocket);
         }
     }
 
     async start() {
-        const pid = process.pid;
-        let id = 0;
-        let dynamicPath = `/tmp/super-hornet-exchange-${pid}-${id}.sock`;
-        while (!await new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             this.server = createServer();
             this.wsServer = new WebSocket.Server({
                 server: this.server
             });
 
             this.wsServer.on("listening", () => {
-                this.autoPath = dynamicPath;
-                console.log('exchange listen on', this.getPath());
+                console.log('exchange listen on', this.host.toString());
                 resolve(true);
             });
 
             this.wsServer.on("error", (err) => {
-                if (this.unixPath === 'auto') {
-                    resolve(false);
-                } else {
-                    reject(new Error('Could not start exchange server: ' + err));
-                }
+                reject(new Error('Could not start exchange server: ' + err));
             });
 
-            this.server.listen(this.unixPath === 'auto' ? dynamicPath : this.unixPath);
-        })) {
-            id++;
-            dynamicPath = `/tmp/super-hornet-exchange-${pid}-${id}.sock`;
-        }
+            if (this.host.isUnixSocket) {
+                this.server.listen(this.host.unixSocket);
+            } else {
+                this.server.listen(this.host.port, this.host.host);
+            }
 
-        if (!this.server) {
-            throw new Error('Could not start exchange server');
-        }
+            this.wsServer.on('connection', (ws, req) => {
+                this.statePerConnection.set(ws, {
+                    subs: new Subscriptions(),
+                    locks: new Map(),
+                    subscribedEntityFields: new Map(),
+                });
 
-        this.wsServer!.on('connection', (ws, req) => {
-            this.statePerConnection.set(ws, {
-                subs: new Subscriptions(),
-                locks: new Map(),
-                subscribedEntityFields: new Map(),
-            });
+                ws.on('message', (message) => {
+                    // console.log('message', typeof message, getClassName(message), message instanceof ArrayBuffer);
+                    if (message instanceof Buffer) {
+                        this.onMessage(ws, message, this.statePerConnection.get(ws)!);
+                    }
+                });
 
-            ws.on('message', (message) => {
-                // console.log('message', typeof message, getClassName(message), message instanceof ArrayBuffer);
-                if (message instanceof Buffer) {
-                    this.onMessage(ws, message, this.statePerConnection.get(ws)!);
-                }
-            });
+                ws.on('close', () => {
+                    const statePerConnection = this.statePerConnection.get(ws)!;
 
-            ws.on('close', () => {
-                const statePerConnection = this.statePerConnection.get(ws)!;
+                    //clean up stuff that hasn't been freed
+                    statePerConnection.subs.unsubscribe();
+                    for (const lock of statePerConnection.locks.values()) {
+                        lock.unlock();
+                    }
+                    for (const subscribedEntityField of statePerConnection.subscribedEntityFields.values()) {
+                        subscribedEntityField.unsubscribe();
+                    }
 
-                //clean up stuff that hasn't been freed
-                statePerConnection.subs.unsubscribe();
-                for (const lock of statePerConnection.locks.values()) {
-                    lock.unlock();
-                }
-                for (const subscribedEntityField of statePerConnection.subscribedEntityFields.values()) {
-                    subscribedEntityField.unsubscribe();
-                }
-
-                this.statePerConnection.delete(ws);
+                    this.statePerConnection.delete(ws);
+                });
             });
         });
     }
