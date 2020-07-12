@@ -3,9 +3,23 @@ import {InjectToken} from "./injector/injector";
 import {ProviderWithScope} from './service-container';
 
 export interface ModuleOptions {
+    /**
+     * Providers.
+     */
     providers?: ProviderWithScope[];
+    /**
+     * Export providers (its token `provide` value) or modules you imported first.
+     */
     exports?: (ClassType<any> | InjectToken | string | DynamicModule)[];
+
+    /**
+     * RPC controllers.
+     */
     controllers?: ClassType<any>[];
+
+    /**
+     * Import another module.
+     */
     imports?: (ClassType<any> | DynamicModule)[];
 }
 

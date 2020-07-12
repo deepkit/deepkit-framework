@@ -8,7 +8,7 @@ export enum FileMode {
 }
 
 @Entity('file', 'files')
-export class File implements IdInterface {
+export class HornetFile implements IdInterface {
     @f.primary().uuid()
     id: string = uuid();
 
@@ -96,14 +96,14 @@ export class File implements IdInterface {
     }
 }
 
-export class FileType<T extends File> {
+export class FileType<T extends HornetFile> {
     constructor(public readonly classType: ClassType<T>) {}
 
     static forDefault() {
-        return new FileType(File);
+        return new FileType(HornetFile);
     }
 
-    static forCustomType<T extends File>(classType: ClassType<T>) {
+    static forCustomType<T extends HornetFile>(classType: ClassType<T>) {
         return new FileType(classType);
     }
 

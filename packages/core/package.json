@@ -4,6 +4,7 @@
   "description": "Super Hornet core library",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {

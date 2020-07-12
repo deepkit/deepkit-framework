@@ -18,6 +18,7 @@
     "declaration": true,
     "composite": true,
     "typeRoots": [
+      "node_modules/@types",
       "types"
     ],
     "types": [
@@ -26,6 +27,7 @@
   },
   "include": [
     "src",
+    "tests",
     "index.ts"
   ],
   "references": [
@@ -34,6 +36,9 @@
     },
     {
       "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
+    },
+    {
+      "path": "node_modules/@super-hornet/marshal-orm/tsconfig.json"
     }
   ]
 }

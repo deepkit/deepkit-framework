@@ -4,6 +4,7 @@
   "main": "src",
   "module": "src",
   "license": "MIT",
+  "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "private": true,
   "scripts": {

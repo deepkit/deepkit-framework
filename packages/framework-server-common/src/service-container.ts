@@ -1,4 +1,4 @@
-import {ClassType, getClassName, isClass} from "@super-hornet/core";
+import {arrayRemoveItem, ClassType, getClassName, isClass} from "@super-hornet/core";
 import {
     DynamicModule,
     getControllerOptions,
@@ -261,6 +261,17 @@ export class ServiceContainer {
             context = this.getContext(0);
         }
 
+        for (const token of exports.slice(0)) {
+            if (isModuleToken(token)) {
+                //exported modules will be removed from `imports`, so that
+                //the target context (root or parent) imports it
+                arrayRemoveItem(exports, token);
+
+                //exported a module. We handle it as if the parent would have imported it.
+                this.processModule(token, parentContext);
+            }
+        }
+
         for (const imp of imports) {
             this.processModule(imp, context);
         }
@@ -279,16 +290,11 @@ export class ServiceContainer {
         //and removed from module providers.
         const exportedProviders = forRootContext ? this.getContext(0).providers : (parentContext ? parentContext.providers : []);
         for (const token of exports) {
-            if (isModuleToken(token)) {
-                //exported a module. We handle it as if the parent would have imported it.
-                this.processModule(token, parentContext);
-                //a module should never be in providers, so we skip the removal.
-                continue;
-            }
+            if (isModuleToken(token)) throw new Error('Should already be handled');
 
             const provider = providers.findIndex(v => token === (isClass(v) ? v : v.provide));
             if (provider === -1) {
-                throw new Error(`Export ${tokenLabel(token)} not provided in providers.`);
+                throw new Error(`Export ${tokenLabel(token)}, but not provided in providers.`);
             }
             exportedProviders.push(providers[provider]);
             providers.splice(provider, 1);

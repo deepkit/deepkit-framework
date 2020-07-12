@@ -66,7 +66,7 @@ test('injector unmet dependency', () => {
     {
         const injector = new Injector([MyServer]);
         expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
-        expect(() => injector.get(MyServer)).toThrow('Unknown constructor argument MyServer(?). Make sure Connection is provided');
+        expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument no 1 of MyServer(?). Make sure 'Connection' is provided`);
     }
 });
 

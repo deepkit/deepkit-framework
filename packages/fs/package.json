@@ -3,6 +3,7 @@
   "version": "0.0.33",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
@@ -13,17 +14,12 @@
     "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "peerDependencies": {
-    "@super-hornet/framework-server-common": "^0.0.33"
-  },
   "dependencies": {
+    "@super-hornet/framework-server-common": "^0.0.33",
     "@super-hornet/framework-shared": "^0.0.33",
     "@super-hornet/marshal": "^2.1.1",
-    "rxjs": "~6.5.3",
-    "ws": "^7.2.1"
-  },
-  "devDependencies": {
-    "@super-hornet/framework-server-common": "^0.0.33"
+    "@super-hornet/marshal-orm": "^2.1.1",
+    "rxjs": "~6.5.3"
   },
   "jest": {
     "moduleFileExtensions": [

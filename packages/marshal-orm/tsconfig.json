@@ -16,13 +16,7 @@
     "baseUrl": ".",
     "outDir": "./dist",
     "declaration": true,
-    "composite": true,
-    "typeRoots": [
-      "types"
-    ],
-    "types": [
-      "mongo-uuid"
-    ]
+    "composite": true
   },
   "include": [
     "src",

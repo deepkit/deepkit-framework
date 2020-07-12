@@ -1,12 +1,12 @@
 import 'jest-extended';
-import {File} from '../src/file';
+import {HornetFile} from '../src/file';
 
 test('file', () => {
-    const files: File[] = [
-        new File('root.txt'),
-        new File('dir/text1.txt'),
-        new File('dir/text2.txt'),
-        new File('anotherone/text1.txt'),
+    const files: HornetFile[] = [
+        new HornetFile('root.txt'),
+        new HornetFile('dir/text1.txt'),
+        new HornetFile('dir/text2.txt'),
+        new HornetFile('anotherone/text1.txt'),
     ];
 
     expect(files[0].getDirectory()).toBe('/');

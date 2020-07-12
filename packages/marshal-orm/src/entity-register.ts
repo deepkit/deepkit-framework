@@ -1,5 +1,6 @@
 import {ClassSchema, getClassTypeFromInstance} from "@super-hornet/marshal";
-import {ClassType, getClassName} from "@super-hornet/core";
+import {getClassName} from "@super-hornet/core";
+import {FieldName} from "./utils";
 
 const globalKnownInDB = new WeakMap<any, {
     lastKnownPK: any,
@@ -25,7 +26,7 @@ export function isItemKnownInDatabase<T>(item: T) {
 /**
  * Cross session state whether the item is currently known in the database, for the current node process.
  */
-export function getLastKnownPKInDatabase<T>(item: T): any {
+export function getLastKnownPKInDatabase<T>(item: T): { [name in FieldName<T>]?: any } {
     if (!globalKnownInDB.has(item)) {
         throw new Error(`Item ${getClassName(getClassTypeFromInstance(item))} is not known in the database.`);
     }
@@ -47,7 +48,7 @@ type Store = {
 };
 
 export class EntityRegistry {
-    registry = new Map<ClassType<any>, Map<PK, Store>>();
+    registry = new Map<string, Map<PK, Store>>();
 
     deleteMany<T>(classSchema: ClassSchema<T>, pks: any[]) {
         const store = this.getStore(classSchema);
@@ -94,13 +95,15 @@ export class EntityRegistry {
     }
 
     getStore(classSchema: ClassSchema): Map<PK, Store> {
-        const store = this.registry.get(classSchema.classType);
+        if (!classSchema.name) throw new Error(`Class ${classSchema.getClassName()} has no name via @Entity() defined.`);
+
+        const store = this.registry.get(classSchema.name);
         if (store) {
             return store;
         }
 
         const newStore = new Map();
-        this.registry.set(classSchema.classType, newStore);
+        this.registry.set(classSchema.name, newStore);
         return newStore;
     }
 

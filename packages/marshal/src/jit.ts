@@ -518,7 +518,7 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     const functionCode = `
         return function(_data, _options, _parents, _state) {
             var _instance, parentsWithItem;
-            _parents = _parents || _options.parents;
+            _parents = _parents || (_options ? _options.parents : []);
             function getParents() {
                 if (parentsWithItem) return parentsWithItem;
                 parentsWithItem = _parents ? _parents.slice(0) : [];

@@ -406,3 +406,44 @@ test('module with config object', () => {
         expect(bootstrapMainCalledConfig).toBe(changedConfig);
     }
 });
+
+test('exported module', () => {
+    class DatabaseConnection {}
+
+    @Module({
+        providers: [DatabaseConnection],
+        exports: [
+            DatabaseConnection
+        ]
+    })
+    class DatabaseModule {}
+
+    class FSService {}
+
+    @Module({
+        providers: [FSService],
+        imports: [DatabaseModule],
+        exports: [
+            DatabaseModule
+        ]
+    })
+    class FSModule {}
+
+    {
+        @Module({
+            imports: [FSModule]
+        })
+        class MyModule {
+        }
+
+        const serviceContainer = new ServiceContainer();
+        serviceContainer.processRootModule(MyModule);
+        const rootInjector = serviceContainer.getRootContext().getInjector();
+
+        expect(rootInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
+
+        const databaseModuleInjector = serviceContainer.getContextsForModule(DatabaseModule)[0].getInjector();
+        expect(databaseModuleInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
+        expect(databaseModuleInjector.get(DatabaseConnection)).toBe(rootInjector.get(DatabaseConnection));
+    }
+});

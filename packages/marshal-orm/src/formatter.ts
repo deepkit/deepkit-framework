@@ -1,6 +1,11 @@
-import {mongoToClass, mongoToPlain, partialMongoToClass, partialMongoToPlain, propertyMongoToClass} from "./mapping";
-import {ClassSchema, MarshalGlobal, PropertySchema} from "@super-hornet/marshal";
-import {BaseQuery, DatabaseQueryModel} from "./query";
+import {
+    ClassSchema,
+    createJITConverterFromPropertySchema,
+    createXToClassFunction,
+    getGlobalStore,
+    PropertySchema
+} from "@super-hornet/marshal";
+import {DatabaseQueryModel} from "./query";
 import {ClassType, getClassName} from "@super-hornet/core";
 import {DatabaseSession} from "./database-session";
 import {markItemAsKnownInDatabase} from "./entity-register";
@@ -12,7 +17,7 @@ export function isHydrated(item: any) {
     return !!(item.__databaseSession);
 }
 
-export function setHydratedDatabaseSession(item: any, databaseSession: DatabaseSession) {
+export function setHydratedDatabaseSession(item: any, databaseSession: DatabaseSession<any>) {
     Object.defineProperty(item, '__databaseSession', {
         enumerable: false,
         configurable: false,
@@ -30,26 +35,17 @@ export function getHydratedDatabaseSession(item: any) {
 }
 
 export class Formatter {
-    protected converter: (c: any, v: any) => any;
-    protected partialConverter: (c: any, v: any) => any;
+    //todo: move this to database level
     protected proxyClasses: Map<ClassType<any>, ClassType<any>> = new Map();
 
     protected instancePools: Map<ClassType<any>, Map<any, any>> = new Map();
 
+    public withEntityTracking: boolean = true;
+
     constructor(
-        protected session: DatabaseSession,
-        protected query: BaseQuery<any>,
+        protected session: DatabaseSession<any>,
+        protected serializerSourceName: string,
     ) {
-        this.converter = this.query.format === 'class'
-            ? mongoToClass : (this.query.format === 'json' ? mongoToPlain : (c, v) => v);
-
-        this.partialConverter = this.query.format === 'class'
-            ? partialMongoToClass : (this.query.format === 'json' ? partialMongoToPlain : (c, v) => v);
-
-        if (this.query.format === 'raw') {
-            this.converter = (c, v) => v;
-            this.partialConverter = (c, v) => v;
-        }
     }
 
     protected getInstancePoolForClass(classType: ClassType<any>): Map<any, any> {
@@ -60,17 +56,16 @@ export class Formatter {
         return this.instancePools.get(classType)!;
     }
 
-    public hydrate<T>(value: any): any {
-        return this.hydrateModel(this.query.model, this.query.classSchema, value);
+    public hydrate<T>(classSchema: ClassSchema<T>, model: DatabaseQueryModel<T, any, any>, value: any): any {
+        this.withEntityTracking = model.withEntityTracking && !model.isPartial();
+        return this.hydrateModel(model, classSchema, value);
     }
 
-    protected withEntityTracking() {
-        return !this.session.disabledInstancePooling && this.query.format === 'class' && !this.query.model.disableInstancePooling;
+    protected isEntityTrackingEnabled() {
+        return this.session.withEntityTracking && this.withEntityTracking;
     }
 
     protected makeInvalidReference(item: any, propertySchema: PropertySchema) {
-        if (this.query.format !== 'class') return;
-
         const storeName = '$__' + propertySchema.name;
         Object.defineProperty(item, storeName, {
             enumerable: false,
@@ -86,7 +81,7 @@ export class Formatter {
                 if ('undefined' !== typeof this[storeName]) {
                     return this[storeName];
                 }
-                if (MarshalGlobal.unpopulatedCheckActive) {
+                if (getGlobalStore().unpopulatedCheckActive) {
                     throw new Error(`Reference ${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
                 }
             },
@@ -115,12 +110,12 @@ export class Formatter {
                     enumerable: false,
                     configurable: true,
                     get() {
-                        if (MarshalGlobal.unpopulatedCheckActive) {
+                        if (getGlobalStore().unpopulatedCheckActive) {
                             throw new Error(`Reference ${getClassName(classSchema.classType)} was not completely populated (only primary keys). Use joinWith(), useJoinWith(), etc to populate the reference.`);
                         }
                     },
                     set() {
-                        if (MarshalGlobal.unpopulatedCheckActive) {
+                        if (getGlobalStore().unpopulatedCheckActive) {
                             throw new Error(`Reference ${getClassName(classSchema.classType)} was not completely populated (only primary keys). Use joinWith(), useJoinWith(), etc to populate the reference.`);
                         }
                     }
@@ -152,12 +147,13 @@ export class Formatter {
             return;
         }
 
-        const pk = propertyMongoToClass(classSchema.classType, fkn, dbItem[fkn]);
+        // const pk = propertyMongoToClass(classSchema.classType, fkn, dbItem[fkn]);
+        const pk = createJITConverterFromPropertySchema(this.serializerSourceName, 'class', classSchema.getProperty(fkn))(dbItem[fkn]);
 
         const pool = this.getInstancePoolForClass(foreignSchema.classType);
 
         if (!isPartial) {
-            if (this.withEntityTracking()) {
+            if (this.isEntityTrackingEnabled()) {
                 const item = this.session.entityRegistry.get(foreignSchema, pk);
                 if (item) {
                     converted[propertySchema.name] = item;
@@ -174,36 +170,40 @@ export class Formatter {
 
         for (const prop of foreignSchema.getMethodProperties('constructor')) {
             args.push(
-                dbItem[prop.name] !== undefined && dbItem[prop.name] !== null ?
-                    propertyMongoToClass(classSchema.classType, prop.name, dbItem[prop.name]) : dbItem[prop.name]);
+                dbItem[prop.name] !== undefined && dbItem[prop.name] !== null
+                    ? createJITConverterFromPropertySchema(this.serializerSourceName, 'class', classSchema.getProperty(prop.name))(dbItem[prop.name])
+                    : dbItem[prop.name]
+            );
         }
 
-        MarshalGlobal.unpopulatedCheckActive = false;
+        getGlobalStore().unpopulatedCheckActive = false;
         const ref = new (this.getProxyClass(foreignSchema))(...args);
         ref[foreignSchema.getPrimaryField().name] = pk;
         converted[propertySchema.name] = ref;
-        MarshalGlobal.unpopulatedCheckActive = true;
+        getGlobalStore().unpopulatedCheckActive = true;
 
         if (!isPartial) {
             markItemAsKnownInDatabase(classSchema, ref);
             pool.set(pk, ref);
         }
 
-        if (this.withEntityTracking() && !isPartial) {
+        if (this.isEntityTrackingEnabled() && !isPartial) {
             this.session.entityRegistry.store(foreignSchema, ref);
         }
     }
 
-    protected hydrateModel(model: DatabaseQueryModel<any>, classSchema: ClassSchema, value: any) {
+    protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
         const primary = classSchema.getPrimaryField();
-        const pk = propertyMongoToClass(classSchema.classType, primary.name, value[primary.name]);
+        const pk = createJITConverterFromPropertySchema(this.serializerSourceName, 'class', classSchema.getProperty(primary.name))(value[primary.name]);
+        // const pk = propertyMongoToClass(classSchema.classType, primary.name, value[primary.name]);
+
         const pool = this.getInstancePoolForClass(classSchema.classType);
 
         if (pool.has(pk)) {
             return pool.get(pk);
         }
 
-        if (this.withEntityTracking() && !model.isPartial()) {
+        if (this.isEntityTrackingEnabled() && !model.isPartial()) {
             const item = this.session.entityRegistry.get(classSchema, pk);
 
             if (item) {
@@ -265,7 +265,7 @@ export class Formatter {
             markItemAsKnownInDatabase(classSchema, converted);
             pool.set(pk, converted);
 
-            if (this.withEntityTracking()) {
+            if (this.isEntityTrackingEnabled()) {
                 this.session.entityRegistry.store(classSchema, converted);
             }
         }
@@ -273,11 +273,11 @@ export class Formatter {
         return converted;
     }
 
-    protected createObject(model: DatabaseQueryModel<any>, classSchema: ClassSchema, value: any) {
-        const converter = model.isPartial() ? this.partialConverter : this.converter;
-        const converted = converter(classSchema.classType, value);
+    protected createObject(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
+        const converted = createXToClassFunction(classSchema.classType, this.serializerSourceName)(value);
 
         const handledRelation: { [name: string]: true } = {};
+
         for (const join of model.joins) {
             handledRelation[join.propertySchema.name] = true;
             const refName = join.as || join.propertySchema.name;

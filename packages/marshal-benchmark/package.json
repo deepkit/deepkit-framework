@@ -8,7 +8,7 @@
     "test": "jest --coverage",
     "tsc": ""
   },
-  "repository": "https://github.com/super-hornet/super-hornet",
+  "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {

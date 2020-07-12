@@ -567,6 +567,8 @@ export class ClassSchema<T = any> {
     protected referenceInitialized = false;
     protected hasDefaultsInitialized = false;
 
+    protected primaryKeys?: PropertySchema[];
+
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
     protected hasFullLoadHooksCheck = false;
 
@@ -731,8 +733,12 @@ export class ClassSchema<T = any> {
     /**
      * Returns a perfect hash from the primary key(s).
      */
-    public getPrimaryFieldRepresentation(item: T): any {
-        return (item as any)[this.getPrimaryField().name];
+    public getPrimaryFieldRepresentation(item: T) {
+        const pk: {[name in keyof T & string]?: any } = {};
+        for (const primaryField of this.getPrimaryFields()) {
+            pk[primaryField.name as keyof T & string] = item[primaryField.name as keyof T & string];
+        }
+        return pk;
     }
 
     /**
@@ -744,6 +750,18 @@ export class ClassSchema<T = any> {
         }
 
         return this.getProperty(this.idField);
+    }
+
+    public getPrimaryFields(): PropertySchema[] {
+        if (this.primaryKeys) return this.primaryKeys;
+
+        this.primaryKeys = [];
+        for (const property of this.getClassProperties().values()) {
+            if (property.isId) this.primaryKeys.push(property);
+        }
+        if (!this.primaryKeys.length) throw new Error(`Entity ${this.getClassName()} has no primary fields. Use @f.primary() to define one.`);
+
+        return this.primaryKeys;
     }
 
     /**
@@ -2362,7 +2380,7 @@ export const field: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 /**
  * Alias for `f`.
  */
-export const type: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
+export const t: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 
 /**
  * @hidden

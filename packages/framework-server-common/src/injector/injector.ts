@@ -1,13 +1,5 @@
 import {FieldDecoratorWrapper, getClassSchema} from "@super-hornet/marshal";
-import {
-    Provider,
-    ValueProvider,
-    ClassProvider,
-    ExistingProvider,
-    FactoryProvider,
-    ProviderProvide,
-    TypeProvider
-} from './provider';
+import {ClassProvider, ExistingProvider, FactoryProvider, Provider, ValueProvider,} from './provider';
 import {ClassType, getClassName, isClass, isFunction} from "@super-hornet/core";
 
 export interface InjectDecorator {

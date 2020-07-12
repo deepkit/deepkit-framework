@@ -10,7 +10,7 @@
     "tsc": "tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/super-hornet/super-hornet",
+  "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
@@ -20,13 +20,16 @@
   "dependencies": {
     "@super-hornet/core": "^0.1.19",
     "@super-hornet/marshal": "^2.1.13",
+    "@super-hornet/marshal-orm": "^2.1.13",
     "buffer": "^5.2.1",
     "mongo-uuid": "^1.0.0"
   },
   "devDependencies": {
     "@types/mongodb": "^3.5.25",
+    "@types/jest": "^26.0.3",
     "moment": "^2.0.0",
     "mongodb": "^3.5.9",
+    "bson-ext": "^2.0.3",
     "rxjs": "~6.5.3"
   },
   "jest": {

@@ -8,7 +8,7 @@ import {Observable} from 'rxjs';
 import {InternalClient} from "@super-hornet/framework-server";
 import {sleep} from '@super-hornet/core';
 import {Module} from "@super-hornet/framework-server-common";
-import {SecurityStrategy} from "@super-hornet/framework-server/dist/src/security";
+import {SecurityStrategy} from "@super-hornet/framework-server";
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
