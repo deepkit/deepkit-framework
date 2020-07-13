@@ -40,11 +40,7 @@
       "js"
     ],
     "collectCoverageFrom": [
-      "**/*.{ts}",
-      "!**/node_modules/**",
-      "!**/lib/**/*",
-      "!**/*.d.ts",
-      "!index.ts"
+      "src/**/*.ts"
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

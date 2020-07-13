@@ -1,5 +1,6 @@
 import 'jest';
 import 'jest-extended';
+import 'reflect-metadata';
 import {applyPatch, applyAndReturnPatches} from "../index";
 
 class Goal {

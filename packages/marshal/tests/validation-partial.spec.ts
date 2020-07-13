@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {f, getClassSchema, PropertySchema} from "../src/decorators";
 import {jitValidatePartial, jitValidateProperty, resolvePropertyCompilerSchema} from "../index";
 

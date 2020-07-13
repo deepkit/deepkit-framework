@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {classToPlain, f, getClassSchema, plainToClass, PropertyCompilerSchema, validate} from "../index";
 
 class ConfigA {
@@ -38,6 +39,9 @@ test('test discriminator schema', () => {
     expect(config.type).toBe('union');
     expect(config.getResolvedUnionTypes()).toEqual([ConfigA, ConfigB]);
     expect(config.getResolvedClassTypeForValidType()).toEqual([ConfigA, ConfigB]);
+
+    expect(getClassSchema(ConfigB).getProperty('myValue2').resolveUnionTypes).toEqual([]);
+    expect(getClassSchema(ConfigB).getProperty('myValue2').isResolvedClassTypeIsDecorated()).toEqual(false);
 
     const schemaConfigA = getClassSchema(ConfigA);
     expect(schemaConfigA.getProperty('kind').type).toBe('string');

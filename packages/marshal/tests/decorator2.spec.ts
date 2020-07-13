@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {Entity, f, getClassSchema, plainToClass, PropertySchema} from "../index";
 import {uuid} from "../src/utils";
 
@@ -87,6 +88,9 @@ test('test propertySchema serialization', () => {
 
         @f.map(Config)
         map: { [name: string]: Config } = {};
+
+        @f.map(Config).template(Config)
+        map2: { [name: string]: Config } = {};
     }
 
     function compare(p1: PropertySchema, p2: PropertySchema) {
@@ -116,6 +120,7 @@ test('test propertySchema serialization', () => {
         expect(p1.name).toBe('id');
         expect(p1.isId).toBe(true);
         expect(p1.type).toBe('uuid');
+        expect(p1.isResolvedClassTypeIsDecorated()).toBe(false);
         compare(p1, p2);
     }
 
@@ -137,6 +142,20 @@ test('test propertySchema serialization', () => {
         expect(p1.getResolvedClassType()).toBe(Config);
         expect(p1.getResolvedClassTypeForValidType()).toBe(Config);
         expect(p1.isMap).toBe(true);
+        expect(p1.type).toBe('class');
+        compare(p1, p2);
+    }
+
+    {
+        const p1 = schema.getProperty('map2');
+        const p2 = PropertySchema.fromJSON(p1.toJSON());
+        expect(p1.name).toBe('map2');
+        expect(p1.isId).toBe(false);
+        expect(p1.getResolvedClassType()).toBe(Config);
+        expect(p1.getResolvedClassTypeForValidType()).toBe(Config);
+        expect(p1.isMap).toBe(true);
+        expect(p1.templateArgs![0].type).toEqual('class');
+        expect(p1.templateArgs![0].getResolvedClassTypeForValidType()).toEqual(Config);
         expect(p1.type).toBe('class');
         compare(p1, p2);
     }
@@ -235,7 +254,6 @@ test('test inheritance', async () => {
 });
 
 
-
 test('test invalid @f', () => {
     class Config {
         @f.optional() name?: string;
@@ -244,7 +262,7 @@ test('test invalid @f', () => {
     expect(() => {
         class User1 {
             @f
-            // @ts-ignore
+                // @ts-ignore
             notDefined;
         }
     }).toThrowError('User1::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
@@ -256,7 +274,7 @@ test('test invalid @f', () => {
         class User2 {
             // @ts-ignore
             @f.type(NOTEXIST)
-            // @ts-ignore
+                // @ts-ignore
             notDefined;
         }
     }).toThrowError('User2::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
@@ -323,7 +341,7 @@ test('test invalid @f', () => {
         //works
         class Model {
             @f.any().asMap()
-            // @ts-ignore
+                // @ts-ignore
             any?;
         }
     }
@@ -335,4 +353,17 @@ test('test invalid @f', () => {
             sub?: Config;
         }
     }
+});
+
+test('faulty constructor', () => {
+    class Faulty {
+        constructor(@f public name: string) {
+            if (!name) throw new Error('No name given!!');
+        }
+    }
+
+    const schema = getClassSchema(Faulty);
+    expect(() => {
+        schema.loadDefaults();
+    }).toThrow('Class Faulty constructor is not callable without values');
 });

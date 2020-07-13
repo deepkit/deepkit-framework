@@ -17,7 +17,7 @@ import {Buffer} from "buffer";
 interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> };
     unpopulatedCheckActive: boolean;
-    ClassSchemas: Map<object, ClassSchema>;
+    ClassSchemas: WeakMap<object, ClassSchema>;
 }
 
 function getGlobal(): any {
@@ -108,9 +108,8 @@ export function isTypedArray(type: Types): boolean {
     return typedArrayNamesMap.has(type);
 }
 
-
 export interface PropertyValidator {
-    validate<T>(value: any, propertySchema: PropertyCompilerSchema): PropertyValidatorError | void;
+    validate<T>(value: any, propertyName: string, classType?: ClassType<any>, ): PropertyValidatorError | undefined | void;
 }
 
 export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
@@ -231,7 +230,6 @@ export class PropertyCompilerSchema {
  * Represents a class property or method argument definition.
  */
 export class PropertySchema extends PropertyCompilerSchema {
-
     /**
      * Whether its a back reference.
      */
@@ -411,13 +409,6 @@ export class PropertySchema extends PropertyCompilerSchema {
         return this.name;
     }
 
-    /**
-     * When this.classType is referenced, this returns the fields necessary to instantiate a proxy object.
-     */
-    getRequiredForeignFieldsForProxy(): PropertySchema[] {
-        return [this.getResolvedClassSchema().getPrimaryField(), ...this.getResolvedClassSchema().getMethodProperties('constructor')]
-    }
-
     getResolvedClassSchema(): ClassSchema {
         return getClassSchema(this.getResolvedClassType());
     }
@@ -432,15 +423,6 @@ export class PropertySchema extends PropertyCompilerSchema {
 
     public getTemplateArg(position: number): PropertySchema | undefined {
         return this.templateArgs ? this.templateArgs[position] : undefined;
-    }
-
-    getForeignClassDecorator(): PropertySchema | void {
-        if (this.type === 'class') {
-            const targetClass = this.getResolvedClassType();
-            if (getClassSchema(targetClass).decorator) {
-                return getClassSchema(targetClass).getDecoratedPropertySchema();
-            }
-        }
     }
 
     get resolveClassType(): ClassType<any> | undefined {
@@ -549,7 +531,7 @@ export class ClassSchema<T = any> {
      */
     protected initializedMethods = new Set<string>();
 
-    classProperties = new Map<string, PropertySchema>();
+    protected classProperties = new Map<string, PropertySchema>();
 
     idField?: keyof T & string;
     propertyNames: string[] = [];
@@ -574,11 +556,6 @@ export class ClassSchema<T = any> {
 
     constructor(classType: ClassType<any>) {
         this.classType = classType;
-    }
-
-    resetInitialized() {
-        this.referenceInitialized = false;
-        this.hasDefaultsInitialized = false;
     }
 
     loadDefaults() {
@@ -734,7 +711,7 @@ export class ClassSchema<T = any> {
      * Returns a perfect hash from the primary key(s).
      */
     public getPrimaryFieldRepresentation(item: T) {
-        const pk: {[name in keyof T & string]?: any } = {};
+        const pk: { [name in keyof T & string]?: any } = {};
         for (const primaryField of this.getPrimaryFields()) {
             pk[primaryField.name as keyof T & string] = item[primaryField.name as keyof T & string];
         }
@@ -847,8 +824,8 @@ export class ClassSchema<T = any> {
         }
     }
 
-    public getClassProperties(): Map<string, PropertySchema> {
-        this.initializeProperties();
+    public getClassProperties(initialize: boolean = true): Map<string, PropertySchema> {
+        if (initialize) this.initializeProperties();
         return this.classProperties;
     }
 
@@ -903,6 +880,30 @@ export class ClassSchema<T = any> {
     public hasProperty(name: string): boolean {
         return this.classProperties.has(name);
     }
+
+    // public isOneToOne(propertyName: string): boolean {
+    //     const property = this.getProperty(propertyName);
+    //     return property.isOwningReference() && property.isId;
+    // }
+    //
+    // public isManyToOne(propertyName: string): boolean {
+    //     const property = this.getProperty(propertyName);
+    //     return property.isOwningReference() && !property.isId;
+    // }
+    //
+    // public isOneToMany(propertyName: string): boolean {
+    //     const property = this.getProperty(propertyName);
+    //     return property.isBackReference() && !property.isId;
+    // }
+    //
+    // public isManyToMany(propertyName: string): boolean {
+    //     const property = this.getProperty(propertyName);
+    //     if (property.isBackReference()) {
+    //         const reverseRef = this.findReverseReference(property.getResolvedClassType(), property);
+    //         return reverseRef.isArray;
+    //     }
+    //     return false;
+    // }
 
     /**
      * All references have a counter-part. This methods finds it and errors if not possible.
@@ -1193,6 +1194,9 @@ export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<Cl
     return isFunction(type) ? (type as Function)() : type;
 }
 
+
+export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType<any>) => PropertyValidatorError | undefined | void;
+
 export interface FieldDecoratorResult<T> {
     (target: object, property?: string, parameterIndexOrDescriptor?: any): void;
 
@@ -1464,7 +1468,7 @@ export interface FieldDecoratorResult<T> {
      * ```
      */
     validator(
-        validator: ClassType<PropertyValidator> | ((value: any, target: ClassType<any>, propertyName: string) => PropertyValidatorError | void)
+        ...validators: (ClassType<PropertyValidator> | ValidatorFn)[]
     ): this;
 }
 
@@ -1592,12 +1596,12 @@ function createFieldDecoratorResult<T>(
             if (isNumber(parameterIndexOrDescriptor)) {
                 //decorator is used on a method argument. Might be on constructor or any other method.
                 if (methodName === 'constructor') {
-                    if (!schema.classProperties.has(givenPropertyName)) {
-                        schema.classProperties.set(givenPropertyName, new PropertySchema(givenPropertyName));
+                    if (!schema.getClassProperties(false).has(givenPropertyName)) {
+                        schema.getClassProperties(false).set(givenPropertyName, new PropertySchema(givenPropertyName));
                         schema.propertyNames.push(givenPropertyName);
                     }
 
-                    propertySchema = schema.classProperties.get(givenPropertyName)!;
+                    propertySchema = schema.getClassProperties(false).get(givenPropertyName)!;
                     argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
                 } else {
                     if (!argumentsProperties[parameterIndexOrDescriptor]) {
@@ -1612,12 +1616,12 @@ function createFieldDecoratorResult<T>(
                     throw new Error(`Could not resolve property name for class property on ${getClassName(target)}`);
                 }
 
-                if (!schema.classProperties.has(givenPropertyName)) {
-                    schema.classProperties.set(givenPropertyName, new PropertySchema(givenPropertyName));
+                if (!schema.getClassProperties(false).has(givenPropertyName)) {
+                    schema.getClassProperties(false).set(givenPropertyName, new PropertySchema(givenPropertyName));
                     schema.propertyNames.push(givenPropertyName);
                 }
 
-                propertySchema = schema.classProperties.get(givenPropertyName)!;
+                propertySchema = schema.getClassProperties(false).get(givenPropertyName)!;
             }
         }
 
@@ -1732,17 +1736,25 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, map: true});
     };
 
-    fn.validator = (validator: ClassType<PropertyValidator> | ((value: any) => PropertyValidatorError | void)) => {
-        resetIfNecessary();
-
-        const validatorClass: ClassType<PropertyValidator> = isPropertyValidator(validator) ? validator : class implements PropertyValidator {
-            validate<T>(value: any): PropertyValidatorError | void {
-                return validator(value);
+    function createValidator(validator: ValidatorFn) {
+        return class implements PropertyValidator {
+            validate<T>(value: any, propertyName: string, classType?: ClassType<any>): PropertyValidatorError | undefined | void {
+                return validator(value, propertyName, classType);
             }
         };
+    }
+
+    fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn)[]) => {
+        resetIfNecessary();
+        const validatorClasses: ClassType<PropertyValidator>[] = [];
+
+        for (const validator of validators) {
+            const validatorClass: ClassType<PropertyValidator> = isPropertyValidator(validator) ? validator : createValidator(validator);
+            validatorClasses.push(validatorClass);
+        }
 
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-            property.validators.push(validatorClass);
+            property.validators.push(...validatorClasses);
         }], modifiedOptions);
     };
 
@@ -2383,15 +2395,6 @@ export const field: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 export const t: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 
 /**
- * @hidden
- */
-function Type<T>(type: Types) {
-    return (target: object, property: PropertySchema) => {
-        property.type = type;
-    };
-}
-
-/**
  * @internal
  */
 function MongoIdField() {
@@ -2438,7 +2441,7 @@ function Data(key: string, value: any) {
  *
  * @category Decorator
  */
-export function MultiIndex(fields: string[], options: IndexOptions, name?: string) {
+export function MultiIndex(fields: string[], options?: IndexOptions, name?: string) {
     return (target: object, property?: string, parameterIndexOrDescriptor?: any) => {
         const classType = (target as any).prototype as ClassType<any>;
         const schema = getOrCreateEntitySchema(classType);

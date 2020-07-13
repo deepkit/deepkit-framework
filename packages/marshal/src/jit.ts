@@ -42,7 +42,7 @@ const resolvedReflectionCaches = new Map<ClassType<any>, { [path: string]: Prope
  * correct PropertyCompilerSchema so that a correct compiler can be built to convert this type.
  */
 export function resolvePropertyCompilerSchema<T>(schema: ClassSchema<T>, propertyPath: string): PropertyCompilerSchema {
-    if (schema.classProperties.has(propertyPath)) return schema.classProperties.get(propertyPath)!;
+    if (schema.getClassProperties().has(propertyPath)) return schema.getClassProperties().get(propertyPath)!;
 
     let cache = resolvedReflectionCaches.get(schema.classType);
     if (!cache) {
@@ -177,7 +177,7 @@ export class JitPropertyConverter {
         let property: PropertyCompilerSchema;
 
         try {
-            property = this.schema.classProperties.get(path) || resolvePropertyCompilerSchema(this.schema, path)
+            property = this.schema.getClassProperties().get(path) || resolvePropertyCompilerSchema(this.schema, path)
         } catch (error) {
             return;
         }
@@ -364,7 +364,7 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
         const convertProperties: string[] = [];
 
-        for (const property of schema.classProperties.values()) {
+        for (const property of schema.getClassProperties().values()) {
             if (property.isParentReference) {
                 //we do not export parent references, as this would lead to an circular reference
                 continue;
@@ -443,7 +443,9 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
         assignedViaConstructor[property.name] = true;
 
         if (schema.decorator && property.name === schema.decorator) {
-            constructorArguments.push(`var c_${property.name} = _data;
+            constructorArguments.push(`
+                //constructor parameter ${property.name}, decorated
+                var c_${property.name} = _data;
                 if (undefined !== c_${property.name} && null !== c_${property.name}) {
                     ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context)}
                 }
@@ -452,7 +454,9 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
             //parent resolver
             constructorArguments.push(`var c_${property.name}; ` + getParentResolverJS(classType, `c_${property.name}`, property, context));
         } else {
-            constructorArguments.push(`var c_${property.name} = _data.${property.name}; 
+            constructorArguments.push(`
+                //constructor parameter ${property.name}
+                var c_${property.name} = _data[${JSON.stringify(property.name)}]; 
                 if (undefined !== c_${property.name} && null !== c_${property.name}) {
                     ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context)}
                 }
@@ -462,7 +466,7 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
         constructorArgumentNames.push(`c_${property.name}`);
     }
 
-    for (const property of schema.classProperties.values()) {
+    for (const property of schema.getClassProperties().values()) {
         if (assignedViaConstructor[property.name]) continue;
         if (property.isReference || property.backReference) continue;
 

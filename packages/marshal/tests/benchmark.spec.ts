@@ -1,4 +1,5 @@
 import 'jest-extended';
+import 'reflect-metadata';
 import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass} from "../src/jit";
 import {f} from "../index";
 import {bench} from "./util";

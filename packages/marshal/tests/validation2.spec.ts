@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {getClassSchema, f} from "../src/decorators";
 
 test('test minimized code', async () => {
@@ -41,5 +42,5 @@ test('test minimized code', async () => {
         ) {
         }
     }
-    expect(getClassSchema(ClusterNodeCredentials).classProperties.get('e')).toBeUndefined();
+    expect(getClassSchema(ClusterNodeCredentials).getClassProperties().get('e')).toBeUndefined();
 });

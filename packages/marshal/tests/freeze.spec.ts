@@ -1,5 +1,6 @@
 import 'jest';
 import 'jest-extended';
+import 'reflect-metadata';
 import {classToPlain, f, getClassSchema} from "../index";
 
 export class StateGoalChecklistItem {

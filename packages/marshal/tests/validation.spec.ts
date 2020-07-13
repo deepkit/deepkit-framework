@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {
     plainToClass,
     PropertyValidator,
@@ -9,7 +10,7 @@ import {
     validatesFactory,
     ValidationError,
     ValidationFailed
-} from "../";
+} from "../index";
 import {CustomError, isPlainObject} from '@super-hornet/core';
 import {getClassSchema, f} from "../src/decorators";
 
@@ -197,10 +198,8 @@ test('test inline validator throw string', async () => {
 
 test('test inline validator', async () => {
     class Model {
-        @f.validator((value: string) => {
-            if (value.length > 5) {
-                return new PropertyValidatorError('too_long', 'Too long');
-            }
+        @f.validator((value: string, b: any, c: any) => {
+            if (value.length > 5) throw new PropertyValidatorError('too_long', 'Too long');
         })
         id: string = '2';
     }

@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {f, getClassSchema, PropertySchema, PropertyValidator} from "../src/decorators";
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from "./big-entity";

@@ -1,5 +1,6 @@
 import 'jest';
 import 'jest-extended';
+import 'reflect-metadata';
 import {Entity, f, uuid} from "../index";
 import {JitPropertyConverter} from "../src/jit";
 import {Channel, Job} from "./big-entity";

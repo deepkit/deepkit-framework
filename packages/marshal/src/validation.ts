@@ -51,15 +51,20 @@ export function handleCustomValidator<T>(
     validator: PropertyValidator,
     value: any,
     propertyPath: string,
-    errors: ValidationError[]
+    errors: ValidationError[],
+    classType?: ClassType<any>,
 ) {
     try {
-        const result = validator.validate(value, propSchema);
+        const result = validator.validate(value, propSchema.name, classType);
         if (result instanceof PropertyValidatorError) {
             errors.push(new ValidationError(propertyPath, result.code, result.message));
         }
     } catch (error) {
-        errors.push(new ValidationError(propertyPath, 'error', error.message || String(error)));
+        if (error instanceof PropertyValidatorError) {
+            errors.push(new ValidationError(propertyPath, error.code, error.message || String(error)));
+        } else {
+            errors.push(new ValidationError(propertyPath, 'error', error.message || String(error)));
+        }
     }
 }
 
@@ -74,7 +79,7 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
     const properties = schema.getMethodProperties(methodName);
 
     for (const i in properties) {
-        jitValidateProperty(properties[i])(
+        jitValidateProperty(properties[i], classType)(
             args[i],
             '#' + String(i),
             errors

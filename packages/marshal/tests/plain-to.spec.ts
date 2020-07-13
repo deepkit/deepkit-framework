@@ -1,4 +1,5 @@
 import 'jest-extended'
+import 'reflect-metadata';
 import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from "../src/mapper";
 import {f, getClassSchema, ParentReference} from "../index";
@@ -88,7 +89,6 @@ test('resolvePropertyCompilerSchema deep decorator string', () => {
 });
 
 test('plain-to test simple model', () => {
-
     const instance = plainToClass(SimpleModel, {
         //todo, this should throw an error
         id: '21313',

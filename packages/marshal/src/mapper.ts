@@ -138,36 +138,12 @@ export function validatedPlainToClass<T>(
     return plainToClass(classType, data, options);
 }
 
-/**
- * @hidden
- */
-export function deleteExcludedPropertiesFor<T>(classType: ClassType<T>, item: any, target: 'mongo' | 'plain') {
-    for (const propertyName of eachKey(item)) {
-        if (isExcluded(classType, propertyName, target)) {
-            delete item[propertyName];
-        }
-    }
-}
-
-/**
- * @hidden
- */
-export function getIdField<T>(classType: ClassType<T>): (keyof T & string) | undefined {
-    return getClassSchema(classType).idField;
-}
 
 /**
  * @hidden
  */
 export function getDecorator<T>(classType: ClassType<T>): string | undefined {
     return getClassSchema(classType).decorator;
-}
-
-/**
- * @hidden
- */
-export function getRegisteredProperties<T>(classType: ClassType<T>): string[] {
-    return getClassSchema(classType).propertyNames;
 }
 
 /**
@@ -182,13 +158,6 @@ export function isArrayType<T>(classType: ClassType<T>, property: string): boole
  */
 export function isMapType<T>(classType: ClassType<T>, property: string): boolean {
     return getClassSchema(classType).getProperty(property).isMap;
-}
-
-/**
- * @hidden
- */
-export function isEnumAllowLabelsAsValue<T>(classType: ClassType<T>, property: string): boolean {
-    return getClassSchema(classType).getProperty(property).allowLabelsAsValue;
 }
 
 /**
@@ -226,29 +195,4 @@ export function getDatabaseName<T>(classType: ClassType<T>): string | undefined 
  */
 export function getCollectionName<T>(classType: ClassType<T>): string | undefined {
     return getClassSchema(classType).collectionName;
-}
-
-/**
- * @hidden
- */
-export function applyDefaultValues<T>(classType: ClassType<T>, value: { [name: string]: any }): object {
-    if (!isObject(value)) return {};
-
-    const valueWithDefaults = Object.assign({}, value);
-    const instance = plainToClass(classType, value);
-    const entitySchema = getClassSchema(classType);
-
-
-    for (const [i, v] of entitySchema.getClassProperties().entries()) {
-        if (undefined === value[i] || null === value[i]) {
-            const decoratedProp = v.getForeignClassDecorator();
-            if (decoratedProp) {
-                valueWithDefaults[i] = (instance as any)[i][decoratedProp.name];
-            } else {
-                valueWithDefaults[i] = (instance as any)[i];
-            }
-        }
-    }
-
-    return valueWithDefaults;
 }

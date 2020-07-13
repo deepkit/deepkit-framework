@@ -38,7 +38,7 @@ export function getDataCheckerJS(
 
             const validatorsVar = reserveVariable(rootContext, 'validator');
             rootContext.set(validatorsVar, instance);
-            checks.push(`handleCustomValidator(${propertySchemaVar}, ${validatorsVar}, ${accessor}, ${path}, _errors);`);
+            checks.push(`handleCustomValidator(${propertySchemaVar}, ${validatorsVar}, ${accessor}, ${path}, _errors, _classType);`);
         }
 
         return checks.join('\n');
@@ -114,7 +114,7 @@ export function getDataCheckerJS(
     }
 }
 
-export function jitValidateProperty(property: PropertyCompilerSchema): (value: any, path?: string, errors?: ValidationError[], overwritePah?: string) => ValidationError[] {
+export function jitValidateProperty(property: PropertyCompilerSchema, classType?: ClassType<any>): (value: any, path?: string, errors?: ValidationError[], overwritePah?: string) => ValidationError[] {
     if (property.type === 'class') {
         const foreignSchema = getClassSchema(property.resolveClassType!);
         if (foreignSchema.decorator) {
@@ -128,6 +128,7 @@ export function jitValidateProperty(property: PropertyCompilerSchema): (value: a
     if (jit) return jit;
 
     const context = new Map<any, any>();
+    context.set('_classType', classType);
     context.set('ValidationError', ValidationError);
 
     const notOptionalCheckThrow = property.isActualOptional() || property.hasDefaultValue ? ''
@@ -170,12 +171,13 @@ export function jitValidate<T>(classType: ClassType<T>): (value: any, path?: str
     const context = new Map<any, any>();
     const schema = getClassSchema(classType);
 
+    context.set('_classType', classType);
     context.set('ValidationError', ValidationError);
 
     const checks: string[] = [];
 
     schema.loadDefaults();
-    for (let property of schema.classProperties.values()) {
+    for (let property of schema.getClassProperties().values()) {
         const originProperty = property;
         let isDecorated = false;
         if (property.type === 'class') {
@@ -232,7 +234,7 @@ export function jitValidatePartial<T, K extends keyof T>(
     classType: ClassType<T>,
     partial: { [name: string]: any },
     path?: string,
-    errors?: ValidationError[]
+    errors?: ValidationError[],
 ): ValidationError[] {
     errors = errors ? errors : [];
     const schema = getClassSchema(classType);
@@ -242,10 +244,12 @@ export function jitValidatePartial<T, K extends keyof T>(
         if (!partial.hasOwnProperty(i)) continue;
         const thisPath = path ? path + '.' + i : i;
         jitValidateProperty(
-            schema.classProperties.get(i) || resolvePropertyCompilerSchema(schema, i))(partial[i],
+            schema.getClassProperties().get(i) || resolvePropertyCompilerSchema(schema, i),
+            classType,
+        )(partial[i],
             '',
             errors,
-            thisPath
+            thisPath,
         );
     }
 

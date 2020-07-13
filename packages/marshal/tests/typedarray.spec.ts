@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {f, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
 import {classToPlain, plainToClass, propertyClassToPlain} from "../src/mapper";
 import {Buffer} from 'buffer';
@@ -21,7 +22,7 @@ test('mapping', async () => {
     }
 
     const classSchema = getClassSchema(Clazz);
-    for (const [i, v] of classSchema.classProperties.entries()) {
+    for (const [i, v] of classSchema.getClassProperties().entries()) {
         expect(v.type).toBe(i);
         expect(typedArrayNamesMap.has(i as any)).toBe(true);
         expect(typedArrayMap.has(typedArrayNamesMap.get(i as any))).toBe(true);
@@ -52,7 +53,7 @@ test('Int8Array', async () => {
 
 
 test('bencharmk', async () => {
-    const count = 20_0000;
+    const count = 2_000;
 
     const base64 = Buffer.from(someText).toString('base64');
 

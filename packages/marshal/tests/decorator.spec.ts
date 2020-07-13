@@ -283,6 +283,16 @@ test('test properties', () => {
         data2?: DataValue2;
     }
 
+    expect(getClassSchema(Model).getPrimaryField()).toBeInstanceOf(PropertySchema);
+    expect(() => getClassSchema(DataValue2).getPrimaryField()).toThrow('Class DataValue2 has no primary field');
+
+    expect(getClassSchema(Model).getPropertyOrUndefined('name')).toBeInstanceOf(PropertySchema);
+    expect(getClassSchema(Model).getPropertyOrUndefined('NOTHING')).toBeUndefined();
+    expect(() => getClassSchema(Model).getDecoratedPropertySchema()).toThrow('No decorated property found');
+
+    expect(getClassSchema(Model).getIndex('asd')).toBeUndefined();
+    expect(() => getClassSchema(Model).getDiscriminantPropertySchema()).toThrow('No discriminant property found');
+
     {
         const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), '_id');
         expect(type).toBe('objectId');
@@ -611,4 +621,13 @@ test('f on class, constructor resolution', () => {
         expect(properties[0].resolveClassType).toBe(Connection);
         expect(properties[0].isOptional).toBe(true);
     }
+});
+
+test('f.data', () => {
+
+    class User {
+        @f.data('myData', 'myValue') username: string = '';
+    }
+
+    expect(getClassSchema(User).getProperty('username').data['myData']).toBe('myValue');
 });

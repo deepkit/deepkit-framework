@@ -1,5 +1,5 @@
-import {PipeTransform, ArgumentMetadata, BadRequestException} from '@nestjs/common';
-import {validate, plainToClass, applyDefaultValues} from "@super-hornet/marshal";
+import {ArgumentMetadata, BadRequestException, PipeTransform} from '@nestjs/common';
+import {plainToClass, validate} from "@super-hornet/marshal";
 
 export class ValidationPipe implements PipeTransform<any> {
     constructor(private options?: { transform?: boolean, disableErrorMessages?: boolean }) {
@@ -10,8 +10,8 @@ export class ValidationPipe implements PipeTransform<any> {
             return;
         }
 
-        const valueWithDefaults = applyDefaultValues(metadata.metatype, value);
-        const errors = validate(metadata.metatype, valueWithDefaults);
+        const item = plainToClass(metadata.metatype, value);
+        const errors = validate(metadata.metatype, item);
 
         if (errors.length > 0) {
             throw new BadRequestException(this.options && this.options.disableErrorMessages ? undefined : errors);
@@ -21,6 +21,6 @@ export class ValidationPipe implements PipeTransform<any> {
             return plainToClass(metadata.metatype, value);
         }
 
-        return valueWithDefaults;
+        return item;
     }
 }
