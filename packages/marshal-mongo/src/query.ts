@@ -1,7 +1,7 @@
 import {Entity, GenericQuery} from "@super-hornet/marshal-orm";
 import {ClassSchema} from "@super-hornet/marshal";
 import {MongoQueryModel} from "./query.model";
-import {MongoQueryResolver} from "./resolver";
+import {MongoQueryResolver} from "./query.resolver";
 
 export class MongoDatabaseQuery<T extends Entity,
     MODEL extends MongoQueryModel<T> = MongoQueryModel<T>,
@@ -24,14 +24,14 @@ export class MongoDatabaseQuery<T extends Entity,
     }
 
     public async patchMany(value: {}): Promise<number> {
-        return Promise.resolve(0);
+        return await this.resolver.patchMany(this.model);
     }
 
     public async updateMany(value: {}): Promise<number> {
-        return Promise.resolve(0);
+        return await this.resolver.updateMany(this.model);
     }
 
-    count(): Promise<number> {
-        return Promise.resolve(0);
+    public async count(): Promise<number> {
+        return await this.resolver.count(this.model);
     }
 }

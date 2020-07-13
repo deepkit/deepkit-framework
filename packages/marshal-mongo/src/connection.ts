@@ -44,6 +44,7 @@ export class MongoConnection {
         const proto = this.config.srv ? 'mongodb+srv' : 'mongodb';
         this.client = await MongoClient.connect(`${proto}://${this.config.host.toString()}/${this.config.defaultDatabase}`, {
             auth: auth,
+            useUnifiedTopology: true,
             ssl: this.config.ssl,
             sslCA: this.config.sslCA,
             sslCRL: this.config.sslCRL,

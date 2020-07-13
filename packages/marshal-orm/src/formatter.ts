@@ -8,7 +8,7 @@ import {
 import {DatabaseQueryModel} from "./query";
 import {ClassType, getClassName} from "@super-hornet/core";
 import {DatabaseSession} from "./database-session";
-import {markItemAsKnownInDatabase} from "./entity-register";
+import {getEntityState} from "./entity-registry";
 
 /**
  * Returns true if item is hydrated. Returns false when its a unpopulated proxy.
@@ -183,7 +183,7 @@ export class Formatter {
         getGlobalStore().unpopulatedCheckActive = true;
 
         if (!isPartial) {
-            markItemAsKnownInDatabase(classSchema, ref);
+            getEntityState(ref).markAsPersisted();
             pool.set(pk, ref);
         }
 
@@ -262,7 +262,7 @@ export class Formatter {
         const converted = this.createObject(model, classSchema, value);
 
         if (!model.isPartial()) {
-            markItemAsKnownInDatabase(classSchema, converted);
+            getEntityState(converted).markAsPersisted();
             pool.set(pk, converted);
 
             if (this.isEntityTrackingEnabled()) {

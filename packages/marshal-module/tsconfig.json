@@ -24,13 +24,10 @@
   ],
   "references": [
     {
-      "path": "node_modules/@super-hornet/core/tsconfig.json"
+      "path": "node_modules/@super-hornet/framework-server-common/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
-    },
-    {
-      "path": "node_modules/@super-hornet/topsort/tsconfig.json"
+      "path": "node_modules/@super-hornet/marshal-orm/tsconfig.dist.json"
     }
   ]
 }

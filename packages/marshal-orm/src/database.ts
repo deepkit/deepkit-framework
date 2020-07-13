@@ -1,16 +1,15 @@
-import {ClassType} from '@super-hornet/core';
+import {ClassType, CustomError} from '@super-hornet/core';
 import {DatabaseQueryModel, Entity, GenericQuery, Sort} from "./query";
 import {getHydratedDatabaseSession, isHydrated} from "./formatter";
-import {ClassSchema} from "@super-hornet/marshal";
+import {ClassSchema, getClassSchema, getClassTypeFromInstance} from "@super-hornet/marshal";
 import {DatabaseSession} from "./database-session";
+import {PrimaryKey} from "./entity-registry";
 
-export class NotFoundError extends Error {
+export class NotFoundError extends CustomError {
 }
 
-export class NoIDDefinedError extends Error {
+export class NoIDDefinedError extends CustomError {
 }
-
-export type DatabaseType = 'mysql' | 'postgresql' | 'sqlite' | 'mongodb' | string;
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -26,25 +25,25 @@ export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends Entity>(classType: ClassType<T>): GenericQuery<T, DatabaseQueryModel<T, Partial<T>, Sort<T>>>;
 }
 
+export abstract class DatabasePersistence {
+    abstract async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+
+    abstract async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+
+    abstract async patch<T extends Entity>(classSchema: ClassSchema<T>, primaryKey: PrimaryKey<T>, item: Partial<T>): Promise<void>;
+}
+
 /**
  * A generic database adapter you can use if the API of `GenericQuery` is sufficient.
  *
  * You can specify a more concrete adapter like MySqlDatabaseAdapter with special API for MySQL.
  */
 export abstract class DatabaseAdapter {
-    abstract queryFactory(databaseSession: DatabaseSession<any>): DatabaseAdapterQueryFactory;
+    abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+
+    abstract createPersistence(databaseSession: DatabaseSession<this>): DatabasePersistence;
 
     abstract disconnect(force?: boolean): void;
-
-    abstract async add<T>(classSchema: ClassSchema<T>, item: T): Promise<void>;
-
-    abstract async update<T>(classSchema: ClassSchema<T>, primaryKey: any, item: T): Promise<void>;
-
-    abstract async patch<T>(classSchema: ClassSchema<T>, primaryKey: any, item: Partial<T>): Promise<void>;
-
-    abstract async remove<T>(classSchema: ClassSchema<T>, primaryKey: any): Promise<void>;
-
-    abstract getType(): DatabaseType;
 }
 
 /**
@@ -53,9 +52,6 @@ export abstract class DatabaseAdapter {
  * Using this class in your code indicates that you can work with common and most basic database semantics.
  * This means that you can use the Marshal database API that works across a variety of database engines
  * like MySQL, PostgreSQL, SQLite, and MongoDB.
- *
- * You should prefer declaring this type so users can overwrite it with their database conne ction
- * they want, e.g. a MysqlDatabase (which extends this class).
  */
 export class Database<ADAPTER extends DatabaseAdapter> {
     /**
@@ -78,10 +74,6 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     constructor(public readonly adapter: ADAPTER) {
         const queryFactory = this.adapter.queryFactory(this.rootSession);
         this.query = queryFactory.createQuery.bind(queryFactory);
-    }
-
-    getType(): DatabaseType {
-        return this.adapter.getType();
     }
 
     /**
@@ -109,39 +101,21 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     }
 
     /**
-     * Low level: removes one item from the database that has the given id.
-     *  - DOES NOT remove referenced items. You have to call on each reference delete() in order to remove it.
-     *  - DOES NOT update back references.
-     *  - No repository events are triggered.
-     *
-     * You should usually work with DatabaseSession (createSession()) instead, except if you know what you are doing.
+     * Simple direct persist. The persistence layer (batch) inserts or updates the record
+     * depending on the state of the given items.
      */
-    public async remove<T>(item: T): Promise<boolean> {
-        return this.rootSession.remove(item);
+    public async persist<T extends Entity>(...items: T[]) {
+        if (items.length) {
+            await this.rootSession.persistence.persist(getClassSchema(getClassTypeFromInstance(items[0])), items);
+        }
     }
 
     /**
-     * Low level: add one item to the database.
-     *  - Populates primary key if necessary.
-     *  - DOES NOT add references automatically. You have to call on each new reference add() in order to save it.
-     *  - DOES NOT update back references.
-     *  - No repository events are triggered.
-     *
-     * You should usually work with DatabaseSession (createSession()) instead, except if you know what you are doing.
+     * Simple direct remove. The persistence layer (batch) removes all given items.
      */
-    public async add<T>(item: T) {
-        return this.rootSession.add(item);
-    }
-
-    /**
-     * Low level: updates one item in the database.
-     *  - DOES NOT update referenced items. You have to call on each changed reference update() in order to save it.
-     *  - DOES NOT update back references.
-     *  - No repository events are triggered.
-     *
-     * You should usually work with DatabaseSession (createSession()) instead, except if you know what you are doing.
-     */
-    public async update<T>(item: T) {
-        return this.rootSession.update(item);
+    public async remove<T extends Entity>(...items: T[]) {
+        if (items.length) {
+            await this.rootSession.persistence.remove(getClassSchema(getClassTypeFromInstance(items[0])), items);
+        }
     }
 }

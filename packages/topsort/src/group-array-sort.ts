@@ -1,37 +1,37 @@
 import {BaseImplementation, ElementNotFoundException} from "./base";
 
-interface ItemElement<T> {
+interface ItemElement<T, TYPE> {
     item: T;
-    type: string;
+    type: TYPE;
     dependencies: T[],
     dependenciesCount: number;
     visited: boolean;
     addedAtLevel: number;
 }
 
-interface Group {
-    type: string;
+interface Group<T> {
+    type: T;
     level: number;
     position: number;
     length: number;
 }
 
-export class GroupArraySort<T = string> extends BaseImplementation<T> {
-    protected elements = new Map<T, ItemElement<T>>();
+export class GroupArraySort<T = string, TYPE = string> extends BaseImplementation<T> {
+    protected elements = new Map<T, ItemElement<T, TYPE>>();
     protected sorted: T[] = [];
     protected position: number = 0;
-    public groups: Group[] = [];
+    public groups: Group<TYPE>[] = [];
     protected groupLevel: number = 0;
 
     public sameTypeExtraGrouping: boolean = false;
 
-    set(elements: Map<{ item: T, type: string }, T[]>) {
+    set(elements: Map<{ item: T, type: TYPE }, T[]>) {
         for (const [key, deps] of elements.entries()) {
             this.add(key.item, key.type, deps);
         }
     }
 
-    public add(item: T, type: string, dependencies: T[] = []) {
+    public add(item: T, type: TYPE, dependencies: T[] = []) {
         this.elements.set(item, {
             item, type, dependencies,
             dependenciesCount: dependencies.length,
@@ -40,7 +40,7 @@ export class GroupArraySort<T = string> extends BaseImplementation<T> {
         })
     }
 
-    public visit(element: ItemElement<T>, parents?: Set<T>): number {
+    public visit(element: ItemElement<T, TYPE>, parents?: Set<T>): number {
         if (parents) this.throwCircularExceptionIfNeeded(element.item, parents);
 
         if (!element.visited) {
@@ -72,7 +72,7 @@ export class GroupArraySort<T = string> extends BaseImplementation<T> {
         return element.addedAtLevel;
     }
 
-    protected injectElement(element: ItemElement<T>, minLevel: number) {
+    protected injectElement(element: ItemElement<T, TYPE>, minLevel: number) {
         const group = this.getFirstGroup(element.type, minLevel);
         if (group) {
             this.addItemAt(group.position + group.length, element.item);
@@ -108,7 +108,7 @@ export class GroupArraySort<T = string> extends BaseImplementation<T> {
         this.sorted.splice(position, 0, element);
     }
 
-    protected getFirstGroup(type: string, minLevel: number): Group | undefined {
+    protected getFirstGroup(type: TYPE, minLevel: number): Group<TYPE> | undefined {
         let i = this.groupLevel;
 
         while (i--) {
@@ -123,7 +123,7 @@ export class GroupArraySort<T = string> extends BaseImplementation<T> {
     }
 
     public getGroups() {
-        const groups: { type: string, items: T[] }[] = [];
+        const groups: { type: TYPE, items: T[] }[] = [];
 
         for (const group of this.groups) {
             groups.push({type: group.type, items: this.sorted.slice(group.position, group.position + group.length)});

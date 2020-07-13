@@ -1,7 +1,7 @@
 {
-  "name": "@super-hornet/marshal-mongo",
+  "name": "@super-hornet/marshal-module",
   "version": "2.1.13",
-  "description": "Marshal MongoDB adapter.",
+  "description": "Marshal ORM module for Super Hornet",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,
@@ -14,23 +14,12 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "mongodb": "^3.5.9",
-    "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@super-hornet/core": "^0.1.19",
-    "@super-hornet/marshal": "^2.1.13",
-    "@super-hornet/marshal-orm": "^2.1.13",
-    "buffer": "^5.2.1",
-    "mongo-uuid": "^1.0.0"
+    "@super-hornet/framework-server-common": "^0.0.33",
+    "@super-hornet/marshal-orm": "^2.1.13"
   },
   "devDependencies": {
-    "@types/mongodb": "^3.5.25",
-    "@types/jest": "^26.0.3",
-    "moment": "^2.0.0",
-    "mongodb": "^3.5.9",
-    "bson-ext": "^2.0.3",
-    "rxjs": "~6.5.3"
   },
   "jest": {
     "testURL": "http://localhost/",
@@ -40,7 +29,11 @@
       "js"
     ],
     "collectCoverageFrom": [
-      "src/**/*.ts"
+      "**/*.{ts}",
+      "!**/node_modules/**",
+      "!**/lib/**/*",
+      "!**/*.d.ts",
+      "!index.ts"
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

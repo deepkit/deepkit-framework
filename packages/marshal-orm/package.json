@@ -18,6 +18,7 @@
   "dependencies": {
     "@super-hornet/core": "^0.1.19",
     "@super-hornet/marshal": "^2.1.13",
+    "@super-hornet/topsort": "^0.0.1",
     "buffer": "^5.2.1"
   },
   "devDependencies": {

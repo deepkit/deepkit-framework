@@ -1,19 +1,11 @@
-import {
-    BaseQuery,
-    DatabaseAdapter, DatabaseAdapterQueryFactory,
-    DatabaseQueryModel, DatabaseSession,
-    DatabaseType,
-    Entity,
-    Formatter,
-    Sort
-} from "@super-hornet/marshal-orm";
-import {ClassSchema, f, getClassSchema, t} from "@super-hornet/marshal";
+import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from "@super-hornet/marshal-orm";
+import {getClassSchema} from "@super-hornet/marshal";
 import {ClassType, ParsedHost, parseHost} from "@super-hornet/core";
 import {MongoConnection} from "./connection";
 import {MongoDatabaseQuery} from "./query";
-import {MongoQueryResolver} from "./resolver";
+import {MongoQueryResolver} from "./query.resolver";
 import {MongoQueryModel} from "./query.model";
-import {classToMongo, partialClassToMongo} from "./mapping";
+import {MongoPersistence} from "./persistence";
 
 export class MongoDatabaseConfig {
     public host: ParsedHost;
@@ -61,6 +53,10 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
         this.connection = new MongoConnection(config);
     }
 
+    createPersistence(databaseSession: DatabaseSession<any>): MongoPersistence {
+        return new MongoPersistence(this.connection);
+    }
+
     queryFactory(databaseSession: DatabaseSession<any>): MongoDatabaseQueryFactory {
         return new MongoDatabaseQueryFactory(this.connection, databaseSession);
     }
@@ -69,38 +65,4 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
         this.connection.close(force);
     }
 
-    getType(): DatabaseType {
-        return 'mongo';
-    }
-
-    async add<T>(classSchema: ClassSchema<T>, item: T): Promise<void> {
-        const collection = await this.connection.getCollection(classSchema.classType);
-        const mongoItem = classToMongo(classSchema.classType, item);
-
-        const result = await collection.insertOne(mongoItem);
-
-        if (result.insertedId) {
-            if (classSchema.getPrimaryField().type === 'objectId' && result.insertedId && result.insertedId.toHexString) {
-                (<any>item)[classSchema.getPrimaryField().name] = result.insertedId.toHexString();
-            }
-        }
-    }
-
-    async patch<T>(classSchema: ClassSchema<T>, primaryKey: any, item: Partial<T>): Promise<void> {
-        const collection = await this.connection.getCollection(classSchema.classType);
-        const updateStatement: { [name: string]: any } = {};
-        updateStatement['$set'] = partialClassToMongo(classSchema.classType, item);
-        await collection.updateMany(partialClassToMongo(classSchema.classType, primaryKey), updateStatement);
-    }
-
-    async update<T>(classSchema: ClassSchema<T>, primaryKey: any, item: T): Promise<void> {
-        const collection = await this.connection.getCollection(classSchema.classType);
-        const mongoItem = classToMongo(classSchema.classType, item);
-        await collection.findOneAndReplace(partialClassToMongo(classSchema.classType, primaryKey), mongoItem);
-    }
-
-    async remove<T>(classSchema: ClassSchema<T>, primaryKey: any): Promise<void> {
-        const collection = await this.connection.getCollection(classSchema.classType);
-        await collection.deleteOne(partialClassToMongo(classSchema.classType, primaryKey));
-    }
 }
