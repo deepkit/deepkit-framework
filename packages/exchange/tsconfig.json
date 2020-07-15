@@ -28,6 +28,9 @@
       "path": "node_modules/@super-hornet/core/tsconfig.json"
     },
     {
+      "path": "node_modules/@super-hornet/core-rxjs/tsconfig.json"
+    },
+    {
       "path": "node_modules/@super-hornet/framework-server-common/tsconfig.json"
     },
     {

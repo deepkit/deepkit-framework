@@ -15,18 +15,17 @@ import {
 } from "@super-hornet/framework-shared";
 import {Subscription} from "rxjs";
 import {each, eachKey} from "@super-hornet/core";
-import {Injectable, Optional} from "injection-js";
 import {ProcessLocker} from "@super-hornet/core";
+import {inject, injectable} from "@super-hornet/framework-server-common";
 
 /**
  * Internal client for communication with registered peer controllers of connected clients.
  */
-@Injectable()
+@injectable()
 export class InternalClient {
-
     constructor(
         private locker: ProcessLocker,
-        @Optional() private exchange?: Exchange,
+        @inject().optional() private exchange?: Exchange,
     ) {
     }
 
@@ -139,7 +138,12 @@ export class InternalClientConnection {
                     const locked = await this.locker.isLocked('peerController/' + controllerName);
 
                     if (!locked) {
-                        const next = {type: 'error', id: 0, error: `Peer controller ${controllerName} not registered`, code: 'peer_not_registered'} as ServerMessageErrorGeneral;
+                        const next = {
+                            type: 'error',
+                            id: 0,
+                            error: `Peer controller ${controllerName} not registered`,
+                            code: 'peer_not_registered'
+                        } as ServerMessageErrorGeneral;
                         subject.next(next);
                         return;
                     }
