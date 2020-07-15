@@ -9,8 +9,8 @@ cache:
   directories:
   - node_modules
 before_script:
-- npm install -g lerna
-- lerna bootstrap --nohoist \* --no-ci
+- npm install
+- ./node_modules/.bin/lerna bootstrap --nohoist \* --no-ci
 - ./node_modules/.bin/tsc --version
 - sleep 1
 script:
