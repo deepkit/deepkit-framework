@@ -22,7 +22,7 @@
     "@super-hornet/marshal": "^2.1.13"
   },
   "devDependencies": {
-    "@types/fs-extra": "^5.0.2",
+    "@types/fs-extra": "^9.0.1",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

@@ -13,8 +13,7 @@
     "publish": "lerna run tsc && lerna publish",
     "publish-website": "heroku container:push web && heroku container:release web"
   },
-  "peerDependencies": {
-  },
+  "peerDependencies": {},
   "devDependencies": {
     "@types/jest": "^26.0.3",
     "@types/node": "^12.12.6",

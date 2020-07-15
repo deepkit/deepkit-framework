@@ -1,4 +1,4 @@
-import {classToPlain, cloneClass, partialClassToPlain, partialPlainToClass} from "@super-hornet/marshal";
+import {classToPlain, cloneClass, partialClassToPlain} from "@super-hornet/marshal";
 import {eachPair, getPathValue, size} from "@super-hornet/core";
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';

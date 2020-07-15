@@ -9,7 +9,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "importHelpers": true,
     "target": "es2017",
     "module": "CommonJS",
 

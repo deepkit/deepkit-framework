@@ -21,7 +21,11 @@
     "@super-hornet/framework-server-common": "^0.0.33",
     "@super-hornet/framework-shared": "^0.0.33",
     "rxjs": "~6.5.3",
-    "ws": "^7.2.1"
+    "fs-extra": "^9.0.1",
+    "ws": "^7.2.5"
+  },
+  "devDependencies": {
+    "@types/ws": "^7.2.6"
   },
   "jest": {
     "transform": {
