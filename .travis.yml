@@ -1,7 +1,6 @@
 language: node_js
 node_js:
 - '12'
-- '13'
 - '14'
 services:
 - mongodb
@@ -15,6 +14,7 @@ before_script:
 - ./node_modules/.bin/tsc --version
 - sleep 1
 script:
+- tsc --build
 - ./node_modules/.bin/jest --coverage --forceExit
 - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
 - cd packages/marshal-benchmark; ../../node_modules/.bin/jest; cd -

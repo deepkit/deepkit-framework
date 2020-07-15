@@ -17,22 +17,22 @@ afterAll(async () => {
 
 jest.setTimeout(30000);
 
-test('test basic', async () => {
-    const server = new ExchangeServer('auto');
-    await server.start();
-
-    const client = new Exchange(server.getPath());
-    let gotIt = false;
-    await client.subscribe('mowla', (m) => {
-        console.log('m', m);
-        gotIt = true;
-    });
-    await client.publish('mowla', {test: true});
-
-    await sleep(0.05);
-    expect(gotIt).toBeTrue();
-    server.close();
-});
+// test('test basic', async () => {
+//     const server = new ExchangeServer('auto');
+//     await server.start();
+//
+//     const client = new Exchange(server.getPath());
+//     let gotIt = false;
+//     await client.subscribe('mowla', (m) => {
+//         console.log('m', m);
+//         gotIt = true;
+//     });
+//     await client.publish('mowla', {test: true});
+//
+//     await sleep(0.05);
+//     expect(gotIt).toBeTrue();
+//     server.close();
+// });
 
 test('test lock early release', async () => {
     const locker = await createExchange();
