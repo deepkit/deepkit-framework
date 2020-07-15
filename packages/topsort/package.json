@@ -18,27 +18,11 @@
   "devDependencies": {
   },
   "jest": {
-    "testURL": "http://localhost/",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js"
-    ],
-    "collectCoverageFrom": [
-      "**/*.{ts}",
-      "!**/node_modules/**",
-      "!**/lib/**/*",
-      "!**/*.d.ts",
-      "!index.ts"
-    ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testMatch": [
-      "**/*.spec.ts"
+      "**/tests/**/*.spec.ts"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

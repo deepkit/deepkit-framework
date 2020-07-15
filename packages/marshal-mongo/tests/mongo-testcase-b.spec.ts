@@ -1,25 +1,25 @@
-import 'jest';
 import 'jest-extended';
-import {createDatabase} from "./utils";
+import 'reflect-metadata';
 import {User} from "./testcase-b/user";
+import {createDatabaseSession} from "./mongo.spec";
 
 async function setupTestCase(name: string) {
-    const database = await createDatabase(name);
+    const session = await createDatabaseSession(name);
 
     const marc = new User('marc', 'marcPassword');
     const peter = new User('peter', 'peterPassword');
     const marcel = new User('marcel');
 
-    await database.add(marc.credentials);
-    await database.add(peter.credentials);
-    await database.add(marcel.credentials);
+    await session.immediate.persist(marc.credentials);
+    await session.immediate.persist(peter.credentials);
+    await session.immediate.persist(marcel.credentials);
 
-    await database.add(marc);
-    await database.add(peter);
-    await database.add(marcel);
+    await session.immediate.persist(marc);
+    await session.immediate.persist(peter);
+    await session.immediate.persist(marcel);
 
     return {
-        database, marc, peter, marcel,
+        database: session, marc, peter, marcel,
     }
 }
 
@@ -29,27 +29,32 @@ test('ids', async () => {
     } = await setupTestCase('ids');
 
     {
-        const ids = await database.query(User).ids();
+        const ids = await database.query(User).ids(true);
         expect(ids).toEqual([marc.id, peter.id, marcel.id]);
     }
 
     {
-        const ids = await database.query(User).sort({name: 'asc'}).ids();
+        const ids = await database.query(User).ids();
+        expect(ids).toEqual([{id: marc.id}, {id: peter.id}, {id: marcel.id}]);
+    }
+
+    {
+        const ids = await database.query(User).sort({name: 'asc'}).ids(true);
         expect(ids).toEqual([marc.id, marcel.id, peter.id]);
     }
 
     {
-        const ids = await database.query(User).filter({name: {$regex: /^marc/}}).ids();
+        const ids = await database.query(User).filter({name: {$regex: /^marc/}}).ids(true);
         expect(ids).toEqual([marc.id, marcel.id]);
     }
 
     {
-        const ids = await database.query(User).joinWith('credentials').ids();
+        const ids = await database.query(User).joinWith('credentials').ids(true);
         expect(ids).toEqual([marc.id, peter.id, marcel.id]);
     }
 
     {
-        const ids = await database.query(User).joinWith('credentials').filter({name: {$regex: /^marc/}}).ids();
+        const ids = await database.query(User).joinWith('credentials').filter({name: {$regex: /^marc/}}).ids(true);
         expect(ids).toEqual([marc.id, marcel.id]);
     }
 });

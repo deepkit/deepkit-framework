@@ -13,11 +13,12 @@ import {
 import * as getParameterNames from "get-parameter-names";
 import {capitalizeFirstLetter, isArray} from "./utils";
 import {Buffer} from "buffer";
+import {partialClassToPlain} from "./mapper";
+import {JitPropertyConverter} from "./jit";
 
 interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> };
     unpopulatedCheckActive: boolean;
-    ClassSchemas: WeakMap<object, ClassSchema>;
 }
 
 function getGlobal(): any {
@@ -69,12 +70,14 @@ export type Types =
  * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths (like mongoDB)
  */
 export type PartialField<T> = {
-    [P in keyof T]?: T[P]
+    [P in keyof T & string]?: T[P]
 } & {
     //it's currently not possible to further define it
     //https://github.com/Microsoft/TypeScript/issues/12754
     [path: string]: any
 }
+
+export type PartialEntity<T> = { [name in keyof T & string]?: T[name] };
 
 export const typedArrayMap = new Map<any, Types>();
 typedArrayMap.set(String, 'string');
@@ -109,7 +112,7 @@ export function isTypedArray(type: Types): boolean {
 }
 
 export interface PropertyValidator {
-    validate<T>(value: any, propertyName: string, classType?: ClassType<any>, ): PropertyValidatorError | undefined | void;
+    validate<T>(value: any, propertyName: string, classType?: ClassType<any>,): PropertyValidatorError | undefined | void;
 }
 
 export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
@@ -253,6 +256,8 @@ export class PropertySchema extends PropertyCompilerSchema {
     isDecorated: boolean = false;
 
     isId: boolean = false;
+
+    symbol = Symbol(this.name);
 
     /**
      * Custom user data.
@@ -718,6 +723,23 @@ export class ClassSchema<T = any> {
         return pk;
     }
 
+    public getPrimaryFieldHash(item: PartialEntity<T>, fromSerializer: string = 'class'): string {
+        const jitConverter = new JitPropertyConverter(fromSerializer, 'plain', this.classType);
+        let hash = '';
+        for (const primaryField of this.getPrimaryFields()) {
+            if (primaryField.type === 'class') throw new Error('Class primary keys not supported.');
+            const plain = jitConverter.convert(primaryField.name, item[primaryField.name as keyof T & string]);
+            try {
+                // hash += btoa(plain) + ',';
+                hash += plain + '-';
+            } catch (error) {
+                console.error('Could not hash value', plain);
+                throw new Error(`Could not hash value for ${primaryField.name}: ${error}`);
+            }
+        }
+        return hash;
+    }
+
     /**
      * Internal note: for multi pk support, this will return a PropertySchema[] in the future.
      */
@@ -985,37 +1007,6 @@ export class ClassSchema<T = any> {
     }
 }
 
-/**
- * @hidden
- */
-export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any): ClassSchema {
-    const proto = target['prototype'] ? target['prototype'] : target;
-    const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
-
-    const ClassSchemas = getGlobalStore().ClassSchemas;
-
-    if (!ClassSchemas.has(proto)) {
-        //check if parent has a EntitySchema, if so clone and use it as base.
-
-        let currentProto = Object.getPrototypeOf(proto);
-        let found = false;
-        while (currentProto && currentProto !== Object.prototype) {
-            if (ClassSchemas.has(currentProto)) {
-                found = true;
-                ClassSchemas.set(proto, ClassSchemas.get(currentProto)!.clone(classType));
-                break;
-            }
-            currentProto = Object.getPrototypeOf(currentProto);
-        }
-
-        if (!found) {
-            const reflection = new ClassSchema(classType);
-            ClassSchemas.set(proto, reflection);
-        }
-    }
-
-    return ClassSchemas.get(proto)!;
-}
 
 /**
  * Returns true if there is a class annotated with @Entity(name).
@@ -1043,34 +1034,76 @@ export function getKnownClassSchemasNames(): string[] {
     return Object.keys(getGlobalStore().RegisteredEntities);
 }
 
+const classSchemaSymbol = Symbol('classSchema');
+
 /**
- * Returns meta information / schema about given entity class.
+ * @hidden
  */
-export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema<T> {
-    const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any): ClassSchema {
+    const proto = target['prototype'] ? target['prototype'] : target;
+    const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
 
-    const ClassSchemas = getGlobalStore().ClassSchemas;
+    if (!proto.hasOwnProperty(classSchemaSymbol)) {
+        Object.defineProperty(proto, classSchemaSymbol, {writable: true, enumerable: false});
+    }
 
-    if (!ClassSchemas.has(classType.prototype)) {
+    // if (!ClassSchemas.has(proto)) {
+    if (!proto[classSchemaSymbol]) {
         //check if parent has a EntitySchema, if so clone and use it as base.
-        let currentProto = Object.getPrototypeOf(classType.prototype);
+
+        let currentProto = Object.getPrototypeOf(proto);
         let found = false;
         while (currentProto && currentProto !== Object.prototype) {
-            if (ClassSchemas.has(currentProto)) {
+            // if (ClassSchemas.has(currentProto)) {
+            if (currentProto[classSchemaSymbol]) {
                 found = true;
-                ClassSchemas.set(classType.prototype, ClassSchemas.get(currentProto)!.clone(classType));
+                proto[classSchemaSymbol] = currentProto[classSchemaSymbol].clone(classType);
+                // ClassSchemas.set(proto, ClassSchemas.get(currentProto)!.clone(classType));
                 break;
             }
             currentProto = Object.getPrototypeOf(currentProto);
         }
 
         if (!found) {
-            const reflection = new ClassSchema(classType);
-            ClassSchemas.set(classType.prototype, reflection);
+            proto[classSchemaSymbol] = new ClassSchema(classType);
+            // const reflection = new ClassSchema(classType);
+            // ClassSchemas.set(proto, reflection);
         }
     }
 
-    return ClassSchemas.get(classType.prototype)!;
+    return proto[classSchemaSymbol];
+}
+
+/**
+ * Returns meta information / schema about given entity class.
+ */
+export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema<T> {
+    const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+
+    if (!classType.prototype.hasOwnProperty(classSchemaSymbol)) {
+        Object.defineProperty(classType.prototype, classSchemaSymbol, {writable: true, enumerable: false});
+    }
+
+    if (!classType.prototype[classSchemaSymbol]) {
+        //check if parent has a ClassSchema, if so clone and use it as base.
+        let currentProto = Object.getPrototypeOf(classType.prototype);
+        let found = false;
+        while (currentProto && currentProto !== Object.prototype) {
+            if (currentProto[classSchemaSymbol]) {
+                found = true;
+                classType.prototype[classSchemaSymbol] = currentProto[classSchemaSymbol].clone(classType);
+                // ClassSchemas.set(classType.prototype, ClassSchemas.get(currentProto)!.clone(classType));
+                break;
+            }
+            currentProto = Object.getPrototypeOf(currentProto);
+        }
+
+        if (!found) {
+            classType.prototype[classSchemaSymbol] = new ClassSchema(classType);
+        }
+    }
+
+    return classType.prototype[classSchemaSymbol];
 }
 
 /**
@@ -1138,7 +1171,7 @@ export function isClassInstance(target: any): boolean {
  * a Marshal entity.
  */
 export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
-    return getGlobalStore().ClassSchemas.has(classType.prototype);
+    return classType.prototype.hasOwnProperty(classSchemaSymbol);
 }
 
 /**

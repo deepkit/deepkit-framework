@@ -1,4 +1,5 @@
 import 'jest-extended';
+import 'reflect-metadata';
 import {Controller} from "@super-hornet/framework-shared";
 import {getControllerOptions} from "../src/decorators";
 

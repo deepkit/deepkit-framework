@@ -1,4 +1,5 @@
 import 'jest-extended';
+import 'reflect-metadata';
 import {
     classToPlain as classTransformerClassToPlain,
     Exclude as ctExclude,
@@ -7,9 +8,48 @@ import {
     Type
 } from "class-transformer";
 import {bench} from "./util";
-import {Plan, SubModel} from "@super-hornet/marshal/tests/entities";
-import {jitClassToPlain, jitPlainToClass} from "@super-hornet/marshal";
+import {Entity, jitClassToPlain, jitPlainToClass} from "@super-hornet/marshal";
 import {f} from "@super-hornet/marshal";
+
+export class JobTaskQueue {
+    @f
+    position: number = 0;
+
+    @f
+    tries: number = 0;
+
+    @f
+    result: string = '';
+
+    @f
+    added: Date = new Date();
+}
+
+
+@Entity('sub')
+export class SubModel {
+    @f
+    label: string;
+
+    @f.optional()
+    age?: number;
+
+    @f.type(JobTaskQueue).optional()
+    queue?: JobTaskQueue;
+
+    constructorUsed = false;
+
+    constructor(label: string) {
+        this.label = label;
+        this.constructorUsed = true;
+    }
+}
+
+export enum Plan {
+    DEFAULT,
+    PRO,
+    ENTERPRISE,
+}
 
 export class SimpleModel {
     @f

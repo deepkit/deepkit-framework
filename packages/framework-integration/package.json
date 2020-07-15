@@ -42,25 +42,11 @@
     "cache-loader": "^1.2.2"
   },
   "jest": {
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js"
-    ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "transformIgnorePatterns": [
-      "node_modules/(?!@super-hornet/*)"
-    ],
     "testMatch": [
-      "**/*.spec.ts"
-    ],
-    "setupFilesAfterEnv": ["jest-extended"]
-  },
-  "globals": {
-    "ts-jest": {
-      "tsConfigFile": "tsconfig.run.json"
-    }
+      "**/tests/**/*.spec.ts"
+    ]
   }
 }

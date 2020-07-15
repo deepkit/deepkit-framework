@@ -6,7 +6,7 @@ export class DocumentClass {
     @f.primary().mongoId()
     _id?: string;
 
-    @f
+    @f.optional()
     name?: string;
 
     @f.type(PageCollection)

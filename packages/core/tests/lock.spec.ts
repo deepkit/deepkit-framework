@@ -1,4 +1,3 @@
-import 'jest';
 import 'jest-extended';
 import {ProcessLocker, ProcessLock} from "../src/process-locker";
 

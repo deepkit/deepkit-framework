@@ -1,9 +1,11 @@
-import {DatabaseAdapter, DatabasePersistence} from "./database";
+import {DatabaseAdapter, DatabaseConnection, DatabasePersistence} from "./database";
 import {Entity} from "./query";
 import {CustomError} from "@super-hornet/core";
 import {ClassSchema, getClassSchema, getClassTypeFromInstance} from "@super-hornet/marshal";
 import {GroupArraySort} from "@super-hornet/topsort";
-import {EntityRegistry, getEntityState, PrimaryKey} from "./entity-registry";
+import {IdentityMap, getInstanceState} from "./identity-map";
+import {getClassSchemaInstancePairs} from './utils';
+import {markAsHydrated} from './formatter';
 
 let SESSION_IDS = 0;
 
@@ -15,6 +17,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     protected committed: boolean = false;
 
     constructor(
+        protected identityMap: IdentityMap,
         public readonly persistence: DatabasePersistence,
     ) {
 
@@ -53,7 +56,6 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             if (!v) continue;
             if (reference.isArray) {
                 result.push(...v);
-                for (const item of v) this.add(item);
             } else {
                 result.push(v);
             }
@@ -87,22 +89,9 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     }
 
     protected async doDelete() {
-        const map = new Map<ClassSchema<any>, PrimaryKey<any>[]>();
-        for (const item of this.removeQueue.values()) {
-            const classSchema = getClassSchema(getClassTypeFromInstance(item));
-            let items = map.get(classSchema);
-            if (!items) {
-                items = [];
-                map.set(classSchema, items);
-            }
-            items.push(item);
-        }
-
-        for (const [classSchema, items] of map.entries()) {
+        for (const [classSchema, items] of getClassSchemaInstancePairs(this.removeQueue.values())) {
             await this.persistence.remove(classSchema, items);
-            for (const item of items) {
-                getEntityState(item).markAsDeleted();
-            }
+            this.identityMap.deleteMany(classSchema, items);
         }
     }
 
@@ -120,6 +109,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
         for (const group of groups) {
             await this.persistence.persist(group.type, group.items);
+            this.identityMap.storeMany(group.type, group.items);
         }
     }
 }
@@ -127,11 +117,52 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 export class SessionClosedException extends CustomError {
 }
 
+export class DatabaseSessionImmediate {
+    constructor(
+        protected identityMap: IdentityMap,
+        protected persistence: DatabasePersistence
+    ) {
+    }
+
+    /**
+     * Simple direct persist. The persistence layer (batch) inserts or updates the record
+     * depending on the state of the given items. This is different to add() in a way
+     * that `add` adds the given items to the queue (which is then committed using commit())
+     * and immediate.persist just simply inserts the given items immediately, completely bypassing
+     * the unit of work.
+     *
+     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     */
+    public async persist<T extends Entity>(...items: T[]) {
+        for (const [classSchema, groupItems] of getClassSchemaInstancePairs(items)) {
+            await this.persistence.persist(classSchema, groupItems);
+            for (const item of groupItems) {
+                this.identityMap.store(classSchema, item);
+            }
+        }
+    }
+
+    /**
+     * Simple direct remove. The persistence layer (batch) removes all given items.
+     * This is different to remove() in a way that `remove`` adds the given items to the queue
+     * (which is then committed using commit()) and immediate.remove just simply removes the given items immediately,
+     * completely bypassing the unit of work.
+     *
+     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     */
+    public async remove<T extends Entity>(...items: T[]) {
+        for (const [classSchema, groupItems] of getClassSchemaInstancePairs(items)) {
+            await this.persistence.remove(classSchema, groupItems);
+            this.identityMap.deleteMany(classSchema, groupItems);
+        }
+    }
+}
+
 export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     public readonly id = SESSION_IDS++;
-    public withEntityTracking = true;
+    public withIdentityMap = true;
 
-    public readonly entityRegistry = new EntityRegistry();
+    public readonly identityMap = new IdentityMap();
 
     /**
      * Creates a new DatabaseQuery instance which can be used to query and manipulate data.
@@ -146,13 +177,27 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
     protected inCommit: boolean = false;
 
-    public persistence = this.adapter.createPersistence(this);
+    protected persistence = this.adapter.createPersistence(this);
+
+    /**
+     * Immediate operations without unit of work. Its faster for few operations, and slower for many operations.
+     */
+    public readonly immediate = new DatabaseSessionImmediate(this.identityMap, this.persistence);
+
+    protected connection?: ReturnType<this['adapter']['createConnection']>;
 
     constructor(
         public readonly adapter: ADAPTER
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);
+    }
+
+    public getConnection(): ReturnType<this['adapter']['createConnection']> {
+        if (!this.connection) {
+            this.connection = this.adapter.createConnection() as ReturnType<this['adapter']['createConnection']>;
+        }
+        return this.connection;
     }
 
     protected getCurrentRound(): DatabaseSessionRound<ADAPTER> {
@@ -162,7 +207,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this.persistence));
+        this.rounds.push(new DatabaseSessionRound(this.identityMap, this.persistence));
     }
 
     public add<T>(item: T, deep: boolean = true) {
@@ -181,11 +226,43 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         this.getCurrentRound().remove(item);
     }
 
+    public reset() {
+        this.commitDepth = 0;
+        this.inCommit = false;
+        this.closed = false;
+        this.rounds = [];
+    }
+
+    public rollback() {
+        //todo: implement
+    }
+
+    public async hydrateEntity<T>(item: T) {
+        const classType = getClassTypeFromInstance(item);
+        const classSchema = getClassSchema(classType);
+        const pk = classSchema.getPrimaryFieldRepresentation(item);
+
+        const itemDB = await this.query(classType).filter(pk).findOne();
+
+        for (const property of classSchema.getClassProperties().values()) {
+            if (property.name === classSchema.idField) continue;
+            if (property.isReference || property.backReference) continue;
+
+            Object.defineProperty(item, property.name, {
+                enumerable: true,
+                configurable: true,
+                value: itemDB[property.name as keyof T]
+            });
+        }
+
+        markAsHydrated(item);
+    }
+
     public async commit<T>() {
         if (!this.rounds.length) return;
 
         if (this.closed) {
-            throw new SessionClosedException(`Session is closed due to an exception. Repair its failure and call reset()/repaired() to open it again.`);
+            throw new SessionClosedException(`Session is closed due to an exception. Repair its failure and call reset() to open it again.`);
         }
 
         this.commitDepth++;

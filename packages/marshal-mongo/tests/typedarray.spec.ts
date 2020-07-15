@@ -1,6 +1,7 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {classToPlain, f, getClassSchema} from "@super-hornet/marshal";
-import {classToMongo, mongoToClass, plainToMongo} from "..";
+import {classToMongo, mongoToClass, plainToMongo} from "../index";
 import {Binary} from 'mongodb';
 
 test('Int8Array', async () => {
@@ -40,8 +41,8 @@ test('arrayBuffer', async () => {
 
     const clazz = new Clazz();
     clazz.ints = new Int8Array(2);
-    clazz.ints[0] = 1;
-    clazz.ints[1] = 64;
+    (clazz.ints as any)[0] = 1;
+    (clazz.ints as any)[1] = 64;
 
     expect(getClassSchema(Clazz).getProperty('ints').type).toBe('arrayBuffer');
     expect(new Int8Array(clazz.ints!)[0]).toBe(1);

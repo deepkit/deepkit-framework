@@ -23,20 +23,11 @@
     "ws": "^7.2.1"
   },
   "jest": {
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js"
-    ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "transformIgnorePatterns": [
-      "node_modules/(?!@super-hornet/*)"
-    ],
     "testMatch": [
-      "**/tests/**/*.+(ts|tsx|js)"
-    ],
-    "setupFilesAfterEnv": ["jest-extended"]
+      "**/tests/**/*.spec.ts"
+    ]
   }
 }

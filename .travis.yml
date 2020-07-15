@@ -15,9 +15,9 @@ before_script:
 - ./node_modules/.bin/tsc --version
 - sleep 1
 script:
-- ./node_modules/.bin/jest --coverage --forceExit --detectOpenHandles
+- ./node_modules/.bin/jest --coverage --forceExit
 - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
-- cd packages/marshal-benchmark && ../../node_modules/.bin/jest && cd -
+- cd packages/marshal-benchmark; ../../node_modules/.bin/jest; cd -
 
 #deploy:
 #  provider: heroku

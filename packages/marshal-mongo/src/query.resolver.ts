@@ -1,11 +1,13 @@
-import {DatabaseSession, Entity, Formatter} from "@super-hornet/marshal-orm";
+import {Entity, FieldName, Formatter, GenericQueryResolver, PrimaryKey} from "@super-hornet/marshal-orm";
 import {ClassSchema, getClassSchema, resolveClassTypeOrForward} from "@super-hornet/marshal";
-import {MongoConnection, resolveCollectionName} from "./connection";
+import {resolveCollectionName} from "./connection";
 import {DEEP_SORT, MongoQueryModel} from "./query.model";
-import {convertClassQueryToMongo,} from "./mapping";
+import {convertClassQueryToMongo, partialMongoToClass,} from "./mapping";
+import {FilterQuery} from "mongodb";
+import {MongoDatabaseAdapter} from "./adapter";
 
 export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQueryModel<T>): any {
-    return convertClassQueryToMongo(classSchema.classType, model.filter || {}, {}, {
+    return convertClassQueryToMongo(classSchema.classType, (model.filter || {}) as FilterQuery<T>, {}, {
         $parameter: (name, value) => {
             if (undefined === model.parameters[value]) {
                 throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
@@ -15,36 +17,102 @@ export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQuery
     })
 }
 
-export class MongoQueryResolver<T extends Entity> {
-    protected formatter = new Formatter(this.databaseSession, 'mongo');
+export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T, MongoDatabaseAdapter, MongoQueryModel<T>> {
+    public async deleteOne(queryModel: MongoQueryModel<T>): Promise<boolean> {
+        return await this.delete(queryModel, false) === 1;
+    }
 
-    constructor(
-        protected classSchema: ClassSchema<T>,
-        protected databaseSession: DatabaseSession<any>,
-        protected connection: MongoConnection,
-    ) {
+    findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
+        throw new Error('Not implemented');
+    }
+
+    findOneField<K extends FieldName<T>>(name: K): Promise<T[K]> {
+        throw new Error('Not implemented');
+    }
+
+    findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined> {
+        return Promise.resolve(undefined);
+    }
+
+    has(model: MongoQueryModel<T>): Promise<boolean> {
+        return Promise.resolve(false);
     }
 
     public async deleteMany(queryModel: MongoQueryModel<T>): Promise<number> {
-        const connection = await this.connection.getCollection(this.classSchema.classType);
-        const res = await connection.deleteMany(getMongoFilter(this.classSchema, queryModel));
+        return await this.delete(queryModel, true);
+    }
+
+    protected getPrimaryKeysProjection() {
+        const pk: { [name: string]: 1 | 0 } = {_id: 0};
+        for (const property of this.classSchema.getPrimaryFields()) {
+            pk[property.name] = 1;
+        }
+        return pk;
+    }
+
+    protected async fetchIds(queryModel: MongoQueryModel<T>, many: boolean = false) {
+        const pipeline = this.buildAggregationPipeline(queryModel);
+        if (!many) pipeline.push({$limit: 1});
+        pipeline.push({$project: this.getPrimaryKeysProjection()});
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
+        const ids = await collection.aggregate(pipeline).toArray();
+        return {
+            mongoFilter: {$or: ids},
+            primaryKeys: ids.map(v => partialMongoToClass(this.classSchema.classType, v) as PrimaryKey<T>)
+        };
+    }
+
+    public async delete(queryModel: MongoQueryModel<T>, many: boolean = false): Promise<number> {
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
+
+        const {mongoFilter, primaryKeys} = await this.fetchIds(queryModel, many);
+        if (mongoFilter.$or.length === 0) return 0;
+        this.databaseSession.identityMap.deleteMany(this.classSchema, primaryKeys);
+
+        if (many) {
+            const res = await collection.deleteMany(mongoFilter);
+            return res.deletedCount || 0;
+        }
+        const res = await collection.deleteOne(mongoFilter);
         return res.deletedCount || 0;
     }
 
-    public async patchMany(queryModel: MongoQueryModel<T>): Promise<number> {
-        //todo
-        return 0;
+    public async patchOne(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<boolean> {
+        return await this.update(queryModel, {$set: value}) === 1;
     }
 
-    public async updateMany(queryModel: MongoQueryModel<T>): Promise<number> {
-        //todo
-        return 0;
+    public async patchMany(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<number> {
+        return await this.update(queryModel, {$set: value}, true);
+    }
+
+    public async updateOne(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<boolean> {
+        return await this.update(queryModel, {$set: value}) === 1;
+    }
+
+    public async updateMany(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<number> {
+        return await this.update(queryModel, {$set: value}, true);
+    }
+
+    public async update(queryModel: MongoQueryModel<T>, value: { [path: string]: any }, many: boolean = false): Promise<number> {
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
+        let filter = getMongoFilter(this.classSchema, queryModel);
+
+        if (queryModel.hasJoins()) {
+            throw new Error('Not implemented: Use aggregate to retrieve ids, then do the query');
+        }
+        if (many) {
+            const res = await collection.updateMany(filter || {}, value);
+            return res.modifiedCount;
+        }
+
+        const res = await collection.updateOne(filter, value);
+        return res.modifiedCount;
     }
 
     public async count(queryModel: MongoQueryModel<T>) {
         const pipeline = this.buildAggregationPipeline(queryModel);
         pipeline.push({$count: 'count'});
-        const collection = await this.connection.getCollection(this.classSchema.classType);
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
         const items = await collection.aggregate(pipeline).toArray();
         return items.length ? items[0].count : 0;
     }
@@ -52,19 +120,21 @@ export class MongoQueryResolver<T extends Entity> {
     public async findOneOrUndefined(queryModel: MongoQueryModel<T>): Promise<T | undefined> {
         const pipeline = this.buildAggregationPipeline(queryModel);
         pipeline.push({$limit: 1});
-        const collection = await this.connection.getCollection(this.classSchema.classType);
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
         const items = await collection.aggregate(pipeline).toArray();
         if (items.length) {
-            return this.formatter.hydrate(this.classSchema, queryModel, items[0]);
+            const formatter = this.createFormatter();
+            return formatter.hydrate(this.classSchema, queryModel, items[0]);
         }
         return;
     }
 
     public async find(queryModel: MongoQueryModel<T>): Promise<T[]> {
         const pipeline = this.buildAggregationPipeline(queryModel);
-        const collection = await this.connection.getCollection(this.classSchema.classType);
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
         const items = await collection.aggregate(pipeline).toArray();
-        return items.map(v => this.formatter.hydrate(this.classSchema, queryModel, v));
+        const formatter = this.createFormatter();
+        return items.map(v => formatter.hydrate(this.classSchema, queryModel, v));
     }
 
     protected buildAggregationPipeline(model: MongoQueryModel<T>) {
@@ -211,6 +281,15 @@ export class MongoQueryResolver<T extends Entity> {
         if (model.sort) pipeline.push({$sort: this.getSortFromModel(model.sort)});
         if (model.skip) pipeline.push({$skip: model.skip});
         if (model.limit) pipeline.push({$limit: model.limit});
+
+        if (model.select.size) {
+            const project: { [name: string]: 1 | 0 } = {_id: 0};
+
+            for (const field of model.select) project[field] = 1;
+            pipeline.push({$project: project});
+        }
+
+
         return pipeline;
     }
 
@@ -220,6 +299,10 @@ export class MongoQueryResolver<T extends Entity> {
             (res as any)[v] = 1;
         }
         return res;
+    }
+
+    protected createFormatter() {
+        return new Formatter(this.databaseSession, 'mongo');
     }
 
     protected getSortFromModel<T>(modelSort?: DEEP_SORT<T>) {

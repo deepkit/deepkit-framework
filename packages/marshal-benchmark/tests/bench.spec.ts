@@ -1,4 +1,5 @@
 import 'jest-extended';
+import 'reflect-metadata';
 import {
     classToPlain as classTransformerClassToPlain,
     plainToClass as classTransformerPlainToClass

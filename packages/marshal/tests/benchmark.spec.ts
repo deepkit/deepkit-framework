@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass} from "../src/jit";
+import {createXToClassFunction, jitClassToPlain, jitPartialPlainToClass, jitPlainToClass, plainToClassFactory, getJitFunctionPlainToClass} from "../src/jit";
 import {f} from "../index";
 import {bench} from "./util";
 
@@ -37,8 +37,10 @@ test('benchmark plainToClass', () => {
         instance.ready = true;
     });
 
+    const serialize = plainToClassFactory(MarshalModel);
+
     bench(count, 'plainToClass jit', (i) => {
-        const instance = jitPlainToClass(MarshalModel, {
+        const instance = serialize({
             name: 'name' + i,
             id: i,
             tags: ['a', 'b', 'c'],
@@ -47,7 +49,7 @@ test('benchmark plainToClass', () => {
         });
     });
 
-    // console.log('jit', JITToClassFN.get(MarshalModel).toString());
+    // console.log('jit', getJitFunctionPlainToClass(MarshalModel).toString());
 
     const b = jitPlainToClass(MarshalModel, {
         name: 'name1',

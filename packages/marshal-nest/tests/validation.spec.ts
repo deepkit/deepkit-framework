@@ -1,6 +1,7 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {validate, f} from "@super-hornet/marshal";
-import {ValidationPipe} from '../';
+import {ValidationPipe} from '../index';
 import {BadRequestException} from '@nestjs/common';
 
 test('test required', async () => {
@@ -38,14 +39,14 @@ test('test required', async () => {
     {
         const pipe = new ValidationPipe();
         const result = await pipe.transform({name: 'Foo'}, {type: 'body', metatype: Model});
-        expect(result).not.toBeInstanceOf(Model);
+        expect(result).toBeInstanceOf(Model);
         expect(result.id).toBe('1'); //because ValidationPipe is reading default values
     }
 
     {
         const pipe = new ValidationPipe();
         const result = await pipe.transform({name: 'Foo', optional: 'two'}, {type: 'body', metatype: Model});
-        expect(result).not.toBeInstanceOf(Model);
+        expect(result).toBeInstanceOf(Model);
         expect(result.id).toBe('1'); //because ValidationPipe is reading default values
     }
 
@@ -62,7 +63,13 @@ test('test required', async () => {
             fail('no exception thrown')
         } catch (error) {
             expect(error).toBeInstanceOf(BadRequestException);
-            expect(error.message).toEqual({"error": "Bad Request", "message": [{"message": "Required value is undefined or null", "code": "required", "path": "name"}], "statusCode": 400});
+            if (error instanceof BadRequestException) {
+                expect(error.getResponse()).toEqual({
+                    "error": "Bad Request",
+                    "message": [{"message": "Required value is undefined or null", "code": "required", "path": "name"}],
+                    "statusCode": 400
+                });
+            }
         }
     }
 
@@ -73,7 +80,7 @@ test('test required', async () => {
             fail('no exception thrown')
         } catch (error) {
             expect(error).toBeInstanceOf(BadRequestException);
-            expect(error.message).toEqual({"error": "Bad Request", "statusCode": 400});
+            expect(error.getResponse()).toEqual({"message": "Bad Request", "statusCode": 400});
         }
     }
 

@@ -1,5 +1,6 @@
 import 'jest-extended';
-import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "..";
+import 'reflect-metadata';
+import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "../index";
 import {f} from "@super-hornet/marshal";
 
 class SimpleConfig {
@@ -104,12 +105,12 @@ test('simple class query array', () => {
 
 test('convertClassQueryToMongo customMapping', () => {
     {
-        const fieldNames = {};
+        const fieldNames: any = {};
         const m = convertClassQueryToMongo(Simple, {
             $and: [{id: {$join: '1,2,3,4'} as any}],
         }, fieldNames, {
             '$join': (name, value, fieldNamesMap) => {
-                return value.split(',').map(v => Number(v));
+                return value.split(',').map((v: string) => Number(v));
             }
         });
         expect(fieldNames['id']).toBeUndefined();
@@ -117,13 +118,13 @@ test('convertClassQueryToMongo customMapping', () => {
     }
 
     {
-        const fieldNames = {};
+        const fieldNames: any = {};
         const m = convertClassQueryToMongo(Simple, {
             $and: [{id: {$join: '1,2,3,4'} as any}],
         }, fieldNames, {
             '$join': (name, value, fieldNamesMap) => {
                 fieldNamesMap[name] = true;
-                return value.split(',').map(v => Number(v));
+                return value.split(',').map((v: string) => Number(v));
             }
         });
         expect(fieldNames['id']).toBe(true);
@@ -134,7 +135,7 @@ test('convertClassQueryToMongo customMapping', () => {
             id: {$join: '1,2,3,4'} as any,
         }, {}, {
             '$join': (name, value) => {
-                return value.split(',').map(v => Number(v));
+                return value.split(',').map((v: string) => Number(v));
             }
         });
         expect(m['id']).toEqual([1, 2, 3, 4]);
@@ -237,7 +238,7 @@ test('excluded', () => {
     const excluded = ['$exists', '$mod', '$size', '$type', '$regex', '$where'];
 
     for (const e of excluded) {
-        const obj = {label: {}};
+        const obj: any = {label: {}};
         obj['label'][e] = true;
         const m = convertPlainQueryToMongo(Simple, obj);
         expect(m).toEqual(obj);

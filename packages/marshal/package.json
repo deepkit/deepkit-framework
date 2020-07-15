@@ -33,23 +33,11 @@
     "moment": "^2.0.0"
   },
   "jest": {
-    "testURL": "http://localhost/",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js"
-    ],
-    "collectCoverageFrom": [
-      "src/**/*.ts"
-    ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testMatch": [
-      "**/*.spec.ts"
+      "**/tests/**/*.spec.ts"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

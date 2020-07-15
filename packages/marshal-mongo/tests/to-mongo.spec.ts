@@ -1,4 +1,5 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {
     arrayBufferFrom,
     arrayBufferTo,
@@ -7,7 +8,7 @@ import {
     ParentReference,
     partialPlainToClass,
 } from "@super-hornet/marshal";
-import {Plan, SimpleModel, SubModel} from "@super-hornet/marshal/tests/entities";
+import {Plan, SimpleModel, SubModel} from "./entities";
 import {Binary, ObjectID} from "mongodb";
 import {
     classToMongo,
@@ -18,9 +19,9 @@ import {
     plainToMongo
 } from "../src/mapping";
 import {Buffer} from "buffer";
-import {DocumentClass} from "@super-hornet/marshal/tests/document-scenario/DocumentClass";
-import {PageCollection} from "@super-hornet/marshal/tests/document-scenario/PageCollection";
-import {PageClass} from "@super-hornet/marshal/tests/document-scenario/PageClass";
+import {DocumentClass} from "./document-scenario/DocumentClass";
+import {PageCollection} from "./document-scenario/PageCollection";
+import {PageClass} from "./document-scenario/PageClass";
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');

@@ -1,4 +1,4 @@
-import {Exchange} from "..";
+import {Exchange, ExchangeConfig} from "../index";
 import {ExchangeServer} from "../src/exchange-server";
 
 const closers: Function[] = [];
@@ -8,13 +8,16 @@ export function closeCreatedExchange() {
 }
 
 export async function createExchange(): Promise<Exchange> {
-    const server = new ExchangeServer('auto');
+    //todo, generate temp file for socket
+    const socketPath = '/tmp/bla.sock';
+
+    const server = new ExchangeServer(socketPath);
     await server.start();
 
     closers.push(() => {
         server.close();
     });
-    const client = new Exchange(server.path);
+    const client = new Exchange(ExchangeConfig.forUrl(socketPath));
     await client.connect();
     return client;
 }

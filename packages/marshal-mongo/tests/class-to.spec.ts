@@ -1,6 +1,7 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import {classToMongo} from "../src/mapping";
-import {SimpleModel} from "@super-hornet/marshal/tests/entities";
+import { SimpleModel } from './entities';
 
 test('class-to test simple model', () => {
     expect(() => {

@@ -38,7 +38,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         classType: ClassType<T>
     ): MongoDatabaseQuery<T> {
         const classSchema = getClassSchema(classType);
-        const queryResolver = new MongoQueryResolver<T>(classSchema, this.databaseSession, this.connection);
+        const queryResolver = new MongoQueryResolver<T>(classSchema, this.databaseSession);
         const model = new MongoQueryModel<T>();
         return new MongoDatabaseQuery(classSchema, model, queryResolver);
     }
@@ -53,6 +53,16 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
         this.connection = new MongoConnection(config);
     }
 
+    getName(): string {
+        return 'mongo';
+    }
+
+    createConnection(): MongoConnection {
+        //todo: add connection pooling
+        // return new MongoConnection(this.config);
+        return this.connection;
+    }
+
     createPersistence(databaseSession: DatabaseSession<any>): MongoPersistence {
         return new MongoPersistence(this.connection);
     }
@@ -64,5 +74,4 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
     disconnect(force?: boolean): void {
         this.connection.close(force);
     }
-
 }

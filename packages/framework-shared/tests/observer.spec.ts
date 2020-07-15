@@ -1,4 +1,5 @@
 import 'jest-extended';
+import 'reflect-metadata';
 import {size} from "@super-hornet/core";
 import {observeItem} from "../src/observer";
 import {Job, JobTask, JobTaskStatus} from "./entities";

@@ -1,7 +1,8 @@
-import 'jest-extended'
+import 'jest-extended';
+import 'reflect-metadata';
 import * as moment from 'moment';
 import {f} from "@super-hornet/marshal";
-import {classToMongo, mongoToClass} from "..";
+import {classToMongo, mongoToClass} from "../index";
 
 test('test moment', () => {
     class Model {
@@ -20,7 +21,7 @@ test('test moment', () => {
         const m = mongoToClass(Model, {
             created: new Date('2018-10-13T12:17:35.000Z')
         });
-        expect(m.created).toBeInstanceOf(moment);
+        expect(moment.isMoment(m.created)).toBe(true);
         expect(m.created.toJSON()).toBe('2018-10-13T12:17:35.000Z' );
     }
 });

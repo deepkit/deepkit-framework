@@ -1,4 +1,5 @@
 import 'jest-extended';
+import 'reflect-metadata';
 import {f, PropertyValidator, PropertyValidatorError} from "@super-hornet/marshal";
 import {bench} from "./util";
 import {jitValidate} from "@super-hornet/marshal";
@@ -10,7 +11,7 @@ import { e } from 'quartet';
 class IsNegative implements PropertyValidator {
     validate<T>(value: number) {
         if (value > 0) {
-            return new PropertyValidatorError(
+            throw new PropertyValidatorError(
                 'IsNegative',
                 'Number must be negative.'
             );
@@ -22,7 +23,7 @@ function MinLengthFactory(minLength: number) {
     return class MinLength implements PropertyValidator {
         validate<T>(value: string) {
             if (value.length < minLength) {
-                return new PropertyValidatorError(
+                throw new PropertyValidatorError(
                     'MinLength',
                     `String must have minimum length of ${minLength}.`
                 );
@@ -127,7 +128,7 @@ test('benchmark freezed delete', () => {
 
 
 test('benchmark isArray', () => {
-    const array = [];
+    const array: any[] = [];
     const count = 100_000;
 
     bench(count, 'Array.isArray', (i) => {

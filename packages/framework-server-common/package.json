@@ -25,24 +25,11 @@
     "@types/fs-extra": "^5.0.2"
   },
   "jest": {
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js"
-    ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testMatch": [
-      "**/tests/**/*.+(ts|tsx|js)"
-    ],
-    "setupFilesAfterEnv": [
-      "jest-extended"
+      "**/tests/**/*.spec.ts"
     ]
-  },
-  "globals": {
-    "ts-jest": {
-      "tsConfigFile": "tsconfig.json"
-    }
   }
 }

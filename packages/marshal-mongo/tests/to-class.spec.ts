@@ -1,14 +1,12 @@
-import 'jest-extended'
-import {classToPlain, cloneClass, f, getEntityName, getIdField, isExcluded, plainToClass, uuid} from "@super-hornet/marshal";
-import {now, Plan, SimpleModel, StringCollectionWrapper, SubModel,} from "@super-hornet/marshal/tests/entities";
+import 'jest-extended';
+import 'reflect-metadata';
+import {classToPlain, cloneClass, f, getEntityName, isExcluded, plainToClass, uuid} from "@super-hornet/marshal";
 import {Binary} from "mongodb";
 import {classToMongo, mongoToClass, mongoToPlain, plainToMongo} from "../src/mapping";
+import { SimpleModel, Plan, now, SubModel, StringCollectionWrapper } from './entities';
 
 test('test simple model', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
-    expect(getIdField(SimpleModel)).toBe('id');
-
-    expect(getIdField(SubModel)).toBe(undefined);
 
     for (const toClass of [plainToClass, mongoToClass]) {
         const instance = toClass(SimpleModel, {
@@ -27,9 +25,6 @@ test('test simple model', () => {
 
 test('test simple model all fields', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
-    expect(getIdField(SimpleModel)).toBe('id');
-
-    expect(getIdField(SubModel)).toBe(undefined);
 
     const instance = mongoToClass(SimpleModel, {
         name: 'myName',
@@ -92,9 +87,6 @@ test('test simple model all fields', () => {
 
 test('test simple model all fields plainToMongo', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
-    expect(getIdField(SimpleModel)).toBe('id');
-
-    expect(getIdField(SubModel)).toBe(undefined);
 
     const mongoItem = plainToMongo(SimpleModel, {
         name: 'myName',

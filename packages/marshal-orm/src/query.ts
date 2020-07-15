@@ -2,12 +2,15 @@ import {ClassSchema, PropertySchema} from "@super-hornet/marshal";
 import {Subject} from "rxjs";
 import {ClassType} from "@super-hornet/core";
 import {FieldName, FlattenIfArray} from './utils';
+import {PrimaryKey} from "./identity-map";
+import {DatabaseSession} from './database-session';
+import {DatabaseAdapter} from "./database";
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T]?: ORDER };
 
 export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>, SORT extends Sort<Entity>> {
-    public withEntityTracking: boolean = true;
+    public withIdentityMap: boolean = true;
     public filter?: FILTER;
     public select: Set<string> = new Set<string>();
     public joins: {
@@ -35,7 +38,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>
     clone(parentQuery: BaseQuery<T, any>) {
         const m = new DatabaseQueryModel<T, FILTER, SORT>();
         m.filter = this.filter;
-        m.withEntityTracking = this.withEntityTracking;
+        m.withIdentityMap = this.withIdentityMap;
         m.select = new Set(this.select.values());
 
         m.joins = this.joins.map((v) => {
@@ -75,9 +78,6 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>
     hasJoins() {
         return this.joins.length > 0;
     }
-}
-
-export interface ResolverInterface {
 }
 
 export class ItemNotFound extends Error {
@@ -129,14 +129,14 @@ export abstract class BaseQuery<T extends Entity, MODEL extends DatabaseQueryMod
     }
 
     /**
-     * Instance pooling/Entity tracking is used to store all created entity instances in a pool.
+     * Identity mapping is used to store all created entity instances in a pool.
      * If a query fetches an already known entity instance, the old will be picked.
      * This ensures object instances uniqueness and generally saves CPU circles.
      *
      * This disabled entity tracking, forcing always to create new entity instances.
      */
-    disableEntityTracking(): this {
-        this.model.withEntityTracking = false;
+    disableIdentityMap(): this {
+        this.model.withIdentityMap = false;
         return this;
     }
 
@@ -156,6 +156,7 @@ export abstract class BaseQuery<T extends Entity, MODEL extends DatabaseQueryMod
 
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.model);
+        cloned.model = this.model.clone(cloned) as MODEL;
         cloned.format = this.format;
         return cloned;
     }
@@ -258,48 +259,124 @@ export abstract class BaseQuery<T extends Entity, MODEL extends DatabaseQueryMod
 export interface Entity {
 }
 
+export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter, MODEL extends DatabaseQueryModel<T, any, any>> {
+    constructor(
+        protected classSchema: ClassSchema<T>,
+        protected databaseSession: DatabaseSession<ADAPTER>,
+    ) {
+    }
+
+    abstract async count(model: MODEL): Promise<number>;
+
+    abstract async find(model: MODEL): Promise<T[]>;
+
+    abstract async findOneOrUndefined(model: MODEL): Promise<T | undefined>;
+
+    abstract async updateMany(model: MODEL, value: {}): Promise<number>;
+
+    abstract async updateOne(model: MODEL, value: {}): Promise<boolean>;
+
+    abstract async deleteMany(model: MODEL): Promise<number>;
+
+    abstract async deleteOne(model: MODEL): Promise<boolean>;
+
+    abstract async patchMany(model: MODEL, value: { [path: string]: any }): Promise<number>;
+
+    abstract async patchOne(model: MODEL, value: { [path: string]: any }): Promise<boolean>;
+
+    abstract async has(model: MODEL): Promise<boolean>;
+
+    abstract async findField<K extends FieldName<T>>(name: K): Promise<T[K][]>;
+
+    abstract async findOneField<K extends FieldName<T>>(name: K): Promise<T[K]>;
+
+    abstract async findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined>;
+}
+
 /**
  * This a generic query abstraction which should supports most basics database interactions.
  *
  * All query implementations should extend this since  db agnostic consumers are probably
  * coding against this interface via using Database<DatabaseAdapter>.
  */
-export abstract class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>> extends BaseQuery<T, MODEL> {
-    abstract async count(): Promise<number>;
+export abstract class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>, RESOLVER extends GenericQueryResolver<T, any, MODEL>> extends BaseQuery<T, MODEL> {
+    constructor(classSchema: ClassSchema<T>, model: MODEL, protected resolver: RESOLVER) {
+        super(classSchema, model);
+    }
 
-    abstract async find(): Promise<T[]>;
+    public async count(): Promise<number> {
+        return this.resolver.count(this.model);
+    }
 
-    abstract async findOneOrUndefined(): Promise<T | undefined>;
+    public async find(): Promise<T[]> {
+        return this.resolver.find(this.model);
+    }
+
+    public async findOneOrUndefined(): Promise<T | undefined> {
+        return this.resolver.findOneOrUndefined(this.model);
+    }
 
     public async findOne(): Promise<T> {
-        const item = await this.findOneOrUndefined();
+        const item = await this.resolver.findOneOrUndefined(this.model);
         if (!item) throw new ItemNotFound('Item not found');
         return item;
     }
 
-    public abstract async updateMany(value: {}): Promise<number>;
-
-    public async updateOne(value: {}): Promise<boolean> {
-        return await this.clone().limit(1).updateMany(value) >= 1;
+    public async updateMany(value: {}): Promise<number> {
+        return this.resolver.updateMany(this.model, value);
     }
 
-    public abstract async patchMany(value: {}): Promise<number>;
+    public async updateOne(value: {}): Promise<boolean> {
+        return this.resolver.updateOne(this.model, value);
+    }
 
-    public async patchOne(value: {}): Promise<boolean> {
-        return await this.clone().limit(1).patchMany(value) >= 1;
+    public async deleteMany(): Promise<number> {
+        return this.resolver.deleteMany(this.model);
+    }
+
+    public async deleteOne(): Promise<boolean> {
+        return this.resolver.deleteOne(this.model);
+    }
+
+    public async patchMany(value: { [path: string]: any }): Promise<number> {
+        return this.resolver.patchMany(this.model, value);
+    }
+
+    public async patchOne(value: { [path: string]: any }): Promise<boolean> {
+        return this.resolver.patchOne(this.model, value);
     }
 
     public async has(): Promise<boolean> {
         return await this.count() > 0;
     }
 
-    public async findIds<PK extends any[]>(): Promise<PK> {
-        const primaryFields = this.classSchema.getPrimaryFields();
-        const names = primaryFields.map(v => v.name) as FieldName<T>[];
+    public async ids(singleKey: boolean = false): Promise<PrimaryKey<T>[]> {
+        const pks = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
+        if (singleKey && pks.length > 1) {
+            throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key. singleKey impossible.`);
+        }
 
-        const items = await this.clone().select(...names).find();
-        if (names.length > 1) return items as PK;
-        return items.map(v => v[names[0]]) as PK;
+        if (singleKey) {
+            return (await this.clone().select(pks).find()).map(v => v[pks[0]]);
+        }
+
+        return await this.clone().select(pks).find();
+    }
+
+    public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
+        const items = await this.select(name).find();
+        return items.map(v => v[name]);
+    }
+
+    public async findOneField<K extends FieldName<T>>(name: K): Promise<T[K]> {
+        const item = await this.select(name).findOne();
+        return item[name];
+    }
+
+    public async findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined> {
+        const item = await this.select(name).findOneOrUndefined();
+        if (item) return item[name];
+        return;
     }
 }
 

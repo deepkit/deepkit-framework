@@ -1,6 +1,7 @@
 import {Collection, MongoClient, MongoClientOptions} from "mongodb";
 import {getCollectionName, getDatabaseName, getEntityName} from "@super-hornet/marshal";
 import {ClassType, ParsedHost} from "@super-hornet/core";
+import {DatabaseConnection} from "@super-hornet/marshal-orm";
 
 export function resolveCollectionName<T>(classType: ClassType<T>): string {
     return getCollectionName(classType) || getEntityName(classType);
@@ -21,12 +22,16 @@ export interface MongoConnectionConfig {
     sslPass?: Buffer | string;
 }
 
-export class MongoConnection {
+export class MongoConnection implements DatabaseConnection {
     protected client?: MongoClient;
 
     constructor(
         public config: MongoConnectionConfig
     ) {
+    }
+
+    isInTransaction(): boolean {
+        return false;
     }
 
     close(force?: boolean) {
@@ -53,6 +58,9 @@ export class MongoConnection {
             sslPass: this.config.sslPass,
             useNewUrlParser: true,
         } as MongoClientOptions);
+
+        const session = this.client.startSession();
+        session.startTransaction()
 
         return this.client;
     }

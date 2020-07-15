@@ -26,30 +26,20 @@
   },
   "devDependencies": {
     "@types/mongodb": "^3.5.25",
-    "@types/jest": "^26.0.3",
+    "@types/jest": "^26.0.4",
     "moment": "^2.0.0",
     "mongodb": "^3.5.9",
+    "jest-serial-runner": "^1.1.0",
     "bson-ext": "^2.0.3",
     "rxjs": "~6.5.3"
   },
   "jest": {
-    "testURL": "http://localhost/",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js"
-    ],
-    "collectCoverageFrom": [
-      "src/**/*.ts"
-    ],
+    "runner": "jest-serial-runner",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testMatch": [
-      "**/*.spec.ts"
+      "**/tests/**/*.spec.ts"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

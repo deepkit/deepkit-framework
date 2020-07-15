@@ -106,26 +106,26 @@ test('test entity sync list', async () => {
 
         @Action()
         async users(): Promise<Collection<User>> {
-            await this.database.deleteMany(User, {});
+            await this.session.deleteMany(User, {});
             const peter = new User('Peter 1');
 
-            await this.database.add(peter);
-            await this.database.add(new User('Peter 2'));
-            await this.database.add(new User('Guschdl'));
-            await this.database.add(new User('Ingrid'));
+            await this.session.add(peter);
+            await this.session.add(new User('Peter 2'));
+            await this.session.add(new User('Guschdl'));
+            await this.session.add(new User('Ingrid'));
 
-            const ids = await this.database.getIds(User);
+            const ids = await this.session.getIds(User);
             expect(ids[0]).toBe(peter.id);
             expect(ids.length).toBe(4);
 
             setTimeout(async () => {
                 console.log('Peter 3 added');
-                await this.database.add(new User('Peter 3'));
+                await this.session.add(new User('Peter 3'));
             }, 500);
 
             setTimeout(async () => {
                 console.log('Peter 1 patched');
-                await this.database.patch(User, peter.id, {name: 'Peter patched'});
+                await this.session.patch(User, peter.id, {name: 'Peter patched'});
             }, 1000);
 
             return await this.storage.collection(User).filter({
@@ -135,7 +135,7 @@ test('test entity sync list', async () => {
 
         @Action()
         async addUser(name: string) {
-            await this.database.add(new User(name));
+            await this.session.add(new User(name));
             return false;
         }
     }
@@ -191,10 +191,10 @@ test('test entity sync list: remove', async () => {
 
         @Action()
         async users(): Promise<Collection<User>> {
-            await this.database.deleteMany(User, {});
+            await this.session.deleteMany(User, {});
 
-            await this.database.add(new User('Peter 1'));
-            await this.database.add(new User('Peter 2'));
+            await this.session.add(new User('Peter 1'));
+            await this.session.add(new User('Peter 2'));
 
             return await this.storage.collection(User).filter({
                 name: {$regex: /Peter/}
@@ -203,18 +203,18 @@ test('test entity sync list: remove', async () => {
 
         @Action()
         async removeAll() {
-            await this.database.deleteMany(User, {});
+            await this.session.deleteMany(User, {});
         }
 
         @Action()
         async remove(id: string) {
-            await this.database.remove(User, id);
+            await this.session.remove(User, id);
         }
 
         @Action()
         async addUser(name: string): Promise<string> {
             const user = new User(name);
-            await this.database.add(user);
+            await this.session.add(user);
             return user.id;
         }
     }
@@ -269,18 +269,18 @@ test('test entity sync item', async () => {
 
         @Action()
         async user(): Promise<EntitySubject<User>> {
-            await this.database.deleteMany(User, {});
-            await this.database.add(new User('Guschdl'));
+            await this.session.deleteMany(User, {});
+            await this.session.add(new User('Guschdl'));
 
             const peter = new User('Peter 1');
-            await this.database.add(peter);
+            await this.session.add(peter);
 
             this.connection.setTimeout(async () => {
-                await this.database.patch(User, peter.id, {name: 'Peter patched'});
+                await this.session.patch(User, peter.id, {name: 'Peter patched'});
             }, 20);
 
             this.connection.setTimeout(async () => {
-                await this.database.remove(User, peter.id);
+                await this.session.remove(User, peter.id);
             }, 280);
 
             return await this.storage.findOne(User, {
@@ -349,11 +349,11 @@ test('test entity sync item undefined', async () => {
 
         @Action()
         async user(): Promise<EntitySubject<User> | undefined> {
-            await this.database.deleteMany(User, {});
-            await this.database.add(new User('Guschdl'));
+            await this.session.deleteMany(User, {});
+            await this.session.add(new User('Guschdl'));
 
             const peter = new User('Peter 1');
-            await this.database.add(peter);
+            await this.session.add(peter);
 
             return await this.storage.findOneOrUndefined(User, {
                 name: {$regex: /Marie/}
@@ -387,23 +387,23 @@ test('test entity sync count', async () => {
 
         @Action()
         async userCount(): Promise<Observable<number>> {
-            await this.database.deleteMany(User, {});
-            await this.database.add(new User('Guschdl'));
+            await this.session.deleteMany(User, {});
+            await this.session.add(new User('Guschdl'));
             const peter1 = new User('Peter 1');
 
             this.connection.setTimeout(async () => {
                 console.log('add peter1');
-                await this.database.add(peter1);
+                await this.session.add(peter1);
             }, 100);
 
             this.connection.setTimeout(async () => {
                 console.log('add peter2');
-                await this.database.add(new User('Peter 2'));
+                await this.session.add(new User('Peter 2'));
             }, 150);
 
             this.connection.setTimeout(async () => {
                 console.log('remove peter1');
-                await this.database.remove(User, peter1.id);
+                await this.session.remove(User, peter1.id);
             }, 200);
 
             return await this.storage.count(User, {
@@ -696,18 +696,18 @@ test('test entity collection reactive find', async () => {
         async init() {
             await this.exchangeDatabase.deleteMany(User, {});
             await this.exchangeDatabase.deleteMany(Team, {});
-            await this.database.query(UserTeam).deleteMany();
+            await this.session.query(UserTeam).deleteMany();
 
             const teamA = new Team('Team a');
             const teamB = new Team('Team b');
 
-            await this.database.add(teamA);
-            await this.database.add(teamB);
+            await this.session.add(teamA);
+            await this.session.add(teamB);
 
             const addUser = async (name: string, team: Team) => {
                 const user = new User(name);
-                await this.database.add(user);
-                await this.database.add(new UserTeam(team.id, user.id));
+                await this.session.add(user);
+                await this.session.add(new UserTeam(team.id, user.id));
             };
 
             await addUser('Peter 1', teamA);
@@ -719,8 +719,8 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async unAssignUser(userName: string, teamName: string) {
-            const user = await this.database.query(User).filter({name: userName}).findOne();
-            const team = await this.database.query(Team).filter({name: teamName}).findOne();
+            const user = await this.session.query(User).filter({name: userName}).findOne();
+            const team = await this.session.query(Team).filter({name: teamName}).findOne();
 
             if (!user) throw new Error(`User ${userName} not found`);
             if (!team) throw new Error(`Team ${teamName} not found`);
@@ -730,7 +730,7 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async getUserId(userName: string): Promise<string> {
-            const user = await this.database.query(User).filter({name: userName}).findOne();
+            const user = await this.session.query(User).filter({name: userName}).findOne();
             if (!user) throw new Error(`User ${userName} not found`);
 
             return user.id;
@@ -738,8 +738,8 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async assignUser(userName: string, teamName: string) {
-            const user = await this.database.query(User).filter({name: userName}).findOne();
-            const team = await this.database.query(Team).filter({name: teamName}).findOne();
+            const user = await this.session.query(User).filter({name: userName}).findOne();
+            const team = await this.session.query(Team).filter({name: teamName}).findOne();
 
             if (!user) throw new Error(`User ${userName} not found`);
             if (!team) throw new Error(`Team ${teamName} not found`);
@@ -749,7 +749,7 @@ test('test entity collection reactive find', async () => {
 
         @Action()
         async removeTeam(teamName: string) {
-            const team = await this.database.query(Team).filter({name: teamName}).findOne();
+            const team = await this.session.query(Team).filter({name: teamName}).findOne();
             if (!team) throw new Error(`Team ${teamName} not found`);
 
             await this.exchangeDatabase.deleteOne(Team, {id: team.id});
@@ -861,14 +861,14 @@ test('test entity collection pagination', async () => {
 
         @Action()
         async init() {
-            await this.database.query(Item).deleteMany();
+            await this.session.query(Item).deleteMany();
 
             const promises: Promise<any>[] = [];
             const clazzes = ['a', 'b', 'c'];
             const owners = ['3f63154d-4121-4f5c-a297-afc1f8f453fd', '4c349fe0-fa33-4e10-bb17-e25f13e4740e'];
 
             for (let i = 0; i < 100; i++) {
-                promises.push(this.database.add(new Item('name_' + i, i, clazzes[i % 3], owners[i % 2])));
+                promises.push(this.session.add(new Item('name_' + i, i, clazzes[i % 3], owners[i % 2])));
             }
 
             await Promise.all(promises);

@@ -1,4 +1,4 @@
-import 'jest-extended'
+import 'jest-extended';
 import {getEnumLabels, getEnumValues} from "../src/enum";
 
 test('getEnumLabels numbered index', () => {

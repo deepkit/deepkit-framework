@@ -415,6 +415,10 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
     }
 }
 
+export function getJitFunctionPlainToClass(classType: ClassType<any>) {
+    return JITPlainToClassCache.get(classType);
+}
+
 export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
     : (data: { [name: string]: any }, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
     if (fromTarget === 'plain') {
@@ -560,6 +564,9 @@ export function jitPlainToClass<T>(classType: ClassType<T>, data: any, options: 
     return createXToClassFunction(classType, 'plain')(data, options);
 }
 
+export function plainToClassFactory<T>(classType: ClassType<T>) {
+    return createXToClassFunction(classType, 'plain');
+}
 
 export function jitClassToPlain<T>(classType: ClassType<T>, instance: T, options: JitConverterOptions = {}): Partial<T> {
     if (!(instance instanceof classType)) {

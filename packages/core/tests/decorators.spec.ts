@@ -1,4 +1,4 @@
-import 'jest';
+import 'jest-extended';
 import {log, stack} from "../src/decorators";
 import {sleep} from "../src/core";
 

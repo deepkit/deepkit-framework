@@ -1,9 +1,8 @@
 import {ClassType, CustomError} from '@super-hornet/core';
-import {DatabaseQueryModel, Entity, GenericQuery, Sort} from "./query";
+import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from "./query";
 import {getHydratedDatabaseSession, isHydrated} from "./formatter";
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from "@super-hornet/marshal";
+import {ClassSchema} from "@super-hornet/marshal";
 import {DatabaseSession} from "./database-session";
-import {PrimaryKey} from "./entity-registry";
 
 export class NotFoundError extends CustomError {
 }
@@ -22,15 +21,17 @@ export async function hydrateEntity<T>(item: T) {
 }
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends Entity>(classType: ClassType<T>): GenericQuery<T, DatabaseQueryModel<T, Partial<T>, Sort<T>>>;
+    abstract createQuery<T extends Entity>(classType: ClassType<T>): GenericQuery<T, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>, GenericQueryResolver<T, any, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>>>;
 }
 
 export abstract class DatabasePersistence {
     abstract async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
 
     abstract async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+}
 
-    abstract async patch<T extends Entity>(classSchema: ClassSchema<T>, primaryKey: PrimaryKey<T>, item: Partial<T>): Promise<void>;
+export interface DatabaseConnection {
+    isInTransaction(): boolean;
 }
 
 /**
@@ -44,6 +45,10 @@ export abstract class DatabaseAdapter {
     abstract createPersistence(databaseSession: DatabaseSession<this>): DatabasePersistence;
 
     abstract disconnect(force?: boolean): void;
+
+    abstract createConnection(): DatabaseConnection;
+
+    abstract getName(): string;
 }
 
 /**
@@ -64,7 +69,6 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     /**
      * Creates a new DatabaseQuery instance which can be used to query data.
      *  - Entity instances ARE NOT cached or tracked.
-     *  - No repository events are triggered.
      *
      * Use a DatabaseSession (createSession()) with query() in your workflow to enable
      * instance pooling and transaction support.
@@ -94,28 +98,25 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     }
 
     /**
+     * Executes given callback in a new session/transaction and automatically commits it when executed successfully.
+     * Automatically does a rollback when callback throws an error.
+     */
+    public async session<T>(worker: (session: DatabaseSession<ADAPTER>) => Promise<T>): Promise<T> {
+        const session = this.createSession();
+        try {
+            const res = await worker(session);
+            await session.commit();
+            return res;
+        } catch (error) {
+            session.rollback();
+            throw error;
+        }
+    }
+
+    /**
      * Registers a new entity to this database. This is mainly used for db migration utilities.
      */
     registerEntity<T extends Entity>(entity: T): void {
         this.entities.add(entity);
-    }
-
-    /**
-     * Simple direct persist. The persistence layer (batch) inserts or updates the record
-     * depending on the state of the given items.
-     */
-    public async persist<T extends Entity>(...items: T[]) {
-        if (items.length) {
-            await this.rootSession.persistence.persist(getClassSchema(getClassTypeFromInstance(items[0])), items);
-        }
-    }
-
-    /**
-     * Simple direct remove. The persistence layer (batch) removes all given items.
-     */
-    public async remove<T extends Entity>(...items: T[]) {
-        if (items.length) {
-            await this.rootSession.persistence.remove(getClassSchema(getClassTypeFromInstance(items[0])), items);
-        }
     }
 }

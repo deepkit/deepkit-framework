@@ -32,28 +32,15 @@
     "node": ">= 8.9.0"
   },
   "jest": {
-    "testURL": "http://localhost/",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js"
-    ],
-    "collectCoverageFrom": [
-      "**/*.ts",
-      "!**/node_modules/**",
-      "!**/dist/**/*",
-      "!**/tests/**/*",
-      "!packages/marshal-benchmark/**/*",
-      "!index.ts"
-    ],
-    "testPathIgnorePatterns": [
-        "packages/marshal-benchmark"
-    ],
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "testMatch": [
-      "**/*.spec.ts"
+    "projects": [
+      "packages/marshal-orm",
+      "packages/marshal-mongo",
+      "packages/marshal",
+      "packages/marshal-nest",
+      "packages/framework-server",
+      "packages/framework-server-common",
+      "packages/framework-shared",
+      "packages/topsort"
     ]
   }
 }

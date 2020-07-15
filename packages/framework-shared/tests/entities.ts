@@ -3,7 +3,7 @@ import {
     uuid,
 } from "@super-hornet/marshal";
 import {each, eachPair} from "@super-hornet/core";
-import {IdInterface} from "..";
+import {IdInterface} from "../index";
 
 @Entity('JobAssignedResourcesGpu')
 export class JobAssignedResourcesGpu {

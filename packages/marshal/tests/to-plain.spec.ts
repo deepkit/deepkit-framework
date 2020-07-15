@@ -1,15 +1,19 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain} from "../";
+import {classToPlain} from "../index";
 import {Plan, SimpleModel, SubModel} from "./entities";
+import {getClassSchema} from "../src/decorators";
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');
+    const classSchema = getClassSchema(SimpleModel);
+    expect(classSchema.getProperty('id').type).toBe('uuid');
+
+    expect(instance['id']).toBeString();
     const json = classToPlain(SimpleModel, instance);
 
     expect(json['id']).toBeString();
     expect(json['name']).toBe('myName');
-
 });
 
 test('test simple model all fields', () => {
