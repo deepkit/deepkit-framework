@@ -13,6 +13,9 @@
   "dependencies": {
     "dot-prop": "^4.2.0"
   },
+  "devDependencies": {
+    "@types/dot-prop": "~4.2.0"
+  },
   "scripts": {
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc",

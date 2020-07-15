@@ -22,6 +22,7 @@
   "dependencies": {
     "@super-hornet/core": "^0.1.17",
     "@super-hornet/core-rxjs": "^0.1.17",
+    "reflect-metadata": "^0.1.13",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {

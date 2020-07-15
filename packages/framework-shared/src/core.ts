@@ -12,7 +12,6 @@ import {
     plainToClass,
 } from "@super-hornet/marshal";
 import {skip} from "rxjs/operators";
-import {ExternalQuery, WhereFn} from "sift";
 
 @Entity('@error:json')
 export class JSONError {
