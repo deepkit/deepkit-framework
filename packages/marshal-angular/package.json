@@ -16,7 +16,8 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@angular/forms": "^10.0.3"
+    "@angular/forms": "^10.0.3",
+    "reflect-metadata": "^0.1.13"
   },
   "jest": {
     "transform": {

@@ -16,7 +16,8 @@
   },
   "devDependencies": {
     "@super-hornet/marshal": "^2.1.13",
-    "@nestjs/common": "^7.0.0"
+    "@nestjs/common": "^7.0.0",
+    "reflect-metadata": "^0.1.13"
   },
   "jest": {
     "transform": {

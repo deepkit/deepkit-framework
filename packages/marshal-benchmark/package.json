@@ -17,6 +17,7 @@
     "buffer": "^5.2.1",
     "cerialize": "^2.0.1",
     "class-transformer": "^0.2.0",
+    "reflect-metadata": "^0.1.13",
     "quartet": "^9.1.13"
   },
   "jest": {
