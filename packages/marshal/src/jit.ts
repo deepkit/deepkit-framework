@@ -161,7 +161,7 @@ export class JitPropertyConverter {
         public readonly fromFormat: string,
         public readonly toFormat: string,
         private classType: ClassType<any>,
-        private options: JitConverterOptions = {}
+        private options?: JitConverterOptions
     ) {
         this.schema = getClassSchema(classType);
         this.schema.initializeProperties();
@@ -182,7 +182,7 @@ export class JitPropertyConverter {
             return;
         }
 
-        if (!isGroupAllowed(this.options, property.groupNames)) return;
+        if (this.options && !isGroupAllowed(this.options, property.groupNames)) return;
 
         if (result) {
             result[path] = this.convertProperty(property, value);
@@ -198,7 +198,7 @@ export class JitPropertyConverter {
 
         const jit = this.cacheJitPropertyMap.get(property);
         if (jit) {
-            return jit(value, this.options.parents, this.options);
+            return jit(value, this.options && this.options.parents, this.options);
         }
 
         const context = new Map<any, any>();
@@ -224,7 +224,7 @@ export class JitPropertyConverter {
         const fn = compiled.bind(undefined, ...context.values())();
         this.cacheJitPropertyMap.set(property, fn);
 
-        return fn(value, this.options.parents, this.options);
+        return fn(value, this.options && this.options.parents, this.options);
     }
 }
 
@@ -390,9 +390,9 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
         functionCode = `
         return function(_instance, _options) {
             const _data = {};
-            getGlobalStore().unpopulatedCheckActive = false;
+            _global.unpopulatedCheckActive = false;
             ${convertProperties.join('\n')}
-            getGlobalStore().unpopulatedCheckActive = true;
+            _global.unpopulatedCheckActive = true;
             return _data;
         }
         `;
@@ -400,8 +400,8 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
 
     try {
-        const compiled = new Function('_classType', 'getGlobalStore', 'isGroupAllowed', ...context.keys(), functionCode);
-        const fn = compiled(classType, getGlobalStore, isGroupAllowed, ...context.values());
+        const compiled = new Function('_classType', '_global', 'isGroupAllowed', ...context.keys(), functionCode);
+        const fn = compiled(classType, getGlobalStore(), isGroupAllowed, ...context.values());
         if (toFormat === 'plain') {
             JITClassToPlainCache.set(classType, fn);
         } else {
@@ -417,6 +417,10 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
 export function getJitFunctionPlainToClass(classType: ClassType<any>) {
     return JITPlainToClassCache.get(classType);
+}
+
+export function getJitFunctionClassToPlain(classType: ClassType<any>) {
+    return JITClassToPlainCache.get(classType);
 }
 
 export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
@@ -560,7 +564,7 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     }
 }
 
-export function jitPlainToClass<T>(classType: ClassType<T>, data: any, options: JitConverterOptions = {}): T {
+export function jitPlainToClass<T>(classType: ClassType<T>, data: any, options?: JitConverterOptions): T {
     return createXToClassFunction(classType, 'plain')(data, options);
 }
 
@@ -568,7 +572,7 @@ export function plainToClassFactory<T>(classType: ClassType<T>) {
     return createXToClassFunction(classType, 'plain');
 }
 
-export function jitClassToPlain<T>(classType: ClassType<T>, instance: T, options: JitConverterOptions = {}): Partial<T> {
+export function jitClassToPlain<T>(classType: ClassType<T>, instance: T, options?: JitConverterOptions): Partial<T> {
     if (!(instance instanceof classType)) {
         throw new Error(`Could not classToPlain since target is not a class instance of ${getClassName(classType)}`);
     }
@@ -581,7 +585,7 @@ export function jitPartial<T, R extends object>(
     toFormat: string,
     classType: ClassType<T>,
     partial: R,
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): { [F in keyof R]?: any } {
     const result: Partial<{ [F in keyof R]: any }> = {};
     const jitConverter = new JitPropertyConverter(fromFormat, toFormat, classType, options);
@@ -597,7 +601,7 @@ export function jitPartial<T, R extends object>(
 export function jitPartialClassToPlain<T, R extends object>(
     classType: ClassType<T>,
     partial: R,
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): { [F in keyof R]?: any } {
     return jitPartial('class', 'plain', classType, partial, options);
 }
@@ -605,7 +609,7 @@ export function jitPartialClassToPlain<T, R extends object>(
 export function jitPartialPlainToClass<T, R extends object>(
     classType: ClassType<T>,
     partial: R,
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): { [F in keyof R]?: any } {
     return jitPartial('plain', 'class', classType, partial, options);
 }

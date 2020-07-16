@@ -36,7 +36,7 @@ export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: 
 export function partialClassToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     partial: { [path: string]: any },
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): { [path: string]: any } {
     return jitPartial('class', 'mongo', classType, partial, options);
 }
@@ -44,7 +44,7 @@ export function partialClassToMongo<T, K extends keyof T>(
 export function partialMongoToClass<T, K extends keyof T>(
     classType: ClassType<T>,
     partial: { [path: string]: any },
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): { [path: string]: any } {
     return jitPartial('mongo', 'class', classType, partial, options);
 }
@@ -52,7 +52,7 @@ export function partialMongoToClass<T, K extends keyof T>(
 export function partialPlainToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): { [path: string]: any } {
     return partialClassToMongo(classType, partialPlainToClass(classType, target), options);
 }
@@ -60,7 +60,7 @@ export function partialPlainToMongo<T, K extends keyof T>(
 export function partialMongoToPlain<T, K extends keyof T>(
     classType: ClassType<T>,
     target: { [path: string]: any },
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): { [path: string]: any } {
     return partialClassToPlain(classType, partialMongoToClass(classType, target), options);
 }

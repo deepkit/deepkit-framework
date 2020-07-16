@@ -51,14 +51,14 @@ export function methodResultPlainToClass<T>(classType: ClassType<T>, methodName:
 /**
  * Clones a class instance deeply.
  */
-export function cloneClass<T>(target: T, options: JitConverterOptions = {}): T {
+export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
     return plainToClass(getClassTypeFromInstance(target), classToPlain(getClassTypeFromInstance(target), target), options);
 }
 
 /**
  * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
  */
-export function classToPlain<T>(classType: ClassType<T>, target: T, options: JitConverterOptions = {}): any {
+export function classToPlain<T>(classType: ClassType<T>, target: T, options?: JitConverterOptions): any {
     return jitClassToPlain(classType, target, options);
 }
 
@@ -71,7 +71,7 @@ export function classToPlain<T>(classType: ClassType<T>, target: T, options: Jit
 export function partialPlainToClass<T, R extends object>(
     classType: ClassType<T>,
     partial: R,
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ) {
     return jitPartialPlainToClass(classType, partial, options);
 }
@@ -85,7 +85,7 @@ export function partialPlainToClass<T, R extends object>(
 export function partialClassToPlain<T, R extends object>(
     classType: ClassType<T>,
     partial: R,
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ) {
     return jitPartialClassToPlain(classType, partial, options);
 }
@@ -106,7 +106,7 @@ export function partialClassToPlain<T, R extends object>(
 export function plainToClass<T>(
     classType: ClassType<T>,
     data: object,
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): T {
     return jitPlainToClass(classType, data, options);
 }
@@ -128,7 +128,7 @@ export function plainToClass<T>(
 export function validatedPlainToClass<T>(
     classType: ClassType<T>,
     data: object,
-    options: JitConverterOptions = {}
+    options?: JitConverterOptions
 ): T {
     const errors = validate(classType, data);
     if (errors.length) {
