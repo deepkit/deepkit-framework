@@ -40,6 +40,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         const classSchema = getClassSchema(classType);
         const queryResolver = new MongoQueryResolver<T>(classSchema, this.databaseSession);
         const model = new MongoQueryModel<T>();
+        model.withIdentityMap = this.databaseSession.withIdentityMap;
         return new MongoDatabaseQuery(classSchema, model, queryResolver);
     }
 }

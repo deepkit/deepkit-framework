@@ -5,19 +5,18 @@ import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from 
 import {registerConverterCompiler, TypeConverterCompiler} from "./compiler-registry";
 
 export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {
-    return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : String(${accessor});`;
+    return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : ''+${accessor};`;
 }
 
+//number class->plain is not necessary since typescript's typesystem already made sure its a number
 registerConverterCompiler('plain', 'class', 'string', compilerToString);
-registerConverterCompiler('class', 'plain', 'string', compilerToString);
-
 
 export function compilerToNumber(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'number' ? ${accessor} : +${accessor};`;
 }
 
+//number class->plain is not necessary since typescript's typesystem already made sure its a number
 registerConverterCompiler('plain', 'class', 'number', compilerToNumber);
-registerConverterCompiler('class', 'plain', 'number', compilerToNumber);
 
 registerConverterCompiler('plain', 'class', 'date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = new Date(${accessor});`;

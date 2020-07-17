@@ -11,10 +11,8 @@ import {
     isPlainObject,
 } from '@super-hornet/core';
 import * as getParameterNames from "get-parameter-names";
-import {capitalizeFirstLetter, isArray} from "./utils";
+import {isArray} from "./utils";
 import {Buffer} from "buffer";
-import {partialClassToPlain} from "./mapper";
-import {JitPropertyConverter} from "./jit";
 
 interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> };
@@ -33,7 +31,6 @@ export function getGlobalStore(): GlobalStore {
         global.MarshalStore = {
             RegisteredEntities: {},
             unpopulatedCheckActive: true,
-            ClassSchemas: new Map<object, ClassSchema>(),
         } as GlobalStore;
     }
 
@@ -713,34 +710,6 @@ export class ClassSchema<T = any> {
     }
 
     /**
-     * Returns a perfect hash from the primary key(s).
-     */
-    public getPrimaryFieldRepresentation(item: T) {
-        const pk: { [name in keyof T & string]?: any } = {};
-        for (const primaryField of this.getPrimaryFields()) {
-            pk[primaryField.name as keyof T & string] = item[primaryField.name as keyof T & string];
-        }
-        return pk;
-    }
-
-    public getPrimaryFieldHash(item: PartialEntity<T>, fromSerializer: string = 'class'): string {
-        const jitConverter = new JitPropertyConverter(fromSerializer, 'plain', this.classType);
-        let hash = '';
-        for (const primaryField of this.getPrimaryFields()) {
-            if (primaryField.type === 'class') throw new Error('Class primary keys not supported.');
-            const plain = jitConverter.convert(primaryField.name, item[primaryField.name as keyof T & string]);
-            try {
-                // hash += btoa(plain) + ',';
-                hash += plain + '-';
-            } catch (error) {
-                console.error('Could not hash value', plain);
-                throw new Error(`Could not hash value for ${primaryField.name}: ${error}`);
-            }
-        }
-        return hash;
-    }
-
-    /**
      * Internal note: for multi pk support, this will return a PropertySchema[] in the future.
      */
     public getPrimaryField(): PropertySchema {
@@ -823,27 +792,32 @@ export class ClassSchema<T = any> {
      * Before accessing `classProperties`, its necessary to call this method.
      */
     public initializeProperties() {
-        if (!this.referenceInitialized) {
-            this.referenceInitialized = true;
-            for (const reference of this.references.values()) {
-                if (reference.isReference) {
-                    const schema = reference.getResolvedClassSchema();
-                    const name = reference.name + capitalizeFirstLetter(schema.getPrimaryField().name);
-
-                    if (!this.classProperties.has(name)) {
-                        const foreignKey = schema.getPrimaryField().clone();
-                        foreignKey.isReference = false;
-                        foreignKey.backReference = undefined;
-                        foreignKey.index = {...reference.index};
-                        foreignKey.name = name;
-                        this.classProperties.set(name, foreignKey);
-                        getClassSchema(this.classType).addIndex(foreignKey.name, foreignKey.index);
-                    }
-
-                    this.classProperties.get(name)!.isReferenceKey = true;
-                }
-            }
-        }
+        // we don't create for now a new field as 'foreign key' as the field itself
+        // is the foreignKey. This will probably change once we support composite primary keys.
+        // when we do this, we need to mark those fields as 'implementation detail'
+        // since generating 2 fields is for RDMBS, and having everything as object {} is for mongoDB
+        // better, so this functionality depends actually on the database, rather than on Marshal itself.
+        // if (!this.referenceInitialized) {
+        //     this.referenceInitialized = true;
+        //     for (const reference of this.references.values()) {
+        //         if (reference.isReference) {
+        //
+        //             // const schema = reference.getResolvedClassSchema();
+        //             // const name = reference.name + capitalizeFirstLetter(schema.getPrimaryField().name);
+        //             // if (!this.classProperties.has(name)) {
+        //             //     const foreignKey = schema.getPrimaryField().clone();
+        //             //     foreignKey.isReference = false;
+        //             //     foreignKey.backReference = undefined;
+        //             //     foreignKey.index = {...reference.index};
+        //             //     foreignKey.name = name;
+        //             //     foreignKey.isId = reference.isId;
+        //             //     this.classProperties.set(name, foreignKey);
+        //             //     getClassSchema(this.classType).addIndex(foreignKey.name, foreignKey.index);
+        //             // }
+        //             // this.classProperties.get(name)!.isReferenceKey = true;
+        //         }
+        //     }
+        // }
     }
 
     public getClassProperties(initialize: boolean = true): Map<string, PropertySchema> {

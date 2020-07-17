@@ -151,7 +151,9 @@ export interface JitConverterOptions {
  * Paths can be deep paths making it possible to convert patch-like/mongo structure
  *
  * Note: If fromFormat -> toFormat has no compiler templates registered,
- * the generated function does virtually nothing.
+ * its tried to first serialize from `fromFormat`->class and then class->`toFormat`.
+ *
+ * Generated function is cached.
  */
 export class JitPropertyConverter {
     protected schema: ClassSchema<any>;
@@ -231,6 +233,7 @@ export class JitPropertyConverter {
 /**
  *
  * Creates a new JIT compiled function to convert given property schema. Deep paths are not allowed.
+ * Generated function is cached.
  */
 export function createJITConverterFromPropertySchema(
     fromFormat: string,
@@ -389,10 +392,11 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
         functionCode = `
         return function(_instance, _options) {
-            const _data = {};
+            var _data = {};
+            var _oldUnpopulatedCheckActive = _global.unpopulatedCheckActive;
             _global.unpopulatedCheckActive = false;
             ${convertProperties.join('\n')}
-            _global.unpopulatedCheckActive = true;
+            _global.unpopulatedCheckActive = _oldUnpopulatedCheckActive;
             return _data;
         }
         `;

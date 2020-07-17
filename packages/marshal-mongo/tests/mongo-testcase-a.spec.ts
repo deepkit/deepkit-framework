@@ -609,14 +609,6 @@ test('joins', async () => {
     }
 
     {
-        const count = await session.query(OrganisationMembership).joinWith('user').filter({
-            userId: peter.id,
-            user: {$exists: true}
-        }).count();
-        expect(count).toBe(0);
-    }
-
-    {
         expect(await session.query(OrganisationMembership).innerJoin('user').filter({user: peter}).count()).toBe(0);
         expect(await session.query(OrganisationMembership).innerJoinWith('user').filter({user: peter}).count()).toBe(0);
     }

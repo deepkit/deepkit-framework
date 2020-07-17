@@ -1,16 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {createXToClassFunction, jitClassToPlain, jitPartialPlainToClass, jitPlainToClass, plainToClassFactory, getJitFunctionPlainToClass} from "../src/jit";
+import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass, plainToClassFactory} from "../src/jit";
+import {bench, BenchSuite} from "@super-hornet/core";
 import {f} from "../index";
-import {bench} from "./util";
-
-export class MarshalSuperSimple {
-    constructor(
-        @f public id: number,
-        @f public name: string
-    ) {
-    }
-}
 
 export class MarshalModel {
     @f ready?: boolean;
@@ -25,7 +17,6 @@ export class MarshalModel {
     ) {
     }
 }
-
 
 test('benchmark plainToClass', () => {
     const count = 100_000;
@@ -64,7 +55,6 @@ test('benchmark plainToClass', () => {
     expect(b.priority).toBe(5);
     expect(b.ready).toBe(true);
 });
-
 
 test('benchmark classToPlain', () => {
     const count = 100_000;
@@ -144,3 +134,113 @@ test('benchmark partialPlainToClass', () => {
 //         });
 //     });
 // });
+
+test('if filling a instance of prototype with fields is faster than a blank object', () => {
+    const suite = new BenchSuite('filling object', 1_000_000);
+
+    suite.add('normal', function (i) {
+        const obj: any = {};
+        obj.a = i;
+        obj.another_key_jo = 'yes';
+        obj.title = 'title';
+        obj.index = 5;
+    });
+
+    const prototype = {
+        a: 1,
+        another_key_jo: 1,
+        title: 1,
+        index: 1,
+    }
+    function f() {}
+    f.prototype = prototype;
+
+    suite.add('prototype fn', function (i) {
+        const obj2: any = new (f as any)();
+        obj2.a = i;
+        obj2.another_key_jo = 'yes';
+        obj2.title = 'title';
+        obj2.index = 5;
+    });
+
+    function f2(this: any) {
+        (this as any).a = 1;
+        (this as any).another_key_jo = 1;
+        (this as any).title = 'yes';
+        (this as any).index = 5;
+    }
+    suite.add('constructor fn', function (i) {
+        const obj3: any = new (f2 as any)();
+        obj3.a = i;
+        obj3.another_key_jo = 'yes';
+        obj3.title = 'title';
+        obj3.index = 5;
+    });
+
+    suite.add('direct', function (i) {
+        const obj = {
+            a: i,
+            another_key_jo: 'yes',
+            title: 'title',
+            index: 5,
+        }
+    });
+});
+
+test('string convertion', () => {
+    const suite = new BenchSuite('filling object', 1_000_000);
+
+    suite.add('+', () => {
+        const r = ''+23;
+    });
+
+    suite.add('String()', () => {
+        const r = String(24);
+    });
+
+    suite.run();
+});
+
+test('number convertion', () => {
+    const suite = new BenchSuite('filling object', 1_000_000);
+
+    suite.add('+', () => {
+        const r = '23'+0;
+    });
+
+    suite.add('Number()', () => {
+        const r = Number('24');
+    });
+
+    suite.run();
+});
+
+
+test('worth to check type first?', () => {
+    const suite = new BenchSuite('check typeof worth it', 1_000_000);
+
+    const valueString: any = '23';
+    const valueNumber: any = 24;
+
+    suite.add('string typeof', () => {
+        const r1 = typeof valueString === 'string' ? valueString : ''+valueString;
+        const r2 = typeof valueNumber === 'string' ? valueNumber : ''+valueNumber;
+    });
+
+    suite.add('string without typeof', () => {
+        const r1 = ''+valueString;
+        const r2 = ''+valueNumber;
+    });
+
+    suite.add('number typeof', () => {
+        const r1 = typeof valueString === 'number' ? valueString : 0+valueString;
+        const r2 = typeof valueNumber === 'number' ? valueNumber : 0+valueNumber;
+    });
+
+    suite.add('number without typeof', () => {
+        const r1 = 0+valueString;
+        const r2 = 0+valueNumber;
+    });
+
+    suite.run();
+});

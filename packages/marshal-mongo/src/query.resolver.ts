@@ -123,7 +123,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
         const items = await collection.aggregate(pipeline).toArray();
         if (items.length) {
-            const formatter = this.createFormatter();
+            const formatter = this.createFormatter(queryModel.withIdentityMap);
             return formatter.hydrate(this.classSchema, queryModel, items[0]);
         }
         return;
@@ -133,7 +133,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const pipeline = this.buildAggregationPipeline(queryModel);
         const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
         const items = await collection.aggregate(pipeline).toArray();
-        const formatter = this.createFormatter();
+        const formatter = this.createFormatter(queryModel.withIdentityMap);
         return items.map(v => formatter.hydrate(this.classSchema, queryModel, v));
     }
 
@@ -301,8 +301,12 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return res;
     }
 
-    protected createFormatter() {
-        return new Formatter(this.databaseSession, 'mongo');
+    protected createFormatter(withIdentityMap: boolean = false) {
+        return new Formatter(
+            'mongo',
+            this.databaseSession.getHydrator(),
+            withIdentityMap ? this.databaseSession.identityMap : undefined
+        );
     }
 
     protected getSortFromModel<T>(modelSort?: DEEP_SORT<T>) {

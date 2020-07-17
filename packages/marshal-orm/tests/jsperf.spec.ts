@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {classToPlain, f, getClassSchema, Patcher, plainToClass} from "@super-hornet/marshal";
-import {bench} from "./util";
+import {bench} from "@super-hornet/core";
 
 test('for vs map', () => {
     const items = 'aasf asdkfn asnfo asnfoiasfn oaisdf asdoifnsadf adsufhasduf hasdoufh asdoufh asufhasdu fas'.split(' ');
@@ -228,3 +228,36 @@ test('classToPlain vs copy-on-write hooks', () => {
         Object.defineProperties(item, properties);
     });
 });
+
+
+test('object setter/getter', () => {
+
+    const count = 1_000_000;
+    const plainObject = {
+        a: 1,
+        b: 'b',
+    };
+
+    const protoObject = Object.create(plainObject);
+
+    bench(count, 'plainObject', (i) => {
+        plainObject.a = 2;
+    });
+
+    let value =  1;
+    const proto = {
+        property: value,
+    }
+
+    value += 1;
+    const obj = Object.create(proto);
+
+    //https://jsperf.com/property-access-vs-defineproperty/5
+    //is 10x faster
+    bench(count, 'protoObject write', (i) => {
+        obj.property = 5;
+    });
+    bench(count, 'protoObject read ', (i) => {
+        const res = obj.property;
+    });
+})

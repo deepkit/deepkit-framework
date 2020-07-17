@@ -314,13 +314,15 @@ test('argument convertion', () => {
             return config;
         }
     }
+    const schema = getClassSchema(Controller);
+    expect(schema.getMethodProperties('foo')[0].type).toBe('string');
 
     {
         const name = argumentClassToPlain(Controller, 'foo', 0, 2);
-        expect(name).toBe('2');
+        expect(name).toBe(2);
 
         const res = methodResultClassToPlain(Controller, 'foo', {'sub.name': 3});
-        expect(res['sub.name']).toBe('3');
+        expect(res['sub.name']).toBe(3);
     }
 
     {

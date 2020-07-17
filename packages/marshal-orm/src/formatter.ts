@@ -1,40 +1,36 @@
-import {
-    ClassSchema,
-    createXToClassFunction,
-    getGlobalStore, jitPartial,
-    jitPartialClassToPlain,
-    PropertySchema
-} from "@super-hornet/marshal";
+import {ClassSchema, createXToClassFunction, getGlobalStore, jitPartial, PropertySchema} from "@super-hornet/marshal";
 import {DatabaseQueryModel} from "./query";
 import {ClassType} from "@super-hornet/core";
-import {DatabaseSession} from "./database-session";
-import {getInstanceState, PKHash} from "./identity-map";
+import {getInstanceState, IdentityMap, PKHash} from "./identity-map";
 import {convertPrimaryKeyToClass} from "./utils";
+import {getPrimaryKeyHashGenerator} from './converter';
 
-const proxyDatabaseSessionSymbol = Symbol('proxyDatabaseSessionSymbol');
+const sessionHydratorSymbol = Symbol('sessionHydratorSymbol');
+
+export type HydratorFn = (item: any) => Promise<void>;
 
 /**
  * Returns true if item is hydrated. Returns false when its a unpopulated proxy/reference.
  */
 export function isHydrated(item: any) {
-    return !!(item[proxyDatabaseSessionSymbol]);
+    return !!(item[sessionHydratorSymbol]);
 }
 
-export function setHydratedDatabaseSession(item: any, databaseSession: DatabaseSession<any>) {
-    Object.defineProperty(item, proxyDatabaseSessionSymbol, {
+export function setHydratedDatabaseSession(item: any, hydrator: HydratorFn) {
+    Object.defineProperty(item, sessionHydratorSymbol, {
         enumerable: false,
         configurable: false,
         writable: true,
-        value: databaseSession,
+        value: hydrator,
     });
 }
 
 export function markAsHydrated(item: any) {
-    item[proxyDatabaseSessionSymbol] = undefined;
+    item[sessionHydratorSymbol] = undefined;
 }
 
-export function getHydratedDatabaseSession(item: any): DatabaseSession<any> {
-    return item[proxyDatabaseSessionSymbol];
+export function getDatabaseSessionHydrator(item: any): HydratorFn {
+    return item[sessionHydratorSymbol];
 }
 
 /**
@@ -50,8 +46,9 @@ export class Formatter {
     public withIdentityMap: boolean = true;
 
     constructor(
-        protected session: DatabaseSession<any>,
         protected serializerSourceName: string,
+        protected hydrator?: HydratorFn,
+        protected identityMap?: IdentityMap,
     ) {
     }
 
@@ -64,12 +61,7 @@ export class Formatter {
     }
 
     public hydrate<T>(classSchema: ClassSchema<T>, model: DatabaseQueryModel<T, any, any>, value: any): any {
-        this.withIdentityMap = model.withIdentityMap && !model.isPartial();
         return this.hydrateModel(model, classSchema, value);
-    }
-
-    protected isWithIdentityMap() {
-        return this.session.withIdentityMap && this.withIdentityMap;
     }
 
     protected makeInvalidReference(item: any, propertySchema: PropertySchema) {
@@ -105,7 +97,9 @@ export class Formatter {
             };
             const Proxy = temp.Proxy;
 
-            setHydratedDatabaseSession(Proxy.prototype, this.session);
+            if (this.hydrator) {
+                setHydratedDatabaseSession(Proxy.prototype, this.hydrator);
+            }
 
             for (const property of classSchema.getClassProperties().values()) {
                 if (property.isId) continue;
@@ -119,14 +113,28 @@ export class Formatter {
                     enumerable: false,
                     configurable: true,
                     get() {
+                        if (this.hasOwnProperty(property.symbol)) {
+                            return this[property.symbol];
+                        }
+
                         if (getGlobalStore().unpopulatedCheckActive) {
                             throw new Error(message);
                         }
                     },
-                    set() {
-                        if (getGlobalStore().unpopulatedCheckActive) {
-                            throw new Error(message);
+                    set(v) {
+                        if (!getGlobalStore().unpopulatedCheckActive) {
+                            //when this check is off, this item is being constructed
+                            //so we ignore initial set operations
+                            return;
                         }
+
+                        // when we set value, we just accept it and treat all
+                        // properties accessors that don't throw the Error above as "updated"
+                        Object.defineProperty(this, property.symbol, {
+                            enumerable: false,
+                            writable: true,
+                            value: v
+                        });
                     }
                 });
             }
@@ -136,13 +144,12 @@ export class Formatter {
         return this.proxyClasses.get(classSchema.classType)!;
     }
 
-    protected setProxyClassOfReference(
+    protected getReference(
         classSchema: ClassSchema,
-        converted: any,
         dbItem: any,
         propertySchema: PropertySchema,
         isPartial: boolean
-    ): void {
+    ): object | undefined {
         if (undefined === dbItem[propertySchema.getForeignKeyName()]) {
             if (propertySchema.isOptional) return;
             throw new Error(`Foreign key for ${propertySchema.name} is not projected.`);
@@ -160,21 +167,19 @@ export class Formatter {
         //note: foreign keys only support currently a single foreign key ...
         const foreignPrimaryKey = {[foreignPrimaryFields[0].name]: dbItem[fkName]};
 
-        const pkHash = classSchema.getPrimaryFieldHash(foreignPrimaryKey, this.serializerSourceName);
+        const pkHash = getPrimaryKeyHashGenerator(foreignSchema)(foreignPrimaryKey);
 
         const pool = this.getInstancePoolForClass(foreignSchema.classType);
 
         if (!isPartial) {
-            if (this.isWithIdentityMap()) {
-                const item = this.session.identityMap.getByHash(foreignSchema, pkHash);
+            if (this.identityMap) {
+                const item = this.identityMap.getByHash(foreignSchema, pkHash);
                 if (item) {
-                    converted[propertySchema.name] = item;
-                    return;
+                    return item;
                 }
             }
             if (pool.has(pkHash)) {
-                converted[propertySchema.name] = pool.get(pkHash);
-                return;
+                return pool.get(pkHash);
             }
         }
 
@@ -189,26 +194,27 @@ export class Formatter {
         const ref = new (this.getProxyClass(foreignSchema))(...args);
         Object.assign(ref, foreignPrimaryKeyAsClass);
 
-        converted[propertySchema.name] = ref;
         getGlobalStore().unpopulatedCheckActive = true;
         getInstanceState(ref).markAsFromDatabase();
 
         if (!isPartial) {
             pool.set(pkHash, ref);
-            if (this.isWithIdentityMap()) this.session.identityMap.store(foreignSchema, ref);
+            if (this.identityMap) this.identityMap.store(foreignSchema, ref);
         }
+
+        return ref;
     }
 
     protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
-        const pkHash = classSchema.getPrimaryFieldHash(value, this.serializerSourceName);
+        const pkHash = getPrimaryKeyHashGenerator(classSchema, this.serializerSourceName)(value);
         const pool = this.getInstancePoolForClass(classSchema.classType);
 
         if (pool.has(pkHash)) {
             return pool.get(pkHash);
         }
 
-        if (this.isWithIdentityMap() && !model.isPartial()) {
-            const item = this.session.identityMap.getByHash(classSchema, pkHash);
+        if (this.identityMap && !model.isPartial()) {
+            const item = this.identityMap.getByHash(classSchema, pkHash);
 
             if (item) {
                 const fromDatabase = getInstanceState(item).isFromDatabase();
@@ -275,8 +281,8 @@ export class Formatter {
             getInstanceState(converted).markAsPersisted();
             pool.set(pkHash, converted);
 
-            if (this.isWithIdentityMap()) {
-                this.session.identityMap.store(classSchema, converted);
+            if (this.identityMap) {
+                this.identityMap.store(classSchema, converted);
             }
         }
 
@@ -318,7 +324,8 @@ export class Formatter {
             } else {
                 //not populated
                 if (join.propertySchema.isReference) {
-                    this.setProxyClassOfReference(classSchema, converted, value, join.propertySchema, model.isPartial());
+                    const reference = this.getReference(classSchema, value, join.propertySchema, model.isPartial());
+                    if (reference) converted[join.propertySchema.name] = reference;
                 } else {
                     //unpopulated backReferences are inaccessible
                     if (!model.isPartial()) {
@@ -328,11 +335,12 @@ export class Formatter {
             }
         }
 
-        //all non-populated relations will be
+        //all non-populated owning references will be just proxy references
         for (const propertySchema of classSchema.references.values()) {
             if (handledRelation[propertySchema.name]) continue;
             if (propertySchema.isReference) {
-                this.setProxyClassOfReference(classSchema, converted, value, propertySchema, model.isPartial());
+                const reference = this.getReference(classSchema, value, propertySchema, model.isPartial());
+                if (reference) converted[propertySchema.name] = reference;
             } else {
                 //unpopulated backReferences are inaccessible
                 if (!model.isPartial()) {

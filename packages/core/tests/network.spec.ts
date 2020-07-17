@@ -1,5 +1,5 @@
 import 'jest-extended';
-import {parseHost} from "../src";
+import {parseHost} from '../src/network';
 
 test('parseHost', () => {
 

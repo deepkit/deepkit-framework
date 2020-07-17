@@ -94,25 +94,6 @@ export function getUnserializedError(entityName: string, error: any, stack: any,
     }
 }
 
-export class ReactiveSubQuery<T> {
-    constructor(public classType: ClassType<T>, public query: FilterQuery<T>, public field: string) {
-    }
-
-    /**
-     * Uses the `id` per default as localKey.
-     */
-    static create<T>(classType: ClassType<T>, query: FilterQuery<T>): ReactiveSubQuery<T> {
-        return new ReactiveSubQuery(classType, query, 'id');
-    }
-
-    /**
-     * With custom localKey.
-     */
-    static createField<T>(classType: ClassType<T>, localKey: string, query: FilterQuery<T>) {
-        return new ReactiveSubQuery(classType, query, localKey);
-    }
-}
-
 // export type Query<T> = {
 //     $eq?: T;
 //     $ne?: T;
@@ -191,7 +172,6 @@ export type QuerySelector<T> = {
     $bitsAnySet?: any;
 
     //special super-hornet types
-    $sub?: ReactiveSubQuery<any>;
     $parameter?: string;
 };
 

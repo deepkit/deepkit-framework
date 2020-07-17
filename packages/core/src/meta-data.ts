@@ -1,15 +1,16 @@
 const myGlobal = new Map()
 
+
 function getGlobal(): Map<any, any> {
     if ('undefined' !== typeof window) {
         if (!(window as any)['__super_hornet']) (window as any)['__super_hornet'] = new Map();
 
         return (window as any)['__super_hornet'];
     }
-    if ('undefined' !== typeof global) {
-        if (!(global as any)['__super_hornet']) (global as any)['__super_hornet'] = new Map();
+    if ('undefined' !== typeof globalThis) {
+        if (!(globalThis as any)['__super_hornet']) (globalThis as any)['__super_hornet'] = new Map();
 
-        return (global as any)['__super_hornet'];
+        return (globalThis as any)['__super_hornet'];
     }
     return myGlobal;
 }

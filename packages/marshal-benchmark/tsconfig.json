@@ -22,6 +22,9 @@
   ],
   "references": [
     {
+      "path": "node_modules/@super-hornet/core/tsconfig.json"
+    },
+    {
       "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
     }
   ]

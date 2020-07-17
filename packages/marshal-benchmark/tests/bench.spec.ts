@@ -4,9 +4,8 @@ import {
     classToPlain as classTransformerClassToPlain,
     plainToClass as classTransformerPlainToClass
 } from "class-transformer";
-import {bench} from "./util";
-import {jitClassToPlain, jitPlainToClass} from "@super-hornet/marshal";
-import {f} from "@super-hornet/marshal";
+import {BenchSuite} from "@super-hornet/core";
+import {f, jitClassToPlain, jitPlainToClass, plainToClass} from "@super-hornet/marshal";
 import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from "cerialize";
 
 export class MarshalModel {
@@ -46,42 +45,33 @@ export class CerializeModel {
 }
 
 test('benchmark plainToClass', () => {
-    const count = 100_000;
+    const plain = {
+        name: 'name',
+        id: 2,
+        tags: ['a', 'b', 'c'],
+        priority: 5,
+        ready: true,
+    }
+    const suite = new BenchSuite('plainToClass simple model', 100_000);
 
-    bench(count, 'Marshal jitPlainToClass SuperSimple', (i) => {
-        jitPlainToClass(MarshalModel, {
-            name: 'name' + i,
-            id: i,
-            tags: ['a', 'b', 'c'],
-            priority: 5,
-            ready: true,
-        });
+    suite.add('Marshal', (i) => {
+        plainToClass(MarshalModel, plain);
     });
 
-    bench(count, 'ClassTransformer plainToClass SuperSimple', (i) => {
-        classTransformerPlainToClass(ClassTransformerModel, {
-            name: 'name' + i,
-            id: i,
-            tags: ['a', 'b', 'c'],
-            priority: 5,
-            ready: true,
-        });
+    // console.log('jit', getJitFunctionPlainToClass(MarshalModel).toString());
+
+    suite.add('ClassTransformer', (i) => {
+        classTransformerPlainToClass(ClassTransformerModel, plain);
     });
 
-    bench(count, 'Cerialize Deserialize SuperSimple', (i) => {
-        Deserialize({
-            name: 'name' + i,
-            id: i,
-            tags: ['a', 'b', 'c'],
-            priority: 5,
-            ready: true,
-        }, CerializeModel);
+    suite.add('Cerialize', (i) => {
+        Deserialize(plain, CerializeModel);
     });
+
+    suite.run();
 });
 
 test('benchmark classToPlain', () => {
-    const count = 100_000;
-
     const b = jitPlainToClass(MarshalModel, {
         name: 'name1',
         id: 1,
@@ -90,15 +80,21 @@ test('benchmark classToPlain', () => {
         ready: true,
     });
 
-    bench(count, 'Marshal jitClassToPlain SuperSimple', (i) => {
+    const suite = new BenchSuite('classToPlain simple model', 100_000);
+
+    suite.add('Marshal', (i) => {
         jitClassToPlain(MarshalModel, b);
     });
 
-    bench(count, 'ClassTransformer classToPlain SuperSimple', (i) => {
+    // console.log('jit', getJitFunctionClassToPlain(MarshalModel).toString());
+
+    suite.add('ClassTransformer', (i) => {
         classTransformerClassToPlain(b);
     });
 
-    bench(count, 'Cerialize Serialize SuperSimple', (i) => {
+    suite.add('Cerialize', (i) => {
         Serialize(b, CerializeModel);
     });
+
+    suite.run();
 });

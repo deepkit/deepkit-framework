@@ -5,7 +5,8 @@ import {ClassSchema, getClassSchema, getClassTypeFromInstance} from "@super-horn
 import {GroupArraySort} from "@super-hornet/topsort";
 import {IdentityMap, getInstanceState} from "./identity-map";
 import {getClassSchemaInstancePairs} from './utils';
-import {markAsHydrated} from './formatter';
+import {HydratorFn, markAsHydrated} from './formatter';
+import {getPrimaryKeyExtractor} from './converter';
 
 let SESSION_IDS = 0;
 
@@ -99,16 +100,20 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         const sorter = new GroupArraySort<Entity, ClassSchema<any>>();
         sorter.sameTypeExtraGrouping = true;
 
+        // const start = performance.now();
         for (const item of this.addQueue.values()) {
             const classSchema = getClassSchema(getClassTypeFromInstance(item));
             sorter.add(item, classSchema, this.getReferenceDependencies(item));
         }
 
-        sorter.sort();
+        const items = sorter.sort();
         const groups = sorter.getGroups();
+        // console.log('dependency resolution of', items.length, 'items took', performance.now() - start, 'ms');
 
         for (const group of groups) {
+            // const start = performance.now();
             await this.persistence.persist(group.type, group.items);
+            // console.log('persist of', group.items.length, 'items took', performance.now() - start, 'ms');
             this.identityMap.storeMany(group.type, group.items);
         }
     }
@@ -237,22 +242,29 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         //todo: implement
     }
 
-    public async hydrateEntity<T>(item: T) {
+    public getHydrator(): HydratorFn {
+        return this.hydrateEntity.bind(this);
+    }
+
+    public async hydrateEntity<T extends object>(item: T) {
         const classType = getClassTypeFromInstance(item);
         const classSchema = getClassSchema(classType);
-        const pk = classSchema.getPrimaryFieldRepresentation(item);
+        const pk = getPrimaryKeyExtractor(classSchema)(item);
 
         const itemDB = await this.query(classType).filter(pk).findOne();
 
         for (const property of classSchema.getClassProperties().values()) {
-            if (property.name === classSchema.idField) continue;
+            if (property.isId) continue;
             if (property.isReference || property.backReference) continue;
 
-            Object.defineProperty(item, property.name, {
-                enumerable: true,
-                configurable: true,
-                value: itemDB[property.name as keyof T]
-            });
+            //we set only not overwritten values
+            if (!item.hasOwnProperty(property.symbol)) {
+                Object.defineProperty(item, property.symbol, {
+                    enumerable: true,
+                    configurable: true,
+                    value: itemDB[property.name as keyof T]
+                });
+            }
         }
 
         markAsHydrated(item);

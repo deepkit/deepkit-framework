@@ -142,14 +142,14 @@ test('test save model', async () => {
 
     {
         const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();
-        expect(found).toBe(instance);
+        expect(found === instance).toBe(true);
         expect(found).toBeInstanceOf(SimpleModel);
         expect(found!.name).toBe('myName');
     }
 
     {
         const found = await session.query(SimpleModel).disableIdentityMap().filter({id: instance.id}).findOne();
-        expect(found).not.toBe(instance);
+        expect(found === instance).toBe(false);
         expect(found).toBeInstanceOf(SimpleModel);
         expect(found!.name).toBe('myName2');
     }
@@ -412,8 +412,8 @@ test('references back', async () => {
     }
 
     const imageSchema = getClassSchema(Image);
-    expect(imageSchema.getProperty('userId')).toBeInstanceOf(PropertySchema);
-    expect(imageSchema.getProperty('userId').type).toBe('uuid');
+    // expect(imageSchema.getProperty('userId')).toBeInstanceOf(PropertySchema);
+    // expect(imageSchema.getProperty('userId').type).toBe('uuid');
 
     const marc = new User('marc');
     const peter = new User('peter');
@@ -486,10 +486,8 @@ test('references back', async () => {
         expect(() => {
             image2.user.name;
         }).toThrow(`Can not access 'name' since class User was not completely hydrated`);
-        // expect(image2['userId']).not.toBeUndefined();
-        expect(() => {
-            image2.user.name = '';
-        }).toThrow(`Can not access 'name' since class User was not completely hydrated`);
+        image2.user.name = 'changed';
+        expect(image2.user.name).toBe('changed');
         expect(image2.title).toBe('image2');
 
         //writing is allowed again
@@ -505,4 +503,19 @@ test('references back', async () => {
         expect(image2.user).toBeInstanceOf(User);
         expect(image2.user.name).toBe('marc');
     }
+});
+
+test('test identityMap', async () => {
+    const session = await createDatabaseSession('testing');
+
+    const item = new SimpleModel('myName1');
+    await session.immediate.persist(item);
+
+    const pkHash = getInstanceState(item).getLastKnownPKHashOrCurrent();
+    const idItem = session.identityMap.getByHash(getClassSchema(SimpleModel), pkHash);
+    expect(idItem).toBe(item);
+
+    const dbItem = await session.query(SimpleModel).filter({name: 'myName1'}).findOne();
+    expect(dbItem === item).toBe(true);
+    expect(dbItem).toBe(item);
 });

@@ -25,7 +25,8 @@
     "ws": "^7.2.5"
   },
   "devDependencies": {
-    "@types/ws": "^7.2.6"
+    "@types/ws": "^7.2.6",
+    "@types/fs-extra": "^9.0.1"
   },
   "jest": {
     "transform": {

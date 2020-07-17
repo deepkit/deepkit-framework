@@ -18,7 +18,8 @@
     "composite": true
   },
   "include": [
-    "tests"
+    "tests",
+    "node_modules/@super-hornet/framework-shared/**/*.ts"
   ],
   "references": [
     {

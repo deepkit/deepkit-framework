@@ -7,9 +7,8 @@ import {
     Transform,
     Type
 } from "class-transformer";
-import {bench} from "./util";
-import {Entity, jitClassToPlain, jitPlainToClass} from "@super-hornet/marshal";
-import {f} from "@super-hornet/marshal";
+import {bench, BenchSuite} from "@super-hornet/core";
+import {classToPlain, Entity, f, plainToClass} from "@super-hornet/marshal";
 
 export class JobTaskQueue {
     @f
@@ -121,9 +120,11 @@ export class ClassTransformerSimpleModel {
 }
 
 
-test('benchmark plainToClass', () => {
-    bench(10000, 'Marshal: jitPlainToClass Big Entity', (i) => {
-        jitPlainToClass(SimpleModel, {
+test('benchmark big plainToClass', () => {
+    const suite = new BenchSuite('plainToClass big model', 100_000);
+
+    suite.add('Marshal', (i) => {
+        plainToClass(SimpleModel, {
             name: 'name' + i,
             type: 2,
             plan: Plan.ENTERPRISE,
@@ -133,7 +134,7 @@ test('benchmark plainToClass', () => {
         });
     });
 
-    bench(10000, 'ClassTransformer: plainToClass Big Entity', (i) => {
+    suite.add('ClassTransformer', (i) => {
         classTransformerPlainToClass(ClassTransformerSimpleModel, {
             name: 'name' + i,
             type: 2,
@@ -143,9 +144,13 @@ test('benchmark plainToClass', () => {
             types: ['a', 'b', 'c']
         });
     });
+
+    suite.run();
 });
 
-test('benchmark classToPlain', () => {
+test('benchmark big classToPlain', () => {
+    const suite = new BenchSuite('classToPlain big model', 100_000);
+
     {
         const item = new SimpleModel('name');
         item.type = 2;
@@ -154,9 +159,9 @@ test('benchmark classToPlain', () => {
         item.childrenMap['sub'] = new SubModel('sub');
         item.types = ['a', 'b', 'c'];
 
-        bench(10000, 'Marshal: jitClassToPlain Big Entity', (i) => {
+        suite.add('Marshal: jitClassToPlain Big Entity', (i) => {
             item.name = 'item_' + i;
-            jitClassToPlain(SimpleModel, item);
+            classToPlain(SimpleModel, item);
         });
     }
 
@@ -167,8 +172,10 @@ test('benchmark classToPlain', () => {
         item.children.push(new SubModel('sub'));
         item.childrenMap['sub'] = new SubModel('sub');
         item.types = ['a', 'b', 'c'];
-        bench(10000, 'ClassTransformer: classToPlain Big Entity', (i) => {
+        suite.add('ClassTransformer: classToPlain Big Entity', (i) => {
             classTransformerClassToPlain(item);
         });
     }
+
+    suite.run();
 });

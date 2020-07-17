@@ -36,6 +36,7 @@
       "packages/marshal-mongo",
       "packages/marshal",
       "packages/marshal-nest",
+      "packages/framework-integration",
       "packages/framework-server",
       "packages/framework-server-common",
       "packages/framework-shared",

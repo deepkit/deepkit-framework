@@ -1,6 +1,6 @@
 import {ClassType, CustomError} from '@super-hornet/core';
 import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from "./query";
-import {getHydratedDatabaseSession, isHydrated} from "./formatter";
+import {getDatabaseSessionHydrator, isHydrated} from "./formatter";
 import {ClassSchema} from "@super-hornet/marshal";
 import {DatabaseSession} from "./database-session";
 
@@ -15,7 +15,7 @@ export class NoIDDefinedError extends CustomError {
  */
 export async function hydrateEntity<T>(item: T) {
     if (isHydrated(item)) {
-        return await getHydratedDatabaseSession(item).hydrateEntity(item);
+        return await getDatabaseSessionHydrator(item)(item);
     }
     throw new Error(`Given object is not a proxy object and thus can not be hydrated, or is already hydrated.`);
 }

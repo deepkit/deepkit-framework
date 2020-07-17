@@ -83,10 +83,10 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>
 export class ItemNotFound extends Error {
 }
 
-export abstract class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>> {
+export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>> {
     public format: 'class' | 'json' | 'raw' = 'class';
 
-    protected constructor(
+    constructor(
         public readonly classSchema: ClassSchema<T>,
         public model: MODEL
     ) {
@@ -299,7 +299,7 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter, M
  * All query implementations should extend this since  db agnostic consumers are probably
  * coding against this interface via using Database<DatabaseAdapter>.
  */
-export abstract class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>, RESOLVER extends GenericQueryResolver<T, any, MODEL>> extends BaseQuery<T, MODEL> {
+export class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>, RESOLVER extends GenericQueryResolver<T, any, MODEL>> extends BaseQuery<T, MODEL> {
     constructor(classSchema: ClassSchema<T>, model: MODEL, protected resolver: RESOLVER) {
         super(classSchema, model);
     }

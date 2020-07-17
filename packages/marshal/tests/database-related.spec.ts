@@ -52,14 +52,6 @@ class OrganisationMembership {
     }
 }
 
-test('test primaryKeyStuff', async () => {
-    const userSchema = getClassSchema(User);
-    const item = new User('asd');
-
-    expect(userSchema.getPrimaryFieldRepresentation(item)).toEqual({id: item.id});
-
-});
-
 test('test reverse ref', async () => {
     const userSchema = getClassSchema(User);
     const organisationSchema = getClassSchema(Organisation);

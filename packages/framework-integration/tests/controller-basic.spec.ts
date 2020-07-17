@@ -165,14 +165,21 @@ test('basic serialisation: primitives', async () => {
         @Action()
         @f.array(String)
         names(last: string): string[] {
-            return ['a', 'b', 'c', 15 as any as string, last];
+            return ['a', 'b', 'c', "15", last];
         }
     }
 
     const {client, close} = await createServerClientPair('basic setup primitives', appModuleForControllers([TestController]));
 
     const test = client.controller<TestController>('test');
-    const names = await test.names(16 as any as string);
+    try {
+        await test.names(16 as any as string);
+        fail('should fail');
+    } catch (error) {
+        expect(error.message).toContain('names#0: No string given');
+    }
+
+    const names = await test.names("16");
 
     expect(names).toEqual(['a', 'b', 'c', "15", "16"]);
 

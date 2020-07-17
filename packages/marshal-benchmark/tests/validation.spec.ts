@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {f, PropertyValidator, PropertyValidatorError} from "@super-hornet/marshal";
-import {bench} from "./util";
+import {bench, BenchSuite} from "@super-hornet/core";
 import {jitValidate} from "@super-hornet/marshal";
 import * as Ajv from 'ajv';
 
@@ -42,6 +42,12 @@ export const DATA = Object.freeze({
     boolean: true,
 });
 
+export const DATASimple = Object.freeze({
+    number: 1,
+    string: 'string1',
+    boolean: true,
+});
+
 export type Data = typeof DATA;
 
 
@@ -65,6 +71,15 @@ class MarshalModel implements Data {
     boolean!: boolean;
 }
 
+
+class MarshalModelSimple {
+    @f number!: number;
+
+    @f string!: string;
+
+    @f boolean!: boolean;
+}
+
 const QuartetModelChecker = e<MarshalModel>({
     number: e.number,
     negNumber: e.and(e.number, e.negative),
@@ -74,12 +89,19 @@ const QuartetModelChecker = e<MarshalModel>({
     boolean: e.boolean,
 });
 
+const QuartetModelSimpleChecker = e<MarshalModel>({
+    number: e.number,
+    strings: e.string,
+    boolean: e.boolean,
+});
+
 const MarshalModelValidation = jitValidate(MarshalModel);
+const MarshalModelSimpleValidation = jitValidate(MarshalModelSimple);
 
 test('benchmark validation', () => {
-    const count = 100_000;
+    const suite = new BenchSuite('validation', 100_000);
 
-    bench(count, 'validation Marshal', (i) => {
+    suite.add('Marshal', (i) => {
         const errors = MarshalModelValidation(DATA);
     });
 
@@ -105,14 +127,50 @@ test('benchmark validation', () => {
         const valid = validate(DATA);
         expect(valid).toBe(true);
 
-        bench(count, 'validation ajv', (i) => {
+        suite.add('ajv', (i) => {
             const valid = validate(DATA);
         });
     }
 
-    bench(count, 'validation quartet', (i) => {
+    suite.add('quartet', (i) => {
         const valid = QuartetModelChecker(DATA);
     });
+
+    suite.run();
+});
+
+test('benchmark validation types only', () => {
+    const suite = new BenchSuite('validation simple, types only', 100_000);
+
+    suite.add('Marshal', (i) => {
+        const errors = MarshalModelSimpleValidation(DATASimple);
+    });
+
+    {
+        const schema = {
+            "$id": "http://example.com/schemas/defs.json",
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer"},
+                "boolean": {"type": "boolean"},
+            },
+            "required": ["number", "string", "boolean"],
+        };
+        const ajv = new Ajv();
+        const validate = ajv.compile(schema);
+        const valid = validate(DATASimple);
+        expect(valid).toBe(true);
+
+        suite.add('ajv', (i) => {
+            const valid = validate(DATASimple);
+        });
+    }
+
+    suite.add('quartet', (i) => {
+        const valid = QuartetModelSimpleChecker(DATASimple);
+    });
+
+    suite.run();
 });
 
 
