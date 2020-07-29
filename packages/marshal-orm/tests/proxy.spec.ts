@@ -1,22 +1,22 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema} from '@super-hornet/marshal';
+import {t, getClassSchema} from '@super-hornet/marshal';
 import {Formatter} from '../src/formatter';
 import {DatabaseQueryModel} from '../src/query';
 
 test('proxy', () => {
     class Image {
-        @f.primary() id: number = 0;
+        @t.primary id: number = 0;
 
-        @f data: string = 'empty';
+        @t data: string = 'empty';
     }
 
     class User {
-        @f.primary() id: number = 0;
+        @t.primary id: number = 0;
 
-        @f.reference().optional() image?: Image;
+        @t.reference().optional image?: Image;
 
-        constructor(@f public username: string) {
+        constructor(@t public username: string) {
         }
     }
 

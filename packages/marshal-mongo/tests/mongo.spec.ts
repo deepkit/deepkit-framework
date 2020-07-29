@@ -5,12 +5,11 @@ import {
     classToPlain,
     DatabaseName,
     Entity,
-    f,
     getClassSchema,
     getDatabaseName,
     getEntityName,
     plainToClass,
-    PropertySchema,
+    t,
     uuid,
 } from "@super-hornet/marshal";
 import {Binary, ObjectID} from "mongodb";
@@ -21,7 +20,6 @@ import {uuid4Stringify} from "../src/compiler-templates";
 import {MongoDatabaseAdapter, MongoDatabaseConfig} from "../src/adapter";
 import {resolveCollectionName} from "../src/connection";
 import {SimpleModel, SuperSimple} from "./entities";
-import {isPlainObject} from "@super-hornet/core";
 
 let database: Database<MongoDatabaseAdapter>;
 
@@ -39,9 +37,9 @@ afterEach(async () => {
 test('test moment db', async () => {
     @Entity('model-moment')
     class Model {
-        @f.primary().mongoId() _id?: string;
+        @t.primary.mongoId _id?: string;
 
-        @f.moment()
+        @t.moment
         created: moment.Moment = moment();
     }
 
@@ -62,10 +60,10 @@ test('test save undefined values', async () => {
 
     @Entity('undefined-model-value')
     class Model {
-        @f.primary().mongoId() _id?: string;
+        @t.primary.mongoId _id?: string;
 
         constructor(
-            @f.optional()
+            @t.optional
             public name?: string) {
         }
     }
@@ -275,10 +273,10 @@ test('test databaseName', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing2')
     class DifferentDataBase {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id?: string;
 
-        @f
+        @t
         name?: string;
     }
 
@@ -306,10 +304,10 @@ test('no id', async () => {
 
     @Entity('NoId')
     class NoId {
-        @f.mongoId()
+        @t.mongoId
         _id?: string;
 
-        @f
+        @t
         name?: string;
     }
 
@@ -326,16 +324,16 @@ test('second object id', async () => {
 
     @Entity('SecondObjectId')
     class SecondObjectId {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id?: string;
 
-        @f
+        @t
         name?: string;
 
-        @f.type(ArrayBuffer)
+        @t.type(ArrayBuffer)
         preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
 
-        @f.mongoId()
+        @t.mongoId
         secondId?: string;
     }
 
@@ -388,22 +386,22 @@ test('references back', async () => {
 
     @Entity('user1')
     class User {
-        @f.uuid().primary() id: string = uuid();
+        @t.uuid.primary id: string = uuid();
 
-        @f.forwardArray(() => Image).backReference()
+        @t.array(() => Image).backReference()
         public images: Image[] = [];
 
-        constructor(@f public name: string) {
+        constructor(@t public name: string) {
         }
     }
 
     @Entity('image1')
     class Image {
-        @f.uuid().primary() id: string = uuid();
+        @t.uuid.primary id: string = uuid();
 
         constructor(
-            @f.forward(() => User).reference() public user: User,
-            @f public title: string,
+            @t.type(() => User).reference() public user: User,
+            @t public title: string,
         ) {
             if (user.images && !user.images.includes(this)) {
                 user.images.push(this);
@@ -411,6 +409,8 @@ test('references back', async () => {
         }
     }
 
+    const userSchema = getClassSchema(User);
+    expect(userSchema.getProperty('images').backReference).not.toBeUndefined();
     const imageSchema = getClassSchema(Image);
     // expect(imageSchema.getProperty('userId')).toBeInstanceOf(PropertySchema);
     // expect(imageSchema.getProperty('userId').type).toBe('uuid');

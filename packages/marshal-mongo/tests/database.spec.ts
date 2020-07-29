@@ -3,17 +3,17 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Database} from "@super-hornet/marshal-orm";
 import {MongoDatabaseAdapter, MongoDatabaseConfig} from "../src/adapter";
-import {Entity, f} from "@super-hornet/marshal";
+import {Entity, t} from "@super-hornet/marshal";
 
 jest.setTimeout(100000);
 
 test('simple', async () => {
     @Entity('asd')
     class Test {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id!: string;
 
-        constructor(@f public name: string) {
+        constructor(@t public name: string) {
         }
     }
 
@@ -39,10 +39,10 @@ test('simple', async () => {
 test('unit of work', async () => {
     @Entity('asd2')
     class Test {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id!: string;
 
-        constructor(@f public name: string) {
+        constructor(@t public name: string) {
         }
     }
 
@@ -72,10 +72,10 @@ test('unit of work', async () => {
 test('repository', async () => {
     @Entity('asd3')
     class Test {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id!: string;
 
-        constructor(@f public name: string) {
+        constructor(@t public name: string) {
         }
     }
 
@@ -105,10 +105,10 @@ test('repository', async () => {
 test('session', async () => {
     @Entity('asd4')
     class Test {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id!: string;
 
-        constructor(@f public name: string) {
+        constructor(@t public name: string) {
         }
     }
 

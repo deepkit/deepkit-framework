@@ -1,51 +1,51 @@
 import 'jest';
 import 'jest-extended';
-import {Entity, f, getClassSchema, uuid} from "@super-hornet/marshal";
+import {Entity, t, getClassSchema, uuid} from "@super-hornet/marshal";
 import {getInstanceState, hydrateEntity} from "@super-hornet/marshal-orm";
 import { createDatabaseSession } from './mongo.spec';
 
 @Entity('user2')
 class User {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
-    @f.forwardArray(() => Organisation).backReference({via: () => OrganisationMembership})
+    @t.array(() => Organisation).backReference({via: () => OrganisationMembership})
     organisations: Organisation[] = [];
 
     //self reference
-    @f.optional().reference()
+    @t.optional.reference()
     manager?: User;
 
-    @f.array(User).backReference()
+    @t.array(User).backReference()
     managedUsers: User[] = [];
 
-    constructor(@f public name: string) {
+    constructor(@t public name: string) {
     }
 }
 
 @Entity('organisation2')
 class Organisation {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
-    @f.array(User).backReference({mappedBy: 'organisations', via: () => OrganisationMembership})
+    @t.array(User).backReference({mappedBy: 'organisations', via: () => OrganisationMembership})
     users: User[] = [];
 
     constructor(
-        @f public name: string,
-        @f.reference() public owner: User,
+        @t public name: string,
+        @t.reference() public owner: User,
     ) {
     }
 }
 
 @Entity('organisation_member2')
 class OrganisationMembership {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
     constructor(
-        @f.reference().index() public user: User,
-        @f.reference().index() public organisation: Organisation,
+        @t.reference().index() public user: User,
+        @t.reference().index() public organisation: Organisation,
     ) {
     }
 }

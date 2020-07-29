@@ -1,9 +1,9 @@
-import {forwardRef, f} from "../../src/decorators";
+import {t} from "../../src/decorators";
 import {PageClass} from "./PageClass";
 
 export class PageCollection {
     constructor(
-        @f.array(forwardRef(() => PageClass)).decorated()
+        @t.array(() => PageClass).decorated
         private readonly pages: PageClass[] = []
     ) {
     }

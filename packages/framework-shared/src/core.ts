@@ -7,7 +7,7 @@ import {
     arrayBufferTo,
     classToPlain,
     Entity,
-    f,
+    t,
     getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName,
     plainToClass,
 } from "@super-hornet/marshal";
@@ -15,16 +15,16 @@ import {skip} from "rxjs/operators";
 
 @Entity('@error:json')
 export class JSONError {
-    constructor(@f.any().asName('json') public readonly json: any) {
+    constructor(@t.any.name('json') public readonly json: any) {
     }
 }
 
 
 export class ValidationErrorItem {
     constructor(
-        @f.asName('path') public readonly path: string,
-        @f.asName('message') public readonly message: string,
-        @f.asName('code') public readonly code: string,
+        @t.name('path') public readonly path: string,
+        @t.name('message') public readonly message: string,
+        @t.name('code') public readonly code: string,
     ) {
     }
 }
@@ -32,7 +32,7 @@ export class ValidationErrorItem {
 @Entity('@error:validation')
 export class ValidationError {
     constructor(
-        @f.array(ValidationErrorItem).asName('errors') public readonly errors: ValidationErrorItem[]
+        @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
     ) {
     }
 
@@ -48,10 +48,10 @@ export class ValidationError {
 @Entity('@error:parameter')
 export class ValidationParameterError {
     constructor(
-        @f.asName('controller') public readonly controller: string,
-        @f.asName('action') public readonly action: string,
-        @f.asName('arg') public readonly arg: number,
-        @f.array(ValidationErrorItem).asName('errors') public readonly errors: ValidationErrorItem[]
+        @t.name('controller') public readonly controller: string,
+        @t.name('action') public readonly action: string,
+        @t.name('arg') public readonly arg: number,
+        @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
     ) {
     }
 

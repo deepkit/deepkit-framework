@@ -1,5 +1,5 @@
 import {IdInterface} from "./contract";
-import {Entity, f, uuid} from "@super-hornet/marshal";
+import {Entity, t, uuid} from "@super-hornet/marshal";
 import {ClassType, eachKey} from "@super-hornet/core";
 
 export enum FileMode {
@@ -9,25 +9,25 @@ export enum FileMode {
 
 @Entity('file', 'files')
 export class HornetFile implements IdInterface {
-    @f.primary().uuid()
+    @t.primary.uuid
     id: string = uuid();
 
-    @f
+    @t
     version: number = 0;
 
-    @f.enum(FileMode)
+    @t.enum(FileMode)
     mode: FileMode = FileMode.closed;
 
-    @f.index()
+    @t.index()
     md5?: string; //undefined in case of file is in mode=streaming
 
-    @f
+    @t
     size: number = 0;
 
-    @f
+    @t
     created: Date = new Date();
 
-    @f
+    @t
     updated: Date = new Date();
 
     constructor(
@@ -38,7 +38,7 @@ export class HornetFile implements IdInterface {
          *    model.py
          *    .deepkit/log/master.txt
          */
-        @f.asName('path').index()
+        @t.name('path').index()
         public path: string,
     ) {
         if (undefined === this.path) {

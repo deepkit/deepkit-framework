@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, createClassSchema, f, plainToClass} from "../index";
+import {classToPlain, createClassSchema, t, plainToClass} from "../index";
 
 test('test createClassSchema', async () => {
 
@@ -13,18 +13,18 @@ test('test createClassSchema', async () => {
 
     const schema = createClassSchema(ExternalClass);
 
-    schema.addProperty('id', f.type(String));
-    schema.addProperty('title', f.type(String));
-    schema.addProperty('lists', f.array(Number));
-    schema.addProperty('map', f.map(Number));
+    schema.addProperty('id', t.type(String));
+    schema.addProperty('title', t.type(String));
+    schema.addProperty('lists', t.array(Number));
+    schema.addProperty('map', t.map(Number));
 
     expect(schema.propertyNames).toEqual(['id', 'title', 'lists', 'map']);
 
     expect(schema.getProperty('id').type).toEqual('string');
-    expect(schema.getProperty('lists').type).toEqual('number');
     expect(schema.getProperty('lists').isArray).toEqual(true);
-    expect(schema.getProperty('map').type).toEqual('number');
+    expect(schema.getProperty('lists').getSubType().type).toEqual('number');
     expect(schema.getProperty('map').isMap).toEqual(true);
+    expect(schema.getProperty('map').getSubType().type).toEqual('number');
 
     const obj = plainToClass(ExternalClass, {
         id: '23',
@@ -60,8 +60,8 @@ test('test createClassSchema with constructor', async () => {
 
     const schema = createClassSchema(ExternalClass);
 
-    schema.addMethodProperty('constructor', 0, f.type(String).asName('id'));
-    schema.addProperty('name', f.type(String));
+    schema.addMethodProperty('constructor', 0, t.type(String).name('id'));
+    schema.addProperty('name', t.type(String));
 
     expect(schema.propertyNames).toEqual(['id', 'name']);
 
@@ -91,8 +91,8 @@ test('external class 2', () => {
     }
 
     const schema = createClassSchema(Timestamp);
-    schema.addMethodProperty('constructor', 0, f.type(Number).asName('seconds'));
-    schema.addMethodProperty('constructor', 1, f.type(Number).asName('nanoseconds'));
+    schema.addMethodProperty('constructor', 0, t.type(Number).name('seconds'));
+    schema.addMethodProperty('constructor', 1, t.type(Number).name('nanoseconds'));
 
     expect(schema.getProperty('seconds').type).toBe('number');
     expect(schema.getProperty('nanoseconds').type).toBe('number');

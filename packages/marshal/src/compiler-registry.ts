@@ -77,6 +77,31 @@ export function executeCompiler(
     return template;
 }
 
+function getCompilers(
+    fromFormat: string,
+    toFormat: string,
+    property: PropertyCompilerSchema
+): {compilers: TypeConverterCompiler[], subProperty: PropertyCompilerSchema} {
+    const subProperty = property.isArray || property.isMap ? property.getSubType() : property;
+
+    const compilerDirection = fromFormat + ':' + toFormat;
+    let compilers: TypeConverterCompiler[] = [];
+    const candidate = compilerRegistry.get(compilerDirection + ':' + subProperty.type);
+    if (candidate) compilers.push(candidate);
+
+    if (!compilers.length && fromFormat !== 'class' && toFormat !== 'class') {
+        //no compiler found from fromFormat to toFormat.
+        //we if there is fromFormat:class, and class:toFormat
+        const fromSourceToClass = fromFormat + ':class';
+        const fromClassToTarget = 'class:' + toFormat;
+        const candidateToClass = compilerRegistry.get(fromSourceToClass + ':' + subProperty.type);
+        if (candidateToClass) compilers.push(candidateToClass);
+        const candidateToTarget = compilerRegistry.get(fromClassToTarget + ':' + subProperty.type);
+        if (candidateToTarget) compilers.push(candidateToTarget);
+    }
+
+    return {compilers, subProperty};
+}
 
 export function getDataConverterJS(
     setter: string,
@@ -86,21 +111,7 @@ export function getDataConverterJS(
     toFormat: string,
     rootContext: TypeConverterCompilerContext
 ): string {
-    const compilerDirection = fromFormat + ':' + toFormat;
-    let compilers: TypeConverterCompiler[] = [];
-    const candidate = compilerRegistry.get(compilerDirection + ':' + property.type);
-    if (candidate) compilers.push(candidate);
-
-    if (!compilers.length && fromFormat !== 'class' && toFormat !== 'class') {
-        //no compiler found from fromFormat to toFormat.
-        //we if there is fromFormat:class, and class:toFormat
-        const fromSourceToClass = fromFormat + ':class';
-        const fromClassToTarget = 'class:' + toFormat;
-        const candidateToClass = compilerRegistry.get(fromSourceToClass + ':' + property.type);
-        if (candidateToClass) compilers.push(candidateToClass);
-        const candidateToTarget = compilerRegistry.get(fromClassToTarget + ':' + property.type);
-        if (candidateToTarget) compilers.push(candidateToTarget);
-    }
+    const {compilers, subProperty} = getCompilers(fromFormat, toFormat, property);
 
     if (property.isArray) {
         //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
@@ -124,7 +135,7 @@ export function getDataConverterJS(
                     //make sure all elements have the correct type
                     if (${accessor}[l] !== undefined && ${accessor}[l] !== null) {
                         var itemValue;
-                        ${executeCompiler(rootContext, compilers, `itemValue`, `a[l]`, property)}
+                        ${executeCompiler(rootContext, compilers, `itemValue`, `a[l]`, subProperty)}
                         if (itemValue === undefined) {
                             a.splice(l, 1);
                         } else {
@@ -136,7 +147,7 @@ export function getDataConverterJS(
             }
         `;
     } else if (property.isMap) {
-        const line = compilers.length ? executeCompiler(rootContext, compilers, `a[i]`, `${accessor}[i]`, property) : `a[i] = ${accessor}[i];`;
+        const line = compilers.length ? executeCompiler(rootContext, compilers, `a[i]`, `${accessor}[i]`, subProperty) : `a[i] = ${accessor}[i];`;
         let setDefault = property.isOptional ? '' : `${setter} = {};`;
         return `
             var a = {};
@@ -156,7 +167,7 @@ export function getDataConverterJS(
     } else if (property.isPartial) {
         const varClassType = reserveVariable(rootContext);
         rootContext.set('jitPartial', jitPartial);
-        rootContext.set(varClassType, property.resolveClassType);
+        rootContext.set(varClassType, property.getSubType().resolveClassType);
         return `${setter} = jitPartial('${fromFormat}', '${toFormat}', ${varClassType}, ${accessor}, _options)`;
     } else if (compilers.length) {
         return executeCompiler(rootContext, compilers, setter, accessor, property);

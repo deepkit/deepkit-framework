@@ -1,10 +1,10 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "../index";
-import {f} from "@super-hornet/marshal";
+import {t} from "@super-hornet/marshal";
 
 class SimpleConfig {
-    @f.array(String).decorated()
+    @t.array(t.string).decorated
     items: string[] = [];
 
     constructor(items: string[] = []) {
@@ -12,26 +12,26 @@ class SimpleConfig {
     }
 }
 class SimpleConfigRef {
-    @f name: string = '';
+    @t name: string = '';
 
-    constructor(@f.primary() public id: number) {
+    constructor(@t.primary public id: number) {
     }
 }
 
 class Simple {
-    @f
+    @t
     public id!: number;
 
-    @f
+    @t
     public price!: number;
 
-    @f
+    @t
     public label!: string;
 
-    @f.type(SimpleConfig)
+    @t.type(SimpleConfig)
     public config: SimpleConfig = new SimpleConfig;
 
-    @f.reference()
+    @t.reference()
     public configRef?: SimpleConfigRef;
 }
 
@@ -199,9 +199,9 @@ test('complex 2', () => {
     const names = {};
     const date = new Date();
     class NodeCluster {
-        @f connected: boolean = false;
-        @f disabled: boolean = false;
-        @f lastConnectionTry?: Date;
+        @t connected: boolean = false;
+        @t disabled: boolean = false;
+        @t lastConnectionTry?: Date;
     }
 
     const m = convertPlainQueryToMongo(NodeCluster, {

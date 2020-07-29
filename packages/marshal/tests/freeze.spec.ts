@@ -1,19 +1,19 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, f, getClassSchema} from "../index";
+import {classToPlain, t, getClassSchema} from "../index";
 
 export class StateGoalChecklistItem {
-    @f read: boolean = false;
-    @f skipped: boolean = false;
+    @t read: boolean = false;
+    @t skipped: boolean = false;
 }
 
 export class StateGoal {
-    @f.map(StateGoalChecklistItem) checklistItems: { [id: string]: StateGoalChecklistItem } = {};
+    @t.map(StateGoalChecklistItem) checklistItems: { [id: string]: StateGoalChecklistItem } = {};
 }
 
 export class PersistentState {
-    @f goal: StateGoal = new StateGoal;
+    @t goal: StateGoal = new StateGoal;
 }
 
 test('check freezed objects work with classToPlain', () => {

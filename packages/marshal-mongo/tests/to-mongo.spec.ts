@@ -4,7 +4,7 @@ import {
     arrayBufferFrom,
     arrayBufferTo,
     arrayBufferToBase64,
-    f,
+    t,
     ParentReference,
     partialPlainToClass,
 } from "@super-hornet/marshal";
@@ -67,7 +67,7 @@ test('make sure undefined is undefined', () => {
 
     class Model {
         constructor(
-            @f.optional()
+            @t.optional
             public name?: string) {
         }
     }
@@ -110,13 +110,13 @@ test('convert IDs and invalid values', () => {
     }
 
     class Model {
-        @f.mongoId()
+        @t.mongoId
         id2?: string;
 
-        @f.uuid()
+        @t.uuid
         uuid?: string;
 
-        @f.enum(Enum)
+        @t.enum(Enum)
         enum?: Enum;
     }
 
@@ -143,7 +143,7 @@ test('convert IDs and invalid values', () => {
 
 test('binary', () => {
     class Model {
-        @f.type(ArrayBuffer)
+        @t.type(ArrayBuffer)
         preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
@@ -158,7 +158,7 @@ test('binary', () => {
 
 test('binary from mongo', () => {
     class Model {
-        @f.type(ArrayBuffer)
+        @t.type(ArrayBuffer)
         preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
@@ -382,17 +382,16 @@ test('partial any does not copy ', () => {
 
 test('partial mongo to plain ', () => {
     class User {
-        @f
+        @t
         name?: string;
 
-        @f.array(String)
+        @t.array(String)
         tags?: string[];
 
-        @f.optional()
+        @t.optional
         picture?: ArrayBuffer;
 
-        @f.forward(() => User).optional()
-        @ParentReference()
+        @t.type(() => User).optional.parentReference
         parent?: User;
     }
 

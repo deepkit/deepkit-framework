@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, cloneClass, f, getEntityName, isExcluded, plainToClass, uuid} from "@super-hornet/marshal";
+import {classToPlain, cloneClass, t, getEntityName, isExcluded, plainToClass, uuid} from "@super-hornet/marshal";
 import {Binary} from "mongodb";
 import {classToMongo, mongoToClass, mongoToPlain, plainToMongo} from "../src/mapping";
 import { SimpleModel, Plan, now, SubModel, StringCollectionWrapper } from './entities';
@@ -240,7 +240,7 @@ test('test childrenMap', async () => {
 
 test('test allowNull', async () => {
     class Model {
-        @f.optional()
+        @t.optional
         name?: string;
     }
 

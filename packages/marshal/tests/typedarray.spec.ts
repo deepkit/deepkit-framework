@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
+import {t, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
 import {classToPlain, plainToClass, propertyClassToPlain} from "../src/mapper";
 import {Buffer} from 'buffer';
 import {base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "../index";
@@ -10,15 +10,15 @@ const someText = `Loµ˚∆¨¥§∞¢´´†¥¨¨¶§∞¢®©˙∆rem Ipsum i
 
 test('mapping', async () => {
     class Clazz {
-        @f Int8Array: Int8Array = new Int8Array();
-        @f Uint8Array: Uint8Array = new Uint8Array();
-        @f Uint8ClampedArray: Uint8ClampedArray = new Uint8ClampedArray();
-        @f Int16Array: Int16Array = new Int16Array();
-        @f Uint16Array: Uint16Array = new Uint16Array();
-        @f Int32Array: Int32Array = new Int32Array();
-        @f Uint32Array: Uint32Array = new Uint32Array();
-        @f Float32Array: Float32Array = new Float32Array();
-        @f Float64Array: Float64Array = new Float64Array();
+        @t Int8Array: Int8Array = new Int8Array();
+        @t Uint8Array: Uint8Array = new Uint8Array();
+        @t Uint8ClampedArray: Uint8ClampedArray = new Uint8ClampedArray();
+        @t Int16Array: Int16Array = new Int16Array();
+        @t Uint16Array: Uint16Array = new Uint16Array();
+        @t Int32Array: Int32Array = new Int32Array();
+        @t Uint32Array: Uint32Array = new Uint32Array();
+        @t Float32Array: Float32Array = new Float32Array();
+        @t Float64Array: Float64Array = new Float64Array();
     }
 
     const classSchema = getClassSchema(Clazz);
@@ -31,7 +31,7 @@ test('mapping', async () => {
 
 test('Int8Array', async () => {
     class Clazz {
-        @f ints: Int8Array = new Int8Array();
+        @t ints: Int8Array = new Int8Array();
     }
 
     const clazz = new Clazz();
@@ -92,7 +92,7 @@ test('bencharmk', async () => {
 
 test('Float32Array', async () => {
     class Clazz {
-        @f floats: Float32Array = new Float32Array();
+        @t floats: Float32Array = new Float32Array();
     }
 
     const clazz = new Clazz();
@@ -152,7 +152,7 @@ test('Float32Array', async () => {
 
 test('arrayBuffer', async () => {
     class Clazz {
-        @f ints?: ArrayBuffer;
+        @t ints?: ArrayBuffer;
     }
 
     const clazz = new Clazz();

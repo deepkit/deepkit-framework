@@ -4,13 +4,13 @@ import {Entity, f} from '@super-hornet/marshal';
 
 @Entity('book')
 export class Book {
-    @f.primary().mongoId()
+    @f.primary.mongoId
     _id!: string;
 
-    @f.any().asArray()
+    @f.array(f.any)
     metaArray?: any[];
 
-    @f.array(String)
+    @f.array(f.string)
     metaArrayOfStrings?: string[];
 
     constructor(@f public title: string) {

@@ -1,16 +1,16 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {ObjectID} from "mongodb";
-import {f} from "@super-hornet/marshal";
+import {t} from "@super-hornet/marshal";
 import {mongoToPlain, partialMongoToPlain} from "../src/mapping";
 import {uuid4Binary} from "../src/compiler-templates";
 
 test('mongo to plain', () => {
     class Model {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id?: string;
 
-        @f
+        @t
         date?: Date;
     }
 
@@ -25,13 +25,13 @@ test('mongo to plain', () => {
 
 test('mongo to plain partial', () => {
     class Model {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id?: string;
 
-        @f.uuid()
+        @t.uuid
         uuid?: string;
 
-        @f
+        @t
         date?: Date;
     }
 

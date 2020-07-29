@@ -41,6 +41,9 @@ export type Types =
     'objectId'
     | 'uuid'
     | 'class'
+    | 'map'
+    | 'partial'
+    | 'array'
     | 'union'
     | 'moment'
     | 'date'
@@ -152,15 +155,24 @@ export interface PropertySchemaSerialized {
  */
 export class PropertyCompilerSchema {
     type: Types = 'any';
-    isArray: boolean = false;
-    isMap: boolean = false;
+
+    get isArray() {
+        return this.type === 'array';
+    }
+
+    get isMap() {
+        return this.type === 'map';
+    }
+
+    get isPartial() {
+        return this.type === 'partial';
+    }
 
     groupNames: string[] = [];
 
     /**
      * Whether given classType can be populated partially (for example in patch mechanisms).
      */
-    isPartial: boolean = false;
 
     isOptional: boolean = false;
     isDiscriminant: boolean = false;
@@ -181,11 +193,41 @@ export class PropertyCompilerSchema {
 
     defaultValue: any;
 
+    templateArgs: PropertyCompilerSchema[] = [];
+
     constructor(
         public name: string,
         public classType?: ClassType<any> | ClassType<any>[]
     ) {
     }
+
+    toString() {
+        if (this.type === 'array') {
+            return `Array`;
+        }
+        if (this.type === 'map') {
+            return `Map`;
+        }
+        if (this.type === 'partial') {
+            return `Partial`;
+        }
+        if (this.type === 'union') {
+            return this.resolveUnionTypes.map(v => getClassName(v)).join(' | ');
+        }
+        if (this.type === 'class') {
+            return getClassName(this.resolveClassType || class {
+            });
+        }
+        return `${this.type}`;
+    }
+
+    getSubType(): PropertyCompilerSchema {
+        if (this.type === 'partial') return this.templateArgs[0]!;
+        if (this.type === 'array') return this.templateArgs[0]!;
+        if (this.type === 'map') return this.templateArgs[1]!;
+        throw new Error('No array or map type');
+    }
+
 
     get resolveClassType(): ClassType<any> | undefined {
         return isArray(this.classType) ? undefined : this.classType;
@@ -201,17 +243,12 @@ export class PropertyCompilerSchema {
 
     static createFromPropertySchema(
         propertySchema: PropertySchema,
-        isArray?: boolean,
-        isMap?: boolean,
-        isPartial?: boolean,
     ): PropertyCompilerSchema {
         const i = new PropertyCompilerSchema(
             propertySchema.name,
             propertySchema.getResolvedClassTypeForValidType()
         );
         i.type = propertySchema.type;
-        i.isMap = propertySchema.isMap;
-        i.isArray = propertySchema.isArray;
         i.validators = propertySchema.validators;
         i.isOptional = propertySchema.isOptional;
         i.isDiscriminant = propertySchema.isDiscriminant;
@@ -219,9 +256,6 @@ export class PropertyCompilerSchema {
         i.isReference = propertySchema.isReference;
         i.isParentReference = propertySchema.isParentReference;
         i.hasDefaultValue = propertySchema.hasDefaultValue;
-        if (isArray !== undefined) i.isArray = isArray;
-        if (isMap !== undefined) i.isMap = isMap;
-        if (isPartial !== undefined) i.isPartial = isPartial;
         return i;
     }
 }
@@ -268,16 +302,46 @@ export class PropertySchema extends PropertyCompilerSchema {
 
     exclude?: 'all' | 'plain' | string;
 
-    templateArgs?: PropertySchema[];
-
-    protected classTypeForwardRef?: ForwardedRef<any>;
+    protected classTypeForwardRef?: ForwardRefFn<any>;
     protected classTypeResolved?: ClassType<any>;
 
-    protected unionTypes?: (ClassType<any> | ForwardedRef<any>)[];
+    protected unionTypes?: (ClassType<any> | ForwardRefFn<any>)[];
     protected unionResolved?: ClassType<any>[];
+
+    templateArgs: PropertySchema[] = [];
 
     constructor(name: string) {
         super(name);
+    }
+
+    toString() {
+        if (!this.typeSet) return 'undefined';
+        if (this.type === 'array') {
+            return `${this.templateArgs[0]}[]`;
+        }
+        if (this.type === 'map') {
+            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>`;
+        }
+        if (this.type === 'partial') {
+            return `Partial<${this.templateArgs[0]}>`;
+        }
+        if (this.type === 'class') {
+            if (this.classTypeForwardRef) {
+                const resolved = this.classTypeForwardRef();
+                if (resolved) return getClassName(resolved);
+                return 'ForwardedRef';
+            } else {
+                return getClassName(this.getResolvedClassType());
+            }
+        }
+        return super.toString();
+    }
+
+    getSubType(): PropertySchema {
+        if (this.type === 'partial') return this.templateArgs[0]!;
+        if (this.type === 'array') return this.templateArgs[0]!;
+        if (this.type === 'map') return this.templateArgs[1]!;
+        throw new Error('No array or map type');
     }
 
     setClassType(classType?: ClassType<any>) {
@@ -324,14 +388,11 @@ export class PropertySchema extends PropertyCompilerSchema {
         const p = new PropertySchema(props['name']);
         p.type = props['type'];
 
-        if (props['isArray']) p.isArray = true;
-        if (props['isMap']) p.isMap = true;
         if (props['isDecorated']) p.isDecorated = true;
         if (props['isParentReference']) p.isParentReference = true;
         if (props['isDiscriminant']) p.isDiscriminant = true;
         if (props['isOptional']) p.isOptional = true;
         if (props['isId']) p.isId = true;
-        if (props['isPartial']) p.isPartial = true;
         if (props['allowLabelsAsValue']) p.allowLabelsAsValue = true;
         if (props['typeSet']) p.typeSet = true;
         if (props['methodName']) p.methodName = props['methodName'];
@@ -367,7 +428,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         this.setFromJSType(value.constructor);
     }
 
-    setUnionTypes(types: (ClassType<any> | ForwardedRef<any>)[]) {
+    setUnionTypes(types: (ClassType<any> | ForwardRefFn<any>)[]) {
         this.type = 'union';
         this.unionTypes = types;
     }
@@ -376,11 +437,14 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (type === undefined || type === null) return;
 
         this.type = PropertySchema.getTypeFromJSType(type);
+        this.typeSet = this.type !== 'any';
 
         if (type === Array) {
             //array doesnt have any other options, so we only know its an array
             //of any type
-            this.isArray = true;
+            this.type = 'array';
+            this.typeSet = true;
+            this.templateArgs[0] = new PropertySchema('0');
             return;
         }
 
@@ -390,15 +454,15 @@ export class PropertySchema extends PropertyCompilerSchema {
             && type !== Object
         ;
 
-
         if (isCustomObject) {
             this.type = 'class';
             this.classType = type as ClassType<any>;
 
-            if (type instanceof ForwardedRef) {
+            if (isFunction(type)) {
                 this.classTypeForwardRef = type;
                 delete this.classType;
             }
+            this.typeSet = true;
         }
     }
 
@@ -470,7 +534,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         this.unionResolved = [];
         if (this.unionTypes) {
             for (const v of this.unionTypes) {
-                this.unionResolved.push(v instanceof ForwardedRef ? v.forward() : v);
+                this.unionResolved.push(isFunction(v) ? (v as any)() : v);
             }
         }
 
@@ -478,20 +542,22 @@ export class PropertySchema extends PropertyCompilerSchema {
     }
 
     getResolvedClassType(): ClassType<any> {
+        if (this.isArray || this.isMap) return this.getSubType().getResolvedClassType();
+
         if (this.classTypeResolved) {
             return this.classTypeResolved;
         }
 
         if (this.classTypeForwardRef) {
-            this.classTypeResolved = this.classTypeForwardRef.forward();
+            this.classTypeResolved = this.classTypeForwardRef();
             if (this.classTypeResolved) {
                 return this.classTypeResolved;
             }
-            throw new Error(`ForwardRef returns no value. ${this.classTypeForwardRef.forward}`);
+            throw new Error(`ForwardRef returns no value. ${this.classTypeForwardRef}`);
         }
 
         if (!this.classType || isArray(this.classType)) {
-            throw new Error(`No ClassType given for field ${this.name}. Use @f.forward(() => MyClass) for circular dependencies.`);
+            throw new Error(`No ClassType given for field ${this.name}. Use @f.type(() => MyClass) for circular dependencies.`);
         }
 
         return this.classType;
@@ -926,7 +992,8 @@ export class ClassSchema<T = any> {
             if (backRef === fromReference) continue;
 
             //backRef points to something completely different
-            if (backRef.getResolvedClassTypeForValidType() !== toClassType) continue;
+            if (!backRef.isArray && backRef.getResolvedClassTypeForValidType() !== toClassType) continue;
+            if (backRef.isArray && backRef.getSubType().getResolvedClassTypeForValidType() !== toClassType) continue;
 
             //we found the perfect match, manually annotated
             if (backRef.backReference && backRef.backReference.mappedBy) {
@@ -1194,7 +1261,7 @@ export interface BackReferenceOptions<T> {
      * reference back. This is necessary when multiple outgoing references
      * to the same
      */
-    mappedBy?: T extends ClassType<infer K> ? keyof K : '',
+    mappedBy?: T extends ClassType<infer K> ? keyof K & string : '',
 }
 
 export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<ClassType<any>>): ClassType<any> {
@@ -1209,8 +1276,9 @@ export interface FieldDecoratorResult<T> {
 
     /**
      * Sets the name of this property. Important for cases where the actual name is lost during compilation.
+     * This is only necessary in constructor arguments.
      */
-    asName(name: string): this;
+    name(name: string): this;
 
     /**
      * Marks this field as owning reference to the foreign class.
@@ -1239,15 +1307,15 @@ export interface FieldDecoratorResult<T> {
     backReference(options?: BackReferenceOptions<T>): this;
 
     /**
-     * Marks this field as optional. The validation requires field values per default, this makes it optional.
+     * Marks this type as optional (allow to set as undefined). Per default the type is required, this makes it optional.
      */
-    optional(): this;
+    optional: this;
 
     /**
      * Marks this field as discriminant for the discriminator in union types.
      * See @f.union()
      */
-    discriminant(): this;
+    discriminant: this;
 
     /**
      * Used to define a field as excluded when serialized from class to different targets (like mongo or plain).
@@ -1264,23 +1332,17 @@ export interface FieldDecoratorResult<T> {
      *
      * Only one field in a class can be the ID.
      */
-    primary(): this;
+    primary: this;
 
     /**
-     * @see primary
-     * @deprecated
-     */
-    asId(): this;
-
-    /**
-     * Defines template arguments of a tempalted class. Very handy for types like Observables.
+     * Defines template arguments of a generic class. Very handy for types like Observables.
      *
      * ```typescript
      * class Stuff {
      * }
      *
      * class Page {
-     *     @f.t(Stuff)
+     *     @f.template(Stuff)
      *     downloadStuff(): Observable<Stuff> {
      *          return new Observable<Stuff>((observer) => {
      *              observer.next(new Stuff());
@@ -1288,7 +1350,7 @@ export interface FieldDecoratorResult<T> {
      *     }
      *
      *     //or more verbose way if the type is more complex.
-     *     @f.t(f.type(Stuff).optional())
+     *     @f.template(f.type(Stuff).optional)
      *     downloadStuffWrapper(): Observable<Stuff | undefined> {
      *          return new Observable<Stuff>((observer) => {
      *              observer.next(new Stuff());
@@ -1297,7 +1359,7 @@ export interface FieldDecoratorResult<T> {
      * }
      * ```
      */
-    template(...templateArgs: any[]): this;
+    template(...templateArgs: (FieldDecoratorResult<any> | FieldTypes<any>)[]): this;
 
     /**
      * Used to define an index on a field.
@@ -1339,11 +1401,11 @@ export interface FieldDecoratorResult<T> {
      *
      * ```typescript
      * class Page {
-     *     @f.mongoId()
+     *     @f.mongoId
      *     referenceToSomething?: string;
      *
      *     constructor(
-     *         @f.id().mongoId()
+     *         @f.primary.mongoId
      *         public readonly _id: string
      *     ) {
      *
@@ -1351,12 +1413,17 @@ export interface FieldDecoratorResult<T> {
      * }
      * ```
      */
-    mongoId(): this;
+    mongoId: this;
 
     /**
      * Used to define a field as UUID (v4).
      */
-    uuid(): this;
+    uuid: this;
+
+    /**
+     *
+     */
+    parentReference: this;
 
     /**
      * Used to define a field as decorated.
@@ -1371,7 +1438,7 @@ export interface FieldDecoratorResult<T> {
      * Example
      * ```typescript
      * export class PageCollection {
-     *     @f.forward(() => PageClass).decorated()
+     *     @f.type(() => PageClass).decorated
      *     private readonly pages: PageClass[] = [];
      *
      *     constructor(pages: PageClass[] = []) {
@@ -1388,13 +1455,13 @@ export interface FieldDecoratorResult<T> {
      * }
      *
      * export class PageClass {
-     *     @f.uuid()
+     *     @f.uuid
      *     id: string = uuid();
      *
      *     @f
      *     name: string;
      *
-     *     @f.forward(() => PageCollection)
+     *     @f.type(() => PageCollection)
      *     children: PageCollection = new PageCollection;
      *
      *     constructor(name: string) {
@@ -1406,36 +1473,12 @@ export interface FieldDecoratorResult<T> {
      * If you use classToPlain(PageClass, ...) or classToMongo(PageClass, ...) the field value of `children` will be the type of
      * `PageCollection.pages` (always the field where @Decorated() is applied to), here a array of PagesClass `PageClass[]`.
      */
-    decorated(): this;
-
-    /**
-     * Marks a field as array. You should prefer `@f.array(T)` syntax.
-     *
-     * ```typescript
-     * class User {
-     *     @f.type(String).asArray()
-     *     tags: strings[] = [];
-     * }
-     * ```
-     */
-    asArray(): this;
+    decorated: this;
 
     /**
      * @internal
      */
-    asPartial(): this;
-
-    /**
-     * Marks a field as map. You should prefer `@f.map(T)` syntax.
-     *
-     * ```typescript
-     * class User {
-     *     @f.type(String).asMap()
-     *     tags: {[name: string]: string} = [];
-     * }
-     * ```
-     */
-    asMap(): this;
+    partial: this;
 
     /**
      * Uses an additional modifier to change the PropertySchema.
@@ -1477,14 +1520,22 @@ export interface FieldDecoratorResult<T> {
     validator(
         ...validators: (ClassType<PropertyValidator> | ValidatorFn)[]
     ): this;
+
+    /**
+     * Creates a PropertySchema object from the given definition.
+     */
+    buildPropertySchema(name?: string): PropertySchema;
+}
+
+export function isFieldDecorator(t: any): t is FieldDecoratorResult<any> {
+    return isFunction(t) && isFunction(t.name) && isFunction(t.optional)
 }
 
 function createFieldDecoratorResult<T>(
-    cb: (target: object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
+    cb: (target: object, property: PropertySchema, returnType: any) => void,
     givenPropertyName: string = '',
     modifier: ((target: object, property: PropertySchema) => void)[] = [],
-    modifiedOptions: FieldOptions = {},
-    root = false,
+    root: boolean = false,
 ): FieldDecoratorResult<T> {
     function resetIfNecessary() {
         //on root we never use the overwritten name, so we set it back
@@ -1492,8 +1543,24 @@ function createFieldDecoratorResult<T>(
         if (root) {
             givenPropertyName = '';
             modifier = [];
-            modifiedOptions = {};
         }
+    }
+
+    function buildPropertySchema(target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) {
+        //anon properties
+        const propertySchema = new PropertySchema(propertyOrMethodName || String(parameterIndexOrDescriptor));
+
+        for (const mod of modifier) {
+            mod(target, propertySchema);
+        }
+
+        if (isNumber(parameterIndexOrDescriptor) && (target as any)['prototype']) {
+            target = (target as any)['prototype'];
+        }
+
+        cb(target, propertySchema!, undefined);
+
+        return propertySchema;
     }
 
     const fn = (target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
@@ -1505,18 +1572,7 @@ function createFieldDecoratorResult<T>(
         }
 
         if (target === Object) {
-            const propertySchema = new PropertySchema(String(parameterIndexOrDescriptor));
-
-            for (const mod of modifier) {
-                mod(target, propertySchema);
-            }
-
-            if (isNumber(parameterIndexOrDescriptor) && (target as any)['prototype']) {
-                target = (target as any)['prototype'];
-            }
-
-            cb(target, propertySchema!, undefined, {...modifiedOptions});
-            return;
+            buildPropertySchema(target, propertyOrMethodName, parameterIndexOrDescriptor);
         }
 
         let returnType;
@@ -1640,107 +1696,159 @@ function createFieldDecoratorResult<T>(
             target = (target as any)['prototype'];
         }
 
-        cb(target, propertySchema!, returnType, {...modifiedOptions});
+        cb(target, propertySchema!, returnType);
     };
 
-    fn.asName = (name: string) => {
-        resetIfNecessary();
-        return createFieldDecoratorResult(cb, name, modifier, modifiedOptions);
-    };
+    Object.defineProperty(fn, 'name', {
+        get: () => (name: string) => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, name, modifier);
+        }
+    });
 
-    fn.optional = () => {
-        resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Optional()], modifiedOptions);
-    };
+    Object.defineProperty(fn, 'optional', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Optional()]);
+        }
+    });
 
-    fn.discriminant = () => {
-        resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Discriminant()], modifiedOptions);
-    };
+    Object.defineProperty(fn, 'discriminant', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Discriminant()]);
+        }
+    });
 
     fn.exclude = (target: 'all' | 'mongo' | 'plain' | string = 'all') => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)], modifiedOptions);
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)]);
     };
 
-    fn.primary = fn.asId = () => {
-        resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, IDField()], modifiedOptions);
-    };
+    Object.defineProperty(fn, 'primary', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, IDField()]);
+        }
+    });
 
     fn.index = (options?: IndexOptions, name?: string) => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Index(options, name)], modifiedOptions);
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Index(options, name)]);
     };
 
     fn.data = (key: string, value: any) => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Data(key, value)], modifiedOptions);
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Data(key, value)]);
     };
 
     fn.group = (...names: string[]) => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, GroupName(...names)], modifiedOptions);
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, GroupName(...names)]);
     };
 
-    fn.mongoId = () => {
-        resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, MongoIdField()], modifiedOptions);
-    };
+    Object.defineProperty(fn, 'mongoId', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, MongoIdField()]);
+        }
+    });
 
-    fn.uuid = () => {
-        resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, UUIDField()], modifiedOptions);
-    };
+    Object.defineProperty(fn, 'uuid', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, UUIDField()]);
+        }
+    });
 
-    fn.decorated = () => {
-        resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Decorated()], modifiedOptions);
-    };
+    Object.defineProperty(fn, 'decorated', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Decorated()]);
+        }
+    });
+
+    Object.defineProperty(fn, 'parentReference', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, ParentReference()]);
+        }
+    });
 
     fn.use = (decorator: (target: object, property: PropertySchema) => void) => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator], modifiedOptions);
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator]);
     };
 
     fn.reference = () => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, reference: true});
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.isReference = true;
+            getClassSchema(target).registerReference(property);
+        }]);
     };
+
+    Object.defineProperty(fn, 'string', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+                property.type = 'string';
+            }]);
+        }
+    });
+
+    Object.defineProperty(fn, 'number', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+                property.type = 'number';
+            }]);
+        }
+    });
+
+    Object.defineProperty(fn, 'date', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+                property.type = 'date';
+            }]);
+        }
+    });
+
+    Object.defineProperty(fn, 'boolean', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+                property.type = 'boolean';
+            }]);
+        }
+    });
 
     fn.backReference = (options?: BackReferenceOptions<T>) => {
         resetIfNecessary();
-        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {
-            ...modifiedOptions,
-            backReference: options || {}
-        });
-    };
-
-    fn.asArray = () => {
-        resetIfNecessary();
-        if (modifiedOptions.map) throw new Error('Field is already defined as map.');
-        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, array: true});
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.backReference = options || {};
+            getClassSchema(target).registerReference(property);
+        }]);
     };
 
     fn.template = (...templateArgs: any[]) => {
         resetIfNecessary();
-        if (modifiedOptions.template) throw new Error('Field has already template args defined.');
-        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {
-            ...modifiedOptions,
-            template: templateArgs
-        });
-    };
-
-    fn.asPartial = () => {
-        resetIfNecessary();
-        if (modifiedOptions.partial) throw new Error('Field is already defined as partial.');
-        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, partial: true});
-    };
-
-    fn.asMap = () => {
-        resetIfNecessary();
-        if (modifiedOptions.array) throw new Error('Field is already defined as array.');
-        return createFieldDecoratorResult(cb, givenPropertyName, modifier, {...modifiedOptions, map: true});
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.templateArgs = [];
+            for (const [i, t] of eachPair(templateArgs)) {
+                if (isFieldDecorator(t)) {
+                    //its a decorator @f()
+                    //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
+                    const p = t.buildPropertySchema(String(i));
+                    property.templateArgs.push(p);
+                } else {
+                    const p = new PropertySchema(String(i));
+                    p.setFromJSType(t);
+                    property.templateArgs.push(p);
+                }
+            }
+        }]);
     };
 
     function createValidator(validator: ValidatorFn) {
@@ -1749,6 +1857,10 @@ function createFieldDecoratorResult<T>(
                 return validator(value, propertyName, classType);
             }
         };
+    }
+
+    fn.buildPropertySchema = function(name: string = 'unknown') {
+        return buildPropertySchema(Object, name);
     }
 
     fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn)[]) => {
@@ -1762,10 +1874,10 @@ function createFieldDecoratorResult<T>(
 
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.validators.push(...validatorClasses);
-        }], modifiedOptions);
+        }]);
     };
 
-    return fn;
+    return fn as FieldDecoratorResult<T>;
 }
 
 /**
@@ -1773,10 +1885,10 @@ function createFieldDecoratorResult<T>(
  * We detect the name by reading the constructor' signature, which would be otherwise lost.
  */
 export function FieldDecoratorWrapper<T>(
-    cb: (target: object, property: PropertySchema, returnType: any, modifiedOptions: FieldOptions) => void,
+    cb: (target: object, property: PropertySchema, returnType: any) => void,
     root = false
 ): FieldDecoratorResult<T> {
-    return createFieldDecoratorResult<T>(cb, '', [], {}, root);
+    return createFieldDecoratorResult<T>(cb, '', [], root);
 }
 
 /**
@@ -1835,8 +1947,7 @@ function GroupName(...names: string[]) {
  * Example one direction.
  * ```typescript
  * class JobConfig {
- *     @f.forward(() => Job) //forward necessary since circular dependency
- *     @ParentReference()
+ *     @f.type(() => Job).parentReference //forward necessary since circular dependency
  *     job: Job;
  *
  * }
@@ -1849,17 +1960,16 @@ function GroupName(...names: string[]) {
  * Example circular parent-child setup.
  * ```typescript
  * export class PageClass {
- *     @f.uuid()
+ *     @f.uuid
  *     id: string = uuid();
  *
  *     @f
  *     name: string;
  *
- *     @f.forwardArray(() => PageClass) //forward necessary since circular dependency
+ *     @f.type(() => PageClass) //forward necessary since circular dependency
  *     children: PageClass[] = [];
  *
- *     @f.forward(() => PageClass).optional() //forward necessary since circular dependency
- *     @ParentReference()
+ *     @f.type(() => PageClass).optional.parentReference //forward necessary since circular dependency
  *     parent?: PageClass;
  *
  *     constructor(name: string) {
@@ -1867,12 +1977,12 @@ function GroupName(...names: string[]) {
  *     }
  * ```
  *
- * todo: Move this to @f api.
+ * @internal
  */
 export function ParentReference() {
-    return FieldDecoratorWrapper((target, property) => {
+    return (target: object, property: PropertySchema) => {
         property.isParentReference = true;
-    });
+    };
 }
 
 /**
@@ -1916,59 +2026,30 @@ function Exclude(t: 'all' | string = 'all') {
     };
 }
 
-type FieldTypes = String | Number | Date | ClassType<any> | ForwardedRef<any>;
+type FieldTypes<T> = string | ClassType<T> | ForwardRefFn<T>;
 
 type ForwardRefFn<T> = () => T;
-
-class ForwardedRef<T> {
-    constructor(public readonly forward: ForwardRefFn<T>) {
-    }
-}
-
-/**
- * Allows to refer to references which are not yet defined.
- *
- * For instance, if you reference a circular dependency or a not yet defined variable.
- *
- * ```typescript
- * class User {
- *     @f.forward(() => Config)
- *     config: Config;
- *
- *     @f.forwardArray(() => Config)
- *     configArray: Config[] = [];
- *
- *     @f.forwardMap(() => Config)
- *     configMap: {[k: string]: Config} = {};
- *
- * ```
- */
-export function forwardRef<T>(forward: ForwardRefFn<T>): ForwardedRef<T> {
-    return new ForwardedRef(forward);
-}
-
-/**
- * @internal
- */
-interface FieldOptions {
-    template?: any[];
-    map?: boolean;
-    array?: boolean;
-    partial?: boolean;
-    reference?: boolean;
-    backReference?: BackReferenceOptions<any>;
-}
 
 /**
  * Decorator to define a field for an entity.
  */
-function Field(...oriType: [FieldTypes | Types] | (ClassType<any> | ForwardedRef<any>)[]) {
-    return FieldDecoratorWrapper((target, property, returnType, options) => {
-        if (property.typeSet) return;
-        property.typeSet = true;
-        let type: FieldTypes | Types | (ClassType<any> | ForwardedRef<any>)[] = oriType.length <= 1 ? oriType[0] as any : oriType;
-
+function Field(type?: FieldTypes<any> | Types) {
+    return FieldDecoratorWrapper((target, property, returnType) => {
         const propertyName = property.name;
+
+        if (property.type === 'any' && !property.typeSet) {
+            if (type) {
+                if ('string' === typeof type) {
+                    property.type = type as Types;
+                    property.typeSet = true;
+                } else {
+                    property.setFromJSType(type);
+                }
+            } else {
+                property.setFromJSType(returnType);
+            }
+        }
+
         const id = getClassName(target) + (property.methodName ? '::' + property.methodName : '') + '::' + propertyName;
 
         function getTypeName(t: any): string {
@@ -1976,8 +2057,9 @@ function Field(...oriType: [FieldTypes | Types] | (ClassType<any> | ForwardedRef
             if (t === String) return 'String';
             if (t === Number) return 'Number';
             if (t === Boolean) return 'Boolean';
-            if (t instanceof ForwardedRef) return 'ForwardedRef';
+            if (t === Array) return 'Array';
             if (t === Date) return 'Date';
+            if (isFunction(t)) return 'ForwardRef';
             if (t === undefined) return 'undefined';
             if (t === 'any') return 'any';
             if (t === 'union') return 'union';
@@ -1985,44 +2067,38 @@ function Field(...oriType: [FieldTypes | Types] | (ClassType<any> | ForwardedRef
             return getClassName(t);
         }
 
-        function getTypeDeclaration(t: any, options: FieldOptions): string {
-            if (options.array) return `${getTypeName(t)}[]`;
-            if (options.map) return `{[key: string]: ${getTypeName(t)}}`;
-            return getTypeName(t);
-        }
-
         if (!isArray(type) && returnType !== Promise && returnType !== undefined && type !== 'any') {
             //we don't want to check for type mismatch when returnType is a Promise.
 
-            if (type && options.array && returnType !== Array) {
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+            if (type && property.isArray && returnType !== Array) {
+                throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use the correct type in @f.type(T).`
                 );
             }
 
-            if (type && !options.array && returnType === Array) {
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use @f.array(MyType) or @f.forwardArray(() => MyType), e.g. @f.array(String) for '${propertyName}: String[]'.`);
+            if (type && !property.isArray && returnType === Array) {
+                throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
+                    `Please use @f.array(MyType) or @f.array(() => MyType), e.g. @f.array(String) for '${propertyName}: string[]'.`);
             }
 
-            if (type && options.map && returnType !== Object) {
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is ${getTypeName(returnType)}. ` +
+            if (type && property.isMap && returnType !== Object) {
+                throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use the correct type in @f.type(TYPE).`);
             }
 
             if (!type && returnType === Array) {
                 throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
                     `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(forwardRef(() => MyType)).`
+                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.type(() => MyType).`
                 );
             }
 
             if (!type && returnType === Object) {
                 //typescript puts `Object` for undefined types.
-                throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
+                throw new Error(`${id} type mismatch. Given ${property}, but declared is Object or undefined. ` +
                     `Please note that Typescript's reflection system does not support type hints based on interfaces or types, but only classes and primitives (String, Number, Boolean, Date). ` +
                     `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.forward(() => MyType).`
+                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.type(() => MyType).`
                 );
             }
         }
@@ -2030,127 +2106,46 @@ function Field(...oriType: [FieldTypes | Types] | (ClassType<any> | ForwardedRef
         const isCustomObject = !typedArrayMap.has(type)
             && type !== Object
             && typeof type !== 'string'
-            && !(type instanceof ForwardedRef);
+            && !isFunction(type);
 
-        if (type && !isArray(type) && !options.map && !options.partial && isCustomObject && returnType === Object) {
-            console.log('type', type, oriType);
-            throw new Error(`${id} type mismatch. Given ${getTypeDeclaration(type, options)}, but declared is Object or undefined. ` +
-                `The actual type is an Object, but you specified a Class in @f.type(T).\n` +
+        if (type && !isArray(type) && !property.isMap && !property.isPartial && isCustomObject && returnType === Object) {
+            throw new Error(`${id} type mismatch. Given ${property}, but declared is Object or undefined. ` +
+                `The actual type is an object, but you specified a class in @f.type(T).\n` +
                 `Please declare a type or use @f.map(${getClassName(type)}) for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
-        }
-
-        if (!type) {
-            type = returnType;
-        }
-
-        if ('string' === typeof type) {
-            property.type = type as Types;
-        }
-
-        if (options.partial) {
-            property.isPartial = true;
-        }
-
-        if (options.array) {
-            property.isArray = true;
-        }
-
-        if (options.map) {
-            property.isMap = true;
-        }
-
-        if (options.reference) {
-            property.isReference = true;
-            getClassSchema(target).registerReference(property);
-        }
-
-        if (options.backReference) {
-            property.backReference = options.backReference;
-            getClassSchema(target).registerReference(property);
-        }
-
-        if (options.template) {
-            property.templateArgs = [];
-            for (const [i, t] of eachPair(options.template)) {
-                if (isFunction(t) && isFunction(t.asName) && isFunction(t.optional)) {
-                    //its a decorator @f()
-                    //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
-                    t.use((target: object, incomingProperty: PropertySchema) => {
-                        property.templateArgs!.push(incomingProperty);
-                    })(Object, undefined, i);
-                } else {
-                    const p = new PropertySchema(String(i));
-                    p.setFromJSType(t);
-                    property.templateArgs.push(p);
-                }
-            }
-        }
-
-        if (property.type === 'any') {
-            //any is given when a class is provided for example
-            //type is then set to 'class'
-            if (isArray(type)) {
-                property.setUnionTypes(type);
-            } else {
-                property.setFromJSType(type);
-            }
         }
     }, true);
 }
 
 const fRaw: any = Field();
 
-fRaw['array'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any> | ForwardedRef<any>)[]): FieldDecoratorResult<T> {
-    return Field(...type).asArray();
+fRaw['array'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<any>, type: T | ClassType<any> | ForwardRefFn<any>): FieldDecoratorResult<T> {
+    return Field('array').template(type);
 };
 
-fRaw['map'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, ...type: [T] | (ClassType<any> | ForwardedRef<any>)[]): FieldDecoratorResult<T> {
-    return Field(...type).asMap();
+fRaw['map'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<any>, type: T | ClassType<any> | ForwardRefFn<any>, keyType: 'any' | 'string' | 'number' = 'any'): FieldDecoratorResult<T> {
+    const keyTypeProp = f.type(keyType);
+    return Field('map').template(keyTypeProp, type);
 };
 
-fRaw['any'] = function (this: FieldDecoratorResult<any>): FieldDecoratorResult<any> {
-    return Field('any');
-};
+fRaw['any'] = Field('any');
 
-fRaw['type'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
+fRaw['type'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field(type);
 };
 
-fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any> | ForwardedRef<any>)[]): FieldDecoratorResult<T> {
-    return Field(...types);
-};
-
-fRaw['discriminant'] = function <T extends FieldTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
-    return Field(type).discriminant();
+fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any> | ForwardRefFn<any>)[]): FieldDecoratorResult<T> {
+    return UnionField(...types);
 };
 
 fRaw['partial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
-    return Field(type).asPartial();
+    return Field('partial').template(type);
 };
 
 fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabelsAsValue: boolean = false): FieldDecoratorResult<T> {
     return EnumField(clazz, allowLabelsAsValue);
 };
 
-fRaw['moment'] = function <T>(this: FieldDecoratorResult<T>): FieldDecoratorResult<T> {
-    return MomentField();
-};
-
-fRaw['forward'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
-    return Field(forwardRef(f));
-};
-
-fRaw['forwardArray'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
-    return Field(forwardRef(f)).asArray();
-};
-
-fRaw['forwardMap'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
-    return Field(forwardRef(f)).asMap();
-};
-
-fRaw['forwardPartial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, f: () => T): FieldDecoratorResult<T> {
-    return Field(forwardRef(f)).asPartial();
-};
+fRaw['moment'] = MomentField();
 
 export interface MainDecorator {
     /**
@@ -2159,19 +2154,20 @@ export interface MainDecorator {
      *
      * ```typescript
      * class User {
+     *     //not necessary
      *     @f.type(MyClass)
      *     tags: MyClass = new MyClass;
      * }
      * ```
      */
-    type<T extends FieldTypes>(type: T): FieldDecoratorResult<T>;
+    type<T extends FieldTypes<any>>(type: T): FieldDecoratorResult<T>;
 
     /**
-     * Defines discriminated union types.
+     * Defines a discriminated union type.
      *
      * ```typescript
      * class ConfigA {
-     *     @f.discriminator()
+     *     @f.discriminator
      *     kind: string = 'a';
      *
      *     @f
@@ -2179,7 +2175,7 @@ export interface MainDecorator {
      * }
      *
      * class ConfigB {
-     *     @f.discriminator()
+     *     @f.discriminator
      *     kind: string = 'b';
      *
      *     @f
@@ -2187,12 +2183,12 @@ export interface MainDecorator {
      * }
      *
      * class User {
-     *     @f.types(ConfigA, ConfigB)
+     *     @f.union(ConfigA, ConfigB)
      *     config: ConfigA | ConfigB = new ConfigA;
      * }
      * ```
      */
-    union<T extends ClassType<any>, K extends ForwardedRef<any>>(...type: T[] | K[]): FieldDecoratorResult<void>;
+    union<T extends ClassType<any>, K extends ForwardRefFn<any>>(...type: T[] | K[]): FieldDecoratorResult<void>;
 
     /**
      * Marks a field as discriminant. This field MUST have a default value.
@@ -2205,12 +2201,32 @@ export interface MainDecorator {
      *
      * ```typescript
      * class User {
-     *     @f.array(String)
+     *     @f.array(@f.string)
      *     tags: string[] = [];
      * }
      * ```
      */
-    array<T extends FieldTypes>(...type: [T] | FieldTypes[]): FieldDecoratorResult<T>;
+    array<T extends FieldTypes<any> | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<T>;
+
+    /**
+     * Marks a field as string.
+     */
+    string: FieldDecoratorResult<string>;
+
+    /**
+     * Marks a field as number.
+     */
+    number: FieldDecoratorResult<string>;
+
+    /**
+     * Marks a field as boolean.
+     */
+    boolean: FieldDecoratorResult<string>;
+
+    /**
+     * Marks a field as Date.
+     */
+    date: FieldDecoratorResult<string>;
 
     /**
      * Marks a field as enum.
@@ -2229,6 +2245,8 @@ export interface MainDecorator {
      * ```
      *
      * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
+     *
+     * Note: const enums are not supported.
      */
     enum<T>(type: T, allowLabelsAsValue?: boolean): FieldDecoratorResult<T>;
 
@@ -2254,7 +2272,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    partial<T extends ClassType<any>>(type: T): FieldDecoratorResult<T>;
+    partial(type: FieldDecoratorResult<any> | FieldTypes<any>): this;
 
     /**
      * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
@@ -2262,83 +2280,27 @@ export interface MainDecorator {
      *
      * You have to install moment npm package in order to use it.
      */
-    moment(): FieldDecoratorResult<any>;
+    moment: FieldDecoratorResult<any>;
 
     /**
      * Marks a field as type any. It does not transform the value and directly uses JSON.parse/stringify.
      */
-    any(): FieldDecoratorResult<any>;
+    any: FieldDecoratorResult<any>;
 
     /**
      * Marks a field as map.
      *
      * ```typescript
      * class User {
-     *     @f.map(String)
+     *     @f.map(f.string)
      *     tags: {[k: string]: string};
      *
-     *     @f.forwardMap(() => MyClass)
+     *     @f.map(@f.type(() => MyClass))
      *     tags: {[k: string]: MyClass};
      * }
      * ```
      */
-    map<T extends FieldTypes>(...type: [T] | FieldTypes[]): FieldDecoratorResult<T>;
-
-    /**
-     * Forward references a type, required for circular reference.
-     *
-     * ```typescript
-     * class User {
-     *     @f.forward(() => User)).optional()
-     *     parent: User;
-     * }
-     * ```
-     */
-    forward<T extends ClassType<any>>(f: () => T): FieldDecoratorResult<T>;
-
-    /**
-     * Forward references a type in an array, required for circular reference.
-     *
-     * ```typescript
-     * class User {
-     *     @f.forwardArray(() => User)).optional()
-     *     parents: User[] = [];
-     * }
-     * ```
-     */
-    forwardArray<T extends ClassType<any>>(f: () => T): FieldDecoratorResult<T>;
-
-    /**
-     * Forward references a type in a map, required for circular reference.
-     *
-     * ```typescript
-     * class User {
-     *     @f.forwardRef(() => User)).optional()
-     *     parents: {[name: string]: User} = {}};
-     * }
-     * ```
-     */
-    forwardMap<T extends ClassType<any>>(f: () => T): FieldDecoratorResult<T>;
-
-    /**
-     * Marks a field as partial of a class entity.
-     *
-     * ```typescript
-     * class Config {
-     *     @f.optional()
-     *     name?: string;
-     *
-     *     @f
-     *     prio: number = 0;
-     * }
-     *
-     * class User {
-     *     @f.forwardPartial(() => Config)
-     *     config: PartialField<Config> = {};
-     * }
-     * ```
-     */
-    forwardPartial<T extends ClassType<any>>(type: () => T): FieldDecoratorResult<T>;
+    map(type: FieldDecoratorResult<any> | FieldTypes<any>): this;
 }
 
 /**
@@ -2391,14 +2353,10 @@ export interface MainDecorator {
  */
 export const f: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 
-/**
- * Alias for `f`.
- */
 export const field: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 
-/**
- * Alias for `f`.
- */
+export const type: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
+
 export const t: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 
 /**
@@ -2467,6 +2425,15 @@ function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return Field('enum').use((target, property) => {
         property.setClassType(type);
         property.allowLabelsAsValue = allowLabelsAsValue;
+    });
+}
+
+/**
+ * @internal
+ */
+function UnionField<T>(...types: (ClassType<any> | ForwardRefFn<any>)[]) {
+    return Field('union').use((target, property) => {
+        property.setUnionTypes(types);
     });
 }
 

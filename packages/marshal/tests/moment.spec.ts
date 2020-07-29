@@ -1,11 +1,11 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import * as moment from 'moment';
-import {getClassSchema, f, classToPlain, plainToClass} from "../index";
+import {getClassSchema, t, classToPlain, plainToClass} from "../index";
 
 test('test moment', () => {
     class Model {
-        @f.moment()
+        @t.moment
         created: moment.Moment = moment();
     }
 

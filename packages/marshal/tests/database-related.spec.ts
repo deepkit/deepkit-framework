@@ -1,40 +1,40 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, f, getClassSchema, MultiIndex} from "../src/decorators";
+import {Entity, t, getClassSchema, MultiIndex} from "../src/decorators";
 import {uuid} from "../src/utils";
 import {getCollectionName} from "../src/mapper";
 
 
 @Entity('user2')
 class User {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
-    @f.forwardArray(() => Organisation).backReference({via: () => OrganisationMembership})
+    @t.array(() => Organisation).backReference({via: () => OrganisationMembership})
     organisations: Organisation[] = [];
 
     //self reference
-    @f.optional().reference()
+    @t.optional.reference()
     manager?: User;
 
-    @f.array(User).backReference()
+    @t.array(User).backReference()
     managedUsers: User[] = [];
 
-    constructor(@f public name: string) {
+    constructor(@t public name: string) {
     }
 }
 
 @Entity('organisation2', 'organisations2')
 class Organisation {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
-    @f.array(User).backReference({mappedBy: 'organisations', via: () => OrganisationMembership})
+    @t.array(User).backReference({mappedBy: 'organisations', via: () => OrganisationMembership})
     users: User[] = [];
 
     constructor(
-        @f public name: string,
-        @f.reference() public owner: User,
+        @t public name: string,
+        @t.reference() public owner: User,
     ) {
     }
 }
@@ -42,12 +42,12 @@ class Organisation {
 @Entity('organisation_member2')
 @MultiIndex(['user', 'organisation'])
 class OrganisationMembership {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
     constructor(
-        @f.reference().index() public user: User,
-        @f.reference().index() public organisation: Organisation,
+        @t.reference().index() public user: User,
+        @t.reference().index() public organisation: Organisation,
     ) {
     }
 }

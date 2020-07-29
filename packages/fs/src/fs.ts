@@ -39,7 +39,7 @@ export class FS<T extends File> {
     }
 
     public async removeAll(filter: FilterQuery<T>): Promise<boolean> {
-        const files = await this.database.query(this.fileType.classType).filter(filter).find();
+        const files = await this.session.query(this.fileType.classType).filter(filter).find();
         return this.removeFiles(files);
     }
 
@@ -116,15 +116,15 @@ export class FS<T extends File> {
     }
 
     public async ls(filter: FilterQuery<T>): Promise<T[]> {
-        return await this.database.query(this.fileType.classType).filter(filter).find();
+        return await this.session.query(this.fileType.classType).filter(filter).find();
     }
 
     public async findOne(path: string, filter: FilterQuery<T> = {}): Promise<T | undefined> {
-        return await this.database.query(this.fileType.classType).filter({path: path, ...filter} as T).findOneOrUndefined();
+        return await this.session.query(this.fileType.classType).filter({path: path, ...filter} as T).findOneOrUndefined();
     }
 
     public async registerFile(md5: string, path: string, fields: Partial<T> = {}): Promise<T> {
-        const file = await this.database.query(this.fileType.classType).filter({md5: md5} as T).findOneOrUndefined();
+        const file = await this.session.query(this.fileType.classType).filter({md5: md5} as T).findOneOrUndefined();
 
         if (!file) {
             throw new Error(`No file with '${md5}' found.`);
@@ -154,7 +154,7 @@ export class FS<T extends File> {
     }
 
     public async hasMd5(md5: string) {
-        const file = await this.database.query(this.fileType.classType).filter({md5: md5}).findOneOrUndefined();
+        const file = await this.session.query(this.fileType.classType).filter({md5: md5}).findOneOrUndefined();
 
         if (file && file.md5) {
             const localPath = this.getLocalPathForMd5(md5);
@@ -311,7 +311,7 @@ export class FS<T extends File> {
             return decodePayloadAsJson(fromCache);
         }
 
-        const item = await this.database.query(this.fileType.classType).filter({path, ...fields}).findOneOrUndefined();
+        const item = await this.session.query(this.fileType.classType).filter({path, ...fields}).findOneOrUndefined();
         if (item) {
             await this.refreshFileMetaCache(path, fields, item.id, item.md5);
             return {id: item.id, md5: item.md5};

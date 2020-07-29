@@ -2,18 +2,18 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass, plainToClassFactory} from "../src/jit";
 import {bench, BenchSuite} from "@super-hornet/core";
-import {f} from "../index";
+import {t} from "../index";
 
 export class MarshalModel {
-    @f ready?: boolean;
+    @t ready?: boolean;
 
-    @f.array(String) tags: string[] = [];
+    @t.array(String) tags: string[] = [];
 
-    @f priority: number = 0;
+    @t priority: number = 0;
 
     constructor(
-        @f public id: number,
-        @f public name: string
+        @t public id: number,
+        @t public name: string
     ) {
     }
 }

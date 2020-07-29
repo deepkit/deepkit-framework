@@ -1,22 +1,22 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '../index';
-import {f, getClassSchema} from '@super-hornet/marshal';
+import {t, getClassSchema} from '@super-hornet/marshal';
 import { bench } from '@super-hornet/core';
 
 class Image {
-    @f title: string = '';
+    @t title: string = '';
 
-    constructor(@f.primary() public id: number = 0) {
+    constructor(@t.primary public id: number = 0) {
     }
 }
 
 class User {
-    @f.reference().optional() image?: Image;
+    @t.reference().optional image?: Image;
 
-    @f title: string = '';
+    @t title: string = '';
 
-    constructor(@f.primary() public id: number = 0) {
+    constructor(@t.primary public id: number = 0) {
 
     }
 }

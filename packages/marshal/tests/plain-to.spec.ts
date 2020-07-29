@@ -2,7 +2,7 @@ import 'jest-extended'
 import 'reflect-metadata';
 import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from "../src/mapper";
-import {f, getClassSchema, ParentReference} from "../index";
+import {t, getClassSchema, ParentReference} from "../index";
 import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {resolvePropertyCompilerSchema} from "../src/jit";
@@ -18,15 +18,15 @@ test('resolvePropertyCompilerSchema simple', () => {
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'plan')!.isArray).toBe(false);
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'plan')!.isMap).toBe(false);
 
-    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.type).toBe('class');
-    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.resolveClassType).toBe(SubModel);
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.isArray).toBe(true);
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.isMap).toBe(false);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.getSubType().type).toBe('class');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'children')!.getSubType().resolveClassType).toBe(SubModel);
 
-    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.type).toBe('class');
-    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.resolveClassType).toBe(SubModel);
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.isArray).toBe(false);
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.isMap).toBe(true);
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.getSubType().type).toBe('class');
+    expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'childrenMap')!.getSubType().resolveClassType).toBe(SubModel);
 });
 
 test('resolvePropertyCompilerSchema deep', () => {
@@ -230,7 +230,7 @@ test('test enum string', () => {
     }
 
     class Model {
-        @f.enum(MyEnum)
+        @t.enum(MyEnum)
         enum: MyEnum = MyEnum.waiting;
     }
 
@@ -250,7 +250,7 @@ test('test enum labels', () => {
     }
 
     class Model {
-        @f.enum(MyEnum)
+        @t.enum(MyEnum)
         enum: MyEnum = MyEnum.third;
     }
 
@@ -266,7 +266,7 @@ test('test enum labels', () => {
 
 
     class ModelWithLabels {
-        @f.enum(MyEnum, true)
+        @t.enum(MyEnum, true)
         enum: MyEnum = MyEnum.third;
     }
 
@@ -292,17 +292,16 @@ test('partial edge cases', () => {
     }
 
     class User {
-        @f
+        @t
         name?: string;
 
-        @f.array(String)
+        @t.array(String)
         tags?: string[];
 
-        @f
+        @t
         config?: Config;
 
-        @f.forward(() => User).optional()
-        @ParentReference()
+        @t.type(() => User).optional.parentReference
         parent?: User;
     }
 

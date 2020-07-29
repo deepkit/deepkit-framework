@@ -10,7 +10,7 @@ import {
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from "./util";
 import {Observable} from "rxjs";
 import {bufferCount, first, skip} from "rxjs/operators";
-import {Entity, f, getClassSchema, PropertySchema} from '@super-hornet/marshal';
+import {Entity, t, getClassSchema, PropertySchema} from '@super-hornet/marshal';
 import {ObserverTimer} from "@super-hornet/core-rxjs";
 import {isArray} from '@super-hornet/core';
 import {JSONError} from "@super-hornet/framework-shared";
@@ -25,17 +25,17 @@ global['WebSocket'] = require('ws');
 
 @Entity('controller-basic/user')
 class User {
-    constructor(@f public name: string) {
+    constructor(@t public name: string) {
         this.name = name;
     }
 }
 
 @Entity('error:custom-error')
 class MyCustomError {
-    @f
+    @t
     additional?: string;
 
-    constructor(@f public readonly message: string) {
+    constructor(@t public readonly message: string) {
 
     }
 }
@@ -44,7 +44,7 @@ test('basic setup and methods', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @f.array(String)
+        @t.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }
@@ -82,7 +82,7 @@ test('basic setup and methods', async () => {
         expect(u).toBeInstanceOf(PropertySchema);
         expect(u.type).toBe('class');
         expect(u.classType).toBe(User);
-        expect(u.toJSON()).toEqual({name: '0', type: 'class', classType: 'controller-basic/user'});
+        expect(u.toJSON()).toMatchObject({name: '0', type: 'class', classType: 'controller-basic/user'});
     }
 
     const {client, close} = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
@@ -163,7 +163,7 @@ test('basic serialisation: primitives', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @f.array(String)
+        @t.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', "15", last];
         }
@@ -190,19 +190,19 @@ test('basic serialisation return: entity', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @f.type(User)
+        @t.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
 
         @Action()
-        @f.type(User).optional()
-        async optionalUser(@f.optional() returnUser: boolean = false): Promise<User | undefined> {
+        @t.type(User).optional
+        async optionalUser(@t.optional returnUser: boolean = false): Promise<User | undefined> {
             return returnUser ? new User('optional') : undefined;
         }
 
         @Action()
-        @f.array(User)
+        @t.array(User)
         async users(name: string): Promise<User[]> {
             return [new User(name)];
         }
@@ -213,7 +213,7 @@ test('basic serialisation return: entity', async () => {
         }
 
         @Action()
-        @f.any()
+        @t.any
         async allowPlainObject(name: string): Promise<{mowla: boolean, name: string, date: Date}> {
             return {mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z')};
         }
@@ -286,13 +286,13 @@ test('basic serialisation param: entity', async () => {
 test('basic serialisation partial param: entity', async () => {
     @Entity('user3')
     class User {
-        @f
+        @t
         defaultVar: string = 'yes';
 
-        @f
+        @t
         birthdate?: Date;
 
-        constructor(@f public name: string) {
+        constructor(@t public name: string) {
             this.name = name;
         }
     }
@@ -312,7 +312,7 @@ test('basic serialisation partial param: entity', async () => {
         }
 
         @Action()
-        @f.partial(User)
+        @t.partial(User)
         partialUser(name: string, date: Date): Partial<User> {
             return {
                 name: name,
@@ -321,7 +321,7 @@ test('basic serialisation partial param: entity', async () => {
         }
 
         @Action()
-        user(@f.partial(User) user: Partial<User>): boolean {
+        user(@t.partial(User) user: Partial<User>): boolean {
             return !(user instanceof User) && user.name === 'peter2' && !user.defaultVar;
         }
     }
@@ -360,13 +360,13 @@ test('test basic promise', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        @f.array(String)
+        @t.array(String)
         async names(last: string): Promise<string[]> {
             return ['a', 'b', 'c', last];
         }
 
         @Action()
-        @f.type(User)
+        @t.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
@@ -410,7 +410,7 @@ test('test observable', async () => {
         }
 
         @Action()
-        @f.template(User)
+        @t.template(User)
         user(name: string): Observable<User> {
             return new Observable((observer) => {
                 observer.next(new User('first'));
@@ -447,12 +447,12 @@ test('test param serialization', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        actionString(@f.type(String) array: string): boolean {
+        actionString(@t.type(String) array: string): boolean {
             return 'string' === typeof array;
         }
 
         @Action()
-        actionArray(@f.array(String) array: string[]): boolean {
+        actionArray(@t.array(String) array: string[]): boolean {
             return isArray(array) && 'string' === typeof array[0];
         }
     }
@@ -470,7 +470,7 @@ test('test batcher', async () => {
     @Controller('test')
     class TestController {
         @Action()
-        uploadBig(@f.type(Buffer) file: Buffer): boolean {
+        uploadBig(@t.type(Buffer) file: Buffer): boolean {
             return file.length === 550_000;
         }
 

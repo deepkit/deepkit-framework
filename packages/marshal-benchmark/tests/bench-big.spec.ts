@@ -30,10 +30,10 @@ export class SubModel {
     @f
     label: string;
 
-    @f.optional()
+    @f.optional
     age?: number;
 
-    @f.type(JobTaskQueue).optional()
+    @f.optional
     queue?: JobTaskQueue;
 
     constructorUsed = false;

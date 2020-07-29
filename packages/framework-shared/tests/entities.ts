@@ -1,5 +1,5 @@
 import {
-    Entity, f,
+    Entity, t,
     uuid,
 } from "@super-hornet/marshal";
 import {each, eachPair} from "@super-hornet/core";
@@ -8,9 +8,9 @@ import {IdInterface} from "../index";
 @Entity('JobAssignedResourcesGpu')
 export class JobAssignedResourcesGpu {
     constructor(
-        @f.asName('uuid') public uuid: string,
-        @f.asName('name') public name: string,
-        @f.asName('memory') public memory: number,
+        @t.name('uuid') public uuid: string,
+        @t.name('name') public name: string,
+        @t.name('memory') public memory: number,
     ) {
     }
 }
@@ -18,13 +18,13 @@ export class JobAssignedResourcesGpu {
 
 @Entity('JobAssignedResources')
 export class JobAssignedResources {
-    @f
+    @t
     cpu: number = 0;
 
-    @f
+    @t
     memory: number = 0;
 
-    @f.array(JobAssignedResourcesGpu)
+    @t.array(JobAssignedResourcesGpu)
     gpus: JobAssignedResourcesGpu[] = [];
 
     public getMinGpuMemory(): number {
@@ -62,52 +62,52 @@ export class JobAssignedResources {
 }
 
 export class JobConfigDocker {
-    @f.array(String)
+    @t.array(String)
     env: string[] = []; //e.g. ["PATH=bla"]
 
-    @f.array(String)
+    @t.array(String)
     binds: string[] = []; //e.g. ["/tmp:/tmp"]
 
-    @f.array(String)
+    @t.array(String)
     links: string[] = []; //e.g. ["redis3:redis"]
 }
 
 export class JobResources {
-    @f
+    @t
     minCpu: number = 0;
 
-    @f
+    @t
     maxCpu: number = 0;
 
-    @f
+    @t
     cpu: number = 0;
 
-    @f
+    @t
     allMemory: boolean = true;
 
-    @f
+    @t
     minMemory: number = 0;
 
-    @f
+    @t
     maxMemory: number = 0;
 
-    @f
+    @t
     memory: number = 0;
 
 
-    @f
+    @t
     minGpu: number = 0;
 
-    @f
+    @t
     maxGpu: number = 0;
 
-    @f
+    @t
     gpu: number = 0;
 
     /**
      * Value in GB. Defines minimum gpu memory that is necessary.
      */
-    @f
+    @t
     minGpuMemory: number = 0;
 
     static fromPartial(partial: Partial<JobResources>): JobResources {
@@ -160,55 +160,55 @@ export class JobResources {
 
 export class JobTaskCommand {
     constructor(
-        @f.asName('name')
+        @t.name('name')
         public name: string = '',
-        @f.asName('command')
+        @t.name('command')
         public command: string = '',
     ) {
     }
 }
 
 export class JobTaskConfigBase {
-    @f
+    @t
     label: string = '';
 
-    @f.array(String)
+    @t.array(String)
     install: string[] = [];
 
-    @f
+    @t
     dockerfile: string = '';
 
-    @f.array(String)
+    @t.array(String)
     install_files: string[] = [];
 
-    @f
+    @t
     image: string = '';
 
-    @f.array(String)
+    @t.array(String)
     output: string[] = [];
 
-    @f.array(String)
+    @t.array(String)
     environmentVariables: string[] = [];
 
-    @f.array(String)
+    @t.array(String)
     nodeIds: string[] = [];
 
-    @f.array(String)
+    @t.array(String)
     nodes: string[] = [];
 
-    @f.array(String)
+    @t.array(String)
     clusters: string[] = [];
 
-    @f.array(JobTaskCommand)
+    @t.array(JobTaskCommand)
     commands: JobTaskCommand[] = [];
 
-    @f.array(String)
+    @t.array(String)
     args: string[] = [];
 
-    @f.type(JobResources)
+    @t.type(JobResources)
     resources: JobResources = new JobResources;
 
-    @f.type(JobConfigDocker)
+    @t.type(JobConfigDocker)
     docker: JobConfigDocker = new JobConfigDocker;
 
     public isDockerImage(): boolean {
@@ -240,19 +240,19 @@ export class JobTaskConfig extends JobTaskConfigBase {
     /**
      * Will be set by config loader.
      */
-    @f
+    @t
     name: string = '';
 
-    @f
+    @t
     replicas: number = 1;
 
-    @f.array(String)
+    @t.array(String)
     depends_on: string[] = [];
 
     /**
      * Will be set config loader
      */
-    @f.type(Boolean).asMap()
+    @t.map(Boolean)
     configValuesNoOverwrite: { [path: string]: true } = {};
 
     public isRoot(): boolean {
@@ -278,22 +278,22 @@ export class JobConfig extends JobTaskConfigBase {
         'docker'
     ];
 
-    @f.any().asMap()
+    @t.map(t.any)
     parameters: { [name: string]: any } = {};
 
-    @f
+    @t
     path: string = '';
 
-    @f.array(String)
+    @t.array(String)
     ignore: string[] = [];
 
-    @f
+    @t
     priority: number = 0;
 
-    @f
+    @t
     import: string = '';
 
-    @f.map(JobTaskConfig)
+    @t.map(JobTaskConfig)
     protected tasks: { [name: string]: JobTaskConfig } = {};
 
     protected parametersArray?: { name: string, value: any }[];
@@ -352,92 +352,92 @@ export class JobConfig extends JobTaskConfigBase {
 }
 
 export class JobEnvironmentPython {
-    @f.optional()
+    @t.optional
     version?: string;
 
-    @f.optional()
+    @t.optional
     binary?: string;
 
-    @f.optional()
+    @t.optional
     sdkVersion?: string;
 
-    @f.map(String)
+    @t.map(String)
     pipPackages: { [name: string]: string } = {};
 }
 
 export class JobEnvironment {
-    @f.optional()
+    @t.optional
     hostname?: string;
 
-    @f.optional()
+    @t.optional
     username?: string;
 
-    @f.optional()
+    @t.optional
     platform?: string;
 
-    @f.optional()
+    @t.optional
     release?: string;
 
-    @f.optional()
+    @t.optional
     arch?: string;
 
-    @f.optional()
+    @t.optional
     uptime?: number;
 
-    @f.optional()
+    @t.optional
     nodeVersion?: string;
 
-    @f.map(String).optional()
+    @t.map(String).optional
     environmentVariables?: { [name: string]: string };
 
-    @f.type(JobEnvironmentPython).optional()
+    @t.type(JobEnvironmentPython).optional
     python?: JobEnvironmentPython;
 }
 
 export class JobGit {
-    @f.optional()
+    @t.optional
     author?: string;
 
-    @f.optional()
+    @t.optional
     branch?: string;
 
-    @f.optional()
+    @t.optional
     origin?: string;
 
     constructor(
-        @f.asName('commit') public commit: string,
-        @f.asName('message') public message: string,
-        @f.asName('authorEmail').optional() public authorEmail?: string,
-        @f.asName('date').optional() public date?: Date,
+        @t.name('commit') public commit: string,
+        @t.name('message') public message: string,
+        @t.name('authorEmail').optional public authorEmail?: string,
+        @t.name('date').optional public date?: Date,
     ) {
     }
 }
 
 export class JobDocker {
-    @f.optional()
+    @t.optional
     runOnVersion?: string;
 }
 
 export class JobDockerImage {
-    @f.optional()
+    @t.optional
     name?: string;
 
-    @f.optional()
+    @t.optional
     id?: string;
 
-    @f.optional()
+    @t.optional
     size?: number;
 
-    @f.optional()
+    @t.optional
     os?: string;
 
-    @f.optional()
+    @t.optional
     arch?: string;
 
-    @f.optional()
+    @t.optional
     created?: Date;
 
-    @f.optional()
+    @t.optional
     builtWithDockerVersion?: string;
 }
 
@@ -496,28 +496,28 @@ export class Channel {
     /**
      * This might be empty.
      */
-    @f.array(String)
+    @t.array(String)
     traces: string[] = [];
 
-    @f.optional()
+    @t.optional
     kpi?: boolean;
 
-    @f
+    @t
     kpiTrace: number = 0;
 
-    @f
+    @t
     maxOptimization: boolean = true;
 
-    @f.any().asArray()
+    @t.array(t.any)
     lastValue: any[] = [];
 
-    @f.any().optional()
+    @t.any.optional
     xaxis?: object;
 
-    @f.any().optional()
+    @t.any.optional
     yaxis?: object;
 
-    @f.any().optional()
+    @t.any.optional
     layout?: object;
 }
 
@@ -530,62 +530,62 @@ export enum PullStatsStatus {
 }
 
 export class PullStats {
-    @f
+    @t
     current: number = 0;
 
-    @f
+    @t
     total: number = 0;
 
-    @f.enum(PullStatsStatus)
+    @t.enum(PullStatsStatus)
     status: PullStatsStatus = PullStatsStatus.waiting;
 
     constructor(
-        @f.asName('id') public readonly id: string
+        @t.name('id') public readonly id: string
     ) {
     }
 }
 
 export class JobTaskInstance {
-    @f.enum(JobTaskInstanceStatus)
+    @t.enum(JobTaskInstanceStatus)
     status: JobTaskInstanceStatus = JobTaskInstanceStatus.pending;
 
-    @f
+    @t
     uploadOutputCurrent: number = -1;
 
-    @f
+    @t
     uploadOutputTotal: number = 0;
 
-    @f.type(JobEnvironment)
+    @t.type(JobEnvironment)
     environment: JobEnvironment = new JobEnvironment;
 
-    @f.type(JobDocker)
+    @t.type(JobDocker)
     docker: JobDocker = new JobDocker;
 
-    @f.map(PullStats)
+    @t.map(PullStats)
     dockerPullStats: { [id: string]: PullStats } = {};
 
-    @f.type(JobDockerImage)
+    @t.type(JobDockerImage)
     dockerImage: JobDockerImage = new JobDockerImage;
 
-    @f.uuid().optional()
+    @t.uuid.optional
     node?: string;
 
-    @f.optional()
+    @t.optional
     exitCode?: number;
 
-    @f
+    @t
     error: string = '';
 
-    @f.type(JobAssignedResources)
+    @t.type(JobAssignedResources)
     assignedResources: JobAssignedResources = new JobAssignedResources;
 
-    @f.optional()
+    @t.optional
     started?: Date;
 
-    @f.optional()
+    @t.optional
     ended?: Date;
 
-    constructor(@f.asName('id') public id: number) {
+    constructor(@t.name('id') public id: number) {
     }
 
     public getOrCreatePullStats(id: string): PullStats {
@@ -626,43 +626,43 @@ export class JobTaskInstance {
 }
 
 export class JobTaskQueue {
-    @f
+    @t
     position: number = 0;
 
-    @f
+    @t
     tries: number = 0;
 
-    @f
+    @t
     result: string = '';
 
-    @f
+    @t
     added: Date = new Date();
 }
 
 export class JobTask {
-    @f.type(JobTaskQueue)
+    @t.type(JobTaskQueue)
     queue: JobTaskQueue = new JobTaskQueue;
 
-    @f.enum(JobTaskStatus)
+    @t.enum(JobTaskStatus)
     status: JobTaskStatus = JobTaskStatus.pending;
 
-    @f.optional()
+    @t.optional
     assigned?: Date;
 
-    @f.optional()
+    @t.optional
     started?: Date;
 
-    @f.optional()
+    @t.optional
     ended?: Date;
 
-    @f.optional()
+    @t.optional
     exitCode?: number;
 
-    @f.array(JobTaskInstance)
+    @t.array(JobTaskInstance)
     public instances: JobTaskInstance[] = [];
 
     constructor(
-        @f.asName('name') public name: string,
+        @t.name('name') public name: string,
         replicas: number,
     ) {
         for (let i = 0; i < replicas; i++) {
@@ -768,50 +768,50 @@ export class JobTask {
 
 @Entity('jobModelGraphSnapshot/histogram')
 export class JobModelGraphSnapshotHistogram {
-    @f.array(Number)
+    @t.array(Number)
     x!: number[];
 
-    @f.array(Number)
+    @t.array(Number)
     y!: number[];
 }
 
 
 @Entity('jobModelGraphSnapshot/layer')
 export class JobModelGraphSnapshotLayer {
-    @f.optional()
+    @t.optional
     saved?: Date;
 
-    @f.optional()
+    @t.optional
     outputFileId?: string;
 
-    @f.type(JobModelGraphSnapshotHistogram).optional()
+    @t.type(JobModelGraphSnapshotHistogram).optional
     weights?: JobModelGraphSnapshotHistogram;
 
-    @f.type(JobModelGraphSnapshotHistogram).optional()
+    @t.type(JobModelGraphSnapshotHistogram).optional
     biases?: JobModelGraphSnapshotHistogram;
 }
 
 @Entity('jobModelGraphSnapshot')
 export class JobModelGraphSnapshot {
-    @f.uuid()
+    @t.uuid
     id: string = uuid();
 
-    @f
+    @t
     version: number = 0;
 
-    @f
+    @t
     created: Date = new Date;
 
-    @f
+    @t
     iteration: number = 0;
 
-    @f.index()
+    @t.index()
     live: boolean = false;
 
-    @f.type(JobModelGraphSnapshotLayer).asMap()
+    @t.map(JobModelGraphSnapshotLayer)
     layerInfo: {[layerName: string]: JobModelGraphSnapshotLayer} = {};
 
-    constructor(@f.uuid().index().asName('job') public job: string) {
+    constructor(@t.uuid.index().name('job') public job: string) {
     }
 }
 
@@ -819,34 +819,34 @@ export class JobModelNode {
     /**
      * Separated by /. Will be grouped together.
      */
-    @f
+    @t
     id!: string;
 
-    @f
+    @t
     label!: string;
 
-    @f.optional()
+    @t.optional
     type: string = ''; //op, dense, conv, concat, reshape, etc.
 
-    @f.optional()
+    @t.optional
     op?: string;
 
-    @f.array(Number)
+    @t.array(Number)
     shape: number[] = [];
 
-    @f.any().asMap()
+    @t.map(t.any)
     attributes: { [name: string]: any } = {};
 
     /**
      * input ids from other nodes.
      */
-    @f.type(String).asArray()
+    @t.array(String)
     input: string[] = [];
 
     /**
      * input ids from other nodes.
      */
-    @f.type(JobModelNode).asArray()
+    @t.array(JobModelNode)
     children: JobModelNode[] = [];
 
     public hasSelfActivation(): boolean {
@@ -872,147 +872,147 @@ export class JobModelNode {
 
 @Entity('job/model/graph')
 export class JobModelGraph {
-    @f.type(JobModelNode).asArray()
+    @t.array(JobModelNode)
     nodes: JobModelNode[] = [];
 
-    @f.type(String).asArray()
+    @t.array(String)
     inputs: string[] = [];
 
-    @f.type(String).asArray()
+    @t.array(String)
     outputs: string[] = [];
 }
 
 @Entity('job', 'jobs')
 export class Job implements IdInterface {
-    @f.uuid().exclude('plain')
+    @t.uuid.exclude('plain')
     accessToken: string = uuid();
 
-    @f
+    @t
     number: number = 0;
 
-    @f.index()
+    @t.index()
     version: number = 1;
 
-    @f
+    @t
     description: string = '';
 
     /**
      * The cluster id if assigned.
      */
-    @f.uuid().optional()
+    @t.uuid.optional
     cluster?: string;
 
-    @f.index()
+    @t.index()
     connections: number = 0;
 
-    @f
+    @t
     created: Date = new Date();
 
-    @f
+    @t
     updated: Date = new Date();
 
-    @f.optional()
+    @t.optional
     author?: string;
 
-    @f.type(JobConfig)
+    @t.type(JobConfig)
     config: JobConfig = new JobConfig;
 
-    @f.type(JobGit).optional()
+    @t.type(JobGit).optional
     git?: JobGit;
 
-    @f.optional()
+    @t.optional
     configFile?: string;
 
     /**
      * Whether the job is executed directly in script without Deepkit CLI tools.
      */
-    @f
+    @t
     selfExecution: boolean = false;
 
-    @f
+    @t
     hasModelGraph: boolean = false;
 
-    @f.uuid().optional()
+    @t.uuid.optional
     liveSnapshotId?: string;
 
-    @f.enum(JobStatus)
+    @t.enum(JobStatus)
     status: JobStatus = JobStatus.creating;
 
-    @f
+    @t
     title: string = '';
 
-    @f.any().asMap()
+    @t.map(t.any)
     infos: { [name: string]: any } = {};
 
-    @f.map(JobTask)
+    @t.map(JobTask)
     tasks: { [name: string]: JobTask } = {};
 
     //todo, move the content to a file
-    @f.any().asMap()
+    @t.map(t.any)
     debugSnapshots: { [timestamp: number]: any } = {};
 
-    @f.type(Boolean).asMap()
+    @t.map(Boolean)
     debugActiveLayerWatching: { [layerId: string]: boolean } = {};
 
-    @f
+    @t
     runOnCluster: boolean = false;
 
-    @f.type(String).asArray().index()
+    @t.array(String).index()
     tags: string[] = [];
 
-    @f.optional()
+    @t.optional
     assigned?: Date;
 
-    @f.optional()
+    @t.optional
     started?: Date;
 
-    @f.optional()
+    @t.optional
     ended?: Date;
 
-    @f.optional()
+    @t.optional
     stopRequested?: Date;
 
-    @f.optional()
+    @t.optional
     ping?: Date;
 
     //aka epochs
-    @f
+    @t
     iteration: number = 0;
 
-    @f
+    @t
     iterations: number = 0;
 
-    @f
+    @t
     secondsPerIteration: number = 0;
 
     //aka batches
-    @f
+    @t
     step: number = 0;
 
-    @f
+    @t
     steps: number = 0;
 
-    @f
+    @t
     stepLabel: string = 'step';
 
     /**
      * ETA in seconds. Time left.
      */
-    @f
+    @t
     eta: number = 0;
 
-    @f
+    @t
     speed: number = 0;
 
-    @f
+    @t
     speedLabel: string = 'sample/s';
 
-    @f.map(Channel)
+    @t.map(Channel)
     channels: { [name: string]: Channel } = {};
 
     constructor(
-        @f.uuid().primary().asName('id') public id: string,
-        @f.uuid().index().asName('project') public project: string,
+        @t.uuid.primary.name('id') public id: string,
+        @t.uuid.index().name('project') public project: string,
     ) {
     }
 }

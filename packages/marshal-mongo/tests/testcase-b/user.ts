@@ -1,16 +1,16 @@
-import {Entity, f, uuid} from "@super-hornet/marshal";
+import {Entity, t, uuid} from "@super-hornet/marshal";
 import {UserCredentials} from "./credentials";
 
 @Entity('b-user')
 export class User {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
     //one-to-one reference
-    @f.backReference()
+    @t.backReference()
     credentials: UserCredentials = new UserCredentials(this);
 
-    constructor(@f public name: string, public password?: string) {
+    constructor(@t public name: string, public password?: string) {
         if (password) this.credentials.password = password;
     }
 }

@@ -1,16 +1,16 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, f} from "../src/decorators";
+import {getClassSchema, t} from "../src/decorators";
 
 test('test minimized code', async () => {
     expect(() => {
         class ClusterNodeCredentials {
-            @f
+            @t
             sshPort: number = 22;
 
             constructor(
-                @f.primary().uuid().asName('nodeId')
-                @f.primary()
+                @t.primary.uuid.name('nodeId')
+                @t.primary
                 public e: string
             ) {
             }
@@ -19,12 +19,12 @@ test('test minimized code', async () => {
 
     expect(() => {
         class ClusterNodeCredentials {
-            @f
+            @t
             sshPort: number = 22;
 
             constructor(
-                @f.primary().uuid().asName('nodeId')
-                @f.primary().uuid().asName('asd')
+                @t.primary.uuid.name('nodeId')
+                @t.primary.uuid.name('asd')
                 public e: string
             ) {
             }
@@ -32,12 +32,12 @@ test('test minimized code', async () => {
     }).toThrow('Defining multiple Marshal decorators with different names')
 
     class ClusterNodeCredentials {
-        @f
+        @t
         sshPort: number = 22;
 
         constructor(
-            @f.primary().uuid().asName('nodeId')
-            @f.primary().uuid().asName('nodeId')
+            @t.primary.uuid.name('nodeId')
+            @t.primary.uuid.name('nodeId')
             public e: string
         ) {
         }

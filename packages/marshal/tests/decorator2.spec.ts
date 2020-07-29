@@ -1,11 +1,11 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, f, getClassSchema, plainToClass, PropertySchema} from "../index";
+import {Entity, t, getClassSchema, plainToClass, PropertySchema} from "../index";
 import {uuid} from "../src/utils";
 
 test('test optional', () => {
     class Model {
-        @f.optional() super?: number
+        @t.optional super?: number
     }
 
     const schema = getClassSchema(Model);
@@ -17,19 +17,19 @@ test('test optional', () => {
 
 test('test @f', () => {
     class Config {
-        @f created: Date = new Date;
+        @t created: Date = new Date;
     }
 
     class Page {
-        @f.map(Config)
+        @t.map(Config)
         map: { [name: string]: Config } = {};
 
-        @f.array(Config)
+        @t.array(Config)
         configArray: Config[] = [];
 
         constructor(
-            @f name: string,
-            @f.array(String) tags: string[]
+            @t name: string,
+            @t.array(String) tags: string[]
         ) {
         }
     }
@@ -42,27 +42,30 @@ test('test @f', () => {
 
     expect(schema.getProperty('tags').isMap).toBe(false);
     expect(schema.getProperty('tags').isArray).toBe(true);
-    expect(schema.getProperty('tags').type).toBe('string');
+    expect(schema.getProperty('tags').getSubType().type).toBe('string');
 
-    expect(schema.getProperty('map').type).toBe('class');
+    expect(schema.getProperty('map').type).toBe('map');
     expect(schema.getProperty('map').isMap).toBe(true);
-    expect(schema.getProperty('map').getResolvedClassType()).toBe(Config);
-    expect(schema.getProperty('map').isArray).toBe(false);
+    expect(schema.getProperty('map').getSubType().type).toBe('class');
+    expect(schema.getProperty('map').getSubType().getResolvedClassType()).toBe(Config);
+    expect(schema.getProperty('map').getSubType().isArray).toBe(false);
 
-    expect(schema.getProperty('configArray').type).toBe('class');
+    expect(schema.getProperty('configArray').type).toBe('array');
     expect(schema.getProperty('configArray').isArray).toBe(true);
-    expect(schema.getProperty('configArray').getResolvedClassType()).toBe(Config);
-    expect(schema.getProperty('configArray').isMap).toBe(false);
+    expect(schema.getProperty('configArray').getSubType().type).toBe('class');
+    expect(schema.getProperty('configArray').getSubType().getResolvedClassType()).toBe(Config);
+    expect(schema.getProperty('configArray').getSubType().isMap).toBe(false);
+    expect(schema.getProperty('configArray').getSubType().isArray).toBe(false);
 });
 
 
 test('test propertySchema serialization wrong', () => {
     class Config {
-        @f created: Date = new Date;
+        @t created: Date = new Date;
     }
 
     class Page {
-        @f.type(Config).optional()
+        @t.type(Config).optional
         config?: Config;
     }
 
@@ -76,20 +79,20 @@ test('test propertySchema serialization wrong', () => {
 test('test propertySchema serialization', () => {
     @Entity('config')
     class Config {
-        @f created: Date = new Date;
+        @t created: Date = new Date;
     }
 
     class Page {
-        @f.primary().uuid()
+        @t.primary.uuid
         id: string = uuid();
 
-        @f.optional()
+        @t.optional
         title: string = '';
 
-        @f.map(Config)
+        @t.map(Config)
         map: { [name: string]: Config } = {};
 
-        @f.map(Config).template(Config)
+        @t.map(Config).template(t.string, Config)
         map2: { [name: string]: Config } = {};
     }
 
@@ -138,11 +141,11 @@ test('test propertySchema serialization', () => {
         const p1 = schema.getProperty('map');
         const p2 = PropertySchema.fromJSON(p1.toJSON());
         expect(p1.name).toBe('map');
-        expect(p1.isId).toBe(false);
-        expect(p1.getResolvedClassType()).toBe(Config);
-        expect(p1.getResolvedClassTypeForValidType()).toBe(Config);
         expect(p1.isMap).toBe(true);
-        expect(p1.type).toBe('class');
+        expect(p1.isId).toBe(false);
+        expect(p1.getSubType().getResolvedClassType()).toBe(Config);
+        expect(p1.getSubType().getResolvedClassTypeForValidType()).toBe(Config);
+        expect(p1.getSubType().type).toBe('class');
         compare(p1, p2);
     }
 
@@ -151,12 +154,13 @@ test('test propertySchema serialization', () => {
         const p2 = PropertySchema.fromJSON(p1.toJSON());
         expect(p1.name).toBe('map2');
         expect(p1.isId).toBe(false);
-        expect(p1.getResolvedClassType()).toBe(Config);
-        expect(p1.getResolvedClassTypeForValidType()).toBe(Config);
         expect(p1.isMap).toBe(true);
-        expect(p1.templateArgs![0].type).toEqual('class');
-        expect(p1.templateArgs![0].getResolvedClassTypeForValidType()).toEqual(Config);
-        expect(p1.type).toBe('class');
+        expect(p1.getSubType().getResolvedClassType()).toBe(Config);
+        expect(p1.getSubType().getResolvedClassTypeForValidType()).toBe(Config);
+        expect(p1.templateArgs![0].type).toEqual('string');
+        expect(p1.templateArgs![1].type).toEqual('class');
+        expect(p1.templateArgs![1].getResolvedClassTypeForValidType()).toEqual(Config);
+        expect(p1.getSubType().type).toBe('class');
         compare(p1, p2);
     }
 
@@ -165,9 +169,9 @@ test('test propertySchema serialization', () => {
 test('test asName', () => {
     class User {
         constructor(
-            @f.asName('fieldA')
+            @t.name('fieldA')
             public parent: string,
-            @f.uuid().optional().asName('fieldB')
+            @t.uuid.optional.name('fieldB')
             public neighbor?: string,
         ) {
         }
@@ -190,8 +194,8 @@ test('test asName', () => {
 test('test asName easy', () => {
     class User {
         constructor(
-            @f public parent: string,
-            @f public neighbor?: number,
+            @t public parent: string,
+            @t public neighbor?: number,
         ) {
         }
     }
@@ -204,14 +208,14 @@ test('test asName easy', () => {
 test('test inheritance', async () => {
     class Base {
         constructor(
-            @f.index({}, 'id2')
+            @t.index({}, 'id2')
             public id: string,
         ) {
         }
     }
 
     class Page extends Base {
-        constructor(id: string, @f public name: string) {
+        constructor(id: string, @t public name: string) {
             super(id);
         }
     }
@@ -221,7 +225,7 @@ test('test inheritance', async () => {
     }
 
     class SuperPage extends Between {
-        @f.optional() super?: number;
+        @t.optional super?: number;
     }
 
     class Super2 extends SuperPage {
@@ -256,12 +260,12 @@ test('test inheritance', async () => {
 
 test('test invalid @f', () => {
     class Config {
-        @f.optional() name?: string;
+        @t.optional name?: string;
     }
 
     expect(() => {
         class User1 {
-            @f
+            @t
                 // @ts-ignore
             notDefined;
         }
@@ -273,7 +277,7 @@ test('test invalid @f', () => {
 
         class User2 {
             // @ts-ignore
-            @f.type(NOTEXIST)
+            @t.type(NOTEXIST)
                 // @ts-ignore
             notDefined;
         }
@@ -281,35 +285,43 @@ test('test invalid @f', () => {
 
     expect(() => {
         class User3 {
-            @f
+            @t
             created = new Date;
         }
     }).toThrowError('User3::created type mismatch. Given undefined, but declared is Object or undefined.');
 
     expect(() => {
         class User4 {
-            @f.type(Config)
+            @t.type(Config)
             config: Config[] = [];
         }
     }).toThrowError('User4::config type mismatch. Given Config, but declared is Array.');
 
     expect(() => {
         class User5 {
-            @f.array(Config)
+            @t.array(Config)
             config?: Config;
         }
     }).toThrowError('User5::config type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
         class User6 {
-            @f.type(Config)
+            @t.type(Config)
             config: { [k: string]: Config } = {};
         }
     }).toThrowError('User6::config type mismatch. Given Config, but declared is Object or undefined');
 
     expect(() => {
         class Model {
-            @f.forwardArray(() => Config)
+            @t.array(t.type(() => Config))
+            sub?: Config;
+        }
+
+    }).toThrowError('Model::sub type mismatch. Given Config[], but declared is Config.');
+
+    expect(() => {
+        class Model {
+            @t.array(() => undefined)
             sub?: Config;
         }
 
@@ -317,30 +329,30 @@ test('test invalid @f', () => {
 
     expect(() => {
         class Model {
-            @f.forwardMap(() => Config)
+            @t.map(() => undefined)
             sub?: Config;
         }
-    }).toThrowError('Model::sub type mismatch. Given {[key: string]: ForwardedRef}, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Map<any, ForwardedRef>, but declared is Config.');
 
     expect(() => {
         class Model {
-            @f.map(Config)
+            @t.map(Config)
             sub?: Config[];
         }
 
-    }).toThrowError('Model::sub type mismatch. Given {[key: string]: Config}, but declared is Array.');
+    }).toThrowError('Model::sub type mismatch. Given Map<any, Config>, but declared is Array.');
 
     {
         //works
         class Model {
-            @f.any()
+            @t.any
             any?: { [k: string]: any };
         }
     }
     {
         //works
         class Model {
-            @f.any().asMap()
+            @t.map(t.any)
                 // @ts-ignore
             any?;
         }
@@ -349,7 +361,7 @@ test('test invalid @f', () => {
     {
         //works
         class Model {
-            @f.forward(() => Config)
+            @t.type(() => Config)
             sub?: Config;
         }
     }
@@ -357,7 +369,7 @@ test('test invalid @f', () => {
 
 test('faulty constructor', () => {
     class Faulty {
-        constructor(@f public name: string) {
+        constructor(@t public name: string) {
             if (!name) throw new Error('No name given!!');
         }
     }

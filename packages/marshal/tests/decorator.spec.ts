@@ -4,7 +4,7 @@ import {
     classToPlain,
     DatabaseName,
     Entity,
-    f,
+    t,
     getClassSchema, getClassSchemaByName,
     getDatabaseName,
     getEntityName, getKnownClassSchemasNames, hasClassSchemaByName,
@@ -23,6 +23,7 @@ import {DocumentClass} from "./document-scenario/DocumentClass";
 import {PageCollection} from "./document-scenario/PageCollection";
 import {getClassTypeFromInstance} from '../src/decorators';
 import {resolvePropertyCompilerSchema} from "../src/jit";
+
 
 test('getClassSchemaByName', async () => {
     @Entity('getClassSchemaByName')
@@ -70,13 +71,13 @@ test('test invalid usage', async () => {
     }
 
     class Base {
-        @f.forward(() => undefined!)
+        @t.type(() => undefined!)
         ohwe: any;
 
-        @f.forward(() => Config)
+        @t.type(() => Config)
         config?: any;
 
-        constructor(@f public id: string) {
+        constructor(@t public id: string) {
         }
     }
 
@@ -108,10 +109,10 @@ test('test entity database', async () => {
     @Entity('DifferentDataBase', 'differentCollection')
     @DatabaseName('testing1')
     class DifferentDataBase {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id?: string;
 
-        @f
+        @t
         name?: string;
     }
 
@@ -151,9 +152,9 @@ test('test uuid', () => {
 test('test asName', () => {
     class User {
         constructor(
-            @f.asName('fieldA')
+            @t.name('fieldA')
             public parent: string,
-            @f.uuid().asName('fieldB').optional()
+            @t.uuid.name('fieldB').optional
             public neighbor?: string,
         ) {
         }
@@ -197,7 +198,7 @@ test('test custom decorator', () => {
     }
 
     class Model {
-        @f.use(Decorator) b!: string;
+        @t.use(Decorator) b!: string;
     }
 
     expect(getClassSchema(Model).getProperty('b').type).toBe('string');
@@ -222,7 +223,7 @@ test('test decorator circular', () => {
 
     {
         class Model {
-            @f.forward(() => Sub)
+            @t.type(() => Sub)
             sub?: Sub;
         }
 
@@ -233,11 +234,18 @@ test('test decorator circular', () => {
 
     {
         class Model {
-            @f.forwardMap(() => Sub)
+            @t.map(t.type(() => Sub))
             sub?: { [l: string]: Sub };
         }
 
+        expect(getClassSchema(Model).getProperty('sub').type).toBe('map');
+        expect(getClassSchema(Model).getProperty('sub').getSubType().type).toBe('class');
+        expect(getClassSchema(Model).getProperty('sub').getSubType().resolveClassType).toBe(Sub);
+
         expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({
+            type: 'map',
+        });
+        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub.foo')).toMatchObject({
             type: 'class',
             resolveClassType: Sub
         });
@@ -246,11 +254,15 @@ test('test decorator circular', () => {
 
     {
         class Model {
-            @f.forwardArray(() => Sub)
+            @t.array(t.type(() => Sub))
             sub?: Sub[];
         }
 
         expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({
+            type: 'array',
+        });
+
+        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub.0')).toMatchObject({
             type: 'class',
             resolveClassType: Sub
         });
@@ -267,19 +279,19 @@ test('test properties', () => {
 
     @Entity('Model')
     class Model {
-        @f.primary().mongoId()
+        @t.primary.mongoId
         _id?: string;
 
-        @f
+        @t
         name?: string;
 
-        @f.type(DataValue)
+        @t.type(DataValue)
         data?: DataValue;
     }
 
     @Entity('SubModel')
     class SubModel extends Model {
-        @f.type(DataValue2)
+        @t.type(DataValue2)
         data2?: DataValue2;
     }
 
@@ -330,10 +342,10 @@ test('test properties', () => {
 
 test('more decorator', () => {
     class Model {
-        @f
+        @t
         bool: boolean = false;
 
-        @f.any()
+        @t.any
         whatever: any;
     }
 
@@ -342,6 +354,8 @@ test('more decorator', () => {
             bool: 'wow',
             whatever: {'any': false}
         });
+
+        expect(getClassSchema(Model).getProperty('whatever').type).toBe('any');
 
         expect(instance.bool).toBeFalse();
         expect(instance.whatever).toEqual({any: false});
@@ -392,13 +406,13 @@ test('more decorator', () => {
 
 test('more array/map', () => {
     class Model {
-        @f.array(Boolean)
+        @t.array(Boolean)
         bools?: boolean[];
 
-        @f.any().asArray()
+        @t.array(t.any)
         whatever?: any[];
 
-        @f.any().asMap()
+        @t.map(t.any)
         whatevermap?: { [k: string]: any };
     }
 
@@ -409,7 +423,7 @@ test('more array/map', () => {
 
 test('binary', () => {
     class Model {
-        @f.type(ArrayBuffer)
+        @t.type(ArrayBuffer)
         preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
@@ -433,22 +447,22 @@ test('binary', () => {
 
 test('group', () => {
     class Config {
-        @f.group('theme') color: string = 'red';
-        @f.group('theme', 'text') fontSize: number = 12;
+        @t.group('theme') color: string = 'red';
+        @t.group('theme', 'text') fontSize: number = 12;
 
-        @f.group('theme', 'text') fontFamily: string = 'Arial';
+        @t.group('theme', 'text') fontFamily: string = 'Arial';
 
-        @f.group('language') language: string = 'en';
+        @t.group('language') language: string = 'en';
     }
 
     class User {
-        @f username: string = 'username';
+        @t username: string = 'username';
 
-        @f.group('confidential') password: string = 'pw';
+        @t.group('confidential') password: string = 'pw';
 
-        @f.group('details') config: Config = new Config;
+        @t.group('details') config: Config = new Config;
 
-        @f foo: string = 'bar';
+        @t foo: string = 'bar';
     }
 
     const schema = getClassSchema(User);
@@ -571,7 +585,7 @@ test('f on class, constructor resolution', () => {
     class Connection2 {}
 
     {
-        @f
+        @t
         class MyServer {
             constructor(private connection: Connection, connection2: Connection2) {
             }
@@ -590,9 +604,9 @@ test('f on class, constructor resolution', () => {
     }
 
     {
-        @f
+        @t
         class MyServer {
-            constructor(private connection: Connection, @f.optional() connection2?: Connection2) {
+            constructor(private connection: Connection, @t.optional connection2?: Connection2) {
             }
         }
 
@@ -609,9 +623,9 @@ test('f on class, constructor resolution', () => {
     }
 
     {
-        @f
+        @t
         class MyServer {
-            constructor(@f.type(Connection).optional() connection2?: Connection2) {
+            constructor(@t.type(Connection).optional connection2?: Connection2) {
             }
         }
         const schema = getClassSchema(MyServer);
@@ -626,7 +640,7 @@ test('f on class, constructor resolution', () => {
 test('f.data', () => {
 
     class User {
-        @f.data('myData', 'myValue') username: string = '';
+        @t.data('myData', 'myValue') username: string = '';
     }
 
     expect(getClassSchema(User).getProperty('username').data['myData']).toBe('myValue');

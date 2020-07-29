@@ -12,13 +12,13 @@ import {
     ValidationFailed
 } from "../index";
 import {CustomError, isPlainObject} from '@super-hornet/core';
-import {getClassSchema, f} from "../src/decorators";
+import {getClassSchema, t} from "../src/decorators";
 
 test('test simple', async () => {
     class Page {
         constructor(
-            @f public name: string,
-            @f public age: number,
+            @t public name: string,
+            @t public age: number,
         ) {
         }
 
@@ -48,19 +48,19 @@ test('test simple', async () => {
 test('test required', async () => {
 
     class Model {
-        @f
+        @t
         id: string = '1';
 
-        @f
+        @t
         name?: string;
 
-        @f.optional()
+        @t.optional
         optional?: string;
 
-        @f.map(String).optional()
+        @t.map(String).optional
         map?: { [name: string]: string };
 
-        @f.array(String).optional()
+        @t.array(String).optional
         array?: string[];
     }
 
@@ -91,21 +91,21 @@ test('test required', async () => {
 
 test('test deep', async () => {
     class Deep {
-        @f
+        @t
         name?: string;
     }
 
     class Model {
-        @f
+        @t
         id: string = '2';
 
-        @f.type(Deep)
+        @t.type(Deep)
         deep?: Deep;
 
-        @f.array(Deep)
+        @t.array(Deep)
         deepArray: Deep[] = [];
 
-        @f.map(Deep)
+        @t.map(Deep)
         deepMap: { [name: string]: Deep } = {};
     }
 
@@ -154,7 +154,7 @@ test('test AddValidator', async () => {
     }
 
     class Model {
-        @f.validator(MyValidator)
+        @t.validator(MyValidator)
         id: string = '2';
     }
 
@@ -170,7 +170,7 @@ test('test inline validator throw Error', async () => {
     }
 
     class Model {
-        @f.validator((value: string) => {
+        @t.validator((value: string) => {
             if (value.length > 5) {
                 throw new MyError();
             }
@@ -184,7 +184,7 @@ test('test inline validator throw Error', async () => {
 
 test('test inline validator throw string', async () => {
     class Model {
-        @f.validator((value: string) => {
+        @t.validator((value: string) => {
             if (value.length > 5) {
                 throw 'Too long';
             }
@@ -198,7 +198,7 @@ test('test inline validator throw string', async () => {
 
 test('test inline validator', async () => {
     class Model {
-        @f.validator((value: string, b: any, c: any) => {
+        @t.validator((value: string, b: any, c: any) => {
             if (value.length > 5) throw new PropertyValidatorError('too_long', 'Too long');
         })
         id: string = '2';
@@ -210,7 +210,7 @@ test('test inline validator', async () => {
 
 test('test uuid', async () => {
     class Model {
-        @f.uuid()
+        @t.uuid
         public id!: string;
     }
 
@@ -237,7 +237,7 @@ test('test uuid', async () => {
 
 test('test objectId', async () => {
     class Model {
-        @f.mongoId()
+        @t.mongoId
         public id!: string;
     }
 
@@ -276,7 +276,7 @@ test('test objectId', async () => {
 
 test('test boolean', async () => {
     class Model {
-        @f
+        @t
         public bo!: boolean;
     }
 
@@ -315,7 +315,7 @@ test('test boolean', async () => {
 
 test('test Date', async () => {
     class Model {
-        @f.type(Date)
+        @t.type(Date)
         public endTime!: Date;
     }
 
@@ -413,7 +413,7 @@ test('test Date', async () => {
 
 test('test string', async () => {
     class Model {
-        @f
+        @t
         id: string = '2';
     }
 
@@ -424,7 +424,7 @@ test('test string', async () => {
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
-        @f.optional()
+        @t.optional
         id?: string;
     }
 
@@ -441,7 +441,7 @@ test('test string', async () => {
 
 test('test number', async () => {
     class Model {
-        @f
+        @t
         id: number = 2;
     }
 
@@ -453,7 +453,7 @@ test('test number', async () => {
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
-        @f.optional()
+        @t.optional
         id?: number;
     }
 
@@ -471,7 +471,7 @@ test('test number', async () => {
 
 test('test array', async () => {
     class AClass {
-        @f.array(String)
+        @t.array(String)
         public tags: string[] = [];
     }
 
@@ -486,7 +486,7 @@ test('test array', async () => {
 test('test map', async () => {
 
     class AClass {
-        @f.map(String)
+        @t.map(String)
         public tags: { [k: string]: string } = {};
     }
 
@@ -500,10 +500,10 @@ test('test map', async () => {
 
 test('test decorated', async () => {
     class JobInfo {
-        @f
+        @t
         name: string;
 
-        @f
+        @t
         value: string;
 
         constructor(name: string, value: any) {
@@ -513,13 +513,13 @@ test('test decorated', async () => {
     }
 
     class JobInfos {
-        @f
+        @t
         public thisFieldIsIgnored: string = '';
 
         protected map: { [name: string]: JobInfo } = {};
 
         constructor(
-            @f.array(JobInfo).optional().decorated().asName('items')
+            @t.array(JobInfo).optional.decorated.name('items')
             public items: JobInfo[] = []
         ) {
         }
@@ -547,7 +547,7 @@ test('test decorated', async () => {
     }
 
     class AClass {
-        @f.type(JobInfos)
+        @t.type(JobInfos)
         infos: JobInfos = new JobInfos();
     }
 
@@ -602,21 +602,21 @@ test('test decorated', async () => {
 test('test nested validation', async () => {
     // Class definition with validation rules
     class A {
-        @f
+        @t
         public x!: string;
     }
 
     class B {
-        @f
+        @t
         public type!: string;
 
-        @f.type(A)
+        @t.type(A)
         public nested!: A;
 
-        @f.map(A)
+        @t.map(A)
         public nestedMap!: { [name: string]: A };
 
-        @f.array(A)
+        @t.array(A)
         public nesteds!: A[];
     }
 
@@ -640,10 +640,10 @@ test('test nested validation', async () => {
     ]);
 
     class BOptional {
-        @f
+        @t
         public type!: string;
 
-        @f.type(A).optional()
+        @t.type(A).optional
         public nested!: A;
     }
 
@@ -670,72 +670,72 @@ test('test nested validation', async () => {
 
 test('test valdiation on real life case', () => {
     class NodeResourceReservation {
-        @f
+        @t
         reserved: number = 0;
 
-        @f
+        @t
         total: number = 0;
     }
 
     class JobAssignedResourcesGpu {
         constructor(
-            @f.asName('uuid') public uuid: string,
-            @f.asName('name') public name: string,
-            @f.asName('memory') public memory: number,
+            @t.name('uuid') public uuid: string,
+            @t.name('name') public name: string,
+            @t.name('memory') public memory: number,
         ) {
         }
     }
 
     class JobAssignedResources {
-        @f
+        @t
         cpu: number = 0;
 
-        @f
+        @t
         memory: number = 0;
 
-        @f.array(JobAssignedResourcesGpu)
+        @t.array(JobAssignedResourcesGpu)
         gpus: JobAssignedResourcesGpu[] = [];
     }
 
     class AssignedJobTaskInstance {
         constructor(
-            @f.asName('jobId') public jobId: string,
-            @f.asName('jobAccessToken') public jobAccessToken: string,
-            @f.asName('taskName') public taskName: string,
-            @f.asName('instance') public instance: number,
-            @f.asName('assignedResources') public assignedResources: JobAssignedResources,
+            @t.name('jobId') public jobId: string,
+            @t.name('jobAccessToken') public jobAccessToken: string,
+            @t.name('taskName') public taskName: string,
+            @t.name('instance') public instance: number,
+            @t.name('assignedResources') public assignedResources: JobAssignedResources,
         ) {
         }
     }
 
     class NodeGpuResource {
-        @f
+        @t
         reserved: boolean = false;
 
         /**
          * Value in GB.
          */
-        @f
+        @t
         memory: number = 1;
 
         constructor(
-            @f.asName('uuid') public uuid: string,
-            @f.asName('name') public name: string,
+            @t.name('uuid') public uuid: string,
+            @t.name('name') public name: string,
         ) {
         }
     }
 
     class NodeResources {
-        @f
+        @t
         cpu: NodeResourceReservation = new NodeResourceReservation;
 
-        @f
+        @t
         memory: NodeResourceReservation = new NodeResourceReservation;
 
-        @f.array(NodeGpuResource)
+        @t.array(NodeGpuResource)
         gpu: NodeGpuResource[] = [];
 
-        @f.map(AssignedJobTaskInstance)
+        @t.map(AssignedJobTaskInstance)
         assignedJobTaskInstances: { [taskInstanceId: string]: AssignedJobTaskInstance } = {};
     }
 

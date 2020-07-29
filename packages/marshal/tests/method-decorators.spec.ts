@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, PartialField, PropertySchema} from "../src/decorators";
+import {t, getClassSchema, PartialField, PropertySchema} from "../src/decorators";
 import {
     argumentClassToPlain,
     argumentPlainToClass,
@@ -16,7 +16,7 @@ test('Basic array', () => {
     }
 
     class Controller {
-        @f.array(Other).decorated()
+        @t.array(Other).decorated
         protected readonly bar: Other[] = [];
     }
 
@@ -24,20 +24,21 @@ test('Basic array', () => {
     {
         const prop = s.getProperty('bar');
         expect(prop.name).toBe('bar');
-        expect(prop.type).toBe('class');
-        expect(prop.resolveClassType).toBe(Other);
+        expect(prop.type).toBe('array');
+        expect(prop.getSubType().type).toBe('class');
+        expect(prop.getSubType().resolveClassType).toBe(Other);
         expect(prop.isArray).toBe(true);
     }
 });
 
 test('short @f 2', () => {
     class Controller {
-        public foo(@f.array(String) bar: string[]): string {
+        public foo(@t.array(String) bar: string[]): string {
             return '';
         }
 
-        @f.array(Number)
-        public foo2(@f.map(String) bar: { [name: string]: string }): number[] {
+        @t.array(Number)
+        public foo2(@t.map(String) bar: { [name: string]: string }): number[] {
             return [];
         }
     }
@@ -53,21 +54,21 @@ test('short @f 2', () => {
 
         expect(props).toBeArrayOfSize(1);
         expect(props[0].name).toBe('0');
-        expect(props[0].type).toBe('string');
+        expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
     }
 
     {
         const method = s.getMethod('foo2');
         expect(method.name).toBe('foo2');
-        expect(method.type).toBe('number');
+        expect(method.getSubType().type).toBe('number');
         expect(method.isArray).toBe(true);
 
         const props = s.getMethodProperties('foo2');
 
         expect(props).toBeArrayOfSize(1);
         expect(props[0].name).toBe('0');
-        expect(props[0].type).toBe('string');
+        expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isMap).toBe(true);
     }
     {
@@ -107,7 +108,7 @@ test('short @f 2', () => {
 test('short @f unmet array definition', () => {
     expect(() => {
         class Controller {
-            public foo(@f bar: string[]) {
+            public foo(@t bar: string[]) {
             }
         }
     }).toThrow('Controller::foo::0 type mismatch. Given nothing, but declared is Array')
@@ -116,7 +117,7 @@ test('short @f unmet array definition', () => {
 test('short @f no index on arg', () => {
     expect(() => {
         class Controller {
-            public foo(@f.index() bar: string[]) {
+            public foo(@t.index() bar: string[]) {
             }
         }
     }).toThrow('Index could not be used on method arguments')
@@ -124,10 +125,10 @@ test('short @f no index on arg', () => {
 
 test('method args', () => {
     class Controller {
-        public foo(@f bar: string) {
+        public foo(@t bar: string) {
         }
 
-        public foo2(@f bar: string, optional?: true, @f.optional() anotherOne?: boolean) {
+        public foo2(@t bar: string, optional?: true, @t.optional anotherOne?: boolean) {
         }
     }
 
@@ -170,7 +171,7 @@ test('method args', () => {
 
 test('short @f', () => {
     class Controller {
-        public foo(@f bar: string) {
+        public foo(@t bar: string) {
         }
     }
 
@@ -188,7 +189,7 @@ test('short @f', () => {
 
 test('short @f multi', () => {
     class Controller {
-        public foo(@f bar: string, @f foo: number) {
+        public foo(@t bar: string, @t foo: number) {
         }
     }
 
@@ -223,30 +224,30 @@ test('no decorators', () => {
 
 test('partial', () => {
     class Config {
-        @f
+        @t
         name!: string;
 
-        @f
+        @t
         sub!: Config;
 
-        @f
+        @t
         prio: number = 0;
     }
 
     class User {
-        @f.partial(Config)
+        @t.partial(Config)
         config: Partial<Config> = {};
 
-        @f.forwardPartial(() => Config)
+        @t.partial(() => Config)
         config2: Partial<Config> = {};
     }
 
     const s = getClassSchema(User);
     expect(s.getProperty('config').isPartial).toBe(true);
-    expect(s.getProperty('config').getResolvedClassType()).toBe(Config);
+    expect(s.getProperty('config').getSubType().getResolvedClassType()).toBe(Config);
 
     expect(s.getProperty('config2').isPartial).toBe(true);
-    expect(s.getProperty('config2').getResolvedClassType()).toBe(Config);
+    expect(s.getProperty('config2').getSubType().getResolvedClassType()).toBe(Config);
 
     const u = plainToClass(User, {
         config: {
@@ -265,18 +266,18 @@ test('partial', () => {
 
 test('argument partial', () => {
     class Config {
-        @f
+        @t
         name!: string;
 
-        @f.optional()
+        @t.optional
         sub?: Config;
     }
 
     class User {
-        foo(@f.partial(Config) config: Partial<Config>) {
+        foo(@t.partial(Config) config: Partial<Config>) {
         }
 
-        @f
+        @t
         foo2(config: Config) {
         }
     }
@@ -292,23 +293,23 @@ test('argument partial', () => {
 
 test('argument convertion', () => {
     class Config {
-        @f.optional()
+        @t.optional
         name?: string;
 
-        @f.optional()
+        @t.optional
         sub?: Config;
 
-        @f
+        @t
         prio: number = 0;
     }
 
     class Controller {
-        @f.partial(Config)
+        @t.partial(Config)
         foo(name: string): PartialField<Config> {
             return {prio: 2, 'sub.name': name};
         }
 
-        @f
+        @t
         bar(config: Config): Config {
             config.name = 'peter';
             return config;
@@ -339,14 +340,14 @@ test('argument convertion', () => {
 
 test('short @f multi gap', () => {
     class Controller {
-        public foo(@f bar: string, nothing: boolean, @f foo: number) {
+        public foo(@t bar: string, nothing: boolean, @t foo: number) {
         }
 
-        @f
+        @t
         public undefined(bar: string, nothing: boolean) {
         }
 
-        public onlyFirst(@f.array(String) bar: string[], nothing: boolean) {
+        public onlyFirst(@t.array(String) bar: string[], nothing: boolean) {
         }
     }
 
@@ -381,7 +382,7 @@ test('short @f multi gap', () => {
 
         expect(props).toBeArrayOfSize(2);
         expect(props[0].name).toBe('0');
-        expect(props[0].type).toBe('string');
+        expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
 
         expect(props[1].name).toBe('1');
@@ -396,7 +397,7 @@ test('short @f multi gap', () => {
 
 test('short @f with type', () => {
     class Controller {
-        public foo(@f.array(String) bar: string[]) {
+        public foo(@t.array(String) bar: string[]) {
         }
     }
 
@@ -406,7 +407,7 @@ test('short @f with type', () => {
 
         expect(props).toBeArrayOfSize(1);
         expect(props[0].name).toBe('0');
-        expect(props[0].type).toBe('string');
+        expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
     }
 });
@@ -420,22 +421,22 @@ test('hasMethod and templateArgs', () => {
     }
 
     class Controller {
-        public foo(@f.array(String) bar: string[]): string[] {
+        public foo(@t.array(String) bar: string[]): string[] {
             return [];
         }
 
-        @f.array(String)
-        public foo2(@f.array(String) bar: string[]): string[] {
+        @t.array(String)
+        public foo2(@t.array(String) bar: string[]): string[] {
             return [];
         }
 
-        @f.type(Peter).template(Boolean, String)
-        public foo3(@f.array(String) bar: string[]): Peter<boolean, string> {
+        @t.type(Peter).template(Boolean, String)
+        public foo3(@t.array(String) bar: string[]): Peter<boolean, string> {
             return new Peter;
         }
 
         @myCustom
-        public async foo4(@f.array(String) bar: string[]): Promise<string> {
+        public async foo4(@t.array(String) bar: string[]): Promise<string> {
             return 'sd';
         }
     }
@@ -461,26 +462,6 @@ test('hasMethod and templateArgs', () => {
     expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
 });
 
-
-test('short @f second type fails', () => {
-    expect(() => {
-        class Controller {
-            public foo(@f.array(String).asMap() bar: string[]) {
-            }
-        }
-    }).toThrow('Field is already defined as array')
-});
-
-test('short @f second type fails', () => {
-    expect(() => {
-        class Controller {
-            public foo(@f.map(String).asArray() bar: {}) {
-            }
-        }
-    }).toThrow('Field is already defined as map')
-});
-
-
 test('short @f templateArgs', () => {
     class Observable<T> {
         constructor(protected cb: (observer: { next: (v: T) => void }) => void) {
@@ -489,14 +470,14 @@ test('short @f templateArgs', () => {
     }
 
     class Controller {
-        @f.template(Number)
+        @t.template(Number)
         public foo(): Observable<number> {
             return new Observable((observer) => {
                 observer.next(3);
             })
         }
 
-        @f.template(f.type(String).optional())
+        @t.template(t.string.optional)
         public foo2(): Observable<string | undefined> {
             return new Observable((observer) => {
                 observer.next('2');
@@ -558,7 +539,7 @@ test('PropertySchema setFromJSValue', () => {
 
 test('set any param', () => {
     class Controller {
-        async streamCsvFile(path: string, @f.any() rows: any[][]): Promise<boolean> {
+        async streamCsvFile(path: string, @t.any rows: any[][]): Promise<boolean> {
             return true;
         }
     }
@@ -571,6 +552,24 @@ test('set any param', () => {
     }
 });
 
+test('set any [][]', () => {
+    class Controller {
+        async streamCsvFile(path: string, @t.array(t.array(t.string)) rows: string[][]): Promise<boolean> {
+            return true;
+        }
+    }
+    const s = getClassSchema(Controller);
+
+    {
+        const props = s.getMethodProperties('streamCsvFile');
+        expect(props).toBeArrayOfSize(2);
+        expect(props[0].type).toBe('string');
+        expect(props[1].type).toBe('array');
+        expect(props[1].getSubType().type).toBe('array');
+        expect(props[1].getSubType().getSubType().type).toBe('string');
+    }
+});
+
 
 test('set array result', () => {
     function DummyDecorator() {
@@ -580,7 +579,7 @@ test('set array result', () => {
 
     class Item {
         constructor(
-            @f public title: string
+            @t public title: string
         ) {
         }
     }
@@ -596,12 +595,12 @@ test('set array result', () => {
             return [];
         }
 
-        @f.any()
+        @t.any
         items3(): Item[] {
             return [];
         }
 
-        @f.any()
+        @t.any
         async items4(): Promise<Item[]> {
             return [];
         }
@@ -610,8 +609,8 @@ test('set array result', () => {
 
     {
         const prop = s.getMethod('items1');
-        expect(prop.type).toBe('any');
         expect(prop.isArray).toBe(true);
+        expect(prop.getSubType().type).toBe('any');
     }
 
     {

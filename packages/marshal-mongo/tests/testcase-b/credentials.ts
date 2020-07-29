@@ -1,16 +1,16 @@
-import {Entity, f, uuid} from "@super-hornet/marshal";
+import {Entity, t, uuid} from "@super-hornet/marshal";
 import {User} from "./user";
 
 @Entity('b-user-credentials')
 export class UserCredentials {
-    @f.uuid().primary()
+    @t.uuid.primary
     id: string = uuid();
 
-    @f password: string = '';
+    @t password: string = '';
 
     constructor(
         //one-to-one
-        @f.forward(() => User).reference()
+        @t.type(() => User).reference()
         public user: User,
     ) {
     }

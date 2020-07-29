@@ -2,7 +2,7 @@ import 'jest-extended'
 import 'reflect-metadata';
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
 import {classToPlain, cloneClass, isExcluded, plainToClass} from '../src/mapper';
-import {f, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "../index";
+import {t, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "../index";
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
 import {PageClass} from './document-scenario/PageClass';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
@@ -241,7 +241,7 @@ test('test childrenMap', async () => {
 
 test('test allowNull', async () => {
     class Model {
-        @f.optional()
+        @t.optional
         name?: string;
     }
 
@@ -256,14 +256,13 @@ test('test OnLoad', async () => {
 
     class Sub {
         // @ts-ignore
-        @f.forward(() => ModelRef)
-        @ParentReference()
+        @t.type(() => ModelRef).parentReference
         parent?: any;
 
         constructor(
-            @f public name: string,
-            @f.any() public onLoadCallback: (item: Sub) => void,
-            @f.any() public onFullLoadCallback: (item: Sub) => void,
+            @t public name: string,
+            @t.any public onLoadCallback: (item: Sub) => void,
+            @t.any public onFullLoadCallback: (item: Sub) => void,
         ) {
         }
 
@@ -281,13 +280,13 @@ test('test OnLoad', async () => {
     }
 
     class Model {
-        @f.optional()
+        @t.optional
         name?: string;
 
-        @f.type(Sub)
+        @t.type(Sub)
         sub?: Sub;
 
-        @f.type(Sub)
+        @t.type(Sub)
         sub2?: Sub;
     }
 
@@ -340,7 +339,7 @@ test('test setter/getter', async () => {
             return true;
         }
 
-        @f.array(Font)
+        @t.array(Font)
         get fonts(): Font[] {
             return this._fonts;
         }
@@ -399,6 +398,9 @@ test('test @Decorated with parent', async () => {
         resolveClassType: PageCollection
     });
     expect(resolvePropertyCompilerSchema(getClassSchema(PageCollection), 'pages')).toMatchObject({
+        type: 'array',
+    });
+    expect(resolvePropertyCompilerSchema(getClassSchema(PageCollection), 'pages.123')).toMatchObject({
         type: 'class',
         resolveClassType: PageClass
     });
@@ -423,7 +425,7 @@ test('test @Decorated with parent', async () => {
         const instance = plainToClass(PageClass, {
             name: 'myName'
         });
-    }).toThrow('PageClass::document is defined as @ParentReference() and NOT @f.optional(),');
+    }).toThrow('PageClass::document is defined as @f.parentReference and NOT @f.optional');
 
     {
         const doc = new DocumentClass();
@@ -559,13 +561,13 @@ test('test @Decorated with parent', async () => {
 
 test('simple string + number + boolean', () => {
     class Model {
-        @f
+        @t
         name?: string;
 
-        @f
+        @t
         age?: number;
 
-        @f
+        @t
         yesNo?: boolean;
     }
 
@@ -595,23 +597,23 @@ test('simple string + number + boolean', () => {
 
 test('cloneClass', () => {
     class SubModel {
-        @f
+        @t
         name?: string;
     }
 
     class DataStruct {
-        @f
+        @t
         name?: string;
     }
 
     class Model {
-        @f.any()
+        @t.any
         data: any;
 
-        @f.type(DataStruct)
+        @t.type(DataStruct)
         dataStruct?: DataStruct;
 
-        @f.array(SubModel)
+        @t.array(SubModel)
         subs?: SubModel[];
     }
 
@@ -667,19 +669,19 @@ test('enums', () => {
     }
 
     class Model {
-        @f.enum(Enum1).optional()
+        @t.enum(Enum1).optional
         enum1?: Enum1;
 
-        @f.enum(Enum2).optional()
+        @t.enum(Enum2).optional
         enum2?: Enum2;
 
-        @f.enum(Enum3).optional()
+        @t.enum(Enum3).optional
         enum3?: Enum3;
 
-        @f.enum(Enum4).optional()
+        @t.enum(Enum4).optional
         enum4?: Enum4;
 
-        @f.enum(Enum4, true).optional()
+        @t.enum(Enum4, true).optional
         enumLabels?: Enum4;
     }
 
@@ -850,10 +852,10 @@ test('enums arrays', () => {
     }
 
     class Model {
-        @f.enum(Enum1).asArray()
+        @t.array(t.enum(Enum1))
         enum1: Enum1[] = [];
 
-        @f.enum(Enum2).asArray()
+        @t.array(t.enum(Enum2))
         enum2: Enum2[] = [];
     }
 
@@ -866,8 +868,10 @@ test('enums arrays', () => {
     });
 
     const schema = getClassSchema(Model);
-    expect(schema.getProperty('enum1').type).toBe('enum');
+    expect(schema.getProperty('enum1').type).toBe('array');
     expect(schema.getProperty('enum1').isArray).toBe(true);
+    expect(schema.getProperty('enum1').getSubType().type).toBe('enum');
+    expect(schema.getProperty('enum1').getSubType().isArray).toBe(false);
 
     plainToClass(Model, {
         enum2: ['x', 'z']

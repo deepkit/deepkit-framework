@@ -1,12 +1,12 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import * as moment from 'moment';
-import {f} from "@super-hornet/marshal";
+import {t} from "@super-hornet/marshal";
 import {classToMongo, mongoToClass} from "../index";
 
 test('test moment', () => {
     class Model {
-        @f.moment()
+        @t.moment
         created: moment.Moment = moment();
     }
 

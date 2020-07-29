@@ -1,35 +1,35 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, f, getClassSchema, plainToClass, PropertyCompilerSchema, validate} from "../index";
+import {classToPlain, t, getClassSchema, plainToClass, PropertyCompilerSchema, validate} from "../index";
 
 class ConfigA {
-    @f.discriminant()
+    @t.discriminant
     kind: 'a' = 'a';
 
-    @f
+    @t
     myValue: string = '';
 }
 
 class ConfigB {
-    @f.discriminant()
+    @t.discriminant
     kind: 'b' = 'b';
 
-    @f
+    @t
     myValue2: string = '';
 }
 
 class User {
-    @f.union(ConfigA, ConfigB)
+    @t.union(ConfigA, ConfigB)
     config: ConfigA | ConfigB = new ConfigA;
 }
 
 class UserWithConfigArray {
-    @f.array(ConfigA, ConfigB)
+    @t.array(t.union(ConfigA, ConfigB))
     configs: (ConfigA | ConfigB)[] = [];
 }
 
 class UserWithConfigMap {
-    @f.map(ConfigA, ConfigB)
+    @t.map(t.union(ConfigA, ConfigB))
     configs: {[name: string]: (ConfigA | ConfigB)} = {};
 }
 

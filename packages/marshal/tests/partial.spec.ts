@@ -1,44 +1,44 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, f, uuid} from "../index";
+import {Entity, t, uuid} from "../index";
 import {JitPropertyConverter} from "../src/jit";
 import {Channel, Job} from "./big-entity";
 
 @Entity('jobModelGraphSnapshotLayer')
 class JobModelGraphSnapshotLayer {
-    @f.optional()
+    @t.optional
     saved?: Date;
 
-    @f.optional()
+    @t.optional
     outputFilePath?: string;
 
-    @f.optional()
+    @t.optional
     dataFilePath?: string;
 }
 
 @Entity('jobModelGraphSnapshot')
 class JobModelGraphSnapshot {
-    @f.primary().uuid()
+    @t.primary.uuid
     id: string = uuid();
 
-    @f version: number = 0;
+    @t version: number = 0;
 
-    @f epoch: number = 0;
+    @t epoch: number = 0;
 
-    @f step: number = 0;
+    @t step: number = 0;
 
-    @f created: Date = new Date;
+    @t created: Date = new Date;
 
-    @f graphPath: string = '';
+    @t graphPath: string = '';
 
-    @f.index()
+    @t.index()
     live: boolean = false;
 
-    @f.map(JobModelGraphSnapshotLayer)
+    @t.map(JobModelGraphSnapshotLayer)
     layerInfo: { [layerName: string]: JobModelGraphSnapshotLayer } = {};
 
-    constructor(@f.uuid().index().asName('job') public job: string) {
+    constructor(@t.uuid.index().name('job') public job: string) {
     }
 }
 

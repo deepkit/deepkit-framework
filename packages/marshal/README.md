@@ -24,7 +24,7 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 * [Fastest serialization and validation](#benchmark) thanks to a JIT engine. It's the the by far fastest serialization library for both, Nodejs and browsers.
 * Supported types: String, Number, Boolean, Date, Moment.js, ArrayBuffer (binary), custom classes, Array, object maps, any.
 * Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
-* Cross referencing/Circular references using `@f.forwardRef`
+* Cross referencing/Circular references using `@f.type(() => MyClass)`
 * Constructor support (required property can be placed in constructor) making it suitable for Typescript strict compiling
 * Validation: Built-in, custom class and inline validators
 * Decorated property values (e.g. JSON uses plain Array<string>, class instance uses a custom Collection<String> class)
@@ -114,7 +114,7 @@ class SimpleModel {
     childrenMap: {[key: string]: SubModel} = {};
 
     constructor(
-        @f.index().asName('name') //asName is required for minimized code
+        @f.index().name('name') //asName is required for minimized code
         public name: string
     ) {}
 }

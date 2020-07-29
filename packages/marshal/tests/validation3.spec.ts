@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, PropertySchema, PropertyValidator} from "../src/decorators";
+import {t, getClassSchema, PropertyValidator} from "../src/decorators";
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from "./big-entity";
 import {jitValidateProperty} from "../src/jit-validation";
@@ -8,7 +8,7 @@ import {uuid, validatedPlainToClass} from "../index";
 
 test('test any deep array', async () => {
     class Peter {
-        @f.array(String)
+        @t.array(String)
         names: string[] = [];
     }
 
@@ -23,6 +23,85 @@ test('test any deep array', async () => {
     }]);
 });
 
+test('test nested array', async () => {
+    class Peter {
+        @t.array(t.array(t.string))
+        names: string[][] = [];
+    }
+
+    expect(validate(Peter, {names: ['invalid']})).toEqual([{
+        "code": "invalid_type",
+        "message": "Type is not an array",
+        "path": "names.0",
+    }]);
+
+    expect(validate(Peter, {names: [[], 'asd']})).toEqual([{
+        "code": "invalid_type",
+        "message": "Type is not an array",
+        "path": "names.1",
+    }]);
+
+    expect(validate(Peter, {names: [[], []]})).toEqual([]);
+});
+
+function MinStringLength(length: number) {
+    return (v: string) => {
+        if (v.length < length) throw new PropertyValidatorError('too_short', 'Min length of ' + length);
+    }
+}
+
+test('test container validators array', async () => {
+    class Peter {
+        @t.array(t.string.validator(MinStringLength(3))).validator((v: string[]) => {
+            if (v.length === 0) throw new PropertyValidatorError('empty', 'roles empty');
+        })
+        roles: string[] = [];
+    }
+
+    const schema = getClassSchema(Peter);
+    const roles = schema.getProperty('roles');
+    expect(roles.isArray).toBe(true);
+    expect(roles.validators.length).toBe(1);
+    expect(roles.getSubType().validators.length).toBe(1);
+
+    expect(validate(Peter, {roles: []})).toEqual([{
+        "code": "empty",
+        "message": "roles empty",
+        "path": "roles",
+    }]);
+
+    expect(validate(Peter, {roles: ['12']})).toEqual([{
+        "code": "too_short",
+        "message": "Min length of 3",
+        "path": "roles.0",
+    }]);
+
+    expect(validate(Peter, {roles: ['123']})).toEqual([]);
+});
+
+test('test container validators map', async () => {
+    class Peter {
+        @t.map(t.string.validator(MinStringLength(3))).validator((v: string[]) => {
+            if (Object.keys(v).length === 0) throw new PropertyValidatorError('empty', 'roles empty');
+        })
+        roles: {[name: string]: string } = {};
+    }
+
+    expect(validate(Peter, {roles: {}})).toEqual([{
+        "code": "empty",
+        "message": "roles empty",
+        "path": "roles",
+    }]);
+
+    expect(validate(Peter, {roles: {'foo': 'ba'}})).toEqual([{
+        "code": "too_short",
+        "message": "Min length of 3",
+        "path": "roles.foo",
+    }]);
+
+    expect(validate(Peter, {roles: {'foo': 'bar'}})).toEqual([]);
+});
+
 test('test any deep validation', async () => {
     const patches = {
         'infos': {},
@@ -31,9 +110,7 @@ test('test any deep validation', async () => {
         'infos.yes.another.very.deep.item': '444',
     };
 
-    const propSchema = new PropertySchema('job');
-    propSchema.setFromJSType(Job);
-    propSchema.isPartial = true;
+    const propSchema = t.partial(Job).buildPropertySchema()
 
     const errors = jitValidateProperty(propSchema)(patches);
 
@@ -44,7 +121,8 @@ test('test array optionalItem value', async () => {
     const value = [12313, null];
 
     const propSchema = getClassSchema(Channel).getProperty('lastValue');
-    expect(propSchema.type).toBe('any');
+    expect(propSchema.type).toBe('array');
+    expect(propSchema.getSubType().type).toBe('any');
 
     const errors = jitValidateProperty(propSchema)(value);
 
@@ -62,14 +140,13 @@ test('test custom validator on array items', async () => {
     }
 
     class SimpleModel {
-        @f.primary().uuid()
+        @t.primary.uuid
         id: string = uuid();
 
-        @f.validator(MyCustomValidator)
-        @f.array(String)
+        @t.array(t.string.validator(MyCustomValidator))
         tags!: string[];
 
-        @f.validator(MyCustomValidator)
+        @t.validator(MyCustomValidator)
         tag!: string;
     }
 

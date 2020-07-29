@@ -1,30 +1,30 @@
 import {PageCollection} from "./PageCollection";
 import {PageClass} from "./PageClass";
-import {f, ParentReference} from "@super-hornet/marshal";
+import {t, ParentReference} from "@super-hornet/marshal";
 
 export class DocumentClass {
-    @f.primary().mongoId()
+    @t.primary.mongoId
     _id?: string;
 
-    @f.optional()
+    @t.optional
     name?: string;
 
-    @f.type(PageCollection)
+    @t.type(PageCollection)
     pages: PageCollection = new PageCollection;
 
-    @f.type(PageClass)
+    @t.type(PageClass)
     page?: PageClass;
 }
 
 export class ImpossibleToMetDocumentClass {
-    @f.primary().mongoId()
+    @t.primary.mongoId
     _id?: string;
 
 
-    @f
+    @t
     name?: string;
 
-    @f.type(PageCollection)
+    @t.type(PageCollection)
     pages: PageCollection = new PageCollection;
 
     constructor(pages: PageCollection) {
@@ -32,7 +32,6 @@ export class ImpossibleToMetDocumentClass {
 }
 
 export class ClassWithUnmetParent {
-    @f.type(ClassWithUnmetParent)
-    @ParentReference()
+    @t.type(ClassWithUnmetParent).parentReference
     parent?: ClassWithUnmetParent;
 }

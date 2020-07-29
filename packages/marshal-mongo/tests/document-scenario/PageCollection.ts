@@ -1,9 +1,9 @@
 import {PageClass} from "./PageClass";
-import {f, forwardRef} from "@super-hornet/marshal";
+import {t} from "@super-hornet/marshal";
 
 export class PageCollection {
     constructor(
-        @f.array(forwardRef(() => PageClass)).decorated()
+        @t.array(() => PageClass).decorated
         private readonly pages: PageClass[] = []
     ) {
     }

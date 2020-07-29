@@ -1,25 +1,25 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {validate, f} from "@super-hornet/marshal";
+import {validate, t} from "@super-hornet/marshal";
 import {ValidationPipe} from '../index';
 import {BadRequestException} from '@nestjs/common';
 
 test('test required', async () => {
 
     class Model {
-        @f
+        @t
         id: string = '1';
 
-        @f
+        @t
         name?: string;
 
-        @f.optional()
+        @t.optional
         optional?: string;
 
-        @f.map(String).optional()
+        @t.map(String).optional
         map?: {[name: string]: string};
 
-        @f.array(String).optional()
+        @t.array(String).optional
         array?: string[];
     }
 

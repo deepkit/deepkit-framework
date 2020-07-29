@@ -1,12 +1,10 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, PropertySchema} from "../src/decorators";
+import {t, getClassSchema} from "../src/decorators";
 import {jitValidatePartial, jitValidateProperty, resolvePropertyCompilerSchema} from "../index";
 
 test('test partial @f.map(any)', async () => {
-    const p = new PropertySchema('#0');
-    p.type = 'any';
-    p.isMap = true;
+    const p = t.map(t.any).buildPropertySchema();
 
     expect(jitValidateProperty(p)({})).toEqual([]);
     expect(jitValidateProperty(p)({
@@ -17,46 +15,44 @@ test('test partial @f.map(any)', async () => {
 
 test('test partial @f.map(any) on class', async () => {
     class Job {
-        @f.array(String)
+        @t.array(String)
         strings: any[] = [];
 
-        @f.array('any')
+        @t.array('any')
         array: any[] = [];
 
-        @f.map('any')
+        @t.map('any')
         values: {} = {};
 
-        @f.any()
+        @t.any
         any: {} = {};
     }
 
     const schema = getClassSchema(Job);
 
-    expect(schema.getProperty('strings').type).toBe('string');
     expect(schema.getProperty('strings').isArray).toBe(true);
-    expect(schema.getProperty('array').type).toBe('any');
+    expect(schema.getProperty('strings').getSubType().type).toBe('string');
     expect(schema.getProperty('array').isArray).toBe(true);
-    expect(schema.getProperty('values').type).toBe('any');
+    expect(schema.getProperty('array').getSubType().type).toBe('any');
     expect(schema.getProperty('values').isMap).toBe(true);
+    expect(schema.getProperty('values').getSubType().type).toBe('any');
     expect(schema.getProperty('any').type).toBe('any');
 
     {
         const p = resolvePropertyCompilerSchema(schema, 'values');
         expect(p.name).toBe('values');
         expect(p.isMap).toBe(true);
-        expect(p.type).toBe('any');
+        expect(p.getSubType().type).toBe('any');
     }
 
     {
         const p = resolvePropertyCompilerSchema(schema, 'values.peter');
-        expect(p.name).toBe('values');
         expect(p.isMap).toBe(false);
         expect(p.type).toBe('any');
     }
 
     {
         const p = resolvePropertyCompilerSchema(schema, 'values.peter.deep');
-        expect(p.name).toBe('values');
         expect(p.isMap).toBe(false);
         expect(p.type).toBe('any');
     }

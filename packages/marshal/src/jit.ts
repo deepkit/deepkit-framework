@@ -72,20 +72,20 @@ export function resolvePropertyCompilerSchema<T>(schema: ClassSchema<T>, propert
         }
 
         if (prop.isMap || prop.isArray) {
-            if (prop.type === 'class') {
+            if (prop.getSubType().type === 'class') {
                 if (names[i + 2]) {
                     return cache[propertyPath] = resolvePropertyCompilerSchema(
-                        getClassSchema(prop.getResolvedClassType()),
+                        getClassSchema(prop.getSubType().getResolvedClassType()),
                         names.slice(i + 2).join('.')
                     );
                 } else if (names[i + 1]) {
                     //we got a name or array index
-                    return cache[propertyPath] = PropertyCompilerSchema.createFromPropertySchema(prop, false, false, false);
+                    return cache[propertyPath] = PropertyCompilerSchema.createFromPropertySchema(prop.getSubType());
                 }
             } else {
                 if (names[i + 1]) {
                     //we got a name or array index
-                    return cache[propertyPath] = PropertyCompilerSchema.createFromPropertySchema(prop, false, false, false);
+                    return cache[propertyPath] = PropertyCompilerSchema.createFromPropertySchema(prop.getSubType());
                 }
             }
         } else {
@@ -297,8 +297,8 @@ function getParentResolverJS<T>(
     return `
     ${code}
     if (!${setter})
-        throw new Error('${getClassPropertyName(classType, property.name)} is defined as @ParentReference() and ' +
-                    'NOT @f.optional(), but no parent found. Add @f.optional() or provide ${property.name} in parents to fix that.');
+        throw new Error('${getClassPropertyName(classType, property.name)} is defined as @f.parentReference and ' +
+                    'NOT @f.optional, but no parent found. Add @f.optional or provide ${property.name} in parents to fix that.');
     `;
 }
 
@@ -380,6 +380,7 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
             }
 
             convertProperties.push(`
+            //${property.name}:${property.type}
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){ 
                 if (_instance.${property.name} === null) {
                     _data.${property.name} = null;

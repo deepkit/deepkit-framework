@@ -1,34 +1,34 @@
 import {
     Entity,
-    f,
+    t,
     uuid,
     MultiIndex
 } from '@super-hornet/marshal';
 
 export class JobTaskQueue {
-    @f
+    @t
     position: number = 0;
 
-    @f
+    @t
     tries: number = 0;
 
-    @f
+    @t
     result: string = '';
 
-    @f
+    @t
     added: Date = new Date();
 }
 
 
 @Entity('sub')
 export class SubModel {
-    @f
+    @t
     label: string;
 
-    @f.optional()
+    @t.optional
     age?: number;
 
-    @f.type(JobTaskQueue).optional()
+    @t.optional
     queue?: JobTaskQueue;
 
     constructorUsed = false;
@@ -49,7 +49,7 @@ export const now = new Date();
 
 export class CollectionWrapper {
     constructor(
-        @f.array(SubModel).decorated().asName('items')
+        @t.array(SubModel).decorated.name('items')
         public items: SubModel[]) {
     }
 
@@ -60,7 +60,7 @@ export class CollectionWrapper {
 
 export class StringCollectionWrapper {
     constructor(
-        @f.array(String).decorated().asName('items')
+        @t.array(String).decorated.name('items')
         public items: string[]
     ) {
     }
@@ -73,57 +73,57 @@ export class StringCollectionWrapper {
 @Entity('SimpleModel')
 @MultiIndex(['name', 'type'], {unique: true})
 export class SimpleModel {
-    @f.primary().uuid()
+    @t.primary.uuid
     id: string = uuid();
 
-    @f.index()
+    @t.index()
     name: string;
 
-    @f
+    @t
     type: number = 0;
 
-    @f
+    @t
     yesNo: boolean = false;
 
-    @f.enum(Plan)
+    @t.enum(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @f
+    @t
     created: Date = now;
 
-    @f.array(String)
+    @t.array(String)
     types: string[] = [];
 
-    @f.optional()
+    @t.optional
     child?: SubModel;
 
-    @f.optional()
+    @t.optional
     selfChild?: SimpleModel;
 
-    @f.array(SubModel)
+    @t.array(SubModel)
     children: SubModel[] = [];
 
-    @f.map(SubModel)
+    @t.map(SubModel)
     childrenMap: { [key: string]: SubModel } = {};
 
-    @f.type(CollectionWrapper)
+    @t.type(CollectionWrapper)
     childrenCollection: CollectionWrapper = new CollectionWrapper([]);
 
-    @f.type(StringCollectionWrapper)
+    @t.type(StringCollectionWrapper)
     stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper([]);
 
     notMapped: { [key: string]: any } = {};
 
-    @f.any()
+    @t.any
     anyField: any;
 
-    @f.exclude()
+    @t.exclude()
     excluded: string = 'default';
 
-    @f.exclude('mongo')
+    @t.exclude('mongo')
     excludedForMongo: string = 'excludedForMongo';
 
-    @f.exclude('plain')
+    @t.exclude('plain')
     excludedForPlain: string = 'excludedForPlain';
 
     constructor(name: string) {
@@ -133,22 +133,22 @@ export class SimpleModel {
 
 @Entity('SuperSimple')
 export class SuperSimple {
-    @f.primary().mongoId()
+    @t.primary.mongoId
     _id?: string;
 
-    @f
+    @t
     name?: string;
 }
 
 @Entity('BaseClass')
 export class BaseClass {
-    @f.primary().mongoId()
+    @t.primary.mongoId
     _id?: string;
 }
 
 
 @Entity('ChildClass')
 export class ChildClass extends BaseClass {
-    @f
+    @t
     name?: string;
 }
