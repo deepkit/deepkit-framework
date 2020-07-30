@@ -1,5 +1,5 @@
 import {getClassSchema, getClassTypeFromInstance, isClassInstance} from "./decorators";
-import {isArray, isObject, isPlainObject, ClassType} from "@super-hornet/core";
+import {isArray, isObject} from "@super-hornet/core";
 
 type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 
@@ -93,6 +93,7 @@ export class Patcher<T extends object> {
         const dereferencedArrays = new Map<string | number | symbol, any>();
 
         let dereferencedOriginalItem: any = undefined;
+
         function dereferenceOriginalItemAndCache() {
             dereferencedOriginalItem = dereferenceOriginalItem();
             return dereferencedOriginalItem;

@@ -34,9 +34,6 @@ export function registerConverterCompiler(
     type: Types,
     compiler: TypeConverterCompiler
 ) {
-    if (!compiler) {
-        throw new Error('Compiler has no value.');
-    }
     compilerRegistry.set(fromFormat + ':' + toFormat + ':' + type, compiler);
 }
 
@@ -90,8 +87,8 @@ function getCompilers(
     if (candidate) compilers.push(candidate);
 
     if (!compilers.length && fromFormat !== 'class' && toFormat !== 'class') {
-        //no compiler found from fromFormat to toFormat.
-        //we if there is fromFormat:class, and class:toFormat
+        //no compiler found from fromFormat to toFormat (e.g. plain to mongo)
+        //we thus first convert from source format to class, then from class to target format.
         const fromSourceToClass = fromFormat + ':class';
         const fromClassToTarget = 'class:' + toFormat;
         const candidateToClass = compilerRegistry.get(fromSourceToClass + ':' + subProperty.type);

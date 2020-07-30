@@ -32,10 +32,6 @@ export class ValidationError {
         public readonly message: string,
     ) {
     }
-
-    static createInvalidType(path: string, expectedType: string, actual: any) {
-        return new ValidationError(path, 'invalid_type', `Invalid type. Expected ${expectedType}, but got ${typeOf(actual)}`);
-    }
 }
 
 /**

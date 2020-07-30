@@ -1,7 +1,16 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, t} from '../src/decorators';
-import {uuid} from '../src/utils';
+import {
+    CacheJitPropertyConverter,
+    classToPlain,
+    createClassToXFunction,
+    createXToClassFunction,
+    getJitFunctionClassToX,
+    getJitFunctionXToClass,
+    registerConverterCompiler,
+    uuid
+} from '../index';
 
 test('new api', async () => {
     class Test {
@@ -26,4 +35,86 @@ test('new api', async () => {
     expect(schema.getProperty('nameMap').isMap).toBe(true);
     expect(schema.getProperty('nameMap').templateArgs[0]!.type).toBe('any');
     expect(schema.getProperty('nameMap').templateArgs[1]!.type).toBe('number');
+});
+
+test('nested types correctly converted', async () => {
+    class Config {
+        @t.uuid id: string = uuid();
+        @t name: string = '';
+        @t.any value: any;
+    }
+
+    class Test {
+        @t.primary.uuid
+        id: string = uuid();
+
+        @t.array(Config)
+        configs: Config[] = [];
+    }
+
+    {
+        const test = new Test;
+        const config = new Config();
+        config.name = 'asd';
+        test.configs.push(config);
+        const plain = classToPlain(Test, test);
+        expect(plain).not.toBeInstanceOf(Test);
+        expect(plain.configs[0].name).toBe('asd');
+        expect(plain.configs[0]).not.toBeInstanceOf(Config);
+    }
+
+    expect(getJitFunctionClassToX(Test)).toBeInstanceOf(Function);
+});
+
+test('custom serialization formats', async () => {
+    class Test {
+        @t
+        id: string = 'myName';
+    }
+
+    registerConverterCompiler('class', 'myFormat', 'string', (setter, accessor) => {
+        return {template: `${setter} = 'string:' + ${accessor}`, context: {}};
+    });
+
+    registerConverterCompiler('myFormat', 'class', 'string', (setter, accessor) => {
+        return {template: `${setter} = (''+${accessor}).substr(${'string'.length + 1})`, context: {}};
+    });
+
+    expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
+
+    const test = new Test;
+    const myFormat = createClassToXFunction(Test, 'myFormat')(test);
+    const plain = createClassToXFunction(Test, 'plain')(test);
+    expect(plain.id).toBe('myName');
+    expect(myFormat.id).toBe('string:myName');
+    expect(getJitFunctionClassToX(Test, 'myFormat')).toBeInstanceOf(Function);
+    expect(getJitFunctionClassToX(Test, 'plain')).toBeInstanceOf(Function);
+
+    const testBack = createXToClassFunction(Test, 'myFormat')(myFormat);
+    const testBackClass = createXToClassFunction(Test, 'plain')(myFormat);
+    expect(testBack.id).toBe('myName');
+    expect(testBackClass.id).toBe('string:myName');
+    expect(getJitFunctionXToClass(Test, 'myFormat')).toBeInstanceOf(Function);
+    expect(getJitFunctionXToClass(Test, 'plain')).toBeInstanceOf(Function);
+
+    {
+        const cacheJitPropertyConverter = new CacheJitPropertyConverter('class', 'myFormat');
+        const converter = cacheJitPropertyConverter.getJitPropertyConverter(Test);
+        expect(converter.convert('id', 123)).toBe('string:123');
+        expect(converter.convert('id', '123')).toBe('string:123');
+    }
+
+    {
+        const cacheJitPropertyConverter = new CacheJitPropertyConverter('myFormat', 'class');
+        const converter = cacheJitPropertyConverter.getJitPropertyConverter(Test);
+        expect(converter.convert('id', 'string:123')).toBe('123');
+    }
+
+    {
+        //no compiler found from fromFormat to toFormat (e.g. plain to mongo)
+        //we thus first convert from source format to class, then from class to target format.
+        const cacheJitPropertyConverter = new CacheJitPropertyConverter('plain', 'myFormat');
+        const converter = cacheJitPropertyConverter.getJitPropertyConverter(Test);
+        expect(converter.convert('id', '123')).toBe('string:123');
+    }
 });

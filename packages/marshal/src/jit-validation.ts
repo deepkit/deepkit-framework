@@ -223,16 +223,11 @@ export function jitValidate<T>(classType: ClassType<T>): (value: any, path?: str
         }
         `;
 
-    try {
-        const compiled = new Function(...context.keys(), functionCode);
-        const fn = compiled.bind(undefined, ...context.values())();
-        jitFunctions.set(classType, fn);
+    const compiled = new Function(...context.keys(), functionCode);
+    const fn = compiled.bind(undefined, ...context.values())();
+    jitFunctions.set(classType, fn);
 
-        return fn;
-    } catch (error) {
-        console.log('jit code', functionCode);
-        throw error;
-    }
+    return fn;
 }
 
 

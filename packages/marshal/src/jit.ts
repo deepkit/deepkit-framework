@@ -403,31 +403,37 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
         `;
     }
 
+    const compiled = new Function('_classType', '_global', 'isGroupAllowed', ...context.keys(), functionCode);
+    const fn = compiled(classType, getGlobalStore(), isGroupAllowed, ...context.values());
+    if (toFormat === 'plain') {
+        JITClassToPlainCache.set(classType, fn);
+    } else {
+        JITClassToXCache.get(toFormat)!.set(classType, fn);
+    }
 
-    try {
-        const compiled = new Function('_classType', '_global', 'isGroupAllowed', ...context.keys(), functionCode);
-        const fn = compiled(classType, getGlobalStore(), isGroupAllowed, ...context.values());
-        if (toFormat === 'plain') {
-            JITClassToPlainCache.set(classType, fn);
-        } else {
-            JITClassToXCache.get(toFormat)!.set(classType, fn);
-        }
+    return fn;
+}
 
-        return fn;
-    } catch (error) {
-        console.log('jit code', functionCode);
-        throw error;
+export function getJitFunctionClassToX(classType: ClassType<any>, toFormat: string = 'plain') {
+    if (toFormat === 'plain') {
+        let jit = JITClassToPlainCache.get(classType);
+        if (jit) return jit;
+    } else {
+        let cache = JITClassToXCache.get(toFormat);
+        if (cache) return cache.get(classType);
     }
 }
 
-export function getJitFunctionPlainToClass(classType: ClassType<any>) {
-    return JITPlainToClassCache.get(classType);
+export function getJitFunctionXToClass(classType: ClassType<any>, fromFormat: string = 'plain') {
+    if (fromFormat === 'plain') {
+        let jit = JITPlainToClassCache.get(classType);
+        if (jit) return jit;
+    } else {
+        let cache = JITXToClassCache.get(fromFormat);
+        if (cache) return cache.get(classType);
+    }
 }
-
-export function getJitFunctionClassToPlain(classType: ClassType<any>) {
-    return JITClassToPlainCache.get(classType);
-}
-
+2
 export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
     : (data: { [name: string]: any }, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
     if (fromTarget === 'plain') {
@@ -553,20 +559,15 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
         }
     `;
 
-    try {
-        const compiled = new Function('_classType', 'ToClassState', 'isGroupAllowed', ...context.keys(), functionCode);
-        const fn = compiled(classType, ToClassState, isGroupAllowed, ...context.values());
-        if (fromTarget === 'plain') {
-            JITPlainToClassCache.set(classType, fn);
-        } else {
-            JITXToClassCache.get(fromTarget)!.set(classType, fn);
-        }
-
-        return fn;
-    } catch (error) {
-        console.log('jit code', functionCode);
-        throw error;
+    const compiled = new Function('_classType', 'ToClassState', 'isGroupAllowed', ...context.keys(), functionCode);
+    const fn = compiled(classType, ToClassState, isGroupAllowed, ...context.values());
+    if (fromTarget === 'plain') {
+        JITPlainToClassCache.set(classType, fn);
+    } else {
+        JITXToClassCache.get(fromTarget)!.set(classType, fn);
     }
+
+    return fn;
 }
 
 export function jitPlainToClass<T>(classType: ClassType<T>, data: any, options?: JitConverterOptions): T {

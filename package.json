@@ -4,7 +4,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "scripts": {
-    "test": "jest --coverage",
+    "test": "jest --coverage --forceExit",
     "bootstrap": "lerna bootstrap --nohoist \\* --no-ci",
     "tsc": "lerna run tsc",
     "tsc-watch": "lerna run --parallel tsc-watch",

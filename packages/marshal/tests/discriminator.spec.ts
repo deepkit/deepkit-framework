@@ -179,3 +179,38 @@ test('test discriminator validation in array', () => {
         ]);
     }
 });
+
+test('test discriminator no default value', () => {
+    class ConfigA {
+        @t.discriminant
+        kind: 'a' = 'a';
+
+        @t
+        myValue2: string = '';
+    }
+
+    class ConfigB {
+        @t.discriminant
+        kind!: 'b';
+
+        @t
+        myValue2: string = '';
+    }
+
+    class User {
+        @t.union(ConfigA, ConfigB)
+        config: ConfigA | ConfigB = new ConfigA;
+    }
+
+    {
+        const user = new User();
+        user.config = new ConfigB();
+        const plain = classToPlain(User, user);
+        expect(() => {
+            plainToClass(User, plain);
+        }).toThrow('Discriminant ConfigB.kind has no default value');
+        expect(() => {
+            validate(User, plain);
+        }).toThrow('Discriminant ConfigB.kind has no default value');
+    }
+});

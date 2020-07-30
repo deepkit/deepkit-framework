@@ -228,7 +228,6 @@ export class PropertyCompilerSchema {
         throw new Error('No array or map type');
     }
 
-
     get resolveClassType(): ClassType<any> | undefined {
         return isArray(this.classType) ? undefined : this.classType;
     }

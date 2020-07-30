@@ -130,7 +130,7 @@ registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSc
 
         const discriminant = typeSchema.getDiscriminantPropertySchema();
         if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
-            throw new Error(`Discriminant ${discriminant.name} has no default value.`);
+            throw new Error(`Discriminant ${typeSchema.getClassName()}.${discriminant.name} has no default value.`);
         }
 
         const typeVarName = utils.reserveVariable();

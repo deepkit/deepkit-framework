@@ -10,9 +10,6 @@ export function registerCheckerCompiler(
     type: Types,
     compiler: TypeCheckerCompiler
 ) {
-    if (!compiler) {
-        throw new Error('Compiler has no value.');
-    }
     validationRegistry.set(type, compiler);
 }
 

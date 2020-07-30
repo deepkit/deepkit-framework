@@ -192,7 +192,7 @@ export function compilerXToUnionClass(fromFormat: string): TypeConverterCompiler
 
             const discriminant = typeSchema.getDiscriminantPropertySchema();
             if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
-                throw new Error(`Discriminant ${discriminant.name} has no default value.`);
+                throw new Error(`Discriminant ${typeSchema.getClassName()}.${discriminant.name} has no default value.`);
             }
 
             discriminants.push(`${discriminant.name}=${JSON.stringify(discriminant.defaultValue)}`)
