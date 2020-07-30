@@ -22,7 +22,7 @@
     "@super-hornet/core": "^0.1.17",
     "@super-hornet/core-rxjs": "^0.1.17",
     "rxjs": "~6.5.3",
-    "dot-prop": "^4.2.0",
+    "dot-prop": "^5.2.0",
     "ws": "^7.2.1"
   },
   "devDependencies": {
