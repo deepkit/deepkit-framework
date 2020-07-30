@@ -11,7 +11,7 @@
     "access": "public"
   },
   "dependencies": {
-    "dot-prop": "^4.2.0"
+    "dot-prop": "^5.2.0"
   },
   "devDependencies": {
     "@types/dot-prop": "~4.2.0"
