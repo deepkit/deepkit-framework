@@ -143,24 +143,9 @@ export class BaseParser {
         return this.dataView.getUint32(this.offset, true);
     }
 
-    eatStringUntilNull() {
+    eatObjectPropertyName() {
         let end = this.offset;
-        let simple = true;
-        let string = '';
-        while (this.buffer[end] !== 0 && end < this.offset + this.size) {
-            if (simple && this.buffer[end] > 127) simple = false;
-            if (simple) {
-                string += String.fromCharCode(this.buffer[end]);
-            }
-            end++;
-        }
-
-        if (simple) {
-            //do simple ascii
-            this.offset = end + 1;
-            return string;
-        }
-
+        while (this.buffer[end] !== 0) end++;
         const s = this.buffer.toString('utf8', this.offset, end);
         this.offset = end + 1;
         return s;
@@ -196,7 +181,7 @@ export class BaseParser {
  * This is way faster than BaseParser when property names are mainly ascii (which is usually the case).
  */
 export class ParserV2 extends BaseParser {
-    eatStringUntilNull() {
+    eatObjectPropertyName() {
         let end = this.offset;
         let simple = true;
         let string = '';
@@ -238,7 +223,7 @@ export class ParserV2 extends BaseParser {
 export class ParserV3 extends BaseParser {
     protected cachedKeyDecoder = new CachedKeyDecoder(32);
 
-    eatStringUntilNull() {
+    eatObjectPropertyName() {
         let end = this.offset;
         let size = 0;
         while (this.buffer[end++] !== 0) size++;
@@ -265,7 +250,7 @@ export function parseObject(parser: BaseParser): any {
         const elementType = parser.eatByte();
         if (elementType === 0) break;
 
-        const name = parser.eatStringUntilNull();
+        const name = parser.eatObjectPropertyName();
         result[name] = parser.parse(elementType);
     }
 
@@ -289,20 +274,4 @@ export function parseArray(parser: BaseParser): any[] {
     return result;
 }
 
-export function parseArrayConverter(parser: BaseParser, converter: (parser: BaseParser) => any): any[] {
-    const result: any[] = [];
-    parser.seek(4);
-
-    for (let i = 0; ; i++) {
-        const elementType = parser.eatByte();
-        if (elementType === 0) break;
-
-        //arrays are represented as objects, so we skip the key name, since we have `i`
-        parser.seek(digitByteSize(i));
-
-        result.push(converter(parser));
-    }
-
-    return result;
-}
 
