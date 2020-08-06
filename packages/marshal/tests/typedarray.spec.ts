@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {t, getClassSchema, isTypedArray, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
+import {t, getClassSchema, PropertySchema, typedArrayMap, typedArrayNamesMap} from "../src/decorators";
 import {classToPlain, plainToClass, propertyClassToPlain} from "../src/mapper";
 import {Buffer} from 'buffer';
 import {base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer} from "../index";
@@ -49,45 +49,6 @@ test('Int8Array', async () => {
     expect(clazz2.ints).toBeInstanceOf(Int8Array);
     expect(clazz2.ints[0]).toBe('a'.charCodeAt(0));
     expect(clazz2.ints[1]).toBe('m'.charCodeAt(0));
-});
-
-
-test('bencharmk', async () => {
-    const count = 2_000;
-
-    const base64 = Buffer.from(someText).toString('base64');
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            new Uint8Array(new Uint8Array(Buffer.from(base64, 'base64')).buffer).buffer;
-        }
-        console.log('Buffer double convertion took', performance.now() - start, 'for', count, 'iterations', (performance.now() - start)/count, 'ms per item');
-    }
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            base64ToTypedArray(base64, Uint8Array).buffer;
-        }
-        console.log('base64ToTypedArray took', performance.now() - start, 'for', count, 'iterations', (performance.now() - start)/count, 'ms per item');
-    }
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            new Uint8Array(Buffer.from(base64, 'base64')).buffer
-        }
-        console.log('Uint8Array().buffer took', performance.now() - start, 'for', count, 'iterations', (performance.now() - start)/count, 'ms per item');
-    }
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            new Uint8Array(Buffer.from(base64, 'base64')).buffer
-        }
-        console.log('Uint8Array().buffer took', performance.now() - start, 'for', count, 'iterations', (performance.now() - start)/count, 'ms per item');
-    }
 });
 
 test('Float32Array', async () => {
@@ -189,7 +150,7 @@ test('Buffer compat', () => {
         value: propertyClassToPlain(Object, 'result', v, p),
     };
 
-    expect(isTypedArray(p.type)).toBe(true);
+    expect((p.isTypedArray)).toBe(true);
     expect(transport.encoding.type).toBe('Uint8Array');
     expect(transport.value).toBe(v.toString('base64'));
 });

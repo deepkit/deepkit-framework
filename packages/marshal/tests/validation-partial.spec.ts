@@ -18,10 +18,10 @@ test('test partial @f.map(any) on class', async () => {
         @t.array(String)
         strings: any[] = [];
 
-        @t.array('any')
+        @t.array(t.any)
         array: any[] = [];
 
-        @t.map('any')
+        @t.map(t.any)
         values: {} = {};
 
         @t.any

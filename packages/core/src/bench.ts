@@ -1,10 +1,17 @@
-const Reset = "\x1b[0m";
-const FgGreen = "\x1b[32m";
+const Benchmark = require('benchmark');
+const Reset = '\x1b[0m';
+const FgGreen = '\x1b[32m';
+const FgYellow = "\x1b[33m";
+const {performance} = require('perf_hooks');
 
 declare var process: any;
 
 function green(text: string): string {
     return `${FgGreen}${text}${Reset}`;
+}
+
+function yellow(text: string): string {
+    return `${FgYellow}${text}${Reset}`;
 }
 
 function ops(ops: number): string {
@@ -13,112 +20,74 @@ function ops(ops: number): string {
     return `${FgGreen}${text}${Reset} ops/s`;
 }
 
-function shuffle(a: any[]) {
-    let j, x, i;
-    for (i = a.length - 1; i > 0; i--) {
-        j = Math.floor(Math.random() * (i + 1));
-        x = a[i];
-        a[i] = a[j];
-        a[j] = x;
-    }
-    return a;
+function print(...args: any[]) {
+    process.stdout.write(args.join(' ') + '\n');
 }
 
-type Benchmark = { title: string, async: boolean, fn: (i: number) => Promise<void> | void }
+const blocks = ['▁', '▂', '▄', '▅', '▆', '▇', '█'];
+
+function getBlocks(stats: number[]): string {
+    const max = Math.max(...stats);
+    let res = '';
+    for (const n of stats) {
+        const cat = Math.ceil(n/max * 6);
+        res += (blocks[cat - 1]);
+    }
+
+    return res;
+}
 
 export class BenchSuite {
-    benchmarks: Benchmark[] = [];
-    warmUp: number = 0;
+    suite = new Benchmark.Suite;
 
     constructor(
         public name: string,
-        public operations: number = 1_000,
-        warmUp: boolean | number = true,
     ) {
-        this.warmUp = true === warmUp ? this.operations * 0.1 : ('number' === typeof warmUp) ? this.warmUp : 0;
+        this.suite.on('complete', () => {
+            const fastest = this.suite.filter('fastest')[0];
+            print(
+                ' 🏁 Fastest',
+                green(fastest.name),
+            );
+        }).on('cycle', function(event: any) {
+            print(
+                " 🏎",
+                "x", green(event.target.hz.toLocaleString(undefined, {maximumFractionDigits: 2})), "ops/sec",
+                '\xb1' + event.target.stats.rme.toFixed(2) + '%',
+                yellow(event.target.stats.mean.toLocaleString(undefined, {maximumFractionDigits: 16})), "sec/op",
+                '\t' + getBlocks(event.target.stats.sample),
+                green(event.target.name),
+            );
+        })
     }
 
-    addAsync(title: string, fn: (i: number) => Promise<void>) {
-        this.benchmarks.push({title, fn, async: true});
-        return this;
+    addAsync(title: string, fn: () => Promise<void>, options: any = {}) {
+        options = Object.assign({async: true}, options);
+        return this.add(title, fn, options);
     }
 
-    add(title: string, fn: (i: number) => void) {
-        this.benchmarks.push({title, fn, async: false});
-        return this;
+    add(title: string, fn: () => void | Promise<void>, options: any = {}) {
+        options = Object.assign({maxTime: 1}, options);
+        this.suite.add(title, fn, options);
     }
 
-    shuffle() {
-        shuffle(this.benchmarks);
-        return this;
-    }
-
-    protected runBenchmark(benchmark: Benchmark) {
-        for (let i = 0; i < this.warmUp; i++) {
-            benchmark.fn(i);
-        }
-        const start = performance.now();
-        for (let i = 0; i < this.operations; i++) {
-            benchmark.fn(i);
-        }
-        this.report(benchmark, performance.now() - start);
-    }
-
-    protected async runBenchmarkAsync(benchmark: Benchmark) {
-        for (let i = 0; i < this.warmUp; i++) {
-            await benchmark.fn(i);
-        }
-
-        const start = performance.now();
-        for (let i = 0; i < this.operations; i++) {
-            await benchmark.fn(i);
-        }
-        this.report(benchmark, performance.now() - start);
-    }
-
-    protected report(benchmark: Benchmark, took: number) {
-        process.stdout.write([
-            ops((1000 / took) * this.operations),
-            green(benchmark.title),
-            took.toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms,',
-            (took / this.operations).toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms per op',
-        ].join(' ') + '\n');
-    }
-
-    run(): void {
-        process.stdout.write([
-            'Benchmark', green(this.name) + ',', this.operations.toLocaleString(), 'ops',
-        ].join(' ') + ':\n');
-
-        for (const benchmark of this.benchmarks) {
-            this.runBenchmark(benchmark);
-        }
+    run(options: object = {}): void {
+        print("Start benchmark", green(this.name));
+        return this.suite.run(options);
     }
 
     async runAsync() {
-        process.stdout.write([
-            'Benchmark', green(this.name), this.operations.toLocaleString(), 'ops',
-        ].join(' ') + ':\n');
-
-        for (const benchmark of this.benchmarks) {
-            await this.runBenchmarkAsync(benchmark);
-        }
+        await this.suite.run({'async': true});
     }
 }
 
 /**
  * Executes given exec() method 3 times and averages the consumed time.
  */
-export function bench(times: number, title: string, exec: (i: number) => void, warmUp: boolean | number = true) {
-    warmUp = true === warmUp ? times * 0.1 : ('number' === typeof warmUp) ? warmUp : 0;
-
-    for (let i = 0; i < warmUp; i++) {
-        exec(i);
-    }
-
+export async function bench(times: number, title: string, exec: () => void | Promise<void>) {
     const start = performance.now();
     for (let i = 0; i < times; i++) {
-        exec(i);
+        await exec();
     }
     const took = performance.now() - start;
 

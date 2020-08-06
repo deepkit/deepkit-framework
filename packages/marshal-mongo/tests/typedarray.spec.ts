@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {classToPlain, f, getClassSchema} from "@super-hornet/marshal";
 import {classToMongo, mongoToClass, plainToMongo} from "../index";
-import {Binary} from 'mongodb';
+import {Binary} from 'bson';
 
 test('Int8Array', async () => {
     class Clazz {

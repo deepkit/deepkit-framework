@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import {Entity, t, getClassSchema, MultiIndex} from "../src/decorators";
 import {uuid} from "../src/utils";
 import {getCollectionName} from "../src/mapper";
+import {ClassType} from '@super-hornet/core';
 
 
 @Entity('user2')

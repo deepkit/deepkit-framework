@@ -135,11 +135,11 @@ registerConverterCompiler('class', 'plain', 'moment', convertToPlainUsingToJson)
 
 export function compilerConvertClassToX(toFormat: string): TypeConverterCompiler {
     return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-        const classType = reserveVariable();
+        const classSchema = reserveVariable();
         return {
-            template: `${setter} = createClassToXFunction(${classType}, '${toFormat}')(${accessor}, _options);`,
+            template: `${setter} = createClassToXFunction(${classSchema}, '${toFormat}')(${accessor}, _options);`,
             context: {
-                [classType]: property.resolveClassType,
+                [classSchema]: getClassSchema(property.resolveClassType!),
                 createClassToXFunction,
             }
         }
@@ -149,9 +149,9 @@ registerConverterCompiler('class', 'plain', 'class', compilerConvertClassToX('pl
 
 export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
     return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-        const classType = reserveVariable();
+        const classSchema = reserveVariable();
         const context = {
-            [classType]: property.resolveClassType,
+            [classSchema]: getClassSchema(property.resolveClassType!),
             createXToClassFunction
         };
 
@@ -160,7 +160,7 @@ export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
             //the actual type checking happens within createXToClassFunction()'s constructor param
             //so we dont check here for object.
             return {
-                template: `${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, _options, getParents(), _state);`,
+                template: `${setter} = createXToClassFunction(${classSchema}, '${fromFormat}')(${accessor}, _options, getParents(), _state);`,
                 context
             };
         }
@@ -169,7 +169,7 @@ export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
             template: `
             //object and not an array
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                ${setter} = createXToClassFunction(${classType}, '${fromFormat}')(${accessor}, _options, getParents(), _state);
+                ${setter} = createXToClassFunction(${classSchema}, '${fromFormat}')(${accessor}, _options, getParents(), _state);
             }
         `, context};
     }
@@ -197,7 +197,7 @@ export function compilerXToUnionClass(fromFormat: string): TypeConverterCompiler
 
             discriminants.push(`${discriminant.name}=${JSON.stringify(discriminant.defaultValue)}`)
             const typeVarName = reserveVariable();
-            context[typeVarName] = type;
+            context[typeVarName] = getClassSchema(type);
             discriminator += `if (${accessor}.${discriminant.name} === ${JSON.stringify(discriminant.defaultValue)}) ${discriminatorClassVarName} = ${typeVarName};\n`;
         }
 

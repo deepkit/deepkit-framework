@@ -25,7 +25,7 @@ function createJITConverterForSnapshot(
                 if (undefined !== _value.${property.name}.${pk.name} && null !== _value.${property.name}.${pk.name}) {
                     ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, 'class', 'plain', context)}
                 }
-            `);
+                `);
             }
 
             setProperties.push(`

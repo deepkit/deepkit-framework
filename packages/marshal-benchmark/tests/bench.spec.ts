@@ -52,19 +52,19 @@ test('benchmark plainToClass', () => {
         priority: 5,
         ready: true,
     }
-    const suite = new BenchSuite('plainToClass simple model', 100_000);
+    const suite = new BenchSuite('plainToClass simple model');
 
-    suite.add('Marshal', (i) => {
+    suite.add('Marshal', () => {
         plainToClass(MarshalModel, plain);
     });
 
     // console.log('jit', getJitFunctionPlainToClass(MarshalModel).toString());
 
-    suite.add('ClassTransformer', (i) => {
+    suite.add('ClassTransformer', () => {
         classTransformerPlainToClass(ClassTransformerModel, plain);
     });
 
-    suite.add('Cerialize', (i) => {
+    suite.add('Cerialize', () => {
         Deserialize(plain, CerializeModel);
     });
 
@@ -80,19 +80,19 @@ test('benchmark classToPlain', () => {
         ready: true,
     });
 
-    const suite = new BenchSuite('classToPlain simple model', 100_000);
+    const suite = new BenchSuite('classToPlain simple model');
 
-    suite.add('Marshal', (i) => {
+    suite.add('Marshal', () => {
         jitClassToPlain(MarshalModel, b);
     });
 
     // console.log('jit', getJitFunctionClassToPlain(MarshalModel).toString());
 
-    suite.add('ClassTransformer', (i) => {
+    suite.add('ClassTransformer', () => {
         classTransformerClassToPlain(b);
     });
 
-    suite.add('Cerialize', (i) => {
+    suite.add('Cerialize', () => {
         Serialize(b, CerializeModel);
     });
 

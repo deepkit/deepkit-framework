@@ -279,7 +279,7 @@ export function createJITConverterFromPropertySchema(
 }
 
 function getParentResolverJS<T>(
-    classType: ClassType<T>,
+    schema: ClassSchema<T>,
     setter: string,
     property: PropertySchema,
     context: Map<string, any>
@@ -297,7 +297,7 @@ function getParentResolverJS<T>(
     return `
     ${code}
     if (!${setter})
-        throw new Error('${getClassPropertyName(classType, property.name)} is defined as @f.parentReference and ' +
+        throw new Error('${schema.getClassPropertyName(property.name)} is defined as @f.parentReference and ' +
                     'NOT @f.optional, but no parent found. Add @f.optional or provide ${property.name} in parents to fix that.');
     `;
 }
@@ -330,25 +330,24 @@ function isGroupAllowed(options: JitConverterOptions, groupNames: string[]): boo
     return true;
 }
 
-export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: string | 'plain')
+export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: string | 'plain')
     : (instance: T, options?: JitConverterOptions) => any {
     if (toFormat === 'plain') {
-        let jit = JITClassToPlainCache.get(classType);
-        if (jit) return jit;
+        let jit = JITClassToPlainCache.get(schema);
+        if (jit && jit.buildId === schema.buildId) return jit;
     } else {
         let cache = JITClassToXCache.get(toFormat);
         if (!cache) {
             cache = new Map();
             JITClassToXCache.set(toFormat, cache);
         }
-        let jit = cache.get(classType);
-        if (jit) return jit;
+        let jit = cache.get(schema);
+        if (jit && jit.buildId === schema.buildId) return jit;
     }
 
-    const schema = getClassSchema(classType);
     const context = new Map<string, any>();
 
-    const decoratorName = getDecorator(classType);
+    const decoratorName = schema.decorator;
     let functionCode = '';
     if (decoratorName) {
         const property = schema.getProperty(decoratorName);
@@ -375,7 +374,7 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
 
             if (property.backReference) continue;
 
-            if (isExcluded(classType, property.name, toFormat)) {
+            if (isExcluded(schema, property.name, toFormat)) {
                 continue
             }
 
@@ -404,52 +403,52 @@ export function createClassToXFunction<T>(classType: ClassType<T>, toFormat: str
     }
 
     const compiled = new Function('_classType', '_global', 'isGroupAllowed', ...context.keys(), functionCode);
-    const fn = compiled(classType, getGlobalStore(), isGroupAllowed, ...context.values());
+    const fn = compiled(schema.classType, getGlobalStore(), isGroupAllowed, ...context.values());
+    fn.buildId = schema.buildId;
     if (toFormat === 'plain') {
-        JITClassToPlainCache.set(classType, fn);
+        JITClassToPlainCache.set(schema, fn);
     } else {
-        JITClassToXCache.get(toFormat)!.set(classType, fn);
+        JITClassToXCache.get(toFormat)!.set(schema, fn);
     }
 
     return fn;
 }
 
-export function getJitFunctionClassToX(classType: ClassType<any>, toFormat: string = 'plain') {
+export function getJitFunctionClassToX(schema: ClassSchema<any>, toFormat: string = 'plain') {
     if (toFormat === 'plain') {
-        let jit = JITClassToPlainCache.get(classType);
+        let jit = JITClassToPlainCache.get(schema);
         if (jit) return jit;
     } else {
         let cache = JITClassToXCache.get(toFormat);
-        if (cache) return cache.get(classType);
+        if (cache) return cache.get(schema);
     }
 }
 
-export function getJitFunctionXToClass(classType: ClassType<any>, fromFormat: string = 'plain') {
+export function getJitFunctionXToClass(schema: ClassSchema<any>, fromFormat: string = 'plain') {
     if (fromFormat === 'plain') {
-        let jit = JITPlainToClassCache.get(classType);
+        let jit = JITPlainToClassCache.get(schema);
         if (jit) return jit;
     } else {
         let cache = JITXToClassCache.get(fromFormat);
-        if (cache) return cache.get(classType);
+        if (cache) return cache.get(schema);
     }
 }
 2
-export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: string | 'plain')
+export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: string | 'plain')
     : (data: { [name: string]: any }, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
     if (fromTarget === 'plain') {
-        let jit = JITPlainToClassCache.get(classType);
-        if (jit) return jit;
+        let jit = JITPlainToClassCache.get(schema);
+        if (jit && jit.buildId === schema.buildId) return jit;
     } else {
         let cache = JITXToClassCache.get(fromTarget);
         if (!cache) {
             cache = new Map();
             JITXToClassCache.set(fromTarget, cache);
         }
-        let jit = cache.get(classType);
-        if (jit) return jit;
+        let jit = cache.get(schema);
+        if (jit && jit.buildId === schema.buildId) return jit;
     }
 
-    const schema = getClassSchema(classType);
     const context = new Map<string, any>();
 
     const setProperties: string[] = [];
@@ -471,7 +470,7 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
             `);
         } else if (property.isParentReference) {
             //parent resolver
-            constructorArguments.push(`var c_${property.name}; ` + getParentResolverJS(classType, `c_${property.name}`, property, context));
+            constructorArguments.push(`var c_${property.name}; ` + getParentResolverJS(schema, `c_${property.name}`, property, context));
         } else {
             constructorArguments.push(`
                 //constructor parameter ${property.name}
@@ -490,7 +489,7 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
         if (property.isReference || property.backReference) continue;
 
         if (property.isParentReference) {
-            setProperties.push(getParentResolverJS(classType, `_instance.${property.name}`, property, context));
+            setProperties.push(getParentResolverJS(schema, `_instance.${property.name}`, property, context));
         } else {
             setProperties.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
@@ -560,26 +559,30 @@ export function createXToClassFunction<T>(classType: ClassType<T>, fromTarget: s
     `;
 
     const compiled = new Function('_classType', 'ToClassState', 'isGroupAllowed', ...context.keys(), functionCode);
-    const fn = compiled(classType, ToClassState, isGroupAllowed, ...context.values());
+    const fn = compiled(schema.classType, ToClassState, isGroupAllowed, ...context.values());
+    fn.buildId = schema.buildId;
     if (fromTarget === 'plain') {
-        JITPlainToClassCache.set(classType, fn);
+        JITPlainToClassCache.set(schema, fn);
     } else {
-        JITXToClassCache.get(fromTarget)!.set(classType, fn);
+        JITXToClassCache.get(fromTarget)!.set(schema, fn);
     }
 
     return fn;
 }
 
-export function jitPlainToClass<T>(classType: ClassType<T>, data: any, options?: JitConverterOptions): T {
+export function jitPlainToClass<T>(classType: ClassType<T> | ClassSchema<T>, data: any, options?: JitConverterOptions): T {
+    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
     return createXToClassFunction(classType, 'plain')(data, options);
 }
 
 export function plainToClassFactory<T>(classType: ClassType<T>) {
-    return createXToClassFunction(classType, 'plain');
+    return createXToClassFunction(getClassSchema(classType), 'plain');
 }
 
-export function jitClassToPlain<T>(classType: ClassType<T>, instance: T, options?: JitConverterOptions): Partial<T> {
-    if (!(instance instanceof classType)) {
+export function jitClassToPlain<T>(classType: ClassType<T> | ClassSchema<T>, instance: T, options?: JitConverterOptions): Partial<T> {
+    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
+
+    if (!(instance instanceof classType.classType)) {
         throw new Error(`Could not classToPlain since target is not a class instance of ${getClassName(classType)}`);
     }
 

@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, cloneClass, t, getEntityName, isExcluded, plainToClass, uuid} from "@super-hornet/marshal";
-import {Binary} from "mongodb";
+import {classToPlain, cloneClass, t, getEntityName, isExcluded, plainToClass, uuid, getClassSchema} from '@super-hornet/marshal';
+import {Binary} from "bson";
 import {classToMongo, mongoToClass, mongoToPlain, plainToMongo} from "../src/mapping";
 import { SimpleModel, Plan, now, SubModel, StringCollectionWrapper } from './entities';
 
@@ -139,14 +139,15 @@ test('test simple model all fields plainToMongo', () => {
 });
 
 test('test simple model with not mapped fields', () => {
-    expect(isExcluded(SimpleModel, 'excluded', 'mongo')).toBeTrue();
-    expect(isExcluded(SimpleModel, 'excluded', 'plain')).toBeTrue();
+    const schema = getClassSchema(SimpleModel);
+    expect(isExcluded(schema, 'excluded', 'mongo')).toBeTrue();
+    expect(isExcluded(schema, 'excluded', 'plain')).toBeTrue();
 
-    expect(isExcluded(SimpleModel, 'excludedForPlain', 'mongo')).toBeFalse();
-    expect(isExcluded(SimpleModel, 'excludedForPlain', 'plain')).toBeTrue();
+    expect(isExcluded(schema, 'excludedForPlain', 'mongo')).toBeFalse();
+    expect(isExcluded(schema, 'excludedForPlain', 'plain')).toBeTrue();
 
-    expect(isExcluded(SimpleModel, 'excludedForMongo', 'mongo')).toBeTrue();
-    expect(isExcluded(SimpleModel, 'excludedForMongo', 'plain')).toBeFalse();
+    expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBeTrue();
+    expect(isExcluded(schema, 'excludedForMongo', 'plain')).toBeFalse();
 
     const instance = plainToClass(SimpleModel, {
         name: 'myName',

@@ -1,8 +1,9 @@
-import {DatabasePersistence, Entity, getInstanceState} from "@super-hornet/marshal-orm";
-import {ClassSchema} from "@super-hornet/marshal";
-import {classToMongo, convertClassQueryToMongo, partialClassToMongo} from "./mapping";
-import {BulkWriteOperation, FilterQuery} from "mongodb";
-import {MongoConnection} from "./connection";
+import {DatabasePersistence, Entity, getInstanceState} from '@super-hornet/marshal-orm';
+import {ClassSchema, createClassToXFunction} from '@super-hornet/marshal';
+import {convertClassQueryToMongo, partialClassToMongo} from './mapping';
+import {MongoConnection} from './connection';
+import {ObjectId} from 'mongodb';
+import {FilterQuery} from './query.model';
 
 export class MongoPersistence extends DatabasePersistence {
     constructor(protected connection: MongoConnection) {
@@ -11,47 +12,38 @@ export class MongoPersistence extends DatabasePersistence {
 
     async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
         const collection = await this.connection.getCollection(classSchema.classType);
-        const pks = items.map(v => getInstanceState(v).getLastKnownPKOrCurrent());
-        await collection.deleteMany({$or: pks.map(v => partialClassToMongo(classSchema.classType, v))});
+        const ids: any[] = [];
+        for (const item of items) {
+            ids.push(partialClassToMongo(classSchema.classType, getInstanceState(item).getLastKnownPKOrCurrent()));
+        }
+        await collection.deleteMany({$or: ids});
     }
 
     async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
-        const collection = await this.connection.getCollection(classSchema.classType);
-
-        const operations: Array<BulkWriteOperation<T>> = [];
-        const inserted: T[] = [];
+        const insert: T[] = [];
+        const update: { q: any, u: any }[] = [];
+        const has_Id = classSchema.hasProperty('_id');
+        const converter = createClassToXFunction(classSchema, 'mongo');
 
         for (const item of items) {
             const state = getInstanceState(item);
             if (state.isKnownInDatabase()) {
-                //todo, build change-set and patch only what is necessary
-                operations.push({
-                    replaceOne: {
-                        filter: convertClassQueryToMongo(classSchema.classType, state.getLastKnownPKOrCurrent() as FilterQuery<T>),
-                        replacement: classToMongo(classSchema.classType, item),
-                    }
+                //     //todo, build change-set and patch only what is necessary
+                update.push({
+                    q: convertClassQueryToMongo(classSchema.classType, state.getLastKnownPKOrCurrent() as FilterQuery<T>),
+                    u: converter(item)
                 });
             } else {
-                operations.push({
-                    insertOne: {
-                        document: classToMongo(classSchema.classType, item),
-                    }
-                });
-                inserted.push(item);
-            }
-        }
-
-        const res = await collection.bulkWrite(operations, {
-            // j: true,
-            // w: 'majority'
-        });
-
-        if (classSchema.hasProperty('_id')) {
-            for (let i = 0; i < inserted.length; i++) {
-                if (res.insertedIds[i]) {
-                    (inserted[i] as any)._id = res.insertedIds[i].toHexString();
+                const converted = converter(item);
+                if (has_Id && !item['_id']) {
+                    converted['_id'] = new ObjectId();
+                    item['_id'] = converted['_id'].toHexString();
                 }
+                insert.push(converted);
             }
         }
+
+        if (insert.length) await this.connection.insertMany(classSchema.classType, insert);
+        if (update.length) await this.connection.updateMany(classSchema.classType, update);
     }
 }

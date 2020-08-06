@@ -1,13 +1,7 @@
-import {validate, ValidationFailed} from "./validation";
-import {getClassSchema, getClassTypeFromInstance, PropertySchema} from "./decorators";
-import {ClassType, eachKey, getClassName, isObject} from "@super-hornet/core";
-import {
-    createJITConverterFromPropertySchema,
-    jitClassToPlain, JitConverterOptions,
-    jitPartialClassToPlain,
-    jitPartialPlainToClass,
-    jitPlainToClass
-} from "./jit";
+import {validate, ValidationFailed} from './validation';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema} from './decorators';
+import {ClassType, getClassName} from '@super-hornet/core';
+import {createJITConverterFromPropertySchema, jitClassToPlain, JitConverterOptions, jitPartialClassToPlain, jitPartialPlainToClass, jitPlainToClass} from './jit';
 
 /**
  * Converts a argument of a method from class to plain.
@@ -58,10 +52,9 @@ export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
 /**
  * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
  */
-export function classToPlain<T>(classType: ClassType<T>, target: T, options?: JitConverterOptions): any {
+export function classToPlain<T>(classType: ClassType<T> | ClassSchema<T>, target: T, options?: JitConverterOptions): any {
     return jitClassToPlain(classType, target, options);
 }
-
 
 /**
  * Takes a regular object with partial fields defined of classType and converts only them into the class variant.
@@ -90,6 +83,16 @@ export function partialClassToPlain<T, R extends object>(
     return jitPartialClassToPlain(classType, partial, options);
 }
 
+export type JSONPartialSingle<T> = T extends Date ? string :
+    T extends Array<infer K> ? Array<JSONPartialSingle<K>> :
+        T extends object ? JSONPartial<T> :
+            T extends string ? number | string :
+                T extends boolean ? number | string | boolean :
+                    T extends number ? number | string : T;
+
+export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<T[name]> };
+
+type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
 
 /**
  * Take a regular object literal and returns an instance of classType.
@@ -104,8 +107,8 @@ export function partialClassToPlain<T, R extends object>(
  * ```
  */
 export function plainToClass<T>(
-    classType: ClassType<T>,
-    data: object,
+    classType: ClassType<T> | ClassSchema<T>,
+    data: JSONPartial<ClassType<T>>,
     options?: JitConverterOptions
 ): T {
     return jitPlainToClass(classType, data, options);
@@ -163,8 +166,8 @@ export function isMapType<T>(classType: ClassType<T>, property: string): boolean
 /**
  * @hidden
  */
-export function isExcluded<T>(classType: ClassType<T>, property: string, wantedTarget: string): boolean {
-    const mode = getClassSchema(classType).getProperty(property).exclude;
+export function isExcluded<T>(schema: ClassSchema<T>, property: string, wantedTarget: string): boolean {
+    const mode = schema.getProperty(property).exclude;
 
     if ('all' === mode) {
         return true;

@@ -1,12 +1,12 @@
-import {DatabaseAdapter, DatabaseConnection, DatabasePersistence} from "./database";
-import {Entity} from "./query";
-import {CustomError} from "@super-hornet/core";
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from "@super-hornet/marshal";
-import {GroupArraySort} from "@super-hornet/topsort";
-import {IdentityMap, getInstanceState} from "./identity-map";
+import {DatabaseAdapter, DatabasePersistence} from './database';
+import {Entity} from './query';
+import {ClassType, CustomError} from '@super-hornet/core';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance} from '@super-hornet/marshal';
+import {GroupArraySort} from '@super-hornet/topsort';
+import {getNormalizedPrimaryKey, IdentityMap, PrimaryKey} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
 import {HydratorFn, markAsHydrated} from './formatter';
-import {getPrimaryKeyExtractor} from './converter';
+import {getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
 
 let SESSION_IDS = 0;
 
@@ -106,14 +106,12 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             sorter.add(item, classSchema, this.getReferenceDependencies(item));
         }
 
-        const items = sorter.sort();
+        sorter.sort();
         const groups = sorter.getGroups();
         // console.log('dependency resolution of', items.length, 'items took', performance.now() - start, 'ms');
 
         for (const group of groups) {
-            // const start = performance.now();
             await this.persistence.persist(group.type, group.items);
-            // console.log('persist of', group.items.length, 'items took', performance.now() - start, 'ms');
             this.identityMap.storeMany(group.type, group.items);
         }
     }
@@ -196,6 +194,31 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);
+    }
+
+    /**
+     * Creates or returns an existing reference.
+     *
+     * If no instance is known in the identity map, it creates a proxy reference (where only primary keys are populated).
+     * You can work with this entity instance to assign new references, but reading its not-hydrated values is not possible.
+     * Writing not-hydrated is possible and lead to a change in the change-detection. Completely hydrate the object using
+     * the `hydrateEntity` function.
+     *
+     * ```
+     * database.getReference(User, 1);
+     *
+     * ```
+     */
+    public getReference<T>(classType: ClassType<T>, primaryKey: any | PrimaryKey<T>): T {
+        const schema = getClassSchema(classType);
+        const pk = getNormalizedPrimaryKey(schema, primaryKey);
+        const pkHash = getPrimaryKeyHashGenerator(schema)(pk);
+
+        const item = this.identityMap.getByHash(schema, pkHash);
+        if (item) return item;
+
+        //todo: create reference and put into identityMap
+        throw new Error('Not implemented');
     }
 
     public getConnection(): ReturnType<this['adapter']['createConnection']> {

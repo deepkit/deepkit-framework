@@ -25,6 +25,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "testEnvironment": "node",
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

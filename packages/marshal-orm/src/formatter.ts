@@ -150,19 +150,13 @@ export class Formatter {
         propertySchema: PropertySchema,
         isPartial: boolean
     ): object | undefined {
-        if (undefined === dbItem[propertySchema.getForeignKeyName()]) {
-            if (propertySchema.isOptional) return;
-            throw new Error(`Foreign key for ${propertySchema.name} is not projected.`);
-        }
-
-        const foreignSchema = propertySchema.getResolvedClassSchema();
         const fkName = propertySchema.getForeignKeyName();
 
         if (undefined === dbItem[fkName] || null === dbItem[fkName]) {
-            //nothing to do when we got no item.
             return;
         }
 
+        const foreignSchema = propertySchema.getResolvedClassSchema();
         const foreignPrimaryFields = foreignSchema.getPrimaryFields();
         //note: foreign keys only support currently a single foreign key ...
         const foreignPrimaryKey = {[foreignPrimaryFields[0].name]: dbItem[fkName]};
@@ -223,7 +217,7 @@ export class Formatter {
                 if (fromDatabase && !isHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance
-                    const converted = createXToClassFunction(classSchema.classType, this.serializerSourceName)(value)
+                    const converted = createXToClassFunction(classSchema, this.serializerSourceName)(value)
 
                     for (const propName of classSchema.propertyNames) {
                         if (propName === classSchema.idField) continue;
@@ -292,7 +286,7 @@ export class Formatter {
     protected createObject(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
         const converted = model.isPartial() ?
             jitPartial(this.serializerSourceName, 'class', classSchema.classType, value) :
-            createXToClassFunction(classSchema.classType, this.serializerSourceName)(value);
+            createXToClassFunction(classSchema, this.serializerSourceName)(value);
 
         if (!model.isPartial()) {
             getInstanceState(converted).markAsFromDatabase();

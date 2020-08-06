@@ -140,14 +140,15 @@ test('test simple model all fields plainToMongo', () => {
 });
 
 test('test simple model with not mapped fields', () => {
-    expect(isExcluded(SimpleModel, 'excluded', 'database')).toBeTrue();
-    expect(isExcluded(SimpleModel, 'excluded', 'plain')).toBeTrue();
+    const schema = getClassSchema(SimpleModel);
+    expect(isExcluded(schema, 'excluded', 'database')).toBeTrue();
+    expect(isExcluded(schema, 'excluded', 'plain')).toBeTrue();
 
-    expect(isExcluded(SimpleModel, 'excludedForPlain', 'mongo')).toBeFalse();
-    expect(isExcluded(SimpleModel, 'excludedForPlain', 'plain')).toBeTrue();
+    expect(isExcluded(schema, 'excludedForPlain', 'mongo')).toBeFalse();
+    expect(isExcluded(schema, 'excludedForPlain', 'plain')).toBeTrue();
 
-    expect(isExcluded(SimpleModel, 'excludedForMongo', 'mongo')).toBeTrue();
-    expect(isExcluded(SimpleModel, 'excludedForMongo', 'plain')).toBeFalse();
+    expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBeTrue();
+    expect(isExcluded(schema, 'excludedForMongo', 'plain')).toBeFalse();
 
     const instance = plainToClass(SimpleModel, {
         name: 'myName',
@@ -419,13 +420,13 @@ test('test @Decorated with parent', async () => {
 
     expect(() => {
         const instance = plainToClass(ClassWithUnmetParent, {});
-    }).toThrow('ClassWithUnmetParent::parent is defined as');
+    }).toThrow('ClassWithUnmetParent.parent is defined as');
 
     expect(() => {
         const instance = plainToClass(PageClass, {
             name: 'myName'
         });
-    }).toThrow('PageClass::document is defined as @f.parentReference and NOT @f.optional');
+    }).toThrow('PageClass.document is defined as @f.parentReference and NOT @f.optional');
 
     {
         const doc = new DocumentClass();
@@ -452,7 +453,7 @@ test('test @Decorated with parent', async () => {
                 {name: 'Bar'}
             ]
         });
-    }).toThrow('PageClass::document is defined as');
+    }).toThrow('PageClass.document is defined as');
 
     const instance = plainToClass(DocumentClass, {
         name: 'myName',
@@ -540,7 +541,7 @@ test('test @Decorated with parent', async () => {
 
     expect(() => {
         const clone = cloneClass(instance.page);
-    }).toThrow('PageClass::document is defined as');
+    }).toThrow('PageClass.document is defined as');
 
     const clone = cloneClass(instance.page, {parents: [instance]});
     expect(clone).toBeInstanceOf(PageClass);

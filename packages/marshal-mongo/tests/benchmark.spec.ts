@@ -1,42 +1,55 @@
 import {BenchSuite} from '@super-hornet/core';
 import {createDatabaseSession} from './mongo.spec';
 import {Entity, f} from '@super-hornet/marshal';
+import {mongoToClass} from '../src/mapping';
 
-@Entity('book')
-export class Book {
-    @f.primary.mongoId
-    _id!: string;
+jest.setTimeout(100000);
 
-    @f.array(f.any)
-    metaArray?: any[];
+@Entity('user')
+export class User {
+    @f ready?: boolean;
 
-    @f.array(f.string)
-    metaArrayOfStrings?: string[];
+    @f.array(f.string) tags: string[] = [];
 
-    constructor(@f public title: string) {
+    @f priority: number = 0;
+
+    constructor(
+        @f.primary id: number,
+        @f public name: string
+    ) {
     }
 }
 
-test('benchmark', async () => {
-    const items = 10_000;
-    const suite = new BenchSuite(`persist, ${items} items`, 1, false);
+test('benchmark serialization user', async () => {
+    const plain = {
+        name: 'name',
+        id: 2,
+        tags: ['a', 'b', 'c'],
+        priority: 5,
+        ready: true,
+    }
 
-    const database = await createDatabaseSession('benchmark-a');
+    const suite = new BenchSuite('mongoToClass user');
 
-    suite.addAsync('Marshal insert', async () => {
-        for (let i = 1; i <= items; i++) {
-            database.add(new Book('My Life on The Wall, part ' + i));
-        }
-
-        await database.commit();
+    suite.add('mongoToClass', () => {
+        mongoToClass(User, plain);
+    });
+    suite.add('classToMongo', () => {
+        mongoToClass(User, plain);
     });
 
-    const query = database.query(Book);
-    suite.addAsync('Marshal find', async () => {
-        const start = performance.now();
-        const books = await query.find();
-        console.log(`${books.length} books loaded in`, performance.now() - start);
-    });
+    suite.run();
+});
 
-    await suite.runAsync();
+test('benchmark raw', async () => {
+    const database = await createDatabaseSession('benchmark-raw');
+    await database.getConnection().connect();
+    const user = new User(1, 'Peter');
+    user.ready = true;
+    user.priority = 5;
+    user.tags = ['a', 'b', 'c'];
+    database.add(user);
+    await database.commit();
+    const items = await database.query(User).find();
+    console.log('items', items);
 });

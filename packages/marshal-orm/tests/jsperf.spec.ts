@@ -11,17 +11,15 @@ test('for vs map', () => {
         return item.toUpperCase();
     }
 
-    bench(count, 'map', (i) => {
+    bench(count, 'map',  () => {
         const result: string[] = items.map(v => toUpper(v));
-        return result;
     });
 
-    bench(count, 'for', (i) => {
+    bench(count, 'for',  () => {
         const result: string[] = [];
         for (const item of items) {
             result.push(toUpper(item));
         }
-        return result;
     });
 });
 
@@ -39,13 +37,13 @@ test('weakMap vs Object.defineProperty', () => {
 
     const weakMap = new WeakMap();
 
-    bench(count, 'weakMap set', (i) => {
+    bench(count, 'weakMap set',  () => {
         for (const item of items) {
             weakMap.set(item, {myAdditionalData: item.id});
         }
     });
 
-    bench(count, 'weakMap get', (i) => {
+    bench(count, 'weakMap get',  () => {
         for (const item of items) {
             if (weakMap.get(item)!.myAdditionalData !== item.id) throw new Error('Moep');
         }
@@ -53,13 +51,13 @@ test('weakMap vs Object.defineProperty', () => {
 
     Object.defineProperty(User.prototype, '__myData', {writable: true, enumerable: false, value: {}});
 
-    bench(count, 'defineProperty set', (i) => {
+    bench(count, 'defineProperty set',  () => {
         for (const item of items) {
             (item as any).__myData = {myAdditionalData: item.id};
         }
     });
 
-    bench(count, 'defineProperty get', (i) => {
+    bench(count, 'defineProperty get',  () => {
         for (const item of items) {
             if ((item as any).__myData.myAdditionalData !== item.id) throw new Error('Moep');
         }
@@ -74,13 +72,13 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
 
     const count = 100_000;
 
-    bench(count, 'set new', (i) => {
-        const item = new User(i);
-        (item as any).bla = i;
+    bench(count, 'set new',  () => {
+        const item = new User(1);
+        (item as any).bla = 1;
     });
 
-    bench(count, 'get new', (i) => {
-        const item = new User(i);
+    bench(count, 'get new',  () => {
+        const item = new User(1);
         const n = (item as any).bla;
     });
 
@@ -99,39 +97,39 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
         expect((item2 as any).bla).toBe(undefined);
     }
 
-    bench(count, 'set predefined', (i) => {
-        const item = new User(i);
+    bench(count, 'set predefined',  () => {
+        const item = new User(1);
         if (!(item as any)['constructor'].prototype.hasOwnProperty('bla')) {
             Object.defineProperty(Object.getPrototypeOf(item), 'bla', {writable: true, enumerable: false});
         }
-        (item as any).bla = i;
+        (item as any).bla = 1;
     });
 
     const symbol = Symbol('bla');
 
-    bench(count, 'set predefined symbol', (i) => {
-        const item = new User(i);
+    bench(count, 'set predefined symbol',  () => {
+        const item = new User(1);
         if (!(item as any)['constructor'].prototype.hasOwnProperty(symbol)) {
             Object.defineProperty(Object.getPrototypeOf(item), symbol, {writable: true, enumerable: false});
         }
-        (item as any)[symbol] = i;
+        (item as any)[symbol] = 1;
     });
 
-    bench(count, 'get predefined', (i) => {
-        const item = new User(i);
-        (item as any).bla = i;
+    bench(count, 'get predefined',  () => {
+        const item = new User(1);
+        (item as any).bla = 1;
         const n = (item as any).bla;
     });
 
     const map = new WeakMap();
-    bench(count, 'set map', (i) => {
-        const item = new User(i);
-        map.set(item, i);
+    bench(count, 'set map',  () => {
+        const item = new User(1);
+        map.set(item, 1);
     });
 
-    bench(count, 'get map', (i) => {
-        const item = new User(i);
-        map.set(item, i);
+    bench(count, 'get map',  () => {
+        const item = new User(1);
+        map.set(item, 1);
         const n = map.get(item);
     });
 });
@@ -140,26 +138,26 @@ test('cache', () => {
     const count = 1_000_000;
 
     const cache: any = {};
-    bench(count, 'object write', (i) => {
-        cache[i] = {i: i};
+    bench(count, 'object write',  () => {
+        cache[1] = {i: 1};
     });
 
-    bench(count, 'object read', (i) => {
-        const n = cache[i];
+    bench(count, 'object read',  () => {
+        const n = cache[1];
     });
 
-    bench(count, 'object hasOwnProperty', (i) => {
-        if (cache.hasOwnProperty(i)) {
-            const n = cache[i];
+    bench(count, 'object hasOwnProperty',  () => {
+        if (cache.hasOwnProperty(1)) {
+            const n = cache[1];
         }
     });
 
     const map = new Map();
-    bench(count, 'map write', (i) => {
-        map.set(i, {i : i});
+    bench(count, 'map write',  () => {
+        map.set(1, {i : 1});
     });
-    bench(count, 'map read', (i) => {
-        const n = map.get(i);
+    bench(count, 'map read',  () => {
+        const n = map.get(1);
     });
 
 });
@@ -182,10 +180,10 @@ test('classToPlain vs copy-on-write hooks', () => {
     const classSchema = getClassSchema(MarshalModel);
 
     const count = 10_000;
-    bench(count, 'classToPlain', (i) => {
+    bench(count, 'classToPlain',  () => {
         const item = plainToClass(MarshalModel, {
-            name: 'name' + i,
-            id: i,
+            name: 'name',
+            id: 1,
             tags: ['a', 'b', 'c'],
             priority: 5,
             ready: true,
@@ -193,10 +191,10 @@ test('classToPlain vs copy-on-write hooks', () => {
         classToPlain(MarshalModel, item);
     });
 
-    bench(count, 'proxy', (i) => {
+    bench(count, 'proxy',  () => {
         const item = plainToClass(MarshalModel, {
-            name: 'name' + i,
-            id: i,
+            name: 'name',
+            id: 1,
             tags: ['a', 'b', 'c'],
             priority: 5,
             ready: true,
@@ -216,10 +214,10 @@ test('classToPlain vs copy-on-write hooks', () => {
         }
     }
 
-    bench(count, 'defineProperty', (i) => {
+    bench(count, 'defineProperty',  () => {
         const item = plainToClass(MarshalModel, {
-            name: 'name' + i,
-            id: i,
+            name: 'name',
+            id: 1,
             tags: ['a', 'b', 'c'],
             priority: 5,
             ready: true,
@@ -240,7 +238,7 @@ test('object setter/getter', () => {
 
     const protoObject = Object.create(plainObject);
 
-    bench(count, 'plainObject', (i) => {
+    bench(count, 'plainObject',  () => {
         plainObject.a = 2;
     });
 
@@ -254,10 +252,10 @@ test('object setter/getter', () => {
 
     //https://jsperf.com/property-access-vs-defineproperty/5
     //is 10x faster
-    bench(count, 'protoObject write', (i) => {
+    bench(count, 'protoObject write',  () => {
         obj.property = 5;
     });
-    bench(count, 'protoObject read ', (i) => {
+    bench(count, 'protoObject read ',  () => {
         const res = obj.property;
     });
 })

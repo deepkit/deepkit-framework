@@ -63,7 +63,7 @@ test('nested types correctly converted', async () => {
         expect(plain.configs[0]).not.toBeInstanceOf(Config);
     }
 
-    expect(getJitFunctionClassToX(Test)).toBeInstanceOf(Function);
+    expect(getJitFunctionClassToX(getClassSchema(Test))).toBeInstanceOf(Function);
 });
 
 test('custom serialization formats', async () => {
@@ -83,19 +83,19 @@ test('custom serialization formats', async () => {
     expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
 
     const test = new Test;
-    const myFormat = createClassToXFunction(Test, 'myFormat')(test);
-    const plain = createClassToXFunction(Test, 'plain')(test);
+    const myFormat = createClassToXFunction(getClassSchema(Test), 'myFormat')(test);
+    const plain = createClassToXFunction(getClassSchema(Test), 'plain')(test);
     expect(plain.id).toBe('myName');
     expect(myFormat.id).toBe('string:myName');
-    expect(getJitFunctionClassToX(Test, 'myFormat')).toBeInstanceOf(Function);
-    expect(getJitFunctionClassToX(Test, 'plain')).toBeInstanceOf(Function);
+    expect(getJitFunctionClassToX(getClassSchema(Test), 'myFormat')).toBeInstanceOf(Function);
+    expect(getJitFunctionClassToX(getClassSchema(Test), 'plain')).toBeInstanceOf(Function);
 
-    const testBack = createXToClassFunction(Test, 'myFormat')(myFormat);
-    const testBackClass = createXToClassFunction(Test, 'plain')(myFormat);
+    const testBack = createXToClassFunction(getClassSchema(Test), 'myFormat')(myFormat);
+    const testBackClass = createXToClassFunction(getClassSchema(Test), 'plain')(myFormat);
     expect(testBack.id).toBe('myName');
     expect(testBackClass.id).toBe('string:myName');
-    expect(getJitFunctionXToClass(Test, 'myFormat')).toBeInstanceOf(Function);
-    expect(getJitFunctionXToClass(Test, 'plain')).toBeInstanceOf(Function);
+    expect(getJitFunctionXToClass(getClassSchema(Test), 'myFormat')).toBeInstanceOf(Function);
+    expect(getJitFunctionXToClass(getClassSchema(Test), 'plain')).toBeInstanceOf(Function);
 
     {
         const cacheJitPropertyConverter = new CacheJitPropertyConverter('class', 'myFormat');

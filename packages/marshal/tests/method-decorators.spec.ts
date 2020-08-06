@@ -493,7 +493,7 @@ test('short @f templateArgs', () => {
         expect(props.templateArgs).toBeArrayOfSize(1);
         if (props.templateArgs) {
             expect(props.templateArgs[0]).toBeInstanceOf(PropertySchema);
-            expect(props.templateArgs[0].name).toBe('0');
+            expect(props.templateArgs[0].name).toBe('foo_0');
             expect(props.templateArgs[0].type).toBe('number');
             expect(props.templateArgs[0].isOptional).toBe(false);
         }
@@ -506,7 +506,7 @@ test('short @f templateArgs', () => {
         expect(props.templateArgs).toBeArrayOfSize(1);
         if (props.templateArgs) {
             expect(props.templateArgs[0]).toBeInstanceOf(PropertySchema);
-            expect(props.templateArgs[0].name).toBe('0');
+            expect(props.templateArgs[0].name).toBe('foo2_0');
             expect(props.templateArgs[0].isOptional).toBe(true);
             expect(props.templateArgs[0].type).toBe('string');
         }

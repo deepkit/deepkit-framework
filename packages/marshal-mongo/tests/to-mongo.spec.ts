@@ -5,11 +5,10 @@ import {
     arrayBufferTo,
     arrayBufferToBase64,
     t,
-    ParentReference,
     partialPlainToClass,
 } from "@super-hornet/marshal";
 import {Plan, SimpleModel, SubModel} from "./entities";
-import {Binary, ObjectID} from "mongodb";
+import {Binary, ObjectID} from "bson";
 import {
     classToMongo,
     mongoToClass,

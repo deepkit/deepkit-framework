@@ -2,8 +2,8 @@
   "name": "@super-hornet/core",
   "version": "0.1.19",
   "description": "Super Hornet core library",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
@@ -11,7 +11,8 @@
     "access": "public"
   },
   "dependencies": {
-    "dot-prop": "^4.2.0"
+    "dot-prop": "^4.2.0",
+    "benchmark": "^2.1.4"
   },
   "devDependencies": {
     "@types/dot-prop": "~4.2.0"

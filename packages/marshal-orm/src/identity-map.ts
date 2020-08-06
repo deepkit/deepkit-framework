@@ -1,79 +1,104 @@
-import {
-    ClassSchema,
-    getClassSchema,
-    getClassTypeFromInstance, JitPropertyConverter,
-    partialClassToPlain,
-    PartialEntity
-} from "@super-hornet/marshal";
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, PartialEntity} from "@super-hornet/marshal";
 import {Entity} from "./query";
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from "./converter";
-
-jest.setTimeout(111111111);
+import {isObject} from '@super-hornet/core';
 
 export type PrimaryKey<T extends Entity> = { [name in keyof T & string]?: T[name] };
+
 export type JSONPartial<T extends Entity> = { [name in keyof T & string]?: any };
 
+export function getNormalizedPrimaryKey(schema: ClassSchema<any>, primaryKey: any) {
+    const primaryFields = schema.getPrimaryFields();
+
+    if (primaryFields.length > 1) {
+        if (!isObject(primaryKey)) {
+            throw new Error(`Entity ${schema.getClassName()} has composite primary key. Please provide primary key as object, e.g. {pk1: value, pk2: value2}.`)
+        }
+        const res: { [name: string]: any } = {};
+        for (const primaryField of primaryFields) {
+            res[primaryField.name] = primaryKey[primaryField.name];
+        }
+        return res;
+    } else {
+        const first = primaryFields[0];
+        if (isObject(primaryKey) && (primaryKey as any)[first.name] !== undefined) {
+            return {[first.name]: (primaryKey as any)[first.name]};
+        } else {
+            return {[first.name]: primaryKey};
+        }
+    }
+}
+
 class InstanceState<T extends Entity> {
-    protected knownInDatabase: boolean = false;
+    #knownInDatabase: boolean = false;
 
     /**
      * This represents the last known values known to be in the database.
      * The data is used for change-detection + last known primary key extraction.
+     * Reference store only its primary keys.
      */
-    protected snapshot: JSONPartial<T>;
+    #snapshot: JSONPartial<T>;
 
-    protected classSchema: ClassSchema<T>;
-    protected fromDatabase: boolean = false;
+    readonly #classSchema: ClassSchema<T>;
+    readonly #item: T;
 
-    constructor(private item: T) {
-        this.classSchema = getClassSchema(item);
+    #fromDatabase: boolean = false;
 
-        this.snapshot = partialClassToPlain(this.classSchema.classType, item);
+    constructor(item: T) {
+        this.#item = item;
+        this.#classSchema = getClassSchema(item);
+
+        this.#snapshot = getJITConverterForSnapshot(this.#classSchema)(this.#item);
     }
 
     toString(): string {
-        return `knownInDatabase: ${this.knownInDatabase}`;
+        return `knownInDatabase: ${this.#knownInDatabase}`;
+    }
+
+    getSnapshot() {
+        return this.#snapshot;
     }
 
     isFromDatabase() {
-        return this.fromDatabase;
+        return this.#fromDatabase;
     }
 
     isKnownInDatabase(): boolean {
-        return this.knownInDatabase;
+        return this.#knownInDatabase;
     }
 
     markAsFromDatabase() {
-        this.fromDatabase = true;
+        this.#fromDatabase = true;
     }
 
     markAsPersisted() {
-        this.snapshot = getJITConverterForSnapshot(this.classSchema)(this.item);
-        this.knownInDatabase = true;
+        this.#snapshot = getJITConverterForSnapshot(this.#classSchema)(this.#item);
+        this.#knownInDatabase = true;
     }
 
     getLastKnownPKOrCurrent(): PrimaryKey<T> {
-        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot || this.item as any);
+        return getPrimaryKeyExtractor(this.#classSchema)(this.#snapshot || this.#item as any);
     }
 
     getLastKnownPKHashOrCurrent(): string {
-        return getPrimaryKeyHashGenerator(this.classSchema)(this.snapshot || this.item as any);
+        return getPrimaryKeyHashGenerator(this.#classSchema)(this.#snapshot || this.#item as any);
     }
 
     getLastKnownPK(): PrimaryKey<T> {
-        if (!this.snapshot) {
+        if (!this.#snapshot) {
             throw new Error(`Item is not known in the database.`);
         }
-        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot);
+        return getPrimaryKeyExtractor(this.#classSchema)(this.#snapshot);
     }
 
     markAsDeleted() {
-        this.knownInDatabase = false;
+        this.#knownInDatabase = false;
     }
 }
+
 const entityStateMap = new WeakMap<any, InstanceState<any>>();
 
-export function getInstanceState<T>(item: T): InstanceState<T> {
+export function getInstanceStateOld<T>(item: T): InstanceState<T> {
     let entityState = entityStateMap.get(item);
 
     if (!entityState) {
@@ -82,6 +107,23 @@ export function getInstanceState<T>(item: T): InstanceState<T> {
     }
 
     return entityState;
+}
+
+const instanceStateSymbol = Symbol('state');
+
+export function getInstanceState<T>(item: T): InstanceState<T> {
+    //this approach is up to 60-90x faster than a WeakMap
+    if (!(item as any)['constructor'].prototype.hasOwnProperty(instanceStateSymbol)) {
+        Object.defineProperty((item as any)['constructor'].prototype, instanceStateSymbol, {
+            writable: true,
+            enumerable: false
+        });
+    }
+
+    if (!(item as any)[instanceStateSymbol]) {
+        (item as any)[instanceStateSymbol] = new InstanceState(item);
+    }
+    return (item as any)[instanceStateSymbol];
 }
 
 export type PKHash = string;

@@ -34,6 +34,7 @@
     "moment": "^2.0.0"
   },
   "jest": {
+    "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

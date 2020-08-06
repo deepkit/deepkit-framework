@@ -12,7 +12,8 @@ import {
     t,
     uuid,
 } from "@super-hornet/marshal";
-import {Binary, ObjectID} from "mongodb";
+import {Binary, ObjectID} from "bson";
+import * as mongodb from "mongodb";
 import {Database, DatabaseSession, getInstanceState} from "@super-hornet/marshal-orm";
 import {plainToMongo} from "../src/mapping";
 import * as moment from "moment";
@@ -31,7 +32,7 @@ export async function createDatabaseSession(dbName: string = 'testing'): Promise
 }
 
 afterEach(async () => {
-    await database.disconnect(true);
+    if (database) await database.disconnect(true);
 });
 
 test('test moment db', async () => {
@@ -114,8 +115,8 @@ test('test save model', async () => {
 
     expect(mongoItem.length).toBe(1);
     expect(mongoItem[0].name).toBe('myName');
-    expect(mongoItem[0]._id).toBeInstanceOf(ObjectID);
-    expect(mongoItem[0].id).toBeInstanceOf(Binary);
+    expect(mongoItem[0]._id).toBeInstanceOf(mongodb.ObjectID);
+    expect(mongoItem[0].id).toBeInstanceOf(mongodb.Binary);
     expect(uuid4Stringify(mongoItem[0].id)).toBe(instance.id);
 
     const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();
@@ -248,7 +249,7 @@ test('test delete', async () => {
 });
 
 test('test super simple model', async () => {
-    const session = await createDatabaseSession('testing');
+    const session = await createDatabaseSession('testing-simple-model');
 
     const instance = plainToClass(SuperSimple, {
         name: 'myName',
@@ -267,7 +268,7 @@ test('test super simple model', async () => {
 });
 
 test('test databaseName', async () => {
-    const session = await createDatabaseSession('testing');
+    const session = await createDatabaseSession('testing-databaseName');
     await (await session.adapter.connection.connect()).db('testing2').dropDatabase();
 
     @Entity('DifferentDataBase', 'differentCollection')
@@ -372,11 +373,11 @@ test('second object id', async () => {
     const mongoItem = await collection.find().toArray();
     expect(mongoItem).toBeArrayOfSize(1);
     expect(mongoItem[0].name).toBe('myName');
-    expect(mongoItem[0].preview).toBeInstanceOf(Binary);
+    expect(mongoItem[0].preview).toBeInstanceOf(mongodb.Binary);
     expect(mongoItem[0].preview.buffer.toString('utf8')).toBe('Baar');
 
-    expect(mongoItem[0]._id).toBeInstanceOf(ObjectID);
-    expect(mongoItem[0].secondId).toBeInstanceOf(ObjectID);
+    expect(mongoItem[0]._id).toBeInstanceOf(mongodb.ObjectID);
+    expect(mongoItem[0].secondId).toBeInstanceOf(mongodb.ObjectID);
     expect(mongoItem[0]._id.toHexString()).toBe(instance._id);
     expect(mongoItem[0].secondId.toHexString()).toBe(instance.secondId);
 });

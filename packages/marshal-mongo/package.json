@@ -20,7 +20,9 @@
   "dependencies": {
     "@super-hornet/core": "^0.1.19",
     "@super-hornet/marshal": "^2.1.13",
+    "@super-hornet/marshal-bson": "^2.1.13",
     "@super-hornet/marshal-orm": "^2.1.13",
+    "bson": "^4.0.4",
     "buffer": "^5.2.1",
     "mongo-uuid": "^1.0.0"
   },
@@ -28,14 +30,14 @@
     "@types/mongodb": "^3.5.25",
     "@types/jest": "^26.0.4",
     "moment": "^2.0.0",
-    "mongodb": "^3.5.9",
+    "mongodb": "^3.6.0",
     "jest-serial-runner": "^1.1.0",
     "reflect-metadata": "^0.1.13",
-    "bson-ext": "^2.0.3",
     "rxjs": "~6.5.3"
   },
   "jest": {
     "runner": "jest-serial-runner",
+    "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

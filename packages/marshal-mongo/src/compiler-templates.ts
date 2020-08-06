@@ -13,16 +13,31 @@ import {
     registerConverterCompiler,
     typedArrayNamesMap,
     typedArrayToBuffer
-} from "@super-hornet/marshal";
-import {Binary, ObjectID} from "mongodb";
-import * as mongoUuid from "mongo-uuid";
+} from '@super-hornet/marshal';
+import {Binary, ObjectID} from 'bson';
+import {hexTable} from '@super-hornet/marshal-bson';
+import * as mongoUuid from 'mongo-uuid';
 
 export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);
 }
 
-export function uuid4Stringify(u: Binary): string {
-    return mongoUuid.stringify(u);
+export function uuid4Stringify(binary: Binary): string {
+    if (!binary.buffer) {
+        console.error('uuid4Stringify', binary);
+        throw new Error('Invalid argument. Binary required.');
+    }
+    const buffer = binary.buffer;
+    return hexTable[buffer[0]] + hexTable[buffer[1]] + hexTable[buffer[2]] + hexTable[buffer[3]]
+        + '-'
+        + hexTable[buffer[4]] + hexTable[buffer[5]]
+        + '-'
+        + hexTable[buffer[6]] + hexTable[buffer[7]]
+        + '-'
+        + hexTable[buffer[8]] + hexTable[buffer[9]]
+        + '-'
+        + hexTable[buffer[10]] + hexTable[buffer[11]] + hexTable[buffer[12]] + hexTable[buffer[13]] + hexTable[buffer[14]] + hexTable[buffer[15]]
+        ;
 }
 
 registerConverterCompiler('class', 'mongo', 'string', compilerToString);
@@ -32,7 +47,7 @@ registerConverterCompiler('class', 'mongo', 'number', compilerToNumber);
 registerConverterCompiler('mongo', 'class', 'number', compilerToNumber);
 
 registerConverterCompiler('class', 'mongo', 'moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `${setter} = ${accessor}.toDate();`
+    return `${setter} = ${accessor}.toDate();`;
 });
 
 registerConverterCompiler('mongo', 'class', 'moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
@@ -48,7 +63,7 @@ registerConverterCompiler('mongo', 'class', 'uuid', (setter: string, accessor: s
         try {
             ${setter} = uuid4Stringify(${accessor});
         } catch (error) {
-            throw new TypeError('Invalid UUID v4 given in property ${property.name}');
+            throw new TypeError('Invalid UUID v4 given in property ${property.name}: ' + error);
         }
         `,
         context: {uuid4Stringify}
@@ -71,11 +86,11 @@ registerConverterCompiler('class', 'mongo', 'uuid', (setter: string, accessor: s
 registerConverterCompiler('mongo', 'class', 'objectId', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `
     try {
-        ${setter} = ${accessor}.toHexString();
+        ${setter} = 'string' === typeof ${accessor} ? ${accessor} : ${accessor}.toHexString();
     } catch (error) {
         throw new TypeError('Invalid ObjectID given in property ${property.name}');
     }
-    `
+    `;
 });
 
 registerConverterCompiler('class', 'mongo', 'objectId', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
@@ -105,16 +120,16 @@ registerConverterCompiler('mongo', 'class', 'class', (setter: string, accessor: 
                 [classType]: property.resolveClassType,
                 createClassToXFunction,
             }
-        }
+        };
     }
-    const classType = reserveVariable();
+    const classSchema = reserveVariable();
 
     return {
         template: `
-            ${setter} = createXToClassFunction(${classType}, 'mongo')(${accessor}, _options, getParents(), _state);
+            ${setter} = createXToClassFunction(${classSchema}, 'mongo')(${accessor}, _options, getParents(), _state);
         `,
         context: {
-            [classType]: property.resolveClassType,
+            [classSchema]: getClassSchema(property.resolveClassType!),
             createXToClassFunction
         }
     };
@@ -141,17 +156,17 @@ registerConverterCompiler('class', 'mongo', 'class', (setter: string, accessor: 
             context: {
                 [classType]: property.resolveClassType,
             }
-        }
+        };
     }
 
-    const classType = reserveVariable();
+    const classSchema = reserveVariable();
     return {
-        template: `${setter} = createClassToXFunction(${classType}, 'mongo')(${accessor}, _options);`,
+        template: `${setter} = createClassToXFunction(${classSchema}, 'mongo')(${accessor}, _options);`,
         context: {
-            [classType]: property.resolveClassType,
+            [classSchema]: getClassSchema(property.resolveClassType!),
             createClassToXFunction,
         }
-    }
+    };
 });
 
 const convertTypedArrayToMongo = (setter: string, accessor: string, property: PropertyCompilerSchema) => {

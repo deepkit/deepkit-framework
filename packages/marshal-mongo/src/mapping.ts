@@ -1,5 +1,5 @@
 import {
-    CacheJitPropertyConverter,
+    CacheJitPropertyConverter, ClassSchema,
     classToPlain,
     createClassToXFunction, createJITConverterFromPropertySchema,
     createXToClassFunction,
@@ -9,27 +9,32 @@ import {
     partialPlainToClass,
     plainToClass,
     resolvePropertyCompilerSchema,
-} from "@super-hornet/marshal";
+} from '@super-hornet/marshal';
 import {ClassType, eachKey, isPlainObject, getClassName} from "@super-hornet/core";
 import './compiler-templates';
 import {FilterQuery} from "mongodb";
 
-export function mongoToClass<T>(classType: ClassType<T>, record: any, options: JitConverterOptions = {}): T {
+export function mongoToClass<T>(classType: ClassType<T> | ClassSchema<T>, record: any, options?: JitConverterOptions): T {
+    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
     return createXToClassFunction(classType, 'mongo')(record, options);
 }
 
-export function classToMongo<T>(classType: ClassType<T>, instance: T, options: JitConverterOptions = {}): any {
-    if (!(instance instanceof classType)) {
+export function classToMongo<T>(classType: ClassType<T> | ClassSchema<T>, instance: T, options?: JitConverterOptions): any {
+    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
+
+    if (!(instance instanceof classType.classType)) {
         throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
     }
     return createClassToXFunction(classType, 'mongo')(instance, options);
 }
 
-export function mongoToPlain<T>(classType: ClassType<T>, record: any) {
+export function mongoToPlain<T>(classType: ClassType<T> | ClassSchema<T>, record: any) {
+    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
     return classToPlain(classType, mongoToClass(classType, record));
 }
 
-export function plainToMongo<T>(classType: ClassType<T>, target: { [k: string]: any }): any {
+export function plainToMongo<T>(classType: ClassType<T> | ClassSchema<T>, target: { [k: string]: any }): any {
+    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
     return classToMongo(classType, plainToClass(classType, target));
 }
 

@@ -6,7 +6,7 @@ import {jitValidate} from "@super-hornet/marshal";
 import * as Ajv from 'ajv';
 
 //we use `e` and not `v` because Marshal supports out of the box error explanations, which quartet does only with `e`.
-import { e } from 'quartet';
+import { e, v } from 'quartet';
 
 class IsNegative implements PropertyValidator {
     validate<T>(value: number) {
@@ -95,13 +95,19 @@ const QuartetModelSimpleChecker = e<MarshalModel>({
     boolean: e.boolean,
 });
 
+const QuartetModelSimpleCheckerNoErrors = v<MarshalModel>({
+    number: v.number,
+    strings: v.string,
+    boolean: v.boolean,
+});
+
 const MarshalModelValidation = jitValidate(MarshalModel);
 const MarshalModelSimpleValidation = jitValidate(MarshalModelSimple);
 
 test('benchmark validation', () => {
-    const suite = new BenchSuite('validation', 100_000);
+    const suite = new BenchSuite('validation');
 
-    suite.add('Marshal', (i) => {
+    suite.add('Marshal', () => {
         const errors = MarshalModelValidation(DATA);
     });
 
@@ -127,12 +133,12 @@ test('benchmark validation', () => {
         const valid = validate(DATA);
         expect(valid).toBe(true);
 
-        suite.add('ajv', (i) => {
+        suite.add('ajv', () => {
             const valid = validate(DATA);
         });
     }
 
-    suite.add('quartet', (i) => {
+    suite.add('quartet', () => {
         const valid = QuartetModelChecker(DATA);
     });
 
@@ -140,9 +146,9 @@ test('benchmark validation', () => {
 });
 
 test('benchmark validation types only', () => {
-    const suite = new BenchSuite('validation simple, types only', 100_000);
+    const suite = new BenchSuite('validation simple, types only');
 
-    suite.add('Marshal', (i) => {
+    suite.add('Marshal', () => {
         const errors = MarshalModelSimpleValidation(DATASimple);
     });
 
@@ -161,14 +167,18 @@ test('benchmark validation types only', () => {
         const valid = validate(DATASimple);
         expect(valid).toBe(true);
 
-        suite.add('ajv', (i) => {
+        suite.add('ajv', () => {
             const valid = validate(DATASimple);
         });
     }
 
-    suite.add('quartet', (i) => {
+    suite.add('quartet', () => {
         const valid = QuartetModelSimpleChecker(DATASimple);
     });
+
+    // suite.add('quartet no errors', () => {
+    //     const valid = QuartetModelSimpleCheckerNoErrors(DATASimple);
+    // });
 
     suite.run();
 });
@@ -187,9 +197,9 @@ test('benchmark freezed delete', () => {
 
 test('benchmark isArray', () => {
     const array: any[] = [];
-    const count = 100_000;
+    const suite = new BenchSuite('benchmark isArray');
 
-    bench(count, 'Array.isArray', (i) => {
+    suite.add('Array.isArray', () => {
         let is = false;
         if (Array.isArray(array)) {
             is = true;
@@ -197,7 +207,7 @@ test('benchmark isArray', () => {
         if (!is) throw Error('invalid');
     });
 
-    bench(count, 'a instanceof Array', (i) => {
+    suite.add('a instanceof Array', () => {
         let is = false;
         if (array instanceof Array) {
             is = true;
@@ -205,7 +215,7 @@ test('benchmark isArray', () => {
         if (!is) throw Error('invalid');
     });
 
-    bench(count, 'constructor === Array', (i) => {
+    suite.add('constructor === Array', () => {
         let is = false;
         if (array && array.constructor === Array) {
             is = true;
@@ -213,7 +223,7 @@ test('benchmark isArray', () => {
         if (!is) throw Error('invalid');
     });
 
-    bench(count, '.length', (i) => {
+    suite.add('.length', () => {
         let is = false;
         if (array.length >= 0) {
             is = true;
@@ -221,18 +231,20 @@ test('benchmark isArray', () => {
         if (!is) throw Error('invalid');
     });
 
-    bench(count, '.length && slice', (i) => {
+    suite.add('.length && slice', () => {
         let is = false;
         if (array.length >= 0 && 'function' === typeof array.slice && 'string' !== typeof array) {
             is = true;
         }
         if (!is) throw Error('invalid');
     });
-    bench(count, '!.length || !slice', (i) => {
+    suite.add('!.length || !slice', () => {
         let is = true;
         if (array.length === undefined || 'string' === typeof array || 'function' !== typeof array.slice) {
             is = false;
         }
         if (!is) throw Error('invalid');
     });
+
+    suite.run()
 });

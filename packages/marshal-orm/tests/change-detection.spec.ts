@@ -3,8 +3,10 @@ import 'reflect-metadata';
 import {t, getClassSchema} from '@super-hornet/marshal';
 import {Formatter} from '../src/formatter';
 import {DatabaseQueryModel} from '../src/query';
+import {buildChanges} from '../src/change-detector';
+import {DatabaseSession} from '../src/database-session';
 
-test('proxy', () => {
+test('change-detection', () => {
     class Image {
         @t.primary id: number = 0;
 
@@ -32,9 +34,6 @@ test('proxy', () => {
 
     {
         const model = new DatabaseQueryModel<any, any, any>();
-        // const query = new BaseQuery(getClassSchema(User), model);
-        // query.join
-
         const user = formatter.hydrate(getClassSchema(User), model, {username: 'Peter', id: '2', image: '1'});
         expect(user.username).toBe('Peter');
         expect(user.id).toBe(2);
@@ -43,11 +42,15 @@ test('proxy', () => {
         expect(user.image.hasOwnProperty(getClassSchema(Image).getProperty('data').symbol)).toBe(false);
         expect(() => user.image.data).toThrow(`Can not access 'data' since class Image was not completely hydrated`);
 
+        user.username = 'Bar';
+        expect(buildChanges(user)).toEqual({username: 'Bar'});
+
         //todo:
         // 1. create change-detection, `data` should not be included
-        // 2. change `data` and re-create change-detection
+        // 2. change `data` and re-create change-detection (since not hydrated)
         user.image.data = 'changed';
         expect(user.image.data).toBe('changed');
+        expect(buildChanges(user.image)).toEqual({data: 'changed'});
 
         //todo: create new Reference via
         // const image = database.reference(Image, 2);

@@ -121,11 +121,11 @@ export class ClassTransformerSimpleModel {
 
 
 test('benchmark big plainToClass', () => {
-    const suite = new BenchSuite('plainToClass big model', 100_000);
+    const suite = new BenchSuite('plainToClass big model');
 
-    suite.add('Marshal', (i) => {
+    suite.add('Marshal', () => {
         plainToClass(SimpleModel, {
-            name: 'name' + i,
+            name: 'name',
             type: 2,
             plan: Plan.ENTERPRISE,
             children: {label: 'label'},
@@ -134,9 +134,9 @@ test('benchmark big plainToClass', () => {
         });
     });
 
-    suite.add('ClassTransformer', (i) => {
+    suite.add('ClassTransformer', () => {
         classTransformerPlainToClass(ClassTransformerSimpleModel, {
-            name: 'name' + i,
+            name: 'name',
             type: 2,
             plan: Plan.ENTERPRISE,
             children: {label: 'label'},
@@ -149,7 +149,7 @@ test('benchmark big plainToClass', () => {
 });
 
 test('benchmark big classToPlain', () => {
-    const suite = new BenchSuite('classToPlain big model', 100_000);
+    const suite = new BenchSuite('classToPlain big model');
 
     {
         const item = new SimpleModel('name');
@@ -159,8 +159,8 @@ test('benchmark big classToPlain', () => {
         item.childrenMap['sub'] = new SubModel('sub');
         item.types = ['a', 'b', 'c'];
 
-        suite.add('Marshal: jitClassToPlain Big Entity', (i) => {
-            item.name = 'item_' + i;
+        suite.add('Marshal: jitClassToPlain Big Entity', () => {
+            item.name = 'item';
             classToPlain(SimpleModel, item);
         });
     }
@@ -172,7 +172,7 @@ test('benchmark big classToPlain', () => {
         item.children.push(new SubModel('sub'));
         item.childrenMap['sub'] = new SubModel('sub');
         item.types = ['a', 'b', 'c'];
-        suite.add('ClassTransformer: classToPlain Big Entity', (i) => {
+        suite.add('ClassTransformer: classToPlain Big Entity', () => {
             classTransformerClassToPlain(item);
         });
     }

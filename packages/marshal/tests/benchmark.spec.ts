@@ -21,8 +21,8 @@ export class MarshalModel {
 test('benchmark plainToClass', () => {
     const count = 100_000;
 
-    bench(count, 'plainToClass manual new MarshalModel', (i) => {
-        const instance = new MarshalModel(i, name + 'i');
+    bench(count, 'plainToClass manual new MarshalModel', () => {
+        const instance = new MarshalModel(1, name + 'i');
         instance.tags = ['a', 'b', 'c'];
         instance.priority = 5;
         instance.ready = true;
@@ -30,10 +30,10 @@ test('benchmark plainToClass', () => {
 
     const serialize = plainToClassFactory(MarshalModel);
 
-    bench(count, 'plainToClass jit', (i) => {
+    bench(count, 'plainToClass jit', () => {
         const instance = serialize({
-            name: 'name' + i,
-            id: i,
+            name: 'name',
+            id: 1,
             tags: ['a', 'b', 'c'],
             priority: 5,
             ready: true,
@@ -67,7 +67,7 @@ test('benchmark classToPlain', () => {
         ready: true,
     });
 
-    bench(count, 'classToPlain manual obj = {}', (i) => {
+    bench(count, 'classToPlain manual obj = {}', () => {
         const obj: any = {};
         obj['name'] = b.name;
         obj['id'] = b.id;
@@ -76,7 +76,7 @@ test('benchmark classToPlain', () => {
         obj['ready'] = b.ready;
     });
 
-    bench(count, 'classToPlain jit', (i) => {
+    bench(count, 'classToPlain jit', () => {
         const plain = jitClassToPlain(MarshalModel, b);
     });
 
@@ -101,7 +101,7 @@ test('benchmark partialPlainToClass', () => {
 
     const count = 100_000;
 
-    bench(count, 'partialPlainToClass jit', (i) => {
+    bench(count, 'partialPlainToClass jit', () => {
         const partialWithClassValues = jitPartialPlainToClass(MarshalModel, partial);
     });
 
@@ -136,11 +136,11 @@ test('benchmark partialPlainToClass', () => {
 // });
 
 test('if filling a instance of prototype with fields is faster than a blank object', () => {
-    const suite = new BenchSuite('filling object', 1_000_000);
+    const suite = new BenchSuite('filling object');
 
-    suite.add('normal', function (i) {
+    suite.add('normal', function () {
         const obj: any = {};
-        obj.a = i;
+        obj.a = 1;
         obj.another_key_jo = 'yes';
         obj.title = 'title';
         obj.index = 5;
@@ -155,9 +155,9 @@ test('if filling a instance of prototype with fields is faster than a blank obje
     function f() {}
     f.prototype = prototype;
 
-    suite.add('prototype fn', function (i) {
+    suite.add('prototype fn', function () {
         const obj2: any = new (f as any)();
-        obj2.a = i;
+        obj2.a = 1;
         obj2.another_key_jo = 'yes';
         obj2.title = 'title';
         obj2.index = 5;
@@ -169,40 +169,42 @@ test('if filling a instance of prototype with fields is faster than a blank obje
         (this as any).title = 'yes';
         (this as any).index = 5;
     }
-    suite.add('constructor fn', function (i) {
+    suite.add('constructor fn', function () {
         const obj3: any = new (f2 as any)();
-        obj3.a = i;
+        obj3.a = 1;
         obj3.another_key_jo = 'yes';
         obj3.title = 'title';
         obj3.index = 5;
     });
 
-    suite.add('direct', function (i) {
+    suite.add('direct', function () {
         const obj = {
-            a: i,
+            a: 1,
             another_key_jo: 'yes',
             title: 'title',
             index: 5,
         }
     });
+
+    suite.run();
 });
 
 test('string convertion', () => {
-    const suite = new BenchSuite('filling object', 1_000_000);
+    const suite = new BenchSuite('filling object');
 
     suite.add('+', () => {
-        const r = ''+23;
+        // const r = ''+23;
     });
 
     suite.add('String()', () => {
-        const r = String(24);
+        // const r = String(24);
     });
 
     suite.run();
 });
 
 test('number convertion', () => {
-    const suite = new BenchSuite('filling object', 1_000_000);
+    const suite = new BenchSuite('filling object');
 
     suite.add('+', () => {
         const r = '23'+0;
@@ -217,7 +219,7 @@ test('number convertion', () => {
 
 
 test('worth to check type first?', () => {
-    const suite = new BenchSuite('check typeof worth it', 1_000_000);
+    const suite = new BenchSuite('check typeof worth it');
 
     const valueString: any = '23';
     const valueNumber: any = 24;

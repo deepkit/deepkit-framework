@@ -1,4 +1,4 @@
-import {PropertyValidatorError} from "./validation";
+import {PropertyValidatorError} from './validation';
 import {
     ClassType,
     eachKey,
@@ -8,11 +8,12 @@ import {
     isFunction,
     isNumber,
     isObject,
-    isPlainObject,
+    isPlainObject, isString,
 } from '@super-hornet/core';
-import * as getParameterNames from "get-parameter-names";
-import {isArray} from "./utils";
-import {Buffer} from "buffer";
+import * as getParameterNames from 'get-parameter-names';
+import {isArray} from './utils';
+import {Buffer} from 'buffer';
+import {FlattenIfArray} from './utils';
 
 interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> };
@@ -107,10 +108,6 @@ typedArrayNamesMap.set('Uint32Array', Uint32Array);
 typedArrayNamesMap.set('Float32Array', Float32Array);
 typedArrayNamesMap.set('Float64Array', Float64Array);
 
-export function isTypedArray(type: Types): boolean {
-    return typedArrayNamesMap.has(type);
-}
-
 export interface PropertyValidator {
     validate<T>(value: any, propertyName: string, classType?: ClassType<any>,): PropertyValidatorError | undefined | void;
 }
@@ -166,6 +163,10 @@ export class PropertyCompilerSchema {
 
     get isPartial() {
         return this.type === 'partial';
+    }
+
+    get isTypedArray(): boolean {
+        return typedArrayNamesMap.has(this.type);
     }
 
     groupNames: string[] = [];
@@ -570,6 +571,12 @@ export interface EntityIndex {
 }
 
 export class ClassSchema<T = any> {
+    /**
+     * The build id. When a property is added, this buildId changes, so JIT compiler knows when to refresh
+     * its cache.
+     */
+    buildId: number = 0;
+
     classType: ClassType<T>;
     name?: string;
     collectionName?: string;
@@ -650,6 +657,10 @@ export class ClassSchema<T = any> {
             );
         }
         this.hasDefaultsInitialized = true;
+    }
+
+    public getClassPropertyName(name: string): string {
+        return this.getClassName() + '.' + name;
     }
 
     public getClassName(): string {
@@ -733,6 +744,7 @@ export class ClassSchema<T = any> {
     public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
         //apply decorator, which adds properties automatically
         decorator(this.classType, name);
+        this.buildId++;
     }
 
     /**
@@ -757,6 +769,7 @@ export class ClassSchema<T = any> {
      */
     public addMethodProperty(name: string, position: number, decorator: FieldDecoratorResult<any>) {
         decorator(this.classType, name, position);
+        this.buildId++;
     }
 
     /**
@@ -779,7 +792,7 @@ export class ClassSchema<T = any> {
      */
     public getPrimaryField(): PropertySchema {
         if (!this.idField) {
-            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @f.primary() to define one.`)
+            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @f.primary() to define one.`);
         }
 
         return this.getProperty(this.idField);
@@ -834,7 +847,7 @@ export class ClassSchema<T = any> {
                 if (!properties[i]) {
                     properties[i] = new PropertySchema(String(i));
                     if (paramtypes[i] !== Object) {
-                        properties[i].setFromJSType(t)
+                        properties[i].setFromJSType(t);
                     }
                 }
             }
@@ -1172,17 +1185,23 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSche
  * ```
  */
 export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = ''): ClassSchema<T> {
-    //this is necessary to give the class a dynamic name if it has none
-    const o = {
-        [name]: clazz || new class {
-        }
+    const c = clazz || class {
     };
+    if (name) {
+        Object.defineProperty(c, 'name', {value: name});
+    }
 
-    const classSchema = getOrCreateEntitySchema(o[name]);
+    const classSchema = getOrCreateEntitySchema(c);
     classSchema.name = name;
 
     return classSchema;
 }
+
+type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps };
+
+type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends FieldDecoratorResult<infer K > ? K : never;
+
+type ExtractClassDefinition<T extends PlainSchemaProps> = { [name in keyof T]: T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> : T[name] extends FieldDecoratorResult<any> ? ExtractDefinition<T[name]> : never };
 
 /**
  * Returns the ClassType for a given instance.
@@ -1228,7 +1247,7 @@ export function Entity<T>(name: string, collectionName?: string) {
         if (getGlobalStore().RegisteredEntities[name]) {
             throw new Error(`Marshal entity with name '${name}' already registered. 
             This could be caused by the fact that you used a name twice or that you loaded the entity 
-            via different imports.`)
+            via different imports.`);
         }
 
         getGlobalStore().RegisteredEntities[name] = target;
@@ -1303,7 +1322,7 @@ export interface FieldDecoratorResult<T> {
      *                   than one @f.reference() to this class.
      * @param options
      */
-    backReference(options?: BackReferenceOptions<T>): this;
+    backReference(options?: BackReferenceOptions<FlattenIfArray<T>>): this;
 
     /**
      * Marks this type as optional (allow to set as undefined). Per default the type is required, this makes it optional.
@@ -1358,7 +1377,7 @@ export interface FieldDecoratorResult<T> {
      * }
      * ```
      */
-    template(...templateArgs: (FieldDecoratorResult<any> | FieldTypes<any>)[]): this;
+    template(...templateArgs: (ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>)[]): this;
 
     /**
      * Used to define an index on a field.
@@ -1527,7 +1546,7 @@ export interface FieldDecoratorResult<T> {
 }
 
 export function isFieldDecorator(t: any): t is FieldDecoratorResult<any> {
-    return isFunction(t) && isFunction(t.name) && isFunction(t.optional)
+    return isFunction(t) && isFunction(t.name) && isFunction(t.optional);
 }
 
 function createFieldDecoratorResult<T>(
@@ -1598,7 +1617,7 @@ function createFieldDecoratorResult<T>(
                 //we got a new decorator with a different name on a constructor param
                 //since we cant not resolve logically which name to use, we forbid that case.
                 throw new Error(`Defining multiple Marshal decorators with different names at arguments of ${getClassName(target)}::${methodName} #${parameterIndexOrDescriptor} is forbidden.` +
-                    ` @f.asName('name') is required. Got ${methodsParamNames[parameterIndexOrDescriptor] || methodsParamNamesAutoResolved[parameterIndexOrDescriptor]} !== ${givenPropertyName}`)
+                    ` @f.asName('name') is required. Got ${methodsParamNames[parameterIndexOrDescriptor] || methodsParamNamesAutoResolved[parameterIndexOrDescriptor]} !== ${givenPropertyName}`);
             }
 
             if (givenPropertyName) {
@@ -1836,13 +1855,19 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.templateArgs = [];
             for (const [i, t] of eachPair(templateArgs)) {
+                const name = property.name + '_' + i;
                 if (isFieldDecorator(t)) {
                     //its a decorator @f()
                     //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
-                    const p = t.buildPropertySchema(String(i));
+                    const p = t.buildPropertySchema(name);
                     property.templateArgs.push(p);
+                } else if (t instanceof ClassSchema) {
+                    property.templateArgs.push(fRaw.type(t.classType).buildPropertySchema(name));
+                } else if (isPlainObject(t)) {
+                    const schema = fRaw.schema(t);
+                    property.templateArgs.push(fRaw.type(schema.classType).buildPropertySchema(name));
                 } else {
-                    const p = new PropertySchema(String(i));
+                    const p = new PropertySchema(name);
                     p.setFromJSType(t);
                     property.templateArgs.push(p);
                 }
@@ -1858,9 +1883,9 @@ function createFieldDecoratorResult<T>(
         };
     }
 
-    fn.buildPropertySchema = function(name: string = 'unknown') {
+    fn.buildPropertySchema = function (name: string = 'unknown') {
         return buildPropertySchema(Object, name);
-    }
+    };
 
     fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn)[]) => {
         resetIfNecessary();
@@ -2025,14 +2050,14 @@ function Exclude(t: 'all' | string = 'all') {
     };
 }
 
-type FieldTypes<T> = string | ClassType<T> | ForwardRefFn<T>;
+type FieldTypes<T> = string | ClassType<any> | ForwardRefFn<T>;
 
 type ForwardRefFn<T> = () => T;
 
 /**
  * Decorator to define a field for an entity.
  */
-function Field(type?: FieldTypes<any> | Types) {
+function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema): FieldDecoratorResult<any> {
     return FieldDecoratorWrapper((target, property, returnType) => {
         const propertyName = property.name;
 
@@ -2041,6 +2066,12 @@ function Field(type?: FieldTypes<any> | Types) {
                 if ('string' === typeof type) {
                     property.type = type as Types;
                     property.typeSet = true;
+                } else if (type instanceof ClassSchema) {
+                    property.type = 'class';
+                    property.classType = type.classType;
+                } else if (isPlainObject(type)) {
+                    property.type = 'class';
+                    property.classType = fRaw.schema(type).classType;
                 } else {
                     property.setFromJSType(type);
                 }
@@ -2117,13 +2148,29 @@ function Field(type?: FieldTypes<any> | Types) {
 
 const fRaw: any = Field();
 
-fRaw['array'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<any>, type: T | ClassType<any> | ForwardRefFn<any>): FieldDecoratorResult<T> {
+fRaw['schema'] = function <T extends FieldTypes<any>>(propsOrName: string | PlainSchemaProps, props?: PlainSchemaProps): ClassSchema {
+    const schema = createClassSchema(class {
+    }, isString(propsOrName) ? propsOrName : undefined);
+    props = isString(propsOrName) ? props : propsOrName;
+
+    for (const [name, prop] of Object.entries(props!)) {
+        if (isFieldDecorator(prop)) {
+            schema.addProperty(name, prop);
+        } else {
+            const subSchema = fRaw.schema(name, prop);
+            schema.addProperty(name, fRaw.type(subSchema.classType));
+        }
+    }
+
+    return schema;
+};
+
+fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>): FieldDecoratorResult<ExtractType<T>[]> {
     return Field('array').template(type);
 };
 
-fRaw['map'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<any>, type: T | ClassType<any> | ForwardRefFn<any>, keyType: 'any' | 'string' | 'number' = 'any'): FieldDecoratorResult<T> {
-    const keyTypeProp = f.type(keyType);
-    return Field('map').template(keyTypeProp, type);
+fRaw['map'] = function <T extends ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType: FieldDecoratorResult<any> = fRaw.any): FieldDecoratorResult<{[name: string]: ExtractType<T>}> {
+    return Field('map').template(keyType, type);
 };
 
 fRaw['any'] = Field('any');
@@ -2146,6 +2193,8 @@ fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabels
 
 fRaw['moment'] = MomentField();
 
+type ExtractType<T> = T extends ForwardRefFn<infer K> ? K : (T extends ClassSchema<infer K> ? K : (T extends PlainSchemaProps ? ExtractClassDefinition<T> : (T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T)));
+
 export interface MainDecorator {
     /**
      * Defines a type for a certain field. This is only necessary for custom classes
@@ -2159,7 +2208,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    type<T extends FieldTypes<any>>(type: T): FieldDecoratorResult<T>;
+    type<T extends string | ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>>;
 
     /**
      * Defines a discriminated union type.
@@ -2187,7 +2236,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    union<T extends ClassType<any>, K extends ForwardRefFn<any>>(...type: T[] | K[]): FieldDecoratorResult<void>;
+    union<T extends (ClassType<any> | ForwardRefFn<any>)[]>(...type: T): FieldDecoratorResult<T[][0]>;
 
     /**
      * Marks a field as discriminant. This field MUST have a default value.
@@ -2205,7 +2254,14 @@ export interface MainDecorator {
      * }
      * ```
      */
-    array<T extends FieldTypes<any> | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<T>;
+    array<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>[]>;
+
+    /**
+     * Creates a new ClassSchema from a plain object.
+     */
+    schema<T extends PlainSchemaProps>(name: string, props: T): ClassSchema<ExtractClassDefinition<T>>;
+
+    schema<T extends PlainSchemaProps>(props: T): ClassSchema<ExtractClassDefinition<T>>;
 
     /**
      * Marks a field as string.
@@ -2215,17 +2271,17 @@ export interface MainDecorator {
     /**
      * Marks a field as number.
      */
-    number: FieldDecoratorResult<string>;
+    number: FieldDecoratorResult<number>;
 
     /**
      * Marks a field as boolean.
      */
-    boolean: FieldDecoratorResult<string>;
+    boolean: FieldDecoratorResult<boolean>;
 
     /**
      * Marks a field as Date.
      */
-    date: FieldDecoratorResult<string>;
+    date: FieldDecoratorResult<Date>;
 
     /**
      * Marks a field as enum.
@@ -2271,7 +2327,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    partial(type: FieldDecoratorResult<any> | FieldTypes<any>): this;
+    partial<T>(type: FieldDecoratorResult<T> | FieldTypes<T>): FieldDecoratorResult<Partial<T>>;
 
     /**
      * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
@@ -2299,7 +2355,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    map(type: FieldDecoratorResult<any> | FieldTypes<any>): this;
+    map<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<{[name: string]: ExtractType<T>}>;
 }
 
 /**
