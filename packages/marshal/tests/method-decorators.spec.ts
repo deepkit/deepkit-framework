@@ -75,7 +75,7 @@ test('short @f 2', () => {
         const errors = validateMethodArgs(Controller, 'foo', []);
         expect(errors.length).toBe(1);
         expect(errors[0].code).toBe('required');
-        expect(errors[0].message).toBe('Required value is undefined or null');
+        expect(errors[0].message).toBe('Required value is undefined');
         expect(errors[0].path).toBe('#0');
     }
     {
@@ -159,7 +159,7 @@ test('method args', () => {
         const errors = validateMethodArgs(Controller, 'foo2', ['bar']);
         expect(errors.length).toBe(1);
         expect(errors[0].code).toBe('required');
-        expect(errors[0].message).toBe('Required value is undefined or null');
+        expect(errors[0].message).toBe('Required value is undefined');
         expect(errors[0].path).toBe('#1');
     }
     {
@@ -283,12 +283,12 @@ test('argument partial', () => {
     }
 
     expect(validateMethodArgs(User, 'foo', [{}])).toBeArrayOfSize(0);
-    expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{"code": "required", "message": "Required value is undefined or null", "path": "#0.name"}]);
+    expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.name"}]);
     expect(validateMethodArgs(User, 'foo', [{name: []}])).toEqual([{"code": "invalid_string", "message": "No string given", "path": "#0.name"}]);
     expect(validateMethodArgs(User, 'foo', [{name: ''}])).toEqual([]);
-    expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{"code": "required", "message": "Required value is undefined or null", "path": "#0.name"}]);
+    expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.name"}]);
     expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: undefined}])).toEqual([]);
-    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: {peter: true}}])).toEqual([{"code": "required", "message": "Required value is undefined or null", "path": "#0.sub.name"}]);
+    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: {peter: true}}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.sub.name"}]);
 });
 
 test('argument convertion', () => {

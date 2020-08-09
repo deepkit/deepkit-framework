@@ -48,7 +48,10 @@ export type Types =
     | 'union'
     | 'moment'
     | 'date'
+    | 'enum'
+    | 'any'
     | 'string'
+    | 'number'
     | 'boolean'
     | 'Int8Array'
     | 'Uint8Array'
@@ -59,11 +62,7 @@ export type Types =
     | 'Uint32Array'
     | 'Float32Array'
     | 'Float64Array'
-    | 'arrayBuffer'
-    | 'number'
-    | 'enum'
-    | 'any';
-
+    | 'arrayBuffer';
 
 /**
  * Type for @f.partial().
@@ -176,6 +175,8 @@ export class PropertyCompilerSchema {
      */
 
     isOptional: boolean = false;
+    isNullable: boolean = false;
+
     isDiscriminant: boolean = false;
 
     //for enums
@@ -190,8 +191,14 @@ export class PropertyCompilerSchema {
      */
     isReference: boolean = false;
 
+    /**
+     * When the constructor sets a default value.
+     */
     hasDefaultValue: boolean = false;
 
+    /**
+     * The detected default value OR manual set default value.
+     */
     defaultValue: any;
 
     templateArgs: PropertyCompilerSchema[] = [];
@@ -314,6 +321,11 @@ export class PropertySchema extends PropertyCompilerSchema {
         super(name);
     }
 
+    setType(type: Types) {
+        this.type = type;
+        this.typeSet = true;
+    }
+
     toString() {
         if (!this.typeSet) return 'undefined';
         if (this.type === 'array') {
@@ -429,7 +441,7 @@ export class PropertySchema extends PropertyCompilerSchema {
     }
 
     setUnionTypes(types: (ClassType<any> | ForwardRefFn<any>)[]) {
-        this.type = 'union';
+        this.setType('union');
         this.unionTypes = types;
     }
 
@@ -1327,7 +1339,19 @@ export interface FieldDecoratorResult<T> {
     /**
      * Marks this type as optional (allow to set as undefined). Per default the type is required, this makes it optional.
      */
-    optional: this;
+    optional: FieldDecoratorResult<T | undefined>;
+
+    /**
+     * Marks this type as NULL'able (allow to set as NULL). Per default `undefined` and `null` are treated both as `undefined`,
+     * basically ignoring `null` values. Null values fall back per default to the default property value. Using `nullable` keeps
+     * the `null` value intact.
+     */
+    nullable: FieldDecoratorResult<T | null>;
+
+    /**
+     * Sets a default value.
+     */
+    default(v: T): FieldDecoratorResult<T>;
 
     /**
      * Marks this field as discriminant for the discriminator in union types.
@@ -1431,12 +1455,12 @@ export interface FieldDecoratorResult<T> {
      * }
      * ```
      */
-    mongoId: this;
+    mongoId: FieldDecoratorResult<string>;
 
     /**
      * Used to define a field as UUID (v4).
      */
-    uuid: this;
+    uuid: FieldDecoratorResult<string>;
 
     /**
      *
@@ -1564,7 +1588,7 @@ function createFieldDecoratorResult<T>(
         }
     }
 
-    function buildPropertySchema(target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) {
+    function buildPropertySchema(target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any): PropertySchema {
         //anon properties
         const propertySchema = new PropertySchema(propertyOrMethodName || String(parameterIndexOrDescriptor));
 
@@ -1731,12 +1755,24 @@ function createFieldDecoratorResult<T>(
         }
     });
 
+    Object.defineProperty(fn, 'nullable', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Nullable()]);
+        }
+    });
+
     Object.defineProperty(fn, 'discriminant', {
         get: () => {
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Discriminant()]);
         }
     });
+
+    fn.default = (v: any) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Default(v)]);
+    };
 
     fn.exclude = (target: 'all' | 'mongo' | 'plain' | string = 'all') => {
         resetIfNecessary();
@@ -1810,7 +1846,7 @@ function createFieldDecoratorResult<T>(
         get: () => {
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-                property.type = 'string';
+                property.setType('string');
             }]);
         }
     });
@@ -1819,7 +1855,7 @@ function createFieldDecoratorResult<T>(
         get: () => {
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-                property.type = 'number';
+                property.setType('number');
             }]);
         }
     });
@@ -1828,7 +1864,7 @@ function createFieldDecoratorResult<T>(
         get: () => {
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-                property.type = 'date';
+                property.setType('date');
             }]);
         }
     });
@@ -1837,7 +1873,7 @@ function createFieldDecoratorResult<T>(
         get: () => {
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-                property.type = 'boolean';
+                property.setType('boolean');
             }]);
         }
     });
@@ -1885,6 +1921,10 @@ function createFieldDecoratorResult<T>(
 
     fn.buildPropertySchema = function (name: string = 'unknown') {
         return buildPropertySchema(Object, name);
+    };
+
+    fn.toString = function () {
+        return buildPropertySchema(Object, givenPropertyName).toString();
     };
 
     fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn)[]) => {
@@ -1941,6 +1981,23 @@ function IDField() {
 function Optional() {
     return (target: object, property: PropertySchema) => {
         property.isOptional = true;
+    };
+}
+
+/**
+ * @internal
+ */
+function Nullable() {
+    return (target: object, property: PropertySchema) => {
+        property.isNullable = true;
+    };
+}
+/**
+ * @internal
+ */
+function Default(v: any) {
+    return (target: object, property: PropertySchema) => {
+        property.defaultValue = v;
     };
 }
 
@@ -2069,9 +2126,11 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
                 } else if (type instanceof ClassSchema) {
                     property.type = 'class';
                     property.classType = type.classType;
+                    property.typeSet = true;
                 } else if (isPlainObject(type)) {
                     property.type = 'class';
                     property.classType = fRaw.schema(type).classType;
+                    property.typeSet = true;
                 } else {
                     property.setFromJSType(type);
                 }
@@ -2311,10 +2370,10 @@ export interface MainDecorator {
      *
      * ```typescript
      * class Config {
-     *     @f.optional()
+     *     @f
      *     name?: string;
      *
-     *     @f.optional()
+     *     @f
      *     sub?: Config;
      *
      *     @f
@@ -2327,7 +2386,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    partial<T>(type: FieldDecoratorResult<T> | FieldTypes<T>): FieldDecoratorResult<Partial<T>>;
+    partial<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<PartialField<ExtractType<T>>>;
 
     /**
      * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
@@ -2419,7 +2478,7 @@ export const t: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
  */
 function MongoIdField() {
     return (target: object, property: PropertySchema) => {
-        property.type = 'objectId';
+        property.setType('objectId');
     };
 }
 
@@ -2428,7 +2487,7 @@ function MongoIdField() {
  */
 function UUIDField() {
     return (target: object, property: PropertySchema) => {
-        property.type = 'uuid';
+        property.setType('uuid');
     };
 }
 
@@ -2497,6 +2556,6 @@ function UnionField<T>(...types: (ClassType<any> | ForwardRefFn<any>)[]) {
  */
 function MomentField<T>() {
     return FieldDecoratorWrapper((target, property, returnType?: any) => {
-        property.type = 'moment';
+        property.setType('moment');
     });
 }

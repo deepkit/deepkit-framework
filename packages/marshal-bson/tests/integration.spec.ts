@@ -1,0 +1,101 @@
+import 'jest-extended';
+import 'reflect-metadata';
+import {FieldDecoratorResult, t, Types} from '@super-hornet/marshal';
+import {serialize, calculateObjectSize} from 'bson';
+import {createBSONSizer, getBSONSerializer, JS_INT_MAX, JS_INT_MIN} from '../src/bson-serialize';
+import {getBSONDecoder} from '../src/bson-jit-parser';
+import * as Moment from 'moment';
+
+enum MyEnum {
+    first, second, third,
+}
+enum MyEnum2 {
+    first = 'first', second = 'second', third = 'third',
+}
+
+const types: [FieldDecoratorResult<any>, any][] = [
+    [t.string, "Hello Peter"],
+    [t.number, 1],
+    [t.number, 0],
+    [t.number, -1],
+    [t.number, -90071992547409920],
+    [t.number, 90071992547409920],
+    [t.number, 134.444444445],
+    [t.number, -134.444444445],
+    [t.number, 212313134.444444445],
+    [t.number, -1212313134.444444445],
+    [t.boolean, false],
+    [t.boolean, true],
+    [t.boolean, true],
+    [t.uuid, 'bef8de96-41fe-442f-b70c-c3a150f8c96c'],
+    [t.mongoId, '507f191e810c19729de860ea'],
+    [t.date, new Date("1987-10-12T00:00:00.000Z")],
+    [t.date, new Date("2020-08-09T19:02:28.397Z")],
+    [t.moment, Moment(new Date("1987-10-12T00:00:00.000Z"))],
+    [t.moment, Moment(new Date("2020-08-09T19:02:28.397Z"))],
+    [t.enum(MyEnum), MyEnum.first],
+    [t.enum(MyEnum), MyEnum.second],
+    [t.enum(MyEnum), MyEnum.third],
+    [t.enum(MyEnum2), MyEnum2.first],
+    [t.enum(MyEnum2), MyEnum2.second],
+    [t.enum(MyEnum2), MyEnum2.third],
+    [t.type({name: t.string}), {name: 'Peter'}],
+    [t.array(t.string), ['Peter']],
+    [t.map(t.string), {name: 'Peter'}],
+    // [t.any(), {name: 'Peter'}],
+    // [t.type(ArrayBuffer), {name: 'Peter'}],
+    // [t.type(Int16Array), {name: 'Peter'}],
+    // [t.union(), {name: 'Peter'}],
+    // [t.partial({name: t.string}), {}],
+    // [t.partial({name: t.string}), {name: 'Peter'}],
+];
+
+test('nix', () => {});
+
+for (const type of types) {
+    const [field, value] = type;
+
+    test(`types round-trip: ${field.toString()}: ${value}`, () => {
+        const s = t.schema({
+            field: field
+        });
+
+        const sOptional = t.schema({
+            field: field.optional
+        });
+
+        const sNullable = t.schema({
+            field: field.nullable
+        });
+
+        const obj = {
+            field: value
+        };
+
+        const bsonMarshal = getBSONSerializer(s)(obj);
+
+        const decoded = getBSONDecoder(s)(bsonMarshal);
+        expect(decoded).toEqual(obj);
+
+        expect(getBSONDecoder(s)(getBSONSerializer(s)({}))).toEqual({});
+        expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({}))).toEqual({});
+        expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({field: null}))).toEqual({});
+        expect(getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({field: null}))).toEqual({field: null});
+
+        const type = field.buildPropertySchema().type;
+        const blacklist: Types[] = [
+            'moment',
+            'uuid',
+            'objectId'
+        ];
+        if (blacklist.includes(type)) return;
+
+        expect(createBSONSizer(s)(obj)).toEqual(calculateObjectSize(obj));
+
+        //official BSON serializer has a bug not serializing LONG correctly
+        if (field.buildPropertySchema().type === 'number' && (value > JS_INT_MAX || value < JS_INT_MIN)) return;
+
+        const bsonOfficial = serialize(obj);
+        expect(bsonMarshal).toEqual(bsonOfficial);
+    });
+}

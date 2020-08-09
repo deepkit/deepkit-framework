@@ -77,9 +77,10 @@ export class BaseParser {
         const lowBits = this.eatUInt32();
         const highBits = this.eatUInt32();
         const long = new Long(lowBits, highBits);
-        return long.lessThanOrEqual(JS_INT_MAX_LONG) && long.greaterThanOrEqual(JS_INT_MIN_LONG)
-            ? long.toNumber()
-            : long;
+        return long.toNumber();
+        // return long.lessThanOrEqual(JS_INT_MAX_LONG) && long.greaterThanOrEqual(JS_INT_MIN_LONG)
+        //     ? long.toNumber()
+        //     : long;
     }
 
     parseString() {
@@ -123,20 +124,47 @@ export class BaseParser {
         return o;
     }
 
+    parseUUID() {
+        //e.g. bef8de96-41fe-442f-b70c-c3a150f8c96c
+        //         4      2    2    2       6
+        const size = this.eatUInt32();
+        const type = this.eatByte();
+
+        const offset = this.offset, b = this.buffer;
+        let o = hexTable[b[offset]]
+            + hexTable[b[offset + 1]]
+            + hexTable[b[offset + 2]]
+            + hexTable[b[offset + 3]]
+            + '-'
+            + hexTable[b[offset + 4]]
+            + hexTable[b[offset + 5]]
+            + '-'
+            + hexTable[b[offset + 6]]
+            + hexTable[b[offset + 7]]
+            + '-'
+            + hexTable[b[offset + 8]]
+            + hexTable[b[offset + 9]]
+            + '-'
+            + hexTable[b[offset + 10]]
+            + hexTable[b[offset + 11]]
+            + hexTable[b[offset + 12]]
+            + hexTable[b[offset + 13]]
+            + hexTable[b[offset + 14]]
+            + hexTable[b[offset + 15]]
+        ;
+
+        this.seek(16);
+        return o;
+    }
+
     parseInt() {
-        return this.eatUInt32();
+        return this.eatInt32();
     }
 
     parseDate() {
         const lowBits = this.eatUInt32();
         const highBits = this.eatUInt32();
         return new Date(new Long(lowBits, highBits).toNumber());
-    }
-
-    parseMoment(): Moment.Moment {
-        const lowBits = this.eatUInt32();
-        const highBits = this.eatUInt32();
-        return moment(new Date(new Long(lowBits, highBits).toNumber()));
     }
 
     peekUInt32(): number {
@@ -157,6 +185,11 @@ export class BaseParser {
 
     eatByte(): number {
         return this.buffer[this.offset++];
+    }
+
+    eatInt32(): number {
+        this.offset += 4;
+        return this.dataView.getInt32(this.offset - 4, true);
     }
 
     eatUInt32(): number {

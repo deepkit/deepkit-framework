@@ -190,7 +190,7 @@ test('benchmark freezed delete', () => {
 
     const errors = jitValidate(MarshalModel)(Object.freeze(data));
     expect(errors).toEqual([
-        {code: 'required', message: 'Required value is undefined or null', path: 'boolean'}
+        {code: 'required', message: 'Required value is undefined', path: 'boolean'}
     ]);
 });
 

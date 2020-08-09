@@ -4,7 +4,7 @@ import {t, getClassSchema, PropertyValidator} from "../src/decorators";
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from "./big-entity";
 import {jitValidateProperty} from "../src/jit-validation";
-import {uuid, validatedPlainToClass} from "../index";
+import {plainToClass, uuid, validatedPlainToClass} from '../index';
 
 test('test any deep array', async () => {
     class Peter {
@@ -124,9 +124,8 @@ test('test array optionalItem value', async () => {
     expect(propSchema.type).toBe('array');
     expect(propSchema.getSubType().type).toBe('any');
 
-    const errors = jitValidateProperty(propSchema)(value);
-
-    expect(errors).toEqual([]);
+    expect(jitValidateProperty(propSchema)([12313, undefined])).toEqual([]);
+    expect(jitValidateProperty(propSchema)([12313, null])).toEqual([{path: 'lastValue.1', message: 'Required value is null', code: 'required'}]);
 });
 
 

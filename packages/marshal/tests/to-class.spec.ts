@@ -902,3 +902,41 @@ test('enums arrays', () => {
         {code: 'invalid_enum', message: 'Invalid enum value received. Allowed: z,x', path: 'enum2.0'}
     ]);
 });
+
+test('nullable', () => {
+    const s = t.schema({
+        username: t.string,
+        password: t.string.nullable,
+        optional: t.string.optional,
+    });
+
+    expect(plainToClass(s, {username: 'asd'})).toEqual({username: 'asd'});
+    expect(plainToClass(s, {username: 'asd', password: null})).toEqual({username: 'asd', password: null});
+    expect(plainToClass(s, {username: 'asd', password: 'null'})).toEqual({username: 'asd', password: 'null'});
+
+    expect(plainToClass(s, {username: 'asd', optional: null})).toEqual({username: 'asd'});
+    expect(plainToClass(s, {username: 'asd', optional: 'null'})).toEqual({username: 'asd', optional: 'null'});
+});
+
+
+test('nullable with default', () => {
+    const s = t.schema({
+        username: t.string,
+        password: t.string.nullable.default(null),
+    });
+
+    expect(plainToClass(s, {username: 'asd'})).toEqual({username: 'asd', password: null});
+    expect(plainToClass(s, {username: 'asd', password: null})).toEqual({username: 'asd', password: null});
+    expect(plainToClass(s, {username: 'asd', password: 'foo'})).toEqual({username: 'asd', password: 'foo'});
+});
+
+test('nullable container', () => {
+    const s = t.schema({
+        tags: t.array(t.string).nullable,
+        tagMap: t.map(t.string).nullable,
+        tagPartial: t.partial({name: t.string}).nullable,
+    });
+
+    expect(plainToClass(s, {tags: null, tagMap: null, tagPartial: null})).toEqual({tags: null, tagMap: null, tagPartial: null});
+    expect(plainToClass(s, {})).toEqual({});
+});

@@ -1,5 +1,5 @@
 import {ClassType, typeOf} from "@super-hornet/core";
-import {getClassSchema, PropertyCompilerSchema, PropertyValidator,} from "./decorators";
+import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator,} from './decorators';
 import {jitValidate, jitValidateProperty} from "./jit-validation";
 
 export class PropertyValidatorError {
@@ -94,7 +94,7 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * validate(SimpleModel, {id: false});
  * ```
  */
-export function validate<T>(classType: ClassType<T>, item: { [name: string]: any } | T, path?: string): ValidationError[] {
+export function validate<T>(classType: ClassType<T> | ClassSchema<T>, item: { [name: string]: any } | T, path?: string): ValidationError[] {
     return jitValidate(classType)(item, path);
 }
 
@@ -110,7 +110,7 @@ export function validate<T>(classType: ClassType<T>, item: { [name: string]: any
  * }
  * ```
  */
-export function validates<T>(classType: ClassType<T>, item: { [name: string]: any }): item is T {
+export function validates<T>(classType: ClassType<T> | ClassSchema<T>, item: { [name: string]: any }): item is T {
     return jitValidate(classType)(item).length === 0;
 }
 
@@ -127,7 +127,7 @@ export function validates<T>(classType: ClassType<T>, item: { [name: string]: an
  * }
  * ```
  */
-export function validatesFactory<T>(classType: ClassType<T>): (item: { [name: string]: any }) => item is T {
+export function validatesFactory<T>(classType: ClassType<T> | ClassSchema<T>): (item: { [name: string]: any }) => item is T {
     const validation = jitValidate(classType);
     return (item: { [name: string]: any }): item is T => {
         return validation(item).length === 0;

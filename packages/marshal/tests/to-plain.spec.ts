@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain} from "../index";
+import {classToPlain, plainToClass, t} from '../index';
 import {Plan, SimpleModel, SubModel} from "./entities";
 import {getClassSchema} from "../src/decorators";
 
@@ -45,4 +45,30 @@ test('test simple model all fields', () => {
     expect(json['childrenMap'].foo).toBeObject();
     expect(json['childrenMap'].foo.label).toBe('bar');
     expect(json['childrenMap'].foo2.label).toBe('bar2');
+});
+
+
+test('nullable', () => {
+    const s = t.schema({
+        username: t.string,
+        password: t.string.nullable,
+        optional: t.string.optional,
+    });
+
+    const item = new s.classType;
+    item.username = 'asd';
+
+    expect(classToPlain(s, item)).toEqual({username: 'asd'});
+
+    item.password = null;
+    expect(classToPlain(s, item)).toEqual({username: 'asd', password: null});
+
+    item.optional = undefined;
+    expect(classToPlain(s, item)).toEqual({username: 'asd', password: null});
+
+    item.optional = 'yes';
+    expect(classToPlain(s, item)).toEqual({username: 'asd', password: null, optional: 'yes'});
+
+    item.password = 'secret';
+    expect(classToPlain(s, item)).toEqual({username: 'asd', password: 'secret', optional: 'yes'});
 });

@@ -1,13 +1,37 @@
 import {ClassSchema, getClassSchema, PropertySchema} from '@super-hornet/marshal';
-import {BSON_DATA_ARRAY, BSON_DATA_OBJECT, digitByteSize} from './utils';
+import {BSON_DATA_ARRAY, BSON_DATA_DATE, BSON_DATA_OBJECT, digitByteSize, BSON_DATA_NULL, BSON_DATA_BINARY} from './utils';
 import {ClassType} from '@super-hornet/core';
 import {BaseParser, ParserV2} from './bson-parser';
 import {seekElementSize} from './continuation';
+import {moment} from './utils';
 
 function createPropertyConverter(setter: string, property: PropertySchema, context: Map<string, any>, parentProperty?: PropertySchema) {
-    const defaultParse = `${setter} = parser.parse(elementType);`;
+    const nullOrSeek = property.isNullable ? `
+        if (elementType === ${BSON_DATA_NULL}) {
+            ${setter} = null;
+        } else {
+            seekElementSize(elementType, parser);
+        }
+    ` : 'seekElementSize(elementType, parser);';
 
-    if (property.type === 'class') {
+    if (property.type === 'moment') {
+        context.set('Moment', moment);
+        return `
+            if (elementType === ${BSON_DATA_DATE}) {
+                ${setter} = Moment(parser.parse(elementType));
+            } else {
+                ${nullOrSeek}
+            }
+            `;
+    } else if (property.type === 'uuid') {
+        return `
+            if (elementType === ${BSON_DATA_BINARY}) {
+                ${setter} = parser.parseUUID();
+            } else {
+                ${nullOrSeek}
+            }
+            `;
+    } else if (property.type === 'class') {
         if (property.isReference || property.backReference || (parentProperty && (parentProperty.backReference || parentProperty.isReference))) {
             const schema = property.getResolvedClassSchema();
             const primary = schema.getPrimaryField();
@@ -22,7 +46,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
             if (elementType === ${BSON_DATA_OBJECT}) {
                 ${setter} = getRawBSONDecoder(${propertySchema})(parser);
             } else {
-                seekElementSize(elementType, parser);
+                ${nullOrSeek}
             }
             `;
     } else if (property.isArray) {
@@ -45,7 +69,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
             }
             continue;
         } else {
-            seekElementSize(elementType, parser);
+            ${nullOrSeek}
         }
         `;
     } else if (property.isMap) {
@@ -57,18 +81,24 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
                 const elementType = parser.eatByte();
                 if (elementType === 0) break;
 
-                const name = parser.eatStringUntilNull();
+                const name = parser.eatObjectPropertyName();
 
                 ${createPropertyConverter(`${setter}[name]`, property.getSubType(), context)}
             }
             continue;
         } else {
-            seekElementSize(elementType, parser);
+            ${nullOrSeek}
         }
         `;
     }
 
-    return defaultParse;
+    return property.isNullable ? `
+        if (elementType === ${BSON_DATA_NULL}) {
+            ${setter} = null;
+        } else {
+            ${setter} = parser.parse(elementType);
+        }
+    ` : `${setter} = parser.parse(elementType);`;
 }
 
 interface DecoderFn {

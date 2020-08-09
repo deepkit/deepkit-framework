@@ -1,12 +1,12 @@
-import {ClassType} from "@super-hornet/core";
-import {handleCustomValidator, ValidationError} from "./validation";
-import {getClassSchema, PropertyCompilerSchema, PropertyValidator} from "./decorators";
-import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from "./jit-validation-registry";
+import {ClassType} from '@super-hornet/core';
+import {handleCustomValidator, ValidationError} from './validation';
+import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator} from './decorators';
+import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
 import './jit-validation-templates';
-import {reserveVariable} from "./compiler-registry";
-import {resolvePropertyCompilerSchema} from "./jit";
+import {reserveVariable} from './compiler-registry';
+import {resolvePropertyCompilerSchema} from './jit';
 
-const jitFunctions = new WeakMap<ClassType<any>, any>();
+const jitFunctions = new WeakMap<ClassSchema<any>, any>();
 const CacheJitPropertyMap = new Map<PropertyCompilerSchema, any>();
 const CacheValidatorInstances = new Map<ClassType<PropertyValidator>, PropertyValidator>();
 
@@ -18,7 +18,8 @@ export function getDataCheckerJS(
 ): string {
     let compiler = validationRegistry.get(property.type);
 
-    const requiredThrown = property.isActualOptional() ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is undefined or null'));`;
+    const notOptionalCheckThrow = (property.isActualOptional() || property.hasDefaultValue) ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is undefined'));`;
+    const notNullableCheckThrow = property.isNullable ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is null'));`;
 
     function getCustomValidatorCode(accessor: string, path: string) {
         if (!property.validators.length) return '';
@@ -55,48 +56,38 @@ export function getDataCheckerJS(
 
         return `
             //property ${property.name}, ${property.type} ${property.isActualOptional()}
-            if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
-                if (${accessor} === null || ${accessor} === undefined) {
-                    ${requiredThrown}
-                } else {
-                    _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an array'));
-                }
+            if (${accessor} === undefined) {
+                ${notOptionalCheckThrow}
+            } else if (${accessor} === null) {
+                ${notNullableCheckThrow}
+            } else if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
+                _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an array'));
             } else {
                 ${getCustomValidatorCode(`${accessor}`, `${path}`)}
 
                  ${i} = ${accessor}.length;
                  while (${i}--) {
                     //make sure all elements have the correct type
-                    if (${accessor}[${i}] !== undefined && ${accessor}[${i}] !== null) {
-                        ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext)}
-                    } else if (!${property.getSubType().isActualOptional()}) {
-                        //this checks needs its own property attribute: 'optionalItem'
-                        _errors.push(new ValidationError(${path} + '.' + ${i}, 'required', 'Required value is undefined or null'));
-                    }
+                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext)}
                  } 
             }
         `;
     } else if (property.isMap) {
         return `
             //property ${property.name}, ${property.type}
-            if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
+            if (${accessor} === undefined) {
+                ${notOptionalCheckThrow}
+            } else if (${accessor} === null) {
+                ${notNullableCheckThrow}
+            } else if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
                 ${getCustomValidatorCode(`${accessor}`, `${path}`)}
 
                 for (${i} in ${accessor}) {
                     if (!${accessor}.hasOwnProperty(${i})) continue;
-                    if (${accessor}[${i}] !== undefined && ${accessor}[${i}] !== null) {
-                        ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext)}
-                    } else if (!${property.getSubType().isActualOptional()}) {
-                        //this checks needs its own property attribute: 'optionalItem'
-                        _errors.push(new ValidationError(${path} + '.' + i, 'required', 'Required value is undefined or null'));
-                    }
+                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext)}
                 }
             } else {
-                if (${accessor} === null || ${accessor} === undefined) {
-                    ${requiredThrown}
-                } else {
-                    _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
-                }
+                _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
             }
         `;
     } else if (property.isPartial) {
@@ -105,18 +96,38 @@ export function getDataCheckerJS(
         rootContext.set(varClassType, property.getSubType().resolveClassType);
         return `
         //property ${property.name}, ${property.type}
-        ${getCustomValidatorCode(`${accessor}`, `${path}`)}
-        jitValidatePartial(${varClassType}, ${accessor}, _path, _errors);
+        if (${accessor} === undefined) {
+            ${notOptionalCheckThrow}
+        } else if (${accessor} === null) {
+            ${notNullableCheckThrow}
+        } else if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
+            ${getCustomValidatorCode(`${accessor}`, `${path}`)}
+            jitValidatePartial(${varClassType}, ${accessor}, _path, _errors);
+        } else {
+            _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
+        }
         `;
     } else if (compiler) {
         return `
+        if (${accessor} === undefined) {
+            ${notOptionalCheckThrow}
+        } else if (${accessor} === null) {
+            ${notNullableCheckThrow}
+        } else {
             //property ${property.name}, ${property.type}
             ${executeCheckerCompiler(path, rootContext, compiler, accessor, property)}
             ${getCustomValidatorCode(accessor, path)}
+        }
         `;
     } else {
         return `
-        ${getCustomValidatorCode(accessor, path)}
+        if (${accessor} === undefined) {
+            ${notOptionalCheckThrow}
+        } else if (${accessor} === null) {
+            ${notNullableCheckThrow}
+        } else {
+            ${getCustomValidatorCode(accessor, path)}
+        }
         `;
     }
 }
@@ -138,22 +149,11 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
     context.set('_classType', classType);
     context.set('ValidationError', ValidationError);
 
-    const notOptionalCheckThrow = property.isActualOptional() || property.hasDefaultValue ? ''
-        : `_errors.push(new ValidationError(_overwritePath || _path || '${property.name}', 'required', 'Required value is undefined or null'));`;
-
-    const check = `
-        if (undefined !== _data && null !== _data) {
-            ${getDataCheckerJS(`(_overwritePath || _path  || '${property.name}')`, `_data`, property, context)}
-        } else {
-            ${notOptionalCheckThrow}
-        }
-    `;
-
     const functionCode = `
         return function(_data, _path, _errors, _overwritePath) {
             _path = _path || '';
             _errors = _errors ? _errors : [];
-            ${check}
+            ${getDataCheckerJS(`(_overwritePath || _path  || '${property.name}')`, `_data`, property, context)}
             return _errors;
         }
         `;
@@ -171,14 +171,15 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
     }
 }
 
-export function jitValidate<T>(classType: ClassType<T>): (value: any, path?: string, errors?: ValidationError[]) => ValidationError[] {
-    const jit = jitFunctions.get(classType);
-    if (jit) return jit;
+export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>): (value: any, path?: string, errors?: ValidationError[]) => ValidationError[] {
+    schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
+
+    const jit = jitFunctions.get(schema);
+    if (jit && jit.buildId === schema.buildId) return jit;
 
     const context = new Map<any, any>();
-    const schema = getClassSchema(classType);
 
-    context.set('_classType', classType);
+    context.set('_classType', schema.classType);
     context.set('ValidationError', ValidationError);
 
     const checks: string[] = [];
@@ -197,20 +198,16 @@ export function jitValidate<T>(classType: ClassType<T>): (value: any, path?: str
             }
         }
 
-        const notOptionalCheckThrow = property.isActualOptional() || property.hasDefaultValue ? '' : `_errors.push(new ValidationError(_path + '${property.name}', 'required', 'Required value is undefined or null'));`;
         let valueGetter = `_data.${originProperty.name}`;
         if (isDecorated) {
             const resolvedClassType = 'resolvedClassType_' + originProperty.name;
             context.set(resolvedClassType, originProperty.resolveClassType);
             valueGetter = `_data.${originProperty.name} instanceof ${resolvedClassType} ? _data.${originProperty.name}.${property.name} : _data.${originProperty.name}`;
         }
+
         checks.push(`
-        var value = ${valueGetter};
-        if (undefined !== value && null !== value) {
+            var value = ${valueGetter};
             ${getDataCheckerJS(`_path + '${originProperty.name}'`, `value`, property, context)}
-        } else {
-            ${notOptionalCheckThrow}
-        }
         `);
     }
 
@@ -225,7 +222,8 @@ export function jitValidate<T>(classType: ClassType<T>): (value: any, path?: str
 
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled.bind(undefined, ...context.values())();
-    jitFunctions.set(classType, fn);
+    fn.buildId = schema.buildId;
+    jitFunctions.set(schema, fn);
 
     return fn;
 }

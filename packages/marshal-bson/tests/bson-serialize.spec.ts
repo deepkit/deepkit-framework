@@ -1,10 +1,35 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getBSONSerializer, createBSONSizer} from '../src/bson-serialize';
+import {getBSONSerializer, createBSONSizer, hexToByte, uuidStringToByte} from '../src/bson-serialize';
 import {t} from '@super-hornet/marshal';
 import * as Moment from 'moment';
-import {calculateObjectSize, serialize} from 'bson';
+import {calculateObjectSize, serialize, Binary, ObjectId} from 'bson';
 
+test('hexToByte', () => {
+    expect(hexToByte('00')).toBe(0);
+    expect(hexToByte('01')).toBe(1);
+    expect(hexToByte('0f')).toBe(15);
+    expect(hexToByte('10')).toBe(16);
+    expect(hexToByte('ff')).toBe(255);
+    expect(hexToByte('f0')).toBe(240);
+    expect(hexToByte('f00f', 1)).toBe(15);
+    expect(hexToByte('f0ff', 1)).toBe(255);
+    expect(hexToByte('f00001', 2)).toBe(1);
+
+    expect(hexToByte('f8')).toBe(16 * 15 + 8);
+    expect(hexToByte('41')).toBe(16 * 4 + 1);
+
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 1)).toBe(16 * 15 + 8);
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 4)).toBe(16 * 4 + 1);
+
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 6)).toBe(16 * 4 + 4);
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 7)).toBe(16 * 2 + 15)
+    ;
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 8)).toBe(16 * 11 + 7);
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 10)).toBe(16 * 12 + 3);
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 11)).toBe(16 * 10 + 1);
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 15)).toBe(16 * 6 + 12);
+});
 
 test('basic string', () => {
     const object = {name: 'Peter'};
@@ -171,28 +196,58 @@ test('basic binary', () => {
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
-// test('basic uuid', () => {
-//     const object = {uuid: uuid4Binary()};
-//
-//     const expectedSize =
-//         4 //size uint32
-//         + 1 // type (date)
-//         + 'uuid\0'.length
-//         + (
-//             16 //size of uuid
-//         )
-//         + 1 //object null
-//     ;
-//
-//     expect(calculateObjectSize(object)).toBe(expectedSize);
-//
-//     const schema = t.schema({
-//         uuid: t.uuid,
-//     });
-//
-//     expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-//     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
-// });
+test('basic uuid', () => {
+    const uuid = new Binary(
+        Buffer.allocUnsafe(16),
+        Binary.SUBTYPE_UUID
+    );
+
+    const object = {uuid: uuid};
+
+    const expectedSize =
+        4 //size uint32
+        + 1 // type (date)
+        + 'uuid\0'.length
+        + (
+            4 //size of binary
+            + 1 //sub type
+            + 16 //content of uuid
+        )
+        + 1 //object null
+    ;
+
+    expect(calculateObjectSize(object)).toBe(expectedSize);
+
+    const schema = t.schema({
+        uuid: t.uuid,
+    });
+
+    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+});
+
+test('basic objectId', () => {
+    const object = {_id: new ObjectId};
+
+    const expectedSize =
+        4 //size uint32
+        + 1 // type (date)
+        + '_id\0'.length
+        + (
+            12 //size of objectId
+        )
+        + 1 //object null
+    ;
+
+    expect(calculateObjectSize(object)).toBe(expectedSize);
+
+    const schema = t.schema({
+        _id: t.mongoId,
+    });
+
+    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+});
 
 test('basic nested', () => {
     const object = {name: {anotherOne: 'Peter2'}};
@@ -220,6 +275,36 @@ test('basic nested', () => {
         name: {
             anotherOne: t.string,
         },
+    });
+
+    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+});
+
+test('basic map', () => {
+    const object = {name: {anotherOne: 'Peter2'}};
+
+    const expectedSize =
+        4 //size uint32
+        + 1 //type (object)
+        + 'name\0'.length
+        + (
+            4 //size uint32
+            + 1 //type (object)
+            + 'anotherOne\0'.length
+            + (
+                4 //string size uint32
+                + 'Peter2'.length + 1 //string content + null
+            )
+            + 1 //object null
+        )
+        + 1 //object null
+    ;
+
+    expect(calculateObjectSize(object)).toBe(expectedSize);
+
+    const schema = t.schema({
+        name: t.map(t.string)
     });
 
     expect(createBSONSizer(schema)(object)).toBe(expectedSize);

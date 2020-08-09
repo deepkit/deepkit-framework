@@ -1,10 +1,10 @@
-import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema} from "./decorators";
-import {getDecorator, isExcluded} from "./mapper";
-import {ClassType, getClassName, getClassPropertyName} from "@super-hornet/core";
-import {getDataConverterJS, reserveVariable} from "./compiler-registry";
+import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema} from './decorators';
+import {isExcluded} from './mapper';
+import {ClassType, getClassName} from '@super-hornet/core';
+import {getDataConverterJS, reserveVariable} from './compiler-registry';
 
 export let moment: any = () => {
-    throw new Error('Moment.js not installed')
+    throw new Error('Moment.js not installed');
 };
 
 declare function require(moduleName: string): any;
@@ -179,7 +179,7 @@ export class JitPropertyConverter {
         let property: PropertyCompilerSchema;
 
         try {
-            property = this.schema.getClassProperties().get(path) || resolvePropertyCompilerSchema(this.schema, path)
+            property = this.schema.getClassProperties().get(path) || resolvePropertyCompilerSchema(this.schema, path);
         } catch (error) {
             return;
         }
@@ -212,12 +212,8 @@ export class JitPropertyConverter {
                 return _parents;
             }
             if (!_parents) _parents = [];
-            if (_value === null) {
-                result = null;
-            } else if (_value !== undefined) {
-                //convertProperty ${property.name} ${this.fromFormat}:${this.toFormat}:${property.type}
-                ${getDataConverterJS('result', '_value', property, this.fromFormat, this.toFormat, context)}
-            }
+            //convertProperty ${property.name} ${this.fromFormat}:${this.toFormat}:${property.type}
+            ${getDataConverterJS('result', '_value', property, this.fromFormat, this.toFormat, context)}
             return result;
         }
         `;
@@ -261,12 +257,8 @@ export function createJITConverterFromPropertySchema(
                 return _parents;
             }
             if (!_parents) _parents = [];
-            if (_value === null) {
-                result = null;
-            } else if (_value !== undefined) {
-                //createJITConverterFromPropertySchema ${property.name} ${fromFormat}:${toFormat}:${property.type}
-                ${getDataConverterJS('result', '_value', property, fromFormat, toFormat, context)}
-            }
+            //createJITConverterFromPropertySchema ${property.name} ${fromFormat}:${toFormat}:${property.type}
+            ${getDataConverterJS('result', '_value', property, fromFormat, toFormat, context)}
             return result;
         }
         `;
@@ -354,8 +346,6 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: stri
 
         functionCode = `
         return function(_instance, _options) {
-            if (_instance.${decoratorName} === null) return null;
-            if (_instance.${decoratorName} === undefined) return;
             var result, _state;
             ${getDataConverterJS(`result`, `_instance.${decoratorName}`, property, 'class', toFormat, context)}
             return result;
@@ -375,17 +365,13 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: stri
             if (property.backReference) continue;
 
             if (isExcluded(schema, property.name, toFormat)) {
-                continue
+                continue;
             }
 
             convertProperties.push(`
             //${property.name}:${property.type}
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){ 
-                if (_instance.${property.name} === null) {
-                    _data.${property.name} = null;
-                } else if (_instance.${property.name} !== undefined){
-                    ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, 'class', toFormat, context)}
-                }
+                ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, 'class', toFormat, context)}
             }
         `);
         }
@@ -433,7 +419,7 @@ export function getJitFunctionXToClass(schema: ClassSchema<any>, fromFormat: str
         if (cache) return cache.get(schema);
     }
 }
-2
+
 export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: string | 'plain')
     : (data: { [name: string]: any }, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
     if (fromTarget === 'plain') {
@@ -464,9 +450,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
             constructorArguments.push(`
                 //constructor parameter ${property.name}, decorated
                 var c_${property.name} = _data;
-                if (undefined !== c_${property.name} && null !== c_${property.name}) {
-                    ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context)}
-                }
+                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context)}
             `);
         } else if (property.isParentReference) {
             //parent resolver
@@ -474,10 +458,8 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
         } else {
             constructorArguments.push(`
                 //constructor parameter ${property.name}
-                var c_${property.name} = _data[${JSON.stringify(property.name)}]; 
-                if (undefined !== c_${property.name} && null !== c_${property.name}) {
-                    ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context)}
-                }
+                var c_${property.name} = _data[${JSON.stringify(property.name)}];
+                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context)}
             `);
         }
 
@@ -493,9 +475,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
         } else {
             setProperties.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
-            if (undefined !== _data.${property.name} && null !== _data.${property.name}) {
                 ${getDataConverterJS(`_instance.${property.name}`, `_data.${property.name}`, property, fromTarget, 'class', context)}
-            }
             }
             `);
         }
@@ -506,24 +486,13 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
         if (onLoad.options.fullLoad) {
             registerLifeCircleEvents.push(`
                 _state.onFullLoadCallbacks.push(_instance.${onLoad.methodName}.bind(_instance));
-            `)
+            `);
         } else {
             registerLifeCircleEvents.push(`
                 _instance.${onLoad.methodName}();
-            `)
+            `);
         }
     }
-
-    // const valueChecks: string[] = [];
-    // for (const property of schema.classProperties.values()) {
-    //     if (!property.isActualOptional()) {
-    //         valueChecks.push(`
-    //         if (undefined === _instance.${property.name} || null === _instance.${property.name}) {
-    //             throw new TypeError('Property ${schema.getClassName()}.${property.name} has no value.');
-    //         }
-    //         `)
-    //     }
-    // }
 
     let fullLoadHookPre = '';
     let fullLoadHookPost = '';
@@ -558,16 +527,21 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
         }
     `;
 
-    const compiled = new Function('_classType', 'ToClassState', 'isGroupAllowed', ...context.keys(), functionCode);
-    const fn = compiled(schema.classType, ToClassState, isGroupAllowed, ...context.values());
-    fn.buildId = schema.buildId;
-    if (fromTarget === 'plain') {
-        JITPlainToClassCache.set(schema, fn);
-    } else {
-        JITXToClassCache.get(fromTarget)!.set(schema, fn);
-    }
+    try {
+        const compiled = new Function('_classType', 'ToClassState', 'isGroupAllowed', ...context.keys(), functionCode);
+        const fn = compiled(schema.classType, ToClassState, isGroupAllowed, ...context.values());
+        fn.buildId = schema.buildId;
+        if (fromTarget === 'plain') {
+            JITPlainToClassCache.set(schema, fn);
+        } else {
+            JITXToClassCache.get(fromTarget)!.set(schema, fn);
+        }
 
-    return fn;
+        return fn;
+    } catch (e){
+        console.log('jit code', functionCode);
+        throw e;
+    }
 }
 
 export function jitPlainToClass<T>(classType: ClassType<T> | ClassSchema<T>, data: any, options?: JitConverterOptions): T {
