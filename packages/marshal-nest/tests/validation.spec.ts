@@ -25,7 +25,7 @@ test('test required', async () => {
 
     const instance = new Model;
     expect(await validate(Model, instance)).toBeArrayOfSize(1);
-    expect(await validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined or null", path: 'name'}]);
+    expect(await validate(Model, instance)).toEqual([{code: 'required', message: "Required value is undefined", path: 'name'}]);
 
     expect(await validate(Model, {name: 'foo', map: true})).toEqual([{code: 'invalid_type', message: "Type is not an object", path: 'map'}]);
     expect(await validate(Model, {name: 'foo', array: 233})).toEqual([{code: 'invalid_type',  message: "Type is not an array", path: 'array'}]);
@@ -66,7 +66,7 @@ test('test required', async () => {
             if (error instanceof BadRequestException) {
                 expect(error.getResponse()).toEqual({
                     "error": "Bad Request",
-                    "message": [{"message": "Required value is undefined or null", "code": "required", "path": "name"}],
+                    "message": [{"message": "Required value is undefined", "code": "required", "path": "name"}],
                     "statusCode": 400
                 });
             }

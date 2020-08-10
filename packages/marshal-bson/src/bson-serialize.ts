@@ -1,5 +1,5 @@
 import {ClassSchema, getClassSchema, getGlobalStore, PropertySchema} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
+import {ClassType, isArray, isObject} from '@super-hornet/core';
 import {seekElementSize} from './continuation';
 import {
     BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID,
@@ -11,7 +11,8 @@ import {
     BSON_DATA_NUMBER,
     BSON_DATA_OBJECT, BSON_DATA_OID,
     BSON_DATA_STRING,
-    digitByteSize
+    digitByteSize,
+    moment
 } from './utils';
 import {Long, Binary, ObjectId} from 'bson';
 
@@ -87,6 +88,40 @@ function getValueSize(value: any): number {
         }
     }
 
+    if (value instanceof Date || moment.isMoment(value)) {
+        return 8;
+    }
+
+    if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+        let size = 4; //size
+        size += 1; //sub type
+        size += value.byteLength;
+        return size;
+    }
+
+    if (isArray(value)) {
+        let size = 4; //object size
+        for (let i = 0; i < value.length; i++) {
+            size += 1; //element type
+            size += digitByteSize(i); //element name
+            size += getValueSize(value[i]);
+        }
+        size += 1; //null
+        return size;
+    }
+
+    if (isObject(value)) {
+        let size = 4; //object size
+        for (let i in value) {
+            if (!value.hasOwnProperty(i)) continue;
+            size += 1; //element type
+            size += stringByteLength(i) + 1; //element name + null
+            size += getValueSize(value[i]);
+        }
+        size += 1; //null
+        return size;
+    }
+
     return 0;
 }
 
@@ -123,16 +158,6 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
         code = `size += ${sizer}(${accessor});`;
     } else if (property.type === 'date' || property.type === 'moment') {
         code = `size += 8;`;
-
-
-    } else if (property.type === 'partial') {
-        throw new Error('Todo: implement');
-    } else if (property.type === 'any') {
-        throw new Error('Todo: implement');
-    } else if (property.type === 'union') {
-        throw new Error('Todo: implement');
-
-
     } else if (property.type === 'objectId') {
         code = `size += 12;`;
     } else if (property.type === 'uuid') {
@@ -203,7 +228,154 @@ export function createBSONSizer(classSchema: ClassSchema): SizerFn {
     return fn;
 }
 
-function getTypeCode(
+
+export class Writer {
+    public offset = 0;
+    public dataView: DataView;
+
+    constructor(public buffer: Buffer) {
+        this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    }
+
+    writeUint32(v: number) {
+        this.dataView.setUint32(this.offset, v, true);
+        this.offset += 4;
+    }
+
+    writeInt32(v: number) {
+        this.dataView.setInt32(this.offset, v, true);
+        this.offset += 4;
+    }
+
+    writeDouble(v: number) {
+        this.dataView.setFloat64(this.offset, v, true);
+        this.offset += 8;
+    }
+
+    writeDelayedSize(v: number, position: number) {
+        this.dataView.setUint32(position, v, true);
+    }
+
+    writeByte(v: number) {
+        this.buffer[this.offset++] = v;
+    }
+
+    writeNull() {
+        this.writeByte(0);
+    }
+
+    writeAsciiString(str: string) {
+        for (let i = 0; i < str.length; i++) {
+            this.buffer[this.offset++] = str.charCodeAt(i);
+        }
+    }
+
+    writeString(str: string) {
+        if (!str) return;
+        for (let i = 0; i < str.length; i++) {
+            const c = str.charCodeAt(i);
+            if (c < 128) {
+                this.buffer[this.offset++] = c;
+            } else if (c > 127 && c < 2048) {
+                this.buffer[this.offset++] = (c >> 6) | 192;
+                this.buffer[this.offset++] = ((c & 63) | 128);
+            } else {
+                this.buffer[this.offset++] = (c >> 12) | 224;
+                this.buffer[this.offset++] = ((c >> 6) & 63) | 128;
+                this.buffer[this.offset++] = (c & 63) | 128;
+            }
+        }
+    }
+
+    write(value: any, nameWriter: () => void): void {
+        if ('boolean' === typeof value) {
+            this.writeByte(BSON_DATA_BOOLEAN);
+            nameWriter();
+            this.writeByte(value ? 1 : 0);
+        } else if ('string' === typeof value) {
+            //size + content + null
+            this.writeByte(BSON_DATA_STRING);
+            nameWriter();
+            const start = this.offset;
+            this.offset += 4; //size placeholder
+            this.writeString(value);
+            this.writeByte(0); //null
+            this.writeDelayedSize(this.offset - start - 4, start);
+        } else if ('number' === typeof value) {
+            if (Math.floor(value) === value) {
+                //it's an int
+                if (value >= BSON_INT32_MIN && value <= BSON_INT32_MAX) {
+                    //32bit
+                    this.writeByte(BSON_DATA_INT);
+                    nameWriter();
+                    this.writeInt32(value);
+                } else if (value >= JS_INT_MIN && value <= JS_INT_MAX) {
+                    //double, 64bit
+                    this.writeByte(BSON_DATA_NUMBER);
+                    nameWriter();
+                    this.writeDouble(value);
+                } else {
+                    //long
+                    this.writeByte(BSON_DATA_LONG);
+                    nameWriter();
+                    const long = Long.fromNumber(value);
+                    this.writeUint32(long.getLowBits());
+                    this.writeUint32(long.getHighBits());
+                }
+            } else {
+                //double
+                this.writeByte(BSON_DATA_NUMBER);
+                nameWriter();
+                this.writeDouble(value);
+            }
+        } else if (value instanceof Date || moment.isMoment(value)) {
+            this.writeByte(BSON_DATA_DATE);
+            nameWriter();
+            const long = Long.fromNumber(value.valueOf());
+            this.writeUint32(long.getLowBits());
+            this.writeUint32(long.getHighBits());
+        } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+            const b: ArrayBuffer = ArrayBuffer.isView(value) ? value.buffer : value;
+            this.writeByte(BSON_DATA_BINARY);
+            nameWriter();
+            this.writeUint32(value.byteLength);
+            this.writeByte(BSON_BINARY_SUBTYPE_DEFAULT);
+            new Buffer(b).copy(this.buffer, this.offset);
+            this.offset += value.byteLength;
+        } else if (isArray(value)) {
+            this.writeByte(BSON_DATA_ARRAY);
+            nameWriter();
+            const start = this.offset;
+            this.offset += 4; //size
+
+            for (let i = 0; i < value.length; i++) {
+                this.write(value[i], () => {
+                    this.writeAsciiString('' + i);
+                    this.writeByte(0);
+                });
+            }
+            this.writeNull();
+            this.writeDelayedSize(this.offset - start, start);
+        } else if (isObject(value)) {
+            this.writeByte(BSON_DATA_OBJECT);
+            nameWriter();
+            const start = this.offset;
+            this.offset += 4; //size
+
+            for (let i in value) {
+                if (!value.hasOwnProperty(i)) continue;
+                this.write(value[i], () => {
+                    this.writeAsciiString(i);
+                    this.writeByte(0);
+                });
+            }
+            this.writeNull();
+            this.writeDelayedSize(this.offset - start, start);
+        }
+    }
+}
+
+function getPropertySerializerCode(
     property: PropertySchema,
     context: Map<string, any>,
     accessor: string,
@@ -223,7 +395,10 @@ function getTypeCode(
         writer.writeByte(0); //null
      `;
     }
-    let code = '';
+
+    let code = `writer.write(${accessor}, () => {
+        ${nameWriter}
+    });`;
 
     function numberParser() {
         context.set('Long', Long);
@@ -280,17 +455,6 @@ function getTypeCode(
         `;
     }
 
-    if (property.type === 'arrayBuffer' || property.isTypedArray) {
-        code = `
-            writer.writeByte(${BSON_DATA_BINARY});
-            ${nameWriter}
-            writer.writeUint32(${accessor}.byteLength);
-            writer.writeByte(${BSON_BINARY_SUBTYPE_DEFAULT});
-            ${accessor}.copy(writer.buffer, writer.offset);
-            writer.offset += ${accessor}.byteLength;
-        `;
-    }
-
     if (property.type === 'boolean') {
         code = `
             writer.writeByte(${BSON_DATA_BOOLEAN});
@@ -307,34 +471,6 @@ function getTypeCode(
             const long = Long.fromNumber(${accessor}.getTime());
             writer.writeUint32(long.getLowBits());
             writer.writeUint32(long.getHighBits());
-        `;
-    }
-
-    if (property.type === 'partial') {
-        throw new Error('Todo: implement');
-    }
-
-    if (property.type === 'any') {
-        throw new Error('Todo: implement');
-    }
-
-    if (property.type === 'union') {
-        throw new Error('Todo: implement');
-    }
-
-    if (property.type === 'enum') {
-        code = `
-        if ('string' === typeof ${accessor}) {
-            writer.writeByte(${BSON_DATA_STRING});
-            ${nameWriter}
-            const start = writer.offset;
-            writer.offset += 4; //size placeholder
-            writer.writeString(${accessor});
-            writer.writeByte(0); //null
-            writer.writeDelayedSize(writer.offset - start - 4, start);
-        } else {
-            ${numberParser()}
-        }
         `;
     }
 
@@ -432,7 +568,7 @@ function getTypeCode(
             
             for (let i = 0; i < ${accessor}.length; i++) {
                 //${property.getSubType().type}
-                ${getTypeCode(property.getSubType(), context, `${accessor}[i]`, `''+i`)}
+                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, `''+i`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
@@ -449,7 +585,7 @@ function getTypeCode(
             for (let i in ${accessor}) {
                 if (!${accessor}.hasOwnProperty(i)) continue;
                 //${property.getSubType().type}
-                ${getTypeCode(property.getSubType(), context, `${accessor}[i]`, `i`)}
+                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, `i`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
@@ -475,65 +611,6 @@ function getTypeCode(
         `;
 }
 
-export class Writer {
-    public offset = 0;
-    public dataView: DataView;
-
-    constructor(public buffer: Buffer) {
-        this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-    }
-
-    writeUint32(v: number) {
-        this.dataView.setUint32(this.offset, v, true);
-        this.offset += 4;
-    }
-
-    writeInt32(v: number) {
-        this.dataView.setInt32(this.offset, v, true);
-        this.offset += 4;
-    }
-
-    writeDouble(v: number) {
-        this.dataView.setFloat64(this.offset, v, true);
-        this.offset += 8;
-    }
-
-    writeDelayedSize(v: number, position: number) {
-        this.dataView.setUint32(position, v, true);
-    }
-
-    writeByte(v: number) {
-        this.buffer[this.offset++] = v;
-    }
-
-    writeNull() {
-        this.writeByte(0);
-    }
-
-    writeAsciiString(str: string) {
-        for (let i = 0; i < str.length; i++) {
-            this.buffer[this.offset++] = str.charCodeAt(i);
-        }
-    }
-
-    writeString(str: string) {
-        if (!str) return;
-        for (let i = 0; i < str.length; i++) {
-            const c = str.charCodeAt(i);
-            if (c < 128) {
-                this.buffer[this.offset++] = c;
-            } else if (c > 127 && c < 2048) {
-                this.buffer[this.offset++] = (c >> 6) | 192;
-                this.buffer[this.offset++] = ((c & 63) | 128);
-            } else {
-                this.buffer[this.offset++] = (c >> 12) | 224;
-                this.buffer[this.offset++] = ((c >> 6) & 63) | 128;
-                this.buffer[this.offset++] = (c & 63) | 128;
-            }
-        }
-    }
-}
-
 interface EncoderFn {
     buildId: number;
 
@@ -548,7 +625,7 @@ function createSchemaSerialize(classSchema: ClassSchema): EncoderFn {
     for (const property of classSchema.getClassProperties().values()) {
         getPropertyCode.push(`
             //${property.name}:${property.type}
-            ${getTypeCode(property, context, `obj.${property.name}`)}
+            ${getPropertySerializerCode(property, context, `obj.${property.name}`)}
         `);
     }
 

@@ -126,7 +126,7 @@ export function getPrimaryKeyHashGenerator(
                 referenceCode.push(`
                 //getPrimaryKeyExtractor ${property.name}->${pk.name} class:snapshot:${property.type} reference
                 var referencePkValue;
-                if (undefined !== _value.${property.name}.${pk.name} && null !== _value.${property.name}.${pk.name}) {
+                if (undefined !== _value.${property.name}.${pk.name}) {
                     referencePkValue = '';
                     ${getDataConverterJS(`referencePkValue`, `_value.${property.name}.${pk.name}`, pk, fromFormat, 'plain', context)}
                     _result += ',' + referencePkValue;

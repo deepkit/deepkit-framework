@@ -330,7 +330,7 @@ test('partial invalid', () => {
             _id: null
         });
 
-        expect(m._id).toBeNull();
+        expect(m._id).toBeUndefined();
     }
 
     {
@@ -338,7 +338,7 @@ test('partial invalid', () => {
             _id: null,
         });
 
-        expect(m._id).toBeNull();
+        expect(m._id).toBeUndefined();
     }
 
     partialPlainToMongo(DocumentClass, {
@@ -432,7 +432,7 @@ test('partial mongo to plain ', () => {
         });
 
         expect(m.name).toBe(undefined);
-        expect(m.picture).toBe(null);
+        expect(m.picture).toBe(undefined);
         expect(m.tags).toBeArray();
     }
 
@@ -445,7 +445,7 @@ test('partial mongo to plain ', () => {
         });
 
         expect(m.name).toBe(undefined);
-        expect(m.picture).toBe(null);
+        expect(m.picture).toBe(undefined);
         expect(m.parent).toBeUndefined();
         expect(m.tags).toBeArray();
     }

@@ -196,6 +196,32 @@ test('basic binary', () => {
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
+
+test('basic arrayBuffer', () => {
+    const object = {binary: new ArrayBuffer(5)};
+
+    const expectedSize =
+        4 //size uint32
+        + 1 // type (date)
+        + 'binary\0'.length
+        + (
+            4 //size of binary, uin32
+            + 1 //sub type
+            + 5 //size of data
+        )
+        + 1 //object null
+    ;
+
+    // expect(calculateObjectSize(object)).toBe(expectedSize);
+
+    const schema = t.schema({
+        binary: t.type(ArrayBuffer),
+    });
+
+    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    // expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+});
+
 test('basic uuid', () => {
     const uuid = new Binary(
         Buffer.allocUnsafe(16),

@@ -18,6 +18,8 @@ export class MarshalModel {
     }
 }
 
+test('nix', () => {});
+
 // test('benchmark plainToClass', () => {
 //     const count = 100_000;
 //

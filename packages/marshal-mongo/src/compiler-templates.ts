@@ -61,7 +61,8 @@ registerConverterCompiler('mongo', 'class', 'uuid', (setter: string, accessor: s
     return {
         template: `
         try {
-            ${setter} = uuid4Stringify(${accessor});
+            //marshal-bson already returns a string for uuid
+            ${setter} = 'string' === typeof ${accessor} ? ${accessor} : uuid4Stringify(${accessor});
         } catch (error) {
             throw new TypeError('Invalid UUID v4 given in property ${property.name}: ' + error);
         }
@@ -86,6 +87,7 @@ registerConverterCompiler('class', 'mongo', 'uuid', (setter: string, accessor: s
 registerConverterCompiler('mongo', 'class', 'objectId', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `
     try {
+        //marshal-bson already returns a string for uuid
         ${setter} = 'string' === typeof ${accessor} ? ${accessor} : ${accessor}.toHexString();
     } catch (error) {
         throw new TypeError('Invalid ObjectID given in property ${property.name}');
