@@ -1,39 +1,15 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {
-    arrayBufferFrom,
-    classToPlain,
-    DatabaseName,
-    Entity,
-    getClassSchema,
-    getDatabaseName,
-    getEntityName,
-    plainToClass,
-    t,
-    uuid,
-} from "@super-hornet/marshal";
-import {Binary, ObjectID} from "bson";
-import * as mongodb from "mongodb";
-import {Database, DatabaseSession, getInstanceState} from "@super-hornet/marshal-orm";
-import {plainToMongo} from "../src/mapping";
-import * as moment from "moment";
-import {uuid4Stringify} from "../src/compiler-templates";
-import {MongoDatabaseAdapter, MongoDatabaseConfig} from "../src/adapter";
-import {resolveCollectionName} from "../src/connection";
-import {SimpleModel, SuperSimple} from "./entities";
-
-let database: Database<MongoDatabaseAdapter>;
-
-export async function createDatabaseSession(dbName: string = 'testing'): Promise<DatabaseSession<MongoDatabaseAdapter>> {
-    dbName = dbName.replace(/\s+/g, '-');
-    database = new Database(new MongoDatabaseAdapter(new MongoDatabaseConfig('localhost', dbName)));
-    await (await database.adapter.connection.connect()).db(dbName).dropDatabase();
-    return database.createSession();
-}
-
-afterEach(async () => {
-    if (database) await database.disconnect(true);
-});
+import {arrayBufferFrom, classToPlain, DatabaseName, Entity, getClassSchema, getDatabaseName, getEntityName, plainToClass, t, uuid,} from '@super-hornet/marshal';
+import {Binary, ObjectID} from 'bson';
+import * as mongodb from 'mongodb';
+import {getInstanceState} from '@super-hornet/marshal-orm';
+import {plainToMongo} from '../src/mapping';
+import * as moment from 'moment';
+import {uuid4Stringify} from '../src/compiler-templates';
+import {resolveCollectionName} from '../src/connection';
+import {SimpleModel, SuperSimple} from './entities';
+import {createDatabaseSession} from './utils';
 
 test('test moment db', async () => {
     @Entity('model-moment')
@@ -75,14 +51,16 @@ test('test save undefined values', async () => {
         await collection.deleteMany({});
         await session.immediate.persist(new Model(undefined));
         const mongoItem = await collection.find().toArray();
-        expect(mongoItem[0].name).toBeUndefined();
+        expect(mongoItem[0].name).toBe(null);
+        const marshalItem = await session.query(Model).findOne();
+        expect(marshalItem.name).toBe(undefined);
     }
 
     {
         await collection.deleteMany({});
         await session.immediate.persist(new Model('peter'));
         const mongoItem = await collection.find().toArray();
-        expect(mongoItem[0].name).toBe('peter')
+        expect(mongoItem[0].name).toBe('peter');
     }
 });
 
@@ -316,7 +294,7 @@ test('no id', async () => {
         name: 'myName',
     });
 
-    await expect(session.immediate.persist(instance)).rejects.toThrow('has no primary field')
+    await expect(session.immediate.persist(instance)).rejects.toThrow('has no primary field');
 });
 
 
@@ -486,7 +464,7 @@ test('references back', async () => {
         const image2 = await session.query(Image).disableIdentityMap().filter({title: 'image2'}).findOne();
         expect(() => {
             image2.user.name;
-        }).toThrow(`Can not access 'name' since class User was not completely hydrated`);
+        }).toThrow(`Can not access User.name since class was not completely hydrated`);
         image2.user.name = 'changed';
         expect(image2.user.name).toBe('changed');
         expect(image2.title).toBe('image2');

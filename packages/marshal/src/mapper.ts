@@ -2,6 +2,7 @@ import {validate, ValidationFailed} from './validation';
 import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema} from './decorators';
 import {ClassType, getClassName} from '@super-hornet/core';
 import {createJITConverterFromPropertySchema, jitClassToPlain, JitConverterOptions, jitPartialClassToPlain, jitPartialPlainToClass, jitPlainToClass} from './jit';
+import {PlainOrFullEntityFromClassTypeOrSchema, ExtractClassType, JSONPartial} from './utils';
 
 /**
  * Converts a argument of a method from class to plain.
@@ -46,14 +47,14 @@ export function methodResultPlainToClass<T>(classType: ClassType<T>, methodName:
  * Clones a class instance deeply.
  */
 export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
-    return plainToClass(getClassTypeFromInstance(target), classToPlain(getClassTypeFromInstance(target), target), options);
+    return plainToClass(getClassTypeFromInstance(target) as ClassType<T>, classToPlain(getClassTypeFromInstance(target), target), options);
 }
 
 /**
  * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
  */
 export function classToPlain<T>(classType: ClassType<T> | ClassSchema<T>, target: T, options?: JitConverterOptions): any {
-    return jitClassToPlain(classType, target, options);
+    return jitClassToPlain(classType)(target, options);
 }
 
 /**
@@ -83,17 +84,6 @@ export function partialClassToPlain<T, R extends object>(
     return jitPartialClassToPlain(classType, partial, options);
 }
 
-export type JSONPartialSingle<T> = T extends Date ? string :
-    T extends Array<infer K> ? Array<JSONPartialSingle<K>> :
-        T extends object ? JSONPartial<T> :
-            T extends string ? number | string :
-                T extends boolean ? number | string | boolean :
-                    T extends number ? number | string : T;
-
-export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<T[name]> };
-
-type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
-
 /**
  * Take a regular object literal and returns an instance of classType.
  * Missing data is either replaced by the default value of that property or undefined.
@@ -106,12 +96,12 @@ type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
  * entity instanceof MyEntity; //true
  * ```
  */
-export function plainToClass<T>(
-    classType: ClassType<T> | ClassSchema<T>,
-    data: JSONPartial<ClassType<T>>,
+export function plainToClass<T extends ClassType<any> | ClassSchema<any>>(
+    classType: T,
+    data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
     options?: JitConverterOptions
-): T {
-    return jitPlainToClass(classType, data, options);
+): ExtractClassType<T> {
+    return jitPlainToClass(classType)(data, options);
 }
 
 /**
@@ -128,9 +118,9 @@ export function plainToClass<T>(
  * }
  * ```
  */
-export function validatedPlainToClass<T>(
-    classType: ClassType<T>,
-    data: object,
+export function validatedPlainToClass<T extends ClassType<any> | ClassSchema<any>>(
+    classType: T,
+    data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
     options?: JitConverterOptions
 ): T {
     const errors = validate(classType, data);

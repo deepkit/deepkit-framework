@@ -5,8 +5,8 @@ import {
     arrayBufferTo,
     arrayBufferToBase64,
     t,
-    partialPlainToClass,
-} from "@super-hornet/marshal";
+    partialPlainToClass, plainToClass,
+} from '@super-hornet/marshal';
 import {Plan, SimpleModel, SubModel} from "./entities";
 import {Binary, ObjectID} from "bson";
 import {
@@ -78,12 +78,12 @@ test('make sure undefined is undefined', () => {
 
     {
         const mongo = classToMongo(Model, new Model(undefined));
-        expect(mongo.name).toBeUndefined();
+        expect(mongo.name).toBe(null);
     }
 
     {
         const mongo = classToMongo(Model, new Model());
-        expect(mongo.name).toBeUndefined();
+        expect(mongo.name).toBe(null);
     }
 
     {
@@ -93,12 +93,12 @@ test('make sure undefined is undefined', () => {
 
     {
         const mongo = plainToMongo(Model, {name: undefined});
-        expect(mongo.name).toBeUndefined();
+        expect(mongo.name).toBe(null);
     }
 
     {
         const mongo = plainToMongo(Model, {});
-        expect(mongo.name).toBeUndefined();
+        expect(mongo.name).toBe(null);
     }
 });
 
@@ -330,7 +330,7 @@ test('partial invalid', () => {
             _id: null
         });
 
-        expect(m._id).toBeUndefined();
+        expect(m._id).toBe(null);
     }
 
     {
@@ -338,7 +338,7 @@ test('partial invalid', () => {
             _id: null,
         });
 
-        expect(m._id).toBeUndefined();
+        expect(m._id).toBe(null);
     }
 
     partialPlainToMongo(DocumentClass, {
@@ -403,9 +403,9 @@ test('partial mongo to plain ', () => {
         });
 
         expect(u.name).toBe('peter');
-        expect(u.picture).toBe(undefined);
+        expect(u.picture).toBe(null);
         expect(u.tags).toEqual([]);
-        expect(u.parent).toBeUndefined();
+        expect(u.parent).toBe(undefined);
     }
 
     {
@@ -417,9 +417,9 @@ test('partial mongo to plain ', () => {
         });
 
         expect(u.name).toBe('peter');
-        expect(u.picture).toBeUndefined();
+        expect(u.picture).toBe(undefined);
         expect(u.tags).toEqual([]);
-        expect(u.parent).toBeUndefined();
+        expect(u.parent).toBe(undefined);
     }
 
     const bin = arrayBufferFrom('Hello', 'utf8');
@@ -444,8 +444,8 @@ test('partial mongo to plain ', () => {
             tags: {}
         });
 
-        expect(m.name).toBe(undefined);
-        expect(m.picture).toBe(undefined);
+        expect(m.name).toBe(null);
+        expect(m.picture).toBe(null);
         expect(m.parent).toBeUndefined();
         expect(m.tags).toBeArray();
     }
@@ -496,4 +496,44 @@ test('partial document', () => {
     expect(document['pages.0.children.0.name']).toBe('6');
     expect(document['pages.0.children']).toBeInstanceOf(Array);
     expect(document['pages.0.children'][0].name).toBe('7');
+});
+
+test('optional is stored as null and converted back to undefined', () => {
+    const s = t.schema({
+        username: t.string.optional
+    });
+
+    const instance = plainToClass(s, {});
+    const mongo = classToMongo(s, instance);
+    expect(mongo.username).toBe(null);
+
+    {
+        const instance = mongoToClass(s, {username: null});
+        expect(instance.username).toBe(undefined);
+    }
+
+    {
+        const instance = mongoToClass(s, {username: undefined});
+        expect(instance.username).toBe(undefined);
+    }
+});
+
+test('null is stored as null and converted back', () => {
+    const s = t.schema({
+        username: t.string.nullable
+    });
+
+    const instance = plainToClass(s, {});
+    const mongo = classToMongo(s, instance);
+    expect(mongo.username).toBe(null);
+
+    {
+        const instance = mongoToClass(s, {username: null});
+        expect(instance.username).toBe(null);
+    }
+
+    {
+        const instance = mongoToClass(s, {username: undefined});
+        expect(instance.username).toBe(null);
+    }
 });

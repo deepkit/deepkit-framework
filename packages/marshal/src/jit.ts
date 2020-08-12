@@ -421,7 +421,7 @@ export function getJitFunctionXToClass(schema: ClassSchema<any>, fromFormat: str
 }
 
 export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: string | 'plain')
-    : (data: { [name: string]: any }, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
+    : (data: any, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
     if (fromTarget === 'plain') {
         let jit = JITPlainToClassCache.get(schema);
         if (jit && jit.buildId === schema.buildId) return jit;
@@ -544,23 +544,12 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
     }
 }
 
-export function jitPlainToClass<T>(classType: ClassType<T> | ClassSchema<T>, data: any, options?: JitConverterOptions): T {
-    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
-    return createXToClassFunction(classType, 'plain')(data, options);
-}
-
-export function plainToClassFactory<T>(classType: ClassType<T>) {
+export function jitPlainToClass<T extends ClassType<any> | ClassSchema<any>>(classType: T) {
     return createXToClassFunction(getClassSchema(classType), 'plain');
 }
 
-export function jitClassToPlain<T>(classType: ClassType<T> | ClassSchema<T>, instance: T, options?: JitConverterOptions): Partial<T> {
-    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
-
-    if (!(instance instanceof classType.classType)) {
-        throw new Error(`Could not classToPlain since target is not a class instance of ${getClassName(classType)}`);
-    }
-
-    return createClassToXFunction(classType, 'plain')(instance, options);
+export function jitClassToPlain<T extends ClassType<any> | ClassSchema<any>>(classType: T) {
+    return createClassToXFunction(getClassSchema(classType), 'plain');
 }
 
 export function jitPartial<T, R extends object>(

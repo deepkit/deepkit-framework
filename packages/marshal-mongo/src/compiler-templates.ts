@@ -46,6 +46,29 @@ registerConverterCompiler('mongo', 'class', 'string', compilerToString);
 registerConverterCompiler('class', 'mongo', 'number', compilerToNumber);
 registerConverterCompiler('mongo', 'class', 'number', compilerToNumber);
 
+registerConverterCompiler('class', 'mongo', 'undefined', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+    //mongo does not support 'undefined' as column type, so we convert automatically to null
+    return `${setter} = null;`;
+});
+
+registerConverterCompiler('mongo', 'class', 'null', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+    //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
+    //we convert back to undefined or keep it null
+    if (property.isOptional) return `${setter} = undefined;`;
+    if (property.isNullable) return `${setter} = null;`;
+
+    return ``;
+});
+
+registerConverterCompiler('mongo', 'class', 'undefined', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+    //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
+    //we convert back to undefined or keep it null
+    if (property.isOptional) return `${setter} = undefined;`;
+    if (property.isNullable) return `${setter} = null;`;
+
+    return ``;
+});
+
 registerConverterCompiler('class', 'mongo', 'moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = ${accessor}.toDate();`;
 });

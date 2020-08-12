@@ -5,7 +5,7 @@ import {
     plainToClass as classTransformerPlainToClass
 } from "class-transformer";
 import {BenchSuite} from "@super-hornet/core";
-import {f, jitClassToPlain, jitPlainToClass, plainToClass} from "@super-hornet/marshal";
+import {classToPlain, f, jitClassToPlain, jitPlainToClass, plainToClass} from '@super-hornet/marshal';
 import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from "cerialize";
 
 export class MarshalModel {
@@ -58,6 +58,11 @@ test('benchmark plainToClass', () => {
         plainToClass(MarshalModel, plain);
     });
 
+    const convert = jitPlainToClass(MarshalModel);
+    suite.add('Marshal jit saved', () => {
+        convert(plain);
+    });
+
     // console.log('jit', getJitFunctionPlainToClass(MarshalModel).toString());
 
     suite.add('ClassTransformer', () => {
@@ -72,7 +77,7 @@ test('benchmark plainToClass', () => {
 });
 
 test('benchmark classToPlain', () => {
-    const b = jitPlainToClass(MarshalModel, {
+    const b = plainToClass(MarshalModel, {
         name: 'name1',
         id: 1,
         tags: ['a', 2, 'c'],
@@ -83,7 +88,12 @@ test('benchmark classToPlain', () => {
     const suite = new BenchSuite('classToPlain simple model');
 
     suite.add('Marshal', () => {
-        jitClassToPlain(MarshalModel, b);
+        classToPlain(MarshalModel, b);
+    });
+
+    const convert = jitClassToPlain(MarshalModel);
+    suite.add('Marshal jit save', () => {
+        convert(b);
     });
 
     // console.log('jit', getJitFunctionClassToPlain(MarshalModel).toString());

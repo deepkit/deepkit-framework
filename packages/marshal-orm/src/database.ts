@@ -1,8 +1,8 @@
 import {ClassType, CustomError} from '@super-hornet/core';
-import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from "./query";
-import {getDatabaseSessionHydrator, isHydrated} from "./formatter";
-import {ClassSchema} from "@super-hornet/marshal";
-import {DatabaseSession} from "./database-session";
+import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from './query';
+import {getDatabaseSessionHydrator, isHydrated} from './formatter';
+import {ClassSchema} from '@super-hornet/marshal';
+import {DatabaseSession} from './database-session';
 
 export class NotFoundError extends CustomError {
 }

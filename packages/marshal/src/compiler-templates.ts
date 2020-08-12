@@ -1,8 +1,9 @@
-import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap} from "./decorators";
-import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from "./core";
-import {createClassToXFunction, createXToClassFunction, moment} from "./jit";
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from "@super-hornet/core";
-import {registerConverterCompiler, TypeConverterCompiler} from "./compiler-registry";
+import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap, Types} from './decorators';
+import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
+import {createClassToXFunction, createXToClassFunction, moment} from './jit';
+import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
+import {getConverterCompiler, getDataConverterJS, registerConverterCompiler, TypeConverterCompiler} from './compiler-registry';
+import {typeGuards} from './typeguards';
 
 export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : ''+${accessor};`;
@@ -17,6 +18,35 @@ export function compilerToNumber(setter: string, accessor: string, property: Pro
 
 //number class->plain is not necessary since typescript's typesystem already made sure its a number
 registerConverterCompiler('plain', 'class', 'number', compilerToNumber);
+
+registerConverterCompiler('plain', 'class', 'literal', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+    const literalValue = '_literal_value_' + property.name;
+
+    return {
+        template: `${setter} = ${literalValue};`,
+        context: {[literalValue]: property.literalValue}
+    };
+});
+
+const originalUndefined = getConverterCompiler('plain', 'class', 'undefined');
+registerConverterCompiler('plain', 'class', 'undefined', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
+    if (property.type === 'literal' && !property.isOptional) {
+        const literalValue = '_literal_value_' + property.name;
+        return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
+    }
+
+    return originalUndefined(setter, accessor, property, reserveVariable, context);
+});
+
+const originalNull = getConverterCompiler('plain', 'class', 'null');
+registerConverterCompiler('plain', 'class', 'null', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
+    if (property.type === 'literal' && !property.isNullable) {
+        const literalValue = '_literal_value_' + property.name;
+        return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
+    }
+
+    return originalNull(setter, accessor, property, reserveVariable, context);
+});
 
 registerConverterCompiler('plain', 'class', 'date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = new Date(${accessor});`;
@@ -142,9 +172,10 @@ export function compilerConvertClassToX(toFormat: string): TypeConverterCompiler
                 [classSchema]: getClassSchema(property.resolveClassType!),
                 createClassToXFunction,
             }
-        }
-    }
+        };
+    };
 }
+
 registerConverterCompiler('class', 'plain', 'class', compilerConvertClassToX('plain'));
 
 export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
@@ -171,46 +202,120 @@ export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
                 ${setter} = createXToClassFunction(${classSchema}, '${fromFormat}')(${accessor}, _options, getParents(), _state);
             }
-        `, context};
-    }
+        `, context
+        };
+    };
 }
+
 registerConverterCompiler('plain', 'class', 'class', compilerXToClass('plain'));
 
 export function compilerXToUnionClass(fromFormat: string): TypeConverterCompiler {
-    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-        const context: {[key: string]: any} = {
-            createXToClassFunction
+    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
+        //sort by type group (literal, type, generic primitive, any)
+        const sorts: { [type in Types]: number } = {
+            literal: 1,
+
+            Uint16Array: 2,
+            arrayBuffer: 2,
+            Float32Array: 2,
+            Float64Array: 2,
+            Int8Array: 2,
+            Int16Array: 2,
+            Int32Array: 2,
+            Uint8Array: 2,
+            Uint8ClampedArray: 2,
+            Uint32Array: 2,
+            objectId: 2,
+            uuid: 2,
+            class: 2,
+            date: 2,
+            enum: 2,
+            moment: 2,
+
+            boolean: 3,
+            string: 3,
+            number: 3,
+
+            partial: 4,
+            union: 4,
+            map: 4,
+            array: 4,
+            any: 5,
         };
 
-        const discriminatorClassVarName = reserveVariable();
-        let discriminator = `${discriminatorClassVarName} = undefined;\n`;
+        const sorted = property.templateArgs.slice(0);
+        sorted.sort((a, b) => {
+            if (sorts[a.type] < sorts[b.type]) return -1;
+            if (sorts[a.type] > sorts[b.type]) return +1;
+            return 0;
+        });
+
+        let discriminator: string[] = [`if (false) { }`];
         const discriminants: string[] = [];
+        let elseBranch = `throw new Error('No valid discriminant was found, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
 
-        for (const type of property.resolveUnionTypes) {
-            const typeSchema = getClassSchema(type);
-            typeSchema.loadDefaults();
+        if (property.isOptional) {
+            elseBranch = '';
+        } else if (property.isNullable) {
+            elseBranch = `${setter} = null;`;
+        } else if (property.hasManualDefaultValue()) {
+            const defaultVar = reserveVariable();
+            context.set(defaultVar, property.defaultValue);
+            elseBranch = `${setter} = ${defaultVar};`;
+        }
 
-            const discriminant = typeSchema.getDiscriminantPropertySchema();
-            if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
-                throw new Error(`Discriminant ${typeSchema.getClassName()}.${discriminant.name} has no default value.`);
+        for (const prop of sorted) {
+
+            const guardFactory = typeGuards.get(prop.type);
+            if (!guardFactory) {
+                throw new Error(`No type guard for ${prop.type} found`);
             }
 
-            discriminants.push(`${discriminant.name}=${JSON.stringify(discriminant.defaultValue)}`)
-            const typeVarName = reserveVariable();
-            context[typeVarName] = getClassSchema(type);
-            discriminator += `if (${accessor}.${discriminant.name} === ${JSON.stringify(discriminant.defaultValue)}) ${discriminatorClassVarName} = ${typeVarName};\n`;
+            const guard = guardFactory(prop);
+            const guardVar = reserveVariable();
+            context.set(guardVar, guard);
+
+            discriminants.push(prop.type);
+
+            discriminator.push(`
+                //guard:${prop.type}
+                else if (${guardVar}(${accessor})) {
+                    //its the correct type. what now?
+                    ${getDataConverterJS(setter, accessor, prop, fromFormat, 'class', context)}
+                }
+            `);
+
+            // if (prop.type !== 'class') throw new Error('Only class unions implemented.');
+            // const type = prop.resolveClassType!;
+
+            // if (prop.type === 'class') {
+            //
+            //     // discriminator
+            // }
+
+            // const typeSchema = getClassSchema(type);
+            // typeSchema.loadDefaults();
+            //
+            // const discriminant = typeSchema.getDiscriminantPropertySchema();
+            // if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
+            //     throw new Error(`Discriminant ${typeSchema.getClassName()}.${discriminant.name} has no default value.`);
+            // }
+            //
+            // discriminants.push(`${discriminant.name}=${JSON.stringify(discriminant.defaultValue)}`);
+            // const typeVarName = reserveVariable();
+            // context[typeVarName] = getClassSchema(type);
+            // discriminator += `if (${accessor}.${discriminant.name} === ${JSON.stringify(discriminant.defaultValue)}) ${discriminatorClassVarName} = ${typeVarName};\n`;
         }
 
         return {
             template: `
-            if (${accessor}) {
-                ${discriminator}
-                if (!${discriminatorClassVarName}) {
-                    throw new Error('No valid discriminant was found, so could not determine class type. discriminants: [${discriminants.join(',')}].');
-                }
-                ${setter} = createXToClassFunction(${discriminatorClassVarName}, '${fromFormat}')(${accessor}, _options, getParents(), _state);
+            ${discriminator.join('\n')}
+            else {
+                ${elseBranch}
+                
             }
-        `, context};
+        `, context
+        };
     };
 }
 

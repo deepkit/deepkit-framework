@@ -1,8 +1,9 @@
 import 'jest';
 import 'jest-extended';
-import {Entity, t, uuid, getClassSchema} from "@super-hornet/marshal";
-import {getInstanceState, hydrateEntity} from "@super-hornet/marshal-orm";
-import { createDatabaseSession } from './mongo.spec';
+import 'reflect-metadata';
+import {Entity, t, uuid, getClassSchema} from '@super-hornet/marshal';
+import {getInstanceState, hydrateEntity} from '@super-hornet/marshal-orm';
+import {createDatabaseSession} from './utils';
 
 @Entity('user2')
 class User {
@@ -52,6 +53,7 @@ class OrganisationMembership {
 
 
 jest.setTimeout(1000000);
+
 async function setupTestCase(name: string) {
     const session = await createDatabaseSession(name);
 
@@ -78,7 +80,7 @@ async function setupTestCase(name: string) {
 
     return {
         session: session, admin, marc, peter, marcel, microsoft, apple,
-    }
+    };
 }
 
 test('check if foreign keys are deleted correctly', async () => {
@@ -155,7 +157,7 @@ test('disabled identity map', async () => {
         expect(item).not.toBe(manager1);
         expect(item).toBeInstanceOf(User);
         expect(item.id).toBe(manager1.id);
-        expect(() => item.managedUsers).toThrow('managedUsers was not populated')
+        expect(() => item.managedUsers).toThrow('managedUsers was not populated');
     }
 
     {
@@ -201,7 +203,7 @@ test('hydrate', async () => {
         expect(item).toBeInstanceOf(OrganisationMembership);
         expect(item.user.id).toBe(marc.id);
         expect(item.organisation.id).toBe(apple.id);
-        expect(() => item.user.name).toThrow(`Can not access 'name' since class User was not completely hydrated`);
+        expect(() => item.user.name).toThrow(`Can not access User.name since class was not completely hydrated`);
 
         await hydrateEntity(item.user);
         expect(item.user.name).toBe('marc');
@@ -236,7 +238,7 @@ test('hydrate', async () => {
             expect(item).toBeInstanceOf(OrganisationMembership);
             expect(item.user.id).toBe(marc.id);
             expect(item.organisation.id).toBe(apple.id);
-            expect(() => item.user.name).toThrow(`Can not access 'name' since class User was not completely hydrated`);
+            expect(() => item.user.name).toThrow(`Can not access User.name since class was not completely hydrated`);
             expect(getInstanceState(item.user).getLastKnownPK()).toEqual({id: item.user.id});
             expect(session.identityMap.isKnown(item.user)).toBeTrue();
 
@@ -292,8 +294,6 @@ test('joins', async () => {
     // }
 
 
-
-
     {
         const item = await session.query(User).findOne();
         expect(item.name).toEqual('admin');
@@ -317,7 +317,7 @@ test('joins', async () => {
 
     {
         const item = await session.query(User).innerJoin('organisations').filter({name: 'notexisting'}).findOneFieldOrUndefined('name');
-        expect(item).toBeUndefined()
+        expect(item).toBeUndefined();
     }
 
     {
@@ -360,7 +360,7 @@ test('joins', async () => {
         const schema2 = getClassSchema(resolvedType);
         expect(schema2.name).toBe('user2');
         expect(schema2.classType).toBe(User);
-        expect(query.model.joins[0].propertySchema.getResolvedClassSchema().classType).toBe(User)
+        expect(query.model.joins[0].propertySchema.getResolvedClassSchema().classType).toBe(User);
     }
 
     {
@@ -392,7 +392,7 @@ test('joins', async () => {
         expect(item.organisation.id).toBe(microsoft.id);
         expect(() => {
             item.organisation.name;
-        }).toThrow(`Can not access 'name' since class Organisation`);
+        }).toThrow(`Can not access Organisation.name since class`);
 
         const count1 = await session.query(OrganisationMembership).filter({user: peter}).joinWith('user').count();
         expect(count1).toBe(1);
@@ -408,10 +408,10 @@ test('joins', async () => {
         expect(item.organisation.id).toBe(microsoft.id);
         expect(() => {
             item.user.name;
-        }).toThrow(`Can not access 'name' since class User was not completely hydrated`);
+        }).toThrow(`Can not access User.name since class was not completely hydrated`);
         expect(() => {
-            item.organisation.name;;
-        }).toThrow(`Can not access 'name' since class Organisation was not completely hydrated`);
+            item.organisation.name;
+        }).toThrow(`Can not access Organisation.name since class was not completely hydrated`);
     }
 
     {

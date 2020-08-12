@@ -57,7 +57,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
         const ids = await collection.aggregate(pipeline).toArray();
         return {
-            mongoFilter: {$or: ids},
+            // mongoFilter: {$or: ids},
             primaryKeys: ids.map(v => partialMongoToClass(this.classSchema.classType, v) as PrimaryKey<T>)
         };
     }
@@ -65,9 +65,11 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     public async delete(queryModel: MongoQueryModel<T>, many: boolean = false): Promise<number> {
         const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
 
-        const {mongoFilter, primaryKeys} = await this.fetchIds(queryModel, many);
-        if (mongoFilter.$or.length === 0) return 0;
+        const {primaryKeys} = await this.fetchIds(queryModel, many);
+        if (primaryKeys.length === 0) return 0;
         this.databaseSession.identityMap.deleteMany(this.classSchema, primaryKeys);
+
+        const mongoFilter = getMongoFilter(this.classSchema, queryModel);
 
         if (many) {
             const res = await collection.deleteMany(mongoFilter);

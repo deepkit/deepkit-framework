@@ -1,6 +1,7 @@
-import {ClassType, typeOf} from "@super-hornet/core";
+import {ClassType, typeOf} from '@super-hornet/core';
 import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator,} from './decorators';
-import {jitValidate, jitValidateProperty} from "./jit-validation";
+import {jitValidate, jitValidateProperty} from './jit-validation';
+import {ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 
 export class PropertyValidatorError {
     constructor(
@@ -94,7 +95,7 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * validate(SimpleModel, {id: false});
  * ```
  */
-export function validate<T>(classType: ClassType<T> | ClassSchema<T>, item: { [name: string]: any } | T, path?: string): ValidationError[] {
+export function validate<T extends ClassType<any> | ClassSchema<any>>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>, path?: string): ValidationError[] {
     return jitValidate(classType)(item, path);
 }
 
@@ -110,7 +111,7 @@ export function validate<T>(classType: ClassType<T> | ClassSchema<T>, item: { [n
  * }
  * ```
  */
-export function validates<T>(classType: ClassType<T> | ClassSchema<T>, item: { [name: string]: any }): item is T {
+export function validates<T extends ClassType<any> | ClassSchema<any>>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>): item is ExtractClassType<T> {
     return jitValidate(classType)(item).length === 0;
 }
 
@@ -127,9 +128,9 @@ export function validates<T>(classType: ClassType<T> | ClassSchema<T>, item: { [
  * }
  * ```
  */
-export function validatesFactory<T>(classType: ClassType<T> | ClassSchema<T>): (item: { [name: string]: any }) => item is T {
+export function validatesFactory<T extends ClassType<any> | ClassSchema<any>>(classType: T): (item: PlainOrFullEntityFromClassTypeOrSchema<T>) => item is ExtractClassType<T> {
     const validation = jitValidate(classType);
-    return (item: { [name: string]: any }): item is T => {
+    return (item): item is ExtractClassType<T> => {
         return validation(item).length === 0;
     };
 }

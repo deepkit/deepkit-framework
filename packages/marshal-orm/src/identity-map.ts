@@ -1,7 +1,9 @@
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, PartialEntity} from "@super-hornet/marshal";
-import {Entity} from "./query";
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from "./converter";
+import {ClassSchema, getClassSchema, PartialEntity} from '@super-hornet/marshal';
+import {Entity} from './query';
+import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
 import {isObject} from '@super-hornet/core';
+import {jitChangeDetector} from './change-detector';
+import {inspect} from 'util';
 
 export type PrimaryKey<T extends Entity> = { [name in keyof T & string]?: T[name] };
 
@@ -12,7 +14,7 @@ export function getNormalizedPrimaryKey(schema: ClassSchema<any>, primaryKey: an
 
     if (primaryFields.length > 1) {
         if (!isObject(primaryKey)) {
-            throw new Error(`Entity ${schema.getClassName()} has composite primary key. Please provide primary key as object, e.g. {pk1: value, pk2: value2}.`)
+            throw new Error(`Entity ${schema.getClassName()} has composite primary key. Please provide primary key as object, e.g. {pk1: value, pk2: value2}.`);
         }
         const res: { [name: string]: any } = {};
         for (const primaryField of primaryFields) {
@@ -30,83 +32,78 @@ export function getNormalizedPrimaryKey(schema: ClassSchema<any>, primaryKey: an
 }
 
 class InstanceState<T extends Entity> {
-    #knownInDatabase: boolean = false;
+    knownInDatabase: boolean = false;
 
     /**
      * This represents the last known values known to be in the database.
      * The data is used for change-detection + last known primary key extraction.
      * Reference store only its primary keys.
      */
-    #snapshot: JSONPartial<T>;
+    snapshot: JSONPartial<T>;
+    doSnapshot: (value: T) => any;
+    changeDetector: (last: any, current: any) => any;
 
-    readonly #classSchema: ClassSchema<T>;
-    readonly #item: T;
+    readonly classSchema: ClassSchema<T>;
+    readonly item: T;
 
-    #fromDatabase: boolean = false;
+    fromDatabase: boolean = false;
 
     constructor(item: T) {
-        this.#item = item;
-        this.#classSchema = getClassSchema(item);
+        this.item = item;
+        this.classSchema = getClassSchema(item);
 
-        this.#snapshot = getJITConverterForSnapshot(this.#classSchema)(this.#item);
+        this.changeDetector = jitChangeDetector(this.classSchema);
+        this.doSnapshot = getJITConverterForSnapshot(this.classSchema);
+        this.snapshot = this.doSnapshot(this.item);
+    }
+
+    [inspect.custom]() {
+        return `InstanceState<knownInDatabase=${this.knownInDatabase}, fromDatabase=${this.fromDatabase}>`;
     }
 
     toString(): string {
-        return `knownInDatabase: ${this.#knownInDatabase}`;
+        return `knownInDatabase: ${this.knownInDatabase}`;
     }
 
     getSnapshot() {
-        return this.#snapshot;
+        return this.snapshot;
     }
 
     isFromDatabase() {
-        return this.#fromDatabase;
+        return this.fromDatabase;
     }
 
     isKnownInDatabase(): boolean {
-        return this.#knownInDatabase;
+        return this.knownInDatabase;
     }
 
     markAsFromDatabase() {
-        this.#fromDatabase = true;
+        this.fromDatabase = true;
     }
 
     markAsPersisted() {
-        this.#snapshot = getJITConverterForSnapshot(this.#classSchema)(this.#item);
-        this.#knownInDatabase = true;
+        this.snapshot = this.doSnapshot(this.item);
+        this.knownInDatabase = true;
     }
 
     getLastKnownPKOrCurrent(): PrimaryKey<T> {
-        return getPrimaryKeyExtractor(this.#classSchema)(this.#snapshot || this.#item as any);
+        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot || this.item as any);
     }
 
     getLastKnownPKHashOrCurrent(): string {
-        return getPrimaryKeyHashGenerator(this.#classSchema)(this.#snapshot || this.#item as any);
+        return getPrimaryKeyHashGenerator(this.classSchema)(this.snapshot || this.item as any);
     }
 
     getLastKnownPK(): PrimaryKey<T> {
-        if (!this.#snapshot) {
+        if (!this.snapshot) {
             throw new Error(`Item is not known in the database.`);
         }
-        return getPrimaryKeyExtractor(this.#classSchema)(this.#snapshot);
+        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot);
     }
 
     markAsDeleted() {
-        this.#knownInDatabase = false;
+        this.knownInDatabase = false;
     }
-}
-
-const entityStateMap = new WeakMap<any, InstanceState<any>>();
-
-export function getInstanceStateOld<T>(item: T): InstanceState<T> {
-    let entityState = entityStateMap.get(item);
-
-    if (!entityState) {
-        entityState = new InstanceState(item);
-        entityStateMap.set(item, entityState);
-    }
-
-    return entityState;
 }
 
 const instanceStateSymbol = Symbol('state');
@@ -133,7 +130,7 @@ type Store = {
 };
 
 export class IdentityMap {
-    registry = new Map<string, Map<PKHash, Store>>();
+    registry = new Map<ClassSchema, Map<PKHash, Store>>();
 
     deleteMany<T>(classSchema: ClassSchema<T>, pks: PartialEntity<T>[]) {
         const store = this.getStore(classSchema);
@@ -152,11 +149,10 @@ export class IdentityMap {
     }
 
     isKnown<T>(item: T): boolean {
-        const classSchema = getClassSchema(getClassTypeFromInstance(item));
-        const store = this.getStore(classSchema);
-        const pk = getInstanceState(item).getLastKnownPKHashOrCurrent();
+        const store = this.getStore(getClassSchema(item));
+        const pkHash = getInstanceState(item).getLastKnownPKHashOrCurrent();
 
-        return store.has(pk);
+        return store.has(pkHash);
     }
 
     storeMany<T>(classSchema: ClassSchema<T>, items: PartialEntity<T>[]) {
@@ -179,15 +175,13 @@ export class IdentityMap {
     }
 
     getStore(classSchema: ClassSchema): Map<PKHash, Store> {
-        if (!classSchema.name) throw new Error(`Class ${classSchema.getClassName()} has no name via @Entity() defined.`);
-
-        const store = this.registry.get(classSchema.name);
+        const store = this.registry.get(classSchema);
         if (store) {
             return store;
         }
 
         const newStore = new Map();
-        this.registry.set(classSchema.name, newStore);
+        this.registry.set(classSchema, newStore);
         return newStore;
     }
 }

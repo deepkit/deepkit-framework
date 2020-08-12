@@ -15,7 +15,7 @@ import {isArray} from './utils';
 import {Buffer} from 'buffer';
 import {FlattenIfArray} from './utils';
 
-interface GlobalStore {
+export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> };
     unpopulatedCheckActive: boolean;
 }
@@ -41,6 +41,7 @@ export function getGlobalStore(): GlobalStore {
 export type Types =
     'objectId'
     | 'uuid'
+    | 'literal'
     | 'class'
     | 'map'
     | 'partial'
@@ -128,6 +129,7 @@ type IndexOptions = Partial<{
 export interface PropertySchemaSerialized {
     name: string;
     type: Types;
+    literalValue?: string | number | boolean;
     isArray?: true;
     isMap?: true;
     isDecorated?: true;
@@ -151,6 +153,8 @@ export interface PropertySchemaSerialized {
  */
 export class PropertyCompilerSchema {
     type: Types = 'any';
+
+    literalValue?: string | number | boolean;
 
     get isArray() {
         return this.type === 'array';
@@ -205,22 +209,30 @@ export class PropertyCompilerSchema {
 
     constructor(
         public name: string,
-        public classType?: ClassType<any> | ClassType<any>[]
+        public classType?: ClassType<any>
     ) {
     }
 
-    toString() {
+
+    /**
+     * Returns true when user manually set a default value via PropertySchema/decorator.
+     */
+    hasManualDefaultValue() {
+        return !this.hasDefaultValue && this.defaultValue !== undefined;
+    }
+
+    toString(): string {
         if (this.type === 'array') {
-            return `Array`;
+            return `Array<${this.templateArgs[0]}}>`;
         }
         if (this.type === 'map') {
-            return `Map`;
+            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>`;
         }
         if (this.type === 'partial') {
-            return `Partial`;
+            return `Partial<${this.templateArgs[0]}>`;
         }
         if (this.type === 'union') {
-            return this.resolveUnionTypes.map(v => getClassName(v)).join(' | ');
+            return this.templateArgs.map(v => v.toString()).join(' | ');
         }
         if (this.type === 'class') {
             return getClassName(this.resolveClassType || class {
@@ -237,11 +249,7 @@ export class PropertyCompilerSchema {
     }
 
     get resolveClassType(): ClassType<any> | undefined {
-        return isArray(this.classType) ? undefined : this.classType;
-    }
-
-    get resolveUnionTypes(): ClassType<any>[] {
-        return isArray(this.classType) ? this.classType : [];
+        return this.classType;
     }
 
     public isActualOptional(): boolean {
@@ -256,6 +264,7 @@ export class PropertyCompilerSchema {
             propertySchema.getResolvedClassTypeForValidType()
         );
         i.type = propertySchema.type;
+        i.literalValue = propertySchema.literalValue;
         i.validators = propertySchema.validators;
         i.isOptional = propertySchema.isOptional;
         i.isDiscriminant = propertySchema.isDiscriminant;
@@ -263,6 +272,7 @@ export class PropertyCompilerSchema {
         i.isReference = propertySchema.isReference;
         i.isParentReference = propertySchema.isParentReference;
         i.hasDefaultValue = propertySchema.hasDefaultValue;
+        i.templateArgs = propertySchema.templateArgs;
         return i;
     }
 }
@@ -312,9 +322,6 @@ export class PropertySchema extends PropertyCompilerSchema {
     protected classTypeForwardRef?: ForwardRefFn<any>;
     protected classTypeResolved?: ClassType<any>;
 
-    protected unionTypes?: (ClassType<any> | ForwardRefFn<any>)[];
-    protected unionResolved?: ClassType<any>[];
-
     templateArgs: PropertySchema[] = [];
 
     constructor(name: string) {
@@ -330,12 +337,6 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (!this.typeSet) return 'undefined';
         if (this.type === 'array') {
             return `${this.templateArgs[0]}[]`;
-        }
-        if (this.type === 'map') {
-            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>`;
-        }
-        if (this.type === 'partial') {
-            return `Partial<${this.templateArgs[0]}>`;
         }
         if (this.type === 'class') {
             if (this.classTypeForwardRef) {
@@ -366,6 +367,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             type: this.type
         };
 
+        if (this.literalValue !== undefined) props['literalValue'] = this.literalValue;
         if (this.isArray) props['isArray'] = true;
         if (this.isMap) props['isMap'] = true;
         if (this.isDecorated) props['isDecorated'] = true;
@@ -379,7 +381,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (this.methodName) props['methodName'] = this.methodName;
         if (this.groupNames.length) props['groupNames'] = this.groupNames;
 
-        if (this.templateArgs) {
+        if (this.templateArgs.length) {
             props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
         }
 
@@ -399,6 +401,7 @@ export class PropertySchema extends PropertyCompilerSchema {
     static fromJSON(props: PropertySchemaSerialized): PropertySchema {
         const p = new PropertySchema(props['name']);
         p.type = props['type'];
+        p.literalValue = props['literalValue'];
 
         if (props['isDecorated']) p.isDecorated = true;
         if (props['isParentReference']) p.isParentReference = true;
@@ -438,11 +441,6 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (value === undefined || value === null) return;
 
         this.setFromJSType(value.constructor);
-    }
-
-    setUnionTypes(types: (ClassType<any> | ForwardRefFn<any>)[]) {
-        this.setType('union');
-        this.unionTypes = types;
     }
 
     setFromJSType(type: any) {
@@ -510,22 +508,11 @@ export class PropertySchema extends PropertyCompilerSchema {
         return;
     }
 
-    get resolveUnionTypes(): ClassType<any>[] {
-        if (this.type === 'union') {
-            return this.getResolvedUnionTypes();
-        }
-
-        return [];
-    }
-
-    getResolvedClassTypeForValidType(): ClassType<any>[] | ClassType<any> | undefined {
+    getResolvedClassTypeForValidType(): ClassType<any> | undefined {
         if (this.type === 'class' || this.type === 'enum') {
             return this.getResolvedClassType();
         }
 
-        if (this.type === 'union') {
-            return this.getResolvedUnionTypes();
-        }
         return;
     }
 
@@ -536,21 +523,6 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
 
         return false;
-    }
-
-    getResolvedUnionTypes(): ClassType<any>[] {
-        if (this.unionResolved) {
-            return this.unionResolved;
-        }
-
-        this.unionResolved = [];
-        if (this.unionTypes) {
-            for (const v of this.unionTypes) {
-                this.unionResolved.push(isFunction(v) ? (v as any)() : v);
-            }
-        }
-
-        return this.unionResolved;
     }
 
     getResolvedClassType(): ClassType<any> {
@@ -594,6 +566,10 @@ export class ClassSchema<T = any> {
     collectionName?: string;
     databaseName?: string;
 
+    hashGenerator() {
+
+    };
+
     /**
      * Name of the property which this class is decorating.
      * As soon as someone use this class, the actual value of this property is used to serialize.
@@ -611,6 +587,11 @@ export class ClassSchema<T = any> {
      */
     protected methodProperties = new Map<string, PropertySchema[]>();
     methods: { [name: string]: PropertySchema } = {};
+
+    /**
+     * Object to store JIT function for this schema. This object is automatically cleared once the schema changes (added property for example).
+     */
+    jit = new Map<any, any>();
 
     /**
      * @internal
@@ -677,6 +658,15 @@ export class ClassSchema<T = any> {
 
     public getClassName(): string {
         return getClassName(this.classType);
+    }
+
+    getJit(symbol: symbol | string, generator: () => any) {
+        let jit = this.jit.get(symbol);
+        if (jit !== undefined) return jit;
+
+        jit = generator();
+        this.jit.set(symbol, jit);
+        return jit;
     }
 
     hasFullLoadHooks(): boolean {
@@ -756,6 +746,7 @@ export class ClassSchema<T = any> {
     public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
         //apply decorator, which adds properties automatically
         decorator(this.classType, name);
+        this.jit.clear();
         this.buildId++;
     }
 
@@ -1027,14 +1018,28 @@ export class ClassSchema<T = any> {
                 continue;
             }
 
+            if (fromReference.backReference && fromReference.backReference.mappedBy && !fromReference.backReference.via) {
+                if (fromReference.backReference.mappedBy === backRef.name) {
+                    //perfect match
+                    return backRef;
+                }
+                continue;
+            }
+
             //add to candidates if possible
             if (fromReference.backReference && fromReference.backReference.via && backRef.backReference && backRef.backReference.via) {
                 if (resolveClassTypeOrForward(fromReference.backReference.via) === resolveClassTypeOrForward(backRef.backReference.via)) {
                     candidates.push(backRef);
                 }
-            } else {
-                candidates.push(backRef);
+                continue;
             }
+
+            if (fromReference.backReference && fromReference.isArray && !fromReference.backReference.via) {
+                //other side must be non-array
+                if (backRef.isArray) continue;
+            }
+
+            candidates.push(backRef);
         }
 
         if (candidates.length > 1) {
@@ -1099,7 +1104,7 @@ export function getKnownClassSchemasNames(): string[] {
     return Object.keys(getGlobalStore().RegisteredEntities);
 }
 
-const classSchemaSymbol = Symbol('classSchema');
+export const classSchemaSymbol = Symbol('classSchema');
 
 /**
  * @hidden
@@ -1142,7 +1147,8 @@ export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any):
 /**
  * Returns meta information / schema about given entity class.
  */
-export function getClassSchema<T>(classTypeIn: ClassType<T> | Object): ClassSchema<T> {
+export function getClassSchema<T>(classTypeIn: ClassType<T> | Object | ClassSchema): ClassSchema<T> {
+    if (classTypeIn instanceof ClassSchema) return classTypeIn;
     const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
     if (!classType.prototype.hasOwnProperty(classSchemaSymbol)) {
@@ -1209,11 +1215,16 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
     return classSchema;
 }
 
-type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps };
+type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
 
-type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends FieldDecoratorResult<infer K > ? K : never;
+type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends FieldDecoratorResult<infer K> ? K : never;
 
-type ExtractClassDefinition<T extends PlainSchemaProps> = { [name in keyof T]: T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> : T[name] extends FieldDecoratorResult<any> ? ExtractDefinition<T[name]> : never };
+type ExtractClassDefinition<T extends PlainSchemaProps> = {
+    [name in keyof T]:
+        T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> :
+            T[name] extends ClassSchema<infer K> ? K :
+                T[name] extends FieldDecoratorResult<any> ? ExtractDefinition<T[name]> : T
+};
 
 /**
  * Returns the ClassType for a given instance.
@@ -1291,7 +1302,7 @@ export interface BackReferenceOptions<T> {
      * reference back. This is necessary when multiple outgoing references
      * to the same
      */
-    mappedBy?: T extends ClassType<infer K> ? keyof K & string : '',
+    mappedBy?: keyof T & string,
 }
 
 export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<ClassType<any>>): ClassType<any> {
@@ -1401,7 +1412,7 @@ export interface FieldDecoratorResult<T> {
      * }
      * ```
      */
-    template(...templateArgs: (ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>)[]): this;
+    template(...templateArgs: (ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]): this;
 
     /**
      * Used to define an index on a field.
@@ -1570,7 +1581,7 @@ export interface FieldDecoratorResult<T> {
 }
 
 export function isFieldDecorator(t: any): t is FieldDecoratorResult<any> {
-    return isFunction(t) && isFunction(t.name) && isFunction(t.optional);
+    return 'function' === typeof t && 'function' === typeof t.name && 'function' === typeof t.optional;
 }
 
 function createFieldDecoratorResult<T>(
@@ -1837,6 +1848,7 @@ function createFieldDecoratorResult<T>(
     fn.reference = () => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            if (property.isArray || property.isMap) throw new Error('Reference can not be of type array or map. Inverse the relation, or use backReference()');
             property.isReference = true;
             getClassSchema(target).registerReference(property);
         }]);
@@ -1886,13 +1898,16 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.template = (...templateArgs: any[]) => {
+    fn.template = (...templateArgs: (ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.templateArgs = [];
             for (const [i, t] of eachPair(templateArgs)) {
                 const name = property.name + '_' + i;
-                if (isFieldDecorator(t)) {
+                if ('string' === typeof t || 'number' === typeof t || 'boolean' === typeof t) {
+                    const p = fRaw.literal(t).buildPropertySchema(name);
+                    property.templateArgs.push(p);
+                } else if (isFieldDecorator(t)) {
                     //its a decorator @f()
                     //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
                     const p = t.buildPropertySchema(name);
@@ -1992,6 +2007,7 @@ function Nullable() {
         property.isNullable = true;
     };
 }
+
 /**
  * @internal
  */
@@ -2213,8 +2229,12 @@ fRaw['schema'] = function <T extends FieldTypes<any>>(propsOrName: string | Plai
     props = isString(propsOrName) ? props : propsOrName;
 
     for (const [name, prop] of Object.entries(props!)) {
-        if (isFieldDecorator(prop)) {
+        if ('string' === typeof prop || 'number' === typeof prop || 'boolean' === typeof prop) {
+            schema.addProperty(name, fRaw.literal(prop));
+        } else if (isFieldDecorator(prop)) {
             schema.addProperty(name, prop);
+        } else if (prop instanceof ClassSchema) {
+            schema.addProperty(name, fRaw.type(prop.classType));
         } else {
             const subSchema = fRaw.schema(name, prop);
             schema.addProperty(name, fRaw.type(subSchema.classType));
@@ -2228,7 +2248,7 @@ fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType<an
     return Field('array').template(type);
 };
 
-fRaw['map'] = function <T extends ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType: FieldDecoratorResult<any> = fRaw.any): FieldDecoratorResult<{[name: string]: ExtractType<T>}> {
+fRaw['map'] = function <T extends ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType: FieldDecoratorResult<any> = fRaw.any): FieldDecoratorResult<{ [name: string]: ExtractType<T> }> {
     return Field('map').template(keyType, type);
 };
 
@@ -2238,8 +2258,16 @@ fRaw['type'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<a
     return Field(type);
 };
 
-fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any> | ForwardRefFn<any>)[]): FieldDecoratorResult<T> {
-    return UnionField(...types);
+fRaw['literal'] = function <T extends number | string | boolean>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
+    return Field('literal').use((target, property) => {
+        property.literalValue = type;
+    });
+};
+
+fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any> | ForwardRefFn<any> | ClassSchema | string | number | boolean | PlainSchemaProps | FieldDecoratorResult<any>)[]): FieldDecoratorResult<T> {
+    return Field('union').use((target, property) => {
+        property.setType('union');
+    }).template(...types);
 };
 
 fRaw['partial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
@@ -2252,7 +2280,11 @@ fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabels
 
 fRaw['moment'] = MomentField();
 
-type ExtractType<T> = T extends ForwardRefFn<infer K> ? K : (T extends ClassSchema<infer K> ? K : (T extends PlainSchemaProps ? ExtractClassDefinition<T> : (T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T)));
+type ExtractType<T> = T extends ForwardRefFn<infer K> ? K :
+    T extends ClassType<infer K> ? K :
+        T extends ClassSchema<infer K> ? K :
+            T extends PlainSchemaProps ? ExtractClassDefinition<T> :
+                T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
 
 export interface MainDecorator {
     /**
@@ -2295,7 +2327,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    union<T extends (ClassType<any> | ForwardRefFn<any>)[]>(...type: T): FieldDecoratorResult<T[][0]>;
+    union<T extends (ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]>(...type: T): FieldDecoratorResult<ExtractType<T[number]>>;
 
     /**
      * Marks a field as discriminant. This field MUST have a default value.
@@ -2326,6 +2358,19 @@ export interface MainDecorator {
      * Marks a field as string.
      */
     string: FieldDecoratorResult<string>;
+
+    /**
+     * Marks a filed as literal. Nice with union types.
+     *
+     * ```typescript
+     * @t.literal('a')
+     *
+     * @t.union(t.literal('a'), t.literal('b'))
+     *
+     * @t.union('a', 'b')
+     * ```
+     */
+    literal<T extends number | string | boolean>(type: T): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as number.
@@ -2414,7 +2459,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    map<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<{[name: string]: ExtractType<T>}>;
+    map<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
 }
 
 /**
@@ -2539,15 +2584,6 @@ function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return Field('enum').use((target, property) => {
         property.setClassType(type);
         property.allowLabelsAsValue = allowLabelsAsValue;
-    });
-}
-
-/**
- * @internal
- */
-function UnionField<T>(...types: (ClassType<any> | ForwardRefFn<any>)[]) {
-    return Field('union').use((target, property) => {
-        property.setUnionTypes(types);
     });
 }
 

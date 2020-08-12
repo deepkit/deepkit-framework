@@ -1,12 +1,13 @@
 import {DatabaseAdapter, DatabasePersistence} from './database';
 import {Entity} from './query';
 import {ClassType, CustomError} from '@super-hornet/core';
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore} from '@super-hornet/marshal';
 import {GroupArraySort} from '@super-hornet/topsort';
 import {getNormalizedPrimaryKey, IdentityMap, PrimaryKey} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
 import {HydratorFn, markAsHydrated} from './formatter';
-import {getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
+import {getPrimaryKeyExtractor} from './converter';
+import {getReference} from './reference';
 
 let SESSION_IDS = 0;
 
@@ -16,6 +17,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
     protected inCommit: boolean = false;
     protected committed: boolean = false;
+    protected global: GlobalStore = getGlobalStore();
 
     constructor(
         protected identityMap: IdentityMap,
@@ -35,10 +37,10 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     public add<T extends Entity>(item: T, deep: boolean = true) {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
+        if (this.removeQueue.has(item)) return;
         if (this.addQueue.has(item)) return;
 
         this.addQueue.add(item);
-        this.removeQueue.delete(item);
 
         if (deep) {
             for (const dep of this.getReferenceDependencies(item)) {
@@ -51,6 +53,8 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         const result: Entity[] = [];
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
+        const old = this.global.unpopulatedCheckActive;
+        this.global.unpopulatedCheckActive = false;
         for (const reference of classSchema.references.values()) {
             //todo, check if join was populated. will throw otherwise
             const v = item[reference.name as keyof T] as any;
@@ -61,6 +65,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                 result.push(v);
             }
         }
+        this.global.unpopulatedCheckActive = old;
 
         return result;
     }
@@ -205,20 +210,13 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      * the `hydrateEntity` function.
      *
      * ```
-     * database.getReference(User, 1);
-     *
+     * const user = database.getReference(User, 1);
      * ```
      */
     public getReference<T>(classType: ClassType<T>, primaryKey: any | PrimaryKey<T>): T {
         const schema = getClassSchema(classType);
         const pk = getNormalizedPrimaryKey(schema, primaryKey);
-        const pkHash = getPrimaryKeyHashGenerator(schema)(pk);
-
-        const item = this.identityMap.getByHash(schema, pkHash);
-        if (item) return item;
-
-        //todo: create reference and put into identityMap
-        throw new Error('Not implemented');
+        return getReference(schema, pk, this.identityMap);
     }
 
     public getConnection(): ReturnType<this['adapter']['createConnection']> {
@@ -294,7 +292,18 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     public async commit<T>() {
-        if (!this.rounds.length) return;
+        if (!this.rounds.length) {
+            //we create a new round
+            this.enterNewRound();
+        }
+
+        //make sure all stuff in the identity-map is known
+        const round = this.getCurrentRound();
+        for (const map of this.identityMap.registry.values()) {
+            for (const item of map.values()) {
+                round.add(item.ref);
+            }
+        }
 
         if (this.closed) {
             throw new SessionClosedException(`Session is closed due to an exception. Repair its failure and call reset() to open it again.`);

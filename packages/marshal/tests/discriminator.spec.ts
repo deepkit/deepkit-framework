@@ -37,10 +37,9 @@ test('test discriminator schema', () => {
     const schema = getClassSchema(User);
     const config = schema.getProperty('config');
     expect(config.type).toBe('union');
-    expect(config.getResolvedUnionTypes()).toEqual([ConfigA, ConfigB]);
-    expect(config.getResolvedClassTypeForValidType()).toEqual([ConfigA, ConfigB]);
+    expect(config.templateArgs.map(v => v.resolveClassType)).toEqual([ConfigA, ConfigB]);
 
-    expect(getClassSchema(ConfigB).getProperty('myValue2').resolveUnionTypes).toEqual([]);
+    expect(getClassSchema(ConfigB).getProperty('myValue2').templateArgs).toEqual([]);
     expect(getClassSchema(ConfigB).getProperty('myValue2').isResolvedClassTypeIsDecorated()).toEqual(false);
 
     const schemaConfigA = getClassSchema(ConfigA);
@@ -51,7 +50,7 @@ test('test discriminator schema', () => {
     expect(schemaConfigA.getProperty('myValue').type).toBe('string');
 
     const compilerSchema = PropertyCompilerSchema.createFromPropertySchema(config);
-    expect(compilerSchema.resolveUnionTypes).toEqual([ConfigA, ConfigB]);
+    expect(compilerSchema.templateArgs.map(v => v.resolveClassType)).toEqual([ConfigA, ConfigB]);
 });
 
 test('test discriminator class to plain', () => {

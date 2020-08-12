@@ -1,8 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {jitClassToPlain, jitPartialPlainToClass, jitPlainToClass, plainToClassFactory} from "../src/jit";
-import {bench, BenchSuite} from "@super-hornet/core";
-import {t} from "../index";
+import {t} from '../index';
 
 export class MarshalModel {
     @t ready?: boolean;
@@ -18,7 +16,8 @@ export class MarshalModel {
     }
 }
 
-test('nix', () => {});
+test('nix', () => {
+});
 
 // test('benchmark plainToClass', () => {
 //     const count = 100_000;

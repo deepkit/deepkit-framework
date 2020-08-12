@@ -1,7 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, t} from '@super-hornet/marshal';
-import {getNormalizedPrimaryKey} from '../index';
+import {BaseQuery, DatabaseQueryModel, Formatter, getInstanceState, getNormalizedPrimaryKey} from '../index';
+import {getReference} from '../src/reference';
 
 test('getNormalizedPrimaryKey', () => {
     class User {
@@ -22,6 +23,63 @@ test('getNormalizedPrimaryKey', () => {
     expect(getNormalizedPrimaryKey(getClassSchema(User2), {id: '124', id2: '444'})).toEqual({id: '124', id2: '444'});
 });
 
-test('asd', () => {
+test('original schema', () => {
+    class User {
+        @t.primary id!: number;
 
+        constructor(@t public username: string) {
+        }
+    }
+
+    const ref = getReference(getClassSchema(User), {id: 2});
+    expect(ref.id).toBe(2);
+
+    expect(getClassSchema(ref) === getClassSchema(User)).toBe(true);
+});
+
+test('snapshot correct state', () => {
+    const formatter = new Formatter('plain');
+
+    const image = t.schema('Image', {
+        id: t.number.primary
+    });
+
+    const user = t.schema('User', {
+        id: t.number.primary,
+        username: t.string,
+        image: t.type(image).optional.reference(),
+        image2: t.type(image).optional.reference(),
+    });
+
+    {
+        const query = new BaseQuery(user, new DatabaseQueryModel<any, any, any>());
+        const user1 = formatter.hydrate(user, query.model, {username: 'Peter', id: '2', image: '1'});
+        const snapshot = getInstanceState(user1).getSnapshot();
+        expect(snapshot.hasOwnProperty('image2')).toBe(true);
+        //when schema changes we get from mongodb `undefined` for new fields, but our snapshot converts that to `null`
+        // since all databases use `null` as `not defined`. this means we basically ignore `undefined` where possible.
+        expect(snapshot).toEqual({username: 'Peter', id: 2, image: {id: 1}, image2: null});
+
+        user1.image2 = getReference(image, {id: 2});
+        expect(user1.image2.id).toBe(2);
+        getInstanceState(user1).markAsPersisted();
+        expect(getInstanceState(user1).getSnapshot()).toEqual({username: 'Peter', id: 2, image: {id: 1}, image2: {id: 2}});
+
+        user1.image = undefined;
+        getInstanceState(user1).markAsPersisted();
+        expect(getInstanceState(user1).getSnapshot()).toEqual({username: 'Peter', id: 2, image: null, image2: {id: 2}});
+    }
+
+    {
+        const query = new BaseQuery(user, new DatabaseQueryModel<any, any, any>());
+        const user1 = formatter.hydrate(user, query.model, {username: 'Peter2', id: '3', image: '1', image2: null});
+        const snapshot = getInstanceState(user1).getSnapshot();
+        expect(snapshot.hasOwnProperty('image2')).toBe(true);
+        expect(snapshot).toEqual({username: 'Peter2', id: 3, image: {id: 1}, image2: null});
+
+        user1.image2 = getReference(image, {id: 2});
+        expect(user1.image2.id).toBe(2);
+        getInstanceState(user1).markAsPersisted();
+        expect(getInstanceState(user1).getSnapshot()).toEqual({username: 'Peter2', id: 3, image: {id: 1}, image2: {id: 2}});
+    }
 });

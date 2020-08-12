@@ -128,7 +128,7 @@ test('benchmark big plainToClass', () => {
             name: 'name',
             type: 2,
             plan: Plan.ENTERPRISE,
-            children: {label: 'label'},
+            children: [{label: 'label'}],
             childrenMap: {'sub': {label: 'label'}},
             types: ['a', 'b', 'c']
         });

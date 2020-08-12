@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {User} from "./testcase-b/user";
-import {createDatabaseSession} from "./mongo.spec";
+import {createDatabaseSession} from "./utils";
 
 async function setupTestCase(name: string) {
     const session = await createDatabaseSession(name);

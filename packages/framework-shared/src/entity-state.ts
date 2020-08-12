@@ -240,7 +240,7 @@ export class EntityState {
      */
     public handleEntity<T extends IdInterface>(classType: ClassType<T>, jsonItem: JSONEntity<T>): EntitySubject<T> {
         const store = this.getStore(classType);
-        const item = plainToClass(classType, jsonItem);
+        const item = plainToClass(classType, jsonItem as any);
 
         return store.createFork(item.id, item);
     }
@@ -255,7 +255,7 @@ export class EntityState {
             const setItems: T[] = [];
             for (const itemRaw of stream.items) {
                 if (!collection.entitySubjects[itemRaw.id]) {
-                    const item = plainToClass(classType, itemRaw);
+                    const item = plainToClass(classType, itemRaw as any);
                     const subject = store.createFork(item.id, item);
 
                     setItems.push(subject.getValue());
@@ -325,7 +325,7 @@ export class EntityState {
 
         if (stream.type === 'add') {
             if (!collection.entitySubjects[stream.item.id]) {
-                const item = plainToClass(classType, stream.item);
+                const item = plainToClass(classType, stream.item as any);
                 const subject = store.createFork(item.id, item);
 
                 collection.entitySubjects[item.id] = subject;

@@ -1,9 +1,10 @@
-import {ClassSchema, createXToClassFunction, getGlobalStore, jitPartial, PropertySchema} from "@super-hornet/marshal";
-import {DatabaseQueryModel} from "./query";
-import {ClassType} from "@super-hornet/core";
-import {getInstanceState, IdentityMap, PKHash} from "./identity-map";
-import {convertPrimaryKeyToClass} from "./utils";
+import {ClassSchema, createXToClassFunction, getGlobalStore, jitPartial, PropertySchema} from '@super-hornet/marshal';
+import {DatabaseQueryModel} from './query';
+import {ClassType} from '@super-hornet/core';
+import {getInstanceState, IdentityMap, PKHash} from './identity-map';
+import {convertPrimaryKeyToClass} from './utils';
 import {getPrimaryKeyHashGenerator} from './converter';
+import {createReferenceClass, getReference} from './reference';
 
 const sessionHydratorSymbol = Symbol('sessionHydratorSymbol');
 
@@ -39,7 +40,7 @@ export function getDatabaseSessionHydrator(item: any): HydratorFn {
 export class Formatter {
     //its important to have for each formatter own proxyClasses since we attached to the prototype the database
     //session
-    protected proxyClasses: Map<ClassType<any>, ClassType<any>> = new Map();
+    protected referenceClasses: Map<ClassSchema, ClassType<any>> = new Map();
 
     protected instancePools: Map<ClassType<any>, Map<PKHash, any>> = new Map();
 
@@ -64,7 +65,7 @@ export class Formatter {
         return this.hydrateModel(model, classSchema, value);
     }
 
-    protected makeInvalidReference(item: any, propertySchema: PropertySchema) {
+    protected makeInvalidReference(item: any, classSchema: ClassSchema, propertySchema: PropertySchema) {
         Object.defineProperty(item, propertySchema.name, {
             enumerable: false,
             configurable: false,
@@ -74,7 +75,7 @@ export class Formatter {
                 }
 
                 if (getGlobalStore().unpopulatedCheckActive) {
-                    throw new Error(`Reference ${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                    throw new Error(`Reference ${classSchema.getClassName()}.${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
                 }
             },
             set(v: any) {
@@ -87,61 +88,18 @@ export class Formatter {
         });
     }
 
-    protected getProxyClass<T>(classSchema: ClassSchema<T>): ClassType<T> {
-        if (!this.proxyClasses.has(classSchema.classType)) {
-            const type = classSchema.classType as any;
+    protected getReferenceClass<T>(classSchema: ClassSchema<T>): ClassType<T> {
+        let Reference = this.referenceClasses.get(classSchema);
+        if (Reference) return Reference;
 
-            //note: this is necessary to give the anonymous class the same name when using toString().
-            const temp: any = {};
-            temp.Proxy = class extends type {
-            };
-            const Proxy = temp.Proxy;
+        Reference = createReferenceClass(classSchema);
 
-            if (this.hydrator) {
-                setHydratedDatabaseSession(Proxy.prototype, this.hydrator);
-            }
-
-            for (const property of classSchema.getClassProperties().values()) {
-                if (property.isId) continue;
-
-                const message = property.isReference || property.backReference ?
-                    `Reference ${classSchema.getClassName()}.${property.name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
-                    :
-                    `Can not access '${property.name}' since class ${classSchema.getClassName()} was not completely hydrated. Use 'await hydrate(item)' to completely load it.`;
-
-                Object.defineProperty(Proxy.prototype, property.name, {
-                    enumerable: false,
-                    configurable: true,
-                    get() {
-                        if (this.hasOwnProperty(property.symbol)) {
-                            return this[property.symbol];
-                        }
-
-                        if (getGlobalStore().unpopulatedCheckActive) {
-                            throw new Error(message);
-                        }
-                    },
-                    set(v) {
-                        if (!getGlobalStore().unpopulatedCheckActive) {
-                            //when this check is off, this item is being constructed
-                            //so we ignore initial set operations
-                            return;
-                        }
-
-                        // when we set value, we just accept it and treat all
-                        // properties accessors that don't throw the Error above as "updated"
-                        Object.defineProperty(this, property.symbol, {
-                            enumerable: false,
-                            writable: true,
-                            value: v
-                        });
-                    }
-                });
-            }
-            this.proxyClasses.set(classSchema.classType, Proxy);
+        if (this.hydrator) {
+            setHydratedDatabaseSession(Reference.prototype, this.hydrator);
         }
 
-        return this.proxyClasses.get(classSchema.classType)!;
+        this.referenceClasses.set(classSchema, Reference);
+        return Reference;
     }
 
     protected getReference(
@@ -149,52 +107,31 @@ export class Formatter {
         dbItem: any,
         propertySchema: PropertySchema,
         isPartial: boolean
-    ): object | undefined {
+    ): object | undefined | null {
         const fkName = propertySchema.getForeignKeyName();
 
         if (undefined === dbItem[fkName] || null === dbItem[fkName]) {
+            if (propertySchema.isNullable) return null;
             return;
         }
 
         const foreignSchema = propertySchema.getResolvedClassSchema();
-        const foreignPrimaryFields = foreignSchema.getPrimaryFields();
-        //note: foreign keys only support currently a single foreign key ...
-        const foreignPrimaryKey = {[foreignPrimaryFields[0].name]: dbItem[fkName]};
-
-        const pkHash = getPrimaryKeyHashGenerator(foreignSchema)(foreignPrimaryKey);
-
         const pool = this.getInstancePoolForClass(foreignSchema.classType);
 
-        if (!isPartial) {
-            if (this.identityMap) {
-                const item = this.identityMap.getByHash(foreignSchema, pkHash);
-                if (item) {
-                    return item;
-                }
-            }
-            if (pool.has(pkHash)) {
-                return pool.get(pkHash);
-            }
-        }
-
-        const args: any[] = [];
+        //note: foreign keys only support currently a single foreign key ...
+        const foreignPrimaryFields = foreignSchema.getPrimaryFields();
+        const foreignPrimaryKey = {[foreignPrimaryFields[0].name]: dbItem[fkName]};
         const foreignPrimaryKeyAsClass = convertPrimaryKeyToClass(classSchema, this.serializerSourceName, foreignPrimaryKey);
 
-        for (const prop of foreignSchema.getMethodProperties('constructor')) {
-            args.push(foreignPrimaryKeyAsClass[prop.name]);
-        }
+        const ref = getReference(
+            foreignSchema,
+            foreignPrimaryKeyAsClass,
+            isPartial ? undefined : this.identityMap,
+            isPartial ? undefined : pool,
+            this.getReferenceClass(foreignSchema)
+        );
 
-        getGlobalStore().unpopulatedCheckActive = false;
-        const ref = new (this.getProxyClass(foreignSchema))(...args);
-        Object.assign(ref, foreignPrimaryKeyAsClass);
-
-        getGlobalStore().unpopulatedCheckActive = true;
         getInstanceState(ref).markAsFromDatabase();
-
-        if (!isPartial) {
-            pool.set(pkHash, ref);
-            if (this.identityMap) this.identityMap.store(foreignSchema, ref);
-        }
 
         return ref;
     }
@@ -217,13 +154,16 @@ export class Formatter {
                 if (fromDatabase && !isHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance
-                    const converted = createXToClassFunction(classSchema, this.serializerSourceName)(value)
+                    const converted = createXToClassFunction(classSchema, this.serializerSourceName)(value);
 
                     for (const propName of classSchema.propertyNames) {
                         if (propName === classSchema.idField) continue;
 
                         const prop = classSchema.getClassProperties().get(propName)!;
-                        if (prop.isReference || prop.backReference) continue;
+                        if (prop.isReference || prop.backReference) {
+                            //todo: assign Reference
+                            continue
+                        }
 
                         Object.defineProperty(item, propName, {
                             enumerable: true,
@@ -245,8 +185,6 @@ export class Formatter {
                             if (item.hasOwnProperty(join.propertySchema.symbol)) {
                                 continue;
                             }
-
-                            //todo: if current value is partial, we could
 
                             if (value[refName] !== undefined && value[refName] !== null) {
                                 let joinValue: any;
@@ -323,7 +261,7 @@ export class Formatter {
                 } else {
                     //unpopulated backReferences are inaccessible
                     if (!model.isPartial()) {
-                        this.makeInvalidReference(converted, join.propertySchema);
+                        this.makeInvalidReference(converted, classSchema, join.propertySchema);
                     }
                 }
             }
@@ -333,12 +271,11 @@ export class Formatter {
         for (const propertySchema of classSchema.references.values()) {
             if (handledRelation[propertySchema.name]) continue;
             if (propertySchema.isReference) {
-                const reference = this.getReference(classSchema, value, propertySchema, model.isPartial());
-                if (reference) converted[propertySchema.name] = reference;
+                converted[propertySchema.name] = this.getReference(classSchema, value, propertySchema, model.isPartial());
             } else {
                 //unpopulated backReferences are inaccessible
                 if (!model.isPartial()) {
-                    this.makeInvalidReference(converted, propertySchema);
+                    this.makeInvalidReference(converted, classSchema, propertySchema);
                 }
             }
         }

@@ -62,8 +62,11 @@ export class BenchSuite {
     }
 
     addAsync(title: string, fn: () => Promise<void>, options: any = {}) {
-        options = Object.assign({async: true}, options);
-        return this.add(title, fn, options);
+        options = Object.assign({maxTime: 1, defer: true}, options);
+        this.suite.add(title, async (deferred: any) => {
+            await fn();
+            deferred.resolve();
+        }, options);
     }
 
     add(title: string, fn: () => void | Promise<void>, options: any = {}) {
@@ -77,7 +80,14 @@ export class BenchSuite {
     }
 
     async runAsync() {
-        await this.suite.run({'async': true});
+        print("Start benchmark", green(this.name));
+        await new Promise((resolve) => {
+            this.suite.run();
+            this.suite.on('complete', () => {
+                console.log('done?');
+                resolve();
+            });
+        });
     }
 }
 
@@ -97,5 +107,6 @@ export async function bench(times: number, title: string, exec: () => void | Pro
         green(title),
         took.toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms,',
         (took / times).toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms per item',
+        process.memoryUsage().rss / 1024 / 1024, 'MB memory'
     ].join(' ') + '\n');
 }

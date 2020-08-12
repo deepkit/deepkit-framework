@@ -141,8 +141,10 @@ export class MongoConnection implements DatabaseConnection {
             }, {raw: true, batchSize});
             const parsedMore = parser(more);
             if (!parsedMore.ok) {
-                throw new Error(parsed.errmsg);
+                if (parsed.errmsg) throw new Error(parsed.errmsg);
+                return parsed.cursor.firstBatch;
             }
+
             parsed.cursor.firstBatch.push(...parsedMore.cursor.nextBatch);
             if (parsedMore.cursor.nextBatch.length < batchSize) {
                 return parsed.cursor.firstBatch;

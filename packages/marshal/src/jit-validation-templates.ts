@@ -117,6 +117,11 @@ registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSc
     };
 });
 
+registerCheckerCompiler('literal', (accessor: string, property: PropertyCompilerSchema, utils) => {
+    //todo. really necessary? Because we force set the literal value always, no matter what value comes in.
+    return '';
+});
+
 registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSchema, utils) => {
     const discriminatorClassVarName = utils.reserveVariable();
     let discriminator = `${discriminatorClassVarName} = undefined;\n`;
@@ -124,7 +129,10 @@ registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSc
         jitValidate
     };
 
-    for (const type of property.resolveUnionTypes) {
+    for (const prop of property.templateArgs) {
+        if (prop.type !== 'class') throw new Error('Only class unions implemented.');
+        const type = prop.resolveClassType!;
+
         const typeSchema = getClassSchema(type);
         typeSchema.loadDefaults();
 

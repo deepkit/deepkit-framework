@@ -1,8 +1,9 @@
-import {PropertyCompilerSchema, Types} from "./decorators";
-import {jitPartial} from "./jit";
+import {PropertyCompilerSchema, Types} from './decorators';
+import {jitPartial} from './jit';
 
 export type TypeConverterCompilerContext = Map<string, any>;
-export type TypeConverterCompiler = (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable: () => string, context: TypeConverterCompilerContext) => string | { template: string, context: { [name: string]: any } };
+export type ReserveVariable = () => string;
+export type TypeConverterCompiler = (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable: ReserveVariable, context: TypeConverterCompilerContext) => string | { template: string, context: { [name: string]: any } };
 
 export const compilerRegistry = new Map<string, TypeConverterCompiler>();
 
@@ -31,10 +32,20 @@ export const compilerRegistry = new Map<string, TypeConverterCompiler>();
 export function registerConverterCompiler(
     fromFormat: string,
     toFormat: string,
-    type: Types,
+    type: Types | 'undefined' | 'null',
     compiler: TypeConverterCompiler
 ) {
     compilerRegistry.set(fromFormat + ':' + toFormat + ':' + type, compiler);
+}
+
+export function getConverterCompiler(
+    fromFormat: string,
+    toFormat: string,
+    type: Types | 'undefined' | 'null',
+): TypeConverterCompiler {
+    return compilerRegistry.get(fromFormat + ':' + toFormat + ':' + type) || (() => {
+        return '';
+    });
 }
 
 export function reserveVariable(
@@ -78,7 +89,7 @@ function getCompilers(
     fromFormat: string,
     toFormat: string,
     property: PropertyCompilerSchema
-): {compilers: TypeConverterCompiler[], subProperty: PropertyCompilerSchema} {
+): { compilers: TypeConverterCompiler[], subProperty: PropertyCompilerSchema } {
     const subProperty = property.isArray || property.isMap ? property.getSubType() : property;
 
     const compilerDirection = fromFormat + ':' + toFormat;
@@ -106,78 +117,76 @@ export function getDataConverterJS(
     property: PropertyCompilerSchema,
     fromFormat: string,
     toFormat: string,
-    rootContext: TypeConverterCompilerContext
+    rootContext: TypeConverterCompilerContext,
+    undefinedSetterCode: string = '',
+    nullSetterCode: string = '',
 ): string {
     const {compilers, subProperty} = getCompilers(fromFormat, toFormat, property);
     const setNull = property.isNullable ? `${setter} = null;` : '';
     rootContext.set('_default_' + property.name, property.defaultValue);
     const setUndefined = !property.hasDefaultValue && property.defaultValue !== undefined ? `${setter} = ${'_default_' + property.name};` : '';
 
+    const undefinedCompiler = compilerRegistry.get(fromFormat + ':' + toFormat + ':undefined');
+    const nullCompiler = compilerRegistry.get(fromFormat + ':' + toFormat + ':undefined');
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeCompiler(rootContext, [undefinedCompiler], setter, accessor, subProperty) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeCompiler(rootContext, [nullCompiler], setter, accessor, subProperty) : '');
+
     if (property.isArray) {
+        const a = reserveVariable(rootContext, 'a');
+        const l = reserveVariable(rootContext, 'l');
         //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
         let setDefault = property.isOptional ? '' : `${setter} = [];`;
-        if (!compilers.length) {
-            return `
-            if (${accessor} === undefined) { 
-                ${setUndefined}
-            } else if (${accessor} === null) { 
-                ${setNull} 
-            } else {
-                if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
-                    ${setter} = [];
-                } else {
-                    ${setter} = ${accessor}.slice();
-                }
-            }
-            `
-        }
         return `
-            if (${accessor} === undefined) { 
+            if (${accessor} === undefined) {
                 ${setUndefined}
-            } else if (${accessor} === null) { 
-                ${setNull} 
+                ${undefinedSetterCode}
+            } else if (${accessor} === null) {
+                ${setNull}
+                ${nullSetterCode}
             } else {
                 if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
                     ${setDefault}
                 } else {
-                     var l = ${accessor}.length;
-                     var a = ${accessor}.slice();
-                     while (l--) {
+                     let ${l} = ${accessor}.length;
+                     let ${a} = ${accessor}.slice();
+                     while (${l}--) {
                         //make sure all elements have the correct type
-                        if (${accessor}[l] !== undefined && ${accessor}[l] !== null) {
-                            var itemValue;
-                            ${executeCompiler(rootContext, compilers, `itemValue`, `a[l]`, subProperty)}
+                        if (${accessor}[${l}] !== undefined && ${accessor}[${l}] !== null) {
+                            let itemValue;
+                            ${getDataConverterJS(`itemValue`, `${a}[${l}]`, property.getSubType(), fromFormat, toFormat, rootContext)}
                             if (${!subProperty.isOptional} && itemValue === undefined) {
-                                a.splice(l, 1);
+                                ${a}.splice(${l}, 1);
                             } else {
-                                a[l] = itemValue;   
+                                ${a}[${l}] = itemValue;   
                             }
                         }
                      }
-                     ${setter} = a;
+                     ${setter} = ${a};
                 }
             }
         `;
     } else if (property.isMap) {
-        const line = compilers.length ? executeCompiler(rootContext, compilers, `a[i]`, `${accessor}[i]`, subProperty) : `a[i] = ${accessor}[i];`;
+        const a = reserveVariable(rootContext);
         let setDefault = property.isOptional ? '' : `${setter} = {};`;
         return `
-            if (${accessor} === undefined) {  
+            if (${accessor} === undefined) {
                 ${setUndefined}
-            } else if (${accessor} === null) { 
-                ${setNull} 
+                ${undefinedSetterCode}
+            } else if (${accessor} === null) {
+                ${setNull}
+                ${nullSetterCode}
             } else {
-                var a = {};
+                let ${a} = {};
                 //we make sure its a object and not an array
                 if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                    for (var i in ${accessor}) {
+                    for (let i in ${accessor}) {
                         if (!${accessor}.hasOwnProperty(i)) continue;
                         if (${!subProperty.isOptional} && ${accessor}[i] === undefined) {
                             continue;
                         }
-                        ${line}
+                        ${getDataConverterJS(`${a}[i]`, `${accessor}[i]`, property.getSubType(), fromFormat, toFormat, rootContext)}
                     }
-                    ${setter} = a;
+                    ${setter} = ${a};
                 } else {
                     ${setDefault}
                 }
@@ -188,10 +197,12 @@ export function getDataConverterJS(
         rootContext.set('jitPartial', jitPartial);
         rootContext.set(varClassType, property.getSubType().resolveClassType);
         return `
-            if (${accessor} === undefined) {  
+            if (${accessor} === undefined) {
                 ${setUndefined}
-            } else if (${accessor} === null) { 
-                ${setNull} 
+                ${undefinedSetterCode}
+            } else if (${accessor} === null) {
+                ${setNull}
+                ${nullSetterCode}
             } else {
                 ${setter} = jitPartial('${fromFormat}', '${toFormat}', ${varClassType}, ${accessor}, _options);
             }
@@ -199,10 +210,12 @@ export function getDataConverterJS(
     } else {
         const convert = compilers.length ? executeCompiler(rootContext, compilers, setter, accessor, property) : `${setter} = ${accessor};`;
         return `
-            if (${accessor} === undefined) {  
+            if (${accessor} === undefined) {
                 ${setUndefined}
-            } else if (${accessor} === null) { 
-                ${setNull} 
+                ${undefinedSetterCode}
+            } else if (${accessor} === null) {
+                ${setNull}
+                ${nullSetterCode}
             } else {
                 ${convert}
             }

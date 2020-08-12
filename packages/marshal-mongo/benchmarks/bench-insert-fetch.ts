@@ -1,12 +1,9 @@
 import 'reflect-metadata';
-const {performance} = require('perf_hooks');
-import {BenchSuite, bench} from '@super-hornet/core';
+import {bench} from '@super-hornet/core';
 import {Database, DatabaseSession} from '@super-hornet/marshal-orm';
 import {MongoDatabaseAdapter, MongoDatabaseConfig} from '../src/adapter';
 import {Entity, f} from '@super-hornet/marshal';
 import assert = require('assert');
-
-(global as any).performance = performance;
 
 @Entity('user')
 export class User {
@@ -17,7 +14,7 @@ export class User {
     @f priority: number = 0;
 
     constructor(
-        @f.primary id: number,
+        @f.primary public id: number,
         @f public name: string
     ) {
     }
@@ -26,7 +23,6 @@ export class User {
 async function createDatabaseSession(dbName: string = 'testing'): Promise<DatabaseSession<MongoDatabaseAdapter>> {
     dbName = dbName.replace(/\s+/g, '-');
     const database = new Database(new MongoDatabaseAdapter(new MongoDatabaseConfig('localhost', dbName)));
-    await (await database.adapter.connection.connect()).db(dbName).dropDatabase();
     return database.createSession();
 }
 

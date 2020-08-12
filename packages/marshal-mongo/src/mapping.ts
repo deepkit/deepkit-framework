@@ -1,22 +1,31 @@
 import {
-    CacheJitPropertyConverter, ClassSchema,
+    CacheJitPropertyConverter,
+    ClassSchema,
     classToPlain,
-    createClassToXFunction, createJITConverterFromPropertySchema,
+    createClassToXFunction,
+    createJITConverterFromPropertySchema,
     createXToClassFunction,
-    getClassSchema, JitConverterOptions,
+    ExtractClassType,
+    getClassSchema,
+    JitConverterOptions,
     jitPartial,
+    JSONPartial,
     partialClassToPlain,
-    partialPlainToClass,
+    partialPlainToClass, PlainOrFullEntityFromClassTypeOrSchema,
     plainToClass,
     resolvePropertyCompilerSchema,
 } from '@super-hornet/marshal';
-import {ClassType, eachKey, isPlainObject, getClassName} from "@super-hornet/core";
+import {ClassType, eachKey, getClassName, isPlainObject} from '@super-hornet/core';
 import './compiler-templates';
-import {FilterQuery} from "mongodb";
+import {FilterQuery} from 'mongodb';
 
-export function mongoToClass<T>(classType: ClassType<T> | ClassSchema<T>, record: any, options?: JitConverterOptions): T {
-    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
-    return createXToClassFunction(classType, 'mongo')(record, options);
+
+export function mongoToClass<T extends ClassType<any> | ClassSchema<any>>(
+    classType: T,
+    data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
+    options?: JitConverterOptions
+): ExtractClassType<T> {
+    return createXToClassFunction(getClassSchema(classType), 'mongo')(data, options);
 }
 
 export function classToMongo<T>(classType: ClassType<T> | ClassSchema<T>, instance: T, options?: JitConverterOptions): any {
@@ -33,9 +42,8 @@ export function mongoToPlain<T>(classType: ClassType<T> | ClassSchema<T>, record
     return classToPlain(classType, mongoToClass(classType, record));
 }
 
-export function plainToMongo<T>(classType: ClassType<T> | ClassSchema<T>, target: { [k: string]: any }): any {
-    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
-    return classToMongo(classType, plainToClass(classType, target));
+export function plainToMongo<T extends ClassType<any> | ClassSchema<any>>(classType: T, data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>): any {
+    return classToMongo(getClassSchema(classType), plainToClass(classType, data));
 }
 
 export function partialClassToMongo<T, K extends keyof T>(
@@ -116,7 +124,7 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
     return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
         const property = resolvePropertyCompilerSchema(getClassSchema(convertClassType), path);
         const classValue = cacheJitPropertyConverterPlainToClass.getJitPropertyConverter(convertClassType).convertProperty(property, value);
-        return cacheJitPropertyConverterClassToMongo.getJitPropertyConverter(convertClassType).convertProperty(property, classValue)
+        return cacheJitPropertyConverterClassToMongo.getJitPropertyConverter(convertClassType).convertProperty(property, classValue);
     }, fieldNamesMap, customMapping);
 }
 

@@ -1,5 +1,7 @@
+import 'jest';
+import 'reflect-metadata';
 import {BenchSuite} from '@super-hornet/core';
-import {createDatabaseSession} from './mongo.spec';
+import {createDatabaseSession} from './utils';
 import {Entity, f} from '@super-hornet/marshal';
 import {mongoToClass} from '../src/mapping';
 
