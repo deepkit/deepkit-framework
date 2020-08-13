@@ -70,6 +70,7 @@ console.log('buffer official', serialize(items[0]));
 //     dataView.setUint32(0, 23344, true)
 // });
 
+
 const sizer = createBSONSizer(schema);
 suite.add('Marshal sizer', () => {
     const size = sizer(data);
@@ -81,20 +82,33 @@ suite.add('js-bson calculateObjectSize', () => {
     Buffer.alloc(size);
 });
 
-suite.add('Marshal stringify', () => {
+const serializer1Item = getBSONSerializer(itemSchema);
+suite.add('Marshal stringify 1 item', () => {
+    serializer1Item(items[0]);
+});
+
+suite.add('JSON.stringify 1 item', () => {
+    Buffer.from(JSON.stringify(items[0]), 'utf8');
+});
+
+suite.add('BSON js serialize 1 item', () => {
+    serialize(items[0]);
+});
+
+suite.add('Marshal stringify 10k', () => {
     serializer(data);
 });
 
-suite.add('BSON js serialize', () => {
+suite.add('BSON js serialize 10k', () => {
     serialize(data);
 });
 
-suite.add('BSON native serialize', () => {
+suite.add('BSON native serialize 10k', () => {
     bsonNative.serialize(data);
 });
 
-suite.add('JSON.stringify', () => {
-    JSON.stringify(data);
+suite.add('JSON.stringify 10k', () => {
+    Buffer.from(JSON.stringify(data), 'utf8');
 });
 
 suite.run();

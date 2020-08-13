@@ -1,6 +1,6 @@
 import {DatabasePersistence, Entity, getInstanceState} from '@super-hornet/marshal-orm';
-import {ClassSchema, createClassToXFunction} from '@super-hornet/marshal';
-import {convertClassQueryToMongo, partialClassToMongo} from './mapping';
+import {ClassSchema, createClassToXFunction, createPartialXToXFunction} from '@super-hornet/marshal';
+import {convertPlainQueryToMongo, partialPlainToMongo} from './mapping';
 import {MongoConnection} from './connection';
 import {ObjectId} from 'mongodb';
 import {FilterQuery} from './query.model';
@@ -11,27 +11,30 @@ export class MongoPersistence extends DatabasePersistence {
     }
 
     async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
-        const collection = await this.connection.getCollection(classSchema.classType);
+        const collection = await this.connection.getCollection(classSchema);
         const ids: any[] = [];
         for (const item of items) {
-            ids.push(partialClassToMongo(classSchema, getInstanceState(item).getLastKnownPKOrCurrent()));
+            ids.push(partialPlainToMongo(classSchema, getInstanceState(item).getLastKnownPK()));
         }
         await collection.deleteMany({$or: ids});
     }
 
     async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
         const insert: T[] = [];
-        const update: { q: any, u: any }[] = [];
+        const updates: { q: any, u: any }[] = [];
         const has_Id = classSchema.hasProperty('_id');
         const converter = createClassToXFunction(classSchema, 'mongo');
+        const converterPartial = createPartialXToXFunction(classSchema, 'class', 'mongo');
 
         for (const item of items) {
             const state = getInstanceState(item);
             if (state.isKnownInDatabase()) {
-                //     //todo, build change-set and patch only what is necessary
-                update.push({
-                    q: convertClassQueryToMongo(classSchema.classType, state.getLastKnownPKOrCurrent() as FilterQuery<T>),
-                    u: converter(item)
+                const lastSnapshot = state.getSnapshot();
+                const currentSnapshot = state.doSnapshot(item);
+                const changes = state.changeDetector(lastSnapshot, currentSnapshot, item);
+                updates.push({
+                    q: convertPlainQueryToMongo(classSchema.classType, state.getLastKnownPK() as FilterQuery<T>),
+                    u: {$set: converterPartial(changes)}
                 });
             } else {
                 const converted = converter(item);
@@ -43,7 +46,7 @@ export class MongoPersistence extends DatabasePersistence {
             }
         }
 
-        if (insert.length) await this.connection.insertMany(classSchema.classType, insert);
-        if (update.length) await this.connection.updateMany(classSchema.classType, update);
+        if (insert.length) await this.connection.insertMany(classSchema, insert);
+        if (updates.length) await this.connection.updateMany(classSchema, updates);
     }
 }

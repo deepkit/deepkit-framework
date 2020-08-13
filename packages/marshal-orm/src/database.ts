@@ -1,7 +1,7 @@
 import {ClassType, CustomError} from '@super-hornet/core';
 import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
-import {ClassSchema} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
 import {DatabaseSession} from './database-session';
 
 export class NotFoundError extends CustomError {
@@ -48,6 +48,8 @@ export abstract class DatabaseAdapter {
 
     abstract createConnection(): DatabaseConnection;
 
+    abstract migrate(classSchemas: Iterable<ClassSchema>): Promise<void>;
+
     abstract getName(): string;
 }
 
@@ -62,7 +64,7 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     /**
      * The entity register. This is mainly used for migration utilities.
      */
-    public readonly entities = new Set<Entity>();
+    public readonly classSchemas = new Set<ClassSchema>();
 
     protected rootSession = new DatabaseSession<ADAPTER>(this.adapter);
 
@@ -116,7 +118,14 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     /**
      * Registers a new entity to this database. This is mainly used for db migration utilities.
      */
-    registerEntity<T extends Entity>(entity: T): void {
-        this.entities.add(entity);
+    registerEntity(entity: ClassType | ClassSchema): void {
+        this.classSchemas.add(getClassSchema(entity));
+    }
+
+    /**
+     * Makes sure the schemas types, indices, uniques, etc are reflected in the database.
+     */
+    async migrate() {
+        await this.adapter.migrate(this.classSchemas);
     }
 }

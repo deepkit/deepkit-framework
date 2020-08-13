@@ -1,77 +1,114 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, f, getClassSchema, Patcher, plainToClass, t} from '@super-hornet/marshal';
-import {bench, BenchSuite} from '@super-hornet/core';
+import {classToPlain, f, getClassSchema, Patcher, plainToClass} from '@super-hornet/marshal';
+import {BenchSuite} from '@super-hornet/core';
 
+test.only('nope');
 
-test('demo', () => {
-    const bench = new BenchSuite('Demo');
+test('object keys', () => {
+    const bench = new BenchSuite('object keys');
 
-    const schema = t.schema({
-        username: t.string,
-        password: t.string,
-    });
+    const bla = {
+        a: 'ter',
+        username: 'peter',
+        groups: 'asd',
+        asdasd: 23,
+        asdasd3: 23,
+        asdasd2: 23,
+    };
 
-    function simple(last: any, current: any) {
-        const changed: any = {};
-        for (const property of schema.getClassProperties().values()) {
-            if (last[property.name] !== current[property.name]) changed[property.name] = true;
-        }
-        return changed;
+    function MyObjectSize2(bla: object) {
+        let size = 0;
+        for (let i in bla) if (bla.hasOwnProperty(i)) size++;
+        return size;
     }
 
-    function jit() {
-        const props: string[] = [];
-
-        for (const property of schema.getClassProperties().values()) {
-            props.push(`if (last.${property.name} !== current.${property.name}) changed.${property.name} = true;`)
-        }
-
-        const code = `
-            return function(last, current) {
-                const changed = {};
-                ${props.join('\n')}
-                return changed;
-            }
-        `
-
-        return new Function(code)();
+    function MyObjectSize1(bla: object) {
+        return Object.keys(bla).length;
     }
 
-    const jitCompare = jit();
-    expect(simple({username: 'peter'}, {username: 'Marc'})).toEqual({username: true});
-    expect(jitCompare({username: 'peter'}, {username: 'Marc'})).toEqual({username: true});
-
-    bench.add('simple', () => {
-        simple({username: 'peter'}, {username: 'Marc'});
+    bench.add('for in', () => {
+        const size = MyObjectSize2(bla);
     });
 
-    bench.add('jit', () => {
-        jitCompare({username: 'peter'}, {username: 'Marc'});
+    bench.add('Object.keys()', () => {
+        const size = MyObjectSize1(bla);
     });
 
     bench.run();
-
 });
+
+// test('demo', () => {
+//     const bench = new BenchSuite('Demo');
+//
+//     const schema = t.schema({
+//         username: t.string,
+//         password: t.string,
+//     });
+//
+//     function simple(last: any, current: any) {
+//         const changed: any = {};
+//         for (const property of schema.getClassProperties().values()) {
+//             if (last[property.name] !== current[property.name]) changed[property.name] = true;
+//         }
+//         return changed;
+//     }
+//
+//     function jit() {
+//         const props: string[] = [];
+//
+//         for (const property of schema.getClassProperties().values()) {
+//             props.push(`if (last.${property.name} !== current.${property.name}) changed.${property.name} = true;`)
+//         }
+//
+//         const code = `
+//             return function(last, current) {
+//                 const changed = {};
+//                 ${props.join('\n')}
+//                 return changed;
+//             }
+//         `
+//
+//         return new Function(code)();
+//     }
+//
+//     const jitCompare = jit();
+//     expect(simple({username: 'peter'}, {username: 'Marc'})).toEqual({username: true});
+//     expect(jitCompare({username: 'peter'}, {username: 'Marc'})).toEqual({username: true});
+//
+//     bench.add('simple', () => {
+//         simple({username: 'peter'}, {username: 'Marc'});
+//     });
+//
+//     bench.add('jit', () => {
+//         jitCompare({username: 'peter'}, {username: 'Marc'});
+//     });
+//
+//     bench.run();
+//
+// });
 
 test('for vs map', () => {
     const items = 'aasf asdkfn asnfo asnfoiasfn oaisdf asdoifnsadf adsufhasduf hasdoufh asdoufh asufhasdu fas'.split(' ');
-    const count = 100_000;
+
+    const suite = new BenchSuite('for vs map');
 
     function toUpper(item: string) {
         return item.toUpperCase();
     }
 
-    bench(count, 'map', () => {
+    suite.add('map', () => {
         const result: string[] = items.map(v => toUpper(v));
     });
 
-    bench(count, 'for', () => {
+    suite.add('for', () => {
         const result: string[] = [];
         for (const item of items) {
             result.push(toUpper(item));
         }
     });
+
+    suite.run();
 });
 
 test('weakMap vs Object.defineProperty', () => {
@@ -80,7 +117,8 @@ test('weakMap vs Object.defineProperty', () => {
         }
     }
 
-    const count = 10_000;
+    const suite = new BenchSuite('weakMap vs Object.defineProperty');
+
     const items: User[] = [];
     for (let i = 0; i < 1000; i++) {
         items.push(new User(String(i)));
@@ -88,13 +126,13 @@ test('weakMap vs Object.defineProperty', () => {
 
     const weakMap = new WeakMap();
 
-    bench(count, 'weakMap set', () => {
+    suite.add('weakMap set', () => {
         for (const item of items) {
             weakMap.set(item, {myAdditionalData: item.id});
         }
     });
 
-    bench(count, 'weakMap get', () => {
+    suite.add('weakMap get', () => {
         for (const item of items) {
             if (weakMap.get(item)!.myAdditionalData !== item.id) throw new Error('Moep');
         }
@@ -102,17 +140,19 @@ test('weakMap vs Object.defineProperty', () => {
 
     Object.defineProperty(User.prototype, '__myData', {writable: true, enumerable: false, value: {}});
 
-    bench(count, 'defineProperty set', () => {
+    suite.add('defineProperty set', () => {
         for (const item of items) {
             (item as any).__myData = {myAdditionalData: item.id};
         }
     });
 
-    bench(count, 'defineProperty get', () => {
+    suite.add('defineProperty get', () => {
         for (const item of items) {
             if ((item as any).__myData.myAdditionalData !== item.id) throw new Error('Moep');
         }
     });
+
+    suite.run();
 });
 
 test('set known prop in prototype vs unknown prop vs weakmap', () => {
@@ -121,14 +161,14 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
         }
     }
 
-    const count = 100_000;
+    const suite = new BenchSuite('known prop vs unknown prop vs weakmap');
 
-    bench(count, 'set new', () => {
+    suite.add('set new', () => {
         const item = new User(1);
         (item as any).bla = 1;
     });
 
-    bench(count, 'get new', () => {
+    suite.add('get new', () => {
         const item = new User(1);
         const n = (item as any).bla;
     });
@@ -148,7 +188,7 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
         expect((item2 as any).bla).toBe(undefined);
     }
 
-    bench(count, 'set predefined', () => {
+    suite.add('set predefined', () => {
         const item = new User(1);
         if (!(item as any)['constructor'].prototype.hasOwnProperty('bla')) {
             Object.defineProperty(Object.getPrototypeOf(item), 'bla', {writable: true, enumerable: false});
@@ -158,7 +198,7 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
 
     const symbol = Symbol('bla');
 
-    bench(count, 'set predefined symbol', () => {
+    suite.add('set predefined symbol', () => {
         const item = new User(1);
         if (!(item as any)['constructor'].prototype.hasOwnProperty(symbol)) {
             Object.defineProperty(Object.getPrototypeOf(item), symbol, {writable: true, enumerable: false});
@@ -166,51 +206,54 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
         (item as any)[symbol] = 1;
     });
 
-    bench(count, 'get predefined', () => {
+    suite.add('get predefined', () => {
         const item = new User(1);
         (item as any).bla = 1;
         const n = (item as any).bla;
     });
 
     const map = new WeakMap();
-    bench(count, 'set map', () => {
+    suite.add('set map', () => {
         const item = new User(1);
         map.set(item, 1);
     });
 
-    bench(count, 'get map', () => {
+    suite.add('get map', () => {
         const item = new User(1);
         map.set(item, 1);
         const n = map.get(item);
     });
+
+    suite.run();
 });
 
 test('cache', () => {
-    const count = 1_000_000;
+    const suite = new BenchSuite('cache');
 
     const cache: any = {};
-    bench(count, 'object write', () => {
+    suite.add('object write', () => {
         cache[1] = {i: 1};
     });
 
-    bench(count, 'object read', () => {
+    suite.add('object read', () => {
         const n = cache[1];
     });
 
-    bench(count, 'object hasOwnProperty', () => {
+    suite.add('object hasOwnProperty', () => {
         if (cache.hasOwnProperty(1)) {
             const n = cache[1];
         }
     });
 
     const map = new Map();
-    bench(count, 'map write', () => {
+    suite.add('map write', () => {
         map.set(1, {i: 1});
     });
-    bench(count, 'map read', () => {
+    suite.add('map read', () => {
         const n = map.get(1);
     });
 
+    suite.run();
 });
 
 test('classToPlain vs copy-on-write hooks', () => {
@@ -229,9 +272,8 @@ test('classToPlain vs copy-on-write hooks', () => {
     }
 
     const classSchema = getClassSchema(MarshalModel);
-
-    const count = 10_000;
-    bench(count, 'classToPlain', () => {
+    const suite = new BenchSuite('classToPlain vs copy-on-write hooks');
+    suite.add('classToPlain', () => {
         const item = plainToClass(MarshalModel, {
             name: 'name',
             id: 1,
@@ -242,7 +284,7 @@ test('classToPlain vs copy-on-write hooks', () => {
         classToPlain(MarshalModel, item);
     });
 
-    bench(count, 'proxy', () => {
+    suite.add('proxy', () => {
         const item = plainToClass(MarshalModel, {
             name: 'name',
             id: 1,
@@ -265,7 +307,7 @@ test('classToPlain vs copy-on-write hooks', () => {
         };
     }
 
-    bench(count, 'defineProperty', () => {
+    suite.add('defineProperty', () => {
         const item = plainToClass(MarshalModel, {
             name: 'name',
             id: 1,
@@ -276,12 +318,14 @@ test('classToPlain vs copy-on-write hooks', () => {
 
         Object.defineProperties(item, properties);
     });
+
+    suite.run();
 });
 
 
 test('object setter/getter', () => {
+    const suite = new BenchSuite('object setter/getter');
 
-    const count = 1_000_000;
     const plainObject = {
         a: 1,
         b: 'b',
@@ -289,7 +333,7 @@ test('object setter/getter', () => {
 
     const protoObject = Object.create(plainObject);
 
-    bench(count, 'plainObject', () => {
+    suite.add('plainObject', () => {
         plainObject.a = 2;
     });
 
@@ -303,10 +347,12 @@ test('object setter/getter', () => {
 
     //https://jsperf.com/property-access-vs-defineproperty/5
     //is 10x faster
-    bench(count, 'protoObject write', () => {
+    suite.add('protoObject write', () => {
         obj.property = 5;
     });
-    bench(count, 'protoObject read ', () => {
+    suite.add('protoObject read ', () => {
         const res = obj.property;
     });
+
+    suite.run();
 });

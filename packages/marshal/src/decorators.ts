@@ -327,7 +327,7 @@ export class PropertySchema extends PropertyCompilerSchema {
     exclude?: 'all' | 'plain' | string;
 
     protected classTypeForwardRef?: ForwardRefFn<any>;
-    protected classTypeResolved?: ClassType<any>;
+    protected classTypeResolved?: ClassType;
 
     templateArgs: PropertySchema[] = [];
 
@@ -473,7 +473,7 @@ export class PropertySchema extends PropertyCompilerSchema {
 
         if (isCustomObject) {
             this.type = 'class';
-            this.classType = type as ClassType<any>;
+            this.classType = type as ClassType;
 
             if (isFunction(type)) {
                 this.classTypeForwardRef = type;
@@ -556,7 +556,6 @@ export class PropertySchema extends PropertyCompilerSchema {
 }
 
 export interface EntityIndex {
-    name: string,
     fields: string[],
     options: IndexOptions
 }
@@ -613,7 +612,7 @@ export class ClassSchema<T = any> {
     protected methodsParamNames = new Map<string, string[]>();
     protected methodsParamNamesAutoResolved = new Map<string, string[]>();
 
-    indices: EntityIndex[] = [];
+    indices = new Map<string, EntityIndex>();
 
     /**
      * Contains all references, owning reference and back references.
@@ -690,7 +689,7 @@ export class ClassSchema<T = any> {
     }
 
     public addIndex(name: string, options?: IndexOptions) {
-        this.indices.push({name: name, fields: [name], options: options || {}});
+        this.indices.set(name, {fields: [name], options: options || {}});
     }
 
     public clone(classType: ClassType<any>): ClassSchema {
@@ -721,9 +720,9 @@ export class ClassSchema<T = any> {
         for (const [m, p] of this.methodsParamNames.entries()) s.methodsParamNames.set(m, p.slice(0));
         for (const [m, p] of this.methodsParamNamesAutoResolved.entries()) s.methodsParamNamesAutoResolved.set(m, p.slice(0));
 
-        s.indices = [];
-        for (const v of this.indices) {
-            s.indices.push({...v});
+        s.indices = new Map;
+        for (const [name, v] of this.indices.entries()) {
+            s.indices.set(name, {...v});
         }
 
         s.onLoad = [];
@@ -808,6 +807,11 @@ export class ClassSchema<T = any> {
         return this.getProperty(this.idField);
     }
 
+    public hasPrimaryFields() {
+        if (!this.primaryKeys) this.getPrimaryFields();
+        return this.primaryKeys!.length > 0;
+    }
+
     public getPrimaryFields(): PropertySchema[] {
         if (this.primaryKeys) return this.primaryKeys;
 
@@ -815,7 +819,6 @@ export class ClassSchema<T = any> {
         for (const property of this.getClassProperties().values()) {
             if (property.isId) this.primaryKeys.push(property);
         }
-        if (!this.primaryKeys.length) throw new Error(`Entity ${this.getClassName()} has no primary fields. Use @f.primary() to define one.`);
 
         return this.primaryKeys;
     }
@@ -833,12 +836,12 @@ export class ClassSchema<T = any> {
 
     protected initializeMethod(name: string) {
         if (!this.initializedMethods.has(name)) {
-            if (name !== 'constructor' && !Reflect.hasMetadata('design:returntype', this.classType.prototype, name)) {
+            if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {
                 throw new Error(`Method ${name} has no decorators used or is not defined, so reflection does not work. Use @f on the method or arguments. Is emitDecoratorMetadata enabled?`);
             }
 
             if (name !== 'constructor' && !this.methods[name]) {
-                const returnType = Reflect.getMetadata('design:returntype', this.classType.prototype, name);
+                const returnType = Reflect.getMetadata && Reflect.getMetadata('design:returntype', this.classType.prototype, name);
                 if (returnType !== Promise) {
                     //Promise is not a legit returnType as this is automatically the case for async functions
                     //we assume no meta data is given when Promise is defined, as it basically tells us nothing.
@@ -850,8 +853,8 @@ export class ClassSchema<T = any> {
             const properties = this.getOrCreateMethodProperties(name);
 
             const paramtypes = name === 'constructor'
-                ? Reflect.getMetadata('design:paramtypes', this.classType)
-                : Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
+                ? Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType)
+                : Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
 
             for (const [i, t] of eachPair(paramtypes)) {
                 if (!properties[i]) {
@@ -948,12 +951,7 @@ export class ClassSchema<T = any> {
     }
 
     public getIndex(name: string): EntityIndex | undefined {
-        for (const index of this.indices) {
-            if (index.name === name) {
-                return index;
-            }
-        }
-        return;
+        return this.indices.get(name);
     }
 
     public getPropertyOrUndefined(name: string): PropertySchema | undefined {
@@ -1228,9 +1226,9 @@ type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends FieldDec
 
 type ExtractClassDefinition<T extends PlainSchemaProps> = {
     [name in keyof T]:
-        T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> :
-            T[name] extends ClassSchema<infer K> ? K :
-                T[name] extends FieldDecoratorResult<any> ? ExtractDefinition<T[name]> : T
+    T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> :
+        T[name] extends ClassSchema<infer K> ? K :
+            T[name] extends FieldDecoratorResult<any> ? ExtractDefinition<T[name]> : T
 };
 
 /**
@@ -1639,7 +1637,7 @@ function createFieldDecoratorResult<T>(
         let methodName = 'constructor';
         const schema = getOrCreateEntitySchema(target);
 
-        const isMethod = propertyOrMethodName && Reflect.hasMetadata('design:returntype', target, propertyOrMethodName) && !isNumber(parameterIndexOrDescriptor);
+        const isMethod = propertyOrMethodName && (Reflect.hasMetadata && Reflect.hasMetadata('design:returntype', target, propertyOrMethodName)) && !isNumber(parameterIndexOrDescriptor);
 
         if (isNumber(parameterIndexOrDescriptor)) {
             //decorator is used on a method argument
@@ -1678,22 +1676,22 @@ function createFieldDecoratorResult<T>(
 
             if (methodName === 'constructor') {
                 //constructor
-                const returnTypes = Reflect.getMetadata('design:paramtypes', target);
+                const returnTypes = Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', target);
                 if (returnTypes) returnType = returnTypes[parameterIndexOrDescriptor];
             } else {
                 //method
-                const returnTypes = Reflect.getMetadata('design:paramtypes', target, methodName);
+                const returnTypes = Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', target, methodName);
                 if (returnTypes) returnType = returnTypes[parameterIndexOrDescriptor];
             }
 
         } else {
             //it's a class property, so propertyOrMethodName contains the actual property name
             if (propertyOrMethodName) {
-                returnType = Reflect.getMetadata('design:type', target, propertyOrMethodName);
+                returnType = Reflect.getMetadata && Reflect.getMetadata('design:type', target, propertyOrMethodName);
 
                 if (isMethod) {
                     //its a method, so returnType is the actual type
-                    returnType = Reflect.getMetadata('design:returntype', target, propertyOrMethodName);
+                    returnType = Reflect.getMetadata && Reflect.getMetadata('design:returntype', target, propertyOrMethodName);
                 }
             }
 
@@ -1994,6 +1992,7 @@ function IDField() {
     return (target: object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).idField = property.name;
         property.isId = true;
+        Index({unique: true}, '_pk')(target, property);
     };
 }
 
@@ -2560,8 +2559,20 @@ function Index(options?: IndexOptions, name?: string) {
             throw new Error('Index could not be used on method arguments.');
         }
 
-        property.index = options || {};
-        schema.indices.push({name: name || property.name, fields: [property.name], options: options || {}});
+        name = name || property.name;
+        options = options || {};
+        const index = schema.indices.get(name);
+        const fields: string[] = [];
+        if (index) {
+            fields.push(...index.fields);
+        }
+        fields.push(property.name);
+
+        if (index) {
+            options = Object.assign({}, index.options, options);
+        }
+
+        schema.indices.set(name, {fields, options});
     };
 }
 
@@ -2581,10 +2592,10 @@ function Data(key: string, value: any) {
  */
 export function MultiIndex(fields: string[], options?: IndexOptions, name?: string) {
     return (target: object, property?: string, parameterIndexOrDescriptor?: any) => {
-        const classType = (target as any).prototype as ClassType<any>;
+        const classType = (target as any).prototype as ClassType;
         const schema = getOrCreateEntitySchema(classType);
 
-        schema.indices.push({name: name || fields.join('_'), fields: fields as string[], options: options || {}});
+        schema.indices.set(name || fields.join('_'), {fields: fields as string[], options: options || {}});
     };
 }
 

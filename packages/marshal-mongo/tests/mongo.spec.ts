@@ -7,7 +7,6 @@ import {getInstanceState} from '@super-hornet/marshal-orm';
 import {plainToMongo} from '../src/mapping';
 import * as moment from 'moment';
 import {uuid4Stringify} from '../src/compiler-templates';
-import {resolveCollectionName} from '../src/connection';
 import {SimpleModel, SuperSimple} from './entities';
 import {createDatabaseSession} from './utils';
 
@@ -45,7 +44,7 @@ test('test save undefined values', async () => {
         }
     }
 
-    const collection = await session.adapter.connection.getCollection(Model);
+    const collection = await session.adapter.connection.getCollection(getClassSchema(Model));
 
     {
         await collection.deleteMany({});
@@ -88,7 +87,7 @@ test('test save model', async () => {
 
     await expect(session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOne()).rejects.toThrowError('Item not found');
 
-    const collection = await session.adapter.connection.getCollection(SimpleModel);
+    const collection = await session.adapter.connection.getCollection(getClassSchema(SimpleModel));
     const mongoItem = await collection.find().toArray();
 
     expect(mongoItem.length).toBe(1);
@@ -264,13 +263,13 @@ test('test databaseName', async () => {
     });
 
     expect(getDatabaseName(DifferentDataBase)).toBe('testing2');
-    expect(resolveCollectionName(DifferentDataBase)).toBe('differentCollection');
+    expect(session.adapter.connection.resolveCollectionName(getClassSchema(DifferentDataBase))).toBe('differentCollection');
 
     expect(instance._id).toBeUndefined();
     await session.immediate.persist(instance);
     expect(instance._id).not.toBeUndefined();
 
-    const collection = await session.adapter.connection.getCollection(DifferentDataBase);
+    const collection = await session.adapter.connection.getCollection(getClassSchema(DifferentDataBase));
     expect(await collection.countDocuments({})).toBe(1);
 
     const items = await session.query(DifferentDataBase).find();
@@ -347,7 +346,7 @@ test('second object id', async () => {
     const dbItemBySecondId = await session.query(SecondObjectId).filter({secondId: '5bf4a1ccce060e0b38864c9e'}).findOne();
     expect(dbItemBySecondId!.name).toBe('myName');
 
-    const collection = await session.adapter.connection.getCollection(SecondObjectId);
+    const collection = await session.adapter.connection.getCollection(getClassSchema(SecondObjectId));
     const mongoItem = await collection.find().toArray();
     expect(mongoItem).toBeArrayOfSize(1);
     expect(mongoItem[0].name).toBe('myName');
@@ -490,7 +489,7 @@ test('test identityMap', async () => {
     const item = new SimpleModel('myName1');
     await session.immediate.persist(item);
 
-    const pkHash = getInstanceState(item).getLastKnownPKHashOrCurrent();
+    const pkHash = getInstanceState(item).getLastKnownPKHash();
     const idItem = session.identityMap.getByHash(getClassSchema(SimpleModel), pkHash);
     expect(idItem).toBe(item);
 

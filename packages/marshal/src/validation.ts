@@ -95,7 +95,7 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * validate(SimpleModel, {id: false});
  * ```
  */
-export function validate<T extends ClassType<any> | ClassSchema<any>>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>, path?: string): ValidationError[] {
+export function validate<T extends ClassType | ClassSchema>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>, path?: string): ValidationError[] {
     return jitValidate(classType)(item, path);
 }
 
@@ -111,7 +111,7 @@ export function validate<T extends ClassType<any> | ClassSchema<any>>(classType:
  * }
  * ```
  */
-export function validates<T extends ClassType<any> | ClassSchema<any>>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>): item is ExtractClassType<T> {
+export function validates<T extends ClassType | ClassSchema>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>): item is ExtractClassType<T> {
     return jitValidate(classType)(item).length === 0;
 }
 
@@ -128,7 +128,7 @@ export function validates<T extends ClassType<any> | ClassSchema<any>>(classType
  * }
  * ```
  */
-export function validatesFactory<T extends ClassType<any> | ClassSchema<any>>(classType: T): (item: PlainOrFullEntityFromClassTypeOrSchema<T>) => item is ExtractClassType<T> {
+export function validatesFactory<T extends ClassType | ClassSchema>(classType: T): (item: PlainOrFullEntityFromClassTypeOrSchema<T>) => item is ExtractClassType<T> {
     const validation = jitValidate(classType);
     return (item): item is ExtractClassType<T> => {
         return validation(item).length === 0;

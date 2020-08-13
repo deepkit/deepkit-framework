@@ -18,7 +18,7 @@ class MarshalModel {
     @f priority: number = 6;
 
     constructor(
-        @f public id: number,
+        @f.primary public id: number,
         @f public name: string
     ) {
     }

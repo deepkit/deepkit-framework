@@ -295,6 +295,8 @@ test('test properties', () => {
         data2?: DataValue2;
     }
 
+    expect(getClassSchema(Model).hasPrimaryFields()).toBe(true);
+    expect(getClassSchema(Model).getPrimaryFields().length).toBe(1);
     expect(getClassSchema(Model).getPrimaryField()).toBeInstanceOf(PropertySchema);
     expect(() => getClassSchema(DataValue2).getPrimaryField()).toThrow('Class DataValue2 has no primary field');
 

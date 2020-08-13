@@ -74,6 +74,14 @@ export class MikroModel {
         await bench(1, 'Mikro-ORM fetch', async () => {
             const items = await orm.em.find(MikroModel, {});
         });
+
+        const dbItems = await orm.em.find(MikroModel, {});
+        for (const item of dbItems) {
+            item.priority++;
+        }
+        await bench(1, 'update', async () => {
+            await orm.em.flush();
+        });
     }
     await orm.close();
 })();

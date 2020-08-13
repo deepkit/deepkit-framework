@@ -1,12 +1,14 @@
 import 'reflect-metadata';
 import {bench} from '@super-hornet/core';
-import {Database, DatabaseSession} from '@super-hornet/marshal-orm';
+import {buildChanges, Database} from '@super-hornet/marshal-orm';
 import {MongoDatabaseAdapter, MongoDatabaseConfig} from '../src/adapter';
-import {Entity, f} from '@super-hornet/marshal';
+import {createPartialXToXFunction, Entity, f, getClassSchema} from '@super-hornet/marshal';
 import assert = require('assert');
 
 @Entity('user')
 export class User {
+    @f.mongoId.primary public _id?: string;
+
     @f ready?: boolean;
 
     @f.array(f.string) tags: string[] = [];
@@ -14,46 +16,60 @@ export class User {
     @f priority: number = 0;
 
     constructor(
-        @f.primary public id: number,
+        @f public id: number,
         @f public name: string
     ) {
     }
 }
 
-async function createDatabaseSession(dbName: string = 'testing'): Promise<DatabaseSession<MongoDatabaseAdapter>> {
+async function createDatabase(dbName: string = 'testing') {
     dbName = dbName.replace(/\s+/g, '-');
-    const database = new Database(new MongoDatabaseAdapter(new MongoDatabaseConfig('localhost', dbName)));
-    return database.createSession();
+    return new Database(new MongoDatabaseAdapter(new MongoDatabaseConfig('localhost', dbName)));
 }
 
 const items = 10_000;
 (async () => {
-    const database = await createDatabaseSession('benchmark-a');
-    await database.getConnection().connect();
+    const database = await createDatabase('benchmark-a');
+    database.registerEntity(User);
+    await database.migrate();
+    const session = database.createSession();
+    await session.getConnection().connect();
 
-    for (let j = 1; j <= 15; j++) {
-        await database.query(User).deleteMany();
+    for (let j = 1; j <= 5; j++) {
+        console.log('round', j);
+        session.identityMap.clear();
+        await session.query(User).deleteMany();
         await bench(1, 'Marshal insert', async () => {
             for (let i = 1; i <= items; i++) {
                 const user = new User(i, 'Peter ' + i);
                 user.ready = true;
                 user.priority = 5;
                 user.tags = ['a', 'b', 'c'];
-                database.add(user);
+                session.add(user);
             }
 
-            await database.commit();
+            await session.commit();
         });
 
-        const query = database.query(User).disableIdentityMap();
-        assert((await query.find()).length === items);
-        // assert((await query.find())[0] instanceof User);
+        const query = session.query(User);
         await bench(1, 'Marshal find', async () => {
-            for (const item of await query.find()) {
+            await query.find();
+        });
 
-            }
+        session.identityMap.clear();
+        const dbItems = await session.query(User).find();
+        for (const item of dbItems) {
+            item.name = 'Angela';
+            item.priority = Math.ceil(Math.random() * 1000);
+        }
+
+        // console.log('changed', buildChanges(dbItems[0]));
+        // const converterPartial = createPartialXToXFunction(getClassSchema(User), 'class', 'mongo');
+        // console.log('changed converted', converterPartial(buildChanges(dbItems[0])));
+        await bench(1, 'Marshal update', async () => {
+            await session.commit();
         });
     }
 
-    database.getConnection().close(true);
+    session.getConnection().close(true);
 })();

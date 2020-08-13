@@ -1,14 +1,10 @@
 import {Collection, MongoClient, MongoClientOptions} from 'mongodb';
-import {getCollectionName, getDatabaseName, getEntityName, t} from '@super-hornet/marshal';
-import {ClassType, ParsedHost} from '@super-hornet/core';
+import {ClassSchema, t} from '@super-hornet/marshal';
+import {ParsedHost} from '@super-hornet/core';
 import {DatabaseConnection} from '@super-hornet/marshal-orm';
 import {getBSONDecoder} from '@super-hornet/marshal-bson';
 import {DEEP_SORT} from './query.model';
-import { deserialize } from 'bson';
 
-export function resolveCollectionName<T>(classType: ClassType<T>): string {
-    return getCollectionName(classType) || getEntityName(classType);
-}
 
 export interface MongoConnectionConfig {
     host: ParsedHost;
@@ -29,6 +25,12 @@ export class MongoConnection implements DatabaseConnection {
     protected client?: MongoClient;
     protected lastConnect?: Promise<MongoClient>;
 
+    protected countSchema = t.schema({
+        errmsg: t.string.optional,
+        ok: t.boolean,
+        n: t.number,
+    });
+
     constructor(
         public config: MongoConnectionConfig
     ) {
@@ -40,6 +42,16 @@ export class MongoConnection implements DatabaseConnection {
 
     close(force?: boolean) {
         if (this.client) this.client.close(force);
+    }
+
+    resolveCollectionName(classSchema: ClassSchema): string {
+        const name = classSchema.collectionName || classSchema.name;
+        if (!name) throw new Error(`No @Entity defined in class ${classSchema.getClassName()}.`);
+        return name;
+    }
+
+    resolveDatabaseName(classSchema: ClassSchema): string {
+        return classSchema.databaseName || this.config.defaultDatabase;
     }
 
     async connect(): Promise<MongoClient> {
@@ -79,14 +91,46 @@ export class MongoConnection implements DatabaseConnection {
         return (await this.connect()).db(db).command(command, options);
     }
 
+    public async count(
+        classSchema: ClassSchema,
+        filter: any,
+        skip?: number,
+        limit?: number,
+    ): Promise<number> {
+        await this.connect();
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
+
+        const cmd: any = {
+            count: collectionName,
+            query: filter,
+        };
+
+        if (skip !== undefined) cmd.skip = skip;
+        if (limit !== undefined) cmd.limit = limit;
+
+        const res = await this.command(dbName, cmd, {
+            raw: true
+        });
+
+        const parser = getBSONDecoder(this.countSchema);
+        const parsed = parser(res);
+
+        if (parsed.errmsg) throw new Error(`Mongo count error: ${parsed.errmsg}`);
+
+        return parsed.n;
+    }
+
     public async find(
-        classType: ClassType<any>,
+        classSchema: ClassSchema,
         filter: any, projection?: any,
-        sort?: DEEP_SORT<any>, skip?: number, limit?: number
+        sort?: DEEP_SORT<any>,
+        skip?: number,
+        limit?: number
     ): Promise<any[]> {
         await this.connect();
-        const dbName = getDatabaseName(classType) || this.config.defaultDatabase;
-        const collectionName = resolveCollectionName(classType);
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
         const batchSize = 10001;
 
         // const start = performance.now();
@@ -107,17 +151,17 @@ export class MongoConnection implements DatabaseConnection {
         });
         // console.log('find took', performance.now() - start, 'ms');
 
-        return this.fetchCursor(dbName, collectionName, batchSize, classType, res);
+        return this.fetchCursor(dbName, collectionName, batchSize, classSchema, res);
     }
 
-    protected async fetchCursor(dbName, collectionName, batchSize: number, classType: ClassType<any>, res: Buffer): Promise<any[]> {
+    protected async fetchCursor(dbName, collectionName, batchSize: number, classSchema: ClassSchema, res: Buffer): Promise<any[]> {
         const schema = t.schema({
             errmsg: t.string.optional,
             ok: t.boolean,
             cursor: {
                 id: t.string,
-                firstBatch: t.array(classType),
-                nextBatch: t.array(classType),
+                firstBatch: t.array(classSchema),
+                nextBatch: t.array(classSchema),
             },
         });
 
@@ -152,10 +196,10 @@ export class MongoConnection implements DatabaseConnection {
         }
     }
 
-    public async aggregate(classType: ClassType<any>, pipeline: any[]): Promise<any[]> {
+    public async aggregate(classSchema: ClassSchema, pipeline: any[], resultSchema?: ClassSchema): Promise<any[]> {
         await this.connect();
-        const dbName = getDatabaseName(classType) || this.config.defaultDatabase;
-        const collectionName = resolveCollectionName(classType);
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
         const batchSize = 10001;
 
         // const start = performance.now();
@@ -170,13 +214,13 @@ export class MongoConnection implements DatabaseConnection {
         });
         // console.log('aggregate took', performance.now() - start, 'ms');
 
-        return this.fetchCursor(dbName, collectionName, batchSize, classType, res);
+        return this.fetchCursor(dbName, collectionName, batchSize, resultSchema || classSchema, res);
     }
 
-    public async insertMany(classType: ClassType<any>, items: any[]) {
+    public async insertMany(classSchema: ClassSchema, items: any[]) {
         await this.connect();
-        const dbName = getDatabaseName(classType) || this.config.defaultDatabase;
-        const collectionName = resolveCollectionName(classType);
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
 
         await this.command(dbName, {
             insert: collectionName,
@@ -185,21 +229,25 @@ export class MongoConnection implements DatabaseConnection {
         }, {});
     }
 
-    public async updateMany(classType: ClassType<any>, items: { q: any, u: any }[]) {
+    public async updateMany(classSchema: ClassSchema, items: { q: any, u: any }[]) {
         await this.connect();
-        const dbName = getDatabaseName(classType) || this.config.defaultDatabase;
-        const collectionName = resolveCollectionName(classType);
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
 
         await this.command(dbName, {
             update: collectionName,
             updates: items,
+            ordered: false,
             // writeConcern: {w: 1}
         }, {});
     }
 
-    public async getCollection(classType: ClassType<any>): Promise<Collection> {
+    public async getCollection(classSchema: ClassSchema): Promise<Collection> {
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
+
         return (await this.connect())
-            .db(getDatabaseName(classType) || this.config.defaultDatabase)
-            .collection(resolveCollectionName(classType));
+            .db(dbName)
+            .collection(collectionName);
     }
 }

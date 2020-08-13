@@ -1,7 +1,7 @@
 import {getClassSchema, getClassSchemaByName, partialPlainToClass, plainToClass} from '@super-hornet/marshal';
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "../index";
 import {set, delete as deleteByPath} from 'dot-prop';
-import {ClassType, eachPair, getClassName} from "@super-hornet/core";
+import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@super-hornet/core';
 import {skip} from "rxjs/operators";
 import {ObjectUnsubscribedError, Subject} from "rxjs";
 
@@ -76,7 +76,7 @@ class EntitySubjectStore<T extends IdInterface> {
     }
 
     public getEntitySubjectCount(): number {
-        return Object.keys(this.subjects).length;
+        return getObjectKeysSize(this.subjects);
     }
 
     public getForkCount(id: string): number {

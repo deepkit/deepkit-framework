@@ -1,8 +1,7 @@
-import {Entity, FieldName, Formatter, GenericQueryResolver, PrimaryKey} from '@super-hornet/marshal-orm';
+import {Entity, Formatter, GenericQueryResolver} from '@super-hornet/marshal-orm';
 import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@super-hornet/marshal';
-import {resolveCollectionName} from './connection';
 import {DEEP_SORT, MongoQueryModel} from './query.model';
-import {convertClassQueryToMongo, mongoToClass, partialMongoToClass,} from './mapping';
+import {convertClassQueryToMongo, partialMongoToClass,} from './mapping';
 import {FilterQuery} from 'mongodb';
 import {MongoDatabaseAdapter} from './adapter';
 
@@ -18,24 +17,16 @@ export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQuery
 }
 
 export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T, MongoDatabaseAdapter, MongoQueryModel<T>> {
+    protected countSchema = t.schema({
+        count: t.number
+    })
+
     public async deleteOne(queryModel: MongoQueryModel<T>): Promise<boolean> {
         return await this.delete(queryModel, false) === 1;
     }
 
-    findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
-        throw new Error('Not implemented');
-    }
-
-    findOneField<K extends FieldName<T>>(name: K): Promise<T[K]> {
-        throw new Error('Not implemented');
-    }
-
-    findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined> {
-        return Promise.resolve(undefined);
-    }
-
-    has(model: MongoQueryModel<T>): Promise<boolean> {
-        return Promise.resolve(false);
+    async has(model: MongoQueryModel<T>): Promise<boolean> {
+        return await this.count(model) > 0;
     }
 
     public async deleteMany(queryModel: MongoQueryModel<T>): Promise<number> {
@@ -54,7 +45,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const pipeline = this.buildAggregationPipeline(queryModel);
         if (!many) pipeline.push({$limit: 1});
         pipeline.push({$project: this.getPrimaryKeysProjection()});
-        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema);
         const ids = await collection.aggregate(pipeline).toArray();
         return {
             // mongoFilter: {$or: ids},
@@ -63,7 +54,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     }
 
     public async delete(queryModel: MongoQueryModel<T>, many: boolean = false): Promise<number> {
-        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema);
 
         const {primaryKeys} = await this.fetchIds(queryModel, many);
         if (primaryKeys.length === 0) return 0;
@@ -96,7 +87,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     }
 
     public async update(queryModel: MongoQueryModel<T>, value: { [path: string]: any }, many: boolean = false): Promise<number> {
-        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema);
         let filter = getMongoFilter(this.classSchema, queryModel);
 
         if (queryModel.hasJoins()) {
@@ -112,17 +103,25 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     }
 
     public async count(queryModel: MongoQueryModel<T>) {
-        const pipeline = this.buildAggregationPipeline(queryModel);
-        pipeline.push({$count: 'count'});
-        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
-        const items = await collection.aggregate(pipeline).toArray();
-        return items.length ? items[0].count : 0;
+        if (queryModel.hasJoins()) {
+            const pipeline = this.buildAggregationPipeline(queryModel);
+            pipeline.push({$count: 'count'});
+            const items = await this.databaseSession.getConnection().aggregate(this.classSchema, pipeline, this.countSchema);
+            return items.length ? items[0].count : 0;
+        } else {
+            return await this.databaseSession.getConnection().count(
+                this.classSchema,
+                getMongoFilter(this.classSchema, queryModel),
+                queryModel.skip,
+                queryModel.limit,
+            );
+        }
     }
 
     public async findOneOrUndefined(queryModel: MongoQueryModel<T>): Promise<T | undefined> {
         const pipeline = this.buildAggregationPipeline(queryModel);
         pipeline.push({$limit: 1});
-        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema.classType);
+        const collection = await this.databaseSession.getConnection().getCollection(this.classSchema);
         const items = await collection.aggregate(pipeline).toArray();
         if (items.length) {
             const formatter = this.createFormatter(queryModel.withIdentityMap);
@@ -133,13 +132,13 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
     public async find(queryModel: MongoQueryModel<T>): Promise<T[]> {
         const formatter = this.createFormatter(queryModel.withIdentityMap);
-        if (queryModel.joins.length) {
+        if (queryModel.hasJoins()) {
             const pipeline = this.buildAggregationPipeline(queryModel);
-            const items = await this.databaseSession.getConnection().aggregate(this.classSchema.classType, pipeline);
+            const items = await this.databaseSession.getConnection().aggregate(this.classSchema, pipeline);
             return items.map(v => formatter.hydrate(this.classSchema, queryModel, v));
         } else {
             const items = await this.databaseSession.getConnection().find(
-                this.classSchema.classType,
+                this.classSchema,
                 getMongoFilter(this.classSchema, queryModel),
                 this.getProjection(this.classSchema, queryModel.select),
                 this.getSortFromModel(queryModel.sort),
@@ -211,7 +210,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
                         pipeline.push({
                             $lookup: {
-                                from: resolveCollectionName(viaClassType),
+                                from: this.databaseSession.getConnection().resolveCollectionName(getClassSchema(viaClassType)),
                                 let: {localField: '$' + join.classSchema.getPrimaryField().name},
                                 pipeline: [
                                     {$match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$localField']}}}
@@ -234,7 +233,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
                         pipeline.push({
                             $lookup: {
-                                from: resolveCollectionName(foreignSchema.classType),
+                                from: this.databaseSession.getConnection().resolveCollectionName(foreignSchema),
                                 let: {localField: '$' + subAs},
                                 pipeline: [
                                     {$match: {$expr: {$in: ['$' + foreignSchema.getPrimaryField().name, '$$localField']}}}
@@ -246,7 +245,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         //one-to-many
                         pipeline.push({
                             $lookup: {
-                                from: resolveCollectionName(foreignSchema.classType),
+                                from: this.databaseSession.getConnection().resolveCollectionName(foreignSchema),
                                 let: {foreign_id: '$' + foreignSchema.getPrimaryField().name},
                                 pipeline: joinPipeline,
                                 as: join.as,
@@ -256,7 +255,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 } else {
                     pipeline.push({
                         $lookup: {
-                            from: resolveCollectionName(foreignSchema.classType),
+                            from: this.databaseSession.getConnection().resolveCollectionName(foreignSchema),
                             let: {foreign_id: '$' + join.propertySchema.getForeignKeyName()},
                             pipeline: joinPipeline,
                             as: join.as,

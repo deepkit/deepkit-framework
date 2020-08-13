@@ -285,12 +285,7 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter, M
     abstract async patchOne(model: MODEL, value: { [path: string]: any }): Promise<boolean>;
 
     abstract async has(model: MODEL): Promise<boolean>;
-
-    abstract async findField<K extends FieldName<T>>(name: K): Promise<T[K][]>;
-
-    abstract async findOneField<K extends FieldName<T>>(name: K): Promise<T[K]>;
-
-    abstract async findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined>;
+    
 }
 
 /**

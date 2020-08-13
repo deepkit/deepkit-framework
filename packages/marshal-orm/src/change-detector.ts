@@ -1,5 +1,6 @@
 import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@super-hornet/marshal';
 import {getInstanceState} from './identity-map';
+import {getObjectKeysSize} from '@super-hornet/core';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;
@@ -114,6 +115,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
             const classSchema = property.getResolvedClassSchema();
             const jitChangeDetectorThis = reserveVariable(context, 'jitChangeDetector');
+            context.set('getObjectKeysSize', getObjectKeysSize);
             context.set(jitChangeDetectorThis, jitStack.getOrCreate(classSchema, () => createJITChangeDetectorForSnapshot(classSchema, jitStack)))
 
             return `
@@ -124,7 +126,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                     ${onChanged}
                 } else {
                     const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, item);
-                    if (Object.keys(thisChanged).length) {
+                    if (getObjectKeysSize(thisChanged)) {
                         changes.${changedName} = item.${changedName};
                         ${onChanged}    
                     }
@@ -138,7 +140,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                 }
             `;
         } else {
-            //binary, boolean, etc are encoded as simple JSON objects (number, boolean, or string)
+            //binary, date, boolean, etc are encoded as simple JSON objects (number, boolean, or string)
             //primitive
             return `
             if (${last} !== ${current}) {

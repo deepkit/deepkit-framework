@@ -1,5 +1,4 @@
 import {Binary, Long} from 'bson';
-import * as Moment from 'moment';
 import {
     BSON_DATA_ARRAY,
     BSON_DATA_BINARY,
@@ -13,8 +12,7 @@ import {
     BSON_DATA_OID,
     BSON_DATA_STRING,
     BSON_DATA_UNDEFINED,
-    digitByteSize,
-    moment
+    digitByteSize
 } from './utils';
 import {CachedKeyDecoder, decodeUTF8} from './strings';
 
@@ -87,7 +85,7 @@ export class BaseParser {
         return this.eatString(this.eatUInt32());
     }
 
-    parseBinary() {
+    parseBinary(): any {
         let size = this.eatUInt32();
         const subType = this.eatByte();
 

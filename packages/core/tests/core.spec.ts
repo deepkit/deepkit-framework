@@ -11,7 +11,8 @@ import {
     isPromise,
     isUndefined,
     setPathValue,
-    sleep
+    sleep,
+    getObjectKeysSize
 } from "../src/core";
 
 class SimpleClass {
@@ -258,4 +259,11 @@ test('asyncOperation deep', async () => {
         expect(error.stack).toContain('Object.asyncOperation');
     }
     expect(fetched).toBe(true);
+});
+
+
+test('getObjectKeysSize', async () => {
+    expect(getObjectKeysSize({})).toBe(0);
+    expect(getObjectKeysSize({a: true})).toBe(1);
+    expect(getObjectKeysSize({a: 1, b: 1, c: 3, d: 4, e: {}})).toBe(5);
 });

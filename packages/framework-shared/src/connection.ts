@@ -3,7 +3,7 @@ import {ClientMessageAll, CollectionStream, ServerMessageAll} from "./contract";
 import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./core";
 import {Subscriptions} from "@super-hornet/core-rxjs";
 import {Observable, Subscription} from "rxjs";
-import {ClassType, each, isFunction, sleep, stack} from "@super-hornet/core";
+import {ClassType, each, getObjectKeysSize, isFunction, sleep, stack} from '@super-hornet/core';
 import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from "@super-hornet/marshal";
 import {skip} from "rxjs/operators";
 
@@ -318,7 +318,7 @@ export class ConnectionMiddleware {
 
             this.observables[message.forId].subscriber[message.subscribeId].unsubscribe();
             delete this.observables[message.forId].subscriber[message.subscribeId];
-            if (Object.keys(this.observables[message.forId].subscriber).length === 0) {
+            if (getObjectKeysSize(this.observables[message.forId].subscriber) === 0) {
                 delete this.observables[message.forId];
             }
             writer.ack(message.forId);

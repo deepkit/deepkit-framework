@@ -1,15 +1,6 @@
 import 'jest-extended';
-import {Exchange} from "../src/exchange";
-import {ExchangeServer} from "../src/exchange-server";
-import {sleep} from '@super-hornet/core';
-import {
-    decodeMessage,
-    decodePayloadAsJson,
-    encodeMessage,
-    encodePayloadAsJSONArrayBuffer,
-    str2ab
-} from "../src/exchange-prot";
-import {closeCreatedExchange, createExchange} from "./utils";
+import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer, str2ab} from '../src/exchange-prot';
+import {closeCreatedExchange, createExchange} from './utils';
 
 afterAll(async () => {
     closeCreatedExchange();
@@ -101,46 +92,6 @@ test('test encoding/decoding', async () => {
         expect(d.arg).toBe('channel-name');
         expect(d.payload.byteLength).toBe(payload.byteLength);
         expect(decodePayloadAsJson(d.payload)).toEqual({data: true});
-    }
-});
-
-test('test encoding perf', async () => {
-    const count = 1_000;
-
-    const payload = encodePayloadAsJSONArrayBuffer({data: true});
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            encodeMessage(i, 'publish', 'channel-name', payload);
-        }
-        console.log(count, 'encodeMessage took', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
-
-    {
-        const m = encodeMessage(0, 'publish', 'channel-name', payload);
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            decodeMessage(m);
-        }
-        console.log(count, 'decodeMessage took', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            encodeMessage(i, 'publish', 'channel-name', payload);
-        }
-        console.log(count, 'encodeMessage no payload took', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
-
-    {
-        const m = encodeMessage(0, 'publish', 'channel-name');
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            decodeMessage(m);
-        }
-        console.log(count, 'decodeMessage no payload took', performance.now() - start, 'ms', (performance.now() - start) / count);
     }
 });
 

@@ -235,26 +235,21 @@ test('test inheritance', async () => {
     }
 
     expect(getClassSchema(Base).getProperty('id').type).toBe('string');
-    expect(getClassSchema(Base).getIndex('id2')!.name).toBe('id2');
 
     expect(getClassSchema(Page).getProperty('id').type).toBe('string');
     expect(getClassSchema(Page).getProperty('name').type).toBe('string');
-    expect(getClassSchema(Page).getIndex('id2')!.name).toBe('id2');
 
     expect(getClassSchema(SuperPage).getProperty('id').type).toBe('string');
     expect(getClassSchema(SuperPage).getProperty('name').type).toBe('string');
     expect(getClassSchema(SuperPage).getProperty('super').type).toBe('number');
-    expect(getClassSchema(SuperPage).getIndex('id2')!.name).toBe('id2');
 
     expect(getClassSchema(Super3).getProperty('id').type).toBe('string');
     expect(getClassSchema(Super3).getProperty('name').type).toBe('string');
     expect(getClassSchema(Super3).getProperty('super').type).toBe('number');
-    expect(getClassSchema(Super3).getIndex('id2')!.name).toBe('id2');
 
     expect(getClassSchema(Super2).getProperty('id').type).toBe('string');
     expect(getClassSchema(Super2).getProperty('name').type).toBe('string');
     expect(getClassSchema(Super2).getProperty('super').type).toBe('number');
-    expect(getClassSchema(Super2).getIndex('id2')!.name).toBe('id2');
 });
 
 

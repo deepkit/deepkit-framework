@@ -1,11 +1,11 @@
-import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from "@super-hornet/marshal-orm";
-import {getClassSchema} from "@super-hornet/marshal";
-import {ClassType, ParsedHost, parseHost} from "@super-hornet/core";
-import {MongoConnection} from "./connection";
-import {MongoDatabaseQuery} from "./query";
-import {MongoQueryResolver} from "./query.resolver";
-import {MongoQueryModel} from "./query.model";
-import {MongoPersistence} from "./persistence";
+import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from '@super-hornet/marshal-orm';
+import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
+import {ClassType, ParsedHost, parseHost} from '@super-hornet/core';
+import {MongoConnection} from './connection';
+import {MongoDatabaseQuery} from './query';
+import {MongoQueryResolver} from './query.resolver';
+import {MongoQueryModel} from './query.model';
+import {MongoPersistence} from './persistence';
 
 export class MongoDatabaseConfig {
     public host: ParsedHost;
@@ -75,4 +75,35 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
     disconnect(force?: boolean): void {
         this.connection.close(force);
     }
+
+    async migrate(classSchemas: Iterable<ClassSchema>) {
+        for (const schema of classSchemas) {
+            const collection = await this.connection.getCollection(schema);
+            //collection not existing yet, so create lock
+            for (const [name, index] of schema.indices.entries()) {
+                const fields: { [name: string]: 1 } = {};
+
+                if (index.fields.length === 1 && index.fields[0] === '_id') continue;
+
+                for (const f of index.fields) {
+                    fields[f] = 1;
+                }
+
+                const options: any = {
+                    name: name
+                };
+                if (index.options.unique) options.unique = true;
+                if (index.options.sparse) options.sparse = true;
+
+                try {
+                    await collection.createIndex(fields, options);
+                } catch (error) {
+                    console.log('failed index', name, '. Recreate ...');
+                    //failed, so drop and re-create
+                    await collection.dropIndex(name);
+                    await collection.createIndex(fields, options);
+                }
+            }
+        }
+    };
 }

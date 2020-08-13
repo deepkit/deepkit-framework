@@ -40,6 +40,7 @@ class InstanceState<T extends Entity> {
     snapshot: JSONPartial<T>;
     doSnapshot: (value: T) => any;
     changeDetector: (last: any, current: any, item: T) => any;
+    extractPrimaryKeys: (value: JSONPartial<T>) => JSONPartial<T>;
 
     readonly classSchema: ClassSchema<T>;
     readonly item: T;
@@ -52,6 +53,7 @@ class InstanceState<T extends Entity> {
 
         this.changeDetector = jitChangeDetector(this.classSchema);
         this.doSnapshot = getJITConverterForSnapshot(this.classSchema);
+        this.extractPrimaryKeys = getPrimaryKeyExtractor(this.classSchema);
         this.snapshot = this.doSnapshot(this.item);
     }
 
@@ -84,19 +86,12 @@ class InstanceState<T extends Entity> {
         this.knownInDatabase = true;
     }
 
-    getLastKnownPKOrCurrent(): Partial<T> {
-        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot || this.item as any);
+    getLastKnownPK(): JSONPartial<T> {
+        return this.extractPrimaryKeys(this.snapshot);
     }
 
-    getLastKnownPKHashOrCurrent(): string {
-        return getPrimaryKeyHashGenerator(this.classSchema)(this.snapshot || this.item as any);
-    }
-
-    getLastKnownPK(): PrimaryKey<T> {
-        if (!this.snapshot) {
-            throw new Error(`Item is not known in the database.`);
-        }
-        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot);
+    getLastKnownPKHash(): string {
+        return getPrimaryKeyHashGenerator(this.classSchema)(this.snapshot);
     }
 
     markAsDeleted() {
@@ -148,12 +143,13 @@ export class IdentityMap {
 
     isKnown<T>(item: T): boolean {
         const store = this.getStore(getClassSchema(item));
-        const pkHash = getInstanceState(item).getLastKnownPKHashOrCurrent();
+        const pkHash = getInstanceState(item).getLastKnownPKHash();
 
         return store.has(pkHash);
     }
 
     storeMany<T>(classSchema: ClassSchema<T>, items: PartialEntity<T>[]) {
+        if (!classSchema.hasPrimaryFields()) throw new Error(`Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`);
         const store = this.getStore(classSchema);
         for (const item of items) {
             const pkHash = getPrimaryKeyHashGenerator(classSchema)(item);

@@ -179,8 +179,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
     protected rounds: DatabaseSessionRound<ADAPTER>[] = [];
 
-    protected closed: boolean = false;
-
     protected commitDepth: number = 0;
 
     protected inCommit: boolean = false;
@@ -255,7 +253,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     public reset() {
         this.commitDepth = 0;
         this.inCommit = false;
-        this.closed = false;
         this.rounds = [];
     }
 
@@ -281,7 +278,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
             //we set only not overwritten values
             if (!item.hasOwnProperty(property.symbol)) {
                 Object.defineProperty(item, property.symbol, {
-                    enumerable: true,
+                    enumerable: false,
                     configurable: true,
                     value: itemDB[property.name as keyof T]
                 });
@@ -305,10 +302,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
             }
         }
 
-        if (this.closed) {
-            throw new SessionClosedException(`Session is closed due to an exception. Repair its failure and call reset() to open it again.`);
-        }
-
         this.commitDepth++;
 
         //we need to iterate via for i, because hooks might add additional rounds dynamically
@@ -320,7 +313,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
             try {
                 await round.commit();
             } catch (error) {
-                this.closed = true;
+                this.rounds = [];
                 this.commitDepth = 0;
                 throw error;
             }

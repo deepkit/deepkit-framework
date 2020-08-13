@@ -15,6 +15,9 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
         return new Connection;
     }
 
+    async migrate(classSchemas: Iterable<ClassSchema>) {
+    }
+
     createPersistence(databaseSession: DatabaseSession<this>): DatabasePersistence {
         class Persistence extends DatabasePersistence {
             async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {

@@ -1,5 +1,4 @@
-import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, PropertySchema} from '@super-hornet/marshal';
-import {PrimaryKey} from './identity-map';
+import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, JSONPartial, PropertySchema} from '@super-hornet/marshal';
 
 /**
  */
@@ -88,7 +87,7 @@ const primaryKeyExtractors = new Map<ClassSchema, any>();
 
 export function getPrimaryKeyExtractor<T>(
     classSchema: ClassSchema<T>
-): (value: any) => PrimaryKey<T> {
+): (value: any) => JSONPartial<T> {
     let jit = primaryKeyExtractors.get(classSchema);
     if (jit && jit.buildId === classSchema.buildId) return jit;
     jit = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields());
