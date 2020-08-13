@@ -22,7 +22,7 @@ export function getClassSchemaInstancePairs<T extends Entity>(items: Iterable<T>
 }
 
 export function convertPrimaryKeyToClass<T>(classSchema: ClassSchema<T>, serializerSourceName: string, dbItem: any): PrimaryKey<T> {
-    const jitConverter = new JitPropertyConverter(serializerSourceName, 'class', classSchema.classType);
+    const jitConverter = new JitPropertyConverter(classSchema, serializerSourceName, 'class');
     const pk: any = {};
     for (const primaryKey of classSchema.getPrimaryFields()) {
         pk[primaryKey.name] = jitConverter.convert(primaryKey.name, dbItem[primaryKey.name]);

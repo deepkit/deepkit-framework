@@ -1,8 +1,14 @@
-import {PropertyCompilerSchema, Types} from "./decorators";
-import {reserveVariable} from "./compiler-registry";
+import {PropertyCompilerSchema, Types} from './decorators';
+import {reserveVariable} from './compiler-registry';
+import {JitStack} from './jit';
 
 export type TypeCheckerCompilerContext = Map<string, any>;
-export type TypeCheckerCompiler = (accessor: string, property: PropertyCompilerSchema, utils: { reserveVariable: () => string, path: string, context: TypeCheckerCompilerContext, raise: (code: string, message: string) => string }) => string | { template: string, context: { [name: string]: any } };
+export type TypeCheckerCompiler = (
+    accessor: string,
+    property: PropertyCompilerSchema,
+    utils: { reserveVariable: (name?: string) => string, path: string, context: TypeCheckerCompilerContext, raise: (code: string, message: string) => string },
+    jitStack: JitStack,
+) => string | { template: string, context: { [name: string]: any } };
 
 export const validationRegistry = new Map<string, TypeCheckerCompiler>();
 
@@ -16,6 +22,7 @@ export function registerCheckerCompiler(
 export function executeCheckerCompiler(
     path: string,
     rootContext: TypeCheckerCompilerContext,
+    jitStack: JitStack,
     compiler: TypeCheckerCompiler,
     getter: string,
     property: PropertyCompilerSchema,
@@ -24,13 +31,16 @@ export function executeCheckerCompiler(
         getter,
         property,
         {
-            reserveVariable: reserveVariable.bind(undefined, rootContext),
+            reserveVariable: (name?: string) => {
+                return reserveVariable(rootContext, name);
+            },
             context: rootContext,
             path: path,
             raise: (code: string, message: string) => {
                 return `_errors.push(new ValidationError(${path}, ${JSON.stringify(code)}, ${JSON.stringify(message)}))`;
-            }
-        }
+            },
+        },
+        jitStack
     );
     if ('string' === typeof res) {
         return res;

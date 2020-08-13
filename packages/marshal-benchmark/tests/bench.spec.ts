@@ -5,7 +5,7 @@ import {
     plainToClass as classTransformerPlainToClass
 } from "class-transformer";
 import {BenchSuite} from "@super-hornet/core";
-import {classToPlain, f, jitClassToPlain, jitPlainToClass, plainToClass} from '@super-hornet/marshal';
+import {f, classToPlain, plainToClass, plainToClassFactory, classToPlainFactory} from '@super-hornet/marshal';
 import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from "cerialize";
 
 export class MarshalModel {
@@ -58,7 +58,7 @@ test('benchmark plainToClass', () => {
         plainToClass(MarshalModel, plain);
     });
 
-    const convert = jitPlainToClass(MarshalModel);
+    const convert = plainToClassFactory(MarshalModel);
     suite.add('Marshal jit saved', () => {
         convert(plain);
     });
@@ -91,7 +91,7 @@ test('benchmark classToPlain', () => {
         classToPlain(MarshalModel, b);
     });
 
-    const convert = jitClassToPlain(MarshalModel);
+    const convert = classToPlainFactory(MarshalModel);
     suite.add('Marshal jit save', () => {
         convert(b);
     });

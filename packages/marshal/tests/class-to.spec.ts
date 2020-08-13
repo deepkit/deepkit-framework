@@ -30,30 +30,9 @@ test('partial', () => {
     expect(plain.children[0].label).toBe('Foo');
 });
 
-test('partial 2', () => {
-    const i = new SimpleModel('Hi');
-    i.children.push(new SubModel('Foo'));
-
-    const plain = partialClassToPlain(SimpleModel, {
-        'children.0': i.children[0],
-        'stringChildrenCollection': new StringCollectionWrapper(['Foo', 'Bar']),
-        'childrenCollection': new CollectionWrapper([new SubModel('Bar3')]),
-        'childrenCollection.1': new SubModel('Bar4'),
-        'stringChildrenCollection.0': 'Bar2',
-        'childrenCollection.2.label': 'Bar5',
-    });
-
-    expect(plain['children.0'].label).toBe('Foo');
-    expect(plain['stringChildrenCollection']).toEqual(['Foo', 'Bar']);
-    expect(plain['stringChildrenCollection.0']).toEqual('Bar2');
-    expect(plain['childrenCollection']).toEqual([{label: 'Bar3'}]);
-    expect(plain['childrenCollection.1']).toEqual({label: 'Bar4'});
-    expect(plain['childrenCollection.2.label']).toEqual('Bar5');
-});
-
 test('partial unknown', () => {
     const partial = partialClassToPlain(SimpleModel, {
         'unknown': 'asd',
-    });
+    } as any);
     expect(partial['unknown']).toBeUndefined();
 });

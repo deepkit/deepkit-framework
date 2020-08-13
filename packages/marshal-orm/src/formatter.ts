@@ -223,7 +223,7 @@ export class Formatter {
 
     protected createObject(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
         const converted = model.isPartial() ?
-            jitPartial(this.serializerSourceName, 'class', classSchema.classType, value) :
+            jitPartial(classSchema, this.serializerSourceName, 'class', value) :
             createXToClassFunction(classSchema, this.serializerSourceName)(value);
 
         if (!model.isPartial()) {

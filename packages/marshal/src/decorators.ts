@@ -45,6 +45,7 @@ export type Types =
     | 'class'
     | 'map'
     | 'partial'
+    | 'patch'
     | 'array'
     | 'union'
     | 'moment'
@@ -96,6 +97,8 @@ typedArrayMap.set(Uint32Array, 'Uint32Array');
 typedArrayMap.set(Float32Array, 'Float32Array');
 typedArrayMap.set(Float64Array, 'Float64Array');
 typedArrayMap.set(ArrayBuffer, 'arrayBuffer');
+
+export type TypedArrays = Uint8Array | Uint16Array | Uint32Array | Int8Array | Int16Array | Int32Array | Uint8ClampedArray | Float32Array | Float64Array;
 
 export const typedArrayNamesMap = new Map<Types, any>();
 typedArrayNamesMap.set('Int8Array', Int8Array);
@@ -162,6 +165,10 @@ export class PropertyCompilerSchema {
 
     get isMap() {
         return this.type === 'map';
+    }
+
+    get isPatch() {
+        return this.type === 'partial';
     }
 
     get isPartial() {
@@ -2286,6 +2293,11 @@ type ExtractType<T> = T extends ForwardRefFn<infer K> ? K :
             T extends PlainSchemaProps ? ExtractClassDefinition<T> :
                 T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
 
+type StandardEnum<T> = {
+    [id: string]: T | string;
+    [nu: number]: string;
+}
+
 export interface MainDecorator {
     /**
      * Defines a type for a certain field. This is only necessary for custom classes
@@ -2354,6 +2366,8 @@ export interface MainDecorator {
 
     schema<T extends PlainSchemaProps>(props: T): ClassSchema<ExtractClassDefinition<T>>;
 
+    class<T extends PlainSchemaProps>(props: T): ClassType<ExtractClassDefinition<T>>;
+
     /**
      * Marks a field as string.
      */
@@ -2407,7 +2421,7 @@ export interface MainDecorator {
      *
      * Note: const enums are not supported.
      */
-    enum<T>(type: T, allowLabelsAsValue?: boolean): FieldDecoratorResult<T>;
+    enum<T>(type: T, allowLabelsAsValue?: boolean): FieldDecoratorResult<T[keyof T]>;
 
     /**
      * Marks a field as partial of a class entity. It differs in a way to standard Partial<> that

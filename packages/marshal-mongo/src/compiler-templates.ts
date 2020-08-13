@@ -131,65 +131,67 @@ registerConverterCompiler('class', 'mongo', 'objectId', (setter: string, accesso
     };
 });
 
-registerConverterCompiler('mongo', 'class', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
+registerConverterCompiler('mongo', 'class', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context, jitStack) => {
     //when property is a reference, then we stored in the database the actual primary key and used this
     //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
+    const classSchema = getClassSchema(property.resolveClassType!);
+
     if (property.isReference) {
         const classType = reserveVariable();
-        const schema = getClassSchema(property.resolveClassType!);
-        const primary = schema.getPrimaryField();
+        const primary = classSchema.getPrimaryField();
 
         return {
-            template: getDataConverterJS(setter, accessor, primary, 'mongo', 'class', context),
+            template: getDataConverterJS(setter, accessor, primary, 'mongo', 'class', context, jitStack),
             context: {
                 [classType]: property.resolveClassType,
                 createClassToXFunction,
             }
         };
     }
-    const classSchema = reserveVariable();
+    const xToClass = reserveVariable('xToClass');
 
     return {
         template: `
-            ${setter} = createXToClassFunction(${classSchema}, 'mongo')(${accessor}, _options, getParents(), _state);
+            ${setter} = ${xToClass}.fn(${accessor}, _options, getParents(), _state);
         `,
         context: {
-            [classSchema]: getClassSchema(property.resolveClassType!),
-            createXToClassFunction
+            [xToClass]: jitStack.getOrCreate(classSchema, () => createXToClassFunction(classSchema, 'mongo', jitStack))
         }
     };
 });
 
 registerConverterCompiler('mongo', 'class', 'union', compilerXToUnionClass('mongo'));
 
-registerConverterCompiler('class', 'mongo', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
+registerConverterCompiler('class', 'mongo', 'class', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context, jitStack) => {
     //When property is a reference we store the actual primary (as foreign key) of the referenced instance instead of the actual instance.
     //This way we implemented basically relations in mongodb
+    const classSchema = getClassSchema(property.resolveClassType!);
     if (property.isReference) {
         const classType = reserveVariable();
-        const schema = getClassSchema(property.resolveClassType!);
-        const primary = schema.getPrimaryField();
+        const primary = classSchema.getPrimaryField();
+        const rootBootstrap = {code: ''};
         return {
             template: `
             if (${accessor} instanceof ${classType}) {
-                ${getDataConverterJS(setter, `${accessor}.${primary.name}`, primary, 'class', 'mongo', context)}
+                ${getDataConverterJS(setter, `${accessor}.${primary.name}`, primary, 'class', 'mongo', context, jitStack)}
             } else {
                 //we treat the input as if the user gave the primary key directly
-                ${getDataConverterJS(setter, `${accessor}`, primary, 'class', 'mongo', context)}
+                ${getDataConverterJS(setter, `${accessor}`, primary, 'class', 'mongo', context, jitStack)}
             }
             `,
+            bootstrap: rootBootstrap.code,
             context: {
                 [classType]: property.resolveClassType,
             }
         };
     }
 
-    const classSchema = reserveVariable();
+    const classToX = reserveVariable('classToX');
+
     return {
-        template: `${setter} = createClassToXFunction(${classSchema}, 'mongo')(${accessor}, _options);`,
+        template: `${setter} = ${classToX}.fn(${accessor}, _options);`,
         context: {
-            [classSchema]: getClassSchema(property.resolveClassType!),
-            createClassToXFunction,
+            [classToX]: jitStack.getOrCreate(classSchema, () => createClassToXFunction(classSchema, 'mongo', jitStack))
         }
     };
 });

@@ -1,9 +1,19 @@
-import {PropertyCompilerSchema, Types} from './decorators';
-import {jitPartial} from './jit';
+import {ClassSchema, PropertyCompilerSchema, Types} from './decorators';
+import {jitPartial, jitPatch, JitStack} from './jit';
 
 export type TypeConverterCompilerContext = Map<string, any>;
-export type ReserveVariable = () => string;
-export type TypeConverterCompiler = (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable: ReserveVariable, context: TypeConverterCompilerContext) => string | { template: string, context: { [name: string]: any } };
+export type ReserveVariable = (name?: string) => string;
+
+export type TypeConverterCompiler = (
+    setter: string,
+    accessor: string,
+    property: PropertyCompilerSchema,
+    reserveVariable: ReserveVariable,
+    rootContext: TypeConverterCompilerContext,
+    jitStack: JitStack
+) => string | {
+    template: string, context: { [name: string]: any }
+};
 
 export const compilerRegistry = new Map<string, TypeConverterCompiler>();
 
@@ -64,14 +74,15 @@ export function reserveVariable(
 
 export function executeCompiler(
     rootContext: TypeConverterCompilerContext,
+    jitStack: JitStack,
     compilers: TypeConverterCompiler[],
     setter: string,
     getter: string,
-    property: PropertyCompilerSchema,
+    property: PropertyCompilerSchema
 ): string {
     let template = '';
     for (const compiler of compilers) {
-        const res = compiler(setter, getter, property, reserveVariable.bind(undefined, rootContext), rootContext);
+        const res = compiler(setter, getter, property, (name?: string) => reserveVariable(rootContext, name), rootContext, jitStack);
         if ('string' === typeof res) {
             template += res;
         } else {
@@ -118,8 +129,9 @@ export function getDataConverterJS(
     fromFormat: string,
     toFormat: string,
     rootContext: TypeConverterCompilerContext,
+    jitStack: JitStack,
     undefinedSetterCode: string = '',
-    nullSetterCode: string = '',
+    nullSetterCode: string = ''
 ): string {
     const {compilers, subProperty} = getCompilers(fromFormat, toFormat, property);
     const setNull = property.isNullable ? `${setter} = null;` : '';
@@ -128,8 +140,8 @@ export function getDataConverterJS(
 
     const undefinedCompiler = compilerRegistry.get(fromFormat + ':' + toFormat + ':undefined');
     const nullCompiler = compilerRegistry.get(fromFormat + ':' + toFormat + ':undefined');
-    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeCompiler(rootContext, [undefinedCompiler], setter, accessor, subProperty) : '');
-    nullSetterCode = nullSetterCode || (nullCompiler ? executeCompiler(rootContext, [nullCompiler], setter, accessor, subProperty) : '');
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeCompiler(rootContext, jitStack, [undefinedCompiler], setter, accessor, subProperty) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeCompiler(rootContext, jitStack, [nullCompiler], setter, accessor, subProperty) : '');
 
     if (property.isArray) {
         const a = reserveVariable(rootContext, 'a');
@@ -153,7 +165,7 @@ export function getDataConverterJS(
                         //make sure all elements have the correct type
                         if (${accessor}[${l}] !== undefined && ${accessor}[${l}] !== null) {
                             let itemValue;
-                            ${getDataConverterJS(`itemValue`, `${a}[${l}]`, property.getSubType(), fromFormat, toFormat, rootContext)}
+                            ${getDataConverterJS(`itemValue`, `${a}[${l}]`, property.getSubType(), fromFormat, toFormat, rootContext, jitStack)}
                             if (${!subProperty.isOptional} && itemValue === undefined) {
                                 ${a}.splice(${l}, 1);
                             } else {
@@ -166,7 +178,8 @@ export function getDataConverterJS(
             }
         `;
     } else if (property.isMap) {
-        const a = reserveVariable(rootContext);
+        const a = reserveVariable(rootContext, 'a');
+        const i = reserveVariable(rootContext, 'i');
         let setDefault = property.isOptional ? '' : `${setter} = {};`;
         return `
             if (${accessor} === undefined) {
@@ -179,12 +192,12 @@ export function getDataConverterJS(
                 let ${a} = {};
                 //we make sure its a object and not an array
                 if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                    for (let i in ${accessor}) {
-                        if (!${accessor}.hasOwnProperty(i)) continue;
-                        if (${!subProperty.isOptional} && ${accessor}[i] === undefined) {
+                    for (let ${i} in ${accessor}) {
+                        if (!${accessor}.hasOwnProperty(${i})) continue;
+                        if (${!subProperty.isOptional} && ${accessor}[${i}] === undefined) {
                             continue;
                         }
-                        ${getDataConverterJS(`${a}[i]`, `${accessor}[i]`, property.getSubType(), fromFormat, toFormat, rootContext)}
+                        ${getDataConverterJS(`${a}[${i}]`, `${accessor}[${i}]`, property.getSubType(), fromFormat, toFormat, rootContext, jitStack)}
                     }
                     ${setter} = ${a};
                 } else {
@@ -193,6 +206,7 @@ export function getDataConverterJS(
             }
         `;
     } else if (property.isPartial) {
+        //rework
         const varClassType = reserveVariable(rootContext);
         rootContext.set('jitPartial', jitPartial);
         rootContext.set(varClassType, property.getSubType().resolveClassType);
@@ -204,11 +218,11 @@ export function getDataConverterJS(
                 ${setNull}
                 ${nullSetterCode}
             } else {
-                ${setter} = jitPartial('${fromFormat}', '${toFormat}', ${varClassType}, ${accessor}, _options);
+                ${setter} = jitPartial(${varClassType}, '${fromFormat}', '${toFormat}', ${accessor}, _options);
             }
         `;
     } else {
-        const convert = compilers.length ? executeCompiler(rootContext, compilers, setter, accessor, property) : `${setter} = ${accessor};`;
+        const convert = compilers.length ? executeCompiler(rootContext, jitStack, compilers, setter, accessor, property) : `${setter} = ${accessor};`;
         return `
             if (${accessor} === undefined) {
                 ${setUndefined}

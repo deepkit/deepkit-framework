@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, t, uuid} from "../index";
+import {Entity, getClassSchema, t, uuid} from '../index';
 import {JitPropertyConverter} from "../src/jit";
 import {Channel, Job} from "./big-entity";
 
@@ -44,7 +44,7 @@ class JobModelGraphSnapshot {
 
 test('break JitPropertyConverter', () => {
     {
-        const converter = new JitPropertyConverter('class', 'plain', Job);
+        const converter = new JitPropertyConverter(getClassSchema(Job), 'class', 'plain');
         const c = new Channel();
         c.lastValue = [12, 44];
         c.main = true;
@@ -63,7 +63,7 @@ test('break JitPropertyConverter', () => {
         sl.saved = new Date;
         sl.outputFilePath = './my/output.path';
 
-        const converter = new JitPropertyConverter('class', 'plain', JobModelGraphSnapshot);
+        const converter = new JitPropertyConverter(getClassSchema(JobModelGraphSnapshot), 'class', 'plain');
         const v = converter.convert('layerInfo.bla', sl);
         //this breaks when we cache only getCacheKey() for virtual properties schemas
         expect(v).toEqual({

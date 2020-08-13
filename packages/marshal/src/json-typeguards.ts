@@ -1,15 +1,16 @@
 import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap, Types} from './decorators';
 import {isValidEnumValue} from '@super-hornet/core';
 
-export type TypeGuardFactory = (property: PropertyCompilerSchema) => ((v: any) => boolean);
+export type JSONTypeGuard = (v: any) => boolean;
+export type JSONTypeGuardFactory = (property: PropertyCompilerSchema) => JSONTypeGuard;
 
-export const typeGuards = new Map<Types, TypeGuardFactory>();
+export const jsonTypeGuards = new Map<Types, JSONTypeGuardFactory>();
 
-export function registerTypeGuard(type: Types, factory: TypeGuardFactory) {
-    typeGuards.set(type, factory);
+export function registerJSONTypeGuard(type: Types, factory: JSONTypeGuardFactory) {
+    jsonTypeGuards.set(type, factory);
 }
 
-registerTypeGuard('class', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('class', (property: PropertyCompilerSchema) => {
     const schema = getClassSchema(property.resolveClassType!);
     if (schema.discriminant) {
         schema.loadDefaults();
@@ -37,25 +38,25 @@ registerTypeGuard('class', (property: PropertyCompilerSchema) => {
 
 });
 
-registerTypeGuard('string', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('string', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return 'string' === typeof v;
     };
 });
 
-registerTypeGuard('enum', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('enum', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return undefined !== v && !isValidEnumValue(property.resolveClassType, v, property.allowLabelsAsValue);
     };
 });
 
-registerTypeGuard('objectId', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('objectId', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return 'string' === typeof v;
     };
 });
 
-registerTypeGuard('uuid', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('uuid', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return 'string' === typeof v;
     };
@@ -67,68 +68,68 @@ function typedArrayGuard(property: PropertyCompilerSchema) {
     };
 }
 
-registerTypeGuard('arrayBuffer', typedArrayGuard);
+registerJSONTypeGuard('arrayBuffer', typedArrayGuard);
 for (const name of typedArrayNamesMap.keys()) {
-    registerTypeGuard(name, typedArrayGuard);
+    registerJSONTypeGuard(name, typedArrayGuard);
 }
 
 const date = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$/;
-registerTypeGuard('moment', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('moment', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return 'string' === typeof v && date.exec(v) !== null;
     };
 });
 
-registerTypeGuard('date', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('date', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return 'string' === typeof v && date.exec(v) !== null;
     };
 });
 
-registerTypeGuard('any', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('any', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return true;
     };
 });
 
-registerTypeGuard('union', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('union', (property: PropertyCompilerSchema) => {
     throw new Error('Union typechecking not implemented. Nested unions thus not supported yet.');
     return (v: any) => {
         return true;
     };
 });
 
-registerTypeGuard('array', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('array', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return v && v.length !== undefined && 'string' !== typeof v || 'function' === typeof v.slice;
     };
 });
 
-registerTypeGuard('map', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('map', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return v && 'object' === typeof v && 'function' !== typeof v.slice;
     };
 });
 
-registerTypeGuard('partial', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('partial', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return v && 'object' === typeof v && 'function' !== typeof v.slice;
     };
 });
 
-registerTypeGuard('number', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('number', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return 'number' === typeof v;
     };
 });
 
-registerTypeGuard('boolean', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('boolean', (property: PropertyCompilerSchema) => {
     return (v: any) => {
         return 'boolean' === typeof v;
     };
 });
 
-registerTypeGuard('literal', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('literal', (property: PropertyCompilerSchema) => {
     if ('number' === typeof property.literalValue) {
         return (v: any) => {
             return 0 + v === property.literalValue;

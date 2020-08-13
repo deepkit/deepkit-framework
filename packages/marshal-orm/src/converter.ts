@@ -1,4 +1,4 @@
-import {ClassSchema, getDataConverterJS, getGlobalStore, PropertySchema} from '@super-hornet/marshal';
+import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, PropertySchema} from '@super-hornet/marshal';
 import {PrimaryKey} from './identity-map';
 
 /**
@@ -8,6 +8,7 @@ function createJITConverterForSnapshot(
     properties: Iterable<PropertySchema>
 ) {
     const context = new Map<any, any>();
+    const jitStack = new JitStack();
     const setProperties: string[] = [];
 
     for (const property of properties) {
@@ -19,7 +20,7 @@ function createJITConverterForSnapshot(
             for (const pk of property.getResolvedClassSchema().getPrimaryFields()) {
                 referenceCode.push(`
                 //createJITConverterForSnapshot ${property.name}->${pk.name} class:snapshot:${property.type} reference
-                ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, 'class', 'plain', context)}
+                ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, 'class', 'plain', context, jitStack)}
                 `);
             }
 
@@ -40,7 +41,7 @@ function createJITConverterForSnapshot(
         setProperties.push(`
             //createJITConverterForSnapshot ${property.name} class:snapshot:${property.type}
             ${getDataConverterJS(
-            `_result.${property.name}`, `_value.${property.name}`, property, 'class', 'plain', context,
+            `_result.${property.name}`, `_value.${property.name}`, property, 'class', 'plain', context, jitStack,
             `_result.${property.name} = null`, `_result.${property.name} = null`,
         )}
             `);
@@ -121,6 +122,7 @@ function createPrimaryKeyHashGenerator(
 ) {
     const context = new Map<any, any>();
     const setProperties: string[] = [];
+    const jitStack = new JitStack();
 
     for (const property of classSchema.getPrimaryFields()) {
         if (property.isParentReference) continue;
@@ -136,7 +138,7 @@ function createPrimaryKeyHashGenerator(
                 referenceCode.push(`
                 //getPrimaryKeyExtractor ${property.name}->${pk.name} class:snapshot:${property.type} reference
                 lastValue = '';
-                ${getDataConverterJS(`lastValue`, `_value.${property.name}.${pk.name}`, pk, fromFormat, 'plain', context)}
+                ${getDataConverterJS(`lastValue`, `_value.${property.name}.${pk.name}`, pk, fromFormat, 'plain', context, jitStack)}
                 _result += '\\0' + lastValue;
             `);
             }
@@ -159,7 +161,7 @@ function createPrimaryKeyHashGenerator(
         setProperties.push(`
             //getPrimaryKeyHashGenerator ${property.name} class:plain:${property.type}
             lastValue = '';
-            ${getDataConverterJS(`lastValue`, `_value.${property.name}`, property, fromFormat, 'plain', context)}
+            ${getDataConverterJS(`lastValue`, `_value.${property.name}`, property, fromFormat, 'plain', context, jitStack)}
             _result += '\\0' + lastValue;
         `);
     }

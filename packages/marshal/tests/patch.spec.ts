@@ -1,230 +1,119 @@
 import 'jest';
-import 'jest-extended';
 import 'reflect-metadata';
-import {applyPatch, applyAndReturnPatches} from "../index";
+import {partialClassToPlain, patchClassToPlain, patchPlainToClass} from '../src/mapper';
+import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
+import {DocumentClass} from './document-scenario/DocumentClass';
+import {PageCollection} from './document-scenario/PageCollection';
+import {resolvePropertyCompilerSchema} from '../src/jit';
+import {getClassSchema} from '../src/decorators';
 
-class Goal {
-    title: string = '';
-}
 
-class PersistentState {
-    id: number = 0;
-    goal: Goal = new Goal;
-    goals: { [id: string]: Goal } = {};
+test('partial 2', () => {
+    const instance = patchPlainToClass(SimpleModel, {
+        name: 'Hi',
+        'children.0.label': 'Foo'
+    });
 
-    titles: string[] = [];
+    expect(instance).not.toBeInstanceOf(SimpleModel);
+    expect((instance as any)['id']).toBeUndefined();
+    expect((instance as any)['type']).toBeUndefined();
+    expect(instance.name).toBe('Hi');
+    expect(instance['children.0.label']).toBe('Foo');
 
-    addGoal(id: string, goal: Goal) {
-        this.goals[id] = goal;
-    }
+    expect(patchPlainToClass(SimpleModel, {
+        'children.0.label': 2
+    })).toEqual({'children.0.label': '2'});
 
-    getTest(id: string) {
-        return id;
-    }
-}
-
-class State {
-    title: string = '';
-    persistent: PersistentState = new PersistentState;
-    persistent2: PersistentState = new PersistentState;
-    goals: Goal[] = [];
-}
-
-class StateWithMap {
-    map: Map<any, any> = new Map();
-}
-
-test('check basics', () => {
-    const state = new State();
-    state.goals.push(new Goal());
-
-    {
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            state.persistent.id = 12;
-            expect(state.persistent.id).toBe(12);
-            expect(state.persistent.getTest('123')).toBe('123');
-        });
-        newState.persistent.id = 12;
-    }
+    const i2 = patchPlainToClass(SimpleModel, {
+        'children.0': {'label': 3}
+    });
+    expect(i2['children.0']).toBeInstanceOf(SubModel);
+    expect(i2['children.0'].label).toBe('3');
 });
 
-test('check object map', () => {
-    const state = new State();
-    state.goals.push(new Goal());
-    state.persistent.goals['foo'] = new Goal();
 
-    {
-        const newGoal = new Goal();
-        expect(Object.keys(state.persistent.goals)).toEqual(['foo']);
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            expect('foo' in state.persistent.goals).toBeTrue();
-            expect(Object.keys(state.persistent.goals)).toEqual(['foo']);
-            state.persistent.addGoal('bar', newGoal);
-            expect('bar' in state.persistent.goals).toBeTrue();
-            expect(Object.keys(state.persistent.goals)).toEqual(['foo', 'bar']);
-            expect(state.persistent.goals['bar'] === newGoal).toBeTrue();
-        });
-        expect('bar' in newState.persistent.goals).toBeTrue();
-        expect(Object.keys(newState.persistent.goals)).toEqual(['foo', 'bar']);
-        expect(newState.persistent.goals['bar'] === newGoal).toBeTrue();
-    }
+test('partial 4', () => {
+    const i2 = patchPlainToClass(SimpleModel, {
+        'stringChildrenCollection.0': 4
+    });
+    expect(i2['stringChildrenCollection.0']).toBe('4');
 });
 
-test('check unsupported', () => {
-    const state = new StateWithMap();
-
-    expect(() => {
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            expect(state.map.get('asd')).toBe(undefined);
-        });
-    }).toThrow('Map and Set not supported');
+test('partial 5', () => {
+    const i2 = patchPlainToClass(SimpleModel, {
+        'childrenMap.foo.label': 5
+    });
+    expect(i2['childrenMap.foo.label']).toBe('5');
 });
 
-test('check deep patch', () => {
-    const state = new State();
-    state.title = 'myState';
-    state.goals.push(new Goal());
-    state.persistent.titles.push('Init');
 
-    expect(state.goals).toBeArrayOfSize(1);
+test('partial 7', () => {
+    const i = patchPlainToClass(SimpleModel, {
+        'types.0': [7]
+    });
+    expect(i['types.0']).toEqual('7');
+});
+
+test('partial document', () => {
+    const docParent = new DocumentClass();
+    const document = patchPlainToClass(DocumentClass, {
+        'pages.0.name': 5,
+        'pages.0.children.0.name': 6,
+        'pages.0.children': [{name: 7}],
+    }, {parents: [docParent]});
+
+    console.log('document', document);
+    expect(document['pages.0.name']).toBe('5');
+    expect(document['pages.0.children.0.name']).toBe('6');
+    expect(document['pages.0.children']).toBeInstanceOf(PageCollection);
+    expect(document['pages.0.children'].get(0).name).toBe('7');
 
     {
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            state.persistent.id = 12;
-            expect(state.persistent.id).toBe(12);
-        });
-
-        expect(state !== newState).toBeTrue();
-        expect(state.persistent.id).not.toBe(newState.persistent.id);
-        expect(state.persistent !== newState.persistent).toBeTrue();
-        expect(state.persistent.goal === newState.persistent.goal).toBeTrue();
-        expect(state.goals === newState.goals).toBeTrue();
+        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.name');
+        expect(prop.type).toBe('string');
+        expect(prop.resolveClassType).toBe(undefined);
+        expect(prop.isPartial).toBe(false);
+        expect(prop.isArray).toBe(false);
+        expect(prop.isMap).toBe(false);
     }
 
     {
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            state.persistent.id = 10;
-            expect(state.title).toBe('myState');
-            state.persistent2.id = 13;
-            state.persistent.id = 12;
-            expect(state.persistent.id).toBe(12);
-            expect(state.persistent2.id).toBe(13);
-        });
-
-        expect(state !== newState).toBeTrue();
-        expect(newState.title).toBe('myState');
-        expect(newState.persistent.id).toBe(12);
-        expect(newState.persistent2.id).toBe(13);
-        expect(state.persistent.id).not.toBe(newState.persistent.id);
-        expect(state.persistent !== newState.persistent).toBeTrue();
-        expect(state.persistent.goal === newState.persistent.goal).toBeTrue();
-        expect(state.goals === newState.goals).toBeTrue();
+        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children');
+        expect(prop.type).toBe('class');
+        expect(prop.resolveClassType).toBe(PageCollection);
+        expect(prop.isPartial).toBe(false);
+        expect(prop.isArray).toBe(false);
+        expect(prop.isMap).toBe(false);
     }
 
     {
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            expect(state.persistent.titles[0]).toBe('Init');
-            state.persistent.titles.push('modified');
-            expect(state.persistent.titles).toBeArrayOfSize(2);
-            expect(state.persistent.titles[1]).toBe('modified');
-            const mod = state.persistent.titles.pop();
-            expect(mod).toBe('modified');
-            expect(state.persistent.titles).toBeArrayOfSize(1);
-            state.persistent.titles.unshift('newFirst');
-            expect(state.persistent.titles).toBeArrayOfSize(2);
-            expect(state.persistent.titles[0]).toBe('newFirst');
-            expect(state.persistent.titles[1]).toBe('Init');
-            expect(state.persistent.titles.includes('Init')).toBeTrue();
-        });
-        expect(newState.persistent.titles).toBeArrayOfSize(2);
-        expect(newState.persistent.titles[0]).toBe('newFirst');
-        expect(newState.persistent.titles[1]).toBe('Init');
-        expect(state.persistent.titles.includes('Init')).toBeTrue();
-        expect(newState.persistent.titles.includes('Init')).toBeTrue();
-        expect(newState.persistent.titles.includes('newFirst')).toBeTrue();
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-        expect(state.persistent !== newState.persistent).toBeTrue();
-        expect(state.persistent.goal === newState.persistent.goal).toBeTrue();
-        expect(state.goals === newState.goals).toBeTrue();
-    }
-
-    {
-        //same ref check
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            state.persistent.titles = state.persistent.titles;
-            state.persistent.titles.unshift('newFirst');
-            expect(state.persistent.titles).toBeArrayOfSize(2);
-            expect(state.persistent.titles[0]).toBe('newFirst');
-            expect(state.persistent.titles[1]).toBe('Init');
-        });
-        expect(newState.persistent.titles).toBeArrayOfSize(2);
-        expect(newState.persistent.titles[0]).toBe('newFirst');
-        expect(newState.persistent.titles[1]).toBe('Init');
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-    }
-
-    {
-        //same ref check doesnt change anything
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-        const newState = applyPatch(Object.freeze(state), (state) => {
-            state.persistent.titles = state.persistent.titles;
-        });
-        expect(newState.persistent.titles).toBeArrayOfSize(1);
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-        expect(state.persistent === newState.persistent).toBeTrue();
+        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children.0.name');
+        expect(prop.type).toBe('string');
+        expect(prop.resolveClassType).toBe(undefined);
+        expect(prop.isPartial).toBe(false);
+        expect(prop.isArray).toBe(false);
+        expect(prop.isMap).toBe(false);
     }
 });
 
 
-test('patches', () => {
-    const state = new State();
-    state.goals.push(new Goal());
-    state.persistent.titles.push('Init');
+test('partial 2', () => {
+    const i = new SimpleModel('Hi');
+    i.children.push(new SubModel('Foo'));
 
-    expect(state.goals).toBeArrayOfSize(1);
+    const plain = patchClassToPlain(SimpleModel, {
+        'children.0': i.children[0],
+        'stringChildrenCollection': new StringCollectionWrapper(['Foo', 'Bar']),
+        'childrenCollection': new CollectionWrapper([new SubModel('Bar3')]),
+        'childrenCollection.1': new SubModel('Bar4'),
+        'stringChildrenCollection.0': 'Bar2',
+        'childrenCollection.2.label': 'Bar5',
+    });
 
-    {
-        const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
-            state.persistent.id = 12;
-        });
-        expect(patches).toEqual({'persistent.id': 12});
-    }
-
-    // {
-    //     const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
-    //         state.persistent.id = 0;
-    //     });
-    //     expect(patches).toEqual({});
-    // }
-
-    {
-        const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
-            state.persistent.id = 12;
-            state.persistent.titles = ['foo'];
-        });
-        expect(patches).toEqual({'persistent.id': 12, 'persistent.titles': ['foo']});
-    }
-
-    {
-        const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
-            state.persistent.titles.push('foo');
-        });
-        expect(patches).toEqual({'persistent.titles': ['Init', 'foo']});
-    }
-
-    {
-        const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
-            state.persistent.goal.title = 'deep';
-        });
-        expect(patches).toEqual({'persistent.goal.title': 'deep'});
-    }
-
-    {
-        const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
-            state.persistent.goal = new Goal();
-        });
-        expect(patches).toEqual({'persistent.goal': new Goal()});
-    }
+    expect(plain['children.0'].label).toBe('Foo');
+    expect(plain['stringChildrenCollection']).toEqual(['Foo', 'Bar']);
+    expect(plain['stringChildrenCollection.0']).toEqual('Bar2');
+    expect(plain['childrenCollection']).toEqual([{label: 'Bar3'}]);
+    expect(plain['childrenCollection.1']).toEqual({label: 'Bar4'});
+    expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 });

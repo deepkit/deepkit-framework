@@ -1,13 +1,11 @@
-import {ClassSchema, getClassSchema, PartialEntity} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, PartialEntity, JSONPartial} from '@super-hornet/marshal';
 import {Entity} from './query';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
 import {isObject} from '@super-hornet/core';
 import {jitChangeDetector} from './change-detector';
 import {inspect} from 'util';
 
-export type PrimaryKey<T extends Entity> = { [name in keyof T & string]?: T[name] };
-
-export type JSONPartial<T extends Entity> = { [name in keyof T & string]?: any };
+export type PrimaryKey<T> = { [name in keyof T]?: T[name] };
 
 export function getNormalizedPrimaryKey(schema: ClassSchema<any>, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();
@@ -41,7 +39,7 @@ class InstanceState<T extends Entity> {
      */
     snapshot: JSONPartial<T>;
     doSnapshot: (value: T) => any;
-    changeDetector: (last: any, current: any) => any;
+    changeDetector: (last: any, current: any, item: T) => any;
 
     readonly classSchema: ClassSchema<T>;
     readonly item: T;
@@ -86,7 +84,7 @@ class InstanceState<T extends Entity> {
         this.knownInDatabase = true;
     }
 
-    getLastKnownPKOrCurrent(): PrimaryKey<T> {
+    getLastKnownPKOrCurrent(): Partial<T> {
         return getPrimaryKeyExtractor(this.classSchema)(this.snapshot || this.item as any);
     }
 
@@ -132,7 +130,7 @@ type Store = {
 export class IdentityMap {
     registry = new Map<ClassSchema, Map<PKHash, Store>>();
 
-    deleteMany<T>(classSchema: ClassSchema<T>, pks: PartialEntity<T>[]) {
+    deleteMany<T>(classSchema: ClassSchema<T>, pks: Partial<T>[]) {
         const store = this.getStore(classSchema);
         for (const pk of pks) {
             const pkHash = getPrimaryKeyHashGenerator(classSchema)(pk);

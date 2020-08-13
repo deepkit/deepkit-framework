@@ -1,11 +1,9 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
-import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
-import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from "../src/mapper";
-import {t, getClassSchema, ParentReference} from "../index";
-import {DocumentClass} from "./document-scenario/DocumentClass";
-import {PageCollection} from "./document-scenario/PageCollection";
-import {resolvePropertyCompilerSchema} from "../src/jit";
+import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
+import {classToPlain, partialClassToPlain, partialPlainToClass, plainToClass} from '../src/mapper';
+import {getClassSchema, t} from '../index';
+import {resolvePropertyCompilerSchema} from '../src/jit';
 
 test('resolvePropertyCompilerSchema simple', () => {
     expect(resolvePropertyCompilerSchema(getClassSchema(SimpleModel), 'id')!.type).toBe('uuid');
@@ -117,30 +115,6 @@ test('partial', () => {
 });
 
 
-test('partial 2', () => {
-    const instance = partialPlainToClass(SimpleModel, {
-        name: 'Hi',
-        'children.0.label': 'Foo'
-    });
-
-    expect(instance).not.toBeInstanceOf(SimpleModel);
-    expect((instance as any)['id']).toBeUndefined();
-    expect((instance as any)['type']).toBeUndefined();
-    expect(instance.name).toBe('Hi');
-    expect(instance['children.0.label']).toBe('Foo');
-
-    expect(partialPlainToClass(SimpleModel, {
-        'children.0.label': 2
-    })).toEqual({'children.0.label': '2'});
-
-    const i2 = partialPlainToClass(SimpleModel, {
-        'children.0': {'label': 3}
-    });
-    expect(i2['children.0']).toBeInstanceOf(SubModel);
-    expect(i2['children.0'].label).toBe('3');
-});
-
-
 test('partial 3', () => {
     const i2 = partialPlainToClass(SimpleModel, {
         'children': [{'label': 3}]
@@ -150,74 +124,11 @@ test('partial 3', () => {
 });
 
 
-test('partial 4', () => {
-    const i2 = partialPlainToClass(SimpleModel, {
-        'stringChildrenCollection.0': 4
-    });
-    expect(i2['stringChildrenCollection.0']).toBe('4');
-});
-
-test('partial 5', () => {
-    const i2 = partialPlainToClass(SimpleModel, {
-        'childrenMap.foo.label': 5
-    });
-    expect(i2['childrenMap.foo.label']).toBe('5');
-});
-
-
 test('partial 6', () => {
     const i = partialPlainToClass(SimpleModel, {
         'types': [6, 7]
     });
     expect(i['types']).toEqual(['6', '7']);
-});
-
-test('partial 7', () => {
-    const i = partialPlainToClass(SimpleModel, {
-        'types.0': [7]
-    });
-    expect(i['types.0']).toEqual('7');
-});
-
-test('partial document', () => {
-    const docParent = new DocumentClass();
-    const document = partialPlainToClass(DocumentClass, {
-        'pages.0.name': 5,
-        'pages.0.children.0.name': 6,
-        'pages.0.children': [{name: 7}],
-    }, {parents: [docParent]});
-    console.log('document', document);
-    expect(document['pages.0.name']).toBe('5');
-    expect(document['pages.0.children.0.name']).toBe('6');
-    expect(document['pages.0.children']).toBeInstanceOf(PageCollection);
-    expect(document['pages.0.children'].get(0).name).toBe('7');
-
-    {
-        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.name');
-        expect(prop.type).toBe('string');
-        expect(prop.resolveClassType).toBe(undefined);
-        expect(prop.isPartial).toBe(false);
-        expect(prop.isArray).toBe(false);
-        expect(prop.isMap).toBe(false);
-    }
-
-    {
-        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children');
-        expect(prop.type).toBe('class');
-        expect(prop.resolveClassType).toBe(PageCollection);
-        expect(prop.isPartial).toBe(false);
-        expect(prop.isArray).toBe(false);
-        expect(prop.isMap).toBe(false);
-    }
-
-    {
-        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children.0.name');
-        expect(prop.type).toBe('string');
-        expect(prop.resolveClassType).toBe(undefined);
-        expect(prop.isPartial).toBe(false);
-        expect(prop.isArray).toBe(false);
-        expect(prop.isMap).toBe(false);
-    }
 });
 
 test('test enum string', () => {
@@ -335,7 +246,7 @@ test('partial edge cases', () => {
         const m = partialClassToPlain(User, {
             name: undefined,
             picture: null,
-            tags: {}
+            tags: {} as any
         });
 
         expect(m.name).toBe(undefined);
@@ -347,7 +258,7 @@ test('partial edge cases', () => {
         name: undefined,
         picture: null,
         parent: new User(),
-        tags: {}
+        tags: {} as any
     });
 
     {

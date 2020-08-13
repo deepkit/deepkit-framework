@@ -58,7 +58,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const ids = await collection.aggregate(pipeline).toArray();
         return {
             // mongoFilter: {$or: ids},
-            primaryKeys: ids.map(v => partialMongoToClass(this.classSchema.classType, v) as PrimaryKey<T>)
+            primaryKeys: ids.map(v => partialMongoToClass(this.classSchema, v)) as Partial<T>[]
         };
     }
 

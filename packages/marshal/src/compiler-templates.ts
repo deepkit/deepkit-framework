@@ -1,9 +1,9 @@
-import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap, Types} from './decorators';
+import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap} from './decorators';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {createClassToXFunction, createXToClassFunction, moment} from './jit';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
 import {getConverterCompiler, getDataConverterJS, registerConverterCompiler, TypeConverterCompiler} from './compiler-registry';
-import {typeGuards} from './typeguards';
+import {getSortedUnionTypes} from './union';
 
 export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : ''+${accessor};`;
@@ -29,23 +29,23 @@ registerConverterCompiler('plain', 'class', 'literal', (setter: string, accessor
 });
 
 const originalUndefined = getConverterCompiler('plain', 'class', 'undefined');
-registerConverterCompiler('plain', 'class', 'undefined', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
+registerConverterCompiler('plain', 'class', 'undefined', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context, jitStack) => {
     if (property.type === 'literal' && !property.isOptional) {
         const literalValue = '_literal_value_' + property.name;
         return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
     }
 
-    return originalUndefined(setter, accessor, property, reserveVariable, context);
+    return originalUndefined(setter, accessor, property, reserveVariable, context, jitStack);
 });
 
 const originalNull = getConverterCompiler('plain', 'class', 'null');
-registerConverterCompiler('plain', 'class', 'null', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
+registerConverterCompiler('plain', 'class', 'null', (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context, jitStack) => {
     if (property.type === 'literal' && !property.isNullable) {
         const literalValue = '_literal_value_' + property.name;
         return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
     }
 
-    return originalNull(setter, accessor, property, reserveVariable, context);
+    return originalNull(setter, accessor, property, reserveVariable, context, jitStack);
 });
 
 registerConverterCompiler('plain', 'class', 'date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
@@ -164,13 +164,16 @@ registerConverterCompiler('class', 'plain', 'date', convertToPlainUsingToJson);
 registerConverterCompiler('class', 'plain', 'moment', convertToPlainUsingToJson);
 
 export function compilerConvertClassToX(toFormat: string): TypeConverterCompiler {
-    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-        const classSchema = reserveVariable();
+    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, rootContext, jitStack) => {
+        const classSchemaVar = reserveVariable('classSchema');
+        const classSchema = getClassSchema(property.resolveClassType!);
+        const classToX = reserveVariable('classToX');
+
         return {
-            template: `${setter} = createClassToXFunction(${classSchema}, '${toFormat}')(${accessor}, _options);`,
+            template: `${setter} = ${classToX}.fn(${accessor}, _options);`,
             context: {
-                [classSchema]: getClassSchema(property.resolveClassType!),
-                createClassToXFunction,
+                [classSchemaVar]: classSchema,
+                [classToX]: jitStack.getOrCreate(classSchema, () => createClassToXFunction(classSchema, toFormat, jitStack))
             }
         };
     };
@@ -179,19 +182,22 @@ export function compilerConvertClassToX(toFormat: string): TypeConverterCompiler
 registerConverterCompiler('class', 'plain', 'class', compilerConvertClassToX('plain'));
 
 export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
-    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable) => {
-        const classSchema = reserveVariable();
+    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, rootContext, jitStack) => {
+        const classSchemaVar = reserveVariable('classSchema');
+        const classSchema = getClassSchema(property.resolveClassType!);
+        const xToClass = reserveVariable('xToClass');
         const context = {
-            [classSchema]: getClassSchema(property.resolveClassType!),
-            createXToClassFunction
+            [classSchemaVar]: classSchema,
+            [xToClass]: jitStack.getOrCreate(classSchema, () => createXToClassFunction(classSchema, fromFormat, jitStack))
         };
 
         const foreignSchema = getClassSchema(property.resolveClassType!);
         if (foreignSchema.decorator) {
             //the actual type checking happens within createXToClassFunction()'s constructor param
             //so we dont check here for object.
+
             return {
-                template: `${setter} = createXToClassFunction(${classSchema}, '${fromFormat}')(${accessor}, _options, getParents(), _state);`,
+                template: `${setter} = ${xToClass}.fn(${accessor}, _options, getParents(), _state);`,
                 context
             };
         }
@@ -200,7 +206,7 @@ export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
             template: `
             //object and not an array
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                ${setter} = createXToClassFunction(${classSchema}, '${fromFormat}')(${accessor}, _options, getParents(), _state);
+                ${setter} = ${xToClass}.fn(${accessor}, _options, getParents(), _state);
             }
         `, context
         };
@@ -210,45 +216,7 @@ export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
 registerConverterCompiler('plain', 'class', 'class', compilerXToClass('plain'));
 
 export function compilerXToUnionClass(fromFormat: string): TypeConverterCompiler {
-    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context) => {
-        //sort by type group (literal, type, generic primitive, any)
-        const sorts: { [type in Types]: number } = {
-            literal: 1,
-
-            Uint16Array: 2,
-            arrayBuffer: 2,
-            Float32Array: 2,
-            Float64Array: 2,
-            Int8Array: 2,
-            Int16Array: 2,
-            Int32Array: 2,
-            Uint8Array: 2,
-            Uint8ClampedArray: 2,
-            Uint32Array: 2,
-            objectId: 2,
-            uuid: 2,
-            class: 2,
-            date: 2,
-            enum: 2,
-            moment: 2,
-
-            boolean: 3,
-            string: 3,
-            number: 3,
-
-            partial: 4,
-            union: 4,
-            map: 4,
-            array: 4,
-            any: 5,
-        };
-
-        const sorted = property.templateArgs.slice(0);
-        sorted.sort((a, b) => {
-            if (sorts[a.type] < sorts[b.type]) return -1;
-            if (sorts[a.type] > sorts[b.type]) return +1;
-            return 0;
-        });
+    return (setter: string, accessor: string, property: PropertyCompilerSchema, reserveVariable, context, jitStack) => {
 
         let discriminator: string[] = [`if (false) { }`];
         const discriminants: string[] = [];
@@ -264,47 +232,19 @@ export function compilerXToUnionClass(fromFormat: string): TypeConverterCompiler
             elseBranch = `${setter} = ${defaultVar};`;
         }
 
-        for (const prop of sorted) {
+        for (const unionType of getSortedUnionTypes(property)) {
+            const guardVar = reserveVariable('guard_' + unionType.property.type);
+            context.set(guardVar, unionType.guard);
 
-            const guardFactory = typeGuards.get(prop.type);
-            if (!guardFactory) {
-                throw new Error(`No type guard for ${prop.type} found`);
-            }
-
-            const guard = guardFactory(prop);
-            const guardVar = reserveVariable();
-            context.set(guardVar, guard);
-
-            discriminants.push(prop.type);
+            discriminants.push(unionType.property.type);
 
             discriminator.push(`
-                //guard:${prop.type}
+                //guard:${unionType.property.type}
                 else if (${guardVar}(${accessor})) {
                     //its the correct type. what now?
-                    ${getDataConverterJS(setter, accessor, prop, fromFormat, 'class', context)}
+                    ${getDataConverterJS(setter, accessor, unionType.property, fromFormat, 'class', context, jitStack)}
                 }
             `);
-
-            // if (prop.type !== 'class') throw new Error('Only class unions implemented.');
-            // const type = prop.resolveClassType!;
-
-            // if (prop.type === 'class') {
-            //
-            //     // discriminator
-            // }
-
-            // const typeSchema = getClassSchema(type);
-            // typeSchema.loadDefaults();
-            //
-            // const discriminant = typeSchema.getDiscriminantPropertySchema();
-            // if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
-            //     throw new Error(`Discriminant ${typeSchema.getClassName()}.${discriminant.name} has no default value.`);
-            // }
-            //
-            // discriminants.push(`${discriminant.name}=${JSON.stringify(discriminant.defaultValue)}`);
-            // const typeVarName = reserveVariable();
-            // context[typeVarName] = getClassSchema(type);
-            // discriminator += `if (${accessor}.${discriminant.name} === ${JSON.stringify(discriminant.defaultValue)}) ${discriminatorClassVarName} = ${typeVarName};\n`;
         }
 
         return {

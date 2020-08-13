@@ -4,7 +4,7 @@ import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator} 
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
 import './jit-validation-templates';
 import {reserveVariable} from './compiler-registry';
-import {resolvePropertyCompilerSchema} from './jit';
+import {JitStack, resolvePropertyCompilerSchema} from './jit';
 
 const jitFunctions = new WeakMap<ClassSchema<any>, any>();
 const CacheJitPropertyMap = new Map<PropertyCompilerSchema, any>();
@@ -14,7 +14,8 @@ export function getDataCheckerJS(
     path: string,
     accessor: string,
     property: PropertyCompilerSchema,
-    rootContext: TypeCheckerCompilerContext
+    rootContext: TypeCheckerCompilerContext,
+    jitStack: JitStack
 ): string {
     let compiler = validationRegistry.get(property.type);
 
@@ -68,7 +69,7 @@ export function getDataCheckerJS(
                  ${i} = ${accessor}.length;
                  while (${i}--) {
                     //make sure all elements have the correct type
-                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext)}
+                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext, jitStack)}
                  } 
             }
         `;
@@ -84,7 +85,7 @@ export function getDataCheckerJS(
 
                 for (${i} in ${accessor}) {
                     if (!${accessor}.hasOwnProperty(${i})) continue;
-                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext)}
+                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext, jitStack)}
                 }
             } else {
                 _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
@@ -115,7 +116,7 @@ export function getDataCheckerJS(
             ${notNullableCheckThrow}
         } else {
             //property ${property.name}, ${property.type}
-            ${executeCheckerCompiler(path, rootContext, compiler, accessor, property)}
+            ${executeCheckerCompiler(path, rootContext, jitStack, compiler, accessor, property)}
             ${getCustomValidatorCode(accessor, path)}
         }
         `;
@@ -146,6 +147,7 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
     if (jit) return jit;
 
     const context = new Map<any, any>();
+    const jitStack = new JitStack();
     context.set('_classType', classType);
     context.set('ValidationError', ValidationError);
 
@@ -153,7 +155,7 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
         return function(_data, _path, _errors, _overwritePath) {
             _path = _path || '';
             _errors = _errors ? _errors : [];
-            ${getDataCheckerJS(`(_overwritePath || _path  || '${property.name}')`, `_data`, property, context)}
+            ${getDataCheckerJS(`(_overwritePath || _path  || '${property.name}')`, `_data`, property, context, jitStack)}
             return _errors;
         }
         `;
@@ -171,13 +173,14 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
     }
 }
 
-export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>): (value: any, path?: string, errors?: ValidationError[]) => ValidationError[] {
+export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: JitStack = new JitStack()): (value: any, path?: string, errors?: ValidationError[]) => ValidationError[] {
     schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
 
     const jit = jitFunctions.get(schema);
     if (jit && jit.buildId === schema.buildId) return jit;
 
     const context = new Map<any, any>();
+    const prepared = jitStack.prepare(schema);
 
     context.set('_classType', schema.classType);
     context.set('ValidationError', ValidationError);
@@ -207,7 +210,7 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>): (value: a
 
         checks.push(`
             var value = ${valueGetter};
-            ${getDataCheckerJS(`_path + '${originProperty.name}'`, `value`, property, context)}
+            ${getDataCheckerJS(`_path + '${originProperty.name}'`, `value`, property, context, jitStack)}
         `);
     }
 
@@ -222,12 +225,12 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>): (value: a
 
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled.bind(undefined, ...context.values())();
+    prepared(fn);
     fn.buildId = schema.buildId;
     jitFunctions.set(schema, fn);
 
     return fn;
 }
-
 
 export function jitValidatePartial<T, K extends keyof T>(
     classType: ClassType<T>,

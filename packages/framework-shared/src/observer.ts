@@ -1,4 +1,4 @@
-import {classToPlain, cloneClass, partialClassToPlain} from "@super-hornet/marshal";
+import {ClassSchema, classToPlain, cloneClass, getClassSchema, partialClassToPlain} from '@super-hornet/marshal';
 import {eachPair, getPathValue, size} from "@super-hornet/core";
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';
@@ -90,9 +90,9 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
 
     createState(): { [path: string]: any } {
         if (this._snapshot && this.original) {
-            const item = classToPlain(Object.getPrototypeOf(this.original).constructor, this._snapshot);
+            const item = classToPlain(getClassSchema(this.original) as ClassSchema<T>, this._snapshot);
             for (const p of this.ignore) {
-                delete item[p];
+                delete item[p as keyof T & string];
             }
             return item;
         } else {

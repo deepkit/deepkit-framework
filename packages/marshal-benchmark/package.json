@@ -16,6 +16,8 @@
     "@super-hornet/marshal": "^2.1.13",
     "ajv": "^6.11.0",
     "buffer": "^5.2.1",
+    "io-ts": "^2.2.9",
+    "fp-ts": "^2.8.1",
     "cerialize": "^2.0.1",
     "class-transformer": "^0.2.0",
     "reflect-metadata": "^0.1.13",

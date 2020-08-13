@@ -14,7 +14,7 @@ export class MongoPersistence extends DatabasePersistence {
         const collection = await this.connection.getCollection(classSchema.classType);
         const ids: any[] = [];
         for (const item of items) {
-            ids.push(partialClassToMongo(classSchema.classType, getInstanceState(item).getLastKnownPKOrCurrent()));
+            ids.push(partialClassToMongo(classSchema, getInstanceState(item).getLastKnownPKOrCurrent()));
         }
         await collection.deleteMany({$or: ids});
     }

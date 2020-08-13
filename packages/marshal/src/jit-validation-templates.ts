@@ -100,19 +100,20 @@ registerCheckerCompiler('date', (accessor: string, property: PropertyCompilerSch
     `;
 });
 
-registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSchema, utils) => {
-    const classType = utils.reserveVariable();
+registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSchema, utils, jitStack) => {
+    const jitValidateThis = utils.reserveVariable('jitValidate');
+    const classSchema = getClassSchema(property.resolveClassType!);
+
     return {
         template: `
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                jitValidate(${classType})(${accessor}, ${utils.path}, _errors);
+                ${jitValidateThis}.fn(${accessor}, ${utils.path}, _errors);
             } else {
                 ${utils.raise('invalid_type', 'Type is not an object')};
             }
         `,
         context: {
-            [classType]: property.resolveClassType,
-            jitValidate
+            [jitValidateThis]: jitStack.getOrCreate(classSchema, () => jitValidate(classSchema, jitStack))
         }
     };
 });
@@ -130,6 +131,8 @@ registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSc
     };
 
     for (const prop of property.templateArgs) {
+        //todo: rework to use guards, etc.
+
         if (prop.type !== 'class') throw new Error('Only class unions implemented.');
         const type = prop.resolveClassType!;
 

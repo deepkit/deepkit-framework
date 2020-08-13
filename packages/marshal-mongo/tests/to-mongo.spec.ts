@@ -170,48 +170,6 @@ test('binary from mongo', () => {
 });
 
 
-test('partial 2', () => {
-    const instance = partialClassToMongo(SimpleModel, {
-        name: 'Hi',
-        'children.0.label': 'Foo'
-    });
-
-    expect(instance).not.toBeInstanceOf(SimpleModel);
-    expect(instance['id']).toBeUndefined();
-    expect(instance['type']).toBeUndefined();
-    expect(instance.name).toBe('Hi');
-    expect(instance['children.0.label']).toBe('Foo');
-
-    {
-        expect(partialClassToMongo(SimpleModel, {
-            'children.0.label': 2
-        })).toEqual({'children.0.label': '2'});
-
-        const i = partialClassToMongo(SimpleModel, {
-            'children.0': new SubModel('3')
-        });
-        expect(i['children.0'].label).toBe('3');
-    }
-
-    {
-        expect(partialPlainToMongo(SimpleModel, {
-            'children.0.label': 2
-        })).toEqual({'children.0.label': '2'});
-
-
-        const i = partialPlainToClass(SimpleModel, {
-            'children.0': {label: 3}
-        });
-        expect(i['children.0']).toBeInstanceOf(SubModel);
-        expect(i['children.0'].label).toBe('3');
-
-        const i2 = partialPlainToMongo(SimpleModel, {
-            'children.0': {label: 3}
-        });
-        expect(i2['children.0'].label).toBe('3');
-    }
-});
-
 
 test('partial 3', () => {
     {
@@ -238,41 +196,11 @@ test('partial with required doesnt throw', () => {
 });
 
 
-test('partial 4', () => {
-    {
-        const i = partialClassToMongo(SimpleModel, {
-            'stringChildrenCollection.0': 4
-        });
-        expect(i['stringChildrenCollection.0']).toBe('4');
-    }
-    {
-        const i = partialPlainToMongo(SimpleModel, {
-            'stringChildrenCollection.0': 4
-        });
-        expect(i['stringChildrenCollection.0']).toBe('4');
-    }
-});
-
-test('partial 5', () => {
-    {
-        const i = partialClassToMongo(SimpleModel, {
-            'childrenMap.foo.label': 5
-        });
-        expect(i['childrenMap.foo.label']).toBe('5');
-    }
-    {
-        const i = partialPlainToMongo(SimpleModel, {
-            'childrenMap.foo.label': 5
-        });
-        expect(i['childrenMap.foo.label']).toBe('5');
-    }
-});
-
 
 test('partial 6', () => {
     {
         const i = partialClassToMongo(SimpleModel, {
-            'types': [6, 7]
+            'types': [6, 7] as any
         });
         expect(i['types']).toEqual(['6', '7']);
     }
@@ -281,21 +209,6 @@ test('partial 6', () => {
             'types': [6, 7]
         });
         expect(i['types']).toEqual(['6', '7']);
-    }
-});
-
-test('partial 7', () => {
-    {
-        const i = partialClassToMongo(SimpleModel, {
-            'types.0': [7]
-        });
-        expect(i['types.0']).toEqual('7');
-    }
-    {
-        const i = partialPlainToMongo(SimpleModel, {
-            'types.0': [7]
-        });
-        expect(i['types.0']).toEqual('7');
     }
 });
 
@@ -327,7 +240,7 @@ test('partial invalid', () => {
 
     {
         const m = partialClassToMongo(DocumentClass, {
-            _id: null
+            _id: null as any
         });
 
         expect(m._id).toBe(null);
@@ -335,10 +248,10 @@ test('partial invalid', () => {
 
     {
         const m = partialPlainToMongo(DocumentClass, {
-            _id: null,
+            _id: null as any,
         });
 
-        expect(m._id).toBe(null);
+        expect(m._id).toBe(undefined);
     }
 
     partialPlainToMongo(DocumentClass, {
@@ -427,8 +340,8 @@ test('partial mongo to plain ', () => {
     {
         const m = partialMongoToPlain(User, {
             name: undefined,
-            picture: null,
-            tags: {}
+            picture: null as any,
+            tags: {} as any
         });
 
         expect(m.name).toBe(undefined);
@@ -439,9 +352,9 @@ test('partial mongo to plain ', () => {
     {
         const m = partialClassToMongo(User, {
             name: undefined,
-            picture: null,
+            picture: null as any,
             parent: new User(),
-            tags: {}
+            tags: {} as any
         });
 
         expect(m.name).toBe(null);
@@ -468,34 +381,21 @@ test('partial mongo to plain ', () => {
 
         expect(m.name).toBe('peter');
         expect(m.picture).toBeInstanceOf(Binary);
-        expect(m.picture.buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
+        expect((m.picture as any).buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
     }
 
     {
         const m = partialPlainToMongo(User, {
             picture: arrayBufferToBase64(bin),
             name: 'peter',
-            tags: {}
+            tags: {} as any
         });
 
         expect(m.name).toBe('peter');
         expect(m.picture).toBeInstanceOf(Binary);
-        expect(m.picture.buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
+        expect(m.picture!.buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
         expect(m.tags).toBeArray();
     }
-});
-
-test('partial document', () => {
-    const doc = new DocumentClass;
-    const document = partialClassToMongo(DocumentClass, {
-        'pages.0.name': 5,
-        'pages.0.children.0.name': 6,
-        'pages.0.children': new PageCollection([new PageClass(doc, '7')])
-    });
-    expect(document['pages.0.name']).toBe('5');
-    expect(document['pages.0.children.0.name']).toBe('6');
-    expect(document['pages.0.children']).toBeInstanceOf(Array);
-    expect(document['pages.0.children'][0].name).toBe('7');
 });
 
 test('optional is stored as null and converted back to undefined', () => {

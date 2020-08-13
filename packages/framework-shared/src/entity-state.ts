@@ -1,4 +1,4 @@
-import {getClassSchemaByName, partialPlainToClass, plainToClass} from "@super-hornet/marshal";
+import {getClassSchema, getClassSchemaByName, partialPlainToClass, plainToClass} from '@super-hornet/marshal';
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "../index";
 import {set, delete as deleteByPath} from 'dot-prop';
 import {ClassType, eachPair, getClassName} from "@super-hornet/core";
@@ -190,7 +190,7 @@ export class EntityState {
                 //we cant do a version check like `item.version < toVersion`, since exchange issues versions always from 0 when restarted
                 //so we apply all incoming patches.
                 if (item) {
-                    const patches = partialPlainToClass(classType, stream.patch.set);
+                    const patches = partialPlainToClass(getClassSchema(classType), stream.patch.set);
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(patches)) {

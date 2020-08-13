@@ -8,7 +8,8 @@ export * from './src/applyPatch';
 export * from './src/jit';
 export * from './src/jit-validation';
 export * from './src/jit-validation-registry';
+export * from './src/union';
 //it's important to have this at the end
-export * from './src/typeguards';
+export * from './src/json-typeguards';
 export * from './src/compiler-templates';
 export * from './src/jit-validation-templates';

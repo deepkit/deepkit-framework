@@ -299,7 +299,7 @@ test('test boolean', async () => {
     expect(validate(Model, {bo: '0'})).toEqual([]);
     expect(validate(Model, {bo: 1})).toEqual([]);
     expect(validate(Model, {bo: 0})).toEqual([]);
-    expect(validate(Model, {bo: 0, e: undefined})).toEqual([]);
+    expect(validate(Model, {bo: 0, e: undefined} as any)).toEqual([]);
 
     expect(validate(Model, {bo: '2'})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);
     expect(validate(Model, {bo: 2})).toEqual([{code: 'invalid_boolean', message: 'No Boolean given', path: 'bo'}]);

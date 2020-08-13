@@ -1,115 +1,162 @@
-import {ClassSchema, getGlobalStore, PropertySchema} from '@super-hornet/marshal';
+import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@super-hornet/marshal';
 import {getInstanceState} from './identity-map';
 
-function createJITChangeDetectorForSnapshot(schema: ClassSchema): (lastSnapshot: any, currentSnapshot: any) => any {
+function genericEqualArray(a: any[], b: any[]): boolean {
+    if (a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i++) {
+        if (!genericEqual(a[i], b[i])) return false;
+    }
+
+    return true;
+}
+
+function genericEqualObject(a: { [name: string]: any }, b: { [name: string]: any }): boolean {
+    for (let i in a) {
+        if (!a.hasOwnProperty(i)) continue;
+        if (!genericEqual(a[i], b[i])) return false;
+    }
+
+    //is there a faster way?
+    for (let i in b) {
+        if (!b.hasOwnProperty(i)) continue;
+        if (!genericEqual(a[i], b[i])) return false;
+    }
+
+    return true;
+}
+
+/**
+ * This is a comparator function for the snapshots. They are either string, number, boolean, array, or objects.
+ * No date, moment, or custom classes involved here.
+ */
+function genericEqual(a: any, b: any): boolean {
+    //is array, the fast way
+    const aIsArray = a && 'string' !== typeof a && 'function' === a.slice && 'number' === typeof a.length;
+    const bIsArray = b && 'string' !== typeof b && 'function' === b.slice && 'number' === typeof b.length;
+    if (aIsArray) return bIsArray ? genericEqualArray(a, b) : false;
+    if (bIsArray) return aIsArray ? genericEqualArray(a, b) : false;
+
+    const aIsObject = 'object' === typeof a && a !== null;
+    const bIsObject = 'object' === typeof b && b !== null;
+    if (aIsObject) return bIsObject ? genericEqualObject(a, b) : false;
+    if (aIsObject) return bIsObject ? genericEqualObject(a, b) : false;
+
+    return a === b;
+}
+
+function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitStack = new JitStack()): (lastSnapshot: any, currentSnapshot: any) => any {
     const context = new Map<any, any>();
+    const prepared = jitStack.prepare(schema);
+    context.set('genericEqual', genericEqual);
     const props: string[] = [];
 
-    function getComparator(property: PropertySchema, last: string, current: string, changedName: string, onChanged?: string): string {
+    function getComparator(property: PropertySchema, last: string, current: string, changedName: string, onChanged: string, jitStack: JitStack): string {
         if (property.isArray) {
+            const l = reserveVariable(context, 'l');
             return `
                 if (!${current} && !${last}) {
                 
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                    changes.${changedName} = true;
+                    changes.${changedName} = item.${changedName};
                     ${onChanged}
                 } else if (${current}.length !== ${last}.length) {
-                    changes.${changedName} = true;
+                    changes.${changedName} = item.${changedName};
                     ${onChanged}
                 } else {
-                    let l = ${last}.length;
+                    let ${l} = ${last}.length;
                     ${onChanged ? '' : 'root:'}
-                    while (l--) {
-                         ${getComparator(property.getSubType(), `${last}[l]`, `${current}[l]`, changedName, 'break root;')}
+                    while (${l}--) {
+                         ${getComparator(property.getSubType(), `${last}[${l}]`, `${current}[${l}]`, changedName, 'break root;', jitStack)}
                     }
                 }
             `;
 
         } else if (property.isMap || property.isPartial) {
+            const i = reserveVariable(context, 'i');
             return `
                 if (!${current} && !${last}) {
                     
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                    changes.${changedName} = true;
+                    changes.${changedName} = item.${changedName};
                     ${onChanged}
                 } else if (${current}.length !== ${last}.length) {
-                    changes.${changedName} = true;
+                    changes.${changedName} = item.${changedName};
                     ${onChanged}
                 } else {
                     ${onChanged ? '' : 'root:'}
-                    for (let i in ${last}) {
-                        if (!${last}.hasOwnProperty(i)) continue;
-                         ${getComparator(property.getSubType(), `${last}[i]`, `${current}[i]`, changedName, 'break root;')}
+                    for (let ${i} in ${last}) {
+                        if (!${last}.hasOwnProperty(${i})) continue;
+                         ${getComparator(property.getSubType(), `${last}[${i}]`, `${current}[${i}]`, changedName, 'break root;', jitStack)}
                     }
                 }
             `;
         } else if (property.type === 'class') {
-            const propClassSchema = '_classSchema_' + property.name;
-            context.set('jitChangeDetector', jitChangeDetector);
-            context.set(propClassSchema, property.getResolvedClassSchema());
+            if (property.isReference) {
+                const checks: string[] = [];
+
+                for (const primaryField of property.getResolvedClassSchema().getPrimaryFields()) {
+                    checks.push(`
+                         ${getComparator(primaryField, `${last}.${primaryField.name}`, `${current}.${primaryField.name}`, changedName, onChanged, jitStack)}
+                    `);
+                }
+                return `
+                if (!${current} && !${last}) {
+                
+                } else if ((${current} && !${last}) || (!${current} && ${last})) {
+                    changes.${changedName} = item.${changedName};
+                    ${onChanged}
+                } else {
+                    ${checks.join('\n')}
+                }
+            `;
+            }
+
+            const classSchema = property.getResolvedClassSchema();
+            const jitChangeDetectorThis = reserveVariable(context, 'jitChangeDetector');
+            context.set(jitChangeDetectorThis, jitStack.getOrCreate(classSchema, () => createJITChangeDetectorForSnapshot(classSchema, jitStack)))
+
             return `
                 if (!${current} && !${last}) {
                 
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                    changes.${changedName} = true;
+                    changes.${changedName} = item.${changedName};
                     ${onChanged}
                 } else {
-                    const thisChanged = jitChangeDetector(${propClassSchema})(${last}, ${current});
+                    const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, item);
                     if (Object.keys(thisChanged).length) {
-                        changes.${changedName} = true;
+                        changes.${changedName} = item.${changedName};
                         ${onChanged}    
                     }
                 }
             `;
         } else if (property.type === 'any' || property.type === 'union') {
-            //generic purpose comparator necessary
-            //encoded either as (number, boolean, string, array, or object)
-
+            return `
+                if (!genericEqual(${last}, ${current})) {
+                    changes.${changedName} = item.${changedName};
+                    ${onChanged}
+                }
+            `;
         } else {
             //binary, boolean, etc are encoded as simple JSON objects (number, boolean, or string)
             //primitive
             return `
             if (${last} !== ${current}) {
-                changes.${changedName} = true;
+                changes.${changedName} = item.${changedName};
                 ${onChanged}
             }`;
         }
-
-        return '';
     }
 
     for (const property of schema.getClassProperties().values()) {
         if (property.isParentReference) continue;
+        if (property.backReference) continue;
 
-        // if (property.isReference) {
-        //     const referenceCode: string[] = [];
-        //
-        //     for (const pk of property.getResolvedClassSchema().getPrimaryFields()) {
-        //         referenceCode.push(`
-        //         //createJITConverterForSnapshot ${property.name}->${pk.name} class:snapshot:${property.type} reference
-        //         ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, 'class', 'plain', context)}
-        //         `);
-        //     }
-        //
-        //     setProperties.push(`
-        //     //createJITChangeDetectorForSnapshot ${property.name} class:snapshot:${property.type} reference
-        //     if (undefined === _value.${property.name}) {
-        //         _result.${property.name} = null;
-        //     } else if (null === _value.${property.name}) {
-        //         _result.${property.name} = null;
-        //     } else {
-        //         _result.${property.name} = {};
-        //         ${referenceCode.join('\n')}
-        //     }
-        //     `);
-        //     continue;
-        // }
-
-        props.push(getComparator(property, `last.${property.name}`, `current.${property.name}`, property.name, ''));
+        props.push(getComparator(property, `last.${property.name}`, `current.${property.name}`, property.name, '', jitStack));
     }
 
     const functionCode = `
-        return function(last, current) {
+        return function(last, current, item) {
             var changes = {};
             ${props.join('\n')}
             return changes;
@@ -117,9 +164,11 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema): (lastSnapshot:
         `;
 
     // console.log('functionCode', functionCode);
+
     try {
-        const compiled = new Function('_global', ...context.keys(), functionCode);
-        const fn = compiled.bind(undefined, getGlobalStore(), ...context.values())();
+        const compiled = new Function(...context.keys(), functionCode);
+        const fn = compiled(...context.values());
+        prepared(fn);
         fn.buildId = schema.buildId;
         return fn;
     } catch (error) {
@@ -138,68 +187,17 @@ export function buildChanges<T>(item: T) {
     const state = getInstanceState(item);
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = state.doSnapshot(item);
-    const changes: { [path: string]: any } = {};
-    const changed = state.changeDetector(lastSnapshot, currentSnapshot);
-    for (let i in changed) {
-        changes[i] = (item as any)[i];
-    }
-    return changes;
+    return state.changeDetector(lastSnapshot, currentSnapshot, item);
 }
 
 export function buildChangeOld<T>(item: T) {
     const state = getInstanceState(item);
-    const lastSnapshot = state.getSnapshot();
-    const currentSnapshot = state.doSnapshot(item);
+    const lastSnapshot = state.getSnapshot() as any;
+    const currentSnapshot = state.doSnapshot(item) as any;
     const changes: { [path: string]: any } = {};
 
-    for (const property of state.classSchema.getClassProperties().values()) {
-        const last = lastSnapshot[property.name as keyof T & string];
-        const current = currentSnapshot[property.name as keyof T & string];
-
-        if (property.isReference) {
-            //currentSnapshot[property.name] is always an object or undefined
-            if (last && !current) {
-                changes[property.name] = current;
-                continue;
-            }
-
-            if (!last && current) {
-                changes[property.name] = current;
-                continue;
-            }
-
-            for (const pkField of property.getResolvedClassSchema().getPrimaryFields()) {
-                if (last[pkField.name] !== current[pkField.name]) {
-                    changes[property.name] = current;
-                    break;
-                }
-            }
-            continue;
-        }
-
-        if (property.backReference) {
-            //we dont track back references. They are not stored in the database on this side, so why should we?
-            continue;
-        }
-
-        if (property.isArray) {
-
-        }
-
-        if (property.isMap || property.isPartial) {
-            //todo implement that shit
-            continue;
-        }
-
-        if (property.type === 'class') {
-            //todo implement that shit
-            continue;
-        }
-
-        //last and current are in JSON format, so we can compare directly.
-        if (last !== current) {
-            changes[property.name] = current;
-        }
+    for (const i of state.classSchema.getClassProperties().keys()) {
+        if (!genericEqual(lastSnapshot[i], currentSnapshot[i])) changes[i] = (item as any)[i];
     }
 
     return changes;

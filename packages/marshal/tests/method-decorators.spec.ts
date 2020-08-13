@@ -6,10 +6,10 @@ import {
     argumentClassToPlain,
     argumentPlainToClass,
     methodResultClassToPlain,
-    methodResultPlainToClass,
+    methodResultPlainToClass, patchPlainToClass,
     plainToClass,
     validateMethodArgs
-} from "../index";
+} from '../index';
 
 test('Basic array', () => {
     class Other {
@@ -252,16 +252,12 @@ test('partial', () => {
     const u = plainToClass(User, {
         config: {
             name: 'peter',
-            'sub.name': 'peter2',
-            'sub.prio': '3',
         }
     });
 
     expect(u.config).not.toBeInstanceOf(Config);
     expect(u.config.name).toBe('peter');
     expect(u.config.prio).toBeUndefined();
-    expect((u.config as any)['sub.name']).toBe('peter2');
-    expect((u.config as any)['sub.prio']).toBe(3);
 });
 
 test('argument partial', () => {
@@ -322,8 +318,8 @@ test('argument convertion', () => {
         const name = argumentClassToPlain(Controller, 'foo', 0, 2);
         expect(name).toBe(2);
 
-        const res = methodResultClassToPlain(Controller, 'foo', {'sub.name': 3});
-        expect(res['sub.name']).toBe(3);
+        const res = methodResultPlainToClass(Controller, 'foo', {name: 3});
+        expect(res).toEqual({name: '3'});
     }
 
     {

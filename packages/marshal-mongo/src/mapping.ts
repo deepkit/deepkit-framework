@@ -8,17 +8,33 @@ import {
     ExtractClassType,
     getClassSchema,
     JitConverterOptions,
-    jitPartial,
+    jitPartial, jitPatch,
+    JSONEntity,
     JSONPartial,
     partialClassToPlain,
-    partialPlainToClass, PlainOrFullEntityFromClassTypeOrSchema,
+    partialPlainToClass,
+    PlainOrFullEntityFromClassTypeOrSchema,
     plainToClass,
     resolvePropertyCompilerSchema,
+    TypedArrays,
+    JSONPatch,
+    EntityPatch, patchPlainToClass
 } from '@super-hornet/marshal';
 import {ClassType, eachKey, getClassName, isPlainObject} from '@super-hornet/core';
 import './compiler-templates';
+import {Binary} from 'bson';
 import {FilterQuery} from 'mongodb';
 
+export type MongoTypeSingle<T> = T extends Date ? Date :
+    T extends Array<infer K> ? Array<MongoTypeSingle<K>> :
+        T extends ArrayBuffer ? Binary :
+            T extends TypedArrays ? Binary :
+                T extends object ? JSONEntity<T> :
+                    T extends string ? T :
+                        T extends boolean ? T :
+                            T extends number ? T : T;
+
+export type MongoType<T> = { [name in keyof T & string]: MongoTypeSingle<T[name]> };
 
 export function mongoToClass<T extends ClassType<any> | ClassSchema<any>>(
     classType: T,
@@ -46,36 +62,60 @@ export function plainToMongo<T extends ClassType<any> | ClassSchema<any>>(classT
     return classToMongo(getClassSchema(classType), plainToClass(classType, data));
 }
 
-export function partialClassToMongo<T, K extends keyof T>(
-    classType: ClassType<T>,
-    partial: { [path: string]: any },
+export function partialClassToMongo<T extends ClassType | ClassSchema, P extends Partial<ExtractClassType<T>>>(
+    classType: T,
+    partial: P,
     options?: JitConverterOptions
-): { [path: string]: any } {
-    return jitPartial('class', 'mongo', classType, partial, options);
+): MongoType<Pick<ExtractClassType<T>, keyof P>> {
+    return jitPartial(classType, 'class', 'mongo', partial, options);
 }
 
-export function partialMongoToClass<T, K extends keyof T>(
-    classType: ClassType<T>,
-    partial: { [path: string]: any },
+export function partialMongoToClass<T extends ClassType | ClassSchema, P extends Partial<MongoType<ExtractClassType<T>>>>(
+    classType: T,
+    partial: P,
     options?: JitConverterOptions
-): { [path: string]: any } {
-    return jitPartial('mongo', 'class', classType, partial, options);
+): Pick<ExtractClassType<T>, keyof P> {
+    return jitPartial(classType, 'mongo', 'class', partial, options);
 }
 
-export function partialPlainToMongo<T, K extends keyof T>(
-    classType: ClassType<T>,
-    target: { [path: string]: any },
+export function partialPlainToMongo<T extends ClassType | ClassSchema, P extends JSONPartial<ExtractClassType<T>>>(
+    classType: T,
+    partial: P,
     options?: JitConverterOptions
-): { [path: string]: any } {
-    return partialClassToMongo(classType, partialPlainToClass(classType, target), options);
+): MongoType<Pick<ExtractClassType<T>, keyof P>> {
+    return partialClassToMongo(classType, partialPlainToClass(classType, partial, options) as Partial<ExtractClassType<T>>, options);
 }
 
-export function partialMongoToPlain<T, K extends keyof T>(
-    classType: ClassType<T>,
-    target: { [path: string]: any },
+export function partialMongoToPlain<T extends ClassType | ClassSchema, P extends Partial<MongoType<ExtractClassType<T>>>>(
+    classType: T,
+    partial: P,
     options?: JitConverterOptions
-): { [path: string]: any } {
-    return partialClassToPlain(classType, partialMongoToClass(classType, target), options);
+): JSONEntity<Pick<ExtractClassType<T>, keyof P>> {
+    return partialClassToPlain(classType, partialMongoToClass(classType, partial, options) as Partial<ExtractClassType<T>>, options);
+}
+
+export function patchMongoToPlain<T extends ClassType | ClassSchema, R extends EntityPatch<MongoType<ExtractClassType<T>>>>(
+    classTypeOrSchema: T,
+    partial: R,
+    options?: JitConverterOptions
+) {
+    return jitPatch(getClassSchema(classTypeOrSchema), 'mongo', 'plain', partial, options);
+}
+
+export function patchClassToMongo<T extends ClassType | ClassSchema, R extends EntityPatch<MongoType<ExtractClassType<T>>>>(
+    classTypeOrSchema: T,
+    partial: R,
+    options?: JitConverterOptions
+) {
+    return jitPatch(getClassSchema(classTypeOrSchema), 'class', 'mongo', partial, options);
+}
+
+export function patchPlainToMongo<T extends ClassType | ClassSchema, P extends JSONPatch<ExtractClassType<T>>>(
+    classTypeOrSchema: T,
+    partial: P,
+    options?: JitConverterOptions
+) {
+    return patchClassToMongo(classTypeOrSchema, patchPlainToClass(classTypeOrSchema, partial, options), options);
 }
 
 export function propertyClassToMongo<T>(classType: ClassType<T>, name: (keyof T & string) | string, value: any): any {
@@ -86,7 +126,7 @@ export function propertyMongoToClass<T>(classType: ClassType<T>, name: (keyof T 
     return createJITConverterFromPropertySchema('mongo', 'class', getClassSchema(classType).getProperty(name))(value);
 }
 
-export type Converter = (convertClassType: ClassType<any>, path: string, value: any) => any;
+export type Converter = (convertClassType: ClassType, path: string, value: any) => any;
 export type QueryFieldNames = { [name: string]: boolean };
 export type QueryCustomFields = { [name: string]: (name: string, value: any, fieldNames: QueryFieldNames, converter: Converter) => any };
 
