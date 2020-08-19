@@ -347,7 +347,7 @@ export class ClientConnection {
 
             const actions = getActions(classType);
 
-            if (!actions[action]) {
+            if (!actions.has(action)) {
                 console.debug('Action unknown, but method exists.', action);
                 throw new Error(`Action unknown ${action}`);
             }
@@ -385,7 +385,7 @@ export class ClientConnection {
         if ((controllerInstance as any)[methodName]) {
             const actions = getActions(classType);
 
-            if (!actions[methodName]) {
+            if (!actions.has(methodName)) {
                 console.debug('Action unknown, but method exists.', fullName);
                 throw new Error(`Action unknown ${fullName}`);
             }

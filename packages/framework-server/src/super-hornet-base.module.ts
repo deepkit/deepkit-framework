@@ -1,14 +1,14 @@
-import {ProcessLocker} from "@super-hornet/core";
-import {InternalClient} from "./internal-client";
-import {Configuration} from "./configuration";
-import {DynamicModule, Module} from "@super-hornet/framework-server-common";
-import {ExchangeModule} from "@super-hornet/exchange";
-import {SessionStack} from "./application";
-import {ClientConnection} from "./client-connection";
-import {ConnectionMiddleware} from "@super-hornet/framework-shared";
-import {SecurityStrategy} from "./security";
+import {ProcessLocker} from '@super-hornet/core';
+import {InternalClient} from './internal-client';
+import {Configuration} from './configuration';
+import {DynamicModule, hornet} from '@super-hornet/framework-server-common';
+import {ExchangeModule} from '@super-hornet/exchange';
+import {SessionStack} from './application';
+import {ClientConnection} from './client-connection';
+import {ConnectionMiddleware} from '@super-hornet/framework-shared';
+import {SecurityStrategy} from './security';
 
-@Module({
+@hornet.module({
     providers: [
         ProcessLocker,
         InternalClient,

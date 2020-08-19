@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/framework-shared",
-  "version": "0.0.33",
+  "version": "1.0.0-alpha.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": "https://github.com/super-hornet/super-hornet.ts",
@@ -20,17 +20,17 @@
     "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@super-hornet/core": "^0.1.17",
-    "@super-hornet/core-rxjs": "^0.1.17",
+    "@super-hornet/core": "^1.0.0-alpha.0",
+    "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
     "dot-prop": "^5.2.0",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {
-    "@super-hornet/marshal": "^2.1.1",
-    "@types/fs-extra": "^9.0.1",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
     "@types/dot-prop": "^5.0.1",
-    "reflect-metadata": "^0.1.13",
+    "@types/fs-extra": "^9.0.1",
     "buffer": "^5.2.1",
+    "reflect-metadata": "^0.1.13",
     "rxjs": "~6.5.3"
   },
   "jest": {

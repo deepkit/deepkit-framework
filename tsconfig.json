@@ -8,6 +8,9 @@
       "path": "packages/core-rxjs/tsconfig.json"
     },
     {
+      "path": "packages/framework-server-common/tsconfig.json"
+    },
+    {
       "path": "packages/framework-shared/tsconfig.json"
     },
     {
@@ -15,9 +18,6 @@
     },
     {
       "path": "packages/framework-server/tsconfig.json"
-    },
-    {
-      "path": "packages/framework-server-common/tsconfig.json"
     },
     {
       "path": "packages/marshal/tsconfig.dist.json"
@@ -39,6 +39,9 @@
     },
     {
       "path": "packages/exchange/tsconfig.json"
+    },
+    {
+      "path": "packages/example-server/tsconfig.json"
     }
   ]
 }

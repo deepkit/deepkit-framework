@@ -358,11 +358,11 @@ test('test setter/getter', async () => {
     expect(instance.fonts!.length).toBe(2);
 
     const plain = classToPlain(Model, instance);
-    expect(plain._fonts).toBeUndefined();
+    expect((plain as any)._fonts).toBeUndefined();
     expect(plain.fonts).toBeArrayOfSize(2);
 
     const mongo = classToPlain(Model, instance);
-    expect(mongo._fonts).toBeUndefined();
+    expect((mongo as any)._fonts).toBeUndefined();
     expect(mongo.fonts).toBeArrayOfSize(2);
 });
 
@@ -548,7 +548,7 @@ test('test @Decorated with parent', async () => {
     expect(clone!.document).toBe(instance);
     expect(clone!.parent).toBeUndefined();
 
-    const plain = classToPlain(DocumentClass, instance);
+    const plain = classToPlain(DocumentClass, instance) as any;
 
     expect(plain.name).toBe('myName');
     expect(plain.pages[0].name).toEqual('Foo');

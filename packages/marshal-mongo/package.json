@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/marshal-mongo",
-  "version": "2.1.13",
+  "version": "1.0.0-alpha.0",
   "description": "Marshal MongoDB adapter.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,20 +18,20 @@
     "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@super-hornet/core": "^0.1.19",
-    "@super-hornet/marshal": "^2.1.13",
-    "@super-hornet/marshal-bson": "^2.1.13",
-    "@super-hornet/marshal-orm": "^2.1.13",
+    "@super-hornet/core": "^1.0.0-alpha.0",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-bson": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
     "bson": "^4.0.4",
     "buffer": "^5.2.1",
     "mongo-uuid": "^1.0.0"
   },
   "devDependencies": {
-    "@types/mongodb": "^3.5.25",
     "@types/jest": "^26.0.4",
+    "@types/mongodb": "^3.5.25",
+    "jest-serial-runner": "^1.1.0",
     "moment": "^2.0.0",
     "mongodb": "^3.6.0",
-    "jest-serial-runner": "^1.1.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~6.5.3"
   },

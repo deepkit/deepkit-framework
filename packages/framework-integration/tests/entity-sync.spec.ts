@@ -1,8 +1,8 @@
 import 'jest-extended';
-import {Action, Collection, Controller, EntitySubject, IdInterface, ReactiveSubQuery} from "@super-hornet/framework-shared";
-import {ClientConnection, EntityStorage, ExchangeDatabase} from "@super-hornet/framework-server";
-import {closeAllCreatedServers, createServerClientPair} from "./util";
-import {Entity, t, getClassSchema, uuid} from '@super-hornet/marshal';
+import {Collection, EntitySubject, IdInterface, ReactiveSubQuery, rpc} from '@super-hornet/framework-shared';
+import {ClientConnection, EntityStorage, ExchangeDatabase} from '@super-hornet/framework-server';
+import {closeAllCreatedServers, createServerClientPair} from './util';
+import {Entity, getClassSchema, t, uuid} from '@super-hornet/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@super-hornet/core-rxjs';
 import {sleep} from '@super-hornet/core';
@@ -38,24 +38,24 @@ test('test increase', async () => {
         connections: number = 0;
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(private storage: EntityStorage, private exchangeDatabase: ExchangeDatabase) {
         }
 
-        @Action()
+        @rpc.action()
         async start() {
             await this.exchangeDatabase.deleteMany(User, {});
             const user = new User('peter');
             await this.exchangeDatabase.add(user);
         }
 
-        @Action()
+        @rpc.action()
         async increase(i: number) {
             await this.exchangeDatabase.increase(User, {}, {connections: i});
         }
 
-        @Action()
+        @rpc.action()
         async user(): Promise<EntitySubject<User>> {
             return await this.storage.findOne(User, {});
         }
@@ -96,7 +96,7 @@ test('test entity sync list', async () => {
     class User extends UserBase {
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private storage: EntityStorage,
@@ -104,7 +104,7 @@ test('test entity sync list', async () => {
         ) {
         }
 
-        @Action()
+        @rpc.action()
         async users(): Promise<Collection<User>> {
             await this.session.deleteMany(User, {});
             const peter = new User('Peter 1');
@@ -133,7 +133,7 @@ test('test entity sync list', async () => {
             }).find();
         }
 
-        @Action()
+        @rpc.action()
         async addUser(name: string) {
             await this.session.add(new User(name));
             return false;
@@ -184,12 +184,12 @@ test('test entity sync list: remove', async () => {
     class User extends UserBase {
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(private storage: EntityStorage, private database: ExchangeDatabase) {
         }
 
-        @Action()
+        @rpc.action()
         async users(): Promise<Collection<User>> {
             await this.session.deleteMany(User, {});
 
@@ -201,17 +201,17 @@ test('test entity sync list: remove', async () => {
             }).find();
         }
 
-        @Action()
+        @rpc.action()
         async removeAll() {
             await this.session.deleteMany(User, {});
         }
 
-        @Action()
+        @rpc.action()
         async remove(id: string) {
             await this.session.remove(User, id);
         }
 
-        @Action()
+        @rpc.action()
         async addUser(name: string): Promise<string> {
             const user = new User(name);
             await this.session.add(user);
@@ -258,7 +258,7 @@ test('test entity sync item', async () => {
     class User extends UserBase {
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private connection: ClientConnection,
@@ -267,7 +267,7 @@ test('test entity sync item', async () => {
         ) {
         }
 
-        @Action()
+        @rpc.action()
         async user(): Promise<EntitySubject<User>> {
             await this.session.deleteMany(User, {});
             await this.session.add(new User('Guschdl'));
@@ -338,7 +338,7 @@ test('test entity sync item undefined', async () => {
     class User extends UserBase {
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private connection: ClientConnection,
@@ -347,7 +347,7 @@ test('test entity sync item undefined', async () => {
         ) {
         }
 
-        @Action()
+        @rpc.action()
         async user(): Promise<EntitySubject<User> | undefined> {
             await this.session.deleteMany(User, {});
             await this.session.add(new User('Guschdl'));
@@ -376,7 +376,7 @@ test('test entity sync count', async () => {
     class User extends UserBase {
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private connection: ClientConnection,
@@ -385,7 +385,7 @@ test('test entity sync count', async () => {
         ) {
         }
 
-        @Action()
+        @rpc.action()
         async userCount(): Promise<Observable<number>> {
             await this.session.deleteMany(User, {});
             await this.session.add(new User('Guschdl'));
@@ -479,7 +479,7 @@ test('test entity collection unsubscribe + findOne', async () => {
 
     expect(getClassSchema(Job).name).toBe('jobTest');
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private connection: ClientConnection,
@@ -488,7 +488,7 @@ test('test entity collection unsubscribe + findOne', async () => {
         ) {
         }
 
-        @Action()
+        @rpc.action()
         async init() {
             await this.exchangeDatabase.deleteMany(Job, {});
             await this.exchangeDatabase.add(new Job('Peter 1'));
@@ -499,33 +499,33 @@ test('test entity collection unsubscribe + findOne', async () => {
             await this.exchangeDatabase.add(new Job('Marie 2'));
         }
 
-        @Action()
+        @rpc.action()
         async getJobs(): Promise<Collection<Job>> {
             return await this.storage.collection(Job).filter({
                 name: {$regex: /Peter/}
             }).find();
         }
 
-        @Action()
+        @rpc.action()
         async addJob(name: string): Promise<void> {
             return await this.exchangeDatabase.add(new Job(name));
         }
 
-        @Action()
+        @rpc.action()
         async getJob(id: string): Promise<EntitySubject<Job>> {
             return await this.storage.findOne(Job, {
                 id: id
             });
         }
 
-        @Action()
+        @rpc.action()
         async getJobByName(name: string): Promise<EntitySubject<Job>> {
             return await this.storage.findOne(Job, {
                 name: name
             });
         }
 
-        @Action()
+        @rpc.action()
         async rmJobByName(name: string): Promise<void> {
             await this.exchangeDatabase.deleteOne(Job, {
                 name: name
@@ -682,7 +682,7 @@ test('test entity collection reactive find', async () => {
         }
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private connection: ClientConnection,
@@ -692,7 +692,7 @@ test('test entity collection reactive find', async () => {
         ) {
         }
 
-        @Action()
+        @rpc.action()
         async init() {
             await this.exchangeDatabase.deleteMany(User, {});
             await this.exchangeDatabase.deleteMany(Team, {});
@@ -717,7 +717,7 @@ test('test entity collection reactive find', async () => {
             await addUser('Marie', teamB);
         }
 
-        @Action()
+        @rpc.action()
         async unAssignUser(userName: string, teamName: string) {
             const user = await this.session.query(User).filter({name: userName}).findOne();
             const team = await this.session.query(Team).filter({name: teamName}).findOne();
@@ -728,7 +728,7 @@ test('test entity collection reactive find', async () => {
             await this.exchangeDatabase.deleteMany(UserTeam, {userId: user.id, teamId: team.id});
         }
 
-        @Action()
+        @rpc.action()
         async getUserId(userName: string): Promise<string> {
             const user = await this.session.query(User).filter({name: userName}).findOne();
             if (!user) throw new Error(`User ${userName} not found`);
@@ -736,7 +736,7 @@ test('test entity collection reactive find', async () => {
             return user.id;
         }
 
-        @Action()
+        @rpc.action()
         async assignUser(userName: string, teamName: string) {
             const user = await this.session.query(User).filter({name: userName}).findOne();
             const team = await this.session.query(Team).filter({name: teamName}).findOne();
@@ -747,7 +747,7 @@ test('test entity collection reactive find', async () => {
             await this.exchangeDatabase.add(new UserTeam(team.id, user.id));
         }
 
-        @Action()
+        @rpc.action()
         async removeTeam(teamName: string) {
             const team = await this.session.query(Team).filter({name: teamName}).findOne();
             if (!team) throw new Error(`Team ${teamName} not found`);
@@ -755,7 +755,7 @@ test('test entity collection reactive find', async () => {
             await this.exchangeDatabase.deleteOne(Team, {id: team.id});
         }
 
-        @Action()
+        @rpc.action()
         async find(teamName: string): Promise<Collection<User>> {
             return this.storage.collection(User).filter({
                 id: {
@@ -849,7 +849,7 @@ test('test entity collection pagination', async () => {
         }
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private connection: ClientConnection,
@@ -859,7 +859,7 @@ test('test entity collection pagination', async () => {
         ) {
         }
 
-        @Action()
+        @rpc.action()
         async init() {
             await this.session.query(Item).deleteMany();
 
@@ -874,18 +874,18 @@ test('test entity collection pagination', async () => {
             await Promise.all(promises);
         }
 
-        @Action()
+        @rpc.action()
         async add(clazz: string, nr: number): Promise<void> {
             const item = new Item('name_' + nr, nr, clazz, '3f63154d-4121-4f5c-a297-afc1f8f453fd');
             await this.exchangeDatabase.add(item);
         }
 
-        @Action()
+        @rpc.action()
         async remove(name: string): Promise<void> {
             await this.exchangeDatabase.deleteOne(Item, {name: name});
         }
 
-        @Action()
+        @rpc.action()
         async findByClass(clazz: string): Promise<Collection<Item>> {
             return this.storage.collection(Item)
                 .filter({clazz: {$parameter: 'clazz'}})
@@ -896,14 +896,14 @@ test('test entity collection pagination', async () => {
                 .find();
         }
 
-        @Action()
+        @rpc.action()
         async findByOwner(owner: string): Promise<Collection<Item>> {
             return this.storage.collection(Item)
                 .filter({owner: owner})
                 .find();
         }
 
-        @Action()
+        @rpc.action()
         async findByOwnerPaged(owner: string): Promise<Collection<Item>> {
             return this.storage.collection(Item)
                 .filter({owner: owner})

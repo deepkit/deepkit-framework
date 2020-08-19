@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/marshal-nest",
-  "version": "2.1.13",
+  "version": "1.0.0-alpha.0",
   "description": "Marshal: A plugin for NestJS to convert HTTP Body to your class instance with validation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,12 +11,12 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@super-hornet/marshal": "^0.8.3",
-    "@nestjs/common": "^7.0.0"
+    "@nestjs/common": "^7.0.0",
+    "@super-hornet/marshal": "^1.0.0-alpha.0"
   },
   "devDependencies": {
-    "@super-hornet/marshal": "^2.1.13",
     "@nestjs/common": "^7.0.0",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

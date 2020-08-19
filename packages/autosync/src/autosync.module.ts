@@ -1,7 +1,7 @@
-import {Module} from "@super-hornet/framework-server-common";
+import {hornet} from "@super-hornet/framework-server-common";
 import {EntityStorage} from "./entity-storage";
 
-@Module({
+@hornet.module({
     providers: [
         {provide: EntityStorage, scope: 'session'}
     ]

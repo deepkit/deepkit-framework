@@ -1,20 +1,14 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {
-    Action,
-    Controller,
-    ValidationError,
-    ValidationErrorItem,
-    ValidationParameterError
-} from "@super-hornet/framework-shared";
-import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from "./util";
-import {Observable} from "rxjs";
-import {bufferCount, first, skip} from "rxjs/operators";
-import {Entity, t, getClassSchema, PropertySchema} from '@super-hornet/marshal';
-import {ObserverTimer} from "@super-hornet/core-rxjs";
+import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@super-hornet/framework-shared';
+import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from './util';
+import {Observable} from 'rxjs';
+import {bufferCount, first, skip} from 'rxjs/operators';
+import {Entity, getClassSchema, PropertySchema, t} from '@super-hornet/marshal';
+import {ObserverTimer} from '@super-hornet/core-rxjs';
 import {isArray} from '@super-hornet/core';
-import {JSONError} from "@super-hornet/framework-shared";
-import {ClientProgress} from "@super-hornet/framework-client";
+import {ClientProgress} from '@super-hornet/framework-client';
+import {rpc} from '@super-hornet/framework-shared';
 
 afterAll(async () => {
     await closeAllCreatedServers();
@@ -41,37 +35,37 @@ class MyCustomError {
 }
 
 test('basic setup and methods', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         @t.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }
 
-        @Action()
+        @rpc.action()
         user(name: string): User {
             return new User(name);
         }
 
-        @Action()
+        @rpc.action()
         myErrorNormal() {
             throw new Error('Nothing to see here');
         }
 
-        @Action()
+        @rpc.action()
         myErrorJson() {
             throw new JSONError([{path: 'name', name: 'missing'}]);
         }
 
-        @Action()
+        @rpc.action()
         myErrorCustom(): any {
             const error = new MyCustomError('Shit dreck');
             error.additional = 'hi';
             throw error;
         }
 
-        @Action()
+        @rpc.action()
         validationError(user: User) {
         }
     }
@@ -160,9 +154,9 @@ test('basic setup and methods', async () => {
 
 
 test('basic serialisation: primitives', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         @t.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', "15", last];
@@ -187,38 +181,38 @@ test('basic serialisation: primitives', async () => {
 });
 
 test('basic serialisation return: entity', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         @t.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
 
-        @Action()
+        @rpc.action()
         @t.type(User).optional
         async optionalUser(@t.optional returnUser: boolean = false): Promise<User | undefined> {
             return returnUser ? new User('optional') : undefined;
         }
 
-        @Action()
+        @rpc.action()
         @t.array(User)
         async users(name: string): Promise<User[]> {
             return [new User(name)];
         }
 
-        @Action()
+        @rpc.action()
         async notAnnotatedUser(name: string): Promise<User> {
             return new User(name);
         }
 
-        @Action()
+        @rpc.action()
         @t.any
         async allowPlainObject(name: string): Promise<{mowla: boolean, name: string, date: Date}> {
             return {mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z')};
         }
 
-        @Action()
+        @rpc.action()
         async notAnnotatedObservable(name: string): Promise<Observable<User>> {
             return new Observable((observer) => {
                 observer.next(new User(name));
@@ -266,9 +260,9 @@ test('basic serialisation return: entity', async () => {
 });
 
 test('basic serialisation param: entity', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         user(user: User): boolean {
             return user instanceof User && user.name === 'peter2';
         }
@@ -297,13 +291,13 @@ test('basic serialisation partial param: entity', async () => {
         }
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         failUser(user: Partial<User>) {
         }
 
-        @Action()
+        @rpc.action()
         failPartialUser(name: string, date: Date): Partial<User> {
             return {
                 name: name,
@@ -311,7 +305,7 @@ test('basic serialisation partial param: entity', async () => {
             };
         }
 
-        @Action()
+        @rpc.action()
         @t.partial(User)
         partialUser(name: string, date: Date): Partial<User> {
             return {
@@ -320,7 +314,7 @@ test('basic serialisation partial param: entity', async () => {
             };
         }
 
-        @Action()
+        @rpc.action()
         user(@t.partial(User) user: Partial<User>): boolean {
             return !(user instanceof User) && user.name === 'peter2' && !user.defaultVar;
         }
@@ -357,15 +351,15 @@ test('basic serialisation partial param: entity', async () => {
 });
 
 test('test basic promise', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         @t.array(String)
         async names(last: string): Promise<string[]> {
             return ['a', 'b', 'c', last];
         }
 
-        @Action()
+        @rpc.action()
         @t.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
@@ -386,9 +380,9 @@ test('test basic promise', async () => {
 });
 
 test('test observable', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         observer(): Observable<string> {
             return new Observable((observer) => {
                 observer.next('a');
@@ -409,7 +403,7 @@ test('test observable', async () => {
             });
         }
 
-        @Action()
+        @rpc.action()
         @t.template(User)
         user(name: string): Observable<User> {
             return new Observable((observer) => {
@@ -444,14 +438,14 @@ test('test observable', async () => {
 });
 
 test('test param serialization', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         actionString(@t.type(String) array: string): boolean {
             return 'string' === typeof array;
         }
 
-        @Action()
+        @rpc.action()
         actionArray(@t.array(String) array: string[]): boolean {
             return isArray(array) && 'string' === typeof array[0];
         }
@@ -467,14 +461,14 @@ test('test param serialization', async () => {
 
 
 test('test batcher', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         uploadBig(@t.type(Buffer) file: Buffer): boolean {
             return file.length === 550_000;
         }
 
-        @Action()
+        @rpc.action()
         downloadBig(): Buffer {
             return new Buffer(650_000);
         }

@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/topsort",
-  "version": "0.0.1",
+  "version": "1.0.0-alpha.0",
   "description": "High-Performance topological sort / dependency resolver with optional grouping algorithm for Typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,10 +13,6 @@
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "dependencies": {
-  },
-  "devDependencies": {
-  },
   "jest": {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

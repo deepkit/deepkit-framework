@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/core",
-  "version": "0.1.19",
+  "version": "1.0.0-alpha.0",
   "description": "Super Hornet core library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,8 +11,8 @@
     "access": "public"
   },
   "dependencies": {
-    "dot-prop": "^4.2.0",
-    "benchmark": "^2.1.4"
+    "benchmark": "^2.1.4",
+    "dot-prop": "^4.2.0"
   },
   "devDependencies": {
     "@types/dot-prop": "~4.2.0"

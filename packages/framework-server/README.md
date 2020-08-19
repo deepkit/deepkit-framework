@@ -8,19 +8,19 @@ npm install @super-hornet/framework-server rxjs
 
 #### Server
 
-Example
+Example RPC controller
 
 ```typescript
 
-@Controller('user')
+@rpc.controller('user')
 class UserController implements UserControllerInterface{
 
-    @Action()
+    @rpc.action()
     names(): string {
         return ['name1', 'name2'];
     }
     
-    @Action()
+    @rpc.action()
     users(): Observable<User> {
         return new Observable((observer) => {
             observer.next(new User('Peter 1'));
@@ -32,7 +32,7 @@ class UserController implements UserControllerInterface{
         });
     }
     
-    @Action()
+    @rpc.action()
     userList(): Collection<User> {
         const collection = new Collection(User);
         collection.add(new User('Peter 1'));
@@ -50,12 +50,12 @@ class UserController implements UserControllerInterface{
     }
 }
 
-@ApplicationModule({
+@hornet.module({
     controllers: [UserController],
     connectionProviders: [],
     notifyEntities: [User],
 })
-class MyApp extends Application {
+class MyApp implements SuperHornetModule {
     async bootstrap(): Promise<any> {
         await super.bootstrap();
         console.log('bootstrapped =)');

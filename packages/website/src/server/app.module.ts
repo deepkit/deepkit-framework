@@ -1,6 +1,6 @@
-import {Module} from "@super-hornet/framework-server";
+import {hornet} from '@super-hornet/framework-server-common';
 
-@Module({
+@hornet.module({
   controllers: []
 })
 class AppModule {

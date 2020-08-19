@@ -1,14 +1,11 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Action, Controller} from "@super-hornet/framework-shared";
 import {Entity, f} from '@super-hornet/marshal';
-import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from "./util";
-import {Session} from "@super-hornet/framework-server";
+import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
+import {InternalClient, SecurityStrategy, Session} from '@super-hornet/framework-server';
 import {Observable} from 'rxjs';
-import {InternalClient} from "@super-hornet/framework-server";
 import {sleep} from '@super-hornet/core';
-import {Module} from "@super-hornet/framework-server-common";
-import {SecurityStrategy} from "@super-hornet/framework-server";
+import {rpc} from '@super-hornet/framework-shared';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -25,20 +22,20 @@ class User {
 }
 
 test('test peer2peer', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         @f.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }
 
-        @Action()
+        @rpc.action()
         user(name: string): User {
             return new User(name);
         }
 
-        @Action()
+        @rpc.action()
         ob(): Observable<string> {
             return new Observable((observer) => {
                 console.log('lets go?');
@@ -47,13 +44,13 @@ test('test peer2peer', async () => {
             });
         }
 
-        @Action()
+        @rpc.action()
         throwError(): void {
             throw new Error('Errored.');
         }
     }
 
-    @Module({
+    @hornet.module({
         controllers: [TestController],
         providers: [
             {
@@ -133,20 +130,20 @@ test('test peer2peer', async () => {
 });
 
 test('test peer2peer internal client', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         @f.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }
 
-        @Action()
+        @rpc.action()
         user(name: string): User {
             return new User(name);
         }
 
-        @Action()
+        @rpc.action()
         ob(): Observable<string> {
             return new Observable((observer) => {
                 console.log('lets go?');
@@ -155,7 +152,7 @@ test('test peer2peer internal client', async () => {
             });
         }
 
-        @Action()
+        @rpc.action()
         throwError(): void {
             throw new Error('Errored.');
         }
@@ -191,14 +188,14 @@ test('test peer2peer internal client', async () => {
 });
 
 test('test peer2peer offline', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
-        @Action()
+        @rpc.action()
         ping(): Boolean {
             return true;
         }
 
-        @Action()
+        @rpc.action()
         async timeout(): Promise<void> {
             await sleep(2);
         }

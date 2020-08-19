@@ -1,10 +1,10 @@
 import 'jest-extended';
-import {Action, Controller, File, StreamBehaviorSubject} from "@super-hornet/framework-shared";
-import {EntityStorage, FS} from "@super-hornet/fs";
-import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from "./util";
+import {File, rpc, StreamBehaviorSubject} from '@super-hornet/framework-shared';
+import {EntityStorage, FS} from '@super-hornet/fs';
+import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
 import {sleep} from '@super-hornet/core';
 import {Buffer} from 'buffer';
-import {arrayBufferTo} from "@super-hornet/marshal";
+import {arrayBufferTo} from '@super-hornet/marshal';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');
@@ -14,7 +14,7 @@ afterAll(async () => {
 });
 
 test('test file list', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private storage: EntityStorage,
@@ -23,7 +23,7 @@ test('test file list', async () => {
 
         }
 
-        @Action()
+        @rpc.action()
         async init() {
             await this.fs.removeAll({});
 
@@ -32,24 +32,24 @@ test('test file list', async () => {
             await this.fs.write('test2-doppelt.txt', 'Nix');
         }
 
-        @Action()
+        @rpc.action()
         async deleteTest2() {
             await this.fs.removeAll({
                 path: 'test2.txt'
             });
         }
 
-        @Action()
+        @rpc.action()
         async content(path: string) {
             return await this.fs.subscribe(path, {});
         }
 
-        @Action()
+        @rpc.action()
         async write(path: string, content: string) {
             await this.fs.write(path, content);
         }
 
-        @Action()
+        @rpc.action()
         async files() {
             return this.storage.collection(File).filter({
                 path: {$regex: /^test2/}
@@ -81,7 +81,7 @@ test('test file list', async () => {
 });
 
 test('test file stream', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class TestController {
         constructor(
             private storage: EntityStorage,
@@ -90,17 +90,17 @@ test('test file stream', async () => {
 
         }
 
-        @Action()
+        @rpc.action()
         async init() {
             await this.fs.removeAll({});
         }
 
-        @Action()
+        @rpc.action()
         async stream(path: string, content: string) {
             await this.fs.stream(path, Buffer.from(content, 'utf8'));
         }
 
-        @Action()
+        @rpc.action()
         async content(path: string) {
             return await this.fs.subscribe(path, {});
         }

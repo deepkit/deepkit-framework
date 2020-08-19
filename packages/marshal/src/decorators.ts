@@ -14,6 +14,7 @@ import * as getParameterNames from 'get-parameter-names';
 import {isArray} from './utils';
 import {Buffer} from 'buffer';
 import {FlattenIfArray} from './utils';
+import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
 
 export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> };
@@ -1284,6 +1285,20 @@ export function Entity<T>(name: string, collectionName?: string) {
     };
 }
 
+
+class EntityApi {
+    t = new ClassSchema(class {});
+
+    onDecorator(target: object) {
+        this.t = getClassSchema(target);
+    }
+
+    name(name: string) {
+        this.t.name = name;
+    }
+}
+export const entity: ClassDecoratorResult<typeof EntityApi> = createClassDecoratorContext(EntityApi);
+
 /**
  * Used to define a database name for an entity. Per default marshal's database abstraction
  * uses the default database, but you can change that using this decorator.
@@ -2248,6 +2263,10 @@ fRaw['schema'] = function <T extends FieldTypes<any>>(propsOrName: string | Plai
     }
 
     return schema;
+};
+
+fRaw['class'] = function <T extends FieldTypes<any>>(props?: PlainSchemaProps): ClassSchema {
+    return fRaw.schema(props).classType;
 };
 
 fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>): FieldDecoratorResult<ExtractType<T>[]> {

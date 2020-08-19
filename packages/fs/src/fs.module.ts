@@ -1,9 +1,9 @@
-import {Module} from "@super-hornet/framework-server-common";
-import {FsConfig} from "./fs.config";
-import {Database, DatabaseAdapter} from "@super-hornet/marshal-orm";
+import {hornet} from '@super-hornet/framework-server-common';
+import {FsConfig} from './fs.config';
+import {Database, DatabaseAdapter} from '@super-hornet/marshal-orm';
 import {HornetFile} from '@super-hornet/framework-shared';
 
-@Module({
+@hornet.module({
     providers: [
         FsConfig,
         Database,

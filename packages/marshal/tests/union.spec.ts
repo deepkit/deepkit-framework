@@ -1,6 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
-import {getJitFunctionXToClass, jitPlainToClass, plainToClass, t} from '../index';
+import {getJitFunctionXToClass, plainToClass, t} from '../index';
 
 test('union ClassType', () => {
     class RegularUser {

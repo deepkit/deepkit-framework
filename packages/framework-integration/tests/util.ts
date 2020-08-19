@@ -1,12 +1,12 @@
 import 'jest';
-import {arrayRemoveItem, ClassType, sleep} from "@super-hornet/core";
-import {ApplicationServer} from "@super-hornet/framework-server";
-import {RemoteController} from "@super-hornet/framework-shared";
-import {Observable} from "rxjs";
-import {createServer} from "http";
-import {Module} from "@super-hornet/framework-server-common";
-import {SuperHornetClient} from "@super-hornet/framework-client";
-import {ExchangeConfig} from "@super-hornet/exchange";
+import {arrayRemoveItem, ClassType, sleep} from '@super-hornet/core';
+import {ApplicationServer} from '@super-hornet/framework-server';
+import {RemoteController} from '@super-hornet/framework-shared';
+import {Observable} from 'rxjs';
+import {createServer} from 'http';
+import {hornet} from '@super-hornet/framework-server-common';
+import {SuperHornetClient} from '@super-hornet/framework-client';
+import {ExchangeConfig} from '@super-hornet/exchange';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -40,10 +40,12 @@ export async function closeAllCreatedServers() {
 }
 
 export function appModuleForControllers(controllers: ClassType<any>[]): ClassType<any> {
-    @Module({
+    @hornet.module({
         controllers: controllers
     })
-    class AppModule {}
+    class AppModule {
+    }
+
     return AppModule;
 }
 
@@ -69,7 +71,7 @@ export async function createServerClientPair(
         });
     });
 
-    @Module({})
+    @hornet.module({})
     class ConfigModule {
         constructor(exchangeConfig: ExchangeConfig) {
             exchangeConfig.hostOrUnixPath = exchangeSocketPath;

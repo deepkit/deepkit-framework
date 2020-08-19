@@ -1,11 +1,9 @@
 {
   "name": "@super-hornet/core-rxjs",
-  "version": "0.1.19",
+  "version": "1.0.0-alpha.0",
   "description": "Super Hornet core rxjs library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
-  "module": "dist/",
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
@@ -22,7 +20,7 @@
     "rxjs": "~6.5.3"
   },
   "devDependencies": {
-    "@super-hornet/core": "^0.1.19",
+    "@super-hornet/core": "^1.0.0-alpha.0",
     "rxjs": "~6.5.3"
   },
   "jest": {

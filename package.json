@@ -6,8 +6,8 @@
   "scripts": {
     "test": "jest --coverage --forceExit",
     "bootstrap": "lerna bootstrap --nohoist \\* --no-ci",
-    "tsc": "lerna run tsc",
-    "tsc-watch": "lerna run --parallel tsc-watch",
+    "tsc": "tsc --build",
+    "tsc-watch": "tsc --build --watch",
     "docs": "rm -rf docs && typedoc",
     "docker-image": "docker build -t marshal/website .",
     "publish": "lerna run tsc && lerna publish",

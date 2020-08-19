@@ -228,7 +228,7 @@ export class Client {
 
                     const data: ClientMessageAll = message.data;
 
-                    if ((data.name === 'actionTypes' || data.name === 'action') && !actions[data.action]) {
+                    if ((data.name === 'actionTypes' || data.name === 'action') && !actions.has(data.action)) {
                         activeSubject.sendMessage({
                             name: 'peerController/message',
                             controllerName: name,

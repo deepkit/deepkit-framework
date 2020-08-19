@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/marshal",
-  "version": "2.1.13",
+  "version": "1.0.0-alpha.0",
   "description": "Marshal.ts the fastest universal TypeScript serializer and validator with JIT engine for frontend, backend, http-transport, RPC, and database, with built-in validations, NestJS support, and MongoDB ORM/Query builder, for Browser/NodeJS.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,7 +20,7 @@
     "moment": "^2.0.0"
   },
   "dependencies": {
-    "@super-hornet/core": "^0.1.19",
+    "@super-hornet/core": "^1.0.0-alpha.0",
     "buffer": "^5.2.1",
     "clone": "^2.1.1",
     "get-parameter-names": "^0.3.0",
@@ -28,10 +28,10 @@
   },
   "devDependencies": {
     "@types/clone": "^0.1.30",
-    "@types/moment": "^2.0.0",
     "@types/jest": "^26.0.3",
-    "reflect-metadata": "^0.1.13",
-    "moment": "^2.0.0"
+    "@types/moment": "^2.0.0",
+    "moment": "^2.0.0",
+    "reflect-metadata": "^0.1.13"
   },
   "jest": {
     "testEnvironment": "node",

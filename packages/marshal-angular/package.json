@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/marshal-angular",
-  "version": "0.0.1",
+  "version": "1.0.0-alpha.0",
   "description": "Types angular forms",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,8 +13,6 @@
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "dependencies": {
-  },
   "devDependencies": {
     "@angular/forms": "^10.0.3",
     "reflect-metadata": "^0.1.13"

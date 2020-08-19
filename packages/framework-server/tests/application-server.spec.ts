@@ -1,12 +1,12 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Module} from "@super-hornet/framework-server-common";
-import {InMemoryApplicationServer} from "../src/inmemory-application-server";
-import {Action, Controller} from "@super-hornet/framework-shared";
+import {hornet} from '@super-hornet/framework-server-common';
+import {InMemoryApplicationServer} from '../src/inmemory-application-server';
+import {rpc} from '@super-hornet/framework-shared';
 
 test('basic bootstrap', async () => {
-    @Module({})
+    @hornet.module({})
     class AppModule {
     }
 
@@ -16,15 +16,15 @@ test('basic bootstrap', async () => {
 });
 
 test('basic controller', async () => {
-    @Controller('test')
+    @rpc.controller('test')
     class MyController {
-        @Action()
+        @rpc.action()
         foo() {
             return 'bar';
         }
     }
 
-    @Module({
+    @hornet.module({
         controllers: [MyController]
     })
     class AppModule {

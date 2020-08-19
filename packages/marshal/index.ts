@@ -1,4 +1,5 @@
 export * from './src/core';
+export * from './src/decorator-builder';
 export * from './src/decorators';
 export * from './src/mapper';
 export * from './src/utils';

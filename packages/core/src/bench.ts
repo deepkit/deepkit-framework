@@ -1,7 +1,7 @@
 const Benchmark = require('benchmark');
 const Reset = '\x1b[0m';
 const FgGreen = '\x1b[32m';
-const FgYellow = "\x1b[33m";
+const FgYellow = '\x1b[33m';
 const {performance} = require('perf_hooks');
 
 declare var process: any;
@@ -30,7 +30,7 @@ function getBlocks(stats: number[]): string {
     const max = Math.max(...stats);
     let res = '';
     for (const n of stats) {
-        const cat = Math.ceil(n/max * 6);
+        const cat = Math.ceil(n / max * 6);
         res += (blocks[cat - 1]);
     }
 
@@ -49,24 +49,26 @@ export class BenchSuite {
                 ' 🏁 Fastest',
                 green(fastest.name),
             );
-        }).on('cycle', function(event: any) {
+        }).on('cycle', function (event: any) {
             print(
-                " 🏎",
-                "x", green(event.target.hz.toLocaleString(undefined, {maximumFractionDigits: 2})), "ops/sec",
+                ' 🏎',
+                'x', green(event.target.hz.toLocaleString(undefined, {maximumFractionDigits: 2})), 'ops/sec',
                 '\xb1' + event.target.stats.rme.toFixed(2) + '%',
-                yellow(event.target.stats.mean.toLocaleString(undefined, {maximumFractionDigits: 16})), "sec/op",
+                yellow(event.target.stats.mean.toLocaleString(undefined, {maximumFractionDigits: 16})), 'sec/op',
                 '\t' + getBlocks(event.target.stats.sample),
                 green(event.target.name),
             );
-        })
+        });
     }
 
     addAsync(title: string, fn: () => Promise<void>, options: any = {}) {
-        options = Object.assign({maxTime: 1, defer: true}, options);
-        this.suite.add(title, async (deferred: any) => {
-            await fn();
-            deferred.resolve();
-        }, options);
+        this.suite.add(title, {
+            defer: true,
+            maxTime: 1,
+            fn: function (deferred: any) {
+                fn().then(deferred.resolve());
+            }
+        });
     }
 
     add(title: string, fn: () => void | Promise<void>, options: any = {}) {
@@ -75,14 +77,14 @@ export class BenchSuite {
     }
 
     run(options: object = {}): void {
-        print("Start benchmark", green(this.name));
+        print('Start benchmark', green(this.name));
         return this.suite.run(options);
     }
 
     async runAsync() {
-        print("Start benchmark", green(this.name));
+        print('Start benchmark', green(this.name));
         await new Promise((resolve) => {
-            this.suite.run();
+            this.suite.run({async: true});
             this.suite.on('complete', () => {
                 console.log('done?');
                 resolve();

@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/framework-client",
-  "version": "0.0.33",
+  "version": "1.0.0-alpha.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": "https://github.com/super-hornet/super-hornet.ts",
@@ -14,15 +14,13 @@
     "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "peerDependencies": {
-  },
   "dependencies": {
-    "@super-hornet/framework-shared": "^0.0.33",
-    "@super-hornet/marshal": "^2.1.1",
-    "@super-hornet/core": "^0.1.17",
-    "@super-hornet/core-rxjs": "^0.1.17",
-    "rxjs": "~6.5.3",
+    "@super-hornet/core": "^1.0.0-alpha.0",
+    "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
+    "@super-hornet/framework-shared": "^1.0.0-alpha.0",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
     "dot-prop": "^4.2.0",
+    "rxjs": "~6.5.3",
     "ws": "^7.2.1"
   },
   "devDependencies": {

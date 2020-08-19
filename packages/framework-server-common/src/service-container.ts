@@ -1,21 +1,8 @@
-import {arrayRemoveItem, ClassType, getClassName, isClass} from "@super-hornet/core";
-import {
-    DynamicModule,
-    getControllerOptions,
-    getModuleOptions,
-    isDynamicModuleObject,
-    isModuleToken,
-    SuperHornetModule,
-} from "./module";
-import {
-    Injector,
-    isClassProvider,
-    isExistingProvider,
-    isFactoryProvider,
-    isValueProvider,
-    tokenLabel
-} from './injector/injector';
-import {Provider, ProviderProvide, TypeProvider} from "./injector/provider";
+import {arrayRemoveItem, ClassType, getClassName, isClass} from '@super-hornet/core';
+import {DynamicModule, hornet, httpClass, isDynamicModuleObject, isModuleToken, SuperHornetModule,} from './module';
+import {Injector, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, tokenLabel} from './injector/injector';
+import {Provider, ProviderProvide, TypeProvider} from './injector/provider';
+import {rpcClass} from '@super-hornet/framework-shared';
 
 export interface ProviderScope {
     scope?: 'module' | 'session' | 'request';
@@ -135,14 +122,14 @@ export class ControllerContainer {
         return this.getController(context, classType);
     }
 
-    public resolveController(name: string): { context: number, classType: ClassType<any> } {
-        const classType = this.serviceContainer.controllerByName.get(name);
+    public resolveController(name: string): { context: number, classType: ClassType } {
+        const classType = this.serviceContainer.rpcControllers.get(name);
         if (!classType) throw new Error(`Controller not found for ${name}`);
         const context = this.serviceContainer.controllersContext.get(classType) || 0;
         return {context, classType};
     }
 
-    public getController<T extends SuperHornetController>(context: number, classType: ClassType<any>): T {
+    public getController<T extends SuperHornetController>(context: number, classType: ClassType): T {
         let subInjector = this.sessionInjectors.get(context);
         if (!subInjector) {
             subInjector = this.serviceContainer.getContext(context).createSubInjector('session', [], this.rootInjector);
@@ -154,20 +141,21 @@ export class ControllerContainer {
 }
 
 export class ServiceContainer {
-    public readonly controllersContext = new Map<ClassType<any>, number>();
-    public readonly controllerByName = new Map<string, ClassType<any>>();
+    public readonly controllersContext = new Map<ClassType, number>();
+    public readonly rpcControllers = new Map<string, ClassType>();
+    public readonly httpControllers = new Set<ClassType>();
 
     protected currentIndexId = 0;
 
     protected contexts = new Map<number, Context>();
 
     protected rootContext?: Context;
-    protected moduleContexts = new Map<ClassType<any>, Context[]>();
+    protected moduleContexts = new Map<ClassType, Context[]>();
 
     public processRootModule(
-        appModule: ClassType<any> | DynamicModule,
+        appModule: ClassType | DynamicModule,
         providers: ProviderWithScope[] = [],
-        imports: (ClassType<any> | DynamicModule)[] = []
+        imports: (ClassType | DynamicModule)[] = []
     ) {
         providers.push({provide: ServiceContainer, useValue: this});
 
@@ -189,7 +177,7 @@ export class ServiceContainer {
         return result;
     }
 
-    public getContextsForModule(module: ClassType<any>): Context[] {
+    public getContextsForModule(module: ClassType): Context[] {
         return this.moduleContexts.get(module) || [];
     }
 
@@ -200,7 +188,7 @@ export class ServiceContainer {
         return context;
     }
 
-    protected getNewContext(module: ClassType<any>, parent?: Context): Context {
+    protected getNewContext(module: ClassType, parent?: Context): Context {
         const newId = this.currentIndexId++;
         const context = new Context(newId);
         this.contexts.set(newId, context);
@@ -224,14 +212,15 @@ export class ServiceContainer {
      * Fill `moduleHierarchy` correctly and recursively.
      */
     protected processModule(
-        appModule: ClassType<any> | DynamicModule,
+        appModule: ClassType | DynamicModule,
         parentContext?: Context,
         additionalProviders: ProviderWithScope[] = [],
-        additionalImports: (ClassType<any> | DynamicModule)[] = []
+        additionalImports: (ClassType | DynamicModule)[] = []
     ): Context {
         let module = isDynamicModuleObject(appModule) ? appModule.module : appModule;
-        let options = getModuleOptions(module);
-        if (!options) throw new Error(`Module ${getClassName(module)} has no @Module decorator`);
+        const decorator = hornet._fetch(module);
+        if (!decorator || !decorator.config) throw new Error(`Module ${getClassName(module)} has no @hornet.module() decorator`);
+        const options = decorator.config;
 
         const exports = options.exports ? options.exports.slice(0) : [];
         const providers = options.providers ? options.providers.slice(0) : [];
@@ -278,11 +267,23 @@ export class ServiceContainer {
 
         if (options.controllers) {
             for (const controller of options.controllers) {
-                const options = getControllerOptions(controller);
-                if (!options) throw new Error(`Controller ${getClassName(controller)} has no @Controller() decorator`);
-                providers.unshift(controller);
-                this.controllersContext.set(controller, context.id);
-                this.controllerByName.set(options.name, controller);
+                const rpcConfig = rpcClass._fetch(controller);
+                if (rpcConfig) {
+                    providers.unshift(controller);
+                    this.controllersContext.set(controller, context.id);
+                    this.rpcControllers.set(rpcConfig.name, controller);
+                    continue;
+                }
+
+                const httpConfig = httpClass._fetch(controller);
+                if (httpConfig) {
+                    providers.unshift(controller);
+                    this.controllersContext.set(controller, context.id);
+                    this.httpControllers.add(controller);
+                    continue;
+                }
+
+                throw new Error(`Controller ${getClassName(controller)} has no @http.controller() or @rpc.controller() decorator`);
             }
         }
 

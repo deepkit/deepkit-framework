@@ -1,32 +1,34 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {DynamicModule, Module, SuperHornetModule} from "../src/module";
-import {ControllerContainer, ServiceContainer} from "../src/service-container";
-import {injectable} from "../src/injector/injector";
-import {Controller} from "@super-hornet/framework-shared";
+import {DynamicModule, hornet, SuperHornetModule} from '../src/module';
+import {ControllerContainer, ServiceContainer} from '../src/service-container';
+import {injectable} from '../src/injector/injector';
+import {rpc} from '@super-hornet/framework-shared';
 
 
 test('controller', () => {
     class MyService {
         constructor(private text: string = 'hello') {
         }
+
         getHello() {
             return this.text;
         }
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class MyController {
         constructor(private myService: MyService) {
         }
+
         foo() {
             return this.myService.getHello();
         }
     }
 
     {
-        @Module({
+        @hornet.module({
             providers: [MyService],
             controllers: [MyController],
         })
@@ -46,20 +48,23 @@ test('controller in module and overwrite service', () => {
     class MyService {
         constructor(private text: string = 'hello') {
         }
+
         getHello() {
             return this.text;
         }
     }
 
-    @Controller('test')
+    @rpc.controller('test')
     class MyController {
         constructor(private myService: MyService) {
         }
+
         foo() {
             return this.myService.getHello();
         }
     }
-    @Module({
+
+    @hornet.module({
         providers: [MyService],
         controllers: [MyController],
         exports: [
@@ -70,7 +75,7 @@ test('controller in module and overwrite service', () => {
     }
 
     {
-        @Module({
+        @hornet.module({
             imports: [ControllerModule],
         })
         class MyModule {
@@ -85,7 +90,7 @@ test('controller in module and overwrite service', () => {
     }
 
     {
-        @Module({
+        @hornet.module({
             providers: [
                 {provide: MyService, useValue: new MyService('different')}
             ],
@@ -113,7 +118,7 @@ test('simple setup with import and overwrite', () => {
         }
     }
 
-    @Module({
+    @hornet.module({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection]
     })
@@ -123,7 +128,7 @@ test('simple setup with import and overwrite', () => {
     class MyService {
     }
 
-    @Module({
+    @hornet.module({
         providers: [MyService],
         imports: [DatabaseModule]
     })
@@ -154,7 +159,7 @@ test('simple setup with import and overwrite', () => {
         class OverwrittenConnection {
         }
 
-        @Module({
+        @hornet.module({
             providers: [MyService, {provide: Connection, useClass: OverwrittenConnection}],
             imports: [DatabaseModule]
         })
@@ -178,7 +183,7 @@ test('deep', () => {
     class DeepService {
     }
 
-    @Module({
+    @hornet.module({
         providers: [DeepService]
     })
     class DeepModule {
@@ -190,7 +195,7 @@ test('deep', () => {
     class HiddenDatabaseService {
     }
 
-    @Module({
+    @hornet.module({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection],
         imports: [DeepModule]
@@ -201,7 +206,7 @@ test('deep', () => {
     class MyService {
     }
 
-    @Module({
+    @hornet.module({
         providers: [MyService],
         imports: [DatabaseModule]
     })
@@ -228,7 +233,7 @@ test('scopes', () => {
     class SessionHandler {
     }
 
-    @Module({
+    @hornet.module({
         providers: [MyService, {provide: SessionHandler, scope: 'session'}],
     })
     class MyModule {
@@ -247,7 +252,7 @@ test('for root with exported module', () => {
     class SharedService {
     }
 
-    @Module({
+    @hornet.module({
         providers: [SharedService],
         exports: [SharedService]
     })
@@ -261,7 +266,7 @@ test('for root with exported module', () => {
         }
     }
 
-    @Module({
+    @hornet.module({
         providers: [
             BaseHandler
         ],
@@ -272,11 +277,11 @@ test('for root with exported module', () => {
             return {
                 root: true,
                 module: MyBaseModule
-            }
+            };
         }
     }
 
-    @Module({
+    @hornet.module({
         imports: [
             MyBaseModule.forRoot()
         ]
@@ -299,7 +304,7 @@ test('module with config object', () => {
 
     let bootstrapMainCalledConfig: any;
 
-    @Module({
+    @hornet.module({
         providers: [
             ExchangeConfig,
         ],
@@ -317,7 +322,7 @@ test('module with config object', () => {
         }
     }
 
-    @Module({
+    @hornet.module({
         imports: [ExchangeModule]
     })
     class MyBaseModule {
@@ -325,13 +330,14 @@ test('module with config object', () => {
             return {
                 root: true,
                 module: MyBaseModule
-            }
+            };
         }
     }
 
     {
         bootstrapMainCalledConfig = undefined;
-        @Module({
+
+        @hornet.module({
             imports: [MyBaseModule.forRoot()]
         })
         class MyModule {
@@ -349,8 +355,8 @@ test('module with config object', () => {
 
     {
         bootstrapMainCalledConfig = undefined;
-        @Module({
-        })
+
+        @hornet.module({})
         class MyModule {
         }
 
@@ -366,7 +372,8 @@ test('module with config object', () => {
 
     {
         bootstrapMainCalledConfig = undefined;
-        @Module({
+
+        @hornet.module({
             imports: [ExchangeModule]
         })
         class MyModule {
@@ -386,7 +393,8 @@ test('module with config object', () => {
         bootstrapMainCalledConfig = undefined;
         const changedConfig = new ExchangeConfig();
         changedConfig.startOnBootstrap = false;
-        @Module({
+
+        @hornet.module({
             providers: [
                 {provide: ExchangeConfig, useValue: changedConfig}
             ],
@@ -408,29 +416,33 @@ test('module with config object', () => {
 });
 
 test('exported module', () => {
-    class DatabaseConnection {}
+    class DatabaseConnection {
+    }
 
-    @Module({
+    @hornet.module({
         providers: [DatabaseConnection],
         exports: [
             DatabaseConnection
         ]
     })
-    class DatabaseModule {}
+    class DatabaseModule {
+    }
 
-    class FSService {}
+    class FSService {
+    }
 
-    @Module({
+    @hornet.module({
         providers: [FSService],
         imports: [DatabaseModule],
         exports: [
             DatabaseModule
         ]
     })
-    class FSModule {}
+    class FSModule {
+    }
 
     {
-        @Module({
+        @hornet.module({
             imports: [FSModule]
         })
         class MyModule {

@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/marshal-module",
-  "version": "2.1.13",
+  "version": "1.0.0-alpha.0",
   "description": "Marshal ORM module for Super Hornet",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,11 +13,9 @@
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "peerDependencies": {
-  },
   "dependencies": {
-    "@super-hornet/framework-server-common": "^0.0.33",
-    "@super-hornet/marshal-orm": "^2.1.13"
+    "@super-hornet/framework-server-common": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-orm": "^1.0.0-alpha.0"
   },
   "devDependencies": {
     "reflect-metadata": "^0.1.13"

@@ -1,5 +1,5 @@
 import 'zone.js/dist/zone-node';
-import "reflect-metadata";
+import 'reflect-metadata';
 
 import {ngExpressEngine} from '@nguniversal/express-engine';
 import * as express from 'express';
@@ -8,9 +8,9 @@ import {AppServerModule} from './src/main.server';
 import {APP_BASE_HREF} from '@angular/common';
 import {existsSync} from 'fs';
 import {ApplicationServer, ApplicationServerConfig} from '@super-hornet/framework-server';
-import {Action, Controller} from "@super-hornet/framework-shared";
-import {environment} from "./src/environments/environment";
-import {Module} from "@super-hornet/framework-server-common";
+import {environment} from './src/environments/environment';
+import {hornet} from '@super-hornet/framework-server-common';
+import {rpc} from '@super-hornet/framework-shared';
 
 (global as any).WebSocket = require('ws');
 
@@ -49,19 +49,19 @@ async function run() {
   // Start up the Node server
   const server = app();
 
-  const http = server.listen(port, () => {
+  const httpServer = server.listen(port, () => {
     console.log(`Node Express server listening on http://localhost:${port}`);
   });
 
-  @Controller('test')
+  @rpc.controller('test')
   class MyController {
-    @Action()
-    bla() {
+    @rpc.GET()
+    bla(): string {
       return 'YES!';
     }
   }
 
-  @Module({
+  @hornet.module({
     controllers: [MyController]
   })
   class AppModule {
@@ -71,7 +71,7 @@ async function run() {
     path: '/api'
   };
   if (environment.production) {
-    config.server = http;
+    config.server = httpServer;
   } else {
     config.port = 5200;
   }

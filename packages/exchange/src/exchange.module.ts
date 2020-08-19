@@ -1,10 +1,10 @@
 import {ExchangeServer, ExchangeServerFactory} from "./exchange-server";
 import {Exchange} from './exchange';
 import {AppLocker} from "./app-locker";
-import {Module, SuperHornetModule} from "@super-hornet/framework-server-common";
+import {hornet, SuperHornetModule} from "@super-hornet/framework-server-common";
 import {ExchangeConfig} from "./exchange.config";
 
-@Module({
+@hornet.module({
     providers: [
         ExchangeServerFactory,
         Exchange,

@@ -1,31 +1,55 @@
-import {ClassType, retrieveMetaData, storeMetaData} from "@super-hornet/core";
-import {getClassSchema, PropertySchema, PropertySchemaSerialized} from "@super-hornet/marshal";
+import {ClassType} from '@super-hornet/core';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    getClassSchema,
+    mergeDecorator,
+    PropertyDecoratorResult,
+    PropertySchema,
+} from '@super-hornet/marshal';
 
-export function getActionReturnType<T>(target: ClassType<T>, method: string): PropertySchemaSerialized {
-    return getClassSchema(target).getMethod(method).toJSON();
+class RpcController {
+    name: string = '';
+
+    actions = new Map;
 }
+
+class RpcAction {
+}
+
+class RpcClass {
+    t = new RpcController;
+
+    controller(name: string) {
+        this.t.name = name;
+    }
+
+    addAction(name: string, action: RpcAction) {
+        this.t.actions.set(name, action);
+    }
+}
+export const rpcClass: ClassDecoratorResult<typeof RpcClass> = createClassDecoratorContext(RpcClass);
+
+class RpcProperty {
+    t = new RpcAction;
+
+    onDecorator(target: object, property?: string) {
+        rpcClass.addAction(property!, this.t)(target);
+    }
+
+    action() {
+    }
+}
+
+export const rpcProperty: PropertyDecoratorResult<typeof RpcProperty> = createPropertyDecoratorContext(RpcProperty);
+
+export const rpc: typeof rpcClass & typeof rpcProperty = mergeDecorator(rpcClass, rpcProperty) as any;
 
 export function getActionParameters<T>(target: ClassType<T>, method: string): PropertySchema[] {
     return getClassSchema(target).getMethodProperties(method);
 }
 
-export function getActions<T>(target: ClassType<T>): { [name: string]: {} } {
-    return retrieveMetaData('super-hornet:actions', target.prototype) || {};
-}
-
-export function Action(options?: {}) {
-    return (target: object, property: string) => {
-        const actions = retrieveMetaData('super-hornet:actions', target) || {};
-        actions[property] = options || {};
-
-        storeMetaData('super-hornet:actions', actions, target);
-    };
-}
-
-export function Controller<T>(name: string) {
-    return (target: ClassType<T>) => {
-        storeMetaData('super-hornet:controller', {
-            name: name,
-        }, target);
-    };
+export function getActions<T>(target: ClassType<T>): Map<string, RpcAction> {
+    return rpcClass._fetch(target)?.actions ?? new Map;
 }

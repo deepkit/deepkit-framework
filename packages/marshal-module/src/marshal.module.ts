@@ -1,7 +1,8 @@
-import {Module} from "@super-hornet/framework-server-common";
+import {hornet} from '@super-hornet/framework-server-common';
+
 // import {Connection, Database} from "@super-hornet/marshal-orm";
 
-@Module({
+@hornet.module({
     providers: [
         // Connection,
         // Database,

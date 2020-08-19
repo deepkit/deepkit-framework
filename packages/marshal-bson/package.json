@@ -1,6 +1,6 @@
 {
   "name": "@super-hornet/marshal-bson",
-  "version": "2.1.13",
+  "version": "1.0.0-alpha.0",
   "description": "Marshal BSON parser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,8 +14,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@super-hornet/core": "^0.1.19",
-    "@super-hornet/marshal": "^2.1.13",
+    "@super-hornet/core": "^1.0.0-alpha.0",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
     "bson": "^4.0.4",
     "buffer": "^5.2.1"
   },
@@ -23,8 +23,8 @@
     "@types/jest": "^26.0.4",
     "@types/moment": "^2.13.0",
     "bson-ext": "^2.0.5",
-    "moment": "^2.27.0",
     "jest-serial-runner": "^1.1.0",
+    "moment": "^2.27.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~6.5.3"
   },

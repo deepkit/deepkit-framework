@@ -117,9 +117,10 @@ test('test discriminator in map', () => {
         const user = new UserWithConfigMap();
         user.configs['first'] = new ConfigA();
         user.configs['first'].myValue = '123';
+
         const plain = classToPlain(UserWithConfigMap, user);
         expect(plain.configs.first.kind).toBe('a');
-        expect(plain.configs.first.myValue).toBe('123');
+        expect((plain.configs.first as ConfigA).myValue).toBe('123');
     }
 
     {
