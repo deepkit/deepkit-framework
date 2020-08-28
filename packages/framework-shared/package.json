@@ -22,7 +22,7 @@
   "dependencies": {
     "@super-hornet/core": "^1.0.0-alpha.0",
     "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
-    "dot-prop": "^5.2.0",
+    "dot-prop": "^5.1.1",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {
