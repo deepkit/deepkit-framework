@@ -8,6 +8,7 @@
     "bootstrap": "lerna bootstrap --nohoist \\* --no-ci",
     "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
+    "clean": "rm -rf packages/*/dist",
     "docs": "rm -rf docs && typedoc",
     "docker-image": "docker build -t marshal/website .",
     "publish": "lerna run tsc && lerna publish",

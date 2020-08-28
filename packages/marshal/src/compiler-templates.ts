@@ -1,6 +1,6 @@
 import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap} from './decorators';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
-import {createClassToXFunction, createXToClassFunction, moment} from './jit';
+import {getClassToXFunction, getXToClassFunction, moment} from './jit';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
 import {getConverterCompiler, getDataConverterJS, registerConverterCompiler, TypeConverterCompiler} from './compiler-registry';
 import {getSortedUnionTypes} from './union';
@@ -173,7 +173,7 @@ export function compilerConvertClassToX(toFormat: string): TypeConverterCompiler
             template: `${setter} = ${classToX}.fn(${accessor}, _options);`,
             context: {
                 [classSchemaVar]: classSchema,
-                [classToX]: jitStack.getOrCreate(classSchema, () => createClassToXFunction(classSchema, toFormat, jitStack))
+                [classToX]: jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, toFormat, jitStack))
             }
         };
     };
@@ -188,12 +188,12 @@ export function compilerXToClass(fromFormat: string): TypeConverterCompiler {
         const xToClass = reserveVariable('xToClass');
         const context = {
             [classSchemaVar]: classSchema,
-            [xToClass]: jitStack.getOrCreate(classSchema, () => createXToClassFunction(classSchema, fromFormat, jitStack))
+            [xToClass]: jitStack.getOrCreate(classSchema, () => getXToClassFunction(classSchema, fromFormat, jitStack))
         };
 
         const foreignSchema = getClassSchema(property.resolveClassType!);
         if (foreignSchema.decorator) {
-            //the actual type checking happens within createXToClassFunction()'s constructor param
+            //the actual type checking happens within getXToClassFunction()'s constructor param
             //so we dont check here for object.
 
             return {
@@ -241,7 +241,6 @@ export function compilerXToUnionClass(fromFormat: string): TypeConverterCompiler
             discriminator.push(`
                 //guard:${unionType.property.type}
                 else if (${guardVar}(${accessor})) {
-                    //its the correct type. what now?
                     ${getDataConverterJS(setter, accessor, unionType.property, fromFormat, 'class', context, jitStack)}
                 }
             `);

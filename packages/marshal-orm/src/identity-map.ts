@@ -2,8 +2,9 @@ import {ClassSchema, getClassSchema, PartialEntity, JSONPartial} from '@super-ho
 import {Entity} from './query';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
 import {isObject} from '@super-hornet/core';
-import {jitChangeDetector} from './change-detector';
+import {getJitChangeDetector} from './change-detector';
 import {inspect} from 'util';
+import toFastProperties from "to-fast-properties";
 
 export type PrimaryKey<T> = { [name in keyof T]?: T[name] };
 
@@ -35,12 +36,9 @@ class InstanceState<T extends Entity> {
     /**
      * This represents the last known values known to be in the database.
      * The data is used for change-detection + last known primary key extraction.
-     * Reference store only its primary keys.
+     * References store only its primary keys.
      */
-    snapshot: JSONPartial<T>;
-    doSnapshot: (value: T) => any;
-    changeDetector: (last: any, current: any, item: T) => any;
-    extractPrimaryKeys: (value: JSONPartial<T>) => JSONPartial<T>;
+    snapshot?: JSONPartial<T>;
 
     readonly classSchema: ClassSchema<T>;
     readonly item: T;
@@ -50,11 +48,6 @@ class InstanceState<T extends Entity> {
     constructor(item: T) {
         this.item = item;
         this.classSchema = getClassSchema(item);
-
-        this.changeDetector = jitChangeDetector(this.classSchema);
-        this.doSnapshot = getJITConverterForSnapshot(this.classSchema);
-        this.extractPrimaryKeys = getPrimaryKeyExtractor(this.classSchema);
-        this.snapshot = this.doSnapshot(this.item);
     }
 
     [inspect.custom]() {
@@ -65,8 +58,9 @@ class InstanceState<T extends Entity> {
         return `knownInDatabase: ${this.knownInDatabase}`;
     }
 
-    getSnapshot() {
-        return this.snapshot;
+    getSnapshot(): JSONPartial<T> {
+        if (!this.snapshot) this.snapshot = getJITConverterForSnapshot(this.classSchema)(this.item);
+        return this.snapshot!;
     }
 
     isFromDatabase() {
@@ -82,12 +76,12 @@ class InstanceState<T extends Entity> {
     }
 
     markAsPersisted() {
-        this.snapshot = this.doSnapshot(this.item);
+        this.snapshot = getJITConverterForSnapshot(this.classSchema)(this.item);
         this.knownInDatabase = true;
     }
 
     getLastKnownPK(): JSONPartial<T> {
-        return this.extractPrimaryKeys(this.snapshot);
+        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot);
     }
 
     getLastKnownPKHash(): string {
@@ -106,8 +100,10 @@ export function getInstanceState<T>(item: T): InstanceState<T> {
     if (!(item as any)['constructor'].prototype.hasOwnProperty(instanceStateSymbol)) {
         Object.defineProperty((item as any)['constructor'].prototype, instanceStateSymbol, {
             writable: true,
-            enumerable: false
+            enumerable: false,
+            value: null
         });
+        toFastProperties((item as any)['constructor'].prototype);
     }
 
     if (!(item as any)[instanceStateSymbol]) {

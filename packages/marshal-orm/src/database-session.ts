@@ -136,7 +136,7 @@ export class DatabaseSessionImmediate {
      * Simple direct persist. The persistence layer (batch) inserts or updates the record
      * depending on the state of the given items. This is different to add() in a way
      * that `add` adds the given items to the queue (which is then committed using commit())
-     * and immediate.persist just simply inserts the given items immediately, completely bypassing
+     * and immediate.persist just simply inserts/updates the given items immediately, completely bypassing
      * the unit of work.
      *
      * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
@@ -190,8 +190,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      */
     public readonly immediate = new DatabaseSessionImmediate(this.identityMap, this.persistence);
 
-    protected connection?: ReturnType<this['adapter']['createConnection']>;
-
     constructor(
         public readonly adapter: ADAPTER
     ) {
@@ -203,7 +201,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      * Creates or returns an existing reference.
      *
      * If no instance is known in the identity map, it creates a proxy reference (where only primary keys are populated).
-     * You can work with this entity instance to assign new references, but reading its not-hydrated values is not possible.
+     * You can work with this entity instance to assign new references, but reading for not-hydrated values is not possible.
      * Writing not-hydrated is possible and lead to a change in the change-detection. Completely hydrate the object using
      * the `hydrateEntity` function.
      *
@@ -211,17 +209,10 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      * const user = database.getReference(User, 1);
      * ```
      */
-    public getReference<T>(classType: ClassType<T>, primaryKey: any | PrimaryKey<T>): T {
+    public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKey<T>): T {
         const schema = getClassSchema(classType);
         const pk = getNormalizedPrimaryKey(schema, primaryKey);
         return getReference(schema, pk, this.identityMap);
-    }
-
-    public getConnection(): ReturnType<this['adapter']['createConnection']> {
-        if (!this.connection) {
-            this.connection = this.adapter.createConnection() as ReturnType<this['adapter']['createConnection']>;
-        }
-        return this.connection;
     }
 
     protected getCurrentRound(): DatabaseSessionRound<ADAPTER> {

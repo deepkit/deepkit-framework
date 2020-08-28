@@ -104,7 +104,7 @@ test('external class 2', () => {
 });
 
 test('createClassSchemaFrom', () => {
-    const schema = t.schema('User', {
+    const schema = t.schema({
         username: t.string,
         password: t.string,
         roles: t.array(t.number),
@@ -153,3 +153,24 @@ test('createClassSchemaFrom complex', () => {
         expect(instance.image.path).toBe("image.jpg");
     }
 });
+
+test('deep object literal', () => {
+    const isMasterSchema = t.schema({
+        isMaster: t.number,
+        client: {
+            application: {
+                name: t.string,
+            },
+            driver: {
+                name: t.string,
+                version: t.string,
+            },
+            os: {
+                type: t.string,
+            }
+        }
+    });
+
+    const clientSchema = isMasterSchema.getProperty('client').getResolvedClassSchema();
+    expect(clientSchema.hasProperty('application')).toBe(true);
+})

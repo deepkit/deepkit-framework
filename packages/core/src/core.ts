@@ -385,13 +385,22 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  * When you use `new Promise()` you will lose the stack trace when `reject(new Error())` is called.
  * asyncOperation() makes sure the error stack trace is the correct one.
  *
+ * @example
+ * ```typescript
+ * await asyncOperation(async (resolve, reject) => {
+ *     await doSomething(); //if this fails, reject() will automatically be called
+ *     stream.on('data', (data) => {
+ *         resolve(data); //at some point you MUST call resolve(data)
+ *     });
+ * });
+ * ```
+ *
  * @public
  */
-export function asyncOperation<T>(executor: (resolve: (value?: T) => void, reject: (reason?: any) => void) => void | Promise<void>): Promise<T> {
+export function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
     return mergePromiseStack(new Promise<T>(async (resolve, reject) => {
         try {
-            const res = executor(resolve, reject);
-            if ((res as any)['then']) await res;
+            await executor(resolve, reject);
         } catch (e) {
             reject(e);
         }
@@ -414,6 +423,7 @@ export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promi
  * @beta
  */
 export function createStack(removeCallee: boolean = true): string {
+    if (Error.stackTraceLimit === 10) Error.stackTraceLimit = 100
     let stack = new Error().stack || '';
 
     /*

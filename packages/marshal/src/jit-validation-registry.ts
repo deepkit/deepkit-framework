@@ -8,7 +8,7 @@ export type TypeCheckerCompiler = (
     property: PropertyCompilerSchema,
     utils: { reserveVariable: (name?: string) => string, path: string, context: TypeCheckerCompilerContext, raise: (code: string, message: string) => string },
     jitStack: JitStack,
-) => string | { template: string, context: { [name: string]: any } };
+) => string | { template: string, context: { [name: string]: any } | Map<string, any> };
 
 export const validationRegistry = new Map<string, TypeCheckerCompiler>();
 
@@ -45,9 +45,15 @@ export function executeCheckerCompiler(
     if ('string' === typeof res) {
         return res;
     } else {
-        for (const i in res.context) {
-            if (!res.context.hasOwnProperty(i)) continue;
-            rootContext.set(i, res.context[i]);
+        if (res.context instanceof Map) {
+            for (const [k, v] of res.context.entries()) {
+                rootContext.set(k, v);
+            }
+        } else {
+            for (const i in res.context) {
+                if (!res.context.hasOwnProperty(i)) continue;
+                rootContext.set(i, res.context[i]);
+            }
         }
         return res.template;
     }

@@ -1,5 +1,6 @@
 import {Database, DatabaseSession} from '@super-hornet/marshal-orm';
-import {MongoDatabaseAdapter, MongoDatabaseConfig} from '../src/adapter';
+import {MongoDatabaseAdapter} from '../src/adapter';
+import {GenericCommand} from '../src/client/command/generic';
 
 /**
  * Executes given exec() method 3 times and averages the consumed time.
@@ -20,8 +21,11 @@ const databases: Database<MongoDatabaseAdapter>[] = [];
 
 export async function createDatabaseSession(dbName: string = 'testing'): Promise<DatabaseSession<MongoDatabaseAdapter>> {
     dbName = dbName.replace(/\s+/g, '-');
-    const database = new Database(new MongoDatabaseAdapter(new MongoDatabaseConfig('localhost', dbName)));
-    await (await database.adapter.connection.connect()).db(dbName).dropDatabase();
+    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/' + dbName));
+    await database.adapter.client.execute(new GenericCommand({
+        dropDatabase: 1,
+        $db: dbName,
+    }));
     databases.push(database);
     return database.createSession();
 }

@@ -2,7 +2,7 @@ import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {Database} from "@super-hornet/marshal-orm";
-import {MongoDatabaseAdapter, MongoDatabaseConfig} from "../src/adapter";
+import {MongoDatabaseAdapter} from "../src/adapter";
 import {Entity, t} from "@super-hornet/marshal";
 
 jest.setTimeout(100000);
@@ -17,9 +17,7 @@ test('simple', async () => {
         }
     }
 
-    const config = new MongoDatabaseConfig('localhost', 'test');
-    const database = new Database(new MongoDatabaseAdapter(config));
-
+    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
     await database.query(Test).deleteMany();
 
     {
@@ -46,8 +44,7 @@ test('unit of work', async () => {
         }
     }
 
-    const config = new MongoDatabaseConfig('localhost', 'test');
-    const database = new Database(new MongoDatabaseAdapter(config));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
     await database.query(Test).deleteMany();
 
     const session = database.createSession();
@@ -63,7 +60,7 @@ test('unit of work', async () => {
         expect(item.name).toBe('asd');
     }
 
-    session.immediate.remove(item);
+    await session.immediate.remove(item);
     await session.commit();
     expect(await session.query(Test).filter({name: 'asd'}).has()).toBe(false);
     database.disconnect();
@@ -79,8 +76,7 @@ test('repository', async () => {
         }
     }
 
-    const config = new MongoDatabaseConfig('localhost', 'test');
-    const database = new Database(new MongoDatabaseAdapter(config));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
     await database.query(Test).deleteMany();
     const item = new Test('asda');
     await database.createSession().immediate.persist(item);
@@ -112,8 +108,7 @@ test('session', async () => {
         }
     }
 
-    const config = new MongoDatabaseConfig('localhost', 'test');
-    const database = new Database(new MongoDatabaseAdapter(config));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
     await database.query(Test).deleteMany();
 
     await database.session(async (session) => {

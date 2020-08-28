@@ -2,9 +2,9 @@ import {
     CacheJitPropertyConverter,
     ClassSchema,
     classToPlain,
-    createClassToXFunction,
+    getClassToXFunction,
     createJITConverterFromPropertySchema,
-    createXToClassFunction,
+    getXToClassFunction,
     ExtractClassType,
     getClassSchema,
     JitConverterOptions,
@@ -41,7 +41,7 @@ export function mongoToClass<T extends ClassType<any> | ClassSchema<any>>(
     data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
     options?: JitConverterOptions
 ): ExtractClassType<T> {
-    return createXToClassFunction(getClassSchema(classType), 'mongo')(data, options);
+    return getXToClassFunction(getClassSchema(classType), 'mongo')(data, options);
 }
 
 export function classToMongo<T>(classType: ClassType<T> | ClassSchema<T>, instance: T, options?: JitConverterOptions): any {
@@ -50,7 +50,7 @@ export function classToMongo<T>(classType: ClassType<T> | ClassSchema<T>, instan
     if (!(instance instanceof classType.classType)) {
         throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
     }
-    return createClassToXFunction(classType, 'mongo')(instance, options);
+    return getClassToXFunction(classType, 'mongo')(instance, options);
 }
 
 export function mongoToPlain<T>(classType: ClassType<T> | ClassSchema<T>, record: any) {

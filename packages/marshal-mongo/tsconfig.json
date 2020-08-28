@@ -10,7 +10,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2017",
+    "target": "es2020",
     "module": "CommonJS",
 
     "baseUrl": ".",

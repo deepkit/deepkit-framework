@@ -58,3 +58,13 @@ const object1 = parseObject(new ParserV2(bson));
 
 const object2 = parseObject(new ParserV3(bson));
 ```
+
+### Differences
+
+There are a couple of differences to the official serializer.
+
+- ObjectId is deserialized as string.
+- UUID is deserialized as string.
+- BigInt is supported and serialized as long. 
+- Long is deserialized as BigInt.
+- Moment is serialized as long (like Date).

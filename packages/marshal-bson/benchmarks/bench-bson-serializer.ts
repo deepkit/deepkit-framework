@@ -7,7 +7,7 @@ import {createBSONSizer, getBSONSerializer} from '../src/bson-serialize';
 
 const bsonNative = new BSON([BSON.Binary, BSON.Code, BSON.DBRef, BSON.Decimal128, BSON.Double, BSON.Int32, BSON.Long, BSON.Map, BSON.MaxKey, BSON.MinKey, BSON.ObjectId, BSON.BSONRegExp, BSON.Symbol, BSON.Timestamp]);
 
-const itemSchema = t.schema('Item', {
+const itemSchema = t.schema({
     id: t.number,
     name: t.string,
     ready: t.boolean,
@@ -28,7 +28,7 @@ for (let i = 0; i < count; i++) {
     });
 }
 
-const schema = t.schema('schema', {
+const schema = t.schema({
     cursor: {
         firstBatch: t.array(itemSchema)
     }

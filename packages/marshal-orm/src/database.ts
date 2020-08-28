@@ -30,14 +30,10 @@ export abstract class DatabasePersistence {
     abstract async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
 }
 
-export interface DatabaseConnection {
-    isInTransaction(): boolean;
-}
-
 /**
  * A generic database adapter you can use if the API of `GenericQuery` is sufficient.
  *
- * You can specify a more concrete adapter like MySqlDatabaseAdapter with special API for MySQL.
+ * You can specify a more specialized adapter like MySqlDatabaseAdapter with special API for MySQL.
  */
 export abstract class DatabaseAdapter {
     abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
@@ -45,8 +41,6 @@ export abstract class DatabaseAdapter {
     abstract createPersistence(databaseSession: DatabaseSession<this>): DatabasePersistence;
 
     abstract disconnect(force?: boolean): void;
-
-    abstract createConnection(): DatabaseConnection;
 
     abstract migrate(classSchemas: Iterable<ClassSchema>): Promise<void>;
 

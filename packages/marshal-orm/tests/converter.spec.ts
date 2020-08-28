@@ -28,12 +28,24 @@ test('benchmark', () => {
 
     const item = {id: 22, title: 'Peter', image: new Image(3)};
 
-    suite.add('getJITConverterForSnapshot', () => {
-        const converted = getJITConverterForSnapshot(schema)(item);
+    suite.add('getPrimaryKeyExtractor getter', () => {
+        getPrimaryKeyExtractor(schema);
+    });
+
+    suite.add('getJITConverterForSnapshot getter', () => {
+        getJITConverterForSnapshot(schema);
+    });
+
+    suite.add('getPrimaryKeyHashGenerator getter', () => {
+        getPrimaryKeyHashGenerator(schema);
     });
 
     suite.add('getPrimaryKeyExtractor', () => {
         const converted = getPrimaryKeyExtractor(schema)(item);
+    });
+
+    suite.add('getJITConverterForSnapshot', () => {
+        const converted = getJITConverterForSnapshot(schema)(item);
     });
 
     suite.add('getPrimaryKeyHashGenerator', () => {
@@ -43,6 +55,11 @@ test('benchmark', () => {
     const hash = getPrimaryKeyHashGenerator(schema);
     suite.add('getPrimaryKeyHashGenerator saved', () => {
         const converted = hash(item);
+    });
+
+    const snap = getJITConverterForSnapshot(schema);
+    suite.add('getJITConverterForSnapshot saved', () => {
+        const converted = snap(item);
     });
 
     var _value = item;

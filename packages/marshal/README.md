@@ -763,16 +763,16 @@ To use your custom target, you can use these JIT functions:
 
 ```typescript
 import {ClassType, getClassName} from "@marcj/estdlib";
-import {createClassToXFunction, createXToClassFunction} from '@marcj/marshal';
+import {getClassToXFunction, getXToClassFunction} from '@marcj/marshal';
 export function classToMyTarget<T>(classType: ClassType<T>, instance: T): any {
     if (!(instance instanceof classType)) {
         throw new Error(`Could not classToMyTarget since target is not a class instance of ${getClassName(classType)}`);
     }
-    return createClassToXFunction(classType, 'MyTarget')(instance);
+    return getClassToXFunction(classType, 'MyTarget')(instance);
 }
 
 export function myTargetToClass<T>(classType: ClassType<T>, record: any, parents?: any[]): T {
-    return createXToClassFunction(classType, 'MyTarget')(record, parents);
+    return getXToClassFunction(classType, 'MyTarget')(record, parents);
 }
 ```
 

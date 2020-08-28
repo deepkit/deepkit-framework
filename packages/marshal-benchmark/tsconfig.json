@@ -4,7 +4,7 @@
     "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -14,8 +14,7 @@
 
     "baseUrl": ".",
     "outDir": "./dist",
-    "declaration": true,
-    "composite": true
+    "declaration": false
   },
   "include": [
     "tests"

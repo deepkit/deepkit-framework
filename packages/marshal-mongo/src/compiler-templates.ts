@@ -2,8 +2,8 @@ import {
     compilerToNumber,
     compilerToString,
     compilerXToUnionClass,
-    createClassToXFunction,
-    createXToClassFunction,
+    getClassToXFunction,
+    getXToClassFunction,
     getClassSchema,
     getDataConverterJS,
     moment,
@@ -144,7 +144,7 @@ registerConverterCompiler('mongo', 'class', 'class', (setter: string, accessor: 
             template: getDataConverterJS(setter, accessor, primary, 'mongo', 'class', context, jitStack),
             context: {
                 [classType]: property.resolveClassType,
-                createClassToXFunction,
+                getClassToXFunction,
             }
         };
     }
@@ -155,7 +155,7 @@ registerConverterCompiler('mongo', 'class', 'class', (setter: string, accessor: 
             ${setter} = ${xToClass}.fn(${accessor}, _options, getParents(), _state);
         `,
         context: {
-            [xToClass]: jitStack.getOrCreate(classSchema, () => createXToClassFunction(classSchema, 'mongo', jitStack))
+            [xToClass]: jitStack.getOrCreate(classSchema, () => getXToClassFunction(classSchema, 'mongo', jitStack))
         }
     };
 });
@@ -191,7 +191,7 @@ registerConverterCompiler('class', 'mongo', 'class', (setter: string, accessor: 
     return {
         template: `${setter} = ${classToX}.fn(${accessor}, _options);`,
         context: {
-            [classToX]: jitStack.getOrCreate(classSchema, () => createClassToXFunction(classSchema, 'mongo', jitStack))
+            [classToX]: jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, 'mongo', jitStack))
         }
     };
 });

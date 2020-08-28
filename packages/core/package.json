@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "benchmark": "^2.1.4",
-    "dot-prop": "^4.2.0"
+    "dot-prop": "^4.2.0",
+    "to-fast-properties": "^3.0.1"
   },
   "devDependencies": {
     "@types/dot-prop": "~4.2.0"

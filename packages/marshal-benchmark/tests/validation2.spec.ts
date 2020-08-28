@@ -4,15 +4,13 @@ import {plainToClassFactory, t as tMarshal, validatesFactory} from '@super-horne
 import {BenchSuite} from '@super-hornet/core';
 import * as t from 'io-ts';
 import * as G from 'io-ts/lib/Guard';
-
+import { isRight } from 'fp-ts/Either'
 
 //this is copied from https://github.com/gcanti/io-ts/blob/master/perf/typescript-runtime-type-benchmarks.ts
 /*
 io-TS:
 decode x 1,138,915 ops/sec ±0.44% (87 runs sampled)
 is x 1,975,690 ops/sec ±0.44% (91 runs sampled)
-
-
  */
 const decoderMarshal = tMarshal.schema({
     number: tMarshal.number,
@@ -91,8 +89,8 @@ test('test speed vs io-ts', () => {
         guardIoTS.is(good);
     });
 
-    suite.add('io-ts decode', () => {
-        decoderIoTS.decode(good);
+    suite.add('io-ts isRight(decode())', () => {
+        isRight(decoderIoTS.decode(good));
     });
 
     suite.run();

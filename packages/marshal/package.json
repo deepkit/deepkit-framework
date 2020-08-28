@@ -24,6 +24,7 @@
     "buffer": "^5.2.1",
     "clone": "^2.1.1",
     "get-parameter-names": "^0.3.0",
+    "to-fast-properties": "^3.0.1",
     "uuid": "^3.2.1"
   },
   "devDependencies": {

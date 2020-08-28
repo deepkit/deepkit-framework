@@ -1,40 +1,59 @@
-import {DatabasePersistence, Entity, getInstanceState} from '@super-hornet/marshal-orm';
-import {ClassSchema, createClassToXFunction, createPartialXToXFunction} from '@super-hornet/marshal';
+import {DatabasePersistence, Entity, getInstanceState, getJitChangeDetector, getJITConverterForSnapshot} from '@super-hornet/marshal-orm';
+import {ClassSchema, createPartialXToXFunction, getClassToXFunction} from '@super-hornet/marshal';
 import {convertPlainQueryToMongo, partialPlainToMongo} from './mapping';
-import {MongoConnection} from './connection';
 import {ObjectId} from 'mongodb';
 import {FilterQuery} from './query.model';
+import {MongoClient} from './client/client';
+import {InsertCommand} from './client/command/insert';
+import {UpdateCommand} from './client/command/update';
+import {DeleteCommand} from './client/command/delete';
 
 export class MongoPersistence extends DatabasePersistence {
-    constructor(protected connection: MongoConnection) {
+    constructor(protected client: MongoClient) {
         super();
     }
 
     async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
-        const collection = await this.connection.getCollection(classSchema);
-        const ids: any[] = [];
-        for (const item of items) {
-            ids.push(partialPlainToMongo(classSchema, getInstanceState(item).getLastKnownPK()));
+        if (classSchema.getPrimaryFields().length === 1) {
+            const pk = classSchema.getPrimaryField();
+            const pkName = pk.name;
+            const ids: any[] = [];
+
+            const partialConvert = createPartialXToXFunction(classSchema, 'plain', 'mongo');
+            for (const item of items) {
+                const converted = partialConvert(getInstanceState(item).getLastKnownPK());
+                ids.push(converted[pkName]);
+            }
+            await this.client.execute(new DeleteCommand(classSchema, {[pkName]: {$in: ids}}));
+        } else {
+            const fields: any[] = [];
+            for (const item of items) {
+                fields.push(partialPlainToMongo(classSchema, getInstanceState(item).getLastKnownPK()));
+            }
+            await this.client.execute(new DeleteCommand(classSchema, {$or: fields}));
         }
-        await collection.deleteMany({$or: ids});
     }
 
     async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
         const insert: T[] = [];
-        const updates: { q: any, u: any }[] = [];
+        const updates: { q: any, u: any, multi: boolean }[] = [];
         const has_Id = classSchema.hasProperty('_id');
-        const converter = createClassToXFunction(classSchema, 'mongo');
+        const converter = getClassToXFunction(classSchema, 'mongo');
         const converterPartial = createPartialXToXFunction(classSchema, 'class', 'mongo');
+        const changeDetector = getJitChangeDetector(classSchema);
+        const doSnapshot = getJITConverterForSnapshot(classSchema);
 
         for (const item of items) {
             const state = getInstanceState(item);
             if (state.isKnownInDatabase()) {
                 const lastSnapshot = state.getSnapshot();
-                const currentSnapshot = state.doSnapshot(item);
-                const changes = state.changeDetector(lastSnapshot, currentSnapshot, item);
+                const currentSnapshot = doSnapshot(item);
+                const changes = changeDetector(lastSnapshot, currentSnapshot, item);
+                if (!changes) continue;
                 updates.push({
                     q: convertPlainQueryToMongo(classSchema.classType, state.getLastKnownPK() as FilterQuery<T>),
-                    u: {$set: converterPartial(changes)}
+                    u: {$set: converterPartial(changes)},
+                    multi: false,
                 });
             } else {
                 const converted = converter(item);
@@ -46,7 +65,7 @@ export class MongoPersistence extends DatabasePersistence {
             }
         }
 
-        if (insert.length) await this.connection.insertMany(classSchema, insert);
-        if (updates.length) await this.connection.updateMany(classSchema, updates);
+        if (insert.length) await this.client.execute(new InsertCommand(classSchema, insert));
+        if (updates.length) await this.client.execute(new UpdateCommand(classSchema, updates));
     }
 }

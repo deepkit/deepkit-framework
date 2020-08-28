@@ -17,6 +17,7 @@
     "@super-hornet/core": "^1.0.0-alpha.0",
     "@super-hornet/marshal": "^1.0.0-alpha.0",
     "@super-hornet/topsort": "^1.0.0-alpha.0",
+    "to-fast-properties": "^3.0.1",
     "buffer": "^5.2.1"
   },
   "devDependencies": {

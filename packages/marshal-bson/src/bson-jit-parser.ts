@@ -6,13 +6,21 @@ import {seekElementSize} from './continuation';
 import {moment} from './utils';
 
 function createPropertyConverter(setter: string, property: PropertySchema, context: Map<string, any>, parentProperty?: PropertySchema) {
-    const nullOrSeek = property.isNullable ? `
+    //we want the isNullable value from the actual property, not the decorated.
+    const nullOrSeek = `
         if (elementType === ${BSON_DATA_NULL}) {
             ${setter} = null;
         } else {
             seekElementSize(elementType, parser);
         }
-    ` : 'seekElementSize(elementType, parser);';
+    `;
+
+    if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
+        property = property.getResolvedClassSchema().getDecoratedPropertySchema();
+    }
+
+    const propertyVar = '_property_' + property.name;
+    context.set(propertyVar, property);
 
     if (property.type === 'moment') {
         context.set('Moment', moment);
@@ -92,13 +100,13 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
         `;
     }
 
-    return property.isNullable ? `
+    return `
         if (elementType === ${BSON_DATA_NULL}) {
             ${setter} = null;
         } else {
-            ${setter} = parser.parse(elementType);
+            ${setter} = parser.parse(elementType, ${propertyVar});
         }
-    ` : `${setter} = parser.parse(elementType);`;
+    `;
 }
 
 interface DecoderFn {
@@ -171,6 +179,10 @@ export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (pa
     return parser;
 }
 
+/**
+ * Note: This does not create the class instances of T nor does it resolve decorated properties, or unions.
+ * Call mongoToClass() on the result to create the actual instance.
+ */
 export function getBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (bson: Buffer) => T {
     const fn = getRawBSONDecoder(schema);
 

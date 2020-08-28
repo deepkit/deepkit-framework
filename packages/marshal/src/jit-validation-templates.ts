@@ -1,7 +1,8 @@
-import {getClassSchema, PropertyCompilerSchema} from "./decorators";
-import {registerCheckerCompiler} from "./jit-validation-registry";
-import {jitValidate} from "./jit-validation";
-import {isValidEnumValue, getEnumValues, getEnumLabels, getValidEnumValue} from "@super-hornet/core";
+import {getClassSchema, PropertyCompilerSchema} from './decorators';
+import {registerCheckerCompiler} from './jit-validation-registry';
+import {getDataCheckerJS, jitValidate} from './jit-validation';
+import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
+import {getSortedUnionTypes} from './union';
 
 registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerSchema, utils) => {
     return `
@@ -123,45 +124,41 @@ registerCheckerCompiler('literal', (accessor: string, property: PropertyCompiler
     return '';
 });
 
-registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSchema, utils) => {
-    const discriminatorClassVarName = utils.reserveVariable();
-    let discriminator = `${discriminatorClassVarName} = undefined;\n`;
-    const context: {[key: string]: any} = {
-        jitValidate
-    };
+registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSchema, utils, jitStack) => {
+    const context = new Map<string, any>();
 
-    for (const prop of property.templateArgs) {
-        //todo: rework to use guards, etc.
+    let discriminator: string[] = [`if (false) { }`];
 
-        if (prop.type !== 'class') throw new Error('Only class unions implemented.');
-        const type = prop.resolveClassType!;
+    for (const unionType of getSortedUnionTypes(property)) {
+        const guardVar = utils.reserveVariable('guard_' + unionType.property.type);
+        context.set(guardVar, unionType.guard);
 
-        const typeSchema = getClassSchema(type);
-        typeSchema.loadDefaults();
-
-        const discriminant = typeSchema.getDiscriminantPropertySchema();
-        if (discriminant.defaultValue === null || discriminant.defaultValue === undefined) {
-            throw new Error(`Discriminant ${typeSchema.getClassName()}.${discriminant.name} has no default value.`);
-        }
-
-        const typeVarName = utils.reserveVariable();
-        context[typeVarName] = type;
-        discriminator += `if (${accessor}.${discriminant.name} === ${JSON.stringify(discriminant.defaultValue)}) ${discriminatorClassVarName} = ${typeVarName};\n`;
+        discriminator.push(`
+                //guard:${unionType.property.type}
+                else if (${guardVar}(${accessor})) {
+                    //validate this type: ${unionType.property.type}
+                    ${getDataCheckerJS(utils.path, accessor, unionType.property, context, jitStack)}
+                }
+            `);
     }
 
     return {
         template: `
-            if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                ${discriminator}
-                if (!${discriminatorClassVarName}) {
-                    ${utils.raise('invalid_type', 'Invalid union type given. No valid discriminant was found.')};
+             ${discriminator.join('\n')}
+             else {
+                if (${accessor} === null) {
+                    if (!${property.isNullable}) {
+                        ${utils.raise('required', 'Required value is null')};
+                    }
+                } else if (${accessor} === undefined) {
+                    if (!${property.isUndefinedAllowed()}) {
+                        ${utils.raise('required', 'Required value is undefined')};
+                    }
                 } else {
-                    jitValidate(${discriminatorClassVarName})(${accessor}, ${utils.path}, _errors);
+                    ${utils.raise('invalid_union', 'No compatible type for union found')};
                 }
-            } else {
-                ${utils.raise('invalid_type', 'Type is not an object')};
-            }
+             }
         `,
-        context: context
+        context: context,
     };
 });

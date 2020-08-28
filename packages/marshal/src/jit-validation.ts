@@ -19,7 +19,7 @@ export function getDataCheckerJS(
 ): string {
     let compiler = validationRegistry.get(property.type);
 
-    const notOptionalCheckThrow = (property.isActualOptional() || property.hasDefaultValue) ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is undefined'));`;
+    const notOptionalCheckThrow = (property.isUndefinedAllowed()) ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is undefined'));`;
     const notNullableCheckThrow = property.isNullable ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is null'));`;
 
     function getCustomValidatorCode(accessor: string, path: string) {
@@ -56,7 +56,7 @@ export function getDataCheckerJS(
         // const checkItem = compiler ? executeCheckerCompiler(`${path} + '.' + l`, rootContext, compiler, `${accessor}[l]`, property.getArrayOrMapType()) : '';
 
         return `
-            //property ${property.name}, ${property.type} ${property.isActualOptional()}
+            //property ${property.name}, ${property.type} ${property.isUndefinedAllowed()}
             if (${accessor} === undefined) {
                 ${notOptionalCheckThrow}
             } else if (${accessor} === null) {

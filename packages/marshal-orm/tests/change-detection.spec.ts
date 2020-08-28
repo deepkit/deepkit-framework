@@ -43,18 +43,18 @@ test('change-detection', () => {
     const session = new DatabaseSession(new MemoryDatabaseAdapter);
 
     {
-        const formatter = new Formatter('plain');
+        const formatter = new Formatter(getClassSchema(User), 'plain');
         const model = new DatabaseQueryModel<any, any, any>();
-        const user = formatter.hydrate(getClassSchema(User), model, {username: 'Peter', id: '2'});
+        const user = formatter.hydrate(model, {username: 'Peter', id: '2'});
         expect(user.username).toBe('Peter');
         expect(user.id).toBe(2);
         expect(user.image).toBeUndefined();
     }
 
     {
-        const formatter = new Formatter('plain');
+        const formatter = new Formatter(getClassSchema(User), 'plain');
         const model = new DatabaseQueryModel<any, any, any>();
-        const user = formatter.hydrate(getClassSchema(User), model, {username: 'Peter', id: '2', image: '1'});
+        const user = formatter.hydrate(model, {username: 'Peter', id: '2', image: '1'});
         expect(user.username).toBe('Peter');
         expect(user.id).toBe(2);
         expect(user.image).toBeInstanceOf(Image);

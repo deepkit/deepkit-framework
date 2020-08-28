@@ -1,34 +1,15 @@
 import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from '@super-hornet/marshal-orm';
 import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
-import {ClassType, ParsedHost, parseHost} from '@super-hornet/core';
-import {MongoConnection} from './connection';
+import {ClassType} from '@super-hornet/core';
 import {MongoDatabaseQuery} from './query';
 import {MongoQueryResolver} from './query.resolver';
 import {MongoQueryModel} from './query.model';
 import {MongoPersistence} from './persistence';
-
-export class MongoDatabaseConfig {
-    public host: ParsedHost;
-    public username?: string;
-    public password?: string;
-
-    public srv: boolean = false;
-
-    public ssl: boolean = false;
-    public sslCA?: ReadonlyArray<Buffer | string>;
-    public sslCRL?: ReadonlyArray<Buffer | string>;
-    public sslCert?: Buffer | string;
-    public sslKey?: Buffer | string;
-    public sslPass?: Buffer | string;
-
-    constructor(hostOrUnix: string, public defaultDatabase: string) {
-        this.host = parseHost(hostOrUnix);
-    }
-}
+import {MongoClient} from './client/client';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
-        private connection: MongoConnection,
+        private client: MongoClient,
         private databaseSession: DatabaseSession<any>,
     ) {
         super();
@@ -46,64 +27,58 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 }
 
 export class MongoDatabaseAdapter implements DatabaseAdapter {
-    public readonly connection: MongoConnection;
+    public readonly client: MongoClient;
 
     constructor(
-        public config: MongoDatabaseConfig
+        connectionString: string
     ) {
-        this.connection = new MongoConnection(config);
+        this.client = new MongoClient(connectionString);
     }
 
     getName(): string {
         return 'mongo';
     }
 
-    createConnection(): MongoConnection {
-        //todo: add connection pooling
-        // return new MongoConnection(this.config);
-        return this.connection;
-    }
-
     createPersistence(databaseSession: DatabaseSession<any>): MongoPersistence {
-        return new MongoPersistence(this.connection);
+        return new MongoPersistence(this.client);
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): MongoDatabaseQueryFactory {
-        return new MongoDatabaseQueryFactory(this.connection, databaseSession);
+        return new MongoDatabaseQueryFactory(this.client, databaseSession);
     }
 
     disconnect(force?: boolean): void {
-        this.connection.close(force);
+        this.client.close();
     }
 
     async migrate(classSchemas: Iterable<ClassSchema>) {
         for (const schema of classSchemas) {
-            const collection = await this.connection.getCollection(schema);
-            //collection not existing yet, so create lock
-            for (const [name, index] of schema.indices.entries()) {
-                const fields: { [name: string]: 1 } = {};
-
-                if (index.fields.length === 1 && index.fields[0] === '_id') continue;
-
-                for (const f of index.fields) {
-                    fields[f] = 1;
-                }
-
-                const options: any = {
-                    name: name
-                };
-                if (index.options.unique) options.unique = true;
-                if (index.options.sparse) options.sparse = true;
-
-                try {
-                    await collection.createIndex(fields, options);
-                } catch (error) {
-                    console.log('failed index', name, '. Recreate ...');
-                    //failed, so drop and re-create
-                    await collection.dropIndex(name);
-                    await collection.createIndex(fields, options);
-                }
-            }
+            // const collection = await this.connection.getCollection(schema);
+            // //collection not existing yet, so create lock
+            // for (const [name, index] of schema.indices.entries()) {
+            //     const fields: { [name: string]: 1 } = {};
+            //
+            //     if (index.fields.length === 1 && index.fields[0] === '_id') continue;
+            //
+            //     for (const f of index.fields) {
+            //         fields[f] = 1;
+            //     }
+            //
+            //     const options: any = {
+            //         name: name
+            //     };
+            //     if (index.options.unique) options.unique = true;
+            //     if (index.options.sparse) options.sparse = true;
+            //
+            //     try {
+            //         await collection.createIndex(fields, options);
+            //     } catch (error) {
+            //         console.log('failed index', name, '. Recreate ...');
+            //         //failed, so drop and re-create
+            //         await collection.dropIndex(name);
+            //         await collection.createIndex(fields, options);
+            //     }
+            // }
         }
     };
 }

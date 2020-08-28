@@ -1,4 +1,4 @@
-import {ClassSchema, createXToClassFunction, getGlobalStore, jitPartial, PropertySchema} from '@super-hornet/marshal';
+import {ClassSchema, getXToClassFunction, getGlobalStore, jitPartial, PropertySchema, JitConverterOptions, ToClassState, createPartialXToXFunction} from '@super-hornet/marshal';
 import {DatabaseQueryModel} from './query';
 import {ClassType} from '@super-hornet/core';
 import {getInstanceState, IdentityMap, PKHash} from './identity-map';
@@ -38,15 +38,18 @@ export function getDatabaseSessionHydrator(item: any): HydratorFn {
  * Every query resolving gets its own formatter.
  */
 export class Formatter {
-    //its important to have for each formatter own proxyClasses since we attached to the prototype the database
-    //session
+    //its important to have for each formatter own proxyClasses since we attached to Proxy's prototype the database session
     protected referenceClasses: Map<ClassSchema, ClassType<any>> = new Map();
 
     protected instancePools: Map<ClassType<any>, Map<PKHash, any>> = new Map();
 
     public withIdentityMap: boolean = true;
+    protected rootToClass: (data: any) => any = getXToClassFunction(this.rootClassSchema, this.serializerSourceName);
+    protected rootPartialToClass: (data: any) => any = createPartialXToXFunction(this.rootClassSchema, this.serializerSourceName, 'class');
+    protected rootPkHash: (value: any) => string = getPrimaryKeyHashGenerator(this.rootClassSchema, this.serializerSourceName);
 
     constructor(
+        protected rootClassSchema: ClassSchema,
         protected serializerSourceName: string,
         protected hydrator?: HydratorFn,
         protected identityMap?: IdentityMap,
@@ -61,8 +64,8 @@ export class Formatter {
         return this.instancePools.get(classType)!;
     }
 
-    public hydrate<T>(classSchema: ClassSchema<T>, model: DatabaseQueryModel<T, any, any>, value: any): any {
-        return this.hydrateModel(model, classSchema, value);
+    public hydrate<T>(model: DatabaseQueryModel<T, any, any>, value: any): any {
+        return this.hydrateModel(model, this.rootClassSchema, value);
     }
 
     protected makeInvalidReference(item: any, classSchema: ClassSchema, propertySchema: PropertySchema) {
@@ -145,6 +148,7 @@ export class Formatter {
         }
 
         if (this.identityMap && !model.isPartial()) {
+            const pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(value) : getPrimaryKeyHashGenerator(classSchema, this.serializerSourceName)(value);
             const item = this.identityMap.getByHash(classSchema, pkHash);
 
             if (item) {
@@ -154,7 +158,7 @@ export class Formatter {
                 if (fromDatabase && !isHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance
-                    const converted = createXToClassFunction(classSchema, this.serializerSourceName)(value);
+                    const converted = getXToClassFunction(classSchema, this.serializerSourceName)(value);
 
                     for (const propName of classSchema.propertyNames) {
                         if (propName === classSchema.idField) continue;
@@ -162,7 +166,7 @@ export class Formatter {
                         const prop = classSchema.getClassProperties().get(propName)!;
                         if (prop.isReference || prop.backReference) {
                             //todo: assign Reference
-                            continue
+                            continue;
                         }
 
                         Object.defineProperty(item, propName, {
@@ -222,9 +226,12 @@ export class Formatter {
     }
 
     protected createObject(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
-        const converted = model.isPartial() ?
-            jitPartial(classSchema, this.serializerSourceName, 'class', value) :
-            createXToClassFunction(classSchema, this.serializerSourceName)(value);
+        const converted = classSchema === this.rootClassSchema ?
+            (model.isPartial() ? this.rootPartialToClass(value) : this.rootToClass(value))
+            :
+            (model.isPartial() ?
+                jitPartial(classSchema, this.serializerSourceName, 'class', value) :
+                getXToClassFunction(classSchema, this.serializerSourceName)(value));
 
         if (!model.isPartial()) {
             getInstanceState(converted).markAsFromDatabase();

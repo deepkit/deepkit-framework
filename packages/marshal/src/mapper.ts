@@ -1,7 +1,7 @@
 import {validate, ValidationFailed} from './validation';
 import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema} from './decorators';
 import {ClassType, getClassName} from '@super-hornet/core';
-import {createClassToXFunction, createJITConverterFromPropertySchema, createPartialXToXFunction, createXToClassFunction, JitConverterOptions, jitPatch} from './jit';
+import {getClassToXFunction, createJITConverterFromPropertySchema, createPartialXToXFunction, getXToClassFunction, JitConverterOptions, jitPatch} from './jit';
 import {ExtractClassType, JSONPartial, PlainOrFullEntityFromClassTypeOrSchema, JSONEntity, JSONPatch, EntityPatch} from './utils';
 
 /**
@@ -54,12 +54,12 @@ export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
  * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
  */
 export function classToPlain<T extends ClassType | ClassSchema>(classTypeOrSchema: T, target: ExtractClassType<T>, options?: JitConverterOptions): JSONEntity<ExtractClassType<T>> {
-    return createClassToXFunction(getClassSchema(classTypeOrSchema), 'plain')(target, options);
+    return getClassToXFunction(getClassSchema(classTypeOrSchema), 'plain')(target, options);
 }
 
 export function classToPlainFactory<T extends ClassType | ClassSchema>(classTypeOrSchema: T):
     (target: ExtractClassType<T>, options?: JitConverterOptions) => JSONEntity<ExtractClassType<T>> {
-    return createClassToXFunction(getClassSchema(classTypeOrSchema), 'plain');
+    return getClassToXFunction(getClassSchema(classTypeOrSchema), 'plain');
 }
 
 /**
@@ -79,13 +79,13 @@ export function plainToClass<T extends ClassType | ClassSchema>(
     data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
     options?: JitConverterOptions
 ): ExtractClassType<T> {
-    return createXToClassFunction(getClassSchema(classTypeOrSchema), 'plain')(data, options);
+    return getXToClassFunction(getClassSchema(classTypeOrSchema), 'plain')(data, options);
 }
 
 export function plainToClassFactory<T extends ClassType | ClassSchema>(
     classTypeOrSchema: T
 ): (data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>, options?: JitConverterOptions) => ExtractClassType<T> {
-    return createXToClassFunction(getClassSchema(classTypeOrSchema), 'plain');
+    return getXToClassFunction(getClassSchema(classTypeOrSchema), 'plain');
 }
 
 /**

@@ -1,4 +1,5 @@
 import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, JSONPartial, PropertySchema} from '@super-hornet/marshal';
+import toFastProperties from 'to-fast-properties';
 
 /**
  */
@@ -64,8 +65,6 @@ function createJITConverterForSnapshot(
     return fn;
 }
 
-const snapshots = new Map<ClassSchema, any>();
-
 /**
  * Creates a new JIT compiled function to convert the class instance to a snapshot.
  * A snapshot is essentially the class instance as `plain` serialization while references are
@@ -76,43 +75,36 @@ const snapshots = new Map<ClassSchema, any>();
 export function getJITConverterForSnapshot(
     classSchema: ClassSchema<any>
 ): (value: any) => any {
-    let jit = snapshots.get(classSchema);
-    if (jit && jit.buildId === classSchema.buildId) return jit;
-    jit = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values());
-    snapshots.set(classSchema, jit);
-    return jit;
-}
+    const jit = classSchema.jit;
+    if (jit.snapshotConverter) return jit.snapshotConverter;
 
-const primaryKeyExtractors = new Map<ClassSchema, any>();
+    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values());
+    toFastProperties(jit);
+    return jit.snapshotConverter;
+}
 
 export function getPrimaryKeyExtractor<T>(
     classSchema: ClassSchema<T>
 ): (value: any) => JSONPartial<T> {
-    let jit = primaryKeyExtractors.get(classSchema);
-    if (jit && jit.buildId === classSchema.buildId) return jit;
-    jit = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields());
-    primaryKeyExtractors.set(classSchema, jit);
-    return jit;
+    const jit = classSchema.jit;
+    if (jit.primaryKey) return jit.primaryKey;
+
+    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields());
+    toFastProperties(jit);
+    return jit.primaryKey;
 }
 
-const jitPrimaryKeyHashGenerator = new Map<string, Map<ClassSchema<any>, any>>();
 export function getPrimaryKeyHashGenerator(
     classSchema: ClassSchema<any>,
     fromFormat: string = 'class'
 ): (value: any) => string {
-    let map = jitPrimaryKeyHashGenerator.get(fromFormat);
-    if (!map) {
-        map = new Map();
-        jitPrimaryKeyHashGenerator.set(fromFormat, map);
-    }
+    const jit = classSchema.jit;
+    const name = 'pk_hash_' + fromFormat;
+    if (jit[name]) return jit[name];
 
-    let jit = map.get(classSchema);
-    if (jit && jit.buildId === classSchema.buildId) return jit;
-
-    jit = createPrimaryKeyHashGenerator(classSchema, fromFormat);
-
-    map.set(classSchema, jit);
-    return jit;
+    jit[name] = createPrimaryKeyHashGenerator(classSchema, fromFormat);
+    toFastProperties(jit);
+    return jit[name];
 }
 
 function createPrimaryKeyHashGenerator(

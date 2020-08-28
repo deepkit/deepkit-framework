@@ -9,7 +9,7 @@ import * as moment from 'moment';
 import {uuid4Stringify} from '../src/compiler-templates';
 import {SimpleModel, SuperSimple} from './entities';
 import {createDatabaseSession} from './utils';
-
+jest.setTimeout(12312313);
 test('test moment db', async () => {
     @Entity('model-moment')
     class Model {
@@ -44,23 +44,23 @@ test('test save undefined values', async () => {
         }
     }
 
-    const collection = await session.adapter.connection.getCollection(getClassSchema(Model));
-
-    {
-        await collection.deleteMany({});
-        await session.immediate.persist(new Model(undefined));
-        const mongoItem = await collection.find().toArray();
-        expect(mongoItem[0].name).toBe(null);
-        const marshalItem = await session.query(Model).findOne();
-        expect(marshalItem.name).toBe(undefined);
-    }
-
-    {
-        await collection.deleteMany({});
-        await session.immediate.persist(new Model('peter'));
-        const mongoItem = await collection.find().toArray();
-        expect(mongoItem[0].name).toBe('peter');
-    }
+    // const collection = await session.adapter.connection.getCollection(getClassSchema(Model));
+    //
+    // {
+    //     await collection.deleteMany({});
+    //     await session.immediate.persist(new Model(undefined));
+    //     const mongoItem = await collection.find().toArray();
+    //     expect(mongoItem[0].name).toBe(null);
+    //     const marshalItem = await session.query(Model).findOne();
+    //     expect(marshalItem.name).toBe(undefined);
+    // }
+    //
+    // {
+    //     await collection.deleteMany({});
+    //     await session.immediate.persist(new Model('peter'));
+    //     const mongoItem = await collection.find().toArray();
+    //     expect(mongoItem[0].name).toBe('peter');
+    // }
 });
 
 test('test save model', async () => {
@@ -87,14 +87,14 @@ test('test save model', async () => {
 
     await expect(session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOne()).rejects.toThrowError('Item not found');
 
-    const collection = await session.adapter.connection.getCollection(getClassSchema(SimpleModel));
-    const mongoItem = await collection.find().toArray();
-
-    expect(mongoItem.length).toBe(1);
-    expect(mongoItem[0].name).toBe('myName');
-    expect(mongoItem[0]._id).toBeInstanceOf(mongodb.ObjectID);
-    expect(mongoItem[0].id).toBeInstanceOf(mongodb.Binary);
-    expect(uuid4Stringify(mongoItem[0].id)).toBe(instance.id);
+    // const collection = await session.adapter.connection.getCollection(getClassSchema(SimpleModel));
+    // const mongoItem = await collection.find().toArray();
+    //
+    // expect(mongoItem.length).toBe(1);
+    // expect(mongoItem[0].name).toBe('myName');
+    // expect(mongoItem[0]._id).toBeInstanceOf(mongodb.ObjectID);
+    // expect(mongoItem[0].id).toBeInstanceOf(mongodb.Binary);
+    // expect(uuid4Stringify(mongoItem[0].id)).toBe(instance.id);
 
     const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();
     expect(found).toBeInstanceOf(SimpleModel);
@@ -111,16 +111,16 @@ test('test save model', async () => {
     expect(listAll[0].name).toBe('myName');
     expect(listAll[0].id).toBe(instance.id);
 
-    await session.query(SimpleModel).filter({name: 'noneExisting'}).patchOne({name: 'myName2'});
+    expect(await session.query(SimpleModel).filter({name: 'noneExisting'}).patchOne({name: 'myName2'})).toBe(false);
 
     expect(await session.query(SimpleModel).filter({id: instance.id}).ids(true)).toEqual([instance.id]);
-    await session.query(SimpleModel).filter({id: instance.id}).patchOne({name: 'myName2'});
+    expect(await session.query(SimpleModel).filter({id: instance.id}).patchOne({name: 'myName2'})).toBe(true);
 
     {
         const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();
         expect(found === instance).toBe(true);
         expect(found).toBeInstanceOf(SimpleModel);
-        expect(found!.name).toBe('myName');
+        expect(found!.name).toBe('myName'); //we get the stuff from the identityMap where it didnt change.
     }
 
     {
@@ -209,7 +209,7 @@ test('test delete', async () => {
     expect(getInstanceState(instance2).isKnownInDatabase()).toBe(true);
     expect(await session.query(SimpleModel).count()).toBe(2);
 
-    await session.query(SimpleModel).filter({name: {$regex: /myName[0-9]/}}).deleteMany();
+    expect(await session.query(SimpleModel).filter({name: {$regex: /myName[0-9]/}}).deleteMany()).toBe(2);
     expect(await session.query(SimpleModel).count()).toBe(0);
 
     expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);
@@ -244,38 +244,38 @@ test('test super simple model', async () => {
     }
 });
 
-test('test databaseName', async () => {
-    const session = await createDatabaseSession('testing-databaseName');
-    await (await session.adapter.connection.connect()).db('testing2').dropDatabase();
-
-    @Entity('DifferentDataBase', 'differentCollection')
-    @DatabaseName('testing2')
-    class DifferentDataBase {
-        @t.primary.mongoId
-        _id?: string;
-
-        @t
-        name?: string;
-    }
-
-    const instance = plainToClass(DifferentDataBase, {
-        name: 'myName',
-    });
-
-    expect(getDatabaseName(DifferentDataBase)).toBe('testing2');
-    expect(session.adapter.connection.resolveCollectionName(getClassSchema(DifferentDataBase))).toBe('differentCollection');
-
-    expect(instance._id).toBeUndefined();
-    await session.immediate.persist(instance);
-    expect(instance._id).not.toBeUndefined();
-
-    const collection = await session.adapter.connection.getCollection(getClassSchema(DifferentDataBase));
-    expect(await collection.countDocuments({})).toBe(1);
-
-    const items = await session.query(DifferentDataBase).find();
-    expect(items[0]._id).toBe(instance._id);
-    expect(items[0].name).toBe(instance.name);
-});
+// test('test databaseName', async () => {
+//     const session = await createDatabaseSession('testing-databaseName');
+//     await (await session.adapter.connection.connect()).db('testing2').dropDatabase();
+//
+//     @Entity('DifferentDataBase', 'differentCollection')
+//     @DatabaseName('testing2')
+//     class DifferentDataBase {
+//         @t.primary.mongoId
+//         _id?: string;
+//
+//         @t
+//         name?: string;
+//     }
+//
+//     const instance = plainToClass(DifferentDataBase, {
+//         name: 'myName',
+//     });
+//
+//     expect(getDatabaseName(DifferentDataBase)).toBe('testing2');
+//     expect(session.adapter.connection.resolveCollectionName(getClassSchema(DifferentDataBase))).toBe('differentCollection');
+//
+//     expect(instance._id).toBeUndefined();
+//     await session.immediate.persist(instance);
+//     expect(instance._id).not.toBeUndefined();
+//
+//     const collection = await session.adapter.connection.getCollection(getClassSchema(DifferentDataBase));
+//     expect(await collection.countDocuments({})).toBe(1);
+//
+//     const items = await session.query(DifferentDataBase).find();
+//     expect(items[0]._id).toBe(instance._id);
+//     expect(items[0].name).toBe(instance.name);
+// });
 
 test('no id', async () => {
     const session = await createDatabaseSession('testing');
@@ -346,17 +346,17 @@ test('second object id', async () => {
     const dbItemBySecondId = await session.query(SecondObjectId).filter({secondId: '5bf4a1ccce060e0b38864c9e'}).findOne();
     expect(dbItemBySecondId!.name).toBe('myName');
 
-    const collection = await session.adapter.connection.getCollection(getClassSchema(SecondObjectId));
-    const mongoItem = await collection.find().toArray();
-    expect(mongoItem).toBeArrayOfSize(1);
-    expect(mongoItem[0].name).toBe('myName');
-    expect(mongoItem[0].preview).toBeInstanceOf(mongodb.Binary);
-    expect(mongoItem[0].preview.buffer.toString('utf8')).toBe('Baar');
-
-    expect(mongoItem[0]._id).toBeInstanceOf(mongodb.ObjectID);
-    expect(mongoItem[0].secondId).toBeInstanceOf(mongodb.ObjectID);
-    expect(mongoItem[0]._id.toHexString()).toBe(instance._id);
-    expect(mongoItem[0].secondId.toHexString()).toBe(instance.secondId);
+    // const collection = await session.adapter.connection.getCollection(getClassSchema(SecondObjectId));
+    // const mongoItem = await collection.find().toArray();
+    // expect(mongoItem).toBeArrayOfSize(1);
+    // expect(mongoItem[0].name).toBe('myName');
+    // expect(mongoItem[0].preview).toBeInstanceOf(mongodb.Binary);
+    // expect(mongoItem[0].preview.buffer.toString('utf8')).toBe('Baar');
+    //
+    // expect(mongoItem[0]._id).toBeInstanceOf(mongodb.ObjectID);
+    // expect(mongoItem[0].secondId).toBeInstanceOf(mongodb.ObjectID);
+    // expect(mongoItem[0]._id.toHexString()).toBe(instance._id);
+    // expect(mongoItem[0].secondId.toHexString()).toBe(instance.secondId);
 });
 
 test('references back', async () => {
@@ -378,7 +378,7 @@ test('references back', async () => {
         @t.uuid.primary id: string = uuid();
 
         constructor(
-            @t.type(() => User).reference() public user: User,
+            @t.reference() public user: User,
             @t public title: string,
         ) {
             if (user.images && !user.images.includes(this)) {

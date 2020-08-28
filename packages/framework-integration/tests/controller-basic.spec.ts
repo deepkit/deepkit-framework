@@ -135,7 +135,7 @@ test('basic setup and methods', async () => {
     {
         try {
             const user = new User('asd');
-            delete user.name;
+            (user as any).name = undefined;
             const error = await test.validationError(user);
             fail('should error');
         } catch (error) {

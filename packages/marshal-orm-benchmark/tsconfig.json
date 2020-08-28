@@ -9,14 +9,13 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2017",
+    "target": "es2020",
     "module": "CommonJS",
 
     "esModuleInterop": true,
     "baseUrl": ".",
     "outDir": "./dist",
-    "declaration": true,
-    "composite": true
+    "declaration": false
   },
   "include": [
     "benchmarks"

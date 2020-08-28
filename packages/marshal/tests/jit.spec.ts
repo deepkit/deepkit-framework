@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {t} from '../src/decorators';
 import {classToPlain, plainToClass} from '../src/mapper';
-import {createClassToXFunction} from '../src/jit';
+import {getClassToXFunction} from '../src/jit';
 
 test('test invalidation plainToClass', () => {
     const schema = t.schema({
@@ -26,10 +26,10 @@ test('test invalidation classToPlain', () => {
 
     const startBuildId = schema.buildId;
 
-    expect(createClassToXFunction(schema, 'plain')({username: 'peter', foo: 'bar'} as any)).toEqual({username: 'peter'});
+    expect(getClassToXFunction(schema, 'plain')({username: 'peter', foo: 'bar'} as any)).toEqual({username: 'peter'});
 
     schema.addProperty('foo', t.string);
     expect(schema.buildId).toBe(startBuildId + 1);
 
-    expect(createClassToXFunction(schema, 'plain')({username: 'peter', foo: 'bar'} as any)).toEqual({username: 'peter', foo: 'bar'});
+    expect(getClassToXFunction(schema, 'plain')({username: 'peter', foo: 'bar'} as any)).toEqual({username: 'peter', foo: 'bar'});
 });

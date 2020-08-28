@@ -1,0 +1,47 @@
+import {BaseResponse, Command} from './command';
+import {ClassSchema, ExtractClassType, getClassSchema, t} from '@super-hornet/marshal';
+import {ClassType, toFastProperties} from '@super-hornet/core';
+import {DEEP_SORT} from '../../query.model';
+
+class CountResponse extends t.class({
+    n: t.number,
+}, {extend: BaseResponse}) {
+}
+
+const countSchema = t.schema({
+    count: t.string,
+    $db: t.string,
+    limit: t.number.optional,
+    query: t.any,
+    skip: t.number.optional,
+});
+
+export class CountCommand<T extends ClassSchema | ClassType> extends Command {
+    constructor(
+        public classSchema: T,
+        public query: { [name: string]: any } = {},
+        public limit: number = 0,
+        public skip: number = 0,
+    ) {
+        super();
+    }
+
+    async execute(config): Promise<number> {
+        const schema = getClassSchema(this.classSchema);
+
+        const cmd = {
+            count: schema.collectionName || schema.name || 'unknown',
+            $db: schema.databaseName || config.defaultDb || 'admin',
+            query: this.query,
+            limit: this.limit,
+            skip: this.skip,
+        };
+
+        const res = await this.sendAndWait(countSchema, cmd, CountResponse);
+        return res.n;
+    }
+
+    needsWritableHost(): boolean {
+        return false;
+    }
+}

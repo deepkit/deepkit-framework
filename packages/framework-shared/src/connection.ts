@@ -138,7 +138,7 @@ export class ConnectionWriter extends SimpleConnectionWriter {
         }
     }
 
-    @stack()
+    // @stack()
     public async write(message: ServerMessageAll) {
         const json = JSON.stringify(message);
 

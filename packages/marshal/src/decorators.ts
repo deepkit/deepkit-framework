@@ -10,14 +10,15 @@ import {
     isObject,
     isPlainObject, isString,
 } from '@super-hornet/core';
-import * as getParameterNames from 'get-parameter-names';
+import getParameterNames from 'get-parameter-names';
 import {isArray} from './utils';
 import {Buffer} from 'buffer';
 import {FlattenIfArray} from './utils';
 import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
+import toFastProperties from 'to-fast-properties';
 
 export interface GlobalStore {
-    RegisteredEntities: { [name: string]: ClassType<any> };
+    RegisteredEntities: { [name: string]: ClassType<any> | ClassSchema };
     unpopulatedCheckActive: boolean;
 }
 
@@ -221,11 +222,10 @@ export class PropertyCompilerSchema {
     ) {
     }
 
-
     /**
      * Returns true when user manually set a default value via PropertySchema/decorator.
      */
-    hasManualDefaultValue() {
+    hasManualDefaultValue(): boolean {
         return !this.hasDefaultValue && this.defaultValue !== undefined;
     }
 
@@ -260,8 +260,8 @@ export class PropertyCompilerSchema {
         return this.classType;
     }
 
-    public isActualOptional(): boolean {
-        return this.isOptional || this.type === 'any';
+    public isUndefinedAllowed(): boolean {
+        return this.isOptional || this.type === 'any' || this.hasManualDefaultValue() || this.hasDefaultValue;
     }
 
     static createFromPropertySchema(
@@ -431,7 +431,7 @@ export class PropertySchema extends PropertyCompilerSchema {
                 throw new Error(`Could not unserialize type information for ${p.methodName || ''}:${p.name}, got entity name ${props['classType']}. ` +
                     `Make sure given entity is loaded (imported at least once globally).`);
             }
-            p.classType = entity;
+            p.classType = getClassSchema(entity).classType;
         }
 
         return p;
@@ -598,7 +598,7 @@ export class ClassSchema<T = any> {
     /**
      * Object to store JIT function for this schema. This object is automatically cleared once the schema changes (added property for example).
      */
-    jit = new Map<any, any>();
+    jit: any = {};
 
     /**
      * @internal
@@ -667,12 +667,12 @@ export class ClassSchema<T = any> {
         return getClassName(this.classType);
     }
 
-    getJit(symbol: symbol | string, generator: () => any) {
-        let jit = this.jit.get(symbol);
+    getJit(symbol: symbol | string, generator: (classSchema: ClassSchema) => any) {
+        let jit = this.jit[symbol];
         if (jit !== undefined) return jit;
 
-        jit = generator();
-        this.jit.set(symbol, jit);
+        jit = generator(this);
+        this.jit[symbol] = jit;
         return jit;
     }
 
@@ -753,7 +753,7 @@ export class ClassSchema<T = any> {
     public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
         //apply decorator, which adds properties automatically
         decorator(this.classType, name);
-        this.jit.clear();
+        this.jit = {};
         this.buildId++;
     }
 
@@ -1287,7 +1287,8 @@ export function Entity<T>(name: string, collectionName?: string) {
 
 
 class EntityApi {
-    t = new ClassSchema(class {});
+    t = new ClassSchema(class {
+    });
 
     onDecorator(target: object) {
         this.t = getClassSchema(target);
@@ -1295,8 +1296,22 @@ class EntityApi {
 
     name(name: string) {
         this.t.name = name;
+
+        if (getGlobalStore().RegisteredEntities[name]) {
+            throw new Error(`Marshal entity with name '${name}' already registered. 
+            This could be caused by the fact that you used a name twice or that you loaded the entity 
+            via different imports.`);
+        }
+
+        getGlobalStore().RegisteredEntities[name] = this.t;
+        this.t.name = name;
+    }
+
+    collectionName(name: string) {
+        this.t.collectionName = name;
     }
 }
+
 export const entity: ClassDecoratorResult<typeof EntityApi> = createClassDecoratorContext(EntityApi);
 
 /**
@@ -2244,10 +2259,21 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
 const fRaw: any = Field();
 
-fRaw['schema'] = function <T extends FieldTypes<any>>(propsOrName: string | PlainSchemaProps, props?: PlainSchemaProps): ClassSchema {
-    const schema = createClassSchema(class {
-    }, isString(propsOrName) ? propsOrName : undefined);
-    props = isString(propsOrName) ? props : propsOrName;
+fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, extend?: E } = {}): ClassSchema {
+    let extendClazz: ClassType | undefined;
+    if (options.extend) {
+        if (options.extend instanceof ClassSchema) {
+            extendClazz = options.extend.classType;
+        } else {
+            extendClazz = options.extend as ClassType;
+        }
+    }
+
+    const clazz = extendClazz ? class extends extendClazz {
+    } : class {
+    };
+
+    const schema = createClassSchema(clazz, options.name);
 
     for (const [name, prop] of Object.entries(props!)) {
         if ('string' === typeof prop || 'number' === typeof prop || 'boolean' === typeof prop) {
@@ -2257,7 +2283,7 @@ fRaw['schema'] = function <T extends FieldTypes<any>>(propsOrName: string | Plai
         } else if (prop instanceof ClassSchema) {
             schema.addProperty(name, fRaw.type(prop.classType));
         } else {
-            const subSchema = fRaw.schema(name, prop);
+            const subSchema = fRaw.schema(prop, {name});
             schema.addProperty(name, fRaw.type(subSchema.classType));
         }
     }
@@ -2265,8 +2291,8 @@ fRaw['schema'] = function <T extends FieldTypes<any>>(propsOrName: string | Plai
     return schema;
 };
 
-fRaw['class'] = function <T extends FieldTypes<any>>(props?: PlainSchemaProps): ClassSchema {
-    return fRaw.schema(props).classType;
+fRaw['class'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, extend?: E } = {}): ClassType {
+    return fRaw.schema(props, options).classType;
 };
 
 fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>): FieldDecoratorResult<ExtractType<T>[]> {
@@ -2380,11 +2406,9 @@ export interface MainDecorator {
     /**
      * Creates a new ClassSchema from a plain object.
      */
-    schema<T extends PlainSchemaProps>(name: string, props: T): ClassSchema<ExtractClassDefinition<T>>;
+    schema<T extends PlainSchemaProps, E extends ClassSchema | ClassType>(props: T, options?: { name?: string, extend?: E }): ClassSchema<ExtractClassDefinition<T>>;
 
-    schema<T extends PlainSchemaProps>(props: T): ClassSchema<ExtractClassDefinition<T>>;
-
-    class<T extends PlainSchemaProps>(props: T): ClassType<ExtractClassDefinition<T>>;
+    class<T extends PlainSchemaProps, E extends ClassSchema | ClassType>(props: T, options?: { name?: string, extend?: E }): ClassType<ExtractClassDefinition<T>>;
 
     /**
      * Marks a field as string.
@@ -2392,14 +2416,14 @@ export interface MainDecorator {
     string: FieldDecoratorResult<string>;
 
     /**
-     * Marks a filed as literal. Nice with union types.
+     * Marks a field as literal type. Nice with union types.
      *
      * ```typescript
      * @t.literal('a')
      *
-     * @t.union(t.literal('a'), t.literal('b'))
+     * @t.union(t.literal('a'), t.literal('b')) //'a' | 'b'
      *
-     * @t.union('a', 'b')
+     * @t.union('a', 'b') //'a' | 'b'
      * ```
      */
     literal<T extends number | string | boolean>(type: T): FieldDecoratorResult<T>;

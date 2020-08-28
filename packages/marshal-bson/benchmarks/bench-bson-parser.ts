@@ -94,4 +94,15 @@ suite.add('JSON.parse()', () => {
     const items = JSON.parse(json);
 });
 
+const parserItem = getBSONDecoder(itemSchema);
+const bsonOneItem = serialize(items[0]);
+suite.add('Marshal JIT 1 item', () => {
+    const items = parserItem(bsonOneItem);
+});
+
+const jsonOneItem = JSON.stringify(items[0]);
+suite.add('JSON.parse() 1x', () => {
+    const items = JSON.parse(jsonOneItem);
+});
+
 suite.run();

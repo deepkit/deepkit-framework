@@ -54,7 +54,8 @@ export function seekElementSize(elementType: number, parser: BaseParser): any {
         case BSON_DATA_NULL: {
             return;
         }
-        case BSON_DATA_LONG: {
+        case BSON_DATA_LONG:
+        case BSON_DATA_TIMESTAMP: {
             return parser.seek(8);
         }
         case BSON_DATA_UNDEFINED:

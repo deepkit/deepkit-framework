@@ -2,19 +2,9 @@ import {DatabaseSession} from './database-session';
 import {DatabaseQueryModel, Entity, GenericQuery} from './query';
 import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
 import {ClassType} from '@super-hornet/core';
-import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseConnection, DatabasePersistence} from './database';
+import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence} from './database';
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
-    createConnection(): DatabaseConnection {
-        class Connection implements DatabaseConnection {
-            isInTransaction() {
-                return false;
-            }
-        }
-
-        return new Connection;
-    }
-
     async migrate(classSchemas: Iterable<ClassSchema>) {
     }
 

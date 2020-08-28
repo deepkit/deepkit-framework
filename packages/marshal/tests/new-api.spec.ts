@@ -4,8 +4,8 @@ import {getClassSchema, t} from '../src/decorators';
 import {
     CacheJitPropertyConverter,
     classToPlain,
-    createClassToXFunction,
-    createXToClassFunction,
+    getClassToXFunction,
+    getXToClassFunction,
     getJitFunctionClassToX,
     getJitFunctionXToClass,
     registerConverterCompiler,
@@ -83,15 +83,15 @@ test('custom serialization formats', async () => {
     expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
 
     const test = new Test;
-    const myFormat = createClassToXFunction(getClassSchema(Test), 'myFormat')(test);
-    const plain = createClassToXFunction(getClassSchema(Test), 'plain')(test);
+    const myFormat = getClassToXFunction(getClassSchema(Test), 'myFormat')(test);
+    const plain = getClassToXFunction(getClassSchema(Test), 'plain')(test);
     expect(plain.id).toBe('myName');
     expect(myFormat.id).toBe('string:myName');
     expect(getJitFunctionClassToX(getClassSchema(Test), 'myFormat')).toBeInstanceOf(Function);
     expect(getJitFunctionClassToX(getClassSchema(Test), 'plain')).toBeInstanceOf(Function);
 
-    const testBack = createXToClassFunction(getClassSchema(Test), 'myFormat')(myFormat);
-    const testBackClass = createXToClassFunction(getClassSchema(Test), 'plain')(myFormat);
+    const testBack = getXToClassFunction(getClassSchema(Test), 'myFormat')(myFormat);
+    const testBackClass = getXToClassFunction(getClassSchema(Test), 'plain')(myFormat);
     expect(testBack.id).toBe('myName');
     expect(testBackClass.id).toBe('string:myName');
     expect(getJitFunctionXToClass(getClassSchema(Test), 'myFormat')).toBeInstanceOf(Function);

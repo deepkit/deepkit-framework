@@ -11,13 +11,14 @@ import {
     BSON_DATA_OBJECT,
     BSON_DATA_OID,
     BSON_DATA_STRING,
+    BSON_DATA_TIMESTAMP,
     BSON_DATA_UNDEFINED,
     digitByteSize
 } from './utils';
 import {CachedKeyDecoder, decodeUTF8} from './strings';
+import {nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap} from '@super-hornet/marshal';
 
-const JS_INT_MAX_LONG = Long.fromNumber(0x20000000000000);
-const JS_INT_MIN_LONG = Long.fromNumber(-0x20000000000000);
+const TWO_PWR_32_DBL_N = (1n << 16n) * (1n << 16n);
 
 export const hexTable: string[] = [];
 for (let i = 0; i < 256; i++) {
@@ -36,7 +37,7 @@ export class BaseParser {
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
 
-    parse(elementType: number) {
+    parse(elementType: number, property?: PropertySchema) {
         switch (elementType) {
             case BSON_DATA_STRING:
                 return this.parseString();
@@ -49,6 +50,7 @@ export class BaseParser {
             case BSON_DATA_DATE:
                 return this.parseDate();
             case BSON_DATA_LONG:
+            case BSON_DATA_TIMESTAMP:
                 return this.parseLong();
             case BSON_DATA_BOOLEAN:
                 return this.parseBoolean();
@@ -57,7 +59,7 @@ export class BaseParser {
             case BSON_DATA_UNDEFINED:
                 return undefined;
             case BSON_DATA_BINARY:
-                return this.parseBinary();
+                return this.parseBinary(property);
             case BSON_DATA_OBJECT:
                 return parseObject(this);
             case BSON_DATA_ARRAY:
@@ -74,18 +76,15 @@ export class BaseParser {
     parseLong() {
         const lowBits = this.eatUInt32();
         const highBits = this.eatUInt32();
-        const long = new Long(lowBits, highBits);
-        return long.toNumber();
-        // return long.lessThanOrEqual(JS_INT_MAX_LONG) && long.greaterThanOrEqual(JS_INT_MIN_LONG)
-        //     ? long.toNumber()
-        //     : long;
+
+        return BigInt(highBits) * TWO_PWR_32_DBL_N + (BigInt(lowBits >>> 0));
     }
 
     parseString() {
         return this.eatString(this.eatUInt32());
     }
 
-    parseBinary(): any {
+    parseBinary(property?: PropertySchema): any {
         let size = this.eatUInt32();
         const subType = this.eatByte();
 
@@ -93,8 +92,16 @@ export class BaseParser {
             size = this.eatUInt32();
         }
 
-        const b = new Binary(this.buffer.slice(this.offset, this.offset + size), subType);
+        const b = this.buffer.slice(this.offset, this.offset + size);
         this.seek(size);
+        if (property?.type === 'arrayBuffer') {
+            return nodeBufferToArrayBuffer(b);
+        }
+        if (property && property.isTypedArray) {
+            const type = typedArrayNamesMap.get(property.type);
+            return new type(nodeBufferToArrayBuffer(b));
+        }
+
         return b;
     }
 

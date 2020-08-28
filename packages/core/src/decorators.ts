@@ -1,19 +1,5 @@
 import {getClassName} from "./core";
-
-function initializeProperty(target: any, name: string): { [k: string]: any } {
-    if (target[name]) {
-        return target[name];
-    }
-
-    const value: { [k: string]: any } = {};
-    Object.defineProperty(target, name, {
-        enumerable: false,
-        configurable: false,
-        value: value,
-    });
-
-    return value;
-}
+import { toFastProperties } from "./perf";
 
 /**
  * Logs every call to this method on stdout.
@@ -44,18 +30,23 @@ export function stack() {
 
         // console.log('sync patch', propertyKey, constructor.prototype[propertyKey]);
         descriptor.value = async function (...args: any[]) {
-            const calls = initializeProperty(this, '__stack_calls');
+            const name = '__c_' + propertyKey;
 
-            while (calls[propertyKey]) {
-                await calls[propertyKey];
+            if ((this as any)[name] === undefined) {
+                (this as any)[name] = null;
+                toFastProperties(this);
             }
 
-            calls[propertyKey] = (orig as any).apply(this, args);
+            while ((this as any)[name]) {
+                await (this as any)[name];
+            }
+
+            (this as any)[name] = (orig as any).apply(this, args);
 
             try {
-                return await calls[propertyKey];
+                return await (this as any)[name][propertyKey];
             } finally {
-                delete calls[propertyKey];
+                (this as any)[name][propertyKey] = null;
             }
         };
     };
@@ -63,7 +54,7 @@ export function stack() {
 
 /**
  * Makes sure that this async method is only running once at a time. When this method is running and it is tried
- * to call it another times, that call is dropped and returns simply the result of the previous running call.
+ * to call it another times, that call is "dropped" and it returns simply the result of the previous running call (waiting for it to complete first).
  *
  * @public
  */
@@ -72,18 +63,23 @@ export function singleStack() {
         const orig = descriptor.value;
 
         descriptor.value = async function (...args: any[]) {
-            const calls = initializeProperty(this, '__sync_calls');
+            const name = '__sc_' + propertyKey;
 
-            if (calls[propertyKey]) {
-                return await calls[propertyKey];
+            if ((this as any)[name] === undefined) {
+                (this as any)[name] = null;
+                toFastProperties(this);
             }
 
-            calls[propertyKey] = (orig as any).apply(this, args);
+            if ((this as any)[name]) {
+                return await (this as any)[name];
+            }
+
+            (this as any)[name] = (orig as any).apply(this, args);
 
             try {
-                return await calls[propertyKey];
+                return await (this as any)[name];
             } finally {
-                delete calls[propertyKey];
+                (this as any)[name] = null;
             }
         };
     };

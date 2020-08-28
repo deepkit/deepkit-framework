@@ -45,7 +45,6 @@ test('benchmark serialization user', async () => {
 
 test('benchmark raw', async () => {
     const database = await createDatabaseSession('benchmark-raw');
-    await database.getConnection().connect();
     const user = new User(1, 'Peter');
     user.ready = true;
     user.priority = 5;

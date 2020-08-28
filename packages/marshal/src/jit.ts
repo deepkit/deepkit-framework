@@ -2,6 +2,7 @@ import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, Pro
 import {isExcluded} from './mapper';
 import {ClassType, getClassName} from '@super-hornet/core';
 import {getDataConverterJS, reserveVariable} from './compiler-registry';
+import toFastProperties from 'to-fast-properties';
 
 export let moment: any = () => {
     throw new Error('Moment.js not installed');
@@ -26,12 +27,6 @@ export function findParent<T>(parents: any[], parentType: ClassType<T>): T | voi
         }
     }
 }
-
-const JITPlainToClassCache = new Map<any, any>();
-const JITXToClassCache = new Map<any, Map<any, any>>();
-
-const JITClassToPlainCache = new Map<any, any>();
-const JITClassToXCache = new Map<any, Map<any, any>>();
 
 const resolvedReflectionCaches = new Map<ClassType<any>, { [path: string]: PropertyCompilerSchema }>();
 
@@ -251,7 +246,7 @@ export function createJITConverterFromPropertySchema(
     }
 
     const context = new Map<any, any>();
-    const jitStack = new JitStack()
+    const jitStack = new JitStack();
 
     const line = getDataConverterJS('result', '_value', property, fromFormat, toFormat, context, jitStack);
 
@@ -287,7 +282,7 @@ function getParentResolverJS<T>(
 
     const code = `${setter} = findParent(_parents, ${varClassType});`;
 
-    if (property.isActualOptional()) {
+    if (property.isUndefinedAllowed()) {
         return code;
     }
 
@@ -329,19 +324,6 @@ function isGroupAllowed(options: JitConverterOptions, groupNames: string[]): boo
 
 export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: string | 'plain', jitStack: JitStack = new JitStack())
     : (instance: T, options?: JitConverterOptions) => any {
-    if (toFormat === 'plain') {
-        let jit = JITClassToPlainCache.get(schema);
-        if (jit && jit.buildId === schema.buildId) return jit;
-    } else {
-        let cache = JITClassToXCache.get(toFormat);
-        if (!cache) {
-            cache = new Map();
-            JITClassToXCache.set(toFormat, cache);
-        }
-        let jit = cache.get(schema);
-        if (jit && jit.buildId === schema.buildId) return jit;
-    }
-
     const context = new Map<string, any>();
     const prepared = jitStack.prepare(schema);
 
@@ -399,34 +381,29 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: stri
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled(...context.values());
     prepared(fn);
-    fn.buildId = schema.buildId;
-    if (toFormat === 'plain') {
-        JITClassToPlainCache.set(schema, fn);
-    } else {
-        JITClassToXCache.get(toFormat)!.set(schema, fn);
-    }
-
     return fn;
 }
 
+export function getClassToXFunction<T>(schema: ClassSchema<T>, toFormat: string | 'plain', jitStack?: JitStack)
+    : (instance: T, options?: JitConverterOptions) => any {
+    const jit = schema.jit;
+    const name = 'ctox_' + toFormat;
+    let fn = jit[name];
+    if (fn) return fn;
+
+    jit[name] = createClassToXFunction(schema, toFormat, jitStack || new JitStack());
+    toFastProperties(jit);
+    return jit[name];
+}
+
 export function getJitFunctionClassToX(schema: ClassSchema<any>, toFormat: string = 'plain') {
-    if (toFormat === 'plain') {
-        let jit = JITClassToPlainCache.get(schema);
-        if (jit) return jit;
-    } else {
-        let cache = JITClassToXCache.get(toFormat);
-        if (cache) return cache.get(schema);
-    }
+    const name = 'ctox_' + toFormat;
+    return schema.jit[name];
 }
 
 export function getJitFunctionXToClass(schema: ClassSchema<any>, fromFormat: string = 'plain') {
-    if (fromFormat === 'plain') {
-        let jit = JITPlainToClassCache.get(schema);
-        if (jit) return jit;
-    } else {
-        let cache = JITXToClassCache.get(fromFormat);
-        if (cache) return cache.get(schema);
-    }
+    const name = 'xtoc_' + fromFormat;
+    return schema.jit[name];
 }
 
 export class JitStackEntry {
@@ -434,7 +411,7 @@ export class JitStackEntry {
 }
 
 /**
- * A tracker for generated jit functions. Necessary to detect and automatically resolves circular dependencies
+ * A tracker for generated jit functions. Necessary to detect and automatically resolves circular schemas.
  */
 export class JitStack {
     protected stack?: Map<ClassSchema, { fn: Function | undefined }>;
@@ -452,7 +429,7 @@ export class JitStack {
         return this.getStack().get(schema)!;
     }
 
-    getOrCreate(schema: ClassSchema, create: () => Function): {fn: Function | undefined} {
+    getOrCreate(schema: ClassSchema, create: () => Function): { fn: Function | undefined } {
         const stack = this.getStack();
         if (stack.has(schema)) return stack.get(schema)!;
         const entry = {fn: create()};
@@ -473,18 +450,6 @@ export class JitStack {
 
 export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: string | 'plain', jitStack: JitStack = new JitStack())
     : (data: any, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
-    if (fromTarget === 'plain') {
-        let jit = JITPlainToClassCache.get(schema);
-        if (jit && jit.buildId === schema.buildId) return jit;
-    } else {
-        let cache = JITXToClassCache.get(fromTarget);
-        if (!cache) {
-            cache = new Map();
-            JITXToClassCache.set(fromTarget, cache);
-        }
-        let jit = cache.get(schema);
-        if (jit && jit.buildId === schema.buildId) return jit;
-    }
 
     const context = new Map<string, any>();
     const prepared = jitStack.prepare(schema);
@@ -502,7 +467,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
             constructorArguments.push(`
                 //constructor parameter ${property.name}, decorated
                 var c_${property.name} = _data;
-                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context, jitStack, )}
+                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context, jitStack,)}
             `);
         } else if (property.isParentReference) {
             //parent resolver
@@ -585,16 +550,20 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled(...context.values());
     prepared(fn);
-    fn.buildId = schema.buildId;
-    if (fromTarget === 'plain') {
-        JITPlainToClassCache.set(schema, fn);
-    } else {
-        JITXToClassCache.get(fromTarget)!.set(schema, fn);
-    }
-
     return fn;
 }
 
+export function getXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: string | 'plain', jitStack?: JitStack)
+    : (data: any, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
+    const jit = schema.jit;
+    const name = 'xtoc_' + fromTarget;
+    let fn = jit[name];
+    if (fn) return fn;
+
+    jit[name] = createXToClassFunction(schema, fromTarget, jitStack || new JitStack());
+    toFastProperties(jit);
+    return jit[name];
+}
 
 const partialXToX = new Map<ClassSchema, Map<string, any>>();
 

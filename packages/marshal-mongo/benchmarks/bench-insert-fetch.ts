@@ -1,9 +1,8 @@
 import 'reflect-metadata';
 import {bench} from '@super-hornet/core';
-import {buildChanges, Database} from '@super-hornet/marshal-orm';
-import {MongoDatabaseAdapter, MongoDatabaseConfig} from '../src/adapter';
-import {createPartialXToXFunction, Entity, f, getClassSchema} from '@super-hornet/marshal';
-import assert = require('assert');
+import {Database} from '@super-hornet/marshal-orm';
+import {MongoDatabaseAdapter} from '../src/adapter';
+import {Entity, f} from '@super-hornet/marshal';
 
 @Entity('user')
 export class User {
@@ -24,7 +23,7 @@ export class User {
 
 async function createDatabase(dbName: string = 'testing') {
     dbName = dbName.replace(/\s+/g, '-');
-    return new Database(new MongoDatabaseAdapter(new MongoDatabaseConfig('localhost', dbName)));
+    return new Database(new MongoDatabaseAdapter('mongodb://localhost/' + dbName));
 }
 
 const items = 10_000;
@@ -33,9 +32,8 @@ const items = 10_000;
     database.registerEntity(User);
     await database.migrate();
     const session = database.createSession();
-    await session.getConnection().connect();
 
-    for (let j = 1; j <= 5; j++) {
+    for (let j = 1; j <= 15; j++) {
         console.log('round', j);
         session.identityMap.clear();
         await session.query(User).deleteMany();
@@ -51,8 +49,8 @@ const items = 10_000;
             await session.commit();
         });
 
-        const query = session.query(User);
-        await bench(1, 'Marshal find', async () => {
+        const query = session.query(User).disableIdentityMap();
+        await bench(10, 'Marshal find', async () => {
             await query.find();
         });
 
@@ -71,5 +69,5 @@ const items = 10_000;
         });
     }
 
-    session.getConnection().close(true);
+    database.disconnect();
 })();

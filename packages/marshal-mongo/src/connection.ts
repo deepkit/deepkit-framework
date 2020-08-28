@@ -1,10 +1,8 @@
 import {Collection, MongoClient, MongoClientOptions} from 'mongodb';
 import {ClassSchema, t} from '@super-hornet/marshal';
 import {ParsedHost} from '@super-hornet/core';
-import {DatabaseConnection} from '@super-hornet/marshal-orm';
 import {getBSONDecoder} from '@super-hornet/marshal-bson';
 import {DEEP_SORT} from './query.model';
-
 
 export interface MongoConnectionConfig {
     host: ParsedHost;
@@ -21,7 +19,7 @@ export interface MongoConnectionConfig {
     sslPass?: Buffer | string;
 }
 
-export class MongoConnection implements DatabaseConnection {
+export class MongoConnection {
     protected client?: MongoClient;
     protected lastConnect?: Promise<MongoClient>;
 
@@ -91,6 +89,87 @@ export class MongoConnection implements DatabaseConnection {
         return (await this.connect()).db(db).command(command, options);
     }
 
+    public async find(
+        classSchema: ClassSchema,
+        filter: any, projection?: any,
+        sort?: DEEP_SORT<any>,
+        skip?: number,
+        limit?: number
+    ): Promise<any[]> {
+        await this.connect();
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
+        const batchSize = 10001;
+
+        // const start = performance.now();
+        const cmd: any = {
+            find: collectionName,
+            batchSize,
+            filter,
+        };
+
+        if (projection !== undefined) cmd.projection = projection;
+        if (sort !== undefined) cmd.sort = sort;
+        if (skip !== undefined) cmd.skip = skip;
+        if (limit !== undefined) cmd.limit = limit;
+
+        const res = await this.command(dbName, cmd, {
+            raw: true,
+            batchSize
+        });
+        // console.log('find took', performance.now() - start, 'ms', cmd);
+
+        return this.fetchCursor(dbName, collectionName, batchSize, classSchema, res);
+    }
+
+    protected fetchParser = new Map<ClassSchema, any>();
+
+    protected async fetchCursor(dbName, collectionName, batchSize: number, classSchema: ClassSchema, res: Buffer): Promise<any[]> {
+        let parser = this.fetchParser.get(classSchema);
+        if (!parser) {
+            const schema = t.schema({
+                errmsg: t.string.optional,
+                ok: t.boolean,
+                cursor: {
+                    id: t.string,
+                    firstBatch: t.array(classSchema),
+                    nextBatch: t.array(classSchema),
+                },
+            });
+            parser = getBSONDecoder(schema);
+            this.fetchParser.set(classSchema, parser);
+        }
+
+        // const start = performance.now();
+        const parsed = parser(res);
+        // console.log('parseObject took', performance.now() - start, 'ms');
+
+        if (!parsed.ok) throw new Error(parsed.errmsg);
+        if (!parsed.cursor) return [];
+
+        if (parsed.cursor.firstBatch.length < batchSize) {
+            return parsed.cursor.firstBatch;
+        }
+
+        while (true) {
+            const more = await this.command(dbName, {
+                getMore: parsed.cursor,
+                collection: collectionName,
+                batchSize
+            }, {raw: true, batchSize});
+            const parsedMore = parser(more);
+            if (!parsedMore.ok) {
+                if (parsed.errmsg) throw new Error(parsed.errmsg);
+                return parsed.cursor.firstBatch;
+            }
+
+            parsed.cursor.firstBatch.push(...parsedMore.cursor.nextBatch);
+            if (parsedMore.cursor.nextBatch.length < batchSize) {
+                return parsed.cursor.firstBatch;
+            }
+        }
+    }
+
     public async count(
         classSchema: ClassSchema,
         filter: any,
@@ -121,81 +200,6 @@ export class MongoConnection implements DatabaseConnection {
         return parsed.n;
     }
 
-    public async find(
-        classSchema: ClassSchema,
-        filter: any, projection?: any,
-        sort?: DEEP_SORT<any>,
-        skip?: number,
-        limit?: number
-    ): Promise<any[]> {
-        await this.connect();
-        const dbName = this.resolveDatabaseName(classSchema);
-        const collectionName = this.resolveCollectionName(classSchema);
-        const batchSize = 10001;
-
-        // const start = performance.now();
-        const cmd: any = {
-            find: collectionName,
-            batchSize,
-            filter,
-        };
-
-        if (projection !== undefined) cmd.projection = projection;
-        if (sort !== undefined) cmd.sort = sort;
-        if (skip !== undefined) cmd.skip = skip;
-        if (limit !== undefined) cmd.limit = limit;
-
-        const res = await this.command(dbName, cmd, {
-            raw: true,
-            batchSize
-        });
-        // console.log('find took', performance.now() - start, 'ms');
-
-        return this.fetchCursor(dbName, collectionName, batchSize, classSchema, res);
-    }
-
-    protected async fetchCursor(dbName, collectionName, batchSize: number, classSchema: ClassSchema, res: Buffer): Promise<any[]> {
-        const schema = t.schema({
-            errmsg: t.string.optional,
-            ok: t.boolean,
-            cursor: {
-                id: t.string,
-                firstBatch: t.array(classSchema),
-                nextBatch: t.array(classSchema),
-            },
-        });
-
-        // const start = performance.now();
-        const parser = getBSONDecoder(schema);
-        const parsed = parser(res);
-        // console.log('parseObject took', performance.now() - start, 'ms');
-
-        if (!parsed.ok) throw new Error(parsed.errmsg);
-        if (!parsed.cursor) return [];
-
-        if (parsed.cursor.firstBatch.length < batchSize) {
-            return parsed.cursor.firstBatch;
-        }
-
-        while (true) {
-            const more = await this.command(dbName, {
-                getMore: parsed.cursor,
-                collection: collectionName,
-                batchSize
-            }, {raw: true, batchSize});
-            const parsedMore = parser(more);
-            if (!parsedMore.ok) {
-                if (parsed.errmsg) throw new Error(parsed.errmsg);
-                return parsed.cursor.firstBatch;
-            }
-
-            parsed.cursor.firstBatch.push(...parsedMore.cursor.nextBatch);
-            if (parsedMore.cursor.nextBatch.length < batchSize) {
-                return parsed.cursor.firstBatch;
-            }
-        }
-    }
-
     public async aggregate(classSchema: ClassSchema, pipeline: any[], resultSchema?: ClassSchema): Promise<any[]> {
         await this.connect();
         const dbName = this.resolveDatabaseName(classSchema);
@@ -217,18 +221,6 @@ export class MongoConnection implements DatabaseConnection {
         return this.fetchCursor(dbName, collectionName, batchSize, resultSchema || classSchema, res);
     }
 
-    public async insertMany(classSchema: ClassSchema, items: any[]) {
-        await this.connect();
-        const dbName = this.resolveDatabaseName(classSchema);
-        const collectionName = this.resolveCollectionName(classSchema);
-
-        await this.command(dbName, {
-            insert: collectionName,
-            documents: items,
-            // writeConcern: {w: 1}
-        }, {});
-    }
-
     public async updateMany(classSchema: ClassSchema, items: { q: any, u: any }[]) {
         await this.connect();
         const dbName = this.resolveDatabaseName(classSchema);
@@ -238,6 +230,18 @@ export class MongoConnection implements DatabaseConnection {
             update: collectionName,
             updates: items,
             ordered: false,
+            // writeConcern: {w: 1}
+        }, {});
+    }
+
+    public async insertMany(classSchema: ClassSchema, items: any[]) {
+        await this.connect();
+        const dbName = this.resolveDatabaseName(classSchema);
+        const collectionName = this.resolveCollectionName(classSchema);
+
+        await this.command(dbName, {
+            insert: collectionName,
+            documents: items,
             // writeConcern: {w: 1}
         }, {});
     }

@@ -71,7 +71,6 @@ class MarshalModel implements Data {
     boolean!: boolean;
 }
 
-
 class MarshalModelSimple {
     @f number!: number;
 
@@ -176,9 +175,9 @@ test('benchmark validation types only', () => {
         const valid = QuartetModelSimpleChecker(DATASimple);
     });
 
-    // suite.add('quartet no errors', () => {
-    //     const valid = QuartetModelSimpleCheckerNoErrors(DATASimple);
-    // });
+    suite.add('quartet no errors', () => {
+        const valid = QuartetModelSimpleCheckerNoErrors(DATASimple);
+    });
 
     suite.run();
 });

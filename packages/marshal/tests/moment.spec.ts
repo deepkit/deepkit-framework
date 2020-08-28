@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import * as moment from 'moment';
+import moment from 'moment';
 import {getClassSchema, t, classToPlain, plainToClass} from "../index";
 
 test('test moment', () => {

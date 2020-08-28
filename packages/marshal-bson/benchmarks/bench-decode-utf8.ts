@@ -113,6 +113,56 @@ class StringCache {
     }
 }
 
+const CHUNK_SIZE = 0x1_000;
+export function utf8DecodeJsFromMsgPack(bytes: Uint8Array, inputOffset: number, byteLength: number): string {
+    let offset = inputOffset;
+    const end = offset + byteLength;
+
+    const units: Array<number> = [];
+    let result = "";
+    while (offset < end) {
+        const byte1 = bytes[offset++];
+        if ((byte1 & 0x80) === 0) {
+            // 1 byte
+            units.push(byte1);
+        } else if ((byte1 & 0xe0) === 0xc0) {
+            // 2 bytes
+            const byte2 = bytes[offset++] & 0x3f;
+            units.push(((byte1 & 0x1f) << 6) | byte2);
+        } else if ((byte1 & 0xf0) === 0xe0) {
+            // 3 bytes
+            const byte2 = bytes[offset++] & 0x3f;
+            const byte3 = bytes[offset++] & 0x3f;
+            units.push(((byte1 & 0x1f) << 12) | (byte2 << 6) | byte3);
+        } else if ((byte1 & 0xf8) === 0xf0) {
+            // 4 bytes
+            const byte2 = bytes[offset++] & 0x3f;
+            const byte3 = bytes[offset++] & 0x3f;
+            const byte4 = bytes[offset++] & 0x3f;
+            let unit = ((byte1 & 0x07) << 0x12) | (byte2 << 0x0c) | (byte3 << 0x06) | byte4;
+            if (unit > 0xffff) {
+                unit -= 0x10000;
+                units.push(((unit >>> 10) & 0x3ff) | 0xd800);
+                unit = 0xdc00 | (unit & 0x3ff);
+            }
+            units.push(unit);
+        } else {
+            units.push(byte1);
+        }
+
+        if (units.length >= CHUNK_SIZE) {
+            result += String.fromCharCode(...units);
+            units.length = 0;
+        }
+    }
+
+    if (units.length > 0) {
+        result += String.fromCharCode(...units);
+    }
+
+    return result;
+}
+
 const suite = new BenchSuite(`UTF8 decode`);
 
 const s10 = Buffer.from('0123456789');
@@ -130,6 +180,10 @@ suite.add('decodeUTF8 ' + bigString.byteLength, () => {
     decodeUTF8(bigString, bigString.byteLength);
 });
 
+suite.add('utf8DecodeJsFromMsgPack ' + bigString.byteLength, () => {
+    utf8DecodeJsFromMsgPack(bigString, 0, bigString.byteLength);
+});
+
 suite.add('Buffer.toString ' + bigString.byteLength, () => {
     bigString.toString('utf8');
 });
@@ -140,6 +194,10 @@ suite.add('TextDecoder ' + bigString.byteLength, () => {
 
 suite.add('decodeUTF8 ' + s10.byteLength, () => {
     decodeUTF8(s10, s10.byteLength);
+});
+
+suite.add('utf8DecodeJsFromMsgPack ' + s10.byteLength, () => {
+    utf8DecodeJsFromMsgPack(s10, 0, s10.byteLength);
 });
 
 suite.add('TextDecoder ' + s10.byteLength, () => {

@@ -38,22 +38,21 @@ test('original schema', () => {
 });
 
 test('snapshot correct state', () => {
-    const formatter = new Formatter('plain');
-
-    const image = t.schema('Image', {
+    const image = t.schema({
         id: t.number.primary
     });
 
-    const user = t.schema('User', {
+    const user = t.schema({
         id: t.number.primary,
         username: t.string,
         image: t.type(image).optional.reference(),
         image2: t.type(image).optional.reference(),
     });
+    const formatter = new Formatter(user, 'plain');
 
     {
         const query = new BaseQuery(user, new DatabaseQueryModel<any, any, any>());
-        const user1 = formatter.hydrate(user, query.model, {username: 'Peter', id: '2', image: '1'});
+        const user1 = formatter.hydrate(query.model, {username: 'Peter', id: '2', image: '1'});
         const snapshot = getInstanceState(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);
         //when schema changes we get from mongodb `undefined` for new fields, but our snapshot converts that to `null`
@@ -72,7 +71,7 @@ test('snapshot correct state', () => {
 
     {
         const query = new BaseQuery(user, new DatabaseQueryModel<any, any, any>());
-        const user1 = formatter.hydrate(user, query.model, {username: 'Peter2', id: '3', image: '1', image2: null});
+        const user1 = formatter.hydrate(query.model, {username: 'Peter2', id: '3', image: '1', image2: null});
         const snapshot = getInstanceState(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);
         expect(snapshot).toEqual({username: 'Peter2', id: 3, image: {id: 1}, image2: null});

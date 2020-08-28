@@ -90,6 +90,9 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * Validates a object or class instance and returns all errors.
  * Returns an empty array if not errors found and validation succeeded.
  *
+ * Warning: If `item` is a plain object this does not check if `item` is exactly of type T, but if it can safely be
+ * converted to one using plainToClass. For example `t.string` allows numbers because it can be safely converted to string.
+ *
  * @example
  * ```
  * validate(SimpleModel, {id: false});
@@ -103,6 +106,9 @@ export function validate<T extends ClassType | ClassSchema>(classType: T, item: 
  * A type guarded way of using Marshal.
  *
  * Note: Methods are not type guarded.
+ *
+ * Warning: If `item` is a plain object this does not check if `item` is exactly of type T, but if it can safely be
+ * converted to one using plainToClass. For example `t.string` allows numbers because it can be safely converted to string.
  *
  * @example
  * ```
@@ -119,6 +125,9 @@ export function validates<T extends ClassType | ClassSchema>(classType: T, item:
  * A type guarded way of using Marshal as factory for faster access.
  *
  * Note: Methods are not type guarded.
+ *
+ * Warning: If `item` is a plain object this does not check if `item` is exactly of type T, but if it can safely be
+ * converted to one using plainToClass. For example `t.string` allows numbers because it can be safely converted to string.
  *
  * @example
  * ```

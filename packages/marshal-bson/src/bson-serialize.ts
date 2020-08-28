@@ -1,27 +1,31 @@
-import {ClassSchema, getClassSchema, getGlobalStore, PropertySchema} from '@super-hornet/marshal';
-import {ClassType, isArray, isObject} from '@super-hornet/core';
+import {ClassSchema, getClassSchema, getGlobalStore, getXToClassFunction, JitStack, PropertySchema} from '@super-hornet/marshal';
+import {ClassType, isArray, isObject, toFastProperties} from '@super-hornet/core';
 import {seekElementSize} from './continuation';
 import {
-    BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID,
+    BSON_BINARY_SUBTYPE_BYTE_ARRAY,
+    BSON_BINARY_SUBTYPE_DEFAULT,
+    BSON_BINARY_SUBTYPE_UUID,
     BSON_DATA_ARRAY,
     BSON_DATA_BINARY,
     BSON_DATA_BOOLEAN,
     BSON_DATA_DATE,
-    BSON_DATA_INT, BSON_DATA_LONG, BSON_DATA_NULL,
+    BSON_DATA_INT,
+    BSON_DATA_LONG,
+    BSON_DATA_NULL,
     BSON_DATA_NUMBER,
-    BSON_DATA_OBJECT, BSON_DATA_OID,
+    BSON_DATA_OBJECT,
+    BSON_DATA_OID, BSON_DATA_REGEXP,
     BSON_DATA_STRING,
     digitByteSize,
     moment
 } from './utils';
-import {Long, Binary, ObjectId} from 'bson';
+import {Binary, Long, ObjectId} from 'bson';
 
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
 const BSON_INT32_MIN = -0x80000000;
 
-const BSON_INT64_MAX = Math.pow(2, 63) - 1;
-const BSON_INT64_MIN = -Math.pow(2, 63);
+const TWO_PWR_32_DBL_N = (1n << 16n) * (1n << 16n);
 
 // JS MAX PRECISE VALUES
 export const JS_INT_MAX = 0x20000000000000; // Any integer up to 2^53 can be precisely represented by a double.
@@ -51,25 +55,27 @@ function stringByteLength(str: string): number {
     let size = 0;
     for (let i = 0; i < str.length; i++) {
         const c = str.charCodeAt(i);
-        if (c < 128) {
-            size += 1;
-        } else if (c > 127 && c < 2048) {
-            size += 2;
-        } else {
-            size += 3;
-        }
+        if (c < 128) size += 1;
+        else if (c > 127 && c < 2048) size += 2;
+        else size += 3;
     }
     return size;
 }
 
+function isObjectId(value: any): boolean {
+    return value && value['_bsontype'] === 'ObjectID';
+}
+
 function getValueSize(value: any): number {
-    if ('boolean' === typeof value) return 1;
-    if ('string' === typeof value) {
+    if ('boolean' === typeof value) {
+        return 1;
+    } else if ('string' === typeof value) {
         //size + content + null
         return 4 + stringByteLength(value) + 1;
-    }
-
-    if ('number' === typeof value) {
+    } else if ('bigint' === typeof value) {
+        //long
+        return 8;
+    } else if ('number' === typeof value) {
         if (Math.floor(value) === value) {
             //it's an int
             if (value >= BSON_INT32_MIN && value <= BSON_INT32_MAX) {
@@ -86,20 +92,14 @@ function getValueSize(value: any): number {
             //double
             return 8;
         }
-    }
-
-    if (value instanceof Date || moment.isMoment(value)) {
+    } else if (value instanceof Date || moment.isMoment(value)) {
         return 8;
-    }
-
-    if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+    } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
         let size = 4; //size
         size += 1; //sub type
         size += value.byteLength;
         return size;
-    }
-
-    if (isArray(value)) {
+    } else if (isArray(value)) {
         let size = 4; //object size
         for (let i = 0; i < value.length; i++) {
             size += 1; //element type
@@ -108,9 +108,21 @@ function getValueSize(value: any): number {
         }
         size += 1; //null
         return size;
-    }
-
-    if (isObject(value)) {
+    } else if (isObjectId(value)) {
+        return 12;
+    } else if (value && value['_bsontype'] === 'Binary') {
+        let size = 4; //size
+        size += 1; //sub type
+        size += value.buffer.byteLength;
+        return size;
+    } else if (value instanceof RegExp) {
+        return stringByteLength(value.source) + 1
+            +
+            (value.global ? 1 : 0) +
+            (value.ignoreCase ? 1 : 0) +
+            (value.multiline ? 1 : 0) +
+            1;
+    } else if (isObject(value)) {
         let size = 4; //object size
         for (let i in value) {
             if (!value.hasOwnProperty(i)) continue;
@@ -120,12 +132,16 @@ function getValueSize(value: any): number {
         }
         size += 1; //null
         return size;
-    }
+    } //isObject() should be last
 
     return 0;
 }
 
-function getPropertySizer(context: Map<string, any>, property: PropertySchema, accessor): string {
+function getPropertySizer(context: Map<string, any>, property: PropertySchema, accessor, jitStack: JitStack): string {
+    if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
+        property = property.getResolvedClassSchema().getDecoratedPropertySchema();
+    }
+
     context.set('getValueSize', getValueSize);
     let code = `size += getValueSize(${accessor});`;
 
@@ -136,7 +152,7 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
         for (let i = 0; i < ${accessor}.length; i++) {
             size += 1; //element type
             size += digitByteSize(i); //element name
-            ${getPropertySizer(context, property.getSubType(), `${accessor}[i]`)}
+            ${getPropertySizer(context, property.getSubType(), `${accessor}[i]`, jitStack)}
         }
         size += 1; //null
         `;
@@ -148,14 +164,15 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
             if (!${accessor}.hasOwnProperty(i)) continue;
             size += 1; //element type
             size += stringByteLength(i) + 1; //element name + null
-            ${getPropertySizer(context, property.getSubType(), `${accessor}[i]`)}
+            ${getPropertySizer(context, property.getSubType(), `${accessor}[i]`, jitStack)}
         }
         size += 1; //null
         `;
-    } else if (property.type === 'class') {
-        const sizer = '_converter_' + property.name;
-        context.set(sizer, createBSONSizer(property.getResolvedClassSchema()));
-        code = `size += ${sizer}(${accessor});`;
+    } else if (property.type === 'class' && !property.isReference) {
+        const sizer = '_sizer_' + property.name;
+        const sizerFn = jitStack.getOrCreate(property.getResolvedClassSchema(), () => createBSONSizer(property.getResolvedClassSchema(), jitStack));
+        context.set(sizer, sizerFn);
+        code = `size += ${sizer}.fn(${accessor});`;
     } else if (property.type === 'date' || property.type === 'moment') {
         code = `size += 8;`;
     } else if (property.type === 'objectId') {
@@ -166,46 +183,38 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
         code = `
             size += 4; //size
             size += 1; //sub type
-            if (${accessor}) size += ${accessor}.byteLength;
+            if (${accessor}.buffer && 'number' === typeof ${accessor}.buffer.byteLength){
+                size += ${accessor}.buffer.byteLength;
+            } else {
+                size += ${accessor}.byteLength;
+            }
         `;
     }
 
-    let setNull = '';
-    if (property.isNullable) {
-        setNull = 'size += 1;';
-    }
-
-    return `
-        if (${accessor} !== undefined) {
-            if (${accessor} === null) {
-                ${setNull};
-            } else {
-                ${code}
-            }
-        }
-    `;
-}
-
-interface SizerFn {
-    buildId: number;
-
-    (data: object): number;
+    return code;
 }
 
 /**
  * Creates a JIT compiled function that allows to get the BSON buffer size of a certain object.
  */
-export function createBSONSizer(classSchema: ClassSchema): SizerFn {
+export function createBSONSizer(classSchema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object) => number {
     const context = new Map<string, any>();
     let getSizeCode: string[] = [];
+    const prepared = jitStack.prepare(classSchema);
 
     for (const property of classSchema.getClassProperties().values()) {
         //todo, support non-ascii names
         getSizeCode.push(`
             //${property.name}
-            size += 1; //type
-            size += ${property.name.length} + 1; //property name
-            ${getPropertySizer(context, property, `obj.${property.name}`)}
+            if (obj.${property.name} !== undefined) {
+                if (obj.${property.name} === null) {
+                    size += ${1 + property.name.length + 1};
+                } else {
+                    size += 1; //type
+                    size += ${property.name.length} + 1; //property name
+                    ${getPropertySizer(context, property, `obj.${property.name}`, jitStack)}
+                }
+            }
         `);
     }
 
@@ -220,14 +229,11 @@ export function createBSONSizer(classSchema: ClassSchema): SizerFn {
         }
     `;
 
-    // console.log('functionCode', functionCode);
-
     const compiled = new Function('Buffer', 'seekElementSize', ...context.keys(), functionCode);
     const fn = compiled.bind(undefined, Buffer, seekElementSize, ...context.values())();
-    fn.buildId = classSchema.buildId;
+    prepared(fn);
     return fn;
 }
-
 
 export class Writer {
     public offset = 0;
@@ -260,6 +266,14 @@ export class Writer {
         this.buffer[this.offset++] = v;
     }
 
+    writeBuffer(buffer: Buffer) {
+        // buffer.copy(this.buffer, this.buffer.byteOffset + this.offset);
+        for (let i = 0; i < buffer.byteLength; i++) {
+            this.buffer[this.offset++] = buffer[i];
+        }
+        // this.offset += buffer.byteLength;
+    }
+
     writeNull() {
         this.writeByte(0);
     }
@@ -287,64 +301,127 @@ export class Writer {
         }
     }
 
-    write(value: any, nameWriter: () => void): void {
+    writeObjectId(value: any) {
+        if ('string' === typeof value) {
+            this.buffer[this.offset + 0] = hexToByte(value, 0);
+            this.buffer[this.offset + 1] = hexToByte(value, 1);
+            this.buffer[this.offset + 2] = hexToByte(value, 2);
+            this.buffer[this.offset + 3] = hexToByte(value, 3);
+            this.buffer[this.offset + 4] = hexToByte(value, 4);
+            this.buffer[this.offset + 5] = hexToByte(value, 5);
+            this.buffer[this.offset + 6] = hexToByte(value, 6);
+            this.buffer[this.offset + 7] = hexToByte(value, 7);
+            this.buffer[this.offset + 8] = hexToByte(value, 8);
+            this.buffer[this.offset + 9] = hexToByte(value, 9);
+            this.buffer[this.offset + 10] = hexToByte(value, 10);
+            this.buffer[this.offset + 11] = hexToByte(value, 11);
+        } else {
+            if (isObjectId(value)) {
+                (value as any).id.copy(this.buffer, this.offset);
+            }
+        }
+        this.offset += 12;
+    }
+
+    write(value: any, nameWriter?: () => void): void {
         if ('boolean' === typeof value) {
-            this.writeByte(BSON_DATA_BOOLEAN);
-            nameWriter();
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_BOOLEAN);
+                nameWriter();
+            }
             this.writeByte(value ? 1 : 0);
         } else if ('string' === typeof value) {
             //size + content + null
-            this.writeByte(BSON_DATA_STRING);
-            nameWriter();
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_STRING);
+                nameWriter();
+            }
             const start = this.offset;
             this.offset += 4; //size placeholder
             this.writeString(value);
             this.writeByte(0); //null
             this.writeDelayedSize(this.offset - start - 4, start);
+        } else if ('bigint' === typeof value) {
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_LONG);
+                nameWriter();
+            }
+            this.writeUint32(Number(value % TWO_PWR_32_DBL_N) | 0);
+            this.writeUint32(Number(value / TWO_PWR_32_DBL_N) | 0);
         } else if ('number' === typeof value) {
             if (Math.floor(value) === value) {
                 //it's an int
                 if (value >= BSON_INT32_MIN && value <= BSON_INT32_MAX) {
                     //32bit
-                    this.writeByte(BSON_DATA_INT);
-                    nameWriter();
+                    if (nameWriter) {
+                        this.writeByte(BSON_DATA_INT);
+                        nameWriter();
+                    }
                     this.writeInt32(value);
                 } else if (value >= JS_INT_MIN && value <= JS_INT_MAX) {
                     //double, 64bit
-                    this.writeByte(BSON_DATA_NUMBER);
-                    nameWriter();
+                    if (nameWriter) {
+                        this.writeByte(BSON_DATA_NUMBER);
+                        nameWriter();
+                    }
                     this.writeDouble(value);
                 } else {
-                    //long
-                    this.writeByte(BSON_DATA_LONG);
-                    nameWriter();
-                    const long = Long.fromNumber(value);
-                    this.writeUint32(long.getLowBits());
-                    this.writeUint32(long.getHighBits());
+                    //long, but we serialize as Double, because deserialize will be BigInt
+                    if (nameWriter) {
+                        this.writeByte(BSON_DATA_NUMBER);
+                        nameWriter();
+                    }
+                    this.writeDouble(value);
                 }
             } else {
                 //double
-                this.writeByte(BSON_DATA_NUMBER);
-                nameWriter();
+                if (nameWriter) {
+                    this.writeByte(BSON_DATA_NUMBER);
+                    nameWriter();
+                }
                 this.writeDouble(value);
             }
         } else if (value instanceof Date || moment.isMoment(value)) {
-            this.writeByte(BSON_DATA_DATE);
-            nameWriter();
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_DATE);
+                nameWriter();
+            }
             const long = Long.fromNumber(value.valueOf());
             this.writeUint32(long.getLowBits());
             this.writeUint32(long.getHighBits());
+        } else if (value && value['_bsontype'] === 'Binary') {
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_BINARY);
+                nameWriter();
+            }
+            this.writeUint32(value.buffer.byteLength);
+            this.writeByte(value.sub_type);
+
+            if (value.sub_type === BSON_BINARY_SUBTYPE_BYTE_ARRAY) {
+                //deprecated stuff
+                this.writeUint32(value.buffer.byteLength - 4);
+            }
+
+            for (let i = 0; i < value.buffer.byteLength; i++) {
+                this.buffer[this.offset++] = value.buffer[i];
+            }
+
         } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
-            const b: ArrayBuffer = ArrayBuffer.isView(value) ? value.buffer : value;
-            this.writeByte(BSON_DATA_BINARY);
-            nameWriter();
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_BINARY);
+                nameWriter();
+            }
             this.writeUint32(value.byteLength);
             this.writeByte(BSON_BINARY_SUBTYPE_DEFAULT);
-            new Buffer(b).copy(this.buffer, this.offset);
-            this.offset += value.byteLength;
+
+            for (let i = 0; i < value.byteLength; i++) {
+                this.buffer[this.offset++] = value[i];
+            }
         } else if (isArray(value)) {
-            this.writeByte(BSON_DATA_ARRAY);
-            nameWriter();
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_ARRAY);
+                nameWriter();
+            }
             const start = this.offset;
             this.offset += 4; //size
 
@@ -356,16 +433,40 @@ export class Writer {
             }
             this.writeNull();
             this.writeDelayedSize(this.offset - start, start);
+        } else if (isObjectId(value)) {
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_OID);
+                nameWriter();
+            }
+            this.writeObjectId(value);
+        } else if (value instanceof RegExp) {
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_REGEXP);
+                nameWriter();
+            }
+            this.writeString(value.source);
+            this.writeNull();
+            if (value.ignoreCase) this.writeByte(0x69); // i
+            if (value.global) this.writeByte(0x73); // s
+            if (value.multiline) this.writeByte(0x6d); // m
+            this.writeNull();
+        } else if (value === null) {
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_NULL);
+                nameWriter();
+            }
         } else if (isObject(value)) {
-            this.writeByte(BSON_DATA_OBJECT);
-            nameWriter();
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_OBJECT);
+                nameWriter();
+            }
             const start = this.offset;
             this.offset += 4; //size
 
             for (let i in value) {
                 if (!value.hasOwnProperty(i)) continue;
                 this.write(value[i], () => {
-                    this.writeAsciiString(i);
+                    this.writeString(i);
                     this.writeByte(0);
                 });
             }
@@ -379,6 +480,7 @@ function getPropertySerializerCode(
     property: PropertySchema,
     context: Map<string, any>,
     accessor: string,
+    jitStack: JitStack,
     nameAccessor?: string,
 ): string {
     let nameWriter = `
@@ -400,10 +502,22 @@ function getPropertySerializerCode(
         ${nameWriter}
     });`;
 
-    function numberParser() {
+    //important to put it after nameWriter and nullable check, since we want to keep the name
+    if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
+        property = property.getResolvedClassSchema().getDecoratedPropertySchema();
+    }
+
+    function numberSerializer() {
         context.set('Long', Long);
+        context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         return `
-            if (Math.floor(${accessor}) === ${accessor}) {
+            if ('bigint' === typeof ${accessor}) {
+                //long
+                writer.writeByte(${BSON_DATA_LONG});
+                ${nameWriter}
+                writer.writeUint32(Number(${accessor} % TWO_PWR_32_DBL_N) | 0); //low
+                writer.writeUint32(Number(${accessor} / TWO_PWR_32_DBL_N) | 0); //high
+            } else if (Math.floor(${accessor}) === ${accessor}) {
                 //it's an int
                 if (${accessor} >= ${BSON_INT32_MIN} && ${accessor} <= ${BSON_INT32_MAX}) {
                     //32bit
@@ -416,12 +530,10 @@ function getPropertySerializerCode(
                     ${nameWriter}
                     writer.writeDouble(${accessor});
                 } else {
-                    //long
-                    writer.writeByte(${BSON_DATA_LONG});
+                    //long, but we serialize as Double, because deserialize will be BigInt
+                    writer.writeByte(${BSON_DATA_NUMBER});
                     ${nameWriter}
-                    const long = Long.fromNumber(${accessor});
-                    writer.writeUint32(long.getLowBits());
-                    writer.writeUint32(long.getHighBits());
+                    writer.writeDouble(${accessor});
                 }
             } else {
                 //double, 64bit
@@ -432,18 +544,17 @@ function getPropertySerializerCode(
         `;
     }
 
-    if (property.type === 'class') {
-        const propertySchema = `_schema_${property.name}`;
-        context.set('getBSONSerializer', getBSONSerializer);
-        context.set(propertySchema, property.getResolvedClassSchema());
+    if (property.type === 'class' && !property.isReference) {
+        const propertySerializer = `_serializer_${property.name}`;
+        const serializerFn = jitStack.getOrCreate(property.getResolvedClassSchema(), () => createBSONSerialize(property.getResolvedClassSchema(), jitStack));
+        context.set(propertySerializer, serializerFn);
+
         code = `
             writer.writeByte(${BSON_DATA_OBJECT});
             ${nameWriter}
-            getBSONSerializer(${propertySchema})(${accessor}, writer);
+            ${propertySerializer}.fn(${accessor}, writer);
         `;
-    }
-
-    if (property.type === 'string') {
+    } else if (property.type === 'string') {
         code = `
             writer.writeByte(${BSON_DATA_STRING});
             ${nameWriter}
@@ -453,17 +564,13 @@ function getPropertySerializerCode(
             writer.writeByte(0); //null
             writer.writeDelayedSize(writer.offset - start - 4, start);
         `;
-    }
-
-    if (property.type === 'boolean') {
+    } else if (property.type === 'boolean') {
         code = `
             writer.writeByte(${BSON_DATA_BOOLEAN});
             ${nameWriter}
             writer.writeByte(${accessor} ? 1 : 0);
         `;
-    }
-
-    if (property.type === 'date') {
+    } else if (property.type === 'date') {
         context.set('Long', Long);
         code = `
             writer.writeByte(${BSON_DATA_DATE});
@@ -472,38 +579,16 @@ function getPropertySerializerCode(
             writer.writeUint32(long.getLowBits());
             writer.writeUint32(long.getHighBits());
         `;
-    }
-
-    if (property.type === 'objectId') {
+    } else if (property.type === 'objectId') {
         context.set('hexToByte', hexToByte);
         context.set('ObjectId', ObjectId);
         code = `
             writer.writeByte(${BSON_DATA_OID});
             ${nameWriter}
             
-            if ('string' === typeof ${accessor}) {
-                writer.buffer[writer.offset+0] = hexToByte(${accessor}, 0);
-                writer.buffer[writer.offset+1] = hexToByte(${accessor}, 1);
-                writer.buffer[writer.offset+2] = hexToByte(${accessor}, 2);
-                writer.buffer[writer.offset+3] = hexToByte(${accessor}, 3);
-                writer.buffer[writer.offset+4] = hexToByte(${accessor}, 4);
-                writer.buffer[writer.offset+5] = hexToByte(${accessor}, 5);
-                writer.buffer[writer.offset+6] = hexToByte(${accessor}, 6);
-                writer.buffer[writer.offset+7] = hexToByte(${accessor}, 7);
-                writer.buffer[writer.offset+8] = hexToByte(${accessor}, 8);
-                writer.buffer[writer.offset+9] = hexToByte(${accessor}, 9);
-                writer.buffer[writer.offset+10] = hexToByte(${accessor}, 10);
-                writer.buffer[writer.offset+11] = hexToByte(${accessor}, 11);
-            } else {
-                if (${accessor} instanceof ObjectId) {
-                    ${accessor}.id.copy(writer.buffer, writer.offset);
-                }
-            }
-            writer.offset += 12;
+            writer.writeObjectId(${accessor});
         `;
-    }
-
-    if (property.type === 'uuid') {
+    } else if (property.type === 'uuid') {
         context.set('uuidStringToByte', uuidStringToByte);
         context.set('Binary', Binary);
         code = `
@@ -534,7 +619,7 @@ function getPropertySerializerCode(
                 writer.buffer[writer.offset+14] = uuidStringToByte(${accessor}, 14);
                 writer.buffer[writer.offset+15] = uuidStringToByte(${accessor}, 15);
             } else {
-                if (${accessor} instanceof Binary) {
+                if (${accessor}.buffer && 'function' === typeof ${accessor}.buffer.copy) {
                     ${accessor}.buffer.copy(writer.buffer, writer.offset);
                 } else {
                     ${accessor}.copy(writer.buffer, writer.offset);
@@ -542,9 +627,7 @@ function getPropertySerializerCode(
             }
             writer.offset += 16;
         `;
-    }
-
-    if (property.type === 'moment') {
+    } else if (property.type === 'moment') {
         context.set('Long', Long);
         code = `
             writer.writeByte(${BSON_DATA_DATE});
@@ -553,13 +636,9 @@ function getPropertySerializerCode(
             writer.writeUint32(long.getLowBits());
             writer.writeUint32(long.getHighBits());
         `;
-    }
-
-    if (property.type === 'number') {
-        code = numberParser();
-    }
-
-    if (property.type === 'array') {
+    } else if (property.type === 'number') {
+        code = numberSerializer();
+    } else if (property.type === 'array') {
         code = `
             writer.writeByte(${BSON_DATA_ARRAY});
             ${nameWriter}
@@ -568,14 +647,12 @@ function getPropertySerializerCode(
             
             for (let i = 0; i < ${accessor}.length; i++) {
                 //${property.getSubType().type}
-                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, `''+i`)}
+                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, jitStack, `''+i`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
         `;
-    }
-
-    if (property.type === 'map') {
+    } else if (property.type === 'map') {
         code = `
             writer.writeByte(${BSON_DATA_OBJECT});
             ${nameWriter}
@@ -585,25 +662,18 @@ function getPropertySerializerCode(
             for (let i in ${accessor}) {
                 if (!${accessor}.hasOwnProperty(i)) continue;
                 //${property.getSubType().type}
-                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, `i`)}
+                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, jitStack, `i`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
         `;
     }
 
-    let setNull = '';
-    if (property.isNullable) {
-        setNull = `
-            writer.writeByte(${BSON_DATA_NULL});
-            ${nameWriter}
-        `;
-    }
-
     return `
     if (${accessor} !== undefined) {
         if (${accessor} === null) {
-            ${setNull}
+            writer.writeByte(${BSON_DATA_NULL});
+            ${nameWriter}
         } else {
             ${code}
         }
@@ -611,33 +681,27 @@ function getPropertySerializerCode(
         `;
 }
 
-interface EncoderFn {
-    buildId: number;
-
-    (data: object): Buffer;
-}
-
-function createSchemaSerialize(classSchema: ClassSchema): EncoderFn {
+function createBSONSerialize(classSchema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object) => Buffer {
     const context = new Map<string, any>();
+    const prepared = jitStack.prepare(classSchema);
 
     let getPropertyCode: string[] = [];
 
     for (const property of classSchema.getClassProperties().values()) {
         getPropertyCode.push(`
             //${property.name}:${property.type}
-            ${getPropertySerializerCode(property, context, `obj.${property.name}`)}
+            ${getPropertySerializerCode(property, context, `obj.${property.name}`, jitStack)}
         `);
     }
 
     const functionCode = `
         return function(obj, writer) {
-            writer = writer || new Writer(Buffer.allocUnsafe(_sizer(obj)));
-            const start = writer.offset;
-            writer.offset += 4; //size placeholder
+            const size = _sizer(obj);
+            writer = writer || new Writer(Buffer.allocUnsafe(size));
+            writer.writeUint32(size);
             
             ${getPropertyCode.join('\n')}
             writer.writeNull();
-            writer.writeDelayedSize(writer.offset - start, start);
             
             return writer.buffer;
         }
@@ -645,21 +709,41 @@ function createSchemaSerialize(classSchema: ClassSchema): EncoderFn {
 
     // console.log('functionCode', functionCode);
 
-    const compiled = new Function('_global', '_sizer', 'Writer', 'seekElementSize', ...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, getGlobalStore(), createBSONSizer(classSchema), Writer, seekElementSize, ...context.values())();
-    fn.buildId = classSchema.buildId;
+    context.set('_global', getGlobalStore());
+    context.set('_sizer', getBSONSizer(classSchema));
+    context.set('Writer', Writer);
+    context.set('seekElementSize', seekElementSize);
+
+    const compiled = new Function(...context.keys(), functionCode);
+    const fn = compiled.bind(undefined, ...context.values())();
+    prepared(fn);
     return fn;
 }
 
-const serializers = new Map<ClassSchema, (data: object) => Buffer>();
+/**
+ * Serializes an schema instance to BSON.
+ *
+ * Note: The instances needs to be in the mongo format already since it does not resolve decorated properties.
+ *       So call it with the result of classToMongo(Schema, item).
+ */
+export function getBSONSerializer(schema: ClassSchema | ClassType): (data: any) => Buffer {
+    schema = getClassSchema(schema);
 
-export function getBSONSerializer(schema: ClassSchema | ClassType<any>) {
-    schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
+    const jit = schema.jit;
+    if (jit.bsonSerializer) return jit.bsonSerializer;
 
-    let serializer = serializers.get(schema);
-    if (serializer) return serializer;
+    jit.bsonSerializer = createBSONSerialize(schema);
+    toFastProperties(jit);
+    return jit.bsonSerializer;
+}
 
-    serializer = createSchemaSerialize(schema);
-    serializers.set(schema, serializer);
-    return serializer;
+export function getBSONSizer(schema: ClassSchema | ClassType): (data: any) => number {
+    schema = getClassSchema(schema);
+
+    const jit = schema.jit;
+    if (jit.bsonSizer) return jit.bsonSizer;
+
+    jit.bsonSizer = createBSONSizer(schema);
+    toFastProperties(jit);
+    return jit.bsonSizer;
 }

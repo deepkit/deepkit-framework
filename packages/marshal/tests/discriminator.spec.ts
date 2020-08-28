@@ -156,7 +156,7 @@ test('test discriminator validation', () => {
     {
         const plain = { config: { kind: 'c', moep: 'nope' } };
         expect(validate(User, plain)).toEqual([
-            {code: 'invalid_type', message: 'Invalid union type given. No valid discriminant was found.', path: 'config'}
+            {code: 'invalid_union', message: 'No compatible type for union found', path: 'config'}
         ]);
     }
 });
@@ -175,7 +175,7 @@ test('test discriminator validation in array', () => {
     {
         const plain = { configs: [{ kind: 'c', nope: 'nope' }]};
         expect(validate(UserWithConfigArray, plain)).toEqual([
-            {code: 'invalid_type', message: 'Invalid union type given. No valid discriminant was found.', path: 'configs.0'}
+            {code: 'invalid_union', message: 'No compatible type for union found', path: 'configs.0'}
         ]);
     }
 });

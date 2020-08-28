@@ -7,3 +7,4 @@ export * from './src/meta-data';
 export * from './src/process-locker';
 export * from './src/network';
 export * from './src/bench';
+export * from './src/perf';

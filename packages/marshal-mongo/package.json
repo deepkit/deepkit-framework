@@ -24,6 +24,7 @@
     "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
     "bson": "^4.0.4",
     "buffer": "^5.2.1",
+    "saslprep": "^1.0.3",
     "mongo-uuid": "^1.0.0"
   },
   "devDependencies": {
