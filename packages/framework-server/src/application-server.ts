@@ -1,9 +1,10 @@
 import * as cluster from 'cluster';
 import {applyDefaults, ClassType, each, getClassName} from '@super-hornet/core';
-import {WebSocketWorker} from './worker';
+import {WebWorker} from './worker';
 import {Server} from 'http';
 import {DynamicModule, httpClass, ProviderWithScope, ServiceContainer} from '@super-hornet/framework-server-common';
 import {SuperHornetBaseModule} from './super-hornet-base.module';
+import {Router} from './router';
 
 export class ApplicationServerConfig {
     host: string = '127.0.0.1';
@@ -21,14 +22,14 @@ export class ApplicationServerConfig {
 
 export class ApplicationServer {
     protected config: ApplicationServerConfig;
-    protected masterWorker?: WebSocketWorker;
+    protected masterWorker?: WebWorker;
     protected serviceContainer = new ServiceContainer;
 
     constructor(
         appModule: ClassType,
         config: Partial<ApplicationServerConfig> = {},
         providers: ProviderWithScope[] = [],
-        imports: (ClassType | DynamicModule)[] = []
+        imports: (ClassType | DynamicModule)[] = [],
     ) {
         this.config = applyDefaults(ApplicationServerConfig, config);
 
@@ -91,6 +92,9 @@ export class ApplicationServer {
                 await module.onBootstrap();
             }
         }
+
+        const injector = this.serviceContainer.getRootContext().getInjector();
+        injector.get(Router).build([...this.serviceContainer.httpControllers]);
     }
 
     public async start() {
@@ -106,13 +110,7 @@ export class ApplicationServer {
 
                 this.done();
             } else {
-                const worker = new WebSocketWorker(this.serviceContainer, {
-                    server: this.config.server,
-                    host: this.config.host,
-                    port: this.config.port,
-                    path: this.config.path,
-                    maxPayload: this.config.maxPayload,
-                });
+                const worker = new WebWorker(cluster.worker.id, this.serviceContainer, this.config);
 
                 cluster.on('exit', (w) => {
                     console.log('mayday! mayday! worker', w.id, ' is no more!');
@@ -124,13 +122,7 @@ export class ApplicationServer {
         } else {
             await this.bootstrapMain();
 
-            this.masterWorker = new WebSocketWorker(this.serviceContainer, {
-                server: this.config.server,
-                host: this.config.host,
-                port: this.config.port,
-                path: this.config.path,
-                maxPayload: this.config.maxPayload,
-            });
+            this.masterWorker = new WebWorker(1, this.serviceContainer, this.config);
             await this.masterWorker!.run();
             this.done();
         }

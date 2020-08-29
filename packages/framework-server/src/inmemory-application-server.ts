@@ -16,7 +16,7 @@ export class InMemoryApplicationServer extends ApplicationServer {
             connect(connectionHooks: TransportConnectionHooks) {
                 const worker = new BaseWorker(serviceContainer);
 
-                const connection = worker.createConnection({
+                const connection = worker.createRpcConnection({
                     async send(json: string): Promise<boolean> {
                         //server-to-client
                         connectionHooks.onMessage(json);

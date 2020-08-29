@@ -127,7 +127,17 @@ export class Injector {
     }
 
     public isDefined(token: any) {
-        return this.fetcher.has(token);
+        for (const head of this.heads) {
+            if (head.isDefined(token)) return true;
+        }
+
+        if (this.fetcher.has(token)) return true;
+
+        for (const parent of this.parents) {
+            if (parent.isDefined(token)) return true;
+        }
+
+        return false;
     }
 
     protected create<T>(classType: ClassType<T>): T {

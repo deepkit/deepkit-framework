@@ -101,9 +101,12 @@ class HttpController {
 }
 
 class HttpAction {
+    name: string = '';
     path: string = '';
     httpMethod: string = 'GET';
     methodName: string = '';
+
+    parameterRegularExpressions: {[name: string]: any} = {};
 
     throws: {errorType: ClassType, message?: string}[] = [];
 }
@@ -128,6 +131,10 @@ class HttpActionDecorator {
     onDecorator(target: object, property?: string) {
         this.t.methodName = property || '';
         httpClass.addAction(this.t)(target);
+    }
+
+    name(name: string) {
+        this.t.name = name;
     }
 
     GET(path: string = '') {
@@ -157,6 +164,10 @@ class HttpActionDecorator {
 
     throws(errorType: ClassType, message?: string) {
         this.t.throws.push({errorType, message});
+    }
+
+    regexp(parameterName: string, regex: any) {
+        this.t.parameterRegularExpressions[parameterName] = regex;
     }
 }
 

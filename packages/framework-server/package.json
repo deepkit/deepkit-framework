@@ -53,6 +53,7 @@
     "source-map-support": "^0.5.9"
   },
   "jest": {
+    "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

@@ -83,14 +83,13 @@ class Context {
         return this.injector;
     }
 
-    createSubInjector(scope: string, additionalProviders: Provider[] = [], rootInjector?: Injector): Injector {
+    createSubInjector(scope: string, rootInjector?: Injector): Injector {
         const providers = getProviders(this.providers, scope);
-        providers.push(...additionalProviders);
         if (this.parent) {
             if (this.parent.isRoot() && rootInjector) {
                 return new Injector(providers, [this.getInjector(), rootInjector]);
             } else {
-                return new Injector(providers, [this.getInjector(), this.parent.createSubInjector(scope, [], rootInjector)]);
+                return new Injector(providers, [this.getInjector(), this.parent.createSubInjector(scope, rootInjector)]);
             }
         } else {
             return new Injector(providers, [this.getInjector()]);
@@ -111,7 +110,7 @@ export type SuperHornetController = {
     onInit?: () => Promise<void>;
 }
 
-export class ControllerContainer {
+export class RpcControllerContainer {
     protected sessionInjectors = new Map<number, Injector>();
 
     constructor(protected serviceContainer: ServiceContainer, protected rootInjector?: Injector) {
@@ -132,7 +131,7 @@ export class ControllerContainer {
     public getController<T extends SuperHornetController>(context: number, classType: ClassType): T {
         let subInjector = this.sessionInjectors.get(context);
         if (!subInjector) {
-            subInjector = this.serviceContainer.getContext(context).createSubInjector('session', [], this.rootInjector);
+            subInjector = this.serviceContainer.getContext(context).createSubInjector('session', this.rootInjector);
             this.sessionInjectors.set(context, subInjector);
         }
 

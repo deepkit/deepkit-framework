@@ -42,6 +42,7 @@ export class BenchSuite {
 
     constructor(
         public name: string,
+        protected maxTime: number = 1
     ) {
         this.suite.on('complete', () => {
             const fastest = this.suite.filter('fastest')[0];
@@ -64,7 +65,7 @@ export class BenchSuite {
     addAsync(title: string, fn: () => Promise<void>, options: any = {}) {
         this.suite.add(title, {
             defer: true,
-            maxTime: 1,
+            maxTime: this.maxTime,
             fn: function (deferred: any) {
                 fn().then(deferred.resolve());
             }
@@ -72,7 +73,7 @@ export class BenchSuite {
     }
 
     add(title: string, fn: () => void | Promise<void>, options: any = {}) {
-        options = Object.assign({maxTime: 1}, options);
+        options = Object.assign({maxTime: this.maxTime}, options);
         this.suite.add(title, fn, options);
     }
 

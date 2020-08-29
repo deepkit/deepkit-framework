@@ -2,13 +2,9 @@ import 'reflect-metadata';
 import {ApplicationServer} from '@super-hornet/framework-server';
 import {t, entity} from '@super-hornet/marshal';
 import {hornet, http} from '@super-hornet/framework-server-common';
+import {HttpError} from '@super-hornet/framework-server-common';
 
-class HttpError extends Error {
-    static HTTP_CODE: number = 400;
-}
-
-class HttpInvalidArgument extends HttpError {
-    static HTTP_CODE: 400 = 400;
+class HttpInvalidArgument extends HttpError(400) {
 }
 
 @entity.name('HelloBody')

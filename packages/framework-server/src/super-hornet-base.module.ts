@@ -7,6 +7,8 @@ import {SessionStack} from './application';
 import {ClientConnection} from './client-connection';
 import {ConnectionMiddleware} from '@super-hornet/framework-shared';
 import {SecurityStrategy} from './security';
+import {Router} from './router';
+import {HttpHandler} from './http';
 
 @hornet.module({
     providers: [
@@ -14,7 +16,8 @@ import {SecurityStrategy} from './security';
         InternalClient,
         Configuration,
         SecurityStrategy,
-
+        Router,
+        HttpHandler,
         {provide: SessionStack, scope: 'session'},
         {provide: ClientConnection, scope: 'session'},
         {provide: ConnectionMiddleware, scope: 'session'},

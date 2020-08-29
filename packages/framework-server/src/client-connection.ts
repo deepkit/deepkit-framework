@@ -12,7 +12,7 @@ import {
 import {arrayRemoveItem, each, ProcessLock, ProcessLocker} from "@super-hornet/core";
 import {PropertySchema, uuid} from "@super-hornet/marshal";
 import {Exchange} from "@super-hornet/exchange";
-import {inject, injectable, ControllerContainer, SuperHornetController} from "@super-hornet/framework-server-common";
+import {inject, injectable, RpcControllerContainer, SuperHornetController} from "@super-hornet/framework-server-common";
 import {SecurityStrategy} from "./security";
 
 @injectable()
@@ -39,7 +39,7 @@ export class ClientConnection {
         protected security: SecurityStrategy,
         protected locker: ProcessLocker,
         protected exchange: Exchange,
-        protected controllerContainer: ControllerContainer,
+        protected rpcControllerContainer: RpcControllerContainer,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
         @inject('remoteAddress') public readonly remoteAddress: string,
@@ -338,7 +338,7 @@ export class ClientConnection {
 
         if (!this.cachedActionsTypes[controller][action]) {
 
-            const {classType} = await this.controllerContainer.resolveController(controller);
+            const {classType} = await this.rpcControllerContainer.resolveController(controller);
 
             const access = await this.security.hasAccess(this.sessionStack.getSessionOrUndefined(), classType, action);
             if (!access) {
@@ -361,14 +361,14 @@ export class ClientConnection {
     }
 
     public async action(controller: string, action: string, args: any[]): Promise<{ value: any, encoding: PropertySchema }> {
-        const {context, classType} = await this.controllerContainer.resolveController(controller);
+        const {context, classType} = await this.rpcControllerContainer.resolveController(controller);
 
         const access = await this.security.hasAccess(this.sessionStack.getSessionOrUndefined(), classType, action);
         if (!access) {
             throw new Error(`Access denied to action ` + action);
         }
 
-        const controllerInstance = this.controllerContainer.getController(context, classType);
+        const controllerInstance = this.rpcControllerContainer.getController(context, classType);
 
         if (!this.usedControllers[controller]) {
             this.usedControllers[controller] = {

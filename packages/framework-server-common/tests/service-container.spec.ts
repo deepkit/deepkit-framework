@@ -2,7 +2,7 @@ import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {DynamicModule, hornet, SuperHornetModule} from '../src/module';
-import {ControllerContainer, ServiceContainer} from '../src/service-container';
+import {RpcControllerContainer, ServiceContainer} from '../src/service-container';
 import {injectable} from '../src/injector/injector';
 import {rpc} from '@super-hornet/framework-shared';
 
@@ -37,7 +37,7 @@ test('controller', () => {
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
-        const controllerContainer = new ControllerContainer(serviceContainer);
+        const controllerContainer = new RpcControllerContainer(serviceContainer);
         const controller = controllerContainer.resolve<MyController>('test');
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
@@ -83,7 +83,7 @@ test('controller in module and overwrite service', () => {
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
-        const controllerContainer = new ControllerContainer(serviceContainer);
+        const controllerContainer = new RpcControllerContainer(serviceContainer);
         const controller = controllerContainer.resolve<MyController>('test');
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
@@ -101,7 +101,7 @@ test('controller in module and overwrite service', () => {
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
-        const controllerContainer = new ControllerContainer(serviceContainer);
+        const controllerContainer = new RpcControllerContainer(serviceContainer);
         const controller = controllerContainer.resolve<MyController>('test');
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('different');
