@@ -1,4 +1,4 @@
-import {BaseImplementation, ElementNotFoundException} from "./base";
+import {BaseImplementation, ElementNotFoundException} from './base';
 
 interface ItemElement<T, TYPE> {
     item: T;
@@ -37,7 +37,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
             dependenciesCount: dependencies.length,
             visited: false,
             addedAtLevel: -1,
-        })
+        });
     }
 
     public visit(element: ItemElement<T, TYPE>, parents?: Set<T>): number {
@@ -94,7 +94,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
                 level: this.groupLevel,
                 position: this.position,
                 length: 1,
-            })
+            });
             element.addedAtLevel = this.groupLevel;
             this.sorted.push(element.item);
             this.position++;

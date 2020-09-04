@@ -132,8 +132,8 @@ export class BaseParser {
     parseUUID() {
         //e.g. bef8de96-41fe-442f-b70c-c3a150f8c96c
         //         4      2    2    2       6
-        const size = this.eatUInt32();
-        const type = this.eatByte();
+        this.eatUInt32();
+        this.eatByte();
 
         const offset = this.offset, b = this.buffer;
         let o = hexTable[b[offset]]

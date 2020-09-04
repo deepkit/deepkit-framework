@@ -19,7 +19,7 @@ class AuthenticateResponse extends t.class({
 
 export class X509Auth implements MongoAuth {
     async auth(command: Command, config: MongoClientConfig): Promise<void> {
-        const response = await command.sendAndWait(AuthenticateCommand, {
+        await command.sendAndWait(AuthenticateCommand, {
             authenticate: 1,
             mechanism: 'MONGODB-X509',
             $db: '$external',

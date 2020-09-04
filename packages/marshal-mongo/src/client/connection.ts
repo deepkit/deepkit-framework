@@ -1,4 +1,4 @@
-import {asyncOperation, ClassType, singleStack} from '@super-hornet/core';
+import {asyncOperation, ClassType} from '@super-hornet/core';
 import {Host} from './host';
 import {createConnection, Socket} from 'net';
 import {connect as createTLSConnection, TLSSocket} from 'tls';
@@ -38,7 +38,7 @@ export class MongoConnection {
         protected onClose: (connection: MongoConnection) => void
     ) {
         if (this.config.options.ssl === true) {
-            const options: {[name: string]: any} = {
+            const options: { [name: string]: any } = {
                 host: host.hostname,
                 port: host.port,
                 timeout: config.options.connectTimeoutMS,
@@ -53,7 +53,7 @@ export class MongoConnection {
                 rejectUnauthorized: config.options.rejectUnauthorized,
                 crl: config.options.tlsCRLFile,
                 checkServerIdentity: config.options.checkServerIdentity ? undefined : () => undefined,
-            }
+            };
             for (const i in optional) {
                 if (optional[i]) options[i] = optional[i];
             }

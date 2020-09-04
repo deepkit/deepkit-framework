@@ -1,5 +1,5 @@
-import {getClassName} from "./core";
-import { toFastProperties } from "./perf";
+import {getClassName} from './core';
+import {toFastProperties} from './perf';
 
 /**
  * Logs every call to this method on stdout.

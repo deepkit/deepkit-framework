@@ -87,12 +87,10 @@ export function getUnserializedError(entityName: string, error: any, stack: any,
         return errorObject;
     }
 
-    if (entityName) {
-        if (!hasClassSchemaByName(entityName)) {
-            throw new Error(`Marshal entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
-        }
-        return plainToClass(getClassSchemaByName(entityName).classType, error);
+    if (!hasClassSchemaByName(entityName)) {
+        throw new Error(`Marshal entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
     }
+    return plainToClass(getClassSchemaByName(entityName).classType, error);
 }
 
 // export type Query<T> = {

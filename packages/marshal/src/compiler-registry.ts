@@ -1,5 +1,5 @@
-import {ClassSchema, PropertyCompilerSchema, Types} from './decorators';
-import {jitPartial, jitPatch, JitStack} from './jit';
+import {PropertyCompilerSchema, Types} from './decorators';
+import {jitPartial, JitStack} from './jit';
 
 export type TypeConverterCompilerContext = Map<string, any>;
 export type ReserveVariable = (name?: string) => string;

@@ -1,7 +1,6 @@
 import {BaseResponse, Command} from './command';
-import {ClassSchema, ExtractClassType, getClassSchema, t} from '@super-hornet/marshal';
-import {ClassType, toFastProperties} from '@super-hornet/core';
-import {DEEP_SORT} from '../../query.model';
+import {ClassSchema, getClassSchema, t} from '@super-hornet/marshal';
+import {ClassType} from '@super-hornet/core';
 
 class CountResponse extends t.class({
     n: t.number,

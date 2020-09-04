@@ -1,4 +1,4 @@
-import {ClassSchema, getXToClassFunction, getGlobalStore, jitPartial, PropertySchema, JitConverterOptions, ToClassState, createPartialXToXFunction} from '@super-hornet/marshal';
+import {ClassSchema, createPartialXToXFunction, getGlobalStore, getXToClassFunction, jitPartial, PropertySchema} from '@super-hornet/marshal';
 import {DatabaseQueryModel} from './query';
 import {ClassType} from '@super-hornet/core';
 import {getInstanceState, IdentityMap, PKHash} from './identity-map';

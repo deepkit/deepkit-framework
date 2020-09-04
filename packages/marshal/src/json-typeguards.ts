@@ -94,9 +94,6 @@ registerJSONTypeGuard('any', (property: PropertyCompilerSchema) => {
 
 registerJSONTypeGuard('union', (property: PropertyCompilerSchema) => {
     throw new Error('Union typechecking not implemented. Nested unions thus not supported yet.');
-    return (v: any) => {
-        return true;
-    };
 });
 
 registerJSONTypeGuard('array', (property: PropertyCompilerSchema) => {

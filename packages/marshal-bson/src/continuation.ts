@@ -72,7 +72,6 @@ export function seekElementSize(elementType: number, parser: BaseParser): any {
         case BSON_DATA_DECIMAL128:
         case BSON_DATA_REGEXP:
         case BSON_DATA_SYMBOL:
-        case BSON_DATA_TIMESTAMP:
         case BSON_DATA_MIN_KEY:
         case BSON_DATA_MAX_KEY:
         case BSON_DATA_CODE:

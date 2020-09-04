@@ -426,7 +426,7 @@ export class FS<T extends File> {
                 });
 
                 subject.addTearDown(() => {
-                    if (exchangeSubscription && exchangeSubscription) {
+                    if (exchangeSubscription) {
                         exchangeSubscription.unsubscribe();
                     }
                 });

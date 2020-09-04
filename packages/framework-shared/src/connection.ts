@@ -1,14 +1,15 @@
-import {Collection, JSONObjectCollection} from "./collection";
-import {ClientMessageAll, CollectionStream, ServerMessageAll} from "./contract";
-import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from "./core";
-import {Subscriptions} from "@super-hornet/core-rxjs";
-import {Observable, Subscription} from "rxjs";
-import {ClassType, each, getObjectKeysSize, isFunction, sleep, stack} from '@super-hornet/core';
-import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from "@super-hornet/marshal";
-import {skip} from "rxjs/operators";
+import {Collection, JSONObjectCollection} from './collection';
+import {ClientMessageAll, CollectionStream, ServerMessageAll} from './contract';
+import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from './core';
+import {Subscriptions} from '@super-hornet/core-rxjs';
+import {Observable, Subscription} from 'rxjs';
+import {ClassType, each, getObjectKeysSize, isFunction, sleep} from '@super-hornet/core';
+import {classToPlain, createJITConverterFromPropertySchema, getEntityName, PropertySchema, PropertySchemaSerialized, Types} from '@super-hornet/marshal';
+import {skip} from 'rxjs/operators';
 
 export interface ConnectionWriterStream {
     send(json: string): Promise<boolean>;
+
     bufferedAmount(): number;
 }
 
@@ -93,7 +94,7 @@ export class SimpleConnectionWriter implements ConnectionWriterInterface {
 
 export class ConnectionWriter extends SimpleConnectionWriter {
     protected chunkIds = 0;
-    protected cancelSending: {[messageId: number]: () => void} = {};
+    protected cancelSending: { [messageId: number]: () => void } = {};
 
     constructor(
         protected socket: ConnectionWriterStream,
@@ -160,17 +161,17 @@ export class ConnectionWriter extends SimpleConnectionWriter {
             }
 
             let position = 0;
-            await this.delayedWrite("@batch-start:" + ((message as any)['id'] || 0) + ":" + chunkId + ":" + json.length);
+            await this.delayedWrite('@batch-start:' + ((message as any)['id'] || 0) + ':' + chunkId + ':' + json.length);
             while (sending && position * chunkSize < json.length) {
                 const chunk = json.substr(position * (chunkSize), chunkSize);
                 position++;
                 //maybe we should add here additional delay after x MB, so other connection/messages get their time as well.
                 // console.log('sent chunk', chunkId, position, chunk.substr(0, 20));
-                await this.delayedWrite("@batch:" + chunkId + ":" + chunk);
+                await this.delayedWrite('@batch:' + chunkId + ':' + chunk);
             }
             if (sending) {
                 // console.log('chunk done', chunkId, position);
-                await this.delayedWrite("@batch-end:" + chunkId);
+                await this.delayedWrite('@batch-end:' + chunkId);
             }
             if (id) {
                 delete this.cancelSending[id];

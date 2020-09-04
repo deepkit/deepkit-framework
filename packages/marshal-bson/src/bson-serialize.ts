@@ -1,4 +1,4 @@
-import {ClassSchema, getClassSchema, getGlobalStore, getXToClassFunction, JitStack, PropertySchema} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, getGlobalStore, JitStack, PropertySchema} from '@super-hornet/marshal';
 import {ClassType, isArray, isObject, toFastProperties} from '@super-hornet/core';
 import {seekElementSize} from './continuation';
 import {
@@ -14,7 +14,8 @@ import {
     BSON_DATA_NULL,
     BSON_DATA_NUMBER,
     BSON_DATA_OBJECT,
-    BSON_DATA_OID, BSON_DATA_REGEXP,
+    BSON_DATA_OID,
+    BSON_DATA_REGEXP,
     BSON_DATA_STRING,
     digitByteSize,
     moment

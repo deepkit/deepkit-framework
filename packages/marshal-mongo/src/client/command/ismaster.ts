@@ -4,7 +4,6 @@ import {t} from '@super-hornet/marshal';
 import {BaseResponse, Command} from './command';
 import {MongoClientConfig} from '../client';
 import {Host} from '../host';
-import {getBSONDecoder} from '@super-hornet/marshal-bson';
 
 export class IsMasterResponse extends t.class({
     ismaster: t.boolean,

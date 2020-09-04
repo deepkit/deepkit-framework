@@ -1,10 +1,9 @@
-import {ClassSchema, getClassSchema, PartialEntity, JSONPartial} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, JSONPartial, PartialEntity} from '@super-hornet/marshal';
 import {Entity} from './query';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
 import {isObject} from '@super-hornet/core';
-import {getJitChangeDetector} from './change-detector';
 import {inspect} from 'util';
-import toFastProperties from "to-fast-properties";
+import toFastProperties from 'to-fast-properties';
 
 export type PrimaryKey<T> = { [name in keyof T]?: T[name] };
 

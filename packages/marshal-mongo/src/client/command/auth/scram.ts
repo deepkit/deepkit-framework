@@ -53,11 +53,11 @@ function cleanUsername(username: string) {
     return username.replace('=', '=3D').replace(',', '=2C');
 }
 
-function passwordDigest(username: string, password: string) {
-    if (password.length === 0) throw new MongoError('password cannot be empty');
+function passwordDigest(u: string, p: string) {
+    if (p.length === 0) throw new MongoError('password cannot be empty');
 
     const md5 = createHash('md5');
-    md5.update(`${username}:mongo:${password}`, 'utf8');
+    md5.update(`${u}:mongo:${p}`, 'utf8');
     return md5.digest('hex');
 }
 

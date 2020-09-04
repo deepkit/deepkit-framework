@@ -52,33 +52,33 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
     }
 
     async migrate(classSchemas: Iterable<ClassSchema>) {
-        for (const schema of classSchemas) {
-            // const collection = await this.connection.getCollection(schema);
-            // //collection not existing yet, so create lock
-            // for (const [name, index] of schema.indices.entries()) {
-            //     const fields: { [name: string]: 1 } = {};
-            //
-            //     if (index.fields.length === 1 && index.fields[0] === '_id') continue;
-            //
-            //     for (const f of index.fields) {
-            //         fields[f] = 1;
-            //     }
-            //
-            //     const options: any = {
-            //         name: name
-            //     };
-            //     if (index.options.unique) options.unique = true;
-            //     if (index.options.sparse) options.sparse = true;
-            //
-            //     try {
-            //         await collection.createIndex(fields, options);
-            //     } catch (error) {
-            //         console.log('failed index', name, '. Recreate ...');
-            //         //failed, so drop and re-create
-            //         await collection.dropIndex(name);
-            //         await collection.createIndex(fields, options);
-            //     }
-            // }
-        }
+        // for (const schema of classSchemas) {
+        //     const collection = await this.connection.getCollection(schema);
+        //     //collection not existing yet, so create lock
+        //     for (const [name, index] of schema.indices.entries()) {
+        //         const fields: { [name: string]: 1 } = {};
+        //
+        //         if (index.fields.length === 1 && index.fields[0] === '_id') continue;
+        //
+        //         for (const f of index.fields) {
+        //             fields[f] = 1;
+        //         }
+        //
+        //         const options: any = {
+        //             name: name
+        //         };
+        //         if (index.options.unique) options.unique = true;
+        //         if (index.options.sparse) options.sparse = true;
+        //
+        //         try {
+        //             await collection.createIndex(fields, options);
+        //         } catch (error) {
+        //             console.log('failed index', name, '. Recreate ...');
+        //             //failed, so drop and re-create
+        //             await collection.dropIndex(name);
+        //             await collection.createIndex(fields, options);
+        //         }
+        //     }
+        // }
     };
 }

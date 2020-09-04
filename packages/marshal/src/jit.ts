@@ -1,6 +1,6 @@
 import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema} from './decorators';
 import {isExcluded} from './mapper';
-import {ClassType, getClassName} from '@super-hornet/core';
+import {ClassType} from '@super-hornet/core';
 import {getDataConverterJS, reserveVariable} from './compiler-registry';
 import toFastProperties from 'to-fast-properties';
 
