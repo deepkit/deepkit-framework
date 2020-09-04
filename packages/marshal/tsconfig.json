@@ -34,7 +34,7 @@
   ],
   "references": [
     {
-      "path": "node_modules/@super-hornet/core/tsconfig.json"
+      "path": "../core/tsconfig.json"
     }
   ]
 }

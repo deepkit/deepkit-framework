@@ -183,8 +183,8 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
         code = `
             size += 4; //size
             size += 1; //sub type
-            if (${accessor}.buffer && 'number' === typeof ${accessor}.buffer.byteLength){
-                size += ${accessor}.buffer.byteLength;
+            if (${accessor}['_bsontype'] === 'Binary') {
+                size += ${accessor}.buffer.byteLength
             } else {
                 size += ${accessor}.byteLength;
             }
@@ -411,11 +411,16 @@ export class Writer {
                 this.writeByte(BSON_DATA_BINARY);
                 nameWriter();
             }
+            let view = value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+            if (value['_bsontype'] === 'Binary') {
+                view = (value as Binary).buffer;
+            }
+
             this.writeUint32(value.byteLength);
             this.writeByte(BSON_BINARY_SUBTYPE_DEFAULT);
 
             for (let i = 0; i < value.byteLength; i++) {
-                this.buffer[this.offset++] = value[i];
+                this.buffer[this.offset++] = view[i];
             }
         } else if (isArray(value)) {
             if (nameWriter) {

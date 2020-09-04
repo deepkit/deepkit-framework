@@ -1,5 +1,5 @@
 import {eachPair, isPromise} from "@super-hornet/core";
-import {createJITConverterFromPropertySchema, getClassSchema, jitValidateProperty, PropertySchema, ValidationError} from "@super-hornet/marshal";
+import {createJITConverterFromPropertySchema, getClassSchema, jitValidateProperty, PropertySchema, ValidationFailedItem} from "@super-hornet/marshal";
 import {ValidationErrorItem, ValidationParameterError} from "./core";
 
 export type ActionTypes = { parameters: PropertySchema[] };
@@ -18,7 +18,7 @@ export async function executeAction(
             );
         }
 
-        const errors: ValidationError[] = [];
+        const errors: ValidationFailedItem[] = [];
 
         jitValidateProperty(p)(args[i], methodName + '#' + String(i), errors);
 

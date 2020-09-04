@@ -414,7 +414,7 @@ export class Client {
 
                         this.currentConnectionId++;
 
-                        reject(new OfflineError(`Could not connect: ${String(error)}`));
+                        reject(new OfflineError(`Could not connect: ${error.message}`));
                     },
 
                     onMessage: (data: string) => {

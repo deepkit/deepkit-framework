@@ -29,7 +29,6 @@
     "rxjs": "~6.5.3"
   },
   "jest": {
-    "runner": "jest-serial-runner",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

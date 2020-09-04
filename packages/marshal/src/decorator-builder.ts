@@ -12,42 +12,50 @@ export function createFluidDecorator<API extends APIClass<any>>
     api: API,
     modifier: { name: string, args?: any }[],
     collapse: (modifier: { name: string, args?: any }[], target: object, property?: string, parameterIndexOrDescriptor?: any) => void,
+    returnCollapse: boolean = false
 ): FluidDecorator<ExtractClass<API>> {
     const fn = function (target: object, property?: string, parameterIndexOrDescriptor?: any) {
-        collapse(modifier, target, property, parameterIndexOrDescriptor);
+        const res = collapse(modifier, target, property, parameterIndexOrDescriptor);
+        if (returnCollapse) return res;
     };
 
-    const proto = api.prototype;
     const methods: string[] = [];
     Object.defineProperty(fn, '_methods', {value: methods});
 
-    for (const name of Object.getOwnPropertyNames(proto)) {
-        if (name === 'constructor') continue;
-        if (name === 'onDecorator') continue;
+    let current = api;
+    while (current.prototype) {
+        let proto = current.prototype;
+        for (const name of Object.getOwnPropertyNames(proto)) {
+            if (name === 'constructor') continue;
+            if (name === 'onDecorator') continue;
 
-        const descriptor = Object.getOwnPropertyDescriptor(proto, name);
-        methods.push(name);
-        if (descriptor && descriptor.get) {
-            //its a magic shizzle
-            Object.defineProperty(fn, name, {
-                configurable: true,
-                enumerable: false,
-                get: () => {
-                    return createFluidDecorator(api, [...modifier, {name}], collapse);
-                }
-            });
-        } else {
-            //regular method
-            Object.defineProperty(fn, name, {
-                configurable: true,
-                enumerable: false,
-                get: () => {
-                    return (...args: any[]) => {
-                        return createFluidDecorator(api, [...modifier, {name, args}], collapse);
-                    };
-                }
-            });
+            const descriptor = Object.getOwnPropertyDescriptor(proto, name);
+            methods.push(name);
+            if (descriptor && descriptor.get) {
+                //its a magic shizzle
+                Object.defineProperty(fn, name, {
+                    configurable: true,
+                    enumerable: false,
+                    get: () => {
+                        return createFluidDecorator(api, [...modifier, {name}], collapse, returnCollapse);
+                    }
+                });
+            } else {
+                //regular method
+                Object.defineProperty(fn, name, {
+                    configurable: true,
+                    enumerable: false,
+                    get: () => {
+                        return (...args: any[]) => {
+                            return createFluidDecorator(api, [...modifier, {name, args}], collapse, returnCollapse);
+                        };
+                    }
+                });
+            }
         }
+
+        //resolve parent
+        current = Object.getPrototypeOf(current);
     }
 
     return fn as any;
@@ -77,7 +85,7 @@ export interface ApiTypeInterface<T> {
 
 export type APIClass<T> = ClassType<ApiTypeInterface<T>>;
 export type ExtractClass<T> = T extends ClassType<infer K> ? K : never;
-export type ExtractApiDataType<T> = T extends ClassType<infer K> ? K extends { t: infer P } ? P : never : never;
+export type ExtractApiDataType<T> = T extends ClassType<infer K> ? K extends { t: infer P } ? P : never : (T extends { t: infer P } ? P : never);
 
 export type ClassDecoratorResult<API extends APIClass<any>> =
     FluidDecorator<ExtractClass<API>>
@@ -137,7 +145,7 @@ export function createPropertyDecoratorContext<API extends APIClass<any>, T = Ex
             map = new Map();
             targetMap.set(target, map);
         }
-        const index = property ?? parameterIndexOrDescriptor;
+        const index = property + '$$' + parameterIndexOrDescriptor;
         const api: ApiTypeInterface<any> = map.get(index) ?? new apiType;
 
         if (api.onDecorator) api.onDecorator(target, property, parameterIndexOrDescriptor);
@@ -162,12 +170,45 @@ export function createPropertyDecoratorContext<API extends APIClass<any>, T = Ex
         get: () => {
             return (target: object, property?: string, parameterIndexOrDescriptor?: any) => {
                 const map = targetMap.get(target);
-                const index = property ?? parameterIndexOrDescriptor;
+                const index = property + '$$' + parameterIndexOrDescriptor;
                 const api = map ? map.get(index) : undefined;
                 return api ? api.t : undefined;
             };
         }
     });
+
+    return fn as any;
+}
+
+export type FreeDecoratorFn<API> = {(): ExtractApiDataType<API>};
+
+export type FreeFluidDecorator<API> = {
+    [name in keyof ExtractClass<API>]: ExtractClass<API>[name] extends (...args: infer K) => any
+        ? (...args: K) => FreeFluidDecorator<API>
+        : FreeFluidDecorator<API>
+} & FreeDecoratorFn<API>;
+
+export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<API>
+
+export function createFreeDecoratorContext<API extends APIClass<any>, T = ExtractApiDataType<API>>(
+    apiType: API
+): FreeDecoratorResult<API> {
+    function collapse(modifier: { name: string, args?: any }[]) {
+        const api = new apiType;
+
+        for (const fn of modifier) {
+            if (fn.args) {
+                (api as any)[fn.name].bind(api)(...fn.args);
+            } else {
+                //just call the getter
+                (api as any)[fn.name];
+            }
+        }
+
+        return api.t;
+    }
+
+    const fn = createFluidDecorator(apiType, [], collapse, true);
 
     return fn as any;
 }

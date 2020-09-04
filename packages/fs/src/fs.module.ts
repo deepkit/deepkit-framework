@@ -1,4 +1,4 @@
-import {hornet} from '@super-hornet/framework-server-common';
+import {hornet} from '@super-hornet/framework';
 import {FsConfig} from './fs.config';
 import {Database, DatabaseAdapter} from '@super-hornet/marshal-orm';
 import {HornetFile} from '@super-hornet/framework-shared';

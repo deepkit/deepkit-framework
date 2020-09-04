@@ -7,9 +7,8 @@ import {join} from 'path';
 import {AppServerModule} from './src/main.server';
 import {APP_BASE_HREF} from '@angular/common';
 import {existsSync} from 'fs';
-import {ApplicationServer, ApplicationServerConfig} from '@super-hornet/framework-server';
+import {ApplicationServer, ApplicationServerConfig, hornet} from '@super-hornet/framework';
 import {environment} from './src/environments/environment';
-import {hornet} from '@super-hornet/framework-server-common';
 import {rpc} from '@super-hornet/framework-shared';
 
 (global as any).WebSocket = require('ws');

@@ -1,21 +1,9 @@
 import {PropertyValidatorError} from './validation';
-import {
-    ClassType,
-    eachKey,
-    eachPair,
-    getClassName,
-    isClass,
-    isFunction,
-    isNumber,
-    isObject,
-    isPlainObject, isString,
-} from '@super-hornet/core';
+import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject,} from '@super-hornet/core';
 import getParameterNames from 'get-parameter-names';
-import {isArray} from './utils';
+import {FlattenIfArray, isArray} from './utils';
 import {Buffer} from 'buffer';
-import {FlattenIfArray} from './utils';
 import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
-import toFastProperties from 'to-fast-properties';
 
 export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> | ClassSchema };
@@ -857,9 +845,11 @@ export class ClassSchema<T = any> {
                 ? Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType)
                 : Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
 
+            const names = getParameterNames(this.classType.prototype[name]);
+
             for (const [i, t] of eachPair(paramtypes)) {
                 if (!properties[i]) {
-                    properties[i] = new PropertySchema(String(i));
+                    properties[i] = new PropertySchema(names[i] || String(i));
                     if (paramtypes[i] !== Object) {
                         properties[i].setFromJSType(t);
                     }
@@ -1221,11 +1211,11 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
     return classSchema;
 }
 
-type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
+export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
 
-type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends FieldDecoratorResult<infer K> ? K : never;
+export type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends FieldDecoratorResult<infer K> ? K : never;
 
-type ExtractClassDefinition<T extends PlainSchemaProps> = {
+export type ExtractClassDefinition<T extends PlainSchemaProps> = {
     [name in keyof T]:
     T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> :
         T[name] extends ClassSchema<infer K> ? K :
@@ -1756,7 +1746,9 @@ function createFieldDecoratorResult<T>(
                     argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
                 } else {
                     if (!argumentsProperties[parameterIndexOrDescriptor]) {
-                        argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(String(parameterIndexOrDescriptor));
+                        const constructorParamNames = getParameterNames((target as any)[methodName]);
+                        const name = constructorParamNames[parameterIndexOrDescriptor] || String(parameterIndexOrDescriptor);
+                        argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(name);
                         argumentsProperties[parameterIndexOrDescriptor].methodName = methodName;
                     }
 

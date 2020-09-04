@@ -1,5 +1,5 @@
 import {ClassType} from '@super-hornet/core';
-import {handleCustomValidator, ValidationError} from './validation';
+import {handleCustomValidator, ValidationFailedItem} from './validation';
 import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator} from './decorators';
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
 import './jit-validation-templates';
@@ -133,7 +133,7 @@ export function getDataCheckerJS(
     }
 }
 
-export function jitValidateProperty(property: PropertyCompilerSchema, classType?: ClassType<any>): (value: any, path?: string, errors?: ValidationError[], overwritePah?: string) => ValidationError[] {
+export function jitValidateProperty(property: PropertyCompilerSchema, classType?: ClassType<any>): (value: any, path?: string, errors?: ValidationFailedItem[], overwritePah?: string) => ValidationFailedItem[] {
     if (property.type === 'class') {
         const foreignSchema = getClassSchema(property.resolveClassType!);
         if (foreignSchema.decorator) {
@@ -149,7 +149,7 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
     const context = new Map<any, any>();
     const jitStack = new JitStack();
     context.set('_classType', classType);
-    context.set('ValidationError', ValidationError);
+    context.set('ValidationError', ValidationFailedItem);
 
     const functionCode = `
         return function(_data, _path, _errors, _overwritePath) {
@@ -173,7 +173,7 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
     }
 }
 
-export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: JitStack = new JitStack()): (value: any, path?: string, errors?: ValidationError[]) => ValidationError[] {
+export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: JitStack = new JitStack()): (value: any, path?: string, errors?: ValidationFailedItem[]) => ValidationFailedItem[] {
     schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
 
     const jit = jitFunctions.get(schema);
@@ -183,7 +183,7 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
     const prepared = jitStack.prepare(schema);
 
     context.set('_classType', schema.classType);
-    context.set('ValidationError', ValidationError);
+    context.set('ValidationError', ValidationFailedItem);
 
     const checks: string[] = [];
 
@@ -236,8 +236,8 @@ export function jitValidatePartial<T, K extends keyof T>(
     classType: ClassType<T>,
     partial: { [name: string]: any },
     path?: string,
-    errors?: ValidationError[],
-): ValidationError[] {
+    errors?: ValidationFailedItem[],
+): ValidationFailedItem[] {
     errors = errors ? errors : [];
     const schema = getClassSchema(classType);
     schema.loadDefaults();

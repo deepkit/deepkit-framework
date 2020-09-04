@@ -1,4 +1,4 @@
-import {hornet} from '@super-hornet/framework-server-common';
+import {hornet} from '@super-hornet/framework';
 
 @hornet.module({
   controllers: []

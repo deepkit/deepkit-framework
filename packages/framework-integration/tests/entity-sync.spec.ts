@@ -1,6 +1,6 @@
 import 'jest-extended';
 import {Collection, EntitySubject, IdInterface, ReactiveSubQuery, rpc} from '@super-hornet/framework-shared';
-import {ClientConnection, EntityStorage, ExchangeDatabase} from '@super-hornet/framework-server';
+import {ClientConnection, EntityStorage, ExchangeDatabase} from '@super-hornet/framework';
 import {closeAllCreatedServers, createServerClientPair} from './util';
 import {Entity, getClassSchema, t, uuid} from '@super-hornet/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';
@@ -20,7 +20,7 @@ afterAll(async () => {
 // global.Promise = Promise;
 
 class UserBase implements IdInterface {
-    @t.primary().uuid()
+    @t.primary.uuid
     id: string = uuid();
 
     @t

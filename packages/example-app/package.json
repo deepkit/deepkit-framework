@@ -1,0 +1,29 @@
+{
+  "name": "@super-hornet/example-server",
+  "private": true,
+  "version": "1.0.0-alpha.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@super-hornet/core": "^1.0.0-alpha.0",
+    "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
+    "@super-hornet/framework-client": "^1.0.0-alpha.0",
+    "@super-hornet/framework": "^1.0.0-alpha.0",
+    "@super-hornet/framework-shared": "^1.0.0-alpha.0",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0",
+    "buffer": "^5.2.1",
+    "rxjs": "~6.5.3",
+    "sift": "^7.0.1",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.6",
+    "typed-html": "^2.0.0",
+    "reflect-metadata": "^0.1.13",
+    "tmp": "^0.0.33"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

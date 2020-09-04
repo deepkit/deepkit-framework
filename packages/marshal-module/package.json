@@ -14,7 +14,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@super-hornet/framework-server-common": "^1.0.0-alpha.0",
+    "@super-hornet/framework": "^1.0.0-alpha.0",
     "@super-hornet/marshal-orm": "^1.0.0-alpha.0"
   },
   "devDependencies": {

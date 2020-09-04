@@ -8,7 +8,7 @@ import {
     validatedPlainToClass,
     validates,
     validatesFactory,
-    ValidationError,
+    ValidationFailedItem,
     ValidationFailed
 } from "../index";
 import {CustomError, isPlainObject} from '@super-hornet/core';
@@ -40,7 +40,7 @@ test('test simple', async () => {
 
     const errors = validate(Page, {name: 'peter'});
     expect(errors.length).toBe(1);
-    expect(errors[0]).toBeInstanceOf(ValidationError);
+    expect(errors[0]).toBeInstanceOf(ValidationFailedItem);
     expect(errors[0].message).toBe('Required value is undefined');
     expect(errors[0].path).toBe('age');
 });

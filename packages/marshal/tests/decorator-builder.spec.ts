@@ -1,5 +1,102 @@
 import 'jest';
-import {createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator} from '../src/decorator-builder';
+import {createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, mergeDecorator} from '../src/decorator-builder';
+
+test('without host', () => {
+    class Dec1Model {
+        name: string = '';
+    }
+
+    const dec1 = createFreeDecoratorContext(
+        class {
+            t = new Dec1Model;
+
+            name(name: string) {
+                this.t.name = name;
+            };
+        }
+    );
+
+    {
+        const c2 = dec1.name('Peter')();
+        expect(c2).toBeInstanceOf(Dec1Model)
+        expect(c2.name).toBe('Peter');
+    }
+
+    {
+        const c2 = dec1();
+        expect(c2).toBeInstanceOf(Dec1Model)
+        expect(c2.name).toBe('');
+    }
+});
+
+test('collapsing correcly', () => {
+    class ArgDefinition {
+        optional: boolean = false;
+        default?: any;
+    }
+
+    const dec1 = createFreeDecoratorContext(
+        class {
+            t = new ArgDefinition;
+
+            get optional() {
+                this.t.optional = true;
+                return;
+            }
+
+            default(value: any) {
+                this.t.default = value;
+            }
+
+        }
+    );
+
+    {
+        const c2 = dec1.optional.default('Peter')();
+        expect(c2).toBeInstanceOf(ArgDefinition)
+        expect(c2.default).toBe('Peter');
+    }
+
+    {
+        const c2 = dec1.optional();
+        expect(c2).toBeInstanceOf(ArgDefinition)
+        expect(c2.default).toBe(undefined);
+    }
+});
+
+test('inheritance', () => {
+    class Dec1Model {
+        name: string = '';
+    }
+
+    class A {
+        t = new Dec1Model();
+
+        methodA() {
+
+        }
+    }
+
+
+    class B extends A {
+        methodB() {
+
+        }
+    }
+
+    const dec1 = createFreeDecoratorContext(B);
+
+    {
+        const r = dec1.methodB()();
+        expect(r).toBeInstanceOf(Dec1Model)
+    }
+
+    {
+        const r = dec1.methodA()();
+        expect(r).toBeInstanceOf(Dec1Model)
+    }
+});
+
 
 test('merge', () => {
     const dec1 = createClassDecoratorContext(

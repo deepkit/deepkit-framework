@@ -1,10 +1,11 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {createBSONSizer, getBSONSerializer, getBSONSizer, hexToByte, uuidStringToByte} from '../src/bson-serialize';
-import {f, t, uuid} from '@super-hornet/marshal';
+import {f, plainToClass, t, uuid} from '@super-hornet/marshal';
 import * as Moment from 'moment';
 import {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} from 'bson';
 import {getBSONDecoder} from '../src/bson-jit-parser';
+import {randomBytes} from 'crypto';
 
 test('hexToByte', () => {
     expect(hexToByte('00')).toBe(0);
@@ -318,7 +319,14 @@ test('basic binary', () => {
 
 
 test('basic arrayBuffer', () => {
-    const object = {binary: new ArrayBuffer(5)};
+    const arrayBuffer = new ArrayBuffer(5)
+    const view = new Uint8Array(arrayBuffer);
+    view[0] = 22;
+    view[1] = 44;
+    view[2] = 55;
+    view[3] = 66;
+    view[4] = 77;
+    const object = {binary: arrayBuffer};
 
     const expectedSize =
         4 //size uint32
@@ -756,7 +764,7 @@ test('model 1, missing `public`', () => {
             tags: ['a', 'b', 'c'],
             id: null,
             name: 'Peter 1',
-        }
+        };
         const bson = getBSONSerializer(User)(user);
         expect(getBSONDecoder(User)(bson)).toEqual(deserialize(bson));
     }
@@ -765,7 +773,7 @@ test('model 1, missing `public`', () => {
 test('decorated', () => {
     class DecoratedValue {
         @t.array(t.string).decorated
-        items: string[] = []
+        items: string[] = [];
     }
 
     const object = {v: ['Peter3']};
@@ -853,4 +861,103 @@ test('reference', () => {
         const bson = getBSONSerializer(updateSchema)(object);
         expect(getBSONDecoder(updateSchema)(bson)).toEqual(deserialize(bson));
     }
+});
+
+test('bson length', () => {
+    const nonce = randomBytes(24);
+
+    class SaslStartCommand extends t.class({
+        saslStart: t.literal(1),
+        $db: t.string,
+        mechanism: t.string,
+        payload: t.type(Uint8Array),
+        autoAuthorize: t.literal(1),
+        options: {
+            skipEmptyExchange: t.literal(true)
+        }
+    }) {
+    }
+
+    const message = {
+        saslStart: 1,
+        '$db': 'admin',
+        mechanism: 'SCRAM-SHA-1',
+        payload: Buffer.concat([Buffer.from('n,,', 'utf8'), Buffer.from(`n=Peter,r=${nonce.toString('base64')}`, 'utf8')]),
+        autoAuthorize: 1,
+        options: {skipEmptyExchange: true}
+    };
+
+    expect(message.payload.byteLength).toBe(13 + nonce.toString('base64').length);
+
+    const size = getBSONSizer(SaslStartCommand)(message);
+    expect(size).toBe(calculateObjectSize(message));
+
+    const bson = getBSONSerializer(SaslStartCommand)(message);
+
+    expect(bson).toEqual(serialize(message));
+
+});
+
+test('arrayBuffer', () => {
+    const schema = t.schema({
+        name: t.string,
+        secondId: t.mongoId,
+        preview: t.type(ArrayBuffer),
+    })
+
+    const message = plainToClass(schema, {
+        name: 'myName',
+        secondId: '5bf4a1ccce060e0b38864c9e',
+        preview: 'QmFhcg==', //Baar
+    });
+
+    expect(Buffer.from(message.preview).toString('utf8')).toBe('Baar');
+
+    const mongoMessage = {
+        name: message.name,
+        secondId: new ObjectId(message.secondId),
+        preview: new Binary(Buffer.from(message.preview)),
+    }
+    const size = getBSONSizer(schema)(message);
+    expect(size).toBe(calculateObjectSize(mongoMessage));
+
+    const bson = getBSONSerializer(schema)(message);
+
+    expect(bson).toEqual(serialize(mongoMessage));
+
+    const back = getBSONDecoder(schema)(bson);
+    expect(Buffer.from(back.preview).toString('utf8')).toBe('Baar');
+    expect(back.preview).toEqual(message.preview);
+});
+
+test('typed array', () => {
+    const schema = t.schema({
+        name: t.string,
+        secondId: t.mongoId,
+        preview: t.type(Uint16Array),
+    })
+
+    const message = plainToClass(schema, {
+        name: 'myName',
+        secondId: '5bf4a1ccce060e0b38864c9e',
+        preview: 'LAA3AEIATQBYAA==', //44, 55, 66, 77, 88
+    });
+
+    expect(message.preview).toBeInstanceOf(Uint16Array);
+    expect(message.preview.byteLength).toBe(10);
+
+    const mongoMessage = {
+        name: message.name,
+        secondId: new ObjectId(message.secondId),
+        preview: new Binary(Buffer.from(new Uint8Array(message.preview.buffer, message.preview.byteOffset, message.preview.byteLength))),
+    }
+    const size = getBSONSizer(schema)(message);
+    expect(size).toBe(calculateObjectSize(mongoMessage));
+
+    const bson = getBSONSerializer(schema)(message);
+
+    expect(bson).toEqual(serialize(mongoMessage));
+
+    const back = getBSONDecoder(schema)(bson);
+    expect(back.preview).toEqual(message.preview);
 });

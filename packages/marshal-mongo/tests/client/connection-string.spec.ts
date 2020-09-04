@@ -5,19 +5,19 @@ test('connection string basic', async () => {
     {
         const config = new MongoClientConfig('mongodb://localhost');
         expect(config.defaultDb).toBe('');
-        expect(await config.getHosts()).toEqual([{host: 'localhost', port: 27017}]);
+        expect(await config.getHosts()).toMatchObject([{hostname: 'localhost', port: 27017}]);
     }
 
     {
         const config = new MongoClientConfig('mongodb://localhost/defaultDb');
         expect(config.defaultDb).toBe('defaultDb');
-        expect(await config.getHosts()).toEqual([{host: 'localhost', port: 27017}]);
+        expect(await config.getHosts()).toMatchObject([{hostname: 'localhost', port: 27017}]);
     }
 
     {
         const config = new MongoClientConfig('mongodb://localhost/defaultDb?connectTimeoutMS=1233');
         expect(config.defaultDb).toBe('defaultDb');
-        expect(await config.getHosts()).toEqual([{host: 'localhost', port: 27017}]);
+        expect(await config.getHosts()).toMatchObject([{hostname: 'localhost', port: 27017}]);
     }
 });
 
@@ -49,26 +49,26 @@ test('connection string basic, replica set', async () => {
     {
         const config = new MongoClientConfig('mongodb://localhost,127.0.0.1,mongo.com:26655');
         expect(config.defaultDb).toBe('');
-        expect(await config.getHosts()).toEqual([
-            {host: 'localhost', port: 27017},
-            {host: '127.0.0.1', port: 27017},
-            {host: 'mongo.com', port: 26655},
+        expect(await config.getHosts()).toMatchObject([
+            {hostname: 'localhost', port: 27017},
+            {hostname: '127.0.0.1', port: 27017},
+            {hostname: 'mongo.com', port: 26655},
         ]);
     }
     {
         const config = new MongoClientConfig('mongodb://localhost:26622,127.0.0.1,mongo.com:26655/defaultDb');
         expect(config.defaultDb).toBe('defaultDb');
-        expect(await config.getHosts()).toEqual([
-            {host: 'localhost', port: 26622},
-            {host: '127.0.0.1', port: 27017},
-            {host: 'mongo.com', port: 26655},
+        expect(await config.getHosts()).toMatchObject([
+            {hostname: 'localhost', port: 26622},
+            {hostname: '127.0.0.1', port: 27017},
+            {hostname: 'mongo.com', port: 26655},
         ]);
     }
 });
 
 test('connection string isSrv', async () => {
     {
-        const config = new MongoClientConfig('mongodb-srv://example.com');
+        const config = new MongoClientConfig('mongodb+srv://example.com');
         expect(config.defaultDb).toBe('');
         expect(config.isSrv).toBe(true);
         expect(config.srvDomain).toBe('example.com');

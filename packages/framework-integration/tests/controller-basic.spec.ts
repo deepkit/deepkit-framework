@@ -76,7 +76,7 @@ test('basic setup and methods', async () => {
         expect(u).toBeInstanceOf(PropertySchema);
         expect(u.type).toBe('class');
         expect(u.classType).toBe(User);
-        expect(u.toJSON()).toMatchObject({name: '0', type: 'class', classType: 'controller-basic/user'});
+        expect(u.toJSON()).toMatchObject({name: 'user', type: 'class', classType: 'controller-basic/user'});
     }
 
     const {client, close} = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));

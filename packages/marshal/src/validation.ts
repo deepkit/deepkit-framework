@@ -17,7 +17,7 @@ export class PropertyValidatorError {
  * Path defines the shallow or deep path (using dots).
  * Message is an arbitrary message in english.
  */
-export class ValidationError {
+export class ValidationFailedItem {
     constructor(
         /**
          * The path to the property. May be a deep path separated by dot.
@@ -39,7 +39,7 @@ export class ValidationError {
  *
  */
 export class ValidationFailed {
-    constructor(public readonly errors: ValidationError[]) {
+    constructor(public readonly errors: ValidationFailedItem[]) {
     }
 }
 
@@ -48,19 +48,19 @@ export function handleCustomValidator<T>(
     validator: PropertyValidator,
     value: any,
     propertyPath: string,
-    errors: ValidationError[],
+    errors: ValidationFailedItem[],
     classType?: ClassType<any>,
 ) {
     try {
         const result = validator.validate(value, propSchema.name, classType);
         if (result instanceof PropertyValidatorError) {
-            errors.push(new ValidationError(propertyPath, result.code, result.message));
+            errors.push(new ValidationFailedItem(propertyPath, result.code, result.message));
         }
     } catch (error) {
         if (error instanceof PropertyValidatorError) {
-            errors.push(new ValidationError(propertyPath, error.code, error.message || String(error)));
+            errors.push(new ValidationFailedItem(propertyPath, error.code, error.message || String(error)));
         } else {
-            errors.push(new ValidationError(propertyPath, 'error', error.message || String(error)));
+            errors.push(new ValidationFailedItem(propertyPath, 'error', error.message || String(error)));
         }
     }
 }
@@ -68,8 +68,8 @@ export function handleCustomValidator<T>(
 /**
  * Validates a set of method arguments and returns the number of errors found.
  */
-export function validateMethodArgs<T>(classType: ClassType<T>, methodName: string, args: any[]): ValidationError[] {
-    const errors: ValidationError[] = [];
+export function validateMethodArgs<T>(classType: ClassType<T>, methodName: string, args: any[]): ValidationFailedItem[] {
+    const errors: ValidationFailedItem[] = [];
     const schema = getClassSchema(classType);
     schema.loadDefaults();
 
@@ -98,7 +98,7 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * validate(SimpleModel, {id: false});
  * ```
  */
-export function validate<T extends ClassType | ClassSchema>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>, path?: string): ValidationError[] {
+export function validate<T extends ClassType | ClassSchema>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>, path?: string): ValidationFailedItem[] {
     return jitValidate(classType)(item, path);
 }
 

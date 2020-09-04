@@ -29,10 +29,10 @@
   },
   "references": [
     {
-      "path": "./node_modules/@super-hornet/framework-server/tsconfig.json"
+      "path": "../framework/tsconfig.json"
     },
     {
-      "path": "./node_modules/@super-hornet/framework-client/tsconfig.json"
+      "path": "../framework-client/tsconfig.json"
     }
   ]
 }

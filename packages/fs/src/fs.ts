@@ -8,7 +8,7 @@ import {ProcessLocker} from "./process-locker";
 import {Database} from "@super-hornet/marshal-orm";
 import {partialClassToPlain} from "@super-hornet/marshal";
 import {decodePayloadAsJson, encodePayloadAsJSONArrayBuffer} from "./exchange-prot";
-import {injectable} from "@super-hornet/framework-server-common";
+import {injectable} from "@super-hornet/framework";
 
 export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
 

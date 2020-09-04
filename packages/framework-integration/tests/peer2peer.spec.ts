@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Entity, f} from '@super-hornet/marshal';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {InternalClient, SecurityStrategy, Session} from '@super-hornet/framework-server';
+import {hornet, InternalClient, SecurityStrategy, Session} from '@super-hornet/framework';
 import {Observable} from 'rxjs';
 import {sleep} from '@super-hornet/core';
 import {rpc} from '@super-hornet/framework-shared';
@@ -158,11 +158,11 @@ test('test peer2peer internal client', async () => {
         }
     }
 
-    const {client, server, createClient, close} = await createServerClientPair('test peer2peer internal client', appModuleForControllers([TestController]));
+    const {client, server, app, close} = await createServerClientPair('test peer2peer internal client', appModuleForControllers([TestController]));
 
     await client.registerController('test', new TestController);
 
-    const internalClient: InternalClient = server.getInjector().get(InternalClient);
+    const internalClient: InternalClient = app.get(InternalClient);
     const internalClientConnection = internalClient.create();
     const internalPeerController = internalClientConnection.peerController<TestController>('test');
 
@@ -201,12 +201,12 @@ test('test peer2peer offline', async () => {
         }
     }
 
-    const {client, server, createClient, close} = await createServerClientPair('test peer2peer offline', appModuleForControllers([TestController]));
+    const {client, server, app, createClient, close} = await createServerClientPair('test peer2peer offline', appModuleForControllers([TestController]));
 
     const client2 = createClient();
 
     const peerController = client2.peerController<TestController>('test', 1);
-    const internalClient: InternalClient = server.getInjector().get(InternalClient);
+    const internalClient: InternalClient = app.get(InternalClient);
     const internalClientConnection = internalClient.create();
 
     const controller = client.controller<TestController>('test', 1);

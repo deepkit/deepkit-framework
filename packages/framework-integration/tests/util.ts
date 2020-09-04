@@ -1,12 +1,10 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from '@super-hornet/core';
-import {ApplicationServer} from '@super-hornet/framework-server';
+import {ApplicationServer, hornet, ExchangeConfig, Application} from '@super-hornet/framework';
 import {RemoteController} from '@super-hornet/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
-import {hornet} from '@super-hornet/framework-server-common';
 import {SuperHornetClient} from '@super-hornet/framework-client';
-import {ExchangeConfig} from '@super-hornet/exchange';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -53,6 +51,7 @@ export async function createServerClientPair(
     dbTestName: string,
     AppModule: ClassType<any>
 ): Promise<{
+    app: Application,
     server: ApplicationServer,
     client: SuperHornetClient,
     close: () => Promise<void>,
@@ -78,11 +77,13 @@ export async function createServerClientPair(
         }
     }
 
-    const app = new ApplicationServer(AppModule, {
+    const app = new Application(AppModule, {
         server: server,
     }, [], [ConfigModule]);
 
-    await app.start();
+    const appServer = app.get(ApplicationServer);
+
+    await appServer.start();
 
     const createdClients: SuperHornetClient[] = [];
 
@@ -114,13 +115,14 @@ export async function createServerClientPair(
 
         await sleep(0.1); //let the server read the disconnect
         const start = performance.now();
-        await app.close();
+        await appServer.close();
         console.log('server closed', performance.now() - start);
     };
 
     closer.push(close);
     return {
-        server: app,
+        app,
+        server: appServer,
         client: socket,
         createClient: () => {
             const client = new SuperHornetClient('ws+unix://' + socketPath);

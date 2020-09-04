@@ -8,16 +8,13 @@
       "path": "packages/core-rxjs/tsconfig.json"
     },
     {
-      "path": "packages/framework-server-common/tsconfig.json"
-    },
-    {
       "path": "packages/framework-shared/tsconfig.json"
     },
     {
       "path": "packages/framework-client/tsconfig.json"
     },
     {
-      "path": "packages/framework-server/tsconfig.json"
+      "path": "packages/framework/tsconfig.json"
     },
     {
       "path": "packages/marshal/tsconfig.dist.json"
@@ -32,16 +29,7 @@
       "path": "packages/marshal-mongo/tsconfig.json"
     },
     {
-      "path": "packages/marshal-nest/tsconfig.json"
-    },
-    {
       "path": "packages/marshal-orm-benchmark/tsconfig.json"
-    },
-    {
-      "path": "packages/exchange/tsconfig.json"
-    },
-    {
-      "path": "packages/example-server/tsconfig.json"
     }
   ]
 }

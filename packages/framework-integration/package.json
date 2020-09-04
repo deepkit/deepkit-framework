@@ -14,10 +14,8 @@
   "dependencies": {
     "@super-hornet/core": "^1.0.0-alpha.0",
     "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
-    "@super-hornet/exchange": "^1.0.0-alpha.0",
     "@super-hornet/framework-client": "^1.0.0-alpha.0",
-    "@super-hornet/framework-server": "^1.0.0-alpha.0",
-    "@super-hornet/framework-server-common": "^1.0.0-alpha.0",
+    "@super-hornet/framework": "^1.0.0-alpha.0",
     "@super-hornet/framework-shared": "^1.0.0-alpha.0",
     "@super-hornet/marshal": "^1.0.0-alpha.0",
     "@super-hornet/marshal-mongo": "^1.0.0-alpha.0",
@@ -50,7 +48,8 @@
       "NIX"
     ],
     "testMatch": [
-      "**/tests/**/controller-basic.spec.ts"
+      "**/tests/**/controller-basic.spec.ts",
+      "**/tests/**/peer2peer.spec.ts"
     ]
   }
 }

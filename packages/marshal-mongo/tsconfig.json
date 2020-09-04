@@ -33,16 +33,16 @@
   ],
   "references": [
     {
-      "path": "node_modules/@super-hornet/core/tsconfig.json"
+      "path": "../core/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/marshal-bson/tsconfig.json"
+      "path": "../marshal-bson/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
+      "path": "../marshal/tsconfig.dist.json"
     },
     {
-      "path": "node_modules/@super-hornet/marshal-orm/tsconfig.json"
+      "path": "../marshal-orm/tsconfig.json"
     }
   ]
 }

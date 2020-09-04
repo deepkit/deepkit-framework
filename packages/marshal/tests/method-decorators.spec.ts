@@ -53,7 +53,7 @@ test('short @f 2', () => {
         const props = s.getMethodProperties('foo');
 
         expect(props).toBeArrayOfSize(1);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
     }
@@ -67,7 +67,7 @@ test('short @f 2', () => {
         const props = s.getMethodProperties('foo2');
 
         expect(props).toBeArrayOfSize(1);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isMap).toBe(true);
     }
@@ -111,7 +111,7 @@ test('short @f unmet array definition', () => {
             public foo(@t bar: string[]) {
             }
         }
-    }).toThrow('Controller::foo::0 type mismatch. Given nothing, but declared is Array')
+    }).toThrow('Controller::foo::bar type mismatch. Given nothing, but declared is Array')
 });
 
 test('short @f no index on arg', () => {
@@ -137,7 +137,7 @@ test('method args', () => {
         const props = s.getMethodProperties('foo');
 
         expect(props).toBeArrayOfSize(1);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
     }
 
@@ -145,13 +145,13 @@ test('method args', () => {
         const props = s.getMethodProperties('foo2');
 
         expect(props).toBeArrayOfSize(3);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
 
-        expect(props[1].name).toBe('1');
+        expect(props[1].name).toBe('optional');
         expect(props[1].type).toBe('boolean');
 
-        expect(props[2].name).toBe('2');
+        expect(props[2].name).toBe('anotherOne');
         expect(props[2].type).toBe('boolean');
         expect(props[2].isOptional).toBe(true);
     }
@@ -180,7 +180,7 @@ test('short @f', () => {
         const props = s.getMethodProperties('foo');
 
         expect(props).toBeArrayOfSize(1);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
     }
@@ -198,11 +198,11 @@ test('short @f multi', () => {
         const props = s.getMethodProperties('foo');
 
         expect(props).toBeArrayOfSize(2);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
 
-        expect(props[1].name).toBe('1');
+        expect(props[1].name).toBe('foo');
         expect(props[1].type).toBe('number');
         expect(props[1].isArray).toBe(false);
     }
@@ -352,14 +352,14 @@ test('short @f multi gap', () => {
         const props = s.getMethodProperties('foo');
 
         expect(props).toBeArrayOfSize(3);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
 
-        expect(props[1].name).toBe('1');
+        expect(props[1].name).toBe('nothing');
         expect(props[1].type).toBe('boolean');
 
-        expect(props[2].name).toBe('2');
+        expect(props[2].name).toBe('foo');
         expect(props[2].type).toBe('number');
         expect(props[2].isArray).toBe(false);
     }
@@ -367,21 +367,21 @@ test('short @f multi gap', () => {
         const props = s.getMethodProperties('undefined');
 
         expect(props).toBeArrayOfSize(2);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
 
-        expect(props[1].name).toBe('1');
+        expect(props[1].name).toBe('nothing');
         expect(props[1].type).toBe('boolean');
     }
     {
         const props = s.getMethodProperties('onlyFirst');
 
         expect(props).toBeArrayOfSize(2);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
 
-        expect(props[1].name).toBe('1');
+        expect(props[1].name).toBe('nothing');
         expect(props[1].type).toBe('boolean');
     }
     {
@@ -402,7 +402,7 @@ test('short @f with type', () => {
         const props = s.getMethodProperties('foo');
 
         expect(props).toBeArrayOfSize(1);
-        expect(props[0].name).toBe('0');
+        expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
     }

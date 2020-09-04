@@ -18,36 +18,29 @@
     "composite": true
   },
   "include": [
-    "tests",
-    "node_modules/@super-hornet/framework-shared/**/*.ts"
+    "tests"
   ],
   "references": [
     {
-      "path": "node_modules/@super-hornet/core/tsconfig.json"
+      "path": "../core/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/core-rxjs/tsconfig.json"
+      "path": "../core-rxjs/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/framework-shared/tsconfig.json"
+      "path": "../framework-shared/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/framework-client/tsconfig.json"
+      "path": "../framework-client/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/framework-server/tsconfig.json"
+      "path": "../framework/tsconfig.json"
     },
     {
-      "path": "node_modules/@super-hornet/framework-server-common/tsconfig.json"
+      "path": "../marshal/tsconfig.dist.json"
     },
     {
-      "path": "node_modules/@super-hornet/exchange/tsconfig.json"
-    },
-    {
-      "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
-    },
-    {
-      "path": "node_modules/@super-hornet/marshal-mongo/tsconfig.json"
+      "path": "../marshal-mongo/tsconfig.json"
     }
   ]
 }

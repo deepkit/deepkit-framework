@@ -1,7 +1,7 @@
 import {BehaviorSubject, Observable, Subject, TeardownLogic} from "rxjs";
 import {tearDown} from "@super-hornet/core-rxjs";
 import {IdInterface} from "./contract";
-import {ClassType} from "@super-hornet/core";
+import {ClassType, CustomError} from '@super-hornet/core';
 import {Buffer} from 'buffer';
 import {
     arrayBufferTo,
@@ -30,10 +30,11 @@ export class ValidationErrorItem {
 }
 
 @Entity('@error:validation')
-export class ValidationError {
+export class ValidationError extends CustomError {
     constructor(
         @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
     ) {
+        super('Validation error');
     }
 
     static from(errors: { path: string, message: string, code?: string }[]) {

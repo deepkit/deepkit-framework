@@ -18,6 +18,16 @@ class DecoratedValue {
     items: string[] = []
 }
 
+const ab = new ArrayBuffer(2);
+const view = new Uint8Array(ab);
+view[0] = 11;
+view[1] = 22;
+
+test('compare ab', () => {
+    const other = new Uint8Array([11, 22]).buffer;
+    expect(ab).toEqual(other);
+});
+
 const types: [FieldDecoratorResult<any>, any, any?][] = [
     [t.string, "Hello Peter"],
     [t.number, 1],
@@ -49,8 +59,9 @@ const types: [FieldDecoratorResult<any>, any, any?][] = [
     [t.array(t.string), ['Peter']],
     [t.map(t.string), {name: 'Peter'}],
     [t.any, {name: 'Peter', ready: false}],
-    [t.type(ArrayBuffer), new ArrayBuffer(2)],
-    [t.type(Int16Array), new Int16Array(4)],
+    [t.type(ArrayBuffer), ab],
+    [t.type(Uint8Array), new Uint8Array([22, 44, 55, 66])],
+    [t.type(Int16Array), new Int16Array([22, 44, 55, 66])],
     [t.union(), {name: 'Peter'}],
     [t.partial({name: t.string}), {}],
     [t.partial({name: t.string}), {name: 'Peter'}],

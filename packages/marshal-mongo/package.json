@@ -7,7 +7,7 @@
   "sideEffects": false,
   "scripts": {
     "test": "jest --coverage",
-    "tsc": "tsc",
+    "tsc": "tsc --build",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "repository": "https://github.com/super-hornet/super-hornet.ts",
