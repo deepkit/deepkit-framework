@@ -1,6 +1,4 @@
-import {DatabaseQueryModel, Formatter, HydratorFn, IdentityMap} from '@super-hornet/marshal-orm';
-import {ClassSchema} from '@super-hornet/marshal';
-import {SqlBuilder} from './sql-builder';
+import {Formatter} from '@super-hornet/marshal-orm';
 
 export class SqlFormatter extends Formatter {
     // constructor(

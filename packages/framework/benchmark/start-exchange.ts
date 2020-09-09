@@ -1,4 +1,4 @@
-import {unlinkSync} from "fs";
+import {unlinkSync} from 'fs';
 import {ExchangeServer} from '../src/exchange/exchange-server';
 
 unlinkSync('/tmp/super-hornet-lock-benchmark');

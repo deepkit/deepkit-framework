@@ -38,7 +38,7 @@ export class ProcessLock {
 
             if (timeout > 0) {
                 setTimeout(() => {
-                    arrayRemoveItem(LOCKS[this.id].queue, ourTake);
+                    if (LOCKS[this.id]) arrayRemoveItem(LOCKS[this.id].queue, ourTake);
                     //reject is never handled when resolve is called first
                     reject('Lock timed out ' + this.id);
                 }, timeout * 1000);

@@ -1,9 +1,8 @@
 import {ClassSchema, getClassSchema, PropertySchema} from '@super-hornet/marshal';
-import {BSON_DATA_ARRAY, BSON_DATA_DATE, BSON_DATA_OBJECT, digitByteSize, BSON_DATA_NULL, BSON_DATA_BINARY} from './utils';
+import {BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_DATE, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize, moment} from './utils';
 import {ClassType} from '@super-hornet/core';
 import {BaseParser, ParserV2} from './bson-parser';
 import {seekElementSize} from './continuation';
-import {moment} from './utils';
 
 function createPropertyConverter(setter: string, property: PropertySchema, context: Map<string, any>, parentProperty?: PropertySchema) {
     //we want the isNullable value from the actual property, not the decorated.

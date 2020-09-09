@@ -3,11 +3,11 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import {ReplaySubject, Subject, TeardownLogic} from "rxjs";
-import {IdInterface} from "./contract";
-import {tearDown} from "@super-hornet/core-rxjs";
-import {ClassType, each, getClassName} from "@super-hornet/core";
-import {EntitySubject} from "./core";
+import {ReplaySubject, Subject, TeardownLogic} from 'rxjs';
+import {IdInterface} from './contract';
+import {tearDown} from '@super-hornet/core-rxjs';
+import {ClassType, each, getClassName} from '@super-hornet/core';
+import {EntitySubject} from './core';
 
 export type FilterParameters = {[name: string]: any | undefined};
 

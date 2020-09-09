@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {FieldDecoratorResult, t, Types} from '@super-hornet/marshal';
-import {serialize, calculateObjectSize} from 'bson';
+import {calculateObjectSize, serialize} from 'bson';
 import {createBSONSizer, getBSONSerializer, JS_INT_MAX, JS_INT_MIN} from '../src/bson-serialize';
 import {getBSONDecoder} from '../src/bson-jit-parser';
 import * as Moment from 'moment';

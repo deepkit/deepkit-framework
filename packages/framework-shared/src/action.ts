@@ -1,6 +1,6 @@
-import {eachPair, isPromise} from "@super-hornet/core";
+import {eachPair, isPromise} from '@super-hornet/core';
 import {getClassSchema, jitValidateProperty, plainSerializer, PropertySchema, ValidationFailedItem} from '@super-hornet/marshal';
-import {ValidationErrorItem, ValidationParameterError} from "./core";
+import {ValidationErrorItem, ValidationParameterError} from './core';
 
 export type ActionTypes = { parameters: PropertySchema[] };
 

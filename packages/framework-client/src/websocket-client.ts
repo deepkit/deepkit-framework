@@ -1,5 +1,5 @@
-import {ClientMessageAll,} from "@super-hornet/framework-shared";
-import {ClientTransportAdapter, TransportConnectionHooks} from "./client";
+import {ClientMessageAll,} from '@super-hornet/framework-shared';
+import {ClientTransportAdapter, TransportConnectionHooks} from './client';
 
 export class WebSocketClientAdapter implements ClientTransportAdapter {
     constructor(public url: string) {

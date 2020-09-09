@@ -4,7 +4,6 @@ import {Router} from '../src/router';
 import {BenchSuite} from '@super-hornet/core';
 import {HttpHandler} from '../src/http';
 import {http} from '../src/decorator';
-import {Injector} from '../src/injector/injector';
 import {Application} from '../src/application';
 import {ServiceContainer} from '../src/service-container';
 

@@ -1,4 +1,4 @@
-import {BehaviorSubject, Subject} from "rxjs";
+import {BehaviorSubject, Subject} from 'rxjs';
 import {plainSerializer, PropertySchema} from '@super-hornet/marshal';
 import {
     Batcher,
@@ -23,9 +23,9 @@ import {
     ServerMessageResult,
     SimpleConnectionWriter,
     StreamBehaviorSubject,
-} from "@super-hornet/framework-shared";
-import {asyncOperation, ClassType, eachKey, sleep} from "@super-hornet/core";
-import {AsyncSubscription} from "@super-hornet/core-rxjs";
+} from '@super-hornet/framework-shared';
+import {asyncOperation, ClassType, eachKey, sleep} from '@super-hornet/core';
+import {AsyncSubscription} from '@super-hornet/core-rxjs';
 
 export class AuthenticationError extends Error {
     constructor(message: string = 'Authentication failed') {

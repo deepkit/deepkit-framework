@@ -1,9 +1,9 @@
 import {ClassSchema, cloneClass, getClassSchema, plainSerializer} from '@super-hornet/marshal';
-import {eachPair, getPathValue, size} from "@super-hornet/core";
+import {eachPair, getPathValue, size} from '@super-hornet/core';
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';
-import { BehaviorSubject } from "rxjs";
-import {EntitySubject} from "./core";
+import {BehaviorSubject} from 'rxjs';
+import {EntitySubject} from './core';
 
 export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
     /**

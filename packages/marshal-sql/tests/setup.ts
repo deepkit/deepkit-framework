@@ -1,7 +1,7 @@
 import {Database} from '@super-hornet/marshal-orm';
 import {ClassSchema} from '@super-hornet/marshal';
 import {ClassType} from '@super-hornet/core';
-import {SQLiteDatabaseAdapter, SQLDatabaseAdapter} from '../index';
+import {SQLDatabaseAdapter, SQLiteDatabaseAdapter} from '../index';
 
 export async function createSetup(adapter: SQLDatabaseAdapter, schemas: (ClassSchema | ClassType)[]) {
     const database = new Database(adapter);

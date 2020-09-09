@@ -1,6 +1,6 @@
-import {IdInterface} from "./contract";
-import {Entity, t, uuid} from "@super-hornet/marshal";
-import {ClassType, eachKey} from "@super-hornet/core";
+import {IdInterface} from './contract';
+import {Entity, t, uuid} from '@super-hornet/marshal';
+import {ClassType, eachKey} from '@super-hornet/core';
 
 export enum FileMode {
     closed,

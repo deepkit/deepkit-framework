@@ -1,4 +1,4 @@
-import {injectable, template, Configuration} from '@super-hornet/framework';
+import {Configuration, injectable, template} from '@super-hornet/framework';
 
 @injectable()
 export class Website {

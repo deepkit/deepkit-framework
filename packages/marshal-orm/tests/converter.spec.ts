@@ -1,8 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '../index';
-import {t, getClassSchema, plainSerializer} from '@super-hornet/marshal';
-import {bench, BenchSuite} from '@super-hornet/core';
+import {getClassSchema, plainSerializer, t} from '@super-hornet/marshal';
+import {BenchSuite} from '@super-hornet/core';
 
 class Image {
     @t title: string = '';

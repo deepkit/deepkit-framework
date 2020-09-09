@@ -1,5 +1,5 @@
-import {DatabaseQueryModel, Entity, SORT_ORDER} from "@super-hornet/marshal-orm";
-import {Binary} from "bson";
+import {DatabaseQueryModel, Entity, SORT_ORDER} from '@super-hornet/marshal-orm';
+import {Binary} from 'bson';
 
 type BSONTypeAlias =
     | 'number'

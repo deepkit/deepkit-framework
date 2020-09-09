@@ -1,10 +1,10 @@
-import {ClassSchema, PropertySchema} from "@super-hornet/marshal";
-import {Subject} from "rxjs";
-import {ClassType} from "@super-hornet/core";
+import {ClassSchema, PropertySchema} from '@super-hornet/marshal';
+import {Subject} from 'rxjs';
+import {ClassType} from '@super-hornet/core';
 import {FieldName, FlattenIfArray} from './utils';
-import {PrimaryKey} from "./identity-map";
+import {PrimaryKey} from './identity-map';
 import {DatabaseSession} from './database-session';
-import {DatabaseAdapter} from "./database";
+import {DatabaseAdapter} from './database';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T]?: ORDER };
