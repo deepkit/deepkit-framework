@@ -1,0 +1,13 @@
+version = 1
+
+test_patterns = ["packages/*/src/**/*.ts"]
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+  [analyzers.meta]
+  module_system = "commonjs"
+  environment = ["nodejs"]
+  style_guide = "standard"
+  dialect = "typescript"

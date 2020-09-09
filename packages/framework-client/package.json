@@ -19,7 +19,7 @@
     "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
     "@super-hornet/framework-shared": "^1.0.0-alpha.0",
     "@super-hornet/marshal": "^1.0.0-alpha.0",
-    "dot-prop": "^4.2.0",
+    "dot-prop": "^5.1.1",
     "rxjs": "~6.5.3",
     "ws": "^7.2.1"
   },
