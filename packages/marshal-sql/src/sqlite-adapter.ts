@@ -1,5 +1,5 @@
 import * as sqlite3 from 'sqlite3';
-import {SQLConnection, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
+import {SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
 import {DatabaseSession} from '@super-hornet/marshal-orm';
 import {SQLitePlatform} from './platform/sqlite-platform';
 import {ClassSchema} from '@super-hornet/marshal';
@@ -34,9 +34,10 @@ export class SQLiteStatement extends SQLStatement {
 
 export class SQLiteConnection extends SQLConnection {
     public platform = new SQLitePlatform();
+    protected changes: number = 0;
 
-    constructor(protected db: sqlite3.Database) {
-        super();
+    constructor(connectionPool: SQLConnectionPool, protected db: sqlite3.Database) {
+        super(connectionPool);
     }
 
     async prepare(sql: string) {
@@ -46,7 +47,16 @@ export class SQLiteConnection extends SQLConnection {
 
     async exec(sql: string) {
         try {
-            this.db.exec(sql);
+            const self = this;
+            await asyncOperation((resolve, reject) => {
+                this.db.run(sql, function (err) {
+                    if (err) reject(err);
+                    else {
+                        self.changes = this.changes;
+                        resolve(self.changes);
+                    }
+                });
+            });
         } catch (error) {
             console.error('sql', sql);
             throw error;
@@ -54,9 +64,17 @@ export class SQLiteConnection extends SQLConnection {
     }
 
     async getChanges(): Promise<number> {
-        return 0;
-        // const row = await this.execAndReturnSingle(`SELECT sqlite3_changes() as changes`);
-        // return row.changes;
+        return this.changes;
+    }
+}
+
+export class SQLiteConnectionPool extends SQLConnectionPool {
+    constructor(protected db: sqlite3.Database) {
+        super();
+    }
+
+    getConnection(): SQLConnection {
+        return new SQLiteConnection(this, this.db);
     }
 }
 
@@ -76,16 +94,17 @@ export class SQLitePersistence extends SQLPersistence {
     }
 }
 
-export class SQLiteDatabaseAdapter implements SQLDatabaseAdapter {
+export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     public readonly db: sqlite3.Database;
-    public readonly connection: SQLiteConnection;
+    public readonly connectionPool: SQLiteConnectionPool;
     public readonly platform = new SQLitePlatform();
 
     constructor(protected sqlitePath: string) {
+        super();
         this.db = new sqlite3.Database(sqlitePath);
         this.db.exec('PRAGMA foreign_keys = ON');
 
-        this.connection = new SQLiteConnection(this.db);
+        this.connectionPool = new SQLiteConnectionPool(this.db);
     }
 
     getName(): string {
@@ -93,17 +112,13 @@ export class SQLiteDatabaseAdapter implements SQLDatabaseAdapter {
     }
 
     createPersistence(databaseSession: DatabaseSession<any>): SQLPersistence {
-        return new SQLitePersistence(this.platform, this.connection);
+        return new SQLitePersistence(this.platform, this.connectionPool.getConnection());
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
-        return new SQLDatabaseQueryFactory(this.connection, databaseSession);
+        return new SQLDatabaseQueryFactory(this.connectionPool.getConnection(), this.platform, databaseSession);
     }
 
     disconnect(force?: boolean): void {
-    }
-
-    async migrate(classSchemas: Iterable<ClassSchema>): Promise<void> {
-
     }
 }

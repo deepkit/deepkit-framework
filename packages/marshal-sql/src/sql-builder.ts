@@ -2,7 +2,6 @@ import {SQLQueryModel} from './sql-adapter';
 import {DefaultPlatform} from './platform/default-platform';
 import {ClassSchema, PropertySchema} from '@super-hornet/marshal';
 import {DatabaseJoinModel, getPrimaryKeyHashGenerator, QueryToSql} from '@super-hornet/marshal-orm';
-import {sqlSerializer} from './sql-serializer';
 
 type ConvertDataToDict = (row: any) => { [name: string]: any };
 
@@ -17,7 +16,7 @@ export class SqlBuilder {
 
     protected getWhereSQL(schema: ClassSchema, filter: any, tableName?: string) {
         tableName = tableName ?? this.platform.getTableIdentifier(schema);
-        return new QueryToSql(schema, tableName, sqlSerializer, this.platform.quoteValue, this.platform.quoteIdentifier).convert(filter);
+        return new QueryToSql(schema, tableName, this.platform.serializer, this.platform.quoteValue.bind(this.platform), this.platform.quoteIdentifier.bind(this.platform)).convert(filter);
     }
 
     protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {
@@ -61,7 +60,7 @@ export class SqlBuilder {
         let lastHash: string | undefined;
         let lastRow: any | undefined;
 
-        const rootPkHasher = getPrimaryKeyHashGenerator(schema, sqlSerializer);
+        const rootPkHasher = getPrimaryKeyHashGenerator(schema, this.platform.serializer);
 
         for (const row of rows) {
             const converted = this.rootConverter(row);

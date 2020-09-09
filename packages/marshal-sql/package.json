@@ -14,8 +14,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "mongodb": "^3.5.9",
-    "rxjs": "~6.5.3"
+    "sqlite3": "^5.0.0",
+    "mariadb": "^2.4.2"
   },
   "dependencies": {
     "@super-hornet/core": "^1.0.0-alpha.0",
@@ -29,6 +29,7 @@
     "@types/sqlstring": "^2.2.1",
     "jest-serial-runner": "^1.1.0",
     "sqlite3": "^5.0.0",
+    "mariadb": "^2.4.2",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

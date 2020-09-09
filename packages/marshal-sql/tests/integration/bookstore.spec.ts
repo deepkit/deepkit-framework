@@ -46,6 +46,8 @@ test('schema', () => {
 });
 
 test('basics', async () => {
+    process.env['ADAPTER_DRIVER'] = 'mysql';
+
     const database = await createEnvSetup([Author, Book]);
     {
         const session = database.createSession();
@@ -80,13 +82,20 @@ test('basics', async () => {
         expect(peter.name).toBe('Peter');
 
         const books = await session.query(Book).filter({author: peter}).find();
-        expect(books.length).toBe(2);
+        expect(books.length).toBe(1);
         const book = books[0];
         expect(book).toBeInstanceOf(Book);
         expect(book.id).toBe(1);
         expect(book.title).toBe('Peters book');
+    }
 
-        expect(() => book.author).toThrow('asdasd');
+    {
+        const session = database.createSession();
+        const ref = session.getReference(Author, 1);
+        const books = await session.query(Book).filter({author: ref}).find();
+        expect(books.length).toBe(1);
+        const book = books[0];
+        expect(book.author).toBe(ref);
     }
 
     {

@@ -28,23 +28,43 @@ test('sqlite 10k bench', async () => {
 });
 
 test('sqlite basic', async () => {
-    const User = t.class({
+    const User = t.schema({
         id: t.primary.number,
         name: t.string,
         created: t.date,
     }, {name: 'user'});
 
     const database = await createSetup(new SQLiteDatabaseAdapter(':memory:'), [User]);
-    const session = database.createSession();
 
-    expect(await session.query(User).count()).toBe(0);
+    const user1 = User.create({id: 1, name: 'Yes', created: new Date()});
+    const user2 = User.create({id: 2, name: 'Wow', created: new Date()});
+    const user3 = User.create({id: 3, name: 'asdadasd', created: new Date()});
 
-    session.add(plainSerializer.for(User).deserialize({id: 1, name: 'Yes', created: new Date()}));
-    session.add(plainSerializer.for(User).deserialize({id: 2, name: 'Wow', created: new Date()}));
-    session.add(plainSerializer.for(User).deserialize({id: 3, name: 'asdadasd', created: new Date()}));
-    await session.commit();
+    {
+        const session = database.createSession();
 
-    expect(await session.query(User).count()).toBe(3);
+        expect(await session.query(User).count()).toBe(0);
+
+        session.add([user1, user2, user3]);
+        await session.commit();
+        expect(await session.query(User).count()).toBe(3);
+
+        user1.name = 'Changed';
+        await session.commit();
+        expect(await session.query(User).count()).toBe(3);
+    }
+
+    {
+        const session = database.createSession();
+        const user1db = await session.query(User).filter({id: user1.id}).findOne();
+        expect(user1db.name).toBe('Changed');
+    }
+
+    {
+        const session = database.createSession();
+        expect(await session.query(User).deleteMany()).toBe(3);
+        expect(await session.query(User).deleteMany()).toBe(0);
+    }
 });
 
 test('sqlite autoincrement', async () => {
@@ -52,6 +72,7 @@ test('sqlite autoincrement', async () => {
     class User {
         @t.primary.autoIncrement id?: number;
         @t created: Date = new Date;
+
         constructor(
             @t public name: string
         ) {

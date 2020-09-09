@@ -21,7 +21,7 @@ export async function hydrateEntity<T>(item: T) {
 }
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends Entity>(classType: ClassType<T>): GenericQuery<T, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>, GenericQueryResolver<T, any, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>>>;
+    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): GenericQuery<T, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>, GenericQueryResolver<T, any, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>>>;
 }
 
 export abstract class DatabasePersistence {
@@ -42,7 +42,7 @@ export abstract class DatabaseAdapter {
 
     abstract disconnect(force?: boolean): void;
 
-    abstract migrate(classSchemas: Iterable<ClassSchema>): Promise<void>;
+    abstract migrate(classSchemas: ClassSchema[]): Promise<void>;
 
     abstract getName(): string;
 }
@@ -85,7 +85,7 @@ export class Database<ADAPTER extends DatabaseAdapter> {
 
     /**
      * Creates a new database session. This is the preferred way of working with the database
-     * and enjoy all ORM features. Call DatabaseSession.persist(item) to persist changes all at once.
+     * and to enjoy all ORM features. Call DatabaseSession.commit to persist changes all at once.
      *
      * All entity instances fetched/stored during this session are cached and tracked.
      */
@@ -120,6 +120,6 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      * Makes sure the schemas types, indices, uniques, etc are reflected in the database.
      */
     async migrate() {
-        await this.adapter.migrate(this.classSchemas);
+        await this.adapter.migrate([...this.classSchemas.values()]);
     }
 }

@@ -1,3 +1,4 @@
+export * from './src/models';
 export * from './src/core';
 export * from './src/decorator-builder';
 export * from './src/decorators';

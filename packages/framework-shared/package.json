@@ -15,7 +15,7 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@super-hornet/marshal": "^2.1.1",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
     "buffer": "^5.2.1",
     "rxjs": "~6.5.3"
   },

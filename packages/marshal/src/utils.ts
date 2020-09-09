@@ -1,6 +1,7 @@
 import {v4} from 'uuid';
 import {ClassType} from '@super-hornet/core';
-import {ClassSchema, TypedArrays} from './decorators';
+import {ClassSchema} from './decorators';
+import { TypedArrays } from './models';
 
 export function uuid(): string {
     return v4();
@@ -22,7 +23,7 @@ export type JSONPartialSingle<T> = T extends Date ? string :
 
 export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<T[name]> };
 
-export type JSONSingle<T> = T extends Date ? string :
+export type JSONSingle<T> = T extends Date ? string | Date :
     T extends Array<infer K> ? Array<JSONSingle<K>> :
         T extends TypedArrays ? string :
             T extends ArrayBuffer ? string :

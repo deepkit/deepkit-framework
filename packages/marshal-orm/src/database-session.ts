@@ -1,7 +1,7 @@
 import {DatabaseAdapter, DatabasePersistence} from './database';
 import {Entity} from './query';
 import {ClassType, CustomError} from '@super-hornet/core';
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, isArray} from '@super-hornet/marshal';
 import {GroupArraySort} from '@super-hornet/topsort';
 import {getNormalizedPrimaryKey, IdentityMap, PrimaryKey} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
@@ -34,8 +34,13 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return this.committed;
     }
 
-    public add<T extends Entity>(item: T, deep: boolean = true) {
+    public add<T extends Entity>(item: T | T[], deep: boolean = true): void {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
+
+        if (isArray(item)) {
+            item.map(v => this.add(v));
+            return;
+        }
 
         if (this.removeQueue.has(item)) return;
         if (this.addQueue.has(item)) return;
@@ -225,7 +230,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         this.rounds.push(new DatabaseSessionRound(this.identityMap, this.persistence));
     }
 
-    public add<T>(item: T, deep: boolean = true) {
+    public add<T>(item: T | T[], deep: boolean = true): void {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }

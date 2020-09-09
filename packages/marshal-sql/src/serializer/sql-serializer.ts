@@ -17,8 +17,6 @@ for (let i = 0; i < 256; i++) {
 }
 
 export const sqlSerializer = new class extends plainSerializer.fork('sql') {
-    serializedSingleType: any;
-    serializedType: any;
 };
 
 export function uuid4Binary(u: string): Buffer {
@@ -60,6 +58,12 @@ sqlSerializer.toClass.register('undefined', (setter: string, accessor: string, p
 
     return ``;
 });
+
+//SQL escape does the job.
+sqlSerializer.fromClass.register('date', (setter, accessor) => {
+    return `${setter} = ${accessor}`;
+});
+
 
 sqlSerializer.fromClass.register('moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = ${accessor}.toDate();`;

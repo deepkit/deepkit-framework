@@ -1,5 +1,6 @@
-import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap, Types} from './decorators';
+import {getClassSchema, PropertyCompilerSchema} from './decorators';
 import {isValidEnumValue} from '@super-hornet/core';
+import {typedArrayNamesMap, Types} from './models';
 
 export type JSONTypeGuard = (v: any) => boolean;
 export type JSONTypeGuardFactory = (property: PropertyCompilerSchema) => JSONTypeGuard;

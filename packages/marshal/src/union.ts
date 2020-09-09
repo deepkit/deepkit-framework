@@ -1,6 +1,7 @@
 //sort by type group (literal, type, generic primitive, any)
-import {PropertyCompilerSchema, Types} from './decorators';
+import {PropertyCompilerSchema} from './decorators';
 import {JSONTypeGuard, jsonTypeGuards} from './json-typeguards';
+import { Types } from './models';
 
 const sorts: { [type in Types]: number } = {
     literal: 1,

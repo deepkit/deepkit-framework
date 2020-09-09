@@ -274,8 +274,6 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter, M
 
     abstract async findOneOrUndefined(model: MODEL): Promise<T | undefined>;
 
-    abstract async updateMany(model: MODEL, value: {}): Promise<number>;
-
     abstract async updateOne(model: MODEL, value: {}): Promise<boolean>;
 
     abstract async deleteMany(model: MODEL): Promise<number>;
@@ -325,11 +323,7 @@ export class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, 
         return item;
     }
 
-    public async updateMany(value: {}): Promise<number> {
-        return this.resolver.updateMany(this.model, value);
-    }
-
-    public async updateOne(value: {}): Promise<boolean> {
+    public async updateOne(value: T): Promise<boolean> {
         return this.resolver.updateOne(this.model, value);
     }
 

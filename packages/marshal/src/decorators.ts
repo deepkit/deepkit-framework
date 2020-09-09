@@ -1,9 +1,11 @@
 import {PropertyValidatorError} from './validation';
 import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject, toFastProperties,} from '@super-hornet/core';
 import getParameterNames from 'get-parameter-names';
-import {FlattenIfArray, isArray} from './utils';
+import {FlattenIfArray, isArray, JSONEntity} from './utils';
 import {Buffer} from 'buffer';
 import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
+import {plainSerializer} from './plain-serializer';
+import {PartialField, typedArrayMap, typedArrayNamesMap, Types} from './models';
 
 export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType<any> | ClassSchema };
@@ -27,82 +29,6 @@ export function getGlobalStore(): GlobalStore {
 
     return global.MarshalStore;
 }
-
-export type Types =
-    'objectId'
-    | 'uuid'
-    | 'literal'
-    | 'class'
-    | 'map'
-    | 'partial'
-    | 'patch'
-    | 'array'
-    | 'union'
-    | 'moment'
-    | 'date'
-    | 'enum'
-    | 'any'
-    | 'string'
-    | 'number'
-    | 'boolean'
-    | 'Int8Array'
-    | 'Uint8Array'
-    | 'Uint8ClampedArray'
-    | 'Int16Array'
-    | 'Uint16Array'
-    | 'Int32Array'
-    | 'Uint32Array'
-    | 'Float32Array'
-    | 'Float64Array'
-    | 'arrayBuffer';
-
-/**
- * Type for @f.partial().
- *
- * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths (like mongoDB)
- */
-export type PartialField<T> = {
-    [P in keyof T & string]?: T[P]
-} & {
-    //it's currently not possible to further define it
-    //https://github.com/Microsoft/TypeScript/issues/12754
-    [path: string]: any
-}
-
-export type PartialEntity<T> = { [name in keyof T & string]?: T[name] };
-
-export const typedArrayMap = new Map<any, Types>();
-typedArrayMap.set(String, 'string');
-typedArrayMap.set(Number, 'number');
-typedArrayMap.set(Date, 'date');
-typedArrayMap.set(Boolean, 'boolean');
-typedArrayMap.set(Int8Array, 'Int8Array');
-typedArrayMap.set(Buffer, 'Uint8Array');
-typedArrayMap.set(Uint8Array, 'Uint8Array');
-typedArrayMap.set(Uint8ClampedArray, 'Uint8ClampedArray');
-typedArrayMap.set(Int16Array, 'Int16Array');
-typedArrayMap.set(Uint16Array, 'Uint16Array');
-typedArrayMap.set(Int32Array, 'Int32Array');
-typedArrayMap.set(Uint32Array, 'Uint32Array');
-typedArrayMap.set(Float32Array, 'Float32Array');
-typedArrayMap.set(Float64Array, 'Float64Array');
-typedArrayMap.set(ArrayBuffer, 'arrayBuffer');
-
-export type TypedArrays = Uint8Array | Uint16Array | Uint32Array | Int8Array | Int16Array | Int32Array | Uint8ClampedArray | Float32Array | Float64Array;
-
-export const typedArrayNamesMap = new Map<Types, any>();
-typedArrayNamesMap.set('Int8Array', Int8Array);
-typedArrayNamesMap.set('Uint8Array', Uint8Array);
-typedArrayNamesMap.set('Uint8ClampedArray', Uint8ClampedArray);
-typedArrayNamesMap.set('Int16Array', Int16Array);
-typedArrayNamesMap.set('Uint16Array', Uint16Array);
-typedArrayNamesMap.set('Int32Array', Int32Array);
-typedArrayNamesMap.set('Uint32Array', Uint32Array);
-typedArrayNamesMap.set('Float32Array', Float32Array);
-typedArrayNamesMap.set('Float64Array', Float64Array);
-
-export const binaryTypes: Types[] = [...typedArrayNamesMap.keys(), 'arrayBuffer'];
-
 export interface PropertyValidator {
     validate<T>(value: any, propertyName: string, classType?: ClassType<any>,): PropertyValidatorError | undefined | void;
 }
@@ -900,36 +826,7 @@ export class ClassSchema<T = any> {
         return this.methodProperties.get(name)!;
     }
 
-    /**
-     * Before accessing `classProperties`, its necessary to call this method.
-     */
     public initializeProperties() {
-        // we don't create for now a new field as 'foreign key' as the field itself
-        // is the foreignKey. This will probably change once we support composite primary keys.
-        // when we do this, we need to mark those fields as 'implementation detail'
-        // since generating 2 fields is for RDMBS, and having everything as object {} is for mongoDB
-        // better, so this functionality depends actually on the database, rather than on Marshal itself.
-        // if (!this.referenceInitialized) {
-        //     this.referenceInitialized = true;
-        //     for (const reference of this.references.values()) {
-        //         if (reference.isReference) {
-        //
-        //             // const schema = reference.getResolvedClassSchema();
-        //             // const name = reference.name + capitalizeFirstLetter(schema.getPrimaryField().name);
-        //             // if (!this.classProperties.has(name)) {
-        //             //     const foreignKey = schema.getPrimaryField().clone();
-        //             //     foreignKey.isReference = false;
-        //             //     foreignKey.backReference = undefined;
-        //             //     foreignKey.index = {...reference.index};
-        //             //     foreignKey.name = name;
-        //             //     foreignKey.isId = reference.isId;
-        //             //     this.classProperties.set(name, foreignKey);
-        //             //     getClassSchema(this.classType).addIndex(foreignKey.name, foreignKey.index);
-        //             // }
-        //             // this.classProperties.get(name)!.isReferenceKey = true;
-        //         }
-        //     }
-        // }
     }
 
     public getClassProperties(initialize: boolean = true): Map<string, PropertySchema> {
@@ -1100,6 +997,10 @@ export class ClassSchema<T = any> {
         }
 
         return this.classProperties.get(name)!;
+    }
+
+    public create(propertyValues: JSONEntity<T>): T {
+        return plainSerializer.for(this).deserialize(propertyValues);
     }
 }
 

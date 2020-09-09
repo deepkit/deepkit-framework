@@ -1,4 +1,4 @@
-import {getClassSchema, PropertyCompilerSchema, typedArrayNamesMap} from './decorators';
+import {getClassSchema, PropertyCompilerSchema} from './decorators';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction} from './jit';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
@@ -6,12 +6,9 @@ import {getDataConverterJS} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';
 import {moment} from './moment';
-import {JSONEntity, JSONSingle} from './utils';
+import {typedArrayNamesMap} from './models';
 
 export class PlainSerializer extends Serializer {
-    serializedSingleType: JSONSingle<any>;
-    serializedType: JSONEntity<any> = {};
-
     constructor() {
         super('plain');
     }

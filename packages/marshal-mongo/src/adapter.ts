@@ -16,7 +16,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     }
 
     createQuery<T extends Entity>(
-        classType: ClassType<T>
+        classType: ClassType<T> | ClassSchema<T>
     ): MongoDatabaseQuery<T> {
         const classSchema = getClassSchema(classType);
         const queryResolver = new MongoQueryResolver<T>(classSchema, this.databaseSession);

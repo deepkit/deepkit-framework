@@ -1,7 +1,8 @@
 import {Column, ColumnDiff, ForeignKey, Index, Table, TableDiff} from '../schema/table';
-import {ClassSchema, getClassSchema, isArray, Types} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, isArray, Serializer, Types} from '@super-hornet/marshal';
 import {escape} from 'sqlstring';
 import {ClassType, isPlainObject} from '@super-hornet/core';
+import {sqlSerializer} from '../serializer/sql-serializer';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -10,6 +11,7 @@ export function isSet(v: any): boolean {
 export class DefaultPlatform {
     protected defaultSqlType = 'TEXT';
     protected typeMapping = new Map<string, { sqlType: string, size?: number, scale?: number }>();
+    public readonly serializer: Serializer = sqlSerializer;
 
     constructor() {
     }

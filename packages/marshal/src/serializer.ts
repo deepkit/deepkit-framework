@@ -1,4 +1,4 @@
-import {binaryTypes, ClassSchema, getClassSchema, PropertyCompilerSchema, Types} from './decorators';
+import {ClassSchema, getClassSchema, PropertyCompilerSchema} from './decorators';
 import {TypeConverterCompiler} from './serializer-compiler';
 import {ClassType} from '@super-hornet/core';
 import {
@@ -13,6 +13,7 @@ import {
 } from './jit';
 import {AnyEntity, ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 import {validate, ValidationFailed} from './validation';
+import {binaryTypes, Types} from './models';
 
 type CompilerTypes = Types | 'undefined' | 'null';
 
