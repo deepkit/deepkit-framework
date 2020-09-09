@@ -37,7 +37,7 @@ export class QueryToSql {
             return this.conditions(value, fieldName);
         }
 
-        let cmpSign = '=';
+        let cmpSign: string;
 
         if (comparison === 'eq') cmpSign = '=';
         else if (comparison === 'gt') cmpSign = '>';

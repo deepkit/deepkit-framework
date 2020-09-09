@@ -152,7 +152,7 @@ export function getDataConverterJS(
             convert = executeCompiler(rootContext, jitStack, compiler, setter, accessor, property, serializerCompilers);
         } else {
             convert = `//no compiler for ${subProperty.type}
-            ${setter} = ${accessor};`
+            ${setter} = ${accessor};`;
         }
 
         return `

@@ -179,9 +179,9 @@ export class DefaultPlatform {
 
         // drop indices, foreign keys
         for (const foreignKey of diff.removedFKs.values()) ddl.push(this.getDropForeignKeyDDL(foreignKey));
-        for (const [from, to] of diff.modifiedFKs.values()) ddl.push(this.getDropForeignKeyDDL(from));
+        for (const [from] of diff.modifiedFKs.values()) ddl.push(this.getDropForeignKeyDDL(from));
         for (const index of diff.removedIndices.values()) ddl.push(this.getDropIndexDDL(index));
-        for (const [from, to] of diff.modifiedIndices.values()) ddl.push(this.getDropIndexDDL(from));
+        for (const [from] of diff.modifiedIndices.values()) ddl.push(this.getDropIndexDDL(from));
 
         //merge field changes into one command. This is more compatible especially with PK constraints.
         const alterTableLines: string[] = [];
@@ -209,9 +209,9 @@ export class DefaultPlatform {
         }
 
         // create indices, foreign keys
-        for (const [from, to] of diff.modifiedIndices.values()) ddl.push(this.getAddIndexDDL(to));
+        for (const [, to] of diff.modifiedIndices.values()) ddl.push(this.getAddIndexDDL(to));
         for (const index of diff.addedIndices.values()) ddl.push(this.getAddIndexDDL(index));
-        for (const [from, to] of diff.modifiedFKs.values()) ddl.push(this.getAddForeignKeyDDL(to));
+        for (const [, to] of diff.modifiedFKs.values()) ddl.push(this.getAddForeignKeyDDL(to));
         for (const foreignKey of diff.addedFKs.values()) ddl.push(this.getAddForeignKeyDDL(foreignKey));
 
         return ddl.filter(isSet).join(';\n');
