@@ -1,5 +1,5 @@
 import {Component, OnInit} from '@angular/core';
-import {SocketClient} from "@super-hornet/framework-client";
+import {SocketClient} from '@super-hornet/framework-client';
 
 interface MyController {
   bla(): any;

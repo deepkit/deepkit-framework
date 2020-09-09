@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import moment from 'moment';
-import {getClassSchema, t, classToPlain, plainToClass} from "../index";
+import {getClassSchema, plainSerializer, t} from '../index';
 
 test('test moment', () => {
     class Model {
@@ -17,12 +17,12 @@ test('test moment', () => {
     const m = new Model;
     m.created = moment(new Date('2018-10-13T12:17:35.000Z'));
 
-    const p = classToPlain(Model, m);
+    const p = plainSerializer.for(Model).serialize(m);
     expect(p.created).toBeString();
     expect(p.created).toBe('2018-10-13T12:17:35.000Z');
 
     {
-        const m = plainToClass(Model, {
+        const m = plainSerializer.for(Model).deserialize({
             created: '2018-10-13T12:17:35.000Z'
         });
         expect(m.created).toBeInstanceOf(moment);

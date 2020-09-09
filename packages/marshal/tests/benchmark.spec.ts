@@ -20,19 +20,19 @@ test('nix', () => {
 });
 
 // test('benchmark plainToClass', () => {
-//     const count = 100_000;
+//     const benchSuite = new BenchSuite('Deserialize JSON');
 //
-//     bench(count, 'plainToClass manual new MarshalModel', () => {
-//         const instance = new MarshalModel(1, name + 'i');
+//     benchSuite.add('manual new MarshalModel', () => {
+//         const instance = new MarshalModel(1, 'Peter');
 //         instance.tags = ['a', 'b', 'c'];
 //         instance.priority = 5;
 //         instance.ready = true;
 //     });
 //
-//     const serialize = plainToClassFactory(MarshalModel);
+//     const serializer = plainSerializer.for(MarshalModel);
 //
-//     bench(count, 'plainToClass jit', () => {
-//         const instance = serialize({
+//     benchSuite.add('Deserialize JSON', () => {
+//         const instance = serializer.deserialize({
 //             name: 'name',
 //             id: 1,
 //             tags: ['a', 'b', 'c'],
@@ -41,9 +41,11 @@ test('nix', () => {
 //         });
 //     });
 //
+//     benchSuite.run();
+//
 //     // console.log('jit', getJitFunctionPlainToClass(MarshalModel).toString());
 //
-//     const b = jitPlainToClass(MarshalModel, {
+//     const b = serializer.deserialize({
 //         name: 'name1',
 //         id: 1,
 //         tags: ['a', 2, 'c'],
@@ -60,7 +62,7 @@ test('nix', () => {
 // test('benchmark classToPlain', () => {
 //     const count = 100_000;
 //
-//     const b = jitPlainToClass(MarshalModel, {
+//     const b = jitplainSerializer.for(MarshalModel).deserialize({
 //         name: 'name1',
 //         id: 1,
 //         tags: ['a', 2, 'c'],
@@ -78,12 +80,12 @@ test('nix', () => {
 //     });
 //
 //     bench(count, 'classToPlain jit', () => {
-//         const plain = jitClassToPlain(MarshalModel, b);
+//         const plain = jitplainSerializer.for(MarshalModel).serialize(b);
 //     });
 //
 //     // console.log('jit', JITToPlainCacheFN.get(MarshalModel).toString());
 //
-//     const plain = jitClassToPlain(MarshalModel, b);
+//     const plain = jitplainSerializer.for(MarshalModel).serialize(b);
 //     expect(plain.name).toBe('name1');
 //     expect(plain.id).toBe(1);
 //     expect(plain.tags).toEqual(['a', '2', 'c']);
@@ -103,10 +105,10 @@ test('nix', () => {
 //     const count = 100_000;
 //
 //     bench(count, 'partialPlainToClass jit', () => {
-//         const partialWithClassValues = jitPartialPlainToClass(MarshalModel, partial);
+//         const partialWithClassValues = jitplainSerializer.for(MarshalModel).partialDeserialize(partial);
 //     });
 //
-//     const partialWithClassValues = jitPartialPlainToClass(MarshalModel, partial);
+//     const partialWithClassValues = jitplainSerializer.for(MarshalModel).partialDeserialize(partial);
 //
 //     expect(partialWithClassValues.name).toBe('name1');
 //     expect(partialWithClassValues.id).toBe(2);
@@ -118,7 +120,7 @@ test('nix', () => {
 //     const count = 10_000;
 //
 //     bench(count, 'supersimple non-jit', (i) => {
-//         const instance = plainToClass(MarshalSuperSimple, {
+//         const instance = plainSerializer.for(MarshalSuperSimple).deserialize({
 //             name: 'name' + i,
 //             id: i,
 //         });
@@ -129,7 +131,7 @@ test('nix', () => {
 //     });
 //
 //     bench(count, 'supersimple jit', (i) => {
-//         const instance = jitPlainToClass(MarshalSuperSimple, {
+//         const instance = jitplainSerializer.for(MarshalSuperSimple).deserialize({
 //             name: 'name' + i,
 //             id: i,
 //         });

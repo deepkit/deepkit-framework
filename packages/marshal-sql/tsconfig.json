@@ -5,28 +5,34 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
+    "noImplicitAny": false,
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2017",
+    "target": "es2020",
     "module": "CommonJS",
 
     "baseUrl": ".",
     "outDir": "./dist",
     "declaration": true,
-    "composite": true,
-    "types": [
-    ]
+    "composite": true
   },
   "include": [
+    "benchmarks",
     "src",
     "tests",
     "index.ts"
   ],
   "references": [
     {
-      "path": "node_modules/@super-hornet/marshal/tsconfig.dist.json"
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../marshal/tsconfig.dist.json"
+    },
+    {
+      "path": "../marshal-orm/tsconfig.json"
     }
   ]
 }

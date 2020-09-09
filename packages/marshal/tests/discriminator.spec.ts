@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, t, getClassSchema, plainToClass, PropertyCompilerSchema, validate} from "../index";
+import {getClassSchema, plainSerializer, PropertyCompilerSchema, t, validate} from '../index';
 
 class ConfigA {
     @t.discriminant
@@ -30,7 +30,7 @@ class UserWithConfigArray {
 
 class UserWithConfigMap {
     @t.map(t.union(ConfigA, ConfigB))
-    configs: {[name: string]: (ConfigA | ConfigB)} = {};
+    configs: { [name: string]: (ConfigA | ConfigB) } = {};
 }
 
 test('test discriminator schema', () => {
@@ -59,28 +59,28 @@ test('test discriminator class to plain', () => {
         if (user.config.kind === 'a') {
             user.config.myValue = 'abc';
         }
-        const plain = classToPlain(User, user);
+        const plain = plainSerializer.for(User).serialize(user);
         expect(plain.config.kind).toBe('a');
     }
 
     {
         const user = new User();
         user.config = new ConfigB();
-        const plain = classToPlain(User, user);
+        const plain = plainSerializer.for(User).serialize(user);
         expect(plain.config.kind).toBe('b');
     }
 });
 
 test('test discriminator plain to class', () => {
     {
-        const plain = { config: { kind: 'a', myValue: 'abc' }};
-        const user = plainToClass(User, plain);
+        const plain = {config: {kind: 'a', myValue: 'abc'}};
+        const user = plainSerializer.for(User).deserialize(plain);
         expect(user.config).toBeInstanceOf(ConfigA);
     }
 
     {
-        const plain = { config: { kind: 'b', myValue2: 'cdf' } };
-        const user = plainToClass(User, plain);
+        const plain = {config: {kind: 'b', myValue2: 'cdf'}};
+        const user = plainSerializer.for(User).deserialize(plain);
         expect(user.config).toBeInstanceOf(ConfigB);
     }
 });
@@ -89,14 +89,14 @@ test('test discriminator in array', () => {
     {
         const user = new UserWithConfigArray();
         user.configs.push(new ConfigA());
-        const plain = classToPlain(UserWithConfigArray, user);
+        const plain = plainSerializer.for(UserWithConfigArray).serialize(user);
         expect(plain.configs[0].kind).toBe('a');
     }
 
     {
         const user = new UserWithConfigArray();
         user.configs.push(new ConfigB());
-        const plain = classToPlain(UserWithConfigArray, user);
+        const plain = plainSerializer.for(UserWithConfigArray).serialize(user);
         expect(plain.configs[0].kind).toBe('b');
     }
 
@@ -105,7 +105,7 @@ test('test discriminator in array', () => {
         user.configs.push(new ConfigB());
         user.configs.push(new ConfigA());
         user.configs.push(new ConfigB());
-        const plain = classToPlain(UserWithConfigArray, user);
+        const plain = plainSerializer.for(UserWithConfigArray).serialize(user);
         expect(plain.configs[0].kind).toBe('b');
         expect(plain.configs[1].kind).toBe('a');
         expect(plain.configs[2].kind).toBe('b');
@@ -118,7 +118,7 @@ test('test discriminator in map', () => {
         user.configs['first'] = new ConfigA();
         user.configs['first'].myValue = '123';
 
-        const plain = classToPlain(UserWithConfigMap, user);
+        const plain = plainSerializer.for(UserWithConfigMap).serialize(user);
         expect(plain.configs.first.kind).toBe('a');
         expect((plain.configs.first as ConfigA).myValue).toBe('123');
     }
@@ -126,7 +126,7 @@ test('test discriminator in map', () => {
     {
         const user = new UserWithConfigMap();
         user.configs['first'] = new ConfigB();
-        const plain = classToPlain(UserWithConfigMap, user);
+        const plain = plainSerializer.for(UserWithConfigMap).serialize(user);
         expect(plain.configs.first.kind).toBe('b');
     }
 
@@ -135,7 +135,7 @@ test('test discriminator in map', () => {
         user.configs['first'] = new ConfigB();
         user.configs['second'] = new ConfigA();
         user.configs['third'] = new ConfigB();
-        const plain = classToPlain(UserWithConfigMap, user);
+        const plain = plainSerializer.for(UserWithConfigMap).serialize(user);
         expect(plain.configs.first.kind).toBe('b');
         expect(plain.configs.second.kind).toBe('a');
         expect(plain.configs.third.kind).toBe('b');
@@ -144,17 +144,17 @@ test('test discriminator in map', () => {
 
 test('test discriminator validation', () => {
     {
-        const plain = { config: { kind: 'a', myValue: 'abc' }};
+        const plain = {config: {kind: 'a', myValue: 'abc'}};
         expect(validate(User, plain)).toEqual([]);
     }
 
     {
-        const plain = { config: { kind: 'b', myValue2: 'cdf' } };
+        const plain = {config: {kind: 'b', myValue2: 'cdf'}};
         expect(validate(User, plain)).toEqual([]);
     }
 
     {
-        const plain = { config: { kind: 'c', moep: 'nope' } };
+        const plain = {config: {kind: 'c', moep: 'nope'}};
         expect(validate(User, plain)).toEqual([
             {code: 'invalid_union', message: 'No compatible type for union found', path: 'config'}
         ]);
@@ -163,17 +163,17 @@ test('test discriminator validation', () => {
 
 test('test discriminator validation in array', () => {
     {
-        const plain = { configs: [{ kind: 'a', myValue: 'abc' }]};
+        const plain = {configs: [{kind: 'a', myValue: 'abc'}]};
         expect(validate(UserWithConfigArray, plain)).toEqual([]);
     }
 
     {
-        const plain = { configs: [{ kind: 'b', myValue: 'cdf' }]};
+        const plain = {configs: [{kind: 'b', myValue: 'cdf'}]};
         expect(validate(UserWithConfigArray, plain)).toEqual([]);
     }
 
     {
-        const plain = { configs: [{ kind: 'c', nope: 'nope' }]};
+        const plain = {configs: [{kind: 'c', nope: 'nope'}]};
         expect(validate(UserWithConfigArray, plain)).toEqual([
             {code: 'invalid_union', message: 'No compatible type for union found', path: 'configs.0'}
         ]);
@@ -205,9 +205,9 @@ test('test discriminator no default value', () => {
     {
         const user = new User();
         user.config = new ConfigB();
-        const plain = classToPlain(User, user);
+        const plain = plainSerializer.for(User).serialize(user);
         expect(() => {
-            plainToClass(User, plain);
+            plainSerializer.for(User).deserialize(plain);
         }).toThrow('Discriminant ConfigB.kind has no default value');
         expect(() => {
             validate(User, plain);

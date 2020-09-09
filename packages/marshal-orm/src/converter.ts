@@ -1,11 +1,10 @@
-import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, JSONPartial, PropertySchema} from '@super-hornet/marshal';
-import toFastProperties from 'to-fast-properties';
+import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, plainSerializer, PropertySchema, Serializer, SerializerCompilers} from '@super-hornet/marshal';
+import {toFastProperties} from '@super-hornet/core';
 
-/**
- */
 function createJITConverterForSnapshot(
     classSchema: ClassSchema,
-    properties: Iterable<PropertySchema>
+    properties: Iterable<PropertySchema>,
+    serializerCompilers: SerializerCompilers
 ) {
     const context = new Map<any, any>();
     const jitStack = new JitStack();
@@ -20,7 +19,7 @@ function createJITConverterForSnapshot(
             for (const pk of property.getResolvedClassSchema().getPrimaryFields()) {
                 referenceCode.push(`
                 //createJITConverterForSnapshot ${property.name}->${pk.name} class:snapshot:${property.type} reference
-                ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, 'class', 'plain', context, jitStack)}
+                ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, serializerCompilers, context, jitStack)}
                 `);
             }
 
@@ -41,7 +40,7 @@ function createJITConverterForSnapshot(
         setProperties.push(`
             //createJITConverterForSnapshot ${property.name} class:snapshot:${property.type}
             ${getDataConverterJS(
-            `_result.${property.name}`, `_value.${property.name}`, property, 'class', 'plain', context, jitStack,
+            `_result.${property.name}`, `_value.${property.name}`, property, serializerCompilers, context, jitStack,
             `_result.${property.name} = null`, `_result.${property.name} = null`,
         )}
             `);
@@ -68,48 +67,60 @@ function createJITConverterForSnapshot(
 /**
  * Creates a new JIT compiled function to convert the class instance to a snapshot.
  * A snapshot is essentially the class instance as `plain` serialization while references are
- * stored only as primary keys.
+ * stored only as their primary keys.
  *
  * Generated function is cached.
  */
 export function getJITConverterForSnapshot(
-    classSchema: ClassSchema<any>
+    classSchema: ClassSchema
 ): (value: any) => any {
     const jit = classSchema.jit;
     if (jit.snapshotConverter) return jit.snapshotConverter;
 
-    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values());
+    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values(), plainSerializer.fromClass);
     toFastProperties(jit);
     return jit.snapshotConverter;
 }
 
+/**
+ * Extracts the primary key of JSONPartial (snapshot) and converts to class type.
+ */
 export function getPrimaryKeyExtractor<T>(
     classSchema: ClassSchema<T>
-): (value: any) => JSONPartial<T> {
+): (value: any) => Partial<T> {
     const jit = classSchema.jit;
     if (jit.primaryKey) return jit.primaryKey;
 
-    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields());
+    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields(), plainSerializer.toClass);
     toFastProperties(jit);
     return jit.primaryKey;
 }
 
+/**
+ * Creates a primary key hash generator that takes an item from any format
+ * converts it to class format, then to plain, then uses the primitive values to create a string hash.
+ */
 export function getPrimaryKeyHashGenerator(
-    classSchema: ClassSchema<any>,
-    fromFormat: string = 'class'
+    classSchema: ClassSchema,
+    serializer: Serializer
 ): (value: any) => string {
     const jit = classSchema.jit;
-    const name = 'pk_hash_' + fromFormat;
-    if (jit[name]) return jit[name];
 
-    jit[name] = createPrimaryKeyHashGenerator(classSchema, fromFormat);
-    toFastProperties(jit);
-    return jit[name];
+    if (!jit.pkHash) {
+        jit.pkHash = {};
+        toFastProperties(jit);
+    }
+
+    if (jit.pkHash[serializer.name]) return jit.pkHash[serializer.name];
+
+    jit.pkHash[serializer.name] = createPrimaryKeyHashGenerator(classSchema, serializer);
+    toFastProperties(jit.pkHash);
+    return jit.pkHash[serializer.name];
 }
 
 function createPrimaryKeyHashGenerator(
-    classSchema: ClassSchema<any>,
-    fromFormat: string = 'class'
+    classSchema: ClassSchema,
+    serializer: Serializer
 ) {
     const context = new Map<any, any>();
     const setProperties: string[] = [];
@@ -129,7 +140,8 @@ function createPrimaryKeyHashGenerator(
                 referenceCode.push(`
                 //getPrimaryKeyExtractor ${property.name}->${pk.name} class:snapshot:${property.type} reference
                 lastValue = '';
-                ${getDataConverterJS(`lastValue`, `_value.${property.name}.${pk.name}`, pk, fromFormat, 'plain', context, jitStack)}
+                ${getDataConverterJS(`lastValue`, `_value.${property.name}.${pk.name}`, pk, serializer.toClass, context, jitStack)}
+                ${getDataConverterJS(`lastValue`, `lastValue`, pk, plainSerializer.fromClass, context, jitStack)}
                 _result += '\\0' + lastValue;
             `);
             }
@@ -152,7 +164,8 @@ function createPrimaryKeyHashGenerator(
         setProperties.push(`
             //getPrimaryKeyHashGenerator ${property.name} class:plain:${property.type}
             lastValue = '';
-            ${getDataConverterJS(`lastValue`, `_value.${property.name}`, property, fromFormat, 'plain', context, jitStack)}
+            ${getDataConverterJS(`lastValue`, `_value.${property.name}`, property, serializer.toClass, context, jitStack)}
+            ${getDataConverterJS(`lastValue`, `lastValue`, property, plainSerializer.fromClass, context, jitStack)}
             _result += '\\0' + lastValue;
         `);
     }

@@ -5,7 +5,7 @@ import {
     plainToClass as classTransformerPlainToClass
 } from "class-transformer";
 import {BenchSuite} from "@super-hornet/core";
-import {f, classToPlain, plainToClass, plainToClassFactory, classToPlainFactory} from '@super-hornet/marshal';
+import {f, plainSerializer} from '@super-hornet/marshal';
 import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from "cerialize";
 
 export class MarshalModel {
@@ -55,12 +55,12 @@ test('benchmark plainToClass', () => {
     const suite = new BenchSuite('plainToClass simple model');
 
     suite.add('Marshal', () => {
-        plainToClass(MarshalModel, plain);
+        plainSerializer.for(MarshalModel).deserialize(plain);
     });
 
-    const convert = plainToClassFactory(MarshalModel);
+    const converter = plainSerializer.for(MarshalModel);
     suite.add('Marshal jit saved', () => {
-        convert(plain);
+        converter.deserialize(plain);
     });
 
     // console.log('jit', getJitFunctionPlainToClass(MarshalModel).toString());
@@ -77,7 +77,7 @@ test('benchmark plainToClass', () => {
 });
 
 test('benchmark classToPlain', () => {
-    const b = plainToClass(MarshalModel, {
+    const b = plainSerializer.for(MarshalModel).deserialize({
         name: 'name1',
         id: 1,
         tags: ['a', 2, 'c'],
@@ -88,12 +88,12 @@ test('benchmark classToPlain', () => {
     const suite = new BenchSuite('classToPlain simple model');
 
     suite.add('Marshal', () => {
-        classToPlain(MarshalModel, b);
+        plainSerializer.for(MarshalModel).serialize(b);
     });
 
-    const convert = classToPlainFactory(MarshalModel);
+    const converter = plainSerializer.for(MarshalModel)
     suite.add('Marshal jit save', () => {
-        convert(b);
+        converter.serialize(b);
     });
 
     // console.log('jit', getJitFunctionClassToPlain(MarshalModel).toString());

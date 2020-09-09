@@ -3,7 +3,7 @@ import {handleCustomValidator, ValidationFailedItem} from './validation';
 import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator} from './decorators';
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
 import './jit-validation-templates';
-import {reserveVariable} from './compiler-registry';
+import {reserveVariable} from './serializer-compiler';
 import {JitStack, resolvePropertyCompilerSchema} from './jit';
 
 const jitFunctions = new WeakMap<ClassSchema<any>, any>();

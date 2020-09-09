@@ -1,11 +1,11 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, t, getClassSchema, plainToClass, PropertySchema} from "../index";
-import {uuid} from "../src/utils";
+import {Entity, getClassSchema, plainSerializer, PropertySchema, t} from '../index';
+import {uuid} from '../src/utils';
 
 test('test optional', () => {
     class Model {
-        @t.optional super?: number
+        @t.optional super?: number;
     }
 
     const schema = getClassSchema(Model);
@@ -177,7 +177,7 @@ test('test asName', () => {
         }
     }
 
-    const user = plainToClass(User, {
+    const user = plainSerializer.for(User).deserialize({
         fieldA: 'a',
         fieldB: 'b'
     });

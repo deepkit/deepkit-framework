@@ -5,7 +5,7 @@ import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
 import {Context, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
-import {classToPlain, getClassTypeFromInstance, isClassInstance, isRegisteredEntity} from '@super-hornet/marshal';
+import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, plainSerializer} from '@super-hornet/marshal';
 import {isElementStruct, render} from './template/template';
 import {ApplicationConfig} from './application-config';
 import {join} from 'path';
@@ -54,8 +54,12 @@ export class HttpHandler {
         const resolved = this.router.resolve(req.method || 'GET', req.url || '/');
         if (!resolved) throw new Error('Route not found');
 
-        const injector = this.createInjector(resolved.controller, [{provide: IncomingMessage, useValue: req}]);
+        const injector = this.createInjector(resolved.controller, [
+            {provide: IncomingMessage, useValue: req},
+            {provide: ServerResponse, useValue: res},
+        ]);
         injector.allowUnknown = true;
+
         const controllerInstance = injector.get(resolved.controller);
         return await controllerInstance[resolved.method](...resolved.parameters);
     }
@@ -80,10 +84,10 @@ export class HttpHandler {
                     const info = await stat(path);
                     const mimeType = mime.lookup(path);
 
-                    const header: {[name: string]: string} = {
+                    const header: { [name: string]: string } = {
                         'Content-Type': mimeType || 'application/octet-stream',
                         'Content-Length': info.size.toString(),
-                    }
+                    };
 
                     res.writeHead(200, header);
                     createReadStream(path).pipe(res);
@@ -99,7 +103,10 @@ export class HttpHandler {
             return;
         }
 
-        const injector = this.createInjector(resolved.controller, [{provide: IncomingMessage, useValue: req}]);
+        const injector = this.createInjector(resolved.controller, [
+            {provide: IncomingMessage, useValue: req},
+            {provide: ServerResponse, useValue: res},
+        ]);
         injector.allowUnknown = true;
 
         //- call PRE_REQUEST listener
@@ -133,7 +140,7 @@ export class HttpHandler {
             res.writeHead(200, {
                 'Content-Type': 'application/json; charset=utf-8'
             });
-            res.end(classToPlain(getClassTypeFromInstance(response), response));
+            res.end(plainSerializer.for(getClassTypeFromInstance(response)).serialize(response));
         }
 
         //- call RESPONSE listener

@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, f, getClassSchema, Patcher, plainToClass} from '@super-hornet/marshal';
+import {f, getClassSchema, Patcher, plainSerializer} from '@super-hornet/marshal';
 import {BenchSuite} from '@super-hornet/core';
 
 test.only('nope');
@@ -274,18 +274,18 @@ test('classToPlain vs copy-on-write hooks', () => {
     const classSchema = getClassSchema(MarshalModel);
     const suite = new BenchSuite('classToPlain vs copy-on-write hooks');
     suite.add('classToPlain', () => {
-        const item = plainToClass(MarshalModel, {
+        const item = plainSerializer.for(MarshalModel).deserialize({
             name: 'name',
             id: 1,
             tags: ['a', 'b', 'c'],
             priority: 5,
             ready: true,
         });
-        classToPlain(MarshalModel, item);
+        plainSerializer.for(MarshalModel).serialize(item);
     });
 
     suite.add('proxy', () => {
-        const item = plainToClass(MarshalModel, {
+        const item = plainSerializer.for(MarshalModel).deserialize({
             name: 'name',
             id: 1,
             tags: ['a', 'b', 'c'],
@@ -308,7 +308,7 @@ test('classToPlain vs copy-on-write hooks', () => {
     }
 
     suite.add('defineProperty', () => {
-        const item = plainToClass(MarshalModel, {
+        const item = plainSerializer.for(MarshalModel).deserialize({
             name: 'name',
             id: 1,
             tags: ['a', 'b', 'c'],

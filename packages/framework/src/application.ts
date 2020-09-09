@@ -8,7 +8,6 @@ import {basename, relative} from 'path';
 import {Main} from '@oclif/command';
 import {buildOclifCommand} from './command';
 import {ApplicationConfig} from './application-config';
-import {Router, RouterControllers} from './router';
 
 export class Application {
     protected config: ApplicationConfig;
@@ -67,6 +66,7 @@ export class Application {
 
     public async execute(argv: string[]) {
         let result: any;
+
         class MyConfig extends Config {
             commandsMap: { [name: string]: Command.Plugin } = {};
 

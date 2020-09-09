@@ -1,5 +1,6 @@
 import 'jest';
 import {createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, mergeDecorator} from '../src/decorator-builder';
+import {entity, getClassSchema, t} from '../dist';
 
 test('without host', () => {
     class Dec1Model {
@@ -364,4 +365,18 @@ test('basic property', () => {
         expect(dec._fetch(Peter, 'name')!.name).toBe('peter');
         expect(dec._fetch(Peter, 'name')!.important).toBe(true);
     }
+});
+
+test('@entity', () => {
+    @entity.name('book')
+    class Book {
+        constructor(
+            @t.primary public id: number,
+            @t public name: string,
+        ) {
+        }
+    }
+
+    const book = getClassSchema(Book);
+    expect(book.name).toBe('book');
 });

@@ -1,5 +1,5 @@
 import {BehaviorSubject, Subject} from "rxjs";
-import {createJITConverterFromPropertySchema, PropertySchema} from "@super-hornet/marshal";
+import {plainSerializer, PropertySchema} from '@super-hornet/marshal';
 import {
     Batcher,
     ClientMessageAll,
@@ -508,7 +508,7 @@ export class Client {
             const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
             for (const i of eachKey(args)) {
-                args[i] = createJITConverterFromPropertySchema('class', 'plain', types.parameters[i])(args[i]);
+                args[i] = plainSerializer.serializeProperty(types.parameters[i], args[i]);
             }
 
             const activeSubject = this.sendMessage<ServerMessageResult>({

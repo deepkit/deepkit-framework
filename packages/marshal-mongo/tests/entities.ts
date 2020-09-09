@@ -91,7 +91,7 @@ export class SimpleModel {
     @t
     created: Date = now;
 
-    @t.array(String)
+    @t.array(t.string)
     types: string[] = [];
 
     @t.optional

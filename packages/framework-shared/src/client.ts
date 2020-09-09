@@ -1,22 +1,11 @@
-import {Subject, Subscriber, Observable} from "rxjs";
-import {first} from "rxjs/operators";
-import {
-    ClientMessageWithoutId,
-    IdInterface,
-    ServerMessageComplete,
-    ServerMessageError,
-    ServerMessageResult
-} from "./contract";
-import {getUnserializedError, StreamBehaviorSubject} from "./core";
-import {Collection, CollectionPaginationEvent} from "./collection";
-import {
-    PropertySchemaSerialized,
-    PropertySchema,
-    createJITConverterFromPropertySchema,
-    getClassSchemaByName, hasClassSchemaByName, getKnownClassSchemasNames
-} from "@super-hornet/marshal";
-import {ClassType, each} from "@super-hornet/core";
-import {EntityState} from "./entity-state";
+import {Observable, Subject, Subscriber} from 'rxjs';
+import {first} from 'rxjs/operators';
+import {ClientMessageWithoutId, IdInterface, ServerMessageComplete, ServerMessageError, ServerMessageResult} from './contract';
+import {getUnserializedError, StreamBehaviorSubject} from './core';
+import {Collection, CollectionPaginationEvent} from './collection';
+import {getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, PropertySchema, PropertySchemaSerialized} from '@super-hornet/marshal';
+import {ClassType, each} from '@super-hornet/core';
+import {EntityState} from './entity-state';
 
 export class MessageSubject<T> extends Subject<T> {
     public readonly disconnected = new Subject<number>();
@@ -116,7 +105,7 @@ export function handleActiveSubject(
     let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
     function deserializeResult(encoding: PropertySchemaSerialized, next: any): any {
-        return createJITConverterFromPropertySchema('plain', 'class', PropertySchema.fromJSON(encoding))(next);
+        return plainSerializer.deserializeProperty(PropertySchema.fromJSON(encoding), next);
     }
 
     const sub = activeSubject.subscribe((reply: ServerMessageResult) => {

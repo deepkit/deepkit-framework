@@ -72,7 +72,7 @@ export class ApplicationServer {
 
                 this.done();
             } else {
-                const worker = new WebWorker(cluster.worker.id, this.serviceContainer, this.config);
+                new WebWorker(cluster.worker.id, this.serviceContainer, this.config);
 
                 cluster.on('exit', (w) => {
                     console.log('mayday! mayday! worker', w.id, ' is no more!');

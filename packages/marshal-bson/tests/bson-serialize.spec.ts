@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {createBSONSizer, getBSONSerializer, getBSONSizer, hexToByte, uuidStringToByte} from '../src/bson-serialize';
-import {f, plainToClass, t, uuid} from '@super-hornet/marshal';
+import {f, plainSerializer, t} from '@super-hornet/marshal';
 import * as Moment from 'moment';
 import {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} from 'bson';
 import {getBSONDecoder} from '../src/bson-jit-parser';
@@ -905,7 +905,7 @@ test('arrayBuffer', () => {
         preview: t.type(ArrayBuffer),
     })
 
-    const message = plainToClass(schema, {
+    const message = plainSerializer.for(schema).deserialize({
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
         preview: 'QmFhcg==', //Baar
@@ -937,7 +937,7 @@ test('typed array', () => {
         preview: t.type(Uint16Array),
     })
 
-    const message = plainToClass(schema, {
+    const message = plainSerializer.for(schema).deserialize({
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
         preview: 'LAA3AEIATQBYAA==', //44, 55, 66, 77, 88

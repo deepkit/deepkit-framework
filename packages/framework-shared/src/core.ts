@@ -1,17 +1,10 @@
-import {BehaviorSubject, Observable, Subject, TeardownLogic} from "rxjs";
-import {tearDown} from "@super-hornet/core-rxjs";
-import {IdInterface} from "./contract";
+import {BehaviorSubject, Observable, Subject, TeardownLogic} from 'rxjs';
+import {tearDown} from '@super-hornet/core-rxjs';
+import {IdInterface} from './contract';
 import {ClassType, CustomError} from '@super-hornet/core';
 import {Buffer} from 'buffer';
-import {
-    arrayBufferTo,
-    classToPlain,
-    Entity,
-    t,
-    getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName,
-    plainToClass,
-} from "@super-hornet/marshal";
-import {skip} from "rxjs/operators";
+import {arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, t,} from '@super-hornet/marshal';
+import {skip} from 'rxjs/operators';
 
 @Entity('@error:json')
 export class JSONError {
@@ -67,7 +60,7 @@ export function getSerializedErrorPair(error: any): [string, any, any] {
     } else {
         const entityName = getClassSchema(error['constructor'] as ClassType<typeof error>).name;
         if (entityName) {
-            return [entityName, classToPlain(error['constructor'] as ClassType<typeof error>, error), error ? error.stack : undefined];
+            return [entityName, plainSerializer.for(error['constructor'] as ClassType<typeof error>).serialize(error), error ? error.stack : undefined];
         }
     }
 
@@ -90,7 +83,7 @@ export function getUnserializedError(entityName: string, error: any, stack: any,
     if (!hasClassSchemaByName(entityName)) {
         throw new Error(`Marshal entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
     }
-    return plainToClass(getClassSchemaByName(entityName).classType, error);
+    return plainSerializer.for(getClassSchemaByName(entityName).classType).deserialize(error);
 }
 
 // export type Query<T> = {
@@ -122,9 +115,9 @@ export function getUnserializedError(entityName: string, error: any, stack: any,
 //     [P in keyof T]?: Query<T[P]> | T[P];
 // } | Query<T>;
 
-type RegExpForString<T> = T extends string ? (RegExp | T): T;
+type RegExpForString<T> = T extends string ? (RegExp | T) : T;
 type MongoAltQuery<T> =
-    T extends Array<infer U> ? (T | RegExpForString<U>):
+    T extends Array<infer U> ? (T | RegExpForString<U>) :
         RegExpForString<T>;
 
 export type QuerySelector<T> = {
@@ -197,7 +190,7 @@ export type RootQuerySelector<T> = {
     [key: string]: any;
 };
 
-export type ObjectQuerySelector<T> = T extends object ? {[key in keyof T]?: QuerySelector<T[key]> } : QuerySelector<T>;
+export type ObjectQuerySelector<T> = T extends object ? { [key in keyof T]?: QuerySelector<T[key]> } : QuerySelector<T>;
 
 export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 

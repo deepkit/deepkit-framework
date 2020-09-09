@@ -9,22 +9,24 @@ import {DatabaseAdapter} from "./database";
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T]?: ORDER };
 
+export interface DatabaseJoinModel {
+    //this is the parent classSchema, the foreign classSchema is stored in `query`
+    classSchema: ClassSchema<any>,
+    propertySchema: PropertySchema,
+    type: 'left' | 'inner' | string,
+    populate: boolean,
+    //defines the field name under which the database engine populated the results.
+    //necessary for the formatter to pick it up, convert and set correct to the real field name
+    as?: string,
+    query: JoinDatabaseQuery<any, any, any>,
+    foreignPrimaryKey: PropertySchema,
+}
+
 export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>, SORT extends Sort<Entity>> {
     public withIdentityMap: boolean = true;
     public filter?: FILTER;
     public select: Set<string> = new Set<string>();
-    public joins: {
-        //this is the parent classSchema, the foreign classSchema is stored in `query`
-        classSchema: ClassSchema<any>,
-        propertySchema: PropertySchema,
-        type: 'left' | 'inner' | string,
-        populate: boolean,
-        //defines the field name under which the database engine populated the results.
-        //necessary for the formatter to pick it up, convert and set correct to the real field name
-        as?: string,
-        query: JoinDatabaseQuery<any, any, any>,
-        foreignPrimaryKey: PropertySchema,
-    }[] = [];
+    public joins: DatabaseJoinModel[] = [];
     public skip?: number;
     public limit?: number;
     public parameters: { [name: string]: any } = {};
@@ -35,7 +37,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>
         this.change.next();
     }
 
-    clone(parentQuery: BaseQuery<T, any>) {
+    clone(parentQuery?: BaseQuery<T, any>): DatabaseQueryModel<T, FILTER, SORT> {
         const m = new DatabaseQueryModel<T, FILTER, SORT>();
         m.filter = this.filter;
         m.withIdentityMap = this.withIdentityMap;
@@ -297,6 +299,12 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter, M
 export class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>, RESOLVER extends GenericQueryResolver<T, any, MODEL>> extends BaseQuery<T, MODEL> {
     constructor(classSchema: ClassSchema<T>, model: MODEL, protected resolver: RESOLVER) {
         super(classSchema, model);
+    }
+
+    clone(): this {
+        const cloned = super.clone() as this;
+        cloned.resolver = this.resolver;
+        return cloned;
     }
 
     public async count(): Promise<number> {

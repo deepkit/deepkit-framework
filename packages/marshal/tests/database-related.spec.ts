@@ -1,9 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, t, getClassSchema, MultiIndex} from "../src/decorators";
-import {uuid} from "../src/utils";
-import {getCollectionName} from "../src/mapper";
-import {ClassType} from '@super-hornet/core';
+import {Entity, getClassSchema, MultiIndex, t} from '../src/decorators';
+import {uuid} from '../src/utils';
+import {getCollectionName} from '../src/mapper';
 
 
 @Entity('user2')

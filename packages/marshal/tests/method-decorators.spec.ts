@@ -1,15 +1,8 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {t, getClassSchema, PartialField, PropertySchema} from "../src/decorators";
-import {
-    argumentClassToPlain,
-    argumentPlainToClass,
-    methodResultClassToPlain,
-    methodResultPlainToClass, patchPlainToClass,
-    plainToClass,
-    validateMethodArgs
-} from '../index';
+import {getClassSchema, PartialField, PropertySchema, t} from '../src/decorators';
+import {plainSerializer, validateMethodArgs} from '../index';
 
 test('Basic array', () => {
     class Other {
@@ -111,7 +104,7 @@ test('short @f unmet array definition', () => {
             public foo(@t bar: string[]) {
             }
         }
-    }).toThrow('Controller::foo::bar type mismatch. Given nothing, but declared is Array')
+    }).toThrow('Controller::foo::bar type mismatch. Given nothing, but declared is Array');
 });
 
 test('short @f no index on arg', () => {
@@ -120,7 +113,7 @@ test('short @f no index on arg', () => {
             public foo(@t.index() bar: string[]) {
             }
         }
-    }).toThrow('Index could not be used on method arguments')
+    }).toThrow('Index could not be used on method arguments');
 });
 
 test('method args', () => {
@@ -249,7 +242,7 @@ test('partial', () => {
     expect(s.getProperty('config2').isPartial).toBe(true);
     expect(s.getProperty('config2').getSubType().getResolvedClassType()).toBe(Config);
 
-    const u = plainToClass(User, {
+    const u = plainSerializer.for(User).deserialize({
         config: {
             name: 'peter',
         }
@@ -279,12 +272,12 @@ test('argument partial', () => {
     }
 
     expect(validateMethodArgs(User, 'foo', [{}])).toBeArrayOfSize(0);
-    expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.name"}]);
-    expect(validateMethodArgs(User, 'foo', [{name: []}])).toEqual([{"code": "invalid_string", "message": "No string given", "path": "#0.name"}]);
+    expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name'}]);
+    expect(validateMethodArgs(User, 'foo', [{name: []}])).toEqual([{'code': 'invalid_string', 'message': 'No string given', 'path': '#0.name'}]);
     expect(validateMethodArgs(User, 'foo', [{name: ''}])).toEqual([]);
-    expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.name"}]);
+    expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name'}]);
     expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: undefined}])).toEqual([]);
-    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: {peter: true}}])).toEqual([{"code": "required", "message": "Required value is undefined", "path": "#0.sub.name"}]);
+    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: {peter: true}}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.sub.name'}]);
 });
 
 test('argument convertion', () => {
@@ -311,23 +304,24 @@ test('argument convertion', () => {
             return config;
         }
     }
+
     const schema = getClassSchema(Controller);
     expect(schema.getMethodProperties('foo')[0].type).toBe('string');
 
     {
-        const name = argumentClassToPlain(Controller, 'foo', 0, 2);
+        const name = plainSerializer.for(Controller).serializeMethodArgument('foo', 0, 2);
         expect(name).toBe(2);
 
-        const res = methodResultPlainToClass(Controller, 'foo', {name: 3});
+        const res = plainSerializer.for(Controller).deserializeMethodResult('foo', {name: 3});
         expect(res).toEqual({name: '3'});
     }
 
     {
-        const config = argumentPlainToClass(Controller, 'bar', 0, {prio: '2'});
+        const config = plainSerializer.for(Controller).deserializeMethodArgument('bar', 0, {prio: '2'});
         expect(config).toBeInstanceOf(Config);
         expect(config.prio).toBe(2);
 
-        const res = methodResultPlainToClass(Controller, 'bar', {'sub': {name: 3}});
+        const res = plainSerializer.for(Controller).deserializeMethodResult('bar', {'sub': {name: 3}});
         expect(res).toBeInstanceOf(Config);
         expect(res.sub).toBeInstanceOf(Config);
         expect(res.sub.name).toBe('3');
@@ -470,14 +464,14 @@ test('short @f templateArgs', () => {
         public foo(): Observable<number> {
             return new Observable((observer) => {
                 observer.next(3);
-            })
+            });
         }
 
         @t.template(t.string.optional)
         public foo2(): Observable<string | undefined> {
             return new Observable((observer) => {
                 observer.next('2');
-            })
+            });
         }
     }
 
@@ -513,16 +507,17 @@ test('PropertySchema setFromJSValue', () => {
     {
         const p = new PropertySchema('');
         p.setFromJSValue(1);
-        expect(p.type).toBe('number')
+        expect(p.type).toBe('number');
     }
 
     {
         const p = new PropertySchema('');
         p.setFromJSValue(null);
-        expect(p.type).toBe('any')
+        expect(p.type).toBe('any');
     }
 
-    class Peter {}
+    class Peter {
+    }
 
     {
         const p = new PropertySchema('');
@@ -539,6 +534,7 @@ test('set any param', () => {
             return true;
         }
     }
+
     const s = getClassSchema(Controller);
 
     {
@@ -554,6 +550,7 @@ test('set any [][]', () => {
             return true;
         }
     }
+
     const s = getClassSchema(Controller);
 
     {
@@ -601,6 +598,7 @@ test('set array result', () => {
             return [];
         }
     }
+
     const s = getClassSchema(Controller);
 
     {

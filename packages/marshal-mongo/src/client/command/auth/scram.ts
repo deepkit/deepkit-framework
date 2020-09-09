@@ -57,7 +57,7 @@ function passwordDigest(u: string, p: string) {
     if (p.length === 0) throw new MongoError('password cannot be empty');
 
     const md5 = createHash('md5');
-    md5.update(`${u}:mongo:${p}`, 'utf8');
+    md5.update(`${u}:mongo:${p}`, 'utf8'); //lgtm[js/weak-cryptographic-algorithm] lgtm[js/insufficient-password-hash]
     return md5.digest('hex');
 }
 

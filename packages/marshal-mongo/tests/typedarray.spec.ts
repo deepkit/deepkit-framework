@@ -1,8 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, f, getClassSchema} from "@super-hornet/marshal";
-import {classToMongo, mongoToClass, plainToMongo} from "../index";
+import {f, getClassSchema, plainSerializer} from '@super-hornet/marshal';
 import {Binary} from 'bson';
+import {mongoSerializer} from '../src/mongo-serializer';
 
 test('Int8Array', async () => {
     class Clazz {
@@ -16,20 +16,20 @@ test('Int8Array', async () => {
 
     expect(getClassSchema(Clazz).getProperty('ints').type).toBe('Int8Array');
 
-    const plain = classToPlain(Clazz, clazz);
+    const plain = plainSerializer.for(Clazz).serialize(clazz);
     expect(plain.ints).toBeString();
     expect(plain.ints).toBe('AUA=');
 
-    const mongo = classToMongo(Clazz, clazz);
+    const mongo = mongoSerializer.for(Clazz).serialize(clazz);
     expect(mongo.ints).toBeInstanceOf(Binary);
     expect(mongo.ints.toString('base64')).toBe('AUA=');
 
-    const clazz3 = mongoToClass(Clazz, mongo);
+    const clazz3 = mongoSerializer.for(Clazz).deserialize(mongo);
     expect(clazz3.ints).toBeInstanceOf(Int8Array);
     expect(clazz3.ints[0]).toBe(1);
     expect(clazz3.ints[1]).toBe(64);
 
-    const mongo2 = plainToMongo(Clazz, plain);
+    const mongo2 = mongoSerializer.for(Clazz).from(plainSerializer, plain);
     expect(mongo2.ints).toBeInstanceOf(Binary);
     expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'))
 });
@@ -48,22 +48,22 @@ test('arrayBuffer', async () => {
     expect(new Int8Array(clazz.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz.ints!)[1]).toBe(64);
 
-    const plain = classToPlain(Clazz, clazz);
+    const plain = plainSerializer.for(Clazz).serialize(clazz);
     expect(plain.ints).toBeString();
     expect(plain.ints).toBe('AUA=');
 
-    const mongo = classToMongo(Clazz, clazz);
+    const mongo = mongoSerializer.for(Clazz).serialize(clazz);
     expect(mongo.ints).toBeInstanceOf(Binary);
     expect(mongo.ints.toString('base64')).toBe('AUA=');
 
-    const clazz2 = mongoToClass(Clazz, mongo);
+    const clazz2 = mongoSerializer.for(Clazz).deserialize(mongo);
     expect(clazz2.ints).not.toBeInstanceOf(Int8Array);
     expect(clazz2.ints).toBeInstanceOf(ArrayBuffer);
     expect(clazz2.ints!.byteLength).toBe(2);
     expect(new Int8Array(clazz2.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz2.ints!)[1]).toBe(64);
 
-    const mongo2 = plainToMongo(Clazz, plain);
+    const mongo2 = mongoSerializer.for(Clazz).from(plainSerializer, plain);
     expect(mongo2.ints).toBeInstanceOf(Binary);
     expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'))
 });
@@ -82,21 +82,21 @@ test('arrayBuffer 2', async () => {
     expect(new Int8Array(clazz.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz.ints!)[1]).toBe(64);
 
-    const plain = classToPlain(Clazz, clazz);
+    const plain = plainSerializer.for(Clazz).serialize(clazz);
     expect(plain.ints).toBeString();
     expect(plain.ints).toBe('AUA=');
 
-    const mongo = classToMongo(Clazz, clazz);
+    const mongo = mongoSerializer.for(Clazz).serialize(clazz);
     expect(mongo.ints).toBeInstanceOf(Binary);
     expect(mongo.ints.toString('base64')).toBe('AUA=');
 
-    const clazz2 = mongoToClass(Clazz, mongo);
+    const clazz2 = mongoSerializer.for(Clazz).deserialize(mongo);
     expect(clazz2.ints).not.toBeInstanceOf(Int8Array);
     expect(clazz2.ints).toBeInstanceOf(ArrayBuffer);
     expect(new Int8Array(clazz2.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz2.ints!)[1]).toBe(64);
 
-    const mongo2 = plainToMongo(Clazz, plain);
+    const mongo2 = mongoSerializer.for(Clazz).from(plainSerializer, plain);
     expect(mongo2.ints).toBeInstanceOf(Binary);
     expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'))
 });

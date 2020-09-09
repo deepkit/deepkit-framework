@@ -1,19 +1,8 @@
 import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema} from './decorators';
 import {isExcluded} from './mapper';
-import {ClassType} from '@super-hornet/core';
-import {getDataConverterJS, reserveVariable} from './compiler-registry';
-import toFastProperties from 'to-fast-properties';
-
-export let moment: any = () => {
-    throw new Error('Moment.js not installed');
-};
-
-declare function require(moduleName: string): any;
-
-try {
-    moment = require('moment');
-} catch (e) {
-}
+import {ClassType, toFastProperties} from '@super-hornet/core';
+import {getDataConverterJS, reserveVariable} from './serializer-compiler';
+import {Serializer} from './serializer';
 
 /**
  * This is used withing JIT functions.
@@ -96,30 +85,6 @@ export function resolvePropertyCompilerSchema<T>(schema: ClassSchema<T>, propert
     throw new Error(`Invalid path ${propertyPath} in class ${schema.getClassName()}.`);
 }
 
-const cacheJitProperty = new Map<string, WeakMap<PropertySchema, any>>();
-
-/**
- * A handy utility class that allows fast access to a JitPropertyConverter class.
- */
-export class CacheJitPropertyConverter {
-    protected cache = new Map<ClassSchema, JitPropertyConverter>();
-
-    constructor(
-        public readonly fromFormat: string,
-        public readonly toFormat: string
-    ) {
-    }
-
-    getJitPropertyConverter(classTypeOrSchema: ClassType<any> | ClassSchema): JitPropertyConverter {
-        classTypeOrSchema = getClassSchema(classTypeOrSchema);
-        let converter = this.cache.get(classTypeOrSchema);
-        if (converter) return converter;
-        converter = new JitPropertyConverter(classTypeOrSchema, this.fromFormat, this.toFormat);
-        this.cache.set(classTypeOrSchema, converter);
-        return converter;
-    }
-}
-
 export interface JitConverterOptions {
     /**
      * Which groups to include. If a property is not assigned to
@@ -142,113 +107,68 @@ export interface JitConverterOptions {
     parents?: any[];
 }
 
+export function getPropertyClassToXFunction(
+    property: PropertyCompilerSchema,
+    serializer: Serializer
+): (value: any, options?: JitConverterOptions) => any {
+    const jit = property.jit;
+    let fn = jit[serializer.fromClassSymbol];
+    if (fn) return fn;
+
+    jit[serializer.fromClassSymbol] = createPropertyClassToXFunction(property, serializer);
+    toFastProperties(jit);
+    return jit[serializer.fromClassSymbol];
+}
+
+export function getPropertyXtoClassFunction(
+    property: PropertyCompilerSchema,
+    serializer: Serializer
+): (value: any, parents?: any[], options?: JitConverterOptions) => any {
+    const jit = property.jit;
+    let fn = jit[serializer.toClassSymbol];
+    if (fn) return fn;
+
+    jit[serializer.toClassSymbol] = createPropertyXToClassFunction(property, serializer);
+    toFastProperties(jit);
+    return jit[serializer.toClassSymbol];
+}
+
 /**
- * Creates a new JIT compiled function to convert given property schema for certain paths.
- * Paths can be deep paths making it possible to convert patch-like/mongo structure
- *
- * Note: If fromFormat -> toFormat has no compiler templates registered,
- * its tried to first serialize from `fromFormat`->class and then class->`toFormat`.
- *
- * Generated function is cached.
+ * Creates a new JIT compiled function to convert given property schema. Deep paths are not allowed.
  */
-export class JitPropertyConverter {
-    protected cacheJitPropertyMap: WeakMap<PropertyCompilerSchema, any>;
+export function createPropertyClassToXFunction(
+    property: PropertyCompilerSchema,
+    serializer: Serializer
+): (value: any, parents?: any[]) => any {
+    const context = new Map<any, any>();
+    const jitStack = new JitStack();
 
-    constructor(
-        private schema: ClassSchema,
-        public readonly fromFormat: string,
-        public readonly toFormat: string,
-        private options?: JitConverterOptions
-    ) {
-        this.schema.initializeProperties();
+    const line = getDataConverterJS('result', '_value', property, serializer.fromClass, context, jitStack);
 
-        this.cacheJitPropertyMap = cacheJitProperty.get(fromFormat + ':' + toFormat)!;
-        if (!this.cacheJitPropertyMap) {
-            this.cacheJitPropertyMap = new WeakMap<PropertySchema, any>();
-            cacheJitProperty.set(fromFormat + ':' + toFormat, this.cacheJitPropertyMap);
-        }
-    }
-
-    convert(path: string, value: any, result?: any): any {
-        let property: PropertyCompilerSchema;
-
-        try {
-            property = this.schema.getClassProperties().get(path) || resolvePropertyCompilerSchema(this.schema, path);
-        } catch (error) {
-            return;
-        }
-
-        if (this.options && !isGroupAllowed(this.options, property.groupNames)) return;
-
-        if (result) {
-            result[path] = this.convertProperty(property, value);
-        } else {
-            return this.convertProperty(property, value);
-        }
-    }
-
-    convertProperty(property: PropertyCompilerSchema, value: any): any {
-        if (property.isParentReference) {
-            return;
-        }
-
-        const jit = this.cacheJitPropertyMap.get(property);
-        if (jit) {
-            return jit(value, this.options && this.options.parents, this.options);
-        }
-
-        const context = new Map<any, any>();
-        const jitStack = new JitStack();
-
-        const line = getDataConverterJS('result', '_value', property, this.fromFormat, this.toFormat, context, jitStack);
-
-        const functionCode = `
-        return function(_value, _parents, _options) {
-            var result, _state;
-            function getParents() {
-                return _parents;
-            }
-            if (!_parents) _parents = [];
-            //convertProperty ${property.name} ${this.fromFormat}:${this.toFormat}:${property.type}
+    const functionCode = `
+        return function(_value, _options) {
+            var result;
+            //createJITConverterFromPropertySchema ${property.name} ${property.type}
             ${line}
             return result;
         }
         `;
 
-        const compiled = new Function(...context.keys(), functionCode);
-        const fn = compiled.bind(undefined, ...context.values())();
-        this.cacheJitPropertyMap.set(property, fn);
-
-        return fn(value, this.options && this.options.parents, this.options);
-    }
+    const compiled = new Function(...context.keys(), functionCode);
+    return compiled.bind(undefined, ...context.values())();
 }
 
 /**
- *
  * Creates a new JIT compiled function to convert given property schema. Deep paths are not allowed.
- * Generated function is cached.
  */
-export function createJITConverterFromPropertySchema(
-    fromFormat: string,
-    toFormat: string,
-    property: PropertySchema
-): (value: any, parents?: any[]) => any {
-    let cacheJitPropertyMap = cacheJitProperty.get(fromFormat + ':' + toFormat)!;
-    if (!cacheJitPropertyMap) {
-        cacheJitPropertyMap = new WeakMap<PropertySchema, any>();
-        cacheJitProperty.set(fromFormat + ':' + toFormat, cacheJitPropertyMap);
-    }
-
-    const jit = cacheJitPropertyMap.get(property);
-
-    if (jit) {
-        return jit;
-    }
-
+export function createPropertyXToClassFunction(
+    property: PropertyCompilerSchema,
+    serializer: Serializer
+): (value: any, parents?: any[], options?: JitConverterOptions) => any {
     const context = new Map<any, any>();
     const jitStack = new JitStack();
 
-    const line = getDataConverterJS('result', '_value', property, fromFormat, toFormat, context, jitStack);
+    const line = getDataConverterJS('result', '_value', property, serializer.toClass, context, jitStack);
 
     const functionCode = `
         return function(_value, _parents, _options) {
@@ -257,17 +177,14 @@ export function createJITConverterFromPropertySchema(
                 return _parents;
             }
             if (!_parents) _parents = [];
-            //createJITConverterFromPropertySchema ${property.name} ${fromFormat}:${toFormat}:${property.type}
+            //createJITConverterFromPropertySchema ${property.name} ${property.type}
             ${line}
             return result;
         }
         `;
 
     const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, ...context.values())();
-    cacheJitPropertyMap.set(property, fn);
-
-    return fn;
+    return compiled.bind(undefined, ...context.values())();
 }
 
 function getParentResolverJS<T>(
@@ -322,7 +239,7 @@ function isGroupAllowed(options: JitConverterOptions, groupNames: string[]): boo
     return true;
 }
 
-export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: string | 'plain', jitStack: JitStack = new JitStack())
+export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack: JitStack = new JitStack())
     : (instance: T, options?: JitConverterOptions) => any {
     const context = new Map<string, any>();
     const prepared = jitStack.prepare(schema);
@@ -335,7 +252,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: stri
         functionCode = `
         return function(_instance, _options) {
             var result, _state;
-            ${getDataConverterJS(`result`, `_instance.${decoratorName}`, property, 'class', toFormat, context, jitStack)}
+            ${getDataConverterJS(`result`, `_instance.${decoratorName}`, property, serializer.fromClass, context, jitStack)}
             return result;
         }
         `;
@@ -350,14 +267,14 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: stri
 
             if (property.backReference) continue;
 
-            if (isExcluded(schema, property.name, toFormat)) {
+            if (isExcluded(schema, property.name, serializer.name)) {
                 continue;
             }
 
             convertProperties.push(`
             //${property.name}:${property.type}
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){ 
-                ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, 'class', toFormat, context, jitStack)}
+                ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, serializer.fromClass, context, jitStack)}
             }
         `);
         }
@@ -384,26 +301,23 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, toFormat: stri
     return fn;
 }
 
-export function getClassToXFunction<T>(schema: ClassSchema<T>, toFormat: string | 'plain', jitStack?: JitStack)
+export function getClassToXFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack?: JitStack)
     : (instance: T, options?: JitConverterOptions) => any {
     const jit = schema.jit;
-    const name = 'ctox_' + toFormat;
-    let fn = jit[name];
+    let fn = jit[serializer.fromClassSymbol];
     if (fn) return fn;
 
-    jit[name] = createClassToXFunction(schema, toFormat, jitStack || new JitStack());
+    jit[serializer.fromClassSymbol] = createClassToXFunction(schema, serializer, jitStack || new JitStack());
     toFastProperties(jit);
-    return jit[name];
+    return jit[serializer.fromClassSymbol];
 }
 
-export function getJitFunctionClassToX(schema: ClassSchema<any>, toFormat: string = 'plain') {
-    const name = 'ctox_' + toFormat;
-    return schema.jit[name];
+export function getGeneratedJitFunctionFromClass(schema: ClassSchema<any>, serializer: Serializer) {
+    return schema.jit[serializer.fromClassSymbol];
 }
 
-export function getJitFunctionXToClass(schema: ClassSchema<any>, fromFormat: string = 'plain') {
-    const name = 'xtoc_' + fromFormat;
-    return schema.jit[name];
+export function getJitFunctionXToClass(schema: ClassSchema<any>, serializer: Serializer) {
+    return schema.jit[serializer.toClassSymbol];
 }
 
 export class JitStackEntry {
@@ -448,7 +362,7 @@ export class JitStack {
     }
 }
 
-export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: string | 'plain', jitStack: JitStack = new JitStack())
+export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack: JitStack = new JitStack())
     : (data: any, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
 
     const context = new Map<string, any>();
@@ -467,7 +381,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
             constructorArguments.push(`
                 //constructor parameter ${property.name}, decorated
                 var c_${property.name} = _data;
-                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context, jitStack,)}
+                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, serializer.toClass, context, jitStack,)}
             `);
         } else if (property.isParentReference) {
             //parent resolver
@@ -476,7 +390,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
             constructorArguments.push(`
                 //constructor parameter ${property.name}
                 var c_${property.name} = _data[${JSON.stringify(property.name)}];
-                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, fromTarget, 'class', context, jitStack)}
+                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, serializer.toClass, context, jitStack)}
             `);
         }
 
@@ -492,7 +406,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
         } else {
             setProperties.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
-                ${getDataConverterJS(`_instance.${property.name}`, `_data.${property.name}`, property, fromTarget, 'class', context, jitStack)}
+                ${getDataConverterJS(`_instance.${property.name}`, `_data.${property.name}`, property, serializer.toClass, context, jitStack)}
             }
             `);
         }
@@ -553,33 +467,40 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: st
     return fn;
 }
 
-export function getXToClassFunction<T>(schema: ClassSchema<T>, fromTarget: string | 'plain', jitStack?: JitStack)
+export function getXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack?: JitStack)
     : (data: any, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
+
     const jit = schema.jit;
-    const name = 'xtoc_' + fromTarget;
-    let fn = jit[name];
+    let fn = jit[serializer.toClassSymbol];
     if (fn) return fn;
 
-    jit[name] = createXToClassFunction(schema, fromTarget, jitStack || new JitStack());
+    jit[serializer.toClassSymbol] = createXToClassFunction(schema, serializer, jitStack || new JitStack());
     toFastProperties(jit);
-    return jit[name];
+    return jit[serializer.toClassSymbol];
 }
 
-const partialXToX = new Map<ClassSchema, Map<string, any>>();
+export function getPartialXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer): (data: any, options?: JitConverterOptions, parents?: any[]) => any {
+    const jit = schema.jit;
+    let fn = jit[serializer.partialToClassSymbol];
+    if (fn) return fn;
 
-export function createPartialXToXFunction<T>(schema: ClassSchema<T>, fromFormat: string | 'plain' | 'class', toFormat: 'class' | 'plain' | string)
-    : (data: any, options?: JitConverterOptions) => any {
+    jit[serializer.partialToClassSymbol] = createPartialXToClassFunction(schema, serializer);
+    toFastProperties(jit);
+    return jit[serializer.partialToClassSymbol];
+}
 
-    const cacheKey = fromFormat + ':' + toFormat;
-    let map = partialXToX.get(schema);
-    if (map) {
-        const jit = map.get(cacheKey);
-        if (jit && jit.buildId === schema.buildId) return jit;
-    } else {
-        map = new Map;
-        partialXToX.set(schema, map);
-    }
+export function getPartialClassToXFunction<T>(schema: ClassSchema<T>, serializer: Serializer): (data: any, options?: JitConverterOptions) => any {
+    const jit = schema.jit;
+    let fn = jit[serializer.partialFromClassSymbol];
+    if (fn) return fn;
 
+    jit[serializer.partialFromClassSymbol] = createPartialClassToXFunction(schema, serializer);
+    toFastProperties(jit);
+    return jit[serializer.partialFromClassSymbol];
+}
+
+export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer)
+    : (data: any, options?: JitConverterOptions, parents?: any[]) => any {
     const context = new Map<string, any>();
     const jitStack = new JitStack();
     context.set('isGroupAllowed', isGroupAllowed);
@@ -592,7 +513,7 @@ export function createPartialXToXFunction<T>(schema: ClassSchema<T>, fromFormat:
         props.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
             if (_data.hasOwnProperty(${JSON.stringify(property.name)})) {
-                ${getDataConverterJS(`_result.${property.name}`, `_data.${property.name}`, property, fromFormat, toFormat, context, jitStack)}
+                ${getDataConverterJS(`_result.${property.name}`, `_data.${property.name}`, property, serializer.toClass, context, jitStack)}
             }
             }
         `);
@@ -612,45 +533,38 @@ export function createPartialXToXFunction<T>(schema: ClassSchema<T>, fromFormat:
     `;
 
     const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, ...context.values())();
-    fn.buildId = schema.buildId;
-    map.set(cacheKey, fn);
-
-    return fn;
+    return compiled.bind(undefined, ...context.values())();
 }
 
-export function jitPartial<T extends ClassType<any> | ClassSchema<any>>(
-    classTypeOrSchema: T,
-    fromFormat: string,
-    toFormat: string,
-    partial: any,
-    options?: JitConverterOptions
-) {
-    return createPartialXToXFunction(getClassSchema(classTypeOrSchema), fromFormat, toFormat)(partial, options);
-}
+export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, serializer: Serializer)
+    : (data: any, options?: JitConverterOptions) => any {
+    const context = new Map<string, any>();
+    const jitStack = new JitStack();
+    context.set('isGroupAllowed', isGroupAllowed);
 
-export function jitPartialFactory<T extends ClassType<any> | ClassSchema<any>>(
-    classTypeOrSchema: T,
-    fromFormat: string,
-    toFormat: string,
-) {
-    return createPartialXToXFunction(getClassSchema(classTypeOrSchema), fromFormat, toFormat);
-}
+    const props: string[] = [];
 
-export function jitPatch<T, R extends object>(
-    classSchema: ClassSchema,
-    fromFormat: string,
-    toFormat: string,
-    partial: R,
-    options?: JitConverterOptions
-): { [F in keyof R]?: any } {
-    const result: Partial<{ [F in keyof R]: any }> = {};
-    const jitConverter = new JitPropertyConverter(classSchema, fromFormat, toFormat, options);
+    for (const property of schema.getClassProperties().values()) {
+        if (property.isParentReference) continue;
 
-    for (const i in partial) {
-        if (!partial.hasOwnProperty(i)) continue;
-        jitConverter.convert(i, partial[i], result);
+        props.push(`
+            if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
+            if (_data.hasOwnProperty(${JSON.stringify(property.name)})) {
+                ${getDataConverterJS(`_result.${property.name}`, `_data.${property.name}`, property, serializer.fromClass, context, jitStack)}
+            }
+            }
+        `);
     }
 
-    return result;
+    const functionCode = `
+        return function(_data, _options) {
+            var _result = {};
+
+            ${props.join('\n')}
+            return _result;
+        }
+    `;
+
+    const compiled = new Function(...context.keys(), functionCode);
+    return compiled.bind(undefined, ...context.values())();
 }

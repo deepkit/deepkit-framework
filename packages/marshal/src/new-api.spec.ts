@@ -1,7 +1,7 @@
 import 'jest';
 import 'reflect-metadata';
 import {t} from './decorators';
-import {classToPlain} from '../index';
+import {plainSerializer} from './plain-serializer';
 
 
 test('new api', () => {
@@ -17,6 +17,6 @@ test('new api', () => {
     user.doIt();
     user.id = '2';
 
-    const plain = classToPlain(User, user);
+    const plain = plainSerializer.for(User).deserialize(user);
     expect(plain.id).toBe('2');
 });

@@ -1,7 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {convertClassQueryToMongo, convertPlainQueryToMongo, propertyClassToMongo} from "../index";
+import {convertClassQueryToMongo, convertPlainQueryToMongo} from "../index";
 import {t} from "@super-hornet/marshal";
+import {mongoSerializer} from '../src/mongo-serializer';
 
 class SimpleConfig {
     @t.array(t.string).decorated
@@ -46,7 +47,7 @@ test('simple', () => {
 });
 
 test('simple class query', () => {
-    const partial = propertyClassToMongo(Simple, 'config', new SimpleConfig(['a', 'b']));
+    const partial = mongoSerializer.for(Simple).serializeProperty('config', new SimpleConfig(['a', 'b']));
     expect(partial).toEqual(['a', 'b']);
     const fieldNames = {};
 
@@ -85,7 +86,7 @@ test('reference object query $in', () => {
 });
 
 test('simple class query array', () => {
-    const partial = propertyClassToMongo(Simple, 'config', new SimpleConfig(['a', 'b']));
+    const partial = mongoSerializer.for(Simple).serializeProperty('config', new SimpleConfig(['a', 'b']));
     expect(partial).toEqual(['a', 'b']);
     const fieldNames = {};
 

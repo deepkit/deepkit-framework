@@ -1,7 +1,7 @@
-import {PageCollection} from "./PageCollection";
-import {DocumentClass} from "./DocumentClass";
-import {Entity, t} from "../../src/decorators";
-import {uuid} from "../../src/utils";
+import {PageCollection} from './PageCollection';
+import {DocumentClass} from './DocumentClass';
+import {Entity, t} from '../../src/decorators';
+import {uuid} from '../../src/utils';
 
 @Entity('PageClass')
 export class PageClass {

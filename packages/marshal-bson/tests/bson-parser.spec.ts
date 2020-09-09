@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {deserialize, serialize} from 'bson';
 import {parseObject, ParserV2} from '../src/bson-parser';
-import {plainToClass, t} from '@super-hornet/marshal';
+import {t} from '@super-hornet/marshal';
 import {getBSONDecoder} from '../src/bson-jit-parser';
 
 test('basic', () => {

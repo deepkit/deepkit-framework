@@ -1,8 +1,8 @@
 import 'jest';
 import 'jest-extended';
-import {bench} from "./utils";
-import {GroupArraySort} from "../src/group-array-sort";
-import {CircularDependencyException, ElementNotFoundException} from "../src/base";
+import {bench} from './utils';
+import {GroupArraySort} from '../src/group-array-sort';
+import {CircularDependencyException, ElementNotFoundException} from '../src/base';
 
 function getElementsGroup(count: number) {
     const elements = new Map<{ item: any, type: string }, any[]>();

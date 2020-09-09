@@ -1,6 +1,6 @@
 import {ClassType, CompilerContext, toFastProperties} from '@super-hornet/core';
 import {join} from 'path';
-import {createJITConverterFromPropertySchema, getClassSchema, jitValidateProperty} from '@super-hornet/marshal';
+import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, plainSerializer} from '@super-hornet/marshal';
 import {ValidationError} from '@super-hornet/framework-shared';
 import {httpClass} from './decorator';
 import {injectable} from './injector/injector';
@@ -54,7 +54,7 @@ export class Router {
                 if (!methodArgumentProperties[argumentIndex]) throw new Error(`Method ${schema.getClassPropertyName(action.methodName)} has no argument defined at #${argumentIndex}`);
 
                 validators.push(jitValidateProperty(methodArgumentProperties[argumentIndex]));
-                converter.push(createJITConverterFromPropertySchema('plain', 'class', methodArgumentProperties[argumentIndex]));
+                converter.push(getPropertyXtoClassFunction(methodArgumentProperties[argumentIndex], plainSerializer));
                 argumentIndex++;
                 return action.parameterRegularExpressions[name] || String.raw`([^/]+)`;
             });

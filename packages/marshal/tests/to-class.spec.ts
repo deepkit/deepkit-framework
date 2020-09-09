@@ -1,19 +1,19 @@
-import 'jest-extended'
+import 'jest-extended';
 import 'reflect-metadata';
-import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
-import {classToPlain, cloneClass, isExcluded, plainToClass} from '../src/mapper';
-import {t, getClassSchema, OnLoad, ParentReference, resolvePropertyCompilerSchema, uuid, validate} from "../index";
-import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from "./document-scenario/DocumentClass";
+import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
+import {cloneClass, isExcluded} from '../src/mapper';
+import {getClassSchema, OnLoad, plainSerializer, resolvePropertyCompilerSchema, t, uuid, validate} from '../index';
+import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from './document-scenario/DocumentClass';
 import {PageClass} from './document-scenario/PageClass';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
-import {PageCollection} from "./document-scenario/PageCollection";
+import {PageCollection} from './document-scenario/PageCollection';
 
 test('test simple model', () => {
     const schema = getClassSchema(SimpleModel);
     expect(schema.name).toBe('SimpleModel');
     expect(schema.idField).toBe('id');
 
-    const instance = plainToClass(SimpleModel, {
+    const instance = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
     });
 
@@ -28,7 +28,7 @@ test('test simple model', () => {
 
 test('test simple model all fields', () => {
 
-    const instance = plainToClass(SimpleModel, {
+    const instance = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         type: 5,
         plan: '1',
@@ -72,7 +72,7 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo.label).toBe('bar');
     expect(instance.childrenMap.foo2.label).toBe('bar2');
 
-    const plain = classToPlain(SimpleModel, instance);
+    const plain = plainSerializer.for(SimpleModel).serialize(instance);
     expect(plain.yesNo).toBeTrue();
     expect(plain.plan).toBe(1);
 
@@ -84,13 +84,13 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo2 !== copy.childrenMap.foo2).toBeTrue();
     expect(instance.created !== copy.created).toBeTrue();
 
-    expect(plain).toEqual(classToPlain(SimpleModel, copy));
+    expect(plain).toEqual(plainSerializer.for(SimpleModel).serialize(copy));
 });
 
 test('test simple model all fields plainToMongo', () => {
     expect(getClassSchema(SubModel).idField).toBe(undefined);
 
-    const item = plainToClass(SimpleModel, {
+    const item = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         type: 5,
         plan: 1,
@@ -134,7 +134,7 @@ test('test simple model all fields plainToMongo', () => {
     expect(item.childrenMap.foo.label).toBe('bar');
     expect(item.childrenMap.foo2.label).toBe('bar2');
 
-    const plain = classToPlain(SimpleModel, item);
+    const plain = plainSerializer.for(SimpleModel).serialize(item);
     expect(plain.yesNo).toBeTrue();
     expect(plain.plan).toBe(1);
 });
@@ -150,7 +150,7 @@ test('test simple model with not mapped fields', () => {
     expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBeTrue();
     expect(isExcluded(schema, 'excludedForMongo', 'plain')).toBeFalse();
 
-    const instance = plainToClass(SimpleModel, {
+    const instance = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         type: 5,
         yesNo: '1',
@@ -167,7 +167,7 @@ test('test simple model with not mapped fields', () => {
     expect(instance.excludedForPlain).toBe('excludedForPlain');
     expect(instance.excludedForMongo).toBe('excludedForMongo');
 
-    const item = plainToClass(SimpleModel, {
+    const item = plainSerializer.for(SimpleModel).deserialize({
         id: uuid(),
         name: 'myName',
         type: 5,
@@ -185,7 +185,7 @@ test('test simple model with not mapped fields', () => {
     expect(item.excludedForPlain).toBe('excludedForPlain');
     expect(item.excludedForMongo).toBe('excludedForMongo');
 
-    const plainObject = classToPlain(SimpleModel, instance);
+    const plainObject = plainSerializer.for(SimpleModel).serialize(instance);
 
     expect(plainObject.id).toBeString();
     expect(plainObject.name).toBe('myName');
@@ -197,7 +197,7 @@ test('test simple model with not mapped fields', () => {
 });
 
 test('test @Decorated', async () => {
-    const instance = plainToClass(SimpleModel, {
+    const instance = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         stringChildrenCollection: ['Foo', 'Bar']
     });
@@ -209,15 +209,15 @@ test('test @Decorated', async () => {
     instance.stringChildrenCollection.add('Bar2');
     expect(instance.stringChildrenCollection.items[2]).toBe('Bar2');
 
-    const plain = classToPlain(SimpleModel, instance);
+    const plain = plainSerializer.for(SimpleModel).serialize(instance);
     expect(plain.name).toBe('myName');
     expect(plain.stringChildrenCollection).toEqual(['Foo', 'Bar', 'Bar2']);
 
-    const mongo = classToPlain(SimpleModel, instance);
+    const mongo = plainSerializer.for(SimpleModel).serialize(instance);
     expect(mongo.name).toBe('myName');
     expect(mongo.stringChildrenCollection).toEqual(['Foo', 'Bar', 'Bar2']);
 
-    const instance2 = plainToClass(SimpleModel, {
+    const instance2 = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         stringChildrenCollection: false
     });
@@ -228,7 +228,7 @@ test('test @Decorated', async () => {
 });
 
 test('test childrenMap', async () => {
-    const instance = plainToClass(SimpleModel, {
+    const instance = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         childrenMap: {foo: {label: 'Foo'}, bar: {label: 'Bar'}}
     });
@@ -246,9 +246,9 @@ test('test allowNull', async () => {
         name?: string;
     }
 
-    expect(plainToClass(Model, {}).name).toBe(undefined);
-    expect(plainToClass(Model, {name: null}).name).toBe(undefined);
-    expect(plainToClass(Model, {name: undefined}).name).toBe(undefined);
+    expect(plainSerializer.for(Model).deserialize({}).name).toBe(undefined);
+    expect(plainSerializer.for(Model).deserialize({name: null}).name).toBe(undefined);
+    expect(plainSerializer.for(Model).deserialize({name: undefined}).name).toBe(undefined);
 });
 
 test('test OnLoad', async () => {
@@ -296,7 +296,7 @@ test('test OnLoad', async () => {
     let onLoadedTriggered = false;
     let onFullLoadedTriggered = false;
 
-    const instance = plainToClass(Model, {
+    const instance = plainSerializer.for(Model).deserialize({
         name: 'Root',
 
         sub: {
@@ -350,24 +350,24 @@ test('test setter/getter', async () => {
         }
     }
 
-    const instance = plainToClass(Model, {
+    const instance = plainSerializer.for(Model).deserialize({
         fonts: [{name: 'Arial'}, {name: 'Verdana'}]
     });
 
     expect(instance.test).toBeTrue();
     expect(instance.fonts!.length).toBe(2);
 
-    const plain = classToPlain(Model, instance);
+    const plain = plainSerializer.for(Model).serialize(instance);
     expect((plain as any)._fonts).toBeUndefined();
     expect(plain.fonts).toBeArrayOfSize(2);
 
-    const mongo = classToPlain(Model, instance);
+    const mongo = plainSerializer.for(Model).serialize(instance);
     expect((mongo as any)._fonts).toBeUndefined();
     expect(mongo.fonts).toBeArrayOfSize(2);
 });
 
 test('test decorator complex', async () => {
-    const instance = plainToClass(SimpleModel, {
+    const instance = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         childrenCollection: [{label: 'Foo'}, {label: 'Bar'}]
     });
@@ -383,12 +383,12 @@ test('test decorator complex', async () => {
     instance.childrenCollection.add(new SubModel('Bar2'));
     expect(instance.childrenCollection.items[2].label).toEqual('Bar2');
 
-    const plain = classToPlain(SimpleModel, instance);
+    const plain = plainSerializer.for(SimpleModel).serialize(instance);
 
     expect(plain.name).toBe('myName');
     expect(plain.childrenCollection).toEqual([{label: 'Foo'}, {label: 'Bar'}, {label: 'Bar2'}]);
 
-    const mongo = classToPlain(SimpleModel, instance);
+    const mongo = plainSerializer.for(SimpleModel).serialize(instance);
     expect(mongo.name).toBe('myName');
     expect(mongo.childrenCollection).toEqual([{label: 'Foo'}, {label: 'Bar'}, {label: 'Bar2'}]);
 });
@@ -419,11 +419,11 @@ test('test @Decorated with parent', async () => {
     });
 
     expect(() => {
-        const instance = plainToClass(ClassWithUnmetParent, {});
+        const instance = plainSerializer.for(ClassWithUnmetParent).deserialize({});
     }).toThrow('ClassWithUnmetParent.parent is defined as');
 
     expect(() => {
-        const instance = plainToClass(PageClass, {
+        const instance = plainSerializer.for(PageClass).deserialize({
             name: 'myName'
         });
     }).toThrow('PageClass.document is defined as @f.parentReference and NOT @f.optional');
@@ -431,7 +431,7 @@ test('test @Decorated with parent', async () => {
     {
         const doc = new DocumentClass();
 
-        const instance = plainToClass(PageClass, {
+        const instance = plainSerializer.for(PageClass).deserialize({
             name: 'myName'
         }, {parents: [doc]});
 
@@ -439,7 +439,7 @@ test('test @Decorated with parent', async () => {
     }
 
     expect(() => {
-        const instance = plainToClass(ImpossibleToMetDocumentClass, {
+        const instance = plainSerializer.for(ImpossibleToMetDocumentClass).deserialize({
             name: 'myName',
             pages: [
                 {
@@ -455,7 +455,7 @@ test('test @Decorated with parent', async () => {
         });
     }).toThrow('PageClass.document is defined as');
 
-    const instance = plainToClass(DocumentClass, {
+    const instance = plainSerializer.for(DocumentClass).deserialize({
         name: 'myName',
         page: {
             name: 'RootPage',
@@ -548,7 +548,7 @@ test('test @Decorated with parent', async () => {
     expect(clone!.document).toBe(instance);
     expect(clone!.parent).toBeUndefined();
 
-    const plain = classToPlain(DocumentClass, instance) as any;
+    const plain = plainSerializer.for(DocumentClass).serialize(instance) as any;
 
     expect(plain.name).toBe('myName');
     expect(plain.pages[0].name).toEqual('Foo');
@@ -572,7 +572,7 @@ test('simple string + number + boolean', () => {
         yesNo?: boolean;
     }
 
-    const instance = plainToClass(Model, {
+    const instance = plainSerializer.for(Model).deserialize({
         name: 1,
         age: '2',
         yesNo: 'false'
@@ -580,19 +580,19 @@ test('simple string + number + boolean', () => {
     expect(instance.name).toBe('1');
     expect(instance.age).toBe(2);
 
-    expect(plainToClass(Model, {yesNo: 'false'}).yesNo).toBeFalse();
-    expect(plainToClass(Model, {yesNo: '0'}).yesNo).toBeFalse();
-    expect(plainToClass(Model, {yesNo: false}).yesNo).toBeFalse();
-    expect(plainToClass(Model, {yesNo: 0}).yesNo).toBeFalse();
-    expect(plainToClass(Model, {yesNo: 'nothing'}).yesNo).toBeUndefined();
-    expect(plainToClass(Model, {yesNo: null}).yesNo).toBeUndefined();
-    expect(plainToClass(Model, {yesNo: undefined}).yesNo).toBeUndefined();
+    expect(plainSerializer.for(Model).deserialize({yesNo: 'false'}).yesNo).toBeFalse();
+    expect(plainSerializer.for(Model).deserialize({yesNo: '0'}).yesNo).toBeFalse();
+    expect(plainSerializer.for(Model).deserialize({yesNo: false}).yesNo).toBeFalse();
+    expect(plainSerializer.for(Model).deserialize({yesNo: 0}).yesNo).toBeFalse();
+    expect(plainSerializer.for(Model).deserialize({yesNo: 'nothing'}).yesNo).toBeUndefined();
+    expect(plainSerializer.for(Model).deserialize({yesNo: null}).yesNo).toBeUndefined();
+    expect(plainSerializer.for(Model).deserialize({yesNo: undefined}).yesNo).toBeUndefined();
 
-    expect(plainToClass(Model, {yesNo: 'true'}).yesNo).toBeTrue();
-    expect(plainToClass(Model, {yesNo: '1'}).yesNo).toBeTrue();
-    expect(plainToClass(Model, {yesNo: true}).yesNo).toBeTrue();
-    expect(plainToClass(Model, {yesNo: 1}).yesNo).toBeTrue();
-    expect(plainToClass(Model, {yesNo: null}).yesNo).toBeUndefined();
+    expect(plainSerializer.for(Model).deserialize({yesNo: 'true'}).yesNo).toBeTrue();
+    expect(plainSerializer.for(Model).deserialize({yesNo: '1'}).yesNo).toBeTrue();
+    expect(plainSerializer.for(Model).deserialize({yesNo: true}).yesNo).toBeTrue();
+    expect(plainSerializer.for(Model).deserialize({yesNo: 1}).yesNo).toBeTrue();
+    expect(plainSerializer.for(Model).deserialize({yesNo: null}).yesNo).toBeUndefined();
 });
 
 
@@ -626,7 +626,7 @@ test('cloneClass', () => {
         name: 'Foo'
     };
 
-    const instance = plainToClass(Model, {
+    const instance = plainSerializer.for(Model).deserialize({
         data: data,
         dataStruct: dataStruct,
         subs: [{name: 'foo'}],
@@ -743,7 +743,7 @@ test('enums', () => {
     expect(getValidEnumValue(Enum4, 'second', true)).toBe('x');
 
     {
-        const instance = plainToClass(Model, {
+        const instance = plainSerializer.for(Model).deserialize({
             enum1: 1,
             enum2: 'x',
             enum3: 100,
@@ -759,7 +759,7 @@ test('enums', () => {
     }
 
     {
-        const instance = plainToClass(Model, {
+        const instance = plainSerializer.for(Model).deserialize({
             enum1: '1',
             enum2: 'x',
             enum3: '100',
@@ -775,25 +775,25 @@ test('enums', () => {
     }
 
     expect(() => {
-        const instance = plainToClass(Model, {
+        const instance = plainSerializer.for(Model).deserialize({
             enum1: 2
         });
     }).toThrow('Invalid ENUM given in property');
 
     expect(() => {
-        const instance = plainToClass(Model, {
+        const instance = plainSerializer.for(Model).deserialize({
             enum2: 2
         });
     }).toThrow('Invalid ENUM given in property');
 
     expect(() => {
-        const instance = plainToClass(Model, {
+        const instance = plainSerializer.for(Model).deserialize({
             enum3: 2
         });
     }).toThrow('Invalid ENUM given in property');
 
     expect(() => {
-        const instance = plainToClass(Model, {
+        const instance = plainSerializer.for(Model).deserialize({
             enum3: 4
         });
     }).toThrow('Invalid ENUM given in property');
@@ -860,11 +860,11 @@ test('enums arrays', () => {
         enum2: Enum2[] = [];
     }
 
-    plainToClass(Model, {
+    plainSerializer.for(Model).deserialize({
         enum1: [1]
     });
 
-    plainToClass(Model, {
+    plainSerializer.for(Model).deserialize({
         enum2: ['z']
     });
 
@@ -874,17 +874,17 @@ test('enums arrays', () => {
     expect(schema.getProperty('enum1').getSubType().type).toBe('enum');
     expect(schema.getProperty('enum1').getSubType().isArray).toBe(false);
 
-    plainToClass(Model, {
+    plainSerializer.for(Model).deserialize({
         enum2: ['x', 'z']
     });
 
     expect(() => {
-        plainToClass(Model, {
+        plainSerializer.for(Model).deserialize({
             enum1: [2]
         });
     }).toThrow('Invalid ENUM given in property');
 
-    expect(plainToClass(Model, {
+    expect(plainSerializer.for(Model).deserialize({
         enum2: 2
     }).enum2).toEqual([]);
 
@@ -910,12 +910,12 @@ test('nullable', () => {
         optional: t.string.optional,
     });
 
-    expect(plainToClass(s, {username: 'asd'})).toEqual({username: 'asd'});
-    expect(plainToClass(s, {username: 'asd', password: null})).toEqual({username: 'asd', password: null});
-    expect(plainToClass(s, {username: 'asd', password: 'null'})).toEqual({username: 'asd', password: 'null'});
+    expect(plainSerializer.for(s).deserialize({username: 'asd'})).toEqual({username: 'asd'});
+    expect(plainSerializer.for(s).deserialize({username: 'asd', password: null})).toEqual({username: 'asd', password: null});
+    expect(plainSerializer.for(s).deserialize({username: 'asd', password: 'null'})).toEqual({username: 'asd', password: 'null'});
 
-    expect(plainToClass(s, {username: 'asd', optional: null})).toEqual({username: 'asd'});
-    expect(plainToClass(s, {username: 'asd', optional: 'null'})).toEqual({username: 'asd', optional: 'null'});
+    expect(plainSerializer.for(s).deserialize({username: 'asd', optional: null})).toEqual({username: 'asd'});
+    expect(plainSerializer.for(s).deserialize({username: 'asd', optional: 'null'})).toEqual({username: 'asd', optional: 'null'});
 });
 
 
@@ -925,9 +925,9 @@ test('nullable with default', () => {
         password: t.string.nullable.default(null),
     });
 
-    expect(plainToClass(s, {username: 'asd'})).toEqual({username: 'asd', password: null});
-    expect(plainToClass(s, {username: 'asd', password: null})).toEqual({username: 'asd', password: null});
-    expect(plainToClass(s, {username: 'asd', password: 'foo'})).toEqual({username: 'asd', password: 'foo'});
+    expect(plainSerializer.for(s).deserialize({username: 'asd'})).toEqual({username: 'asd', password: null});
+    expect(plainSerializer.for(s).deserialize({username: 'asd', password: null})).toEqual({username: 'asd', password: null});
+    expect(plainSerializer.for(s).deserialize({username: 'asd', password: 'foo'})).toEqual({username: 'asd', password: 'foo'});
 });
 
 test('nullable container', () => {
@@ -937,6 +937,6 @@ test('nullable container', () => {
         tagPartial: t.partial({name: t.string}).nullable,
     });
 
-    expect(plainToClass(s, {tags: null, tagMap: null, tagPartial: null})).toEqual({tags: null, tagMap: null, tagPartial: null});
-    expect(plainToClass(s, {})).toEqual({});
+    expect(plainSerializer.for(s).deserialize({tags: null, tagMap: null, tagPartial: null})).toEqual({tags: null, tagMap: null, tagPartial: null});
+    expect(plainSerializer.for(s).deserialize({})).toEqual({});
 });

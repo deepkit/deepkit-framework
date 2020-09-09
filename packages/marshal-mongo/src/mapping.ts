@@ -1,29 +1,9 @@
-import {
-    CacheJitPropertyConverter,
-    ClassSchema,
-    classToPlain,
-    getClassToXFunction,
-    createJITConverterFromPropertySchema,
-    getXToClassFunction,
-    ExtractClassType,
-    getClassSchema,
-    JitConverterOptions,
-    jitPartial, jitPatch,
-    JSONEntity,
-    JSONPartial,
-    partialClassToPlain,
-    partialPlainToClass,
-    PlainOrFullEntityFromClassTypeOrSchema,
-    plainToClass,
-    resolvePropertyCompilerSchema,
-    TypedArrays,
-    JSONPatch,
-    EntityPatch, patchPlainToClass
-} from '@super-hornet/marshal';
-import {ClassType, eachKey, getClassName, isPlainObject} from '@super-hornet/core';
-import './compiler-templates';
+import {getClassSchema, JSONEntity, plainSerializer, resolvePropertyCompilerSchema, TypedArrays,} from '@super-hornet/marshal';
+import {ClassType, eachKey, isPlainObject} from '@super-hornet/core';
+import './mongo-serializer';
 import {Binary} from 'bson';
 import {FilterQuery} from 'mongodb';
+import {mongoSerializer} from './mongo-serializer';
 
 export type MongoTypeSingle<T> = T extends Date ? Date :
     T extends Array<infer K> ? Array<MongoTypeSingle<K>> :
@@ -35,96 +15,6 @@ export type MongoTypeSingle<T> = T extends Date ? Date :
                             T extends number ? T : T;
 
 export type MongoType<T> = { [name in keyof T & string]: MongoTypeSingle<T[name]> };
-
-export function mongoToClass<T extends ClassType<any> | ClassSchema<any>>(
-    classType: T,
-    data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
-    options?: JitConverterOptions
-): ExtractClassType<T> {
-    return getXToClassFunction(getClassSchema(classType), 'mongo')(data, options);
-}
-
-export function classToMongo<T>(classType: ClassType<T> | ClassSchema<T>, instance: T, options?: JitConverterOptions): any {
-    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
-
-    if (!(instance instanceof classType.classType)) {
-        throw new Error(`Could not classToMongo since target is not a class instance of ${getClassName(classType)}`);
-    }
-    return getClassToXFunction(classType, 'mongo')(instance, options);
-}
-
-export function mongoToPlain<T>(classType: ClassType<T> | ClassSchema<T>, record: any) {
-    classType = classType instanceof ClassSchema ? classType : getClassSchema(classType);
-    return classToPlain(classType, mongoToClass(classType, record));
-}
-
-export function plainToMongo<T extends ClassType<any> | ClassSchema<any>>(classType: T, data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>): any {
-    return classToMongo(getClassSchema(classType), plainToClass(classType, data));
-}
-
-export function partialClassToMongo<T extends ClassType | ClassSchema, P extends Partial<ExtractClassType<T>>>(
-    classType: T,
-    partial: P,
-    options?: JitConverterOptions
-): MongoType<Pick<ExtractClassType<T>, keyof P>> {
-    return jitPartial(classType, 'class', 'mongo', partial, options);
-}
-
-export function partialMongoToClass<T extends ClassType | ClassSchema, P extends Partial<MongoType<ExtractClassType<T>>>>(
-    classType: T,
-    partial: P,
-    options?: JitConverterOptions
-): Pick<ExtractClassType<T>, keyof P> {
-    return jitPartial(classType, 'mongo', 'class', partial, options);
-}
-
-export function partialPlainToMongo<T extends ClassType | ClassSchema, P extends JSONPartial<ExtractClassType<T>>>(
-    classType: T,
-    partial: P,
-    options?: JitConverterOptions
-): MongoType<Pick<ExtractClassType<T>, keyof P>> {
-    return partialClassToMongo(classType, partialPlainToClass(classType, partial, options) as Partial<ExtractClassType<T>>, options);
-}
-
-export function partialMongoToPlain<T extends ClassType | ClassSchema, P extends Partial<MongoType<ExtractClassType<T>>>>(
-    classType: T,
-    partial: P,
-    options?: JitConverterOptions
-): JSONEntity<Pick<ExtractClassType<T>, keyof P>> {
-    return partialClassToPlain(classType, partialMongoToClass(classType, partial, options) as Partial<ExtractClassType<T>>, options);
-}
-
-export function patchMongoToPlain<T extends ClassType | ClassSchema, R extends EntityPatch<MongoType<ExtractClassType<T>>>>(
-    classTypeOrSchema: T,
-    partial: R,
-    options?: JitConverterOptions
-) {
-    return jitPatch(getClassSchema(classTypeOrSchema), 'mongo', 'plain', partial, options);
-}
-
-export function patchClassToMongo<T extends ClassType | ClassSchema, R extends EntityPatch<MongoType<ExtractClassType<T>>>>(
-    classTypeOrSchema: T,
-    partial: R,
-    options?: JitConverterOptions
-) {
-    return jitPatch(getClassSchema(classTypeOrSchema), 'class', 'mongo', partial, options);
-}
-
-export function patchPlainToMongo<T extends ClassType | ClassSchema, P extends JSONPatch<ExtractClassType<T>>>(
-    classTypeOrSchema: T,
-    partial: P,
-    options?: JitConverterOptions
-) {
-    return patchClassToMongo(classTypeOrSchema, patchPlainToClass(classTypeOrSchema, partial, options), options);
-}
-
-export function propertyClassToMongo<T>(classType: ClassType<T>, name: (keyof T & string) | string, value: any): any {
-    return createJITConverterFromPropertySchema('class', 'mongo', getClassSchema(classType).getProperty(name))(value);
-}
-
-export function propertyMongoToClass<T>(classType: ClassType<T>, name: (keyof T & string) | string, value: any): any {
-    return createJITConverterFromPropertySchema('mongo', 'class', getClassSchema(classType).getProperty(name))(value);
-}
 
 export type Converter = (convertClassType: ClassType, path: string, value: any) => any;
 export type QueryFieldNames = { [name: string]: boolean };
@@ -140,10 +30,10 @@ export function convertClassQueryToMongo<T, K extends keyof T, Q extends FilterQ
     fieldNamesMap: QueryFieldNames = {},
     customMapping: { [name: string]: (name: string, value: any, fieldNamesMap: { [name: string]: boolean }) => any } = {},
 ): Q {
-    const cacheJitPropertyConverter = new CacheJitPropertyConverter('class', 'mongo');
+    const serializer = mongoSerializer.for(getClassSchema(classType));
 
     return convertQueryToMongo(classType, query, (convertClassType: ClassType<any>, path: string, value: any) => {
-        return cacheJitPropertyConverter.getJitPropertyConverter(convertClassType).convert(path, value);
+        return serializer.serializeProperty(path, value);
     }, fieldNamesMap, customMapping);
 }
 
@@ -157,14 +47,10 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
     fieldNamesMap: QueryFieldNames = {},
     customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
-    //we need to convert between two formats as we have no compiler for plain -> mongo directly.
-    const cacheJitPropertyConverterPlainToClass = new CacheJitPropertyConverter('plain', 'class');
-    const cacheJitPropertyConverterClassToMongo = new CacheJitPropertyConverter('class', 'mongo');
-
     return convertQueryToMongo(classType, target, (convertClassType: ClassType<any>, path: string, value: any) => {
         const property = resolvePropertyCompilerSchema(getClassSchema(convertClassType), path);
-        const classValue = cacheJitPropertyConverterPlainToClass.getJitPropertyConverter(convertClassType).convertProperty(property, value);
-        return cacheJitPropertyConverterClassToMongo.getJitPropertyConverter(convertClassType).convertProperty(property, classValue);
+        const classValue = plainSerializer.deserializeProperty(property, value);
+        return mongoSerializer.serializeProperty(property, classValue);
     }, fieldNamesMap, customMapping);
 }
 

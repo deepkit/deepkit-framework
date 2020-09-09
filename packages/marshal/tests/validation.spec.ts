@@ -1,18 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {
-    plainToClass,
-    PropertyValidator,
-    PropertyValidatorError,
-    validate,
-    validatedPlainToClass,
-    validates,
-    validatesFactory,
-    ValidationFailedItem,
-    ValidationFailed
-} from "../index";
+import {plainSerializer, PropertyValidator, PropertyValidatorError, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem} from '../index';
 import {CustomError, isPlainObject} from '@super-hornet/core';
-import {getClassSchema, t} from "../src/decorators";
+import {getClassSchema, t} from '../src/decorators';
 
 test('test simple', async () => {
     class Page {
@@ -22,7 +12,8 @@ test('test simple', async () => {
         ) {
         }
 
-        test1() {}
+        test1() {
+        }
     }
 
     const data = {name: 'peter'};
@@ -68,7 +59,7 @@ test('test required', async () => {
     expect(validate(Model, instance)).toBeArrayOfSize(1);
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
-        message: "Required value is undefined",
+        message: 'Required value is undefined',
         path: 'name'
     }]);
 
@@ -78,11 +69,11 @@ test('test required', async () => {
     expect(validate(Model, {
         name: 'foo',
         map: true
-    })).toEqual([{code: 'invalid_type', message: "Type is not an object", path: 'map'}]);
+    })).toEqual([{code: 'invalid_type', message: 'Type is not an object', path: 'map'}]);
     expect(validate(Model, {
         name: 'foo',
         array: 233
-    })).toEqual([{code: 'invalid_type', message: "Type is not an array", path: 'array'}]);
+    })).toEqual([{code: 'invalid_type', message: 'Type is not an array', path: 'array'}]);
 
     instance.name = 'Pete';
     expect(validate(Model, instance)).toEqual([]);
@@ -113,14 +104,14 @@ test('test deep', async () => {
     expect(validate(Model, instance)).toBeArrayOfSize(1);
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
-        message: "Required value is undefined",
+        message: 'Required value is undefined',
         path: 'deep'
     }]);
 
     instance.deep = new Deep();
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
-        message: "Required value is undefined",
+        message: 'Required value is undefined',
         path: 'deep.name'
     }]);
 
@@ -128,7 +119,7 @@ test('test deep', async () => {
     instance.deepArray.push(new Deep());
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
-        message: "Required value is undefined",
+        message: 'Required value is undefined',
         path: 'deepArray.0.name'
     }]);
 
@@ -136,7 +127,7 @@ test('test deep', async () => {
     instance.deepMap.foo = new Deep();
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
-        message: "Required value is undefined",
+        message: 'Required value is undefined',
         path: 'deepMap.foo.name'
     }]);
 
@@ -214,14 +205,14 @@ test('test uuid', async () => {
         public id!: string;
     }
 
-    expect(validate(Model, {id: "4cac8ff9-4450-42c9-b736-e4d56f7a832d"})).toEqual([]);
-    expect(validate(Model, {id: "4cac8ff9-4450-42c9-b736"})).toEqual([{
+    expect(validate(Model, {id: '4cac8ff9-4450-42c9-b736-e4d56f7a832d'})).toEqual([]);
+    expect(validate(Model, {id: '4cac8ff9-4450-42c9-b736'})).toEqual([{
         code: 'invalid_uuid',
         message: 'No UUID given',
         path: 'id'
     }]);
-    expect(validate(Model, {id: "xxxx"})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
-    expect(validate(Model, {id: ""})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
+    expect(validate(Model, {id: 'xxxx'})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
+    expect(validate(Model, {id: ''})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
     expect(validate(Model, {id: false})).toEqual([{code: 'invalid_uuid', message: 'No UUID given', path: 'id'}]);
     expect(validate(Model, {id: null})).toEqual([{
         code: 'required',
@@ -241,18 +232,18 @@ test('test objectId', async () => {
         public id!: string;
     }
 
-    expect(validate(Model, {id: "507f191e810c19729de860ea"})).toEqual([]);
-    expect(validate(Model, {id: "507f191e810c19729de860"})).toEqual([{
+    expect(validate(Model, {id: '507f191e810c19729de860ea'})).toEqual([]);
+    expect(validate(Model, {id: '507f191e810c19729de860'})).toEqual([{
         code: 'invalid_objectId',
         message: 'No Mongo ObjectID given',
         path: 'id'
     }]);
-    expect(validate(Model, {id: "xxxx"})).toEqual([{
+    expect(validate(Model, {id: 'xxxx'})).toEqual([{
         code: 'invalid_objectId',
         message: 'No Mongo ObjectID given',
         path: 'id'
     }]);
-    expect(validate(Model, {id: ""})).toEqual([{
+    expect(validate(Model, {id: ''})).toEqual([{
         code: 'invalid_objectId',
         message: 'No Mongo ObjectID given',
         path: 'id'
@@ -282,14 +273,14 @@ test('test boolean', async () => {
 
     expect(getClassSchema(Model).getProperty('bo').type).toBe('boolean');
 
-    expect(plainToClass(Model, {bo: false}).bo).toBe(false);
-    expect(plainToClass(Model, {bo: true}).bo).toBe(true);
-    expect(plainToClass(Model, {bo: 'false'}).bo).toBe(false);
-    expect(plainToClass(Model, {bo: 'true'}).bo).toBe(true);
-    expect(plainToClass(Model, {bo: '1'}).bo).toBe(true);
-    expect(plainToClass(Model, {bo: '0'}).bo).toBe(false);
-    expect(plainToClass(Model, {bo: 1}).bo).toBe(true);
-    expect(plainToClass(Model, {bo: 0}).bo).toBe(false);
+    expect(plainSerializer.for(Model).deserialize({bo: false}).bo).toBe(false);
+    expect(plainSerializer.for(Model).deserialize({bo: true}).bo).toBe(true);
+    expect(plainSerializer.for(Model).deserialize({bo: 'false'}).bo).toBe(false);
+    expect(plainSerializer.for(Model).deserialize({bo: 'true'}).bo).toBe(true);
+    expect(plainSerializer.for(Model).deserialize({bo: '1'}).bo).toBe(true);
+    expect(plainSerializer.for(Model).deserialize({bo: '0'}).bo).toBe(false);
+    expect(plainSerializer.for(Model).deserialize({bo: 1}).bo).toBe(true);
+    expect(plainSerializer.for(Model).deserialize({bo: 0}).bo).toBe(false);
 
     expect(validate(Model, {bo: false})).toEqual([]);
     expect(validate(Model, {bo: true})).toEqual([]);
@@ -319,11 +310,11 @@ test('test Date', async () => {
         public endTime!: Date;
     }
 
-    const date = new Date("2019-03-19T10:41:45.000Z");
+    const date = new Date('2019-03-19T10:41:45.000Z');
 
-    expect(validate(Model, {endTime: "2019-03-19T10:38:59.072Z"})).toEqual([]);
+    expect(validate(Model, {endTime: '2019-03-19T10:38:59.072Z'})).toEqual([]);
     expect(validate(Model, {endTime: date.toJSON()})).toEqual([]);
-    expect(validate(Model, {endTime: "Tue Mar 19 2019 11:39:10 GMT+0100 (Central European Standard Time)"})).toEqual([]);
+    expect(validate(Model, {endTime: 'Tue Mar 19 2019 11:39:10 GMT+0100 (Central European Standard Time)'})).toEqual([]);
     expect(validate(Model, {endTime: date.toString()})).toEqual([]);
     expect(validate(Model, {endTime: new Date()})).toEqual([]);
     expect(validate(Model, {endTime: ''})).toEqual([{
@@ -353,32 +344,32 @@ test('test Date', async () => {
     }]);
 
     {
-        const o = plainToClass(Model, {endTime: date.toString()});
+        const o = plainSerializer.for(Model).deserialize({endTime: date.toString()});
         expect(o.endTime).toEqual(date);
     }
 
     {
-        const o = plainToClass(Model, {endTime: date.toJSON()});
+        const o = plainSerializer.for(Model).deserialize({endTime: date.toJSON()});
         expect(o.endTime).toEqual(date);
     }
 
     {
-        const o = plainToClass(Model, {endTime: null});
+        const o = plainSerializer.for(Model).deserialize({endTime: null});
         expect(o.endTime).toBe(undefined);
     }
 
     {
-        const o = plainToClass(Model, {endTime: undefined});
+        const o = plainSerializer.for(Model).deserialize({endTime: undefined});
         expect(o.endTime).toBe(undefined);
     }
 
     {
-        const o = validatedPlainToClass(Model, {endTime: '2019-03-19T10:41:45.000Z'});
+        const o = plainSerializer.for(Model).validatedDeserialize({endTime: '2019-03-19T10:41:45.000Z'});
         expect(o.endTime).toEqual(date);
     }
 
     try {
-        validatedPlainToClass(Model, {endTime: 'asd'});
+        plainSerializer.for(Model).validatedDeserialize({endTime: 'asd'});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -386,7 +377,7 @@ test('test Date', async () => {
     }
 
     try {
-        validatedPlainToClass(Model, {endTime: ''});
+        plainSerializer.for(Model).validatedDeserialize({endTime: ''});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -394,7 +385,7 @@ test('test Date', async () => {
     }
 
     try {
-        validatedPlainToClass(Model, {endTime: null});
+        plainSerializer.for(Model).validatedDeserialize({endTime: null});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -402,7 +393,7 @@ test('test Date', async () => {
     }
 
     try {
-        validatedPlainToClass(Model, {endTime: undefined});
+        plainSerializer.for(Model).validatedDeserialize({endTime: undefined});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -418,8 +409,8 @@ test('test string', async () => {
     }
 
     expect(validate(Model, {id: '2'})).toEqual([]);
-    expect(validate(Model, {id: 2})).toEqual([{code: 'invalid_string', message: "No string given", path: 'id'}]);
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]); //because defaults are applied
+    expect(validate(Model, {id: 2})).toEqual([{code: 'invalid_string', message: 'No string given', path: 'id'}]);
+    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'id'}]); //because defaults are applied
     expect(validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
@@ -431,10 +422,10 @@ test('test string', async () => {
     expect(validate(ModelOptional, {id: '2'})).toEqual([]);
     expect(validate(ModelOptional, {id: 2})).toEqual([{
         code: 'invalid_string',
-        message: "No string given",
+        message: 'No string given',
         path: 'id'
     }]);
-    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]);
+    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'id'}]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
 });
@@ -447,9 +438,9 @@ test('test number', async () => {
 
     expect(validate(Model, {id: 3})).toEqual([]);
     expect(validate(Model, {id: '3'})).toEqual([]);
-    expect(validate(Model, {id: 'a'})).toEqual([{code: 'invalid_number', message: "No number given", path: 'id'}]);
+    expect(validate(Model, {id: 'a'})).toEqual([{code: 'invalid_number', message: 'No number given', path: 'id'}]);
     expect(validate(Model, {id: undefined})).toEqual([]); //because defaults are applied
-    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]); //because defaults are applied
+    expect(validate(Model, {id: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'id'}]); //because defaults are applied
     expect(validate(Model, {})).toEqual([]); //because defaults are applied
 
     class ModelOptional {
@@ -461,10 +452,10 @@ test('test number', async () => {
     expect(validate(ModelOptional, {id: '3'})).toEqual([]);
     expect(validate(ModelOptional, {id: 'a'})).toEqual([{
         code: 'invalid_number',
-        message: "No number given",
+        message: 'No number given',
         path: 'id'
     }]);
-    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'required', message: "Required value is null", path: 'id'}]);
+    expect(validate(ModelOptional, {id: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'id'}]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
 });
@@ -478,7 +469,7 @@ test('test array', async () => {
     expect(validate(AClass, {tags: ['Hi']})).toEqual([]);
     expect(validate(AClass, {tags: ['hi', 2]})).toEqual([{
         code: 'invalid_string',
-        message: "No string given",
+        message: 'No string given',
         path: 'tags.1'
     }]);
 });
@@ -493,7 +484,7 @@ test('test map', async () => {
     expect(validate(AClass, {tags: {'nix': 'yes'}})).toEqual([]);
     expect(validate(AClass, {tags: {'nix': 2}})).toEqual([{
         code: 'invalid_string',
-        message: "No string given",
+        message: 'No string given',
         path: 'tags.nix'
     }]);
 });
@@ -556,45 +547,45 @@ test('test decorated', async () => {
     expect(validate(AClass, {infos: []})).toEqual([]);
 
     expect(validate(AClass, {infos: ['string']})).toEqual([
-        {code: 'invalid_type', message: "Type is not an object", path: 'infos.0'},
+        {code: 'invalid_type', message: 'Type is not an object', path: 'infos.0'},
     ]);
 
     expect(validate(AClass, {infos: [{}]})).toEqual([
-        {code: 'required', message: "Required value is undefined", path: 'infos.0.name'},
-        {code: 'required', message: "Required value is undefined", path: 'infos.0.value'},
+        {code: 'required', message: 'Required value is undefined', path: 'infos.0.name'},
+        {code: 'required', message: 'Required value is undefined', path: 'infos.0.value'},
     ]);
 
     expect(validate(AClass, {
         infos: [{name: 'foo', value: 'bar'}]
     })).toEqual([]);
 
-    expect(validate(AClass, plainToClass(AClass, {infos: []}))).toEqual([]);
-    expect(validate(AClass, plainToClass(AClass, {}))).toEqual([]);
-    expect(validate(AClass, plainToClass(AClass, {infos: []}))).toEqual([]);
+    expect(validate(AClass, plainSerializer.for(AClass).deserialize({infos: []}))).toEqual([]);
+    expect(validate(AClass, plainSerializer.for(AClass).deserialize({}))).toEqual([]);
+    expect(validate(AClass, plainSerializer.for(AClass).deserialize({infos: []}))).toEqual([]);
 
     {
         expect(validate(AClass, {infos: ['string']})).toEqual([
-            {code: 'invalid_type', message: "Type is not an object", path: 'infos.0'},
+            {code: 'invalid_type', message: 'Type is not an object', path: 'infos.0'},
         ]);
-        const item = plainToClass(AClass, {infos: ['string']});
+        const item = plainSerializer.for(AClass).deserialize({infos: ['string']});
         expect(item.infos.all()).toEqual([]);
         expect(validate(AClass, item)).toEqual([]);
     }
 
     {
         expect(validate(AClass, {infos: [{}]})).toEqual([
-            {code: 'required', message: "Required value is undefined", path: 'infos.0.name'},
-            {code: 'required', message: "Required value is undefined", path: 'infos.0.value'},
+            {code: 'required', message: 'Required value is undefined', path: 'infos.0.name'},
+            {code: 'required', message: 'Required value is undefined', path: 'infos.0.value'},
         ]);
-        const item = plainToClass(AClass, {infos: [{}]});
+        const item = plainSerializer.for(AClass).deserialize({infos: [{}]});
         expect(item.infos.all()).toEqual([{name: undefined, value: undefined}]);
         expect(validate(AClass, item)).toEqual([
-            {code: 'required', message: "Required value is undefined", path: 'infos.0.name'},
-            {code: 'required', message: "Required value is undefined", path: 'infos.0.value'},
+            {code: 'required', message: 'Required value is undefined', path: 'infos.0.name'},
+            {code: 'required', message: 'Required value is undefined', path: 'infos.0.value'},
         ]);
     }
 
-    expect(validate(AClass, plainToClass(AClass, {
+    expect(validate(AClass, plainSerializer.for(AClass).deserialize({
         infos: [{name: 'foo', value: 'bar'}]
     }))).toEqual([]);
 });
@@ -621,7 +612,7 @@ test('test nested validation', async () => {
     }
 
     expect(validate(B, {
-        type: "test type",
+        type: 'test type',
     })).toEqual([
         {'message': 'Required value is undefined', code: 'required', 'path': 'nested'},
         {'message': 'Required value is undefined', code: 'required', 'path': 'nestedMap'},
@@ -629,10 +620,10 @@ test('test nested validation', async () => {
     ]);
 
     expect(validate(B, {
-        type: "test type",
-        nested: [{x: "test x"}],
-        nestedMap: [{x: "test x"}],
-        nesteds: {x: "test x"},
+        type: 'test type',
+        nested: [{x: 'test x'}],
+        nestedMap: [{x: 'test x'}],
+        nesteds: {x: 'test x'},
     })).toEqual([
         {'message': 'Type is not an object', code: 'invalid_type', 'path': 'nested'},
         {'message': 'Type is not an object', code: 'invalid_type', 'path': 'nestedMap'},
@@ -648,18 +639,18 @@ test('test nested validation', async () => {
     }
 
     expect(validate(BOptional, {
-        type: "test type",
+        type: 'test type',
     })).toEqual([]);
 
     expect(validate(BOptional, {
-        type: "test type",
+        type: 'test type',
         nested: false,
     })).toEqual([
         {'message': 'Type is not an object', code: 'invalid_type', 'path': 'nested'},
     ]);
 
     expect(validate(BOptional, {
-        type: "test type",
+        type: 'test type',
         nested: '',
     })).toEqual([
         {'message': 'Type is not an object', code: 'invalid_type', 'path': 'nested'},
@@ -754,7 +745,7 @@ test('test valdiation on real life case', () => {
         }
     };
 
-    plainToClass(NodeResources, object);
+    plainSerializer.for(NodeResources).deserialize(object);
 
     expect(isPlainObject(object.assignedJobTaskInstances['a09be358-d6ce-477f-829a-0dc27219de34.0.main'].assignedResources)).toBeTrue();
 

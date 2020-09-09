@@ -29,6 +29,9 @@
       "path": "packages/marshal-mongo/tsconfig.json"
     },
     {
+      "path": "packages/marshal-sql/tsconfig.json"
+    },
+    {
       "path": "packages/marshal-orm-benchmark/tsconfig.json"
     }
   ]

@@ -1,4 +1,4 @@
-import {eachKey} from "./iterators";
+import {eachKey} from './iterators';
 
 const cacheEnumLabels = new Map<Object, string[]>();
 

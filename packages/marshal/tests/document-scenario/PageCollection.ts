@@ -1,5 +1,5 @@
-import {t} from "../../src/decorators";
-import {PageClass} from "./PageClass";
+import {t} from '../../src/decorators';
+import {PageClass} from './PageClass';
 
 export class PageCollection {
     constructor(

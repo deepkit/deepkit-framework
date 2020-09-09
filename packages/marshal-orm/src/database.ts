@@ -112,8 +112,8 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     /**
      * Registers a new entity to this database. This is mainly used for db migration utilities.
      */
-    registerEntity(entity: ClassType | ClassSchema): void {
-        this.classSchemas.add(getClassSchema(entity));
+    registerEntity(...entities: (ClassType | ClassSchema)[]): void {
+        entities.map(entity => this.classSchemas.add(getClassSchema(entity)));
     }
 
     /**

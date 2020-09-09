@@ -1,5 +1,5 @@
-import {Timer} from "@super-hornet/core";
-import {Observer} from "rxjs";
+import {Timer} from '@super-hornet/core';
+import {Observer} from 'rxjs';
 
 /**
  * Allows to create Timer which get deactivated automatically

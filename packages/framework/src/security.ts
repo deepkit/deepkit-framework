@@ -1,5 +1,5 @@
-import {ClassType} from "@super-hornet/core";
-import {Session} from "./session";
+import {ClassType} from '@super-hornet/core';
+import {Session} from './session';
 
 export class SecurityStrategy {
     /**

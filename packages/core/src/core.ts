@@ -1,4 +1,4 @@
-import {eachPair} from "./iterators";
+import {eachPair} from './iterators';
 import * as dotProp from 'dot-prop';
 
 /**

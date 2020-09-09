@@ -1,6 +1,6 @@
-import {PageCollection} from "./PageCollection";
-import {t} from "../../src/decorators";
-import {PageClass} from "./PageClass";
+import {PageCollection} from './PageCollection';
+import {t} from '../../src/decorators';
+import {PageClass} from './PageClass';
 
 export class DocumentClass {
     @t.primary.mongoId

@@ -1,8 +1,7 @@
-import {ClassSchema, createPartialXToXFunction, getGlobalStore, getXToClassFunction, jitPartial, PropertySchema} from '@super-hornet/marshal';
+import {ClassSchema, getGlobalStore, PropertySchema, Serializer} from '@super-hornet/marshal';
 import {DatabaseQueryModel} from './query';
 import {ClassType} from '@super-hornet/core';
 import {getInstanceState, IdentityMap, PKHash} from './identity-map';
-import {convertPrimaryKeyToClass} from './utils';
 import {getPrimaryKeyHashGenerator} from './converter';
 import {createReferenceClass, getReference} from './reference';
 
@@ -34,23 +33,24 @@ export function getDatabaseSessionHydrator(item: any): HydratorFn {
     return item[sessionHydratorSymbol];
 }
 
+type DBRecord = { [name: string]: any };
+
 /**
  * Every query resolving gets its own formatter.
  */
 export class Formatter {
     //its important to have for each formatter own proxyClasses since we attached to Proxy's prototype the database session
-    protected referenceClasses: Map<ClassSchema, ClassType<any>> = new Map();
+    protected referenceClasses: Map<ClassSchema, ClassType> = new Map();
 
-    protected instancePools: Map<ClassType<any>, Map<PKHash, any>> = new Map();
+    protected instancePools: Map<ClassType, Map<PKHash, any>> = new Map();
 
     public withIdentityMap: boolean = true;
-    protected rootToClass: (data: any) => any = getXToClassFunction(this.rootClassSchema, this.serializerSourceName);
-    protected rootPartialToClass: (data: any) => any = createPartialXToXFunction(this.rootClassSchema, this.serializerSourceName, 'class');
-    protected rootPkHash: (value: any) => string = getPrimaryKeyHashGenerator(this.rootClassSchema, this.serializerSourceName);
+    protected rootSerializer = this.serializer.for(this.rootClassSchema);
+    protected rootPkHash: (value: any) => string = getPrimaryKeyHashGenerator(this.rootClassSchema, this.serializer);
 
     constructor(
         protected rootClassSchema: ClassSchema,
-        protected serializerSourceName: string,
+        protected serializer: Serializer,
         protected hydrator?: HydratorFn,
         protected identityMap?: IdentityMap,
     ) {
@@ -64,8 +64,8 @@ export class Formatter {
         return this.instancePools.get(classType)!;
     }
 
-    public hydrate<T>(model: DatabaseQueryModel<T, any, any>, value: any): any {
-        return this.hydrateModel(model, this.rootClassSchema, value);
+    public hydrate<T>(model: DatabaseQueryModel<T, any, any>, dbRecord: DBRecord): any {
+        return this.hydrateModel(model, this.rootClassSchema, dbRecord);
     }
 
     protected makeInvalidReference(item: any, classSchema: ClassSchema, propertySchema: PropertySchema) {
@@ -107,13 +107,13 @@ export class Formatter {
 
     protected getReference(
         classSchema: ClassSchema,
-        dbItem: any,
+        dbRecord: DBRecord,
         propertySchema: PropertySchema,
         isPartial: boolean
     ): object | undefined | null {
         const fkName = propertySchema.getForeignKeyName();
 
-        if (undefined === dbItem[fkName] || null === dbItem[fkName]) {
+        if (undefined === dbRecord[fkName] || null === dbRecord[fkName]) {
             if (propertySchema.isNullable) return null;
             return;
         }
@@ -123,8 +123,8 @@ export class Formatter {
 
         //note: foreign keys only support currently a single foreign key ...
         const foreignPrimaryFields = foreignSchema.getPrimaryFields();
-        const foreignPrimaryKey = {[foreignPrimaryFields[0].name]: dbItem[fkName]};
-        const foreignPrimaryKeyAsClass = convertPrimaryKeyToClass(classSchema, this.serializerSourceName, foreignPrimaryKey);
+        const foreignPrimaryKey = {[foreignPrimaryFields[0].name]: dbRecord[fkName]};
+        const foreignPrimaryKeyAsClass = this.serializer.for(classSchema).partialDeserialize(foreignPrimaryKey);
 
         const ref = getReference(
             foreignSchema,
@@ -139,8 +139,8 @@ export class Formatter {
         return ref;
     }
 
-    protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
-        const pkHash = getPrimaryKeyHashGenerator(classSchema, this.serializerSourceName)(value);
+    protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
+        const pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
         const pool = this.getInstancePoolForClass(classSchema.classType);
 
         if (pool.has(pkHash)) {
@@ -148,7 +148,7 @@ export class Formatter {
         }
 
         if (this.identityMap && !model.isPartial()) {
-            const pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(value) : getPrimaryKeyHashGenerator(classSchema, this.serializerSourceName)(value);
+            // const pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
             const item = this.identityMap.getByHash(classSchema, pkHash);
 
             if (item) {
@@ -158,14 +158,18 @@ export class Formatter {
                 if (fromDatabase && !isHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance
-                    const converted = getXToClassFunction(classSchema, this.serializerSourceName)(value);
+                    const converted = this.serializer.for(classSchema).deserialize(dbRecord);
 
                     for (const propName of classSchema.propertyNames) {
                         if (propName === classSchema.idField) continue;
 
                         const prop = classSchema.getClassProperties().get(propName)!;
                         if (prop.isReference || prop.backReference) {
-                            //todo: assign Reference
+                            Object.defineProperty(item, propName, {
+                                enumerable: true,
+                                configurable: true,
+                                value: this.getReference(classSchema, dbRecord, prop, model.isPartial()),
+                            });
                             continue;
                         }
 
@@ -181,37 +185,14 @@ export class Formatter {
 
                 if (fromDatabase) {
                     //check if we got new reference data we can apply to the instance
-                    for (const join of model.joins) {
-                        if (join.populate) {
-                            const refName = join.as || join.propertySchema.name;
-
-                            //When the item is NOT from the database or property was overwritten, we don't overwrite it again.
-                            if (item.hasOwnProperty(join.propertySchema.symbol)) {
-                                continue;
-                            }
-
-                            if (value[refName] !== undefined && value[refName] !== null) {
-                                let joinValue: any;
-
-                                if (join.propertySchema.isArray) {
-                                    joinValue = value[refName].map((item: any) => {
-                                        return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
-                                    });
-                                } else {
-                                    joinValue = this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), value[refName]);
-                                }
-
-                                item[join.propertySchema.symbol] = joinValue;
-                            }
-                        }
-                    }
+                    this.assignJoins(model, classSchema, dbRecord, item);
                 }
 
                 return item;
             }
         }
 
-        const converted = this.createObject(model, classSchema, value);
+        const converted = this.createObject(model, classSchema, dbRecord);
 
         if (!model.isPartial()) {
             getInstanceState(converted).markAsPersisted();
@@ -225,60 +206,70 @@ export class Formatter {
         return converted;
     }
 
-    protected createObject(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, value: any) {
-        const converted = classSchema === this.rootClassSchema ?
-            (model.isPartial() ? this.rootPartialToClass(value) : this.rootToClass(value))
-            :
-            (model.isPartial() ?
-                jitPartial(classSchema, this.serializerSourceName, 'class', value) :
-                getXToClassFunction(classSchema, this.serializerSourceName)(value));
-
-        if (!model.isPartial()) {
-            getInstanceState(converted).markAsFromDatabase();
-        }
-
+    protected assignJoins(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord, item: any): { [name: string]: true } {
         const handledRelation: { [name: string]: true } = {};
 
         for (const join of model.joins) {
             handledRelation[join.propertySchema.name] = true;
             const refName = join.as || join.propertySchema.name;
 
+            //When the item is NOT from the database or property was overwritten, we don't overwrite it again.
+            if (item.hasOwnProperty(join.propertySchema.symbol)) {
+                continue;
+            }
+
             if (join.populate) {
-                const hasValue = value[refName] !== undefined && value[refName] !== null;
+                const hasValue = dbRecord[refName] !== undefined && dbRecord[refName] !== null;
                 if (join.propertySchema.backReference && join.propertySchema.isArray) {
                     if (hasValue) {
-                        converted[join.propertySchema.name] = value[refName].map((item: any) => {
+                        item[join.propertySchema.name] = dbRecord[refName].map((item: any) => {
                             return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
                         });
                     } else {
-                        converted[join.propertySchema.name] = [];
+                        item[join.propertySchema.name] = [];
                     }
                 } else if (hasValue) {
-                    converted[join.propertySchema.name] = this.hydrateModel(
-                        join.query.model, join.propertySchema.getResolvedClassSchema(), value[refName]
+                    item[join.propertySchema.name] = this.hydrateModel(
+                        join.query.model, join.propertySchema.getResolvedClassSchema(), dbRecord[refName]
                     );
                 } else {
-                    converted[join.propertySchema.name] = undefined;
+                    item[join.propertySchema.name] = undefined;
                 }
             } else {
                 //not populated
                 if (join.propertySchema.isReference) {
-                    const reference = this.getReference(classSchema, value, join.propertySchema, model.isPartial());
-                    if (reference) converted[join.propertySchema.name] = reference;
+                    const reference = this.getReference(classSchema, dbRecord, join.propertySchema, model.isPartial());
+                    if (reference) item[join.propertySchema.name] = reference;
                 } else {
                     //unpopulated backReferences are inaccessible
                     if (!model.isPartial()) {
-                        this.makeInvalidReference(converted, classSchema, join.propertySchema);
+                        this.makeInvalidReference(item, classSchema, join.propertySchema);
                     }
                 }
             }
         }
 
+        return handledRelation;
+    }
+
+    protected createObject(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
+        const partial = model.isPartial();
+
+        const converted = classSchema === this.rootClassSchema
+            ? (partial ? this.rootSerializer.partialDeserialize(dbRecord) : this.rootSerializer.deserialize(dbRecord))
+            : (partial ? this.serializer.for(classSchema).partialDeserialize(dbRecord) : this.serializer.for(classSchema).deserialize(dbRecord));
+
+        if (!model.isPartial()) {
+            getInstanceState(converted).markAsFromDatabase();
+        }
+
+        const handledRelation = this.assignJoins(model, classSchema, dbRecord, converted);
+
         //all non-populated owning references will be just proxy references
         for (const propertySchema of classSchema.references.values()) {
             if (handledRelation[propertySchema.name]) continue;
             if (propertySchema.isReference) {
-                converted[propertySchema.name] = this.getReference(classSchema, value, propertySchema, model.isPartial());
+                converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, model.isPartial());
             } else {
                 //unpopulated backReferences are inaccessible
                 if (!model.isPartial()) {

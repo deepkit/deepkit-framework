@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {classToPlain, t, getClassSchema} from "../index";
+import {getClassSchema, plainSerializer, t} from '../index';
 
 export class StateGoalChecklistItem {
     @t read: boolean = false;
@@ -23,7 +23,7 @@ test('check freezed objects work with classToPlain', () => {
     {
         //check default non-freeze first
         const state = new PersistentState();
-        const plain = classToPlain(PersistentState, state);
+        const plain = plainSerializer.for(PersistentState).serialize(state);
         expect(plain).not.toBeInstanceOf(PersistentState);
         expect(plain.goal).not.toBeInstanceOf(StateGoal);
         expect(plain.goal).not.toBe(state.goal);
@@ -33,7 +33,7 @@ test('check freezed objects work with classToPlain', () => {
         const state = Object.freeze(new PersistentState());
         Object.freeze(state.goal);
         Object.freeze(state.goal.checklistItems);
-        const plain = classToPlain(PersistentState, state);
+        const plain = plainSerializer.for(PersistentState).serialize(state);
         expect(plain).not.toBeInstanceOf(PersistentState);
         expect(plain.goal).not.toBeInstanceOf(StateGoal);
         expect(plain.goal).not.toBe(state.goal);
@@ -43,7 +43,7 @@ test('check freezed objects work with classToPlain', () => {
 
     {
         const state = Object.seal(new PersistentState());
-        const plain = classToPlain(PersistentState, state);
+        const plain = plainSerializer.for(PersistentState).serialize(state);
         expect(plain).not.toBeInstanceOf(PersistentState);
         expect(plain.goal).not.toBeInstanceOf(StateGoal);
         expect(plain.goal).not.toBe(state.goal);
@@ -51,7 +51,7 @@ test('check freezed objects work with classToPlain', () => {
 
     {
         const state = Object.preventExtensions(new PersistentState());
-        const plain = classToPlain(PersistentState, state);
+        const plain = plainSerializer.for(PersistentState).serialize(state);
         expect(plain).not.toBeInstanceOf(PersistentState);
         expect(plain.goal).not.toBeInstanceOf(StateGoal);
         expect(plain.goal).not.toBe(state.goal);

@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, plainToClass, t} from '@super-hornet/marshal';
+import {f, getClassSchema, plainSerializer, t} from '@super-hornet/marshal';
 import {Formatter} from '../src/formatter';
 import {DatabaseQueryModel} from '../src/query';
 import {buildChangeOld, buildChanges} from '../src/change-detector';
@@ -43,7 +43,7 @@ test('change-detection', () => {
     const session = new DatabaseSession(new MemoryDatabaseAdapter);
 
     {
-        const formatter = new Formatter(getClassSchema(User), 'plain');
+        const formatter = new Formatter(getClassSchema(User), plainSerializer);
         const model = new DatabaseQueryModel<any, any, any>();
         const user = formatter.hydrate(model, {username: 'Peter', id: '2'});
         expect(user.username).toBe('Peter');
@@ -52,7 +52,7 @@ test('change-detection', () => {
     }
 
     {
-        const formatter = new Formatter(getClassSchema(User), 'plain');
+        const formatter = new Formatter(getClassSchema(User), plainSerializer);
         const model = new DatabaseQueryModel<any, any, any>();
         const user = formatter.hydrate(model, {username: 'Peter', id: '2', image: '1'});
         expect(user.username).toBe('Peter');
@@ -93,7 +93,7 @@ test('change-detection', () => {
 test('snapshot creation perf', () => {
     const s = getClassSchema(MarshalModel);
 
-    const item = plainToClass(s, {name: 'Peter'});
+    const item = plainSerializer.for(s).deserialize({name: 'Peter'});
     const bench = new BenchSuite('snapshot creation');
 
     bench.add('jit', () => {
@@ -111,7 +111,7 @@ test('snapshot creation perf', () => {
 test('change-detection model perf', () => {
     const s = getClassSchema(MarshalModel);
 
-    const item = plainToClass(s, {id: 1, name: 'Peter'});
+    const item = plainSerializer.for(s).deserialize({id: 1, name: 'Peter'});
     getInstanceState(item).markAsPersisted();
     expect(item.tags).toEqual(['a', 'b', 'c']);
 
@@ -138,7 +138,7 @@ test('change-detection string', () => {
         username: t.string,
     });
 
-    const item = plainToClass(s, {username: 'Peter'});
+    const item = plainSerializer.for(s).deserialize({username: 'Peter'});
     getInstanceState(item).markAsPersisted();
 
     item.username = 'Alex';
@@ -153,14 +153,14 @@ test('change-detection array', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, tags: ['a', 'b', 'c']});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: ['a', 'b', 'c']});
         getInstanceState(item).markAsPersisted();
         item.tags![0] = '000';
         expect(buildChanges(item)).toEqual({tags: ['000', 'b', 'c']});
     }
 
     {
-        const item = plainToClass(s, {id: 1, tags: ['a', 'b', 'c']});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: ['a', 'b', 'c']});
         getInstanceState(item).markAsPersisted();
 
         item.tags!.splice(1, 1); //remove b
@@ -180,7 +180,7 @@ test('change-detection object', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, tags: {a: true, b: true}});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: {a: true, b: true}});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
         item.tags!.b = false;
@@ -188,7 +188,7 @@ test('change-detection object', () => {
     }
 
     {
-        const item = plainToClass(s, {id: 1, tags: {a: true, b: true}});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: {a: true, b: true}});
         getInstanceState(item).markAsPersisted();
 
         delete item.tags!.b;
@@ -214,7 +214,7 @@ test('change-detection union', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, tags: {type: 'a', name: 'peter'}});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: {type: 'a', name: 'peter'}});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 
@@ -239,7 +239,7 @@ test('change-detection enum', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, enum: MyEnum.running});
+        const item = plainSerializer.for(s).deserialize({id: 1, enum: MyEnum.running});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 
@@ -258,7 +258,7 @@ test('change-detection arrayBuffer', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, buffer: new ArrayBuffer(10)});
+        const item = plainSerializer.for(s).deserialize({id: 1, buffer: new ArrayBuffer(10)});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 
@@ -277,7 +277,7 @@ test('change-detection typedArray', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, buffer: new Uint16Array(10)});
+        const item = plainSerializer.for(s).deserialize({id: 1, buffer: new Uint16Array(10)});
         expect(item.buffer.byteLength).toBe(10);
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
@@ -297,7 +297,7 @@ test('change-detection array in array', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, tags: [['a', 'b'], ['c']]});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: [['a', 'b'], ['c']]});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 
@@ -325,7 +325,7 @@ test('change-detection array in object', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, tags: {foo: ['a', 'b'], bar: ['c']}});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: {foo: ['a', 'b'], bar: ['c']}});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 
@@ -350,7 +350,7 @@ test('change-detection object in object', () => {
     });
 
     {
-        const item = plainToClass(s, {id: 1, tags: {foo: {a: true}, bar: {b: false}}});
+        const item = plainSerializer.for(s).deserialize({id: 1, tags: {foo: {a: true}, bar: {b: false}}});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 
@@ -387,7 +387,7 @@ test('change-detection class', () => {
     expect(s.getProperty('config').getResolvedClassSchema().getProperty('b').type).toBe('string');
 
     {
-        const item = plainToClass(s, {id: 1, config: {a: 'foo', b: 'bar'}});
+        const item = plainSerializer.for(s).deserialize({id: 1, config: {a: 'foo', b: 'bar'}});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 
@@ -418,7 +418,7 @@ test('change-detection class in array', () => {
     expect(s.getProperty('config').getSubType().getResolvedClassSchema().getProperty('value').type).toBe('string');
 
     {
-        const item = plainToClass(s, {id: 1, config: [{name: 'foo', value: 'bar'}, {name: 'foo2', value: 'bar2'}]});
+        const item = plainSerializer.for(s).deserialize({id: 1, config: [{name: 'foo', value: 'bar'}, {name: 'foo2', value: 'bar2'}]});
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
 

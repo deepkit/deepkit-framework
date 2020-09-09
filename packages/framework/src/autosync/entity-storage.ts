@@ -1,4 +1,4 @@
-import {ClassType} from "@super-hornet/core";
+import {ClassType} from '@super-hornet/core';
 import {injectable} from '../injector/injector';
 
 // import {Exchange} from "./exchange";

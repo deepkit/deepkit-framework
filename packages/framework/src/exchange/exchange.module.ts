@@ -1,7 +1,7 @@
-import {ExchangeServer, ExchangeServerFactory} from "./exchange-server";
+import {ExchangeServer, ExchangeServerFactory} from './exchange-server';
 import {Exchange} from './exchange';
-import {AppLocker} from "./app-locker";
-import {ExchangeConfig} from "./exchange.config";
+import {AppLocker} from './app-locker';
+import {ExchangeConfig} from './exchange.config';
 import {hornet, SuperHornetModule} from '../decorator';
 
 @hornet.module({

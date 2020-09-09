@@ -1,4 +1,4 @@
-import {ClassSchema, classToPlain, cloneClass, getClassSchema, partialClassToPlain} from '@super-hornet/marshal';
+import {ClassSchema, cloneClass, getClassSchema, plainSerializer} from '@super-hornet/marshal';
 import {eachPair, getPathValue, size} from "@super-hornet/core";
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';
@@ -59,7 +59,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
                 this.valueOrSubject.patches.subscribe((patches) => {
                     if (this.valueOrSubject instanceof EntitySubject) {
                         if (this.old) {
-                            const plainPatches = partialClassToPlain(Object.getPrototypeOf(this.valueOrSubject.value).constructor, patches);
+                            const plainPatches = plainSerializer.for(Object.getPrototypeOf(this.valueOrSubject.value).constructor).partialSerialize(patches);
                             for (const [i, v] of eachPair(plainPatches)) {
                                 set(this.old, i, v);
                             }
@@ -90,7 +90,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
 
     createState(): { [path: string]: any } {
         if (this._snapshot && this.original) {
-            const item = classToPlain(getClassSchema(this.original) as ClassSchema<T>, this._snapshot);
+            const item = plainSerializer.for(getClassSchema(this.original) as ClassSchema<T>).serialize(this._snapshot);
             for (const p of this.ignore) {
                 delete item[p as keyof T & string];
             }
@@ -167,7 +167,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
     getRawPatches(): { [path: string]: any } | undefined {
         const plainPatches = this.getPatches();
         if (plainPatches) {
-            return partialClassToPlain(Object.getPrototypeOf(this._snapshot).constructor, plainPatches);
+            return plainSerializer.for(Object.getPrototypeOf(this._snapshot).constructor).partialSerialize(plainPatches);
         }
         return;
     }

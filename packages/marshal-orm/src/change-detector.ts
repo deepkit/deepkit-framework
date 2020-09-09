@@ -182,7 +182,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
 const changeDetectorSymbol = Symbol('changeDetector');
 
-export function getJitChangeDetector(classSchema: ClassSchema): (last: any, current: any, item: any) => { [name: string]: any } {
+export function getJitChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => Partial<T> {
     return classSchema.getJit(changeDetectorSymbol, () => createJITChangeDetectorForSnapshot(classSchema));
 }
 

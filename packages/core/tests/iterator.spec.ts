@@ -1,5 +1,5 @@
 import 'jest';
-import {each, eachKey, eachPair} from "../src/iterators";
+import {each, eachKey, eachPair} from '../src/iterators';
 import 'jest-extended';
 
 test('test array', () => {

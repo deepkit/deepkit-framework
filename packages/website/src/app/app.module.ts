@@ -1,10 +1,10 @@
 import {BrowserModule} from '@angular/platform-browser';
-import {NgModule, Optional, Inject} from '@angular/core';
+import {Inject, NgModule, Optional} from '@angular/core';
 
 import {AppRoutingModule} from './app-routing.module';
 import {AppComponent} from './app.component';
-import {SocketClient} from "@super-hornet/framework-client";
-import {environment} from "../environments/environment";
+import {SocketClient} from '@super-hornet/framework-client';
+import {environment} from '../environments/environment';
 import {DOCUMENT} from '@angular/common';
 
 @NgModule({

@@ -7,7 +7,7 @@ export function uuid(): string {
 }
 
 export function isArray(v: any): v is Array<any> {
-    if (v && (v as any).length && (v as any).reduce) return true;
+    if (v && (v as any).length && 'function' === typeof (v as any).reduce) return true;
     return false;
 }
 
@@ -32,6 +32,16 @@ export type JSONSingle<T> = T extends Date ? string :
                             T extends number ? T : T;
 
 export type JSONEntity<T> = { [name in keyof T & string]: JSONSingle<T[name]> };
+
+export type AnyEntitySingle<T> =
+    T extends Array<infer K> ? Array<AnyEntitySingle<K>> :
+        T extends TypedArrays ? any :
+            T extends ArrayBuffer ? any :
+                T extends object ? AnyEntity<T> :
+                    T extends string ? any :
+                        T extends boolean ? any :
+                            T extends number ? any : any;
+export type AnyEntity<T> = { [name in keyof T & string]: AnyEntitySingle<T[name]> };
 
 export type JSONPatch<T> = { [name in keyof T & string]: JSONSingle<T[name]> } | { [name: string]: any };
 

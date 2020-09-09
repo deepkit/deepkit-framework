@@ -1,14 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {
-    classToPlain as classTransformerClassToPlain,
-    Exclude as ctExclude,
-    plainToClass as classTransformerPlainToClass,
-    Transform,
-    Type
-} from "class-transformer";
-import {bench, BenchSuite} from "@super-hornet/core";
-import {classToPlain, Entity, f, plainToClass} from "@super-hornet/marshal";
+import {classToPlain as classTransformerClassToPlain, Exclude as ctExclude, plainToClass as classTransformerPlainToClass, Transform, Type} from 'class-transformer';
+import {BenchSuite} from '@super-hornet/core';
+import {Entity, f, plainSerializer} from '@super-hornet/marshal';
 
 export class JobTaskQueue {
     @f
@@ -124,7 +118,7 @@ test('benchmark big plainToClass', () => {
     const suite = new BenchSuite('plainToClass big model');
 
     suite.add('Marshal', () => {
-        plainToClass(SimpleModel, {
+        plainSerializer.for(SimpleModel).deserialize({
             name: 'name',
             type: 2,
             plan: Plan.ENTERPRISE,
@@ -161,7 +155,7 @@ test('benchmark big classToPlain', () => {
 
         suite.add('Marshal: jitClassToPlain Big Entity', () => {
             item.name = 'item';
-            classToPlain(SimpleModel, item);
+            plainSerializer.for(SimpleModel).serialize(item);
         });
     }
 

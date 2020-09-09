@@ -157,7 +157,7 @@ test('basic serialisation: primitives', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        @t.array(String)
+        @t.array(t.string)
         names(last: string): string[] {
             return ['a', 'b', 'c', "15", last];
         }

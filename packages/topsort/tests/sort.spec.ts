@@ -1,8 +1,8 @@
 import 'jest';
 import 'jest-extended';
-import {ArraySort} from "../src/array-sort";
-import {bench} from "./utils";
-import {CircularDependencyException, ElementNotFoundException} from "../src/base";
+import {ArraySort} from '../src/array-sort';
+import {bench} from './utils';
+import {CircularDependencyException, ElementNotFoundException} from '../src/base';
 
 function getElementsFlat(count: number) {
     const elements = new Map<string, string[]>();

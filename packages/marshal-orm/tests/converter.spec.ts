@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '../index';
-import {t, getClassSchema} from '@super-hornet/marshal';
+import {t, getClassSchema, plainSerializer} from '@super-hornet/marshal';
 import {bench, BenchSuite} from '@super-hornet/core';
 
 class Image {
@@ -37,7 +37,7 @@ test('benchmark', () => {
     });
 
     suite.add('getPrimaryKeyHashGenerator getter', () => {
-        getPrimaryKeyHashGenerator(schema);
+        getPrimaryKeyHashGenerator(schema, plainSerializer);
     });
 
     suite.add('getPrimaryKeyExtractor', () => {
@@ -49,10 +49,10 @@ test('benchmark', () => {
     });
 
     suite.add('getPrimaryKeyHashGenerator', () => {
-        const converted = getPrimaryKeyHashGenerator(schema)(item);
+        const converted = getPrimaryKeyHashGenerator(schema, plainSerializer)(item);
     });
 
-    const hash = getPrimaryKeyHashGenerator(schema);
+    const hash = getPrimaryKeyHashGenerator(schema, plainSerializer);
     suite.add('getPrimaryKeyHashGenerator saved', () => {
         const converted = hash(item);
     });
@@ -125,7 +125,7 @@ test('getPrimaryKeyExtractor', () => {
 test('getPrimaryKeyHashGenerator', () => {
     const schema = getClassSchema(User);
     expect(schema.getPrimaryFields().length).toBe(1);
-    const converter = getPrimaryKeyHashGenerator(schema);
+    const converter = getPrimaryKeyHashGenerator(schema, plainSerializer);
 
     {
         const converted = converter({id: 22, title: 'Peter'});

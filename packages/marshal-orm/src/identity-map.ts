@@ -1,9 +1,8 @@
-import {ClassSchema, getClassSchema, JSONPartial, PartialEntity} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, JSONPartial, PartialEntity, plainSerializer} from '@super-hornet/marshal';
 import {Entity} from './query';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
-import {isObject} from '@super-hornet/core';
+import {isObject, toFastProperties} from '@super-hornet/core';
 import {inspect} from 'util';
-import toFastProperties from 'to-fast-properties';
 
 export type PrimaryKey<T> = { [name in keyof T]?: T[name] };
 
@@ -79,12 +78,12 @@ class InstanceState<T extends Entity> {
         this.knownInDatabase = true;
     }
 
-    getLastKnownPK(): JSONPartial<T> {
+    getLastKnownPK(): Partial<T> {
         return getPrimaryKeyExtractor(this.classSchema)(this.snapshot);
     }
 
     getLastKnownPKHash(): string {
-        return getPrimaryKeyHashGenerator(this.classSchema)(this.snapshot);
+        return getPrimaryKeyHashGenerator(this.classSchema, plainSerializer)(this.snapshot);
     }
 
     markAsDeleted() {
@@ -123,7 +122,7 @@ export class IdentityMap {
     deleteMany<T>(classSchema: ClassSchema<T>, pks: Partial<T>[]) {
         const store = this.getStore(classSchema);
         for (const pk of pks) {
-            const pkHash = getPrimaryKeyHashGenerator(classSchema)(pk);
+            const pkHash = getPrimaryKeyHashGenerator(classSchema, plainSerializer)(pk);
             let item = store.get(pkHash);
             if (item) {
                 store.delete(pkHash);
@@ -147,7 +146,7 @@ export class IdentityMap {
         if (!classSchema.hasPrimaryFields()) throw new Error(`Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`);
         const store = this.getStore(classSchema);
         for (const item of items) {
-            const pkHash = getPrimaryKeyHashGenerator(classSchema)(item);
+            const pkHash = getPrimaryKeyHashGenerator(classSchema, plainSerializer)(item);
             store.set(pkHash, {ref: item, stale: false});
             getInstanceState(item).markAsPersisted();
         }

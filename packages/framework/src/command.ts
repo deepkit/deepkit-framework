@@ -12,7 +12,7 @@ import {IBooleanFlag, IOptionFlag} from '@oclif/parser/lib/flags';
 import {ClassType} from '@super-hornet/core';
 import {Command as OclifCommand} from '@oclif/config';
 import {Command as OclifCommandBase} from '@oclif/command';
-import {ControllerContainer, ServiceContainer} from './service-container';
+import {ServiceContainer} from './service-container';
 import {Injector} from './injector/injector';
 
 class ArgDefinitions {

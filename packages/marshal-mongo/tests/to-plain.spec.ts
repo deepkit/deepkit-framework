@@ -1,9 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {ObjectID} from "mongodb";
-import {t} from "@super-hornet/marshal";
-import {mongoToPlain, partialMongoToPlain} from "../src/mapping";
-import {uuid4Binary} from "../src/compiler-templates";
+import {ObjectID} from 'mongodb';
+import {plainSerializer, t} from '@super-hornet/marshal';
+import {mongoSerializer, uuid4Binary} from '../src/mongo-serializer';
 
 test('mongo to plain', () => {
     class Model {
@@ -14,8 +13,8 @@ test('mongo to plain', () => {
         date?: Date;
     }
 
-    const plain = mongoToPlain(Model, {
-        _id: new ObjectID("5be340cb2ffb5e901a9b62e4"),
+    const plain = mongoSerializer.for(Model).to(plainSerializer, {
+        _id: new ObjectID('5be340cb2ffb5e901a9b62e4'),
         date: new Date('2018-11-07 19:45:15.805Z'),
     });
 
@@ -35,9 +34,9 @@ test('mongo to plain partial', () => {
         date?: Date;
     }
 
-    const plain = partialMongoToPlain(Model, {
-        uuid: uuid4Binary("12345678-1234-5678-1234-567812345678") as any,
-        _id: new ObjectID("5be340cb2ffb5e901a9b62e4") as any,
+    const plain = mongoSerializer.for(Model).to(plainSerializer, {
+        uuid: uuid4Binary('12345678-1234-5678-1234-567812345678') as any,
+        _id: new ObjectID('5be340cb2ffb5e901a9b62e4') as any,
         date: new Date('2018-11-07 19:45:15.805Z'),
     });
 

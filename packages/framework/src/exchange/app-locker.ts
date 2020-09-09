@@ -1,4 +1,4 @@
-import {Exchange, ExchangeLock} from "./exchange";
+import {Exchange, ExchangeLock} from './exchange';
 import {injectable} from '../injector/injector';
 
 @injectable()

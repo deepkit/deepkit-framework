@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {t, getClassSchema} from "../src/decorators";
-import {jitValidatePartial, jitValidateProperty, resolvePropertyCompilerSchema} from "../index";
+import {getClassSchema, t} from '../src/decorators';
+import {jitValidatePartial, jitValidateProperty, resolvePropertyCompilerSchema} from '../index';
 
 test('test partial @f.map(any)', async () => {
     const p = t.map(t.any).buildPropertySchema();

@@ -1,10 +1,10 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {t, getClassSchema, PropertyValidator} from "../src/decorators";
+import {getClassSchema, PropertyValidator, t} from '../src/decorators';
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
-import {Channel, Job} from "./big-entity";
-import {jitValidateProperty} from "../src/jit-validation";
-import {plainToClass, uuid, validatedPlainToClass} from '../index';
+import {Channel, Job} from './big-entity';
+import {jitValidateProperty} from '../src/jit-validation';
+import {plainSerializer, uuid} from '../index';
 
 test('test any deep array', async () => {
     class Peter {
@@ -17,9 +17,9 @@ test('test any deep array', async () => {
     });
 
     expect(errors).toEqual([{
-        "code": "invalid_string",
-        "message": "No string given",
-        "path": "names.1",
+        'code': 'invalid_string',
+        'message': 'No string given',
+        'path': 'names.1',
     }]);
 });
 
@@ -30,15 +30,15 @@ test('test nested array', async () => {
     }
 
     expect(validate(Peter, {names: ['invalid']})).toEqual([{
-        "code": "invalid_type",
-        "message": "Type is not an array",
-        "path": "names.0",
+        'code': 'invalid_type',
+        'message': 'Type is not an array',
+        'path': 'names.0',
     }]);
 
     expect(validate(Peter, {names: [[], 'asd']})).toEqual([{
-        "code": "invalid_type",
-        "message": "Type is not an array",
-        "path": "names.1",
+        'code': 'invalid_type',
+        'message': 'Type is not an array',
+        'path': 'names.1',
     }]);
 
     expect(validate(Peter, {names: [[], []]})).toEqual([]);
@@ -47,7 +47,7 @@ test('test nested array', async () => {
 function MinStringLength(length: number) {
     return (v: string) => {
         if (v.length < length) throw new PropertyValidatorError('too_short', 'Min length of ' + length);
-    }
+    };
 }
 
 test('test container validators array', async () => {
@@ -65,15 +65,15 @@ test('test container validators array', async () => {
     expect(roles.getSubType().validators.length).toBe(1);
 
     expect(validate(Peter, {roles: []})).toEqual([{
-        "code": "empty",
-        "message": "roles empty",
-        "path": "roles",
+        'code': 'empty',
+        'message': 'roles empty',
+        'path': 'roles',
     }]);
 
     expect(validate(Peter, {roles: ['12']})).toEqual([{
-        "code": "too_short",
-        "message": "Min length of 3",
-        "path": "roles.0",
+        'code': 'too_short',
+        'message': 'Min length of 3',
+        'path': 'roles.0',
     }]);
 
     expect(validate(Peter, {roles: ['123']})).toEqual([]);
@@ -84,19 +84,19 @@ test('test container validators map', async () => {
         @t.map(t.string.validator(MinStringLength(3))).validator((v: string[]) => {
             if (Object.keys(v).length === 0) throw new PropertyValidatorError('empty', 'roles empty');
         })
-        roles: {[name: string]: string } = {};
+        roles: { [name: string]: string } = {};
     }
 
     expect(validate(Peter, {roles: {}})).toEqual([{
-        "code": "empty",
-        "message": "roles empty",
-        "path": "roles",
+        'code': 'empty',
+        'message': 'roles empty',
+        'path': 'roles',
     }]);
 
     expect(validate(Peter, {roles: {'foo': 'ba'}})).toEqual([{
-        "code": "too_short",
-        "message": "Min length of 3",
-        "path": "roles.foo",
+        'code': 'too_short',
+        'message': 'Min length of 3',
+        'path': 'roles.foo',
     }]);
 
     expect(validate(Peter, {roles: {'foo': 'bar'}})).toEqual([]);
@@ -110,7 +110,7 @@ test('test any deep validation', async () => {
         'infos.yes.another.very.deep.item': '444',
     };
 
-    const propSchema = t.partial(Job).buildPropertySchema()
+    const propSchema = t.partial(Job).buildPropertySchema();
 
     const errors = jitValidateProperty(propSchema)(patches);
 
@@ -150,7 +150,7 @@ test('test custom validator on array items', async () => {
     }
 
     try {
-        const instance = validatedPlainToClass(SimpleModel, {
+        const instance = plainSerializer.for(SimpleModel).validatedDeserialize({
             name: 'myName',
             tags: ['foowererererefdrwerer', 'bar'],
             tag: 'foowererererefdrwerer',
@@ -159,8 +159,8 @@ test('test custom validator on array items', async () => {
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
         expect(error.errors).toEqual([
-            {code: "too_long", message: "Too long :()", path: "tags.0"},
-            {code: "too_long", message: "Too long :()", path: "tag"},
-        ])
+            {code: 'too_long', message: 'Too long :()', path: 'tags.0'},
+            {code: 'too_long', message: 'Too long :()', path: 'tag'},
+        ]);
     }
 });

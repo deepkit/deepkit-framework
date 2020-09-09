@@ -1,4 +1,4 @@
-import {createJITConverterFromPropertySchema, PropertySchema, uuid} from '@super-hornet/marshal';
+import {plainSerializer, PropertySchema, uuid} from '@super-hornet/marshal';
 import {
     ActionTypes,
     ClientMessageWithoutId,
@@ -15,7 +15,7 @@ import {
 import {Subscription} from 'rxjs';
 import {each, eachKey, ProcessLocker} from '@super-hornet/core';
 import {Exchange} from './exchange/exchange';
-import {inject, injectable} from './injector/injector';
+import {injectable} from './injector/injector';
 
 /**
  * Internal client for communication with registered peer controllers of connected clients.
@@ -207,7 +207,7 @@ export class InternalClientConnection {
                 const types = await this.getActionTypes(controller, name);
 
                 for (const i of eachKey(args)) {
-                    args[i] = createJITConverterFromPropertySchema('class', 'plain', types.parameters[i])(args[i]);
+                    args[i] = plainSerializer.serializeProperty(types.parameters[i], args[i]);
                 }
 
                 const subject = this.sendMessage<ServerMessageResult>(controller, {

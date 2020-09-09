@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from "./entities";
-import {classToPlain, partialClassToPlain} from "../src/mapper";
+import {SimpleModel, SubModel} from './entities';
+import {plainSerializer} from '../src/plain-serializer';
 //
 // test('class-to test simple model', () => {
 //
@@ -18,7 +18,7 @@ test('partial', () => {
     const i = new SimpleModel('Hi');
     i.children.push(new SubModel('Foo'));
 
-    const plain = partialClassToPlain(SimpleModel, {
+    const plain = plainSerializer.for(SimpleModel).partialSerialize({
         name: i.name,
         children: i.children,
     });
@@ -31,7 +31,7 @@ test('partial', () => {
 });
 
 test('partial unknown', () => {
-    const partial = partialClassToPlain(SimpleModel, {
+    const partial = plainSerializer.for(SimpleModel).partialSerialize({
         'unknown': 'asd',
     } as any);
     expect(partial['unknown']).toBeUndefined();

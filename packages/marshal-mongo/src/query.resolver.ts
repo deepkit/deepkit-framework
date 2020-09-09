@@ -1,5 +1,5 @@
 import {Entity, Formatter, GenericQueryResolver} from '@super-hornet/marshal-orm';
-import {ClassSchema, getClassSchema, jitPartialFactory, resolveClassTypeOrForward, t} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@super-hornet/marshal';
 import {DEEP_SORT, MongoQueryModel} from './query.model';
 import {convertClassQueryToMongo,} from './mapping';
 import {FilterQuery} from 'mongodb';
@@ -9,6 +9,7 @@ import {UpdateCommand} from './client/command/update';
 import {AggregateCommand} from './client/command/aggregate';
 import {CountCommand} from './client/command/count';
 import {FindCommand} from './client/command/find';
+import {mongoSerializer} from './mongo-serializer';
 
 export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema.classType, (model.filter || {}) as FilterQuery<T>, {}, {
@@ -47,9 +48,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     }
 
     protected async fetchIds(queryModel: MongoQueryModel<T>, multi: boolean = false) {
-        const partialConvert = jitPartialFactory(this.classSchema, 'mongo', 'class');
-        //since BSON parser returns partially already the class format, we make sure to convert it to mongo
-        const partialConvertMongo = jitPartialFactory(this.classSchema, 'class', 'mongo');
+        const converter = mongoSerializer.for(this.classSchema);
+
         const projection = this.getPrimaryKeysProjection(this.classSchema);
         const mongoFilters: any[] = [];
         const primaryKeys: any[] = [];
@@ -60,16 +60,16 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             pipeline.push({$project: projection});
             const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline));
             for (const v of items) {
-                mongoFilters.push(partialConvertMongo(v));
-                primaryKeys.push(partialConvert(v));
+                mongoFilters.push(converter.partialSerialize(v));
+                primaryKeys.push(converter.partialDeserialize(v));
             }
         } else {
             const limit = multi ? 0 : 1;
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
             const items = await this.databaseSession.adapter.client.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit));
             for (const v of items) {
-                mongoFilters.push(partialConvertMongo(v));
-                primaryKeys.push(partialConvert(v));
+                mongoFilters.push(converter.partialSerialize(v));
+                primaryKeys.push(converter.partialDeserialize(v));
             }
         }
 
@@ -349,7 +349,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     protected createFormatter(withIdentityMap: boolean = false) {
         return new Formatter(
             this.classSchema,
-            'mongo',
+            mongoSerializer,
             this.databaseSession.getHydrator(),
             withIdentityMap ? this.databaseSession.identityMap : undefined
         );

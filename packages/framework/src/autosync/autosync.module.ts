@@ -1,4 +1,4 @@
-import {EntityStorage} from "./entity-storage";
+import {EntityStorage} from './entity-storage';
 import {hornet} from '../decorator';
 
 @hornet.module({

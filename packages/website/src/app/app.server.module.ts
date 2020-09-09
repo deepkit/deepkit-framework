@@ -3,7 +3,7 @@ import {ServerModule} from '@angular/platform-server';
 
 import {AppModule} from './app.module';
 import {AppComponent} from './app.component';
-import {SocketClient} from "@super-hornet/framework-client";
+import {SocketClient} from '@super-hornet/framework-client';
 
 @NgModule({
   imports: [

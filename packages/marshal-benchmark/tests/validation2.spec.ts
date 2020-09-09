@@ -1,6 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
-import {plainToClassFactory, t as tMarshal, validatesFactory} from '@super-hornet/marshal';
+import {plainSerializer, t as tMarshal, validatesFactory} from '@super-hornet/marshal';
 import {BenchSuite} from '@super-hornet/core';
 import * as t from 'io-ts';
 import * as G from 'io-ts/lib/Guard';
@@ -80,9 +80,9 @@ test('test speed vs io-ts', () => {
         guard(good);
     });
 
-    const decode = plainToClassFactory(decoderMarshal);
+    const decoder = plainSerializer.for(decoderMarshal);
     suite.add('marshal decode', () => {
-        decode(good);
+        decoder.deserialize(good);
     });
 
     suite.add('io-ts guard', () => {

@@ -1,9 +1,4 @@
-import {
-    Entity,
-    t,
-    uuid,
-    MultiIndex
-} from '../index';
+import {Entity, MultiIndex, t, uuid} from '../index';
 
 export class JobTaskQueue {
     @t

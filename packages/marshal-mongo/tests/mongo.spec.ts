@@ -1,14 +1,13 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {arrayBufferFrom, classToPlain, DatabaseName, Entity, getClassSchema, getDatabaseName, getEntityName, plainToClass, t, uuid,} from '@super-hornet/marshal';
+import {arrayBufferFrom, Entity, getClassSchema, getEntityName, plainSerializer, t, uuid,} from '@super-hornet/marshal';
 import {Binary, ObjectID} from 'bson';
-import * as mongodb from 'mongodb';
 import {getInstanceState} from '@super-hornet/marshal-orm';
-import {plainToMongo} from '../src/mapping';
 import * as moment from 'moment';
-import {uuid4Stringify} from '../src/compiler-templates';
 import {SimpleModel, SuperSimple} from './entities';
 import {createDatabaseSession} from './utils';
+import {mongoSerializer} from '../src/mongo-serializer';
+
 jest.setTimeout(12312313);
 test('test moment db', async () => {
     @Entity('model-moment')
@@ -68,7 +67,7 @@ test('test save model', async () => {
 
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
 
-    const instance = plainToClass(SimpleModel, {
+    const instance = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName',
     });
 
@@ -166,11 +165,11 @@ test('test patchAll', async () => {
 test('test delete', async () => {
     const session = await createDatabaseSession('testing');
 
-    const instance1 = plainToClass(SimpleModel, {
+    const instance1 = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName1',
     });
 
-    const instance2 = plainToClass(SimpleModel, {
+    const instance2 = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName2',
     });
 
@@ -228,7 +227,7 @@ test('test delete', async () => {
 test('test super simple model', async () => {
     const session = await createDatabaseSession('testing-simple-model');
 
-    const instance = plainToClass(SuperSimple, {
+    const instance = plainSerializer.for(SuperSimple).deserialize({
         name: 'myName',
     });
 
@@ -258,7 +257,7 @@ test('test super simple model', async () => {
 //         name?: string;
 //     }
 //
-//     const instance = plainToClass(DifferentDataBase, {
+//     const instance = plainSerializer.for(DifferentDataBase).deserialize({
 //         name: 'myName',
 //     });
 //
@@ -289,7 +288,7 @@ test('no id', async () => {
         name?: string;
     }
 
-    const instance = plainToClass(NoId, {
+    const instance = plainSerializer.for(NoId).deserialize({
         name: 'myName',
     });
 
@@ -316,7 +315,7 @@ test('second object id', async () => {
     }
 
     {
-        const instance = plainToMongo(SecondObjectId, {
+        const instance = mongoSerializer.for(SecondObjectId).from(plainSerializer, {
             _id: '5c8a99d8fdfafb2c8dd59ad6',
             name: 'peter',
             secondId: '5bf4a1ccce060e0b38864c9e',
@@ -332,7 +331,7 @@ test('second object id', async () => {
     }
 
 
-    const instance = plainToClass(SecondObjectId, {
+    const instance = plainSerializer.for(SecondObjectId).deserialize({
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
         preview: 'QmFhcg==', //Baar
@@ -440,7 +439,7 @@ test('references back', async () => {
         expect(marcFromDb.id).toBeString();
         expect(marcFromDb.name).toBe('marc');
 
-        const plain = classToPlain(User, marcFromDb);
+        const plain = plainSerializer.for(User).serialize(marcFromDb);
         expect(plain.id).toBeString();
         expect(plain.name).toBe('marc');
         expect(plain.images).toBeUndefined();

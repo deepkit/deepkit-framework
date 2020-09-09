@@ -47,13 +47,6 @@ const voidElements: { [name: string]: true } = {
     wbr: true,
 };
 
-function serializeAttribute(value: any): string {
-    if ('string' === typeof value) return value.replace(/"/g, '&quot;');
-    if (value instanceof Date) return value.toISOString();
-
-    return value;
-}
-
 type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, contents: (ElementStruct | string)[] };
 
 export function isElementStruct(v: any): v is ElementStruct {

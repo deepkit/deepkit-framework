@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {applyPatch, applyAndReturnPatches} from "../index";
+import {applyAndReturnPatches, applyPatch} from '../index';
 
 class Goal {
     title: string = '';

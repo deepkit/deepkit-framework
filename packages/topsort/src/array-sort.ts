@@ -1,4 +1,4 @@
-import {BaseImplementation, ElementNotFoundException} from "./base";
+import {BaseImplementation, ElementNotFoundException} from './base';
 
 interface ItemElement<T> {
     item: T,

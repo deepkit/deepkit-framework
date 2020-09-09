@@ -2,6 +2,7 @@ import 'jest-extended';
 import {
     asyncOperation,
     getClassName,
+    getObjectKeysSize,
     getPathValue,
     isArray,
     isClass,
@@ -11,9 +12,8 @@ import {
     isPromise,
     isUndefined,
     setPathValue,
-    sleep,
-    getObjectKeysSize
-} from "../src/core";
+    sleep
+} from '../src/core';
 
 class SimpleClass {
     constructor(public name: string){}

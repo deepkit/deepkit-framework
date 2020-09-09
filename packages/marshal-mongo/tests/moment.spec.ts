@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import * as moment from 'moment';
 import {t} from "@super-hornet/marshal";
-import {classToMongo, mongoToClass} from "../index";
+import {mongoSerializer} from '../src/mongo-serializer';
 
 test('test moment', () => {
     class Model {
@@ -13,12 +13,12 @@ test('test moment', () => {
     const m = new Model;
     m.created = moment(new Date('2018-10-13T12:17:35.000Z'));
 
-    const p = classToMongo(Model, m);
+    const p = mongoSerializer.for(Model).serialize(m);
     expect(p.created).toBeDate();
     expect(p.created.toJSON()).toBe('2018-10-13T12:17:35.000Z');
 
     {
-        const m = mongoToClass(Model, {
+        const m = mongoSerializer.for(Model).deserialize({
             created: new Date('2018-10-13T12:17:35.000Z')
         });
         expect(moment.isMoment(m.created)).toBe(true);

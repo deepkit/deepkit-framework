@@ -100,6 +100,8 @@ export function createClassDecoratorContext<API extends APIClass<any>, T = Extra
     function collapse(modifier: { name: string, args?: any }[], target: object) {
         const api: ApiTypeInterface<any> = map.get(target) ?? new apiType;
 
+        if (api.onDecorator) api.onDecorator(target);
+
         for (const fn of modifier) {
             if (fn.args) {
                 (api as any)[fn.name].bind(api)(...fn.args);

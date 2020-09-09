@@ -1,11 +1,11 @@
-import {Subscription} from "rxjs";
-import {getEntityName} from "@super-hornet/marshal";
+import {Subscription} from 'rxjs';
+import {getEntityName} from '@super-hornet/marshal';
 import {ExchangeEntity, StreamFileResult} from '@super-hornet/framework-shared';
 import {ClassType, ParsedHost, parseHost, sleep} from '@super-hornet/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
-import {AsyncSubscription} from "@super-hornet/core-rxjs";
-import * as WebSocket from "ws";
-import {ExchangeConfig} from "./exchange.config";
+import {AsyncSubscription} from '@super-hornet/core-rxjs';
+import * as WebSocket from 'ws';
+import {ExchangeConfig} from './exchange.config';
 import {injectable} from '../injector/injector';
 
 type Callback<T> = (message: T) => void;

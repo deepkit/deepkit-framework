@@ -1,5 +1,5 @@
 import {join} from 'path';
-import {readFileSync, existsSync} from 'fs';
+import {existsSync, readFileSync} from 'fs';
 
 class ConfigOptionNotFound extends Error {
 }

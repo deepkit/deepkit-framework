@@ -1,10 +1,10 @@
-import {decodeMessage, encodeMessage} from "./exchange-prot";
-import {ParsedHost, parseHost, ProcessLock, ProcessLocker} from "@super-hornet/core";
-import {Subscriptions} from "@super-hornet/core-rxjs";
-import {Subscription} from "rxjs";
+import {decodeMessage, encodeMessage} from './exchange-prot';
+import {ParsedHost, parseHost, ProcessLock, ProcessLocker} from '@super-hornet/core';
+import {Subscriptions} from '@super-hornet/core-rxjs';
+import {Subscription} from 'rxjs';
 import * as WebSocket from 'ws';
-import {createServer, Server} from "http";
-import {existsSync, removeSync} from "fs-extra";
+import {createServer, Server} from 'http';
+import {existsSync, removeSync} from 'fs-extra';
 import {injectable} from '../injector/injector';
 
 interface StatePerConnection {

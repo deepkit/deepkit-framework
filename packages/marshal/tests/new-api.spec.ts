@@ -1,16 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, t} from '../src/decorators';
-import {
-    CacheJitPropertyConverter,
-    classToPlain,
-    getClassToXFunction,
-    getXToClassFunction,
-    getJitFunctionClassToX,
-    getJitFunctionXToClass,
-    registerConverterCompiler,
-    uuid
-} from '../index';
+import {emptySerializer, getClassToXFunction, getGeneratedJitFunctionFromClass, getJitFunctionXToClass, getXToClassFunction, plainSerializer, uuid} from '../index';
 
 test('new api', async () => {
     class Test {
@@ -57,64 +48,104 @@ test('nested types correctly converted', async () => {
         const config = new Config();
         config.name = 'asd';
         test.configs.push(config);
-        const plain = classToPlain(Test, test);
+        const plain = plainSerializer.for(Test).serialize(test);
         expect(plain).not.toBeInstanceOf(Test);
         expect(plain.configs[0].name).toBe('asd');
         expect(plain.configs[0]).not.toBeInstanceOf(Config);
     }
 
-    expect(getJitFunctionClassToX(getClassSchema(Test))).toBeInstanceOf(Function);
+    expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), plainSerializer)).toBeInstanceOf(Function);
+});
+
+test('different origin', async () => {
+    class Test {
+        @t date: Date = new Date;
+    }
+
+    const mySerializer = new class extends emptySerializer.fork('myFormat') {
+    };
+
+    mySerializer.fromClass.register('date', (setter, accessor) => {
+        return `${setter} = 'my:' + ${accessor}.toJSON();`;
+    });
+
+    mySerializer.toClass.register('date', (setter, accessor) => {
+        return `${setter} = new Date(${accessor}.substr('my:'.length));`;
+    });
+
+    {
+        const d = mySerializer.for(Test).deserialize({date: 'my:2018-10-13T12:17:35.000Z'});
+        expect(d.date).toEqual(new Date('2018-10-13T12:17:35.000Z'));
+    }
+
+    {
+        const d = mySerializer.for(Test).serialize({date: new Date('2018-10-13T12:17:35.000Z')});
+        expect(d.date).toEqual('my:2018-10-13T12:17:35.000Z');
+    }
+
+    {
+        const d = mySerializer.for(Test).to(plainSerializer, {date: 'my:2018-10-13T12:17:35.000Z'});
+        expect(d.date).toEqual('2018-10-13T12:17:35.000Z');
+    }
+
+    {
+        const d = mySerializer.for(Test).from(plainSerializer, {date: '2018-10-13T12:17:35.000Z'});
+        expect(d.date).toEqual('my:2018-10-13T12:17:35.000Z');
+    }
 });
 
 test('custom serialization formats', async () => {
     class Test {
-        @t
-        id: string = 'myName';
+        @t id: string = 'myName';
+        @t number: number = 0;
     }
 
-    registerConverterCompiler('class', 'myFormat', 'string', (setter, accessor) => {
+    const mySerializer = new class extends plainSerializer.fork('myFormat') {
+        serializedSingleType: any;
+        serializedType: any;
+    };
+
+    mySerializer.fromClass.register('string', (setter, accessor) => {
         return {template: `${setter} = 'string:' + ${accessor}`, context: {}};
     });
 
-    registerConverterCompiler('myFormat', 'class', 'string', (setter, accessor) => {
+    mySerializer.toClass.register('string', (setter, accessor) => {
         return {template: `${setter} = (''+${accessor}).substr(${'string'.length + 1})`, context: {}};
     });
+    const scopedSerializer = mySerializer.for(Test);
+
+    expect(plainSerializer.toClass.get('number')).toBeFunction();
+    expect(mySerializer.toClass.get('number')).toBeFunction();
 
     expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
 
     const test = new Test;
-    const myFormat = getClassToXFunction(getClassSchema(Test), 'myFormat')(test);
-    const plain = getClassToXFunction(getClassSchema(Test), 'plain')(test);
+    const myFormat = getClassToXFunction(getClassSchema(Test), mySerializer)(test);
+    console.log('myFormat', myFormat);
+    const plain = getClassToXFunction(getClassSchema(Test), plainSerializer)(test);
     expect(plain.id).toBe('myName');
     expect(myFormat.id).toBe('string:myName');
-    expect(getJitFunctionClassToX(getClassSchema(Test), 'myFormat')).toBeInstanceOf(Function);
-    expect(getJitFunctionClassToX(getClassSchema(Test), 'plain')).toBeInstanceOf(Function);
+    expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), mySerializer)).toBeInstanceOf(Function);
+    expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), plainSerializer)).toBeInstanceOf(Function);
 
-    const testBack = getXToClassFunction(getClassSchema(Test), 'myFormat')(myFormat);
-    const testBackClass = getXToClassFunction(getClassSchema(Test), 'plain')(myFormat);
+    const testBack = getXToClassFunction(getClassSchema(Test), mySerializer)(myFormat);
+    const testBackClass = getXToClassFunction(getClassSchema(Test), plainSerializer)(myFormat);
     expect(testBack.id).toBe('myName');
     expect(testBackClass.id).toBe('string:myName');
-    expect(getJitFunctionXToClass(getClassSchema(Test), 'myFormat')).toBeInstanceOf(Function);
-    expect(getJitFunctionXToClass(getClassSchema(Test), 'plain')).toBeInstanceOf(Function);
+    expect(getJitFunctionXToClass(getClassSchema(Test), mySerializer)).toBeInstanceOf(Function);
+    expect(getJitFunctionXToClass(getClassSchema(Test), plainSerializer)).toBeInstanceOf(Function);
 
     {
-        const cacheJitPropertyConverter = new CacheJitPropertyConverter('class', 'myFormat');
-        const converter = cacheJitPropertyConverter.getJitPropertyConverter(Test);
-        expect(converter.convert('id', 123)).toBe('string:123');
-        expect(converter.convert('id', '123')).toBe('string:123');
+        expect(scopedSerializer.serializeProperty('id', 123)).toBe('string:123');
+        expect(scopedSerializer.serializeProperty('id', '123')).toBe('string:123');
     }
 
     {
-        const cacheJitPropertyConverter = new CacheJitPropertyConverter('myFormat', 'class');
-        const converter = cacheJitPropertyConverter.getJitPropertyConverter(Test);
-        expect(converter.convert('id', 'string:123')).toBe('123');
+        expect(scopedSerializer.deserializeProperty('id', 'string:123')).toBe('123');
     }
 
     {
-        //no compiler found from fromFormat to toFormat (e.g. plain to mongo)
-        //we thus first convert from source format to class, then from class to target format.
-        const cacheJitPropertyConverter = new CacheJitPropertyConverter('plain', 'myFormat');
-        const converter = cacheJitPropertyConverter.getJitPropertyConverter(Test);
-        expect(converter.convert('id', '123')).toBe('string:123');
+        //no compiler found for number, so it should pick the parent
+        expect(scopedSerializer.deserializeProperty('number', '123')).toBe(123);
     }
 });

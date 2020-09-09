@@ -1,6 +1,6 @@
 import 'jest-extended';
-import {BehaviorSubject, Subject, Subscription} from "rxjs";
-import {nextValue, Subscriptions} from "../src/rxjs";
+import {BehaviorSubject, Subject, Subscription} from 'rxjs';
+import {nextValue, Subscriptions} from '../src/rxjs';
 
 test('nextValue subject', async () => {
     const subject = new Subject();

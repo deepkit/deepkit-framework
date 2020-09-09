@@ -1,13 +1,6 @@
-// export * from './src/database';
-// export * from './src/database-session';
-// export * from './src/entity-register';
-// export * from './src/formatter';
-// export * from './src/query';
 export * from './src/mapping';
 export * from './src/adapter';
-export * from './src/connection';
 export * from './src/persistence';
 export * from './src/query.model';
 export * from './src/query.resolver';
 export * from './src/query';
-// export * from './src/connection';

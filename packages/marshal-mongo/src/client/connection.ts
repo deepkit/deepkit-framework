@@ -182,7 +182,6 @@ export class MongoConnection {
 
         this.connectingPromise = asyncOperation(async (resolve, reject) => {
             this.socket.on('error', (error) => {
-                console.error('socket error', this.host.hostname, error);
                 reject(error);
             });
 

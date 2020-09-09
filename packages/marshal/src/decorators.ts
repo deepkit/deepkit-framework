@@ -1,5 +1,5 @@
 import {PropertyValidatorError} from './validation';
-import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject,} from '@super-hornet/core';
+import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject, toFastProperties,} from '@super-hornet/core';
 import getParameterNames from 'get-parameter-names';
 import {FlattenIfArray, isArray} from './utils';
 import {Buffer} from 'buffer';
@@ -101,6 +101,8 @@ typedArrayNamesMap.set('Uint32Array', Uint32Array);
 typedArrayNamesMap.set('Float32Array', Float32Array);
 typedArrayNamesMap.set('Float64Array', Float64Array);
 
+export const binaryTypes: Types[] = [...typedArrayNamesMap.keys(), 'arrayBuffer'];
+
 export interface PropertyValidator {
     validate<T>(value: any, propertyName: string, classType?: ClassType<any>,): PropertyValidatorError | undefined | void;
 }
@@ -148,6 +150,11 @@ export class PropertyCompilerSchema {
     type: Types = 'any';
 
     literalValue?: string | number | boolean;
+
+    /**
+     * Object to store JIT function for this schema.
+     */
+    jit: any = {};
 
     get isArray() {
         return this.type === 'array';
@@ -300,6 +307,8 @@ export class PropertySchema extends PropertyCompilerSchema {
     isDecorated: boolean = false;
 
     isId: boolean = false;
+
+    isAutoIncrement: boolean = false;
 
     symbol = Symbol(this.name);
 
@@ -537,7 +546,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
 
         if (!this.classType || isArray(this.classType)) {
-            throw new Error(`No ClassType given for field ${this.name}. Use @f.type(() => MyClass) for circular dependencies.`);
+            throw new Error(`No ClassType given for field ${this.name}. Use @f.type(() => MyClass) for circular dependencies. Did you \`import 'reflect-metadata'\` in your root script?`);
         }
 
         return this.classType;
@@ -588,6 +597,8 @@ export class ClassSchema<T = any> {
      */
     jit: any = {};
 
+    symbol = Symbol('ClassSchema');
+
     /**
      * @internal
      */
@@ -596,6 +607,7 @@ export class ClassSchema<T = any> {
     protected classProperties = new Map<string, PropertySchema>();
 
     idField?: keyof T & string;
+
     propertyNames: string[] = [];
 
     protected methodsParamNames = new Map<string, string[]>();
@@ -612,6 +624,7 @@ export class ClassSchema<T = any> {
     protected hasDefaultsInitialized = false;
 
     protected primaryKeys?: PropertySchema[];
+    protected autoIncrements?: PropertySchema[];
 
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
     protected hasFullLoadHooksCheck = false;
@@ -661,6 +674,7 @@ export class ClassSchema<T = any> {
 
         jit = generator(this);
         this.jit[symbol] = jit;
+        toFastProperties(this.jit);
         return jit;
     }
 
@@ -741,7 +755,13 @@ export class ClassSchema<T = any> {
     public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
         //apply decorator, which adds properties automatically
         decorator(this.classType, name);
+        this.resetCache();
+    }
+
+    protected resetCache() {
         this.jit = {};
+        this.primaryKeys = undefined;
+        this.autoIncrements = undefined;
         this.buildId++;
     }
 
@@ -794,6 +814,16 @@ export class ClassSchema<T = any> {
         }
 
         return this.getProperty(this.idField);
+    }
+
+    public getAutoIncrementFields(): PropertySchema[] {
+        if (this.autoIncrements) return this.autoIncrements;
+
+        this.autoIncrements = [];
+        for (const property of this.getClassProperties().values()) {
+            if (property.isAutoIncrement) this.autoIncrements.push(property);
+        }
+        return this.autoIncrements;
     }
 
     public hasPrimaryFields() {
@@ -1413,6 +1443,13 @@ export interface FieldDecoratorResult<T> {
     primary: this;
 
     /**
+     * Marks this field as auto increment.
+     *
+     * Only available for the database abstraction.
+     */
+    autoIncrement: this;
+
+    /**
      * Defines template arguments of a generic class. Very handy for types like Observables.
      *
      * ```typescript
@@ -1824,6 +1861,15 @@ function createFieldDecoratorResult<T>(
         }
     });
 
+    Object.defineProperty(fn, 'autoIncrement', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+                property.isAutoIncrement = true;
+            }]);
+        }
+    });
+
     fn.index = (options?: IndexOptions, name?: string) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Index(options, name)]);
@@ -2014,7 +2060,7 @@ function IDField() {
     return (target: object, property: PropertySchema) => {
         getOrCreateEntitySchema(target).idField = property.name;
         property.isId = true;
-        Index({unique: true}, '_pk')(target, property);
+        // Index({unique: true}, '_pk')(target, property);
     };
 }
 

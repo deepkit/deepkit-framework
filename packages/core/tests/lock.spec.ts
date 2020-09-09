@@ -1,5 +1,5 @@
 import 'jest-extended';
-import {ProcessLocker, ProcessLock} from "../src/process-locker";
+import {ProcessLock, ProcessLocker} from '../src/process-locker';
 
 jest.setTimeout(20000);
 

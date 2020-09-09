@@ -1,4 +1,4 @@
-import {ClassSchema, classSchemaSymbol, getGlobalStore} from '@super-hornet/marshal';
+import {ClassSchema, classSchemaSymbol, getGlobalStore, plainSerializer} from '@super-hornet/marshal';
 import {ClassType} from '@super-hornet/core';
 import {IdentityMap} from './identity-map';
 import {getPrimaryKeyHashGenerator} from './converter';
@@ -71,7 +71,7 @@ export function getReference<T>(
 ): T {
     let pkHash = '';
     if (identityMap || pool) {
-        pkHash = getPrimaryKeyHashGenerator(classSchema)(pk);
+        pkHash = getPrimaryKeyHashGenerator(classSchema, plainSerializer)(pk);
         if (pool) {
             const item = pool.get(pkHash);
             if (item) return item;

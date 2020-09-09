@@ -1,9 +1,9 @@
-import {getClassSchema, getClassSchemaByName, partialPlainToClass, plainToClass} from '@super-hornet/marshal';
-import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from "../index";
-import {set, delete as deleteByPath} from 'dot-prop';
+import {getClassSchema, getClassSchemaByName, plainSerializer} from '@super-hornet/marshal';
+import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from '../index';
+import {delete as deleteByPath, set} from 'dot-prop';
 import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@super-hornet/core';
-import {skip} from "rxjs/operators";
-import {ObjectUnsubscribedError, Subject} from "rxjs";
+import {skip} from 'rxjs/operators';
+import {ObjectUnsubscribedError, Subject} from 'rxjs';
 
 class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T> } = {};
@@ -174,7 +174,7 @@ export class EntityState {
 
         if (stream.type === 'entity/update') {
             if (store.hasStoreItem(stream.id)) {
-                const item = plainToClass(classType, stream.data);
+                const item = plainSerializer.for(classType).deserialize(stream.data);
                 //todo, we should not overwrite it, but modify the item in-place. This prevents bugs mis-expectations.
                 store.setItemAndNotifyForks(stream.id, item);
             } else {
@@ -190,7 +190,7 @@ export class EntityState {
                 //we cant do a version check like `item.version < toVersion`, since exchange issues versions always from 0 when restarted
                 //so we apply all incoming patches.
                 if (item) {
-                    const patches = partialPlainToClass(getClassSchema(classType), stream.patch.set);
+                    const patches = plainSerializer.for(classType).partialDeserialize(stream.patch.set);
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(patches)) {
@@ -240,7 +240,7 @@ export class EntityState {
      */
     public handleEntity<T extends IdInterface>(classType: ClassType<T>, jsonItem: JSONEntity<T>): EntitySubject<T> {
         const store = this.getStore(classType);
-        const item = plainToClass(classType, jsonItem as any);
+        const item = plainSerializer.for(classType).deserialize(jsonItem);
 
         return store.createFork(item.id, item);
     }
@@ -255,7 +255,7 @@ export class EntityState {
             const setItems: T[] = [];
             for (const itemRaw of stream.items) {
                 if (!collection.entitySubjects[itemRaw.id]) {
-                    const item = plainToClass(classType, itemRaw as any);
+                    const item = plainSerializer.for(classType).deserialize(itemRaw as any);
                     const subject = store.createFork(item.id, item);
 
                     setItems.push(subject.getValue());
@@ -325,7 +325,7 @@ export class EntityState {
 
         if (stream.type === 'add') {
             if (!collection.entitySubjects[stream.item.id]) {
-                const item = plainToClass(classType, stream.item as any);
+                const item = plainSerializer.for(classType).deserialize(stream.item as any);
                 const subject = store.createFork(item.id, item);
 
                 collection.entitySubjects[item.id] = subject;
