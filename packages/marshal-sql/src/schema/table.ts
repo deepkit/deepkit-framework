@@ -1,6 +1,13 @@
 import {arrayRemoveItem} from '@super-hornet/core';
 import {createHash} from 'crypto';
 
+export class Database {
+    public schemaName: string = '';
+
+    constructor(public tables: Table[] = []) {
+    }
+}
+
 export class Table {
     public schemaName: string = '';
     public alias: string = '';
@@ -42,6 +49,10 @@ export class Table {
         return this.columns.some(v => v.name === name);
     }
 
+    /**
+     * We expect column name to be the propertySchema name without modification.
+     * DDL generator and SQL builder convert that name on demand.
+     */
     getColumn(name: string): Column {
         const column = this.columns.find(v => v.name === name);
         if (!column) throw new Error(`Column ${name} not found at table ${this.name}`);
@@ -71,6 +82,32 @@ export class Table {
     hasCompositePrimaryKey() {
         return this.getPrimaryKeys().length > 1;
     }
+
+    getForeignKeyOfLocalColumn(column: Column): ForeignKey | undefined {
+        for (const foreignKey of this.foreignKeys) {
+            if (foreignKey.localColumns.includes(column)) return foreignKey;
+        }
+        return;
+    }
+
+    hasIndexByName(name: string): boolean {
+        for (const index of this.indices) {
+            if (name && index.name === name) return true;
+        }
+        return false;
+    }
+
+    hasIndex(columns: Column[], unique = false): boolean {
+        //the order in index is important, so we don't mess with that.
+        const indexName = columns.map(v => v.name).join(',');
+        for (const index of this.indices) {
+            if (index.isUnique !== unique) continue;
+            const thisIndexName = index.columns.map(v => v.name).join(',');
+            if (thisIndexName === indexName) return true;
+        }
+        return false;
+    }
+
 }
 
 export class Column {
@@ -83,6 +120,7 @@ export class Column {
 
     public isNotNull = false;
     public isPrimaryKey = false;
+    public isIndex = false;
     public isUnique = false;
     public isAutoIncrement = false;
 
@@ -107,6 +145,8 @@ export class Column {
 export class Index {
     public columns: Column[] = [];
 
+    public spatial: boolean = false;
+
     constructor(public table: Table, public name: string, public isUnique = false) {
     }
 
@@ -124,12 +164,14 @@ export class Index {
     }
 }
 
+export type ForeignKeyAction = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
+
 export class ForeignKey {
     public localColumns: Column[] = [];
     public foreignColumns: Column[] = [];
 
-    public onUpdate: string = '';
-    public onDelete: string = '';
+    public onUpdate: ForeignKeyAction = 'CASCADE';
+    public onDelete: ForeignKeyAction = 'CASCADE';
 
     constructor(public table: Table, public name: string, public foreign: Table) {
     }

@@ -1,0 +1,25 @@
+{
+  "name": "@super-hornet/benchmark",
+  "version": "1.0.0-alpha.0",
+  "description": "Super Hornet Benchmarks",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "dependencies": {
+    "reflect-metadata": "^0.1.13",
+    "@super-hornet/core": "^1.0.0-alpha.0",
+    "@super-hornet/marshal": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-sql": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-bson": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0"
+  }
+}

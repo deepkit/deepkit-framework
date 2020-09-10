@@ -39,6 +39,10 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
         return 'mongo';
     }
 
+    getSchemaName(): string {
+        return '';
+    }
+
     createPersistence(databaseSession: DatabaseSession<any>): MongoPersistence {
         return new MongoPersistence(this.client);
     }

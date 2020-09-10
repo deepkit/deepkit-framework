@@ -40,9 +40,7 @@ async function createDatabaseSession(types: ClassType[]) {
     const adapter = new SQLiteDatabaseAdapter(':memory');
     const database = new Database(adapter);
     database.registerEntity(...types);
-    const tables = adapter.platform.createTables(types);
-    const sql = adapter.platform.getAddTablesDDL(tables);
-    for (const query of sql) await adapter.connection.exec(query);
+    await database.migrate();
     return database;
 }
 

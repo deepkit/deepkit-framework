@@ -8,8 +8,6 @@ class HelloBody {
     @t name: string = '';
 }
 
-
-@http.controller()
 class TestController {
     @http.GET()
     helloWorld() {
@@ -37,7 +35,6 @@ class Database {
 }
 
 
-@http.controller()
 class HelloWorldController {
     @http.GET('/favicon.ico')
     nix() {

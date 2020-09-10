@@ -1,8 +1,8 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, PartialField, PropertySchema, t} from '../src/decorators';
-import {plainSerializer, validateMethodArgs} from '../index';
+import {getClassSchema, PropertySchema, t} from '../src/decorators';
+import {PartialField, plainSerializer, validateMethodArgs} from '../index';
 
 test('Basic array', () => {
     class Other {

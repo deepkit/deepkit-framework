@@ -1,41 +1,33 @@
 {
-  "name": "@super-hornet/marshal-sql",
+  "name": "@super-hornet/marshal-orm-integration",
   "version": "1.0.0-alpha.0",
-  "description": "Marshal SQL adapter.",
+  "description": "Marshal ORM integration tests",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,
+  "private": true,
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "tsc --build",
+    "test": " ADAPTER_DRIVER=sqlite jest --forceExit; ADAPTER_DRIVER=mysql jest --forceExit; ADAPTER_DRIVER=postgres jest --forceExit;",
+    "tsc": "tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "peerDependencies": {
-    "sqlite3": "^5.0.0",
-    "mariadb": "^2.4.2"
-  },
   "dependencies": {
     "@super-hornet/core": "^1.0.0-alpha.0",
     "@super-hornet/marshal": "^1.0.0-alpha.0",
+    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0",
     "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
-    "sqlstring": "^2.3.2"
-  },
-  "devDependencies": {
-    "@types/jest": "^26.0.4",
-    "@types/sqlite3": "^3.1.6",
-    "@types/sqlstring": "^2.2.1",
-    "@types/pg": "^7.14.4",
-    "jest-serial-runner": "^1.1.0",
+    "@super-hornet/marshal-sql": "^1.0.0-alpha.0",
     "sqlite3": "^5.0.0",
     "mariadb": "^2.4.2",
-    "pg": "^8.3.3",
+    "postgres": "^2.0.0-beta.0"
+  },
+  "devDependencies": {
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "runner": "jest-serial-runner",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

@@ -1,9 +1,10 @@
 language: node_js
 node_js:
-- '12'
 - '14'
 services:
 - mongodb
+- mysql
+- postgresql
 sudo: false
 cache:
   directories:

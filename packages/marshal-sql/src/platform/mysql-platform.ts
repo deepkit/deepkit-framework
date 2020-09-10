@@ -11,8 +11,8 @@ export class MySQLPlatform extends DefaultPlatform {
 
         this.addType('number', 'DOUBLE');
         this.addType('date', 'DATETIME');
-        this.addType('moment', 'INT');
-        this.addType('boolean', ' TINYINT');
+        this.addType('moment', 'DATETIME');
+        this.addType('boolean', 'TINYINT');
         this.addType('uuid', 'BLOB');
         this.addBinaryType('LONGBLOB');
     }

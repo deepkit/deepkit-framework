@@ -31,7 +31,7 @@ export class UpdateCommand<T extends ClassSchema | ClassType> extends Command {
 
         const cmd = {
             update: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseName || config.defaultDb || 'admin',
+            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             updates: this.updates
         };
 

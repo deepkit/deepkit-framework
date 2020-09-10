@@ -53,7 +53,7 @@ export function getEntityName<T>(classType: ClassType<T>): string {
  * @hidden
  */
 export function getDatabaseName<T>(classType: ClassType<T>): string | undefined {
-    return getClassSchema(classType).databaseName;
+    return getClassSchema(classType).databaseSchemaName;
 }
 
 /**

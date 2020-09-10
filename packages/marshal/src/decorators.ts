@@ -2,7 +2,6 @@ import {PropertyValidatorError} from './validation';
 import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject, toFastProperties,} from '@super-hornet/core';
 import getParameterNames from 'get-parameter-names';
 import {FlattenIfArray, isArray, JSONEntity} from './utils';
-import {Buffer} from 'buffer';
 import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
 import {plainSerializer} from './plain-serializer';
 import {PartialField, typedArrayMap, typedArrayNamesMap, Types} from './models';
@@ -29,6 +28,7 @@ export function getGlobalStore(): GlobalStore {
 
     return global.MarshalStore;
 }
+
 export interface PropertyValidator {
     validate<T>(value: any, propertyName: string, classType?: ClassType<any>,): PropertyValidatorError | undefined | void;
 }
@@ -494,7 +494,7 @@ export class ClassSchema<T = any> {
     classType: ClassType<T>;
     name?: string;
     collectionName?: string;
-    databaseName?: string;
+    databaseSchemaName?: string;
 
     hashGenerator() {
 
@@ -625,7 +625,7 @@ export class ClassSchema<T = any> {
         const s = new ClassSchema(classType);
         s.name = this.name;
         s.collectionName = this.collectionName;
-        s.databaseName = this.databaseName;
+        s.databaseSchemaName = this.databaseSchemaName;
         s.decorator = this.decorator;
 
         s.classProperties = new Map();
@@ -742,14 +742,11 @@ export class ClassSchema<T = any> {
         return this.getProperty(this.idField);
     }
 
-    public getAutoIncrementFields(): PropertySchema[] {
-        if (this.autoIncrements) return this.autoIncrements;
-
-        this.autoIncrements = [];
+    public getAutoIncrementField(): PropertySchema | undefined {
         for (const property of this.getClassProperties().values()) {
-            if (property.isAutoIncrement) this.autoIncrements.push(property);
+            if (property.isAutoIncrement) return property;
         }
-        return this.autoIncrements;
+        return;
     }
 
     public hasPrimaryFields() {
@@ -1243,7 +1240,7 @@ export const entity: ClassDecoratorResult<typeof EntityApi> = createClassDecorat
  */
 export function DatabaseName<T>(name: string) {
     return (target: ClassType<T>) => {
-        getOrCreateEntitySchema(target).databaseName = name;
+        getOrCreateEntitySchema(target).databaseSchemaName = name;
     };
 }
 
@@ -1959,7 +1956,11 @@ function Decorated() {
  */
 function IDField() {
     return (target: object, property: PropertySchema) => {
-        getOrCreateEntitySchema(target).idField = property.name;
+        const schema = getOrCreateEntitySchema(target);
+        if (schema.idField && schema.idField !== property.name) {
+            throw new Error(`Could not add a second primary key at ${schema.getClassPropertyName(property.name)}. Only one primary key is supported.`);
+        }
+        schema.idField = property.name;
         property.isId = true;
         // Index({unique: true}, '_pk')(target, property);
     };

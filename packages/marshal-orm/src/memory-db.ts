@@ -29,6 +29,10 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
         return 'memory';
     }
 
+    getSchemaName(): string {
+        return '';
+    }
+
     queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory {
         return new class {
             createQuery(classType: ClassType<any>) {

@@ -46,8 +46,8 @@ async function main() {
     await collection.deleteMany({});
     const client = new MongoClient('mongodb://127.0.0.1/benchmark-a');
 
-    await bench(2, 'native mongodb insert 10k', async () => {
-        await collection.deleteMany({});
+    await collection.deleteMany({});
+    await bench(1, 'native mongodb insert 10k', async () => {
         await collection.insertMany(items);
     });
 
@@ -55,11 +55,9 @@ async function main() {
     for (const item of items) {
         item._id = undefined;
     }
-    //
-    // await connection2.find(getClassSchema(User), {}, undefined, undefined, 0, 1);
 
-    await bench(2, 'connection2 insert 10k', async () => {
-        await client.execute(new DeleteCommand(User, {}));
+    await client.execute(new DeleteCommand(User, {}));
+    await bench(1, 'connection2 insert 10k', async () => {
         await client.execute(new InsertCommand(User, items));
     });
 

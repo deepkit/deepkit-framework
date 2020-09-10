@@ -25,7 +25,7 @@ export class AggregateCommand<T extends ClassSchema | ClassType, R extends Class
 
         const cmd = {
             aggregate: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseName || config.defaultDb || 'admin',
+            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             pipeline: this.pipeline,
             cursor: {
                 batchSize: 20000,

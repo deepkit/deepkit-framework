@@ -11,23 +11,3 @@ export async function createSetup(adapter: SQLDatabaseAdapter, schemas: (ClassSc
 
     return database;
 }
-
-export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Promise<Database<SQLDatabaseAdapter>> {
-    const driver = process.env['ADAPTER_DRIVER'] || 'sqlite';
-    let adapter: SQLDatabaseAdapter | undefined;
-    if (driver === 'sqlite') {
-        adapter = new SQLiteDatabaseAdapter(':memory:');
-    } else if (driver === 'mysql') {
-        adapter = new MySQLDatabaseAdapter('localhost');
-    } else if (driver === 'postgresql') {
-        // adapter = new SQLiteDatabaseAdapter(':memory:');
-    }
-
-    if (!adapter) throw new Error(`Could not detect adapter from ${driver}`);
-
-    const database = new Database(adapter);
-    database.registerEntity(...schemas);
-    await database.migrate();
-
-    return database;
-}

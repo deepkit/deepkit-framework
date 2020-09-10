@@ -27,7 +27,7 @@ export class MySQLStatement extends SQLStatement {
         }
     }
 
-    close() {
+    release() {
         this.connection.release();
     }
 }
@@ -66,7 +66,7 @@ export class MySQLConnection extends SQLConnection {
 
 export class MySQLConnectionPool extends SQLConnectionPool {
     constructor(protected pool: Pool) {
-        super()
+        super();
     }
 
     getConnection(): MySQLConnection {
@@ -83,10 +83,11 @@ export class MySQLPersistence extends SQLPersistence {
         if (!this.connection.lastBatchResult || !this.connection.lastBatchResult.length) throw new Error('No lastBatchResult found');
         const result = this.connection.lastBatchResult[0];
         let start = result.insertId;
-        for (const autoIncrement of classSchema.getAutoIncrementFields()) {
-            for (const item of items) {
-                item[autoIncrement.name] = start++;
-            }
+        const autoIncrement = classSchema.getAutoIncrementField();
+        if (!autoIncrement) return;
+
+        for (const item of items) {
+            item[autoIncrement.name] = start++;
         }
     }
 }
@@ -106,6 +107,11 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
 
     getName(): string {
         return 'mysql';
+    }
+
+    getSchemaName(): string {
+        //todo extract schema name from connection options. This acts as default when a table has no schemaName defined.
+        return '';
     }
 
     createPersistence(databaseSession: DatabaseSession<any>): SQLPersistence {

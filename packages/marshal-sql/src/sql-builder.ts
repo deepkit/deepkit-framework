@@ -40,7 +40,7 @@ export class SqlBuilder {
 
         for (const join of model.joins) {
             if (join.populate) {
-                const map = this.selectColumns(join.classSchema, join.query.model, refName + '__' + join.propertySchema.name);
+                const map = this.selectColumns(join.query.classSchema, join.query.model, refName + '__' + join.propertySchema.name);
                 join.as = refName + '__' + join.propertySchema.name;
                 this.joins.push({
                     join,
@@ -90,13 +90,17 @@ export class SqlBuilder {
 
     protected buildConverter(startIndex: number, fields: PropertySchema[]): ConvertDataToDict {
         const lines: string[] = [];
+        let primaryKeyIndex = startIndex;
 
         for (const field of fields) {
+            if (field.isId) primaryKeyIndex = startIndex;
             lines.push(`'${field.name}': row[${startIndex++}]`);
         }
 
         const code = `
             return function(row) {
+                if (null === row[${primaryKeyIndex}]) return;
+            
                 return {
                     ${lines.join(',\n')}
                 };
@@ -112,12 +116,28 @@ export class SqlBuilder {
         const joins: string[] = [];
 
         for (const join of model.joins) {
-            const tableName = this.platform.getTableIdentifier(join.classSchema);
+            const tableName = this.platform.getTableIdentifier(join.query.classSchema);
             const joinName = this.platform.quoteIdentifier(prefix + '__' + join.propertySchema.name);
 
             const onClause: string[] = [];
-            onClause.push(`${parentName}.${this.platform.quoteIdentifier(join.propertySchema.name)} = ${joinName}.${this.platform.quoteIdentifier(join.foreignPrimaryKey.name)}`);
-            const whereClause = this.getWhereSQL(join.query.classSchema, model.filter, joinName);
+            const foreignSchema = join.query.classSchema;
+
+            if (join.propertySchema.backReference) {
+                if (join.propertySchema.backReference.via) {
+                    throw new Error('n-to-n relation not yet implemented');
+                } else {
+                    const backReference = foreignSchema.findReverseReference(
+                        join.classSchema.classType,
+                        join.propertySchema,
+                    );
+                    onClause.push(`${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)} = ${joinName}.${this.platform.quoteIdentifier(backReference.name)}`);
+                }
+            } else {
+                onClause.push(`${parentName}.${this.platform.quoteIdentifier(join.propertySchema.name)} = ${joinName}.${this.platform.quoteIdentifier(join.foreignPrimaryKey.name)}`);
+            }
+
+
+            const whereClause = this.getWhereSQL(join.query.classSchema, join.query.model.filter, joinName);
             if (whereClause) onClause.push(whereClause);
 
             joins.push(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (${onClause.join(' AND ')})`);
@@ -139,6 +159,7 @@ export class SqlBuilder {
         if (model.limit !== undefined) sql += ' LIMIT ' + this.platform.quoteValue(model.limit);
         if (model.skip !== undefined) sql += ' SKIP ' + this.platform.quoteValue(model.skip);
 
+        // console.log('build', sql);
         return sql;
     }
 

@@ -1,5 +1,5 @@
-import {Column, ColumnDiff, ForeignKey, Index, Table, TableDiff} from '../schema/table';
-import {ClassSchema, getClassSchema, isArray, Serializer, Types} from '@super-hornet/marshal';
+import {Column, ColumnDiff, Database, ForeignKey, Index, Table, TableDiff} from '../schema/table';
+import {ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@super-hornet/marshal';
 import {escape} from 'sqlstring';
 import {ClassType, isPlainObject} from '@super-hornet/core';
 import {sqlSerializer} from '../serializer/sql-serializer';
@@ -48,6 +48,13 @@ export class DefaultPlatform {
         return true;
     }
 
+    /**
+     * If the platform supports the `CONSTRAINT %s FOREIGN KEY` section in `CREATE TABLE(column, column, CONSTRAINT %s FOREIGN KEY)`;
+     */
+    supportsForeignKeyBlock(): boolean {
+        return true;
+    }
+
     getPrimaryKeyDDL(table: Table) {
         if (!table.hasPrimaryKey()) return '';
 
@@ -58,7 +65,16 @@ export class DefaultPlatform {
 
     }
 
-    createTables(schemas: (ClassSchema | ClassType)[]): Table[] {
+    getEntityFields(schema: ClassSchema): PropertySchema[] {
+        const fields: PropertySchema[] = [];
+        for (const property of schema.getClassProperties().values()) {
+            if (property.backReference) continue;
+            fields.push(property);
+        }
+        return fields;
+    }
+
+    createTables(schemas: (ClassSchema | ClassType)[], database: Database = new Database()): Table[] {
         const generatedTables = new Map<ClassSchema, Table>();
 
         for (let schema of schemas) {
@@ -69,7 +85,9 @@ export class DefaultPlatform {
             const table = new Table(schema.name);
             generatedTables.set(schema, table);
 
-            for (const property of schema.getClassProperties().values()) {
+            table.schemaName = schema.databaseSchemaName || database.schemaName;
+
+            for (const property of this.getEntityFields(schema)) {
                 if (property.backReference) continue;
 
                 const column = table.addColumn(property.name);
@@ -85,9 +103,11 @@ export class DefaultPlatform {
 
                 column.defaultValue = property.defaultValue;
 
-                column.isNotNull = !property.isUndefinedAllowed() && !property.isNullable;
+                const isNullable = property.isUndefinedAllowed() || property.isNullable;
+                column.isNotNull = !isNullable;
                 column.isPrimaryKey = property.isId;
                 column.isUnique = property.index && property.index.unique || false;
+                column.isIndex = property.index && !property.index.unique || false;
                 column.isAutoIncrement = property.isAutoIncrement;
             }
         }
@@ -104,12 +124,45 @@ export class DefaultPlatform {
                 const foreignTable = generatedTables.get(property.getResolvedClassSchema())!;
                 const foreignKey = table.addForeignKey('', foreignTable);
                 foreignKey.localColumns = [table.getColumn(property.name)];
+                for (const column of foreignKey.localColumns) {
+                    column.isIndex = true;
+                }
                 foreignKey.foreignColumns = foreignTable.getPrimaryKeys();
+            }
+        }
+
+        //create index
+        for (let schema of schemas) {
+            schema = getClassSchema(schema);
+            const table = generatedTables.get(schema)!;
+
+            for (const column of table.columns) {
+                if (!column.isIndex && !column.isUnique) continue;
+                if (table.hasIndex([column], column.isUnique)) continue;
+                const index = table.addIndex('', column.isUnique);
+                index.columns = [column];
+            }
+
+            for (const [name, index] of schema.indices.entries()) {
+                if (table.hasIndexByName(name)) continue;
+                const columns = index.fields.map(v => table.getColumn(v));
+                if (table.hasIndex(columns, index.options.unique)) continue;
+
+                const addedIndex = table.addIndex(name, index.options.unique);
+                addedIndex.columns = columns;
+                addedIndex.spatial = index.options.spatial || false;
+            }
+
+            for (const foreignKeys of table.foreignKeys) {
+                if (table.hasIndex(foreignKeys.localColumns)) continue;
+                const index = table.addIndex(foreignKeys.getName(), false);
+                index.columns = foreignKeys.localColumns;
             }
         }
 
         const tables = [...generatedTables.values()];
         this.normalizeTables(tables);
+        database.tables = tables;
         return tables;
     }
 
@@ -121,7 +174,7 @@ export class DefaultPlatform {
         if (!schema.name) throw new Error(`Class ${schema.getClassName()} has no name defined`);
         const collectionName = schema.collectionName || schema.name;
 
-        if (schema.databaseName) return this.quoteIdentifier(schema.databaseName + this.getSchemaDelimiter() + collectionName);
+        if (schema.databaseSchemaName) return this.quoteIdentifier(schema.databaseSchemaName + this.getSchemaDelimiter() + collectionName);
         return this.quoteIdentifier(collectionName);
     }
 
@@ -156,12 +209,12 @@ export class DefaultPlatform {
         return '';
     }
 
-    getAddTablesDDL(tables: Table[]): string[] {
+    getAddTablesDDL(database: Database): string[] {
         const ddl: string[] = [];
 
         ddl.push(this.getBeginDDL());
 
-        for (const table of tables) {
+        for (const table of database.tables) {
             ddl.push(this.getDropTableDDL(table));
             ddl.push(this.getAddTableDDL(table));
             ddl.push(this.getAddIndicesDDL(table));
@@ -170,6 +223,30 @@ export class DefaultPlatform {
         ddl.push(this.getEndDDL());
 
         return ddl.filter(isSet);
+    }
+
+    getAddSchemasDDL(database: Database): string {
+        const schemaNames = new Set<string>();
+
+        if (database.schemaName) schemaNames.add(database.schemaName);
+        for (const table of database.tables) {
+            if (table.schemaName) schemaNames.add(table.schemaName);
+        }
+
+        return [...schemaNames.values()].map(v => this.getAddSchemaDDL(v)).join(';\n');
+    }
+
+    getAddSchemaDDL(schemaName: string): string {
+        if (!schemaName) return '';
+        return `CREATE SCHEMA ${this.quoteIdentifier(schemaName)}`;
+    }
+
+    getUseSchemaDDL(table: Table) {
+        return ``;
+    }
+
+    getResetSchemaDDL(table: Table): string {
+        return ``;
     }
 
     getRenameTableDDL(from: Table, to: Table): string {
@@ -221,10 +298,24 @@ export class DefaultPlatform {
 
     getAddTableDDL(table: Table): string {
         const lines: string[] = [];
+
+        lines.push(this.getUseSchemaDDL(table));
+
+        lines.push(this.getCreateTableDDL(table));
+
+        lines.push(this.getResetSchemaDDL(table));
+
+        return lines.filter(isSet).join(';\n');
+    }
+
+    getCreateTableDDL(table: Table): string {
+        const lines: string[] = [];
         for (const column of table.columns) lines.push(this.getColumnDDL(column));
         if (this.supportsPrimaryKeyBlock() && table.hasPrimaryKey()) lines.push(this.getPrimaryKeyDDL(table));
         for (const unique of table.getUnices()) lines.push(this.getUniqueDDL(unique));
-        for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
+        if (this.supportsForeignKeyBlock()) {
+            for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
+        }
 
         return `CREATE TABLE ${this.getIdentifier(table)} (${lines.join(',\n')})`;
     }
@@ -319,7 +410,7 @@ export class DefaultPlatform {
     }
 
     getUniqueDDL(unique: Index): string {
-        return `UNIQUE (${this.getColumnListDDL(unique.columns)})`;
+        return `UNIQUE INDEX (${this.getColumnListDDL(unique.columns)})`;
     }
 
     getColumnDDL(column: Column) {
@@ -349,7 +440,7 @@ export class DefaultPlatform {
     }
 
     getNullString() {
-        return 'NOT NULL';
+        return 'NULL';
     }
 }
 

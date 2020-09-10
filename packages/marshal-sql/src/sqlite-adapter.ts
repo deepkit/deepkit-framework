@@ -28,7 +28,7 @@ export class SQLiteStatement extends SQLStatement {
         });
     }
 
-    close() {
+    release() {
     }
 }
 
@@ -85,11 +85,11 @@ export class SQLitePersistence extends SQLPersistence {
         const stmt = await this.connection.prepare(`SELECT last_insert_rowid() as rowid`);
         const lastInserted = (await stmt.get()).rowid;
         let start = lastInserted - items.length + 1;
+        const autoIncrement = classSchema.getAutoIncrementField();
+        if (!autoIncrement) return;
 
-        for (const autoIncrement of classSchema.getAutoIncrementFields()) {
-            for (const item of items) {
-                item[autoIncrement.name] = start++;
-            }
+        for (const item of items) {
+            item[autoIncrement.name] = start++;
         }
     }
 }
@@ -109,6 +109,10 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
 
     getName(): string {
         return 'mongo';
+    }
+
+    getSchemaName(): string {
+        return '';
     }
 
     createPersistence(databaseSession: DatabaseSession<any>): SQLPersistence {

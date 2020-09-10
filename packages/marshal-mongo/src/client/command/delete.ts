@@ -32,7 +32,7 @@ export class DeleteCommand<T extends ClassSchema | ClassType> extends Command {
 
         const cmd = {
             delete: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseName || config.defaultDb || 'admin',
+            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             deletes: [
                 {
                     q: this.filter,

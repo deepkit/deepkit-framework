@@ -35,13 +35,13 @@ export class Application {
         }
     }
 
-    static root(module: ModuleOptions) {
+    static root(module: ModuleOptions, config: Partial<ApplicationConfig> = {}) {
         @hornet.module(module)
         class MyModule {
 
         }
 
-        return new Application(MyModule);
+        return new Application(MyModule, config);
     }
 
     public async shutdown() {

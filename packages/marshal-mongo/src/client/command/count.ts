@@ -30,7 +30,7 @@ export class CountCommand<T extends ClassSchema | ClassType> extends Command {
 
         const cmd = {
             count: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseName || config.defaultDb || 'admin',
+            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
             limit: this.limit,
             skip: this.skip,

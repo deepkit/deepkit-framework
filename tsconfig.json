@@ -33,6 +33,9 @@
     },
     {
       "path": "packages/marshal-orm-benchmark/tsconfig.json"
+    },
+    {
+      "path": "packages/marshal-orm-integration/tsconfig.json"
     }
   ]
 }

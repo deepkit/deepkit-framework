@@ -25,7 +25,7 @@ export class InsertCommand<T extends ClassSchema | ClassType> extends Command {
 
         const cmd = {
             insert: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseName || config.defaultDb || 'admin',
+            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             documents: this.documents,
         };
 

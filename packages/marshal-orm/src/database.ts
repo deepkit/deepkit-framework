@@ -45,6 +45,8 @@ export abstract class DatabaseAdapter {
     abstract migrate(classSchemas: ClassSchema[]): Promise<void>;
 
     abstract getName(): string;
+
+    abstract getSchemaName(): string;
 }
 
 /**
