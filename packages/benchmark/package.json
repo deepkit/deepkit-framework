@@ -6,9 +6,7 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
+    "benchmark": "ts-node ."
   },
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -20,6 +18,13 @@
     "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
     "@super-hornet/marshal-sql": "^1.0.0-alpha.0",
     "@super-hornet/marshal-bson": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0"
+    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0",
+    "@super-hornet/framework": "^1.0.0-alpha.0",
+    "class-transformer": "^0.3.1",
+    "cerialize": "^2.0.1",
+    "io-ts": "^2.2.10",
+    "fp-ts": "^2.8.2",
+    "ajv": "^6.12.4",
+    "quartet": "^10.1.0"
   }
 }

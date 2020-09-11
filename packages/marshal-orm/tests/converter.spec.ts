@@ -2,7 +2,6 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '../index';
 import {getClassSchema, plainSerializer, t} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
 
 class Image {
     @t title: string = '';
@@ -22,69 +21,6 @@ class User {
 }
 
 test('benchmark', () => {
-    const suite = new BenchSuite('Converter');
-
-    const schema = getClassSchema(User);
-
-    const item = {id: 22, title: 'Peter', image: new Image(3)};
-
-    suite.add('getPrimaryKeyExtractor getter', () => {
-        getPrimaryKeyExtractor(schema);
-    });
-
-    suite.add('getJITConverterForSnapshot getter', () => {
-        getJITConverterForSnapshot(schema);
-    });
-
-    suite.add('getPrimaryKeyHashGenerator getter', () => {
-        getPrimaryKeyHashGenerator(schema, plainSerializer);
-    });
-
-    suite.add('getPrimaryKeyExtractor', () => {
-        const converted = getPrimaryKeyExtractor(schema)(item);
-    });
-
-    suite.add('getJITConverterForSnapshot', () => {
-        const converted = getJITConverterForSnapshot(schema)(item);
-    });
-
-    suite.add('getPrimaryKeyHashGenerator', () => {
-        const converted = getPrimaryKeyHashGenerator(schema, plainSerializer)(item);
-    });
-
-    const hash = getPrimaryKeyHashGenerator(schema, plainSerializer);
-    suite.add('getPrimaryKeyHashGenerator saved', () => {
-        const converted = hash(item);
-    });
-
-    const snap = getJITConverterForSnapshot(schema);
-    suite.add('getJITConverterForSnapshot saved', () => {
-        const converted = snap(item);
-    });
-
-    var _value = item;
-    suite.add('getPrimaryKeyHashGenerator ref', () => {
-        var _result = '';
-        var lastValue;
-
-        //getPrimaryKeyHashGenerator id class:plain:number
-        lastValue = '';
-
-        if (_value.id === undefined) {
-
-
-        } else if (_value.id === null) {
-
-
-        } else {
-            lastValue = _value.id;
-        }
-
-        _result += ' ' + lastValue;
-        _result;
-    });
-
-    suite.run();
 });
 
 test('getJITConverterForSnapshot', () => {

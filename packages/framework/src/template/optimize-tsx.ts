@@ -104,8 +104,13 @@ export function optimize(code: string): string {
 
     replace(tree, (node: any) => {
         if (node.type === 'CallExpression' && node.callee.property?.name === 'createElement') {
-            console.log('got it', node);
-            return optimizeNode(node);
+            try {
+                return optimizeNode(node);
+            } catch (error) {
+                console.log('failed optimize template node', error);
+                console.log('node:', node);
+                return node;
+            }
         }
         return node;
     });

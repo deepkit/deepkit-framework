@@ -20,9 +20,6 @@
       "path": "packages/marshal/tsconfig.dist.json"
     },
     {
-      "path": "packages/marshal-benchmark/tsconfig.json"
-    },
-    {
       "path": "packages/marshal-bson/tsconfig.json"
     },
     {

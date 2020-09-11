@@ -22,7 +22,7 @@ test('count', async () => {
     }
 
     {
-        const count = (await connection.query('SELECT COUNT(*) as count FROM "user"')).rows[0].count;
-        expect(count).toBe(0n);
+        const count = (await connection.query('SELECT COUNT(*) as count FROM (select 1) as tmp')).rows[0].count;
+        expect(count).toBe(1n);
     }
 });

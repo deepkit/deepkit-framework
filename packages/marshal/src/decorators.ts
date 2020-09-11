@@ -1957,9 +1957,6 @@ function Decorated() {
 function IDField() {
     return (target: object, property: PropertySchema) => {
         const schema = getOrCreateEntitySchema(target);
-        if (schema.idField && schema.idField !== property.name) {
-            throw new Error(`Could not add a second primary key at ${schema.getClassPropertyName(property.name)}. Only one primary key is supported.`);
-        }
         schema.idField = property.name;
         property.isId = true;
         // Index({unique: true}, '_pk')(target, property);

@@ -39,6 +39,7 @@ function getBlocks(stats: number[]): string {
 
 export class BenchSuite {
     suite = new Benchmark.Suite;
+    static onComplete?: (name: string, suite: any[]) => any;
 
     constructor(
         public name: string,
@@ -46,6 +47,7 @@ export class BenchSuite {
     ) {
         this.suite.on('complete', () => {
             const fastest = this.suite.filter('fastest')[0];
+            if (BenchSuite.onComplete) BenchSuite.onComplete(this.name, this.suite.slice());
             print(
                 ' 🏁 Fastest',
                 green(fastest.name),

@@ -3,12 +3,10 @@ import 'reflect-metadata';
 import {f, getClassSchema, plainSerializer, t} from '@super-hornet/marshal';
 import {Formatter} from '../src/formatter';
 import {DatabaseQueryModel} from '../src/query';
-import {buildChangeOld, buildChanges} from '../src/change-detector';
+import {buildChanges} from '../src/change-detector';
 import {DatabaseSession} from '../src/database-session';
 import {MemoryDatabaseAdapter} from '../src/memory-db';
 import {getInstanceState} from '../src/identity-map';
-import {BenchSuite} from '@super-hornet/core';
-import {getJITConverterForSnapshot} from '../src/converter';
 
 class MarshalModel {
     @f ready: boolean = true;
@@ -88,49 +86,6 @@ test('change-detection', () => {
         user.image = undefined;
         expect(buildChanges(user)).toEqual({username: 'Bar', image: undefined});
     }
-});
-
-test('snapshot creation perf', () => {
-    const s = getClassSchema(MarshalModel);
-
-    const item = plainSerializer.for(s).deserialize({name: 'Peter'});
-    const bench = new BenchSuite('snapshot creation');
-
-    bench.add('jit', () => {
-        const bla = getJITConverterForSnapshot(s)(item);
-    });
-
-    const jit = getJITConverterForSnapshot(s);
-    bench.add('jit saved', () => {
-        const bla = jit(item);
-    });
-
-    bench.run();
-});
-
-test('change-detection model perf', () => {
-    const s = getClassSchema(MarshalModel);
-
-    const item = plainSerializer.for(s).deserialize({id: 1, name: 'Peter'});
-    getInstanceState(item).markAsPersisted();
-    expect(item.tags).toEqual(['a', 'b', 'c']);
-
-    item.name = 'Alex';
-    item.tags = ['a', 'b', 'c'];
-
-    // expect(buildChanges(item)).toEqual({name: 'Alex'});
-
-    const bench = new BenchSuite('change detector: buildChanges');
-
-    bench.add('buildChanges', () => {
-        buildChanges(item);
-    });
-
-    bench.add('buildChangeOld', () => {
-        buildChangeOld(item);
-    });
-
-    bench.run();
 });
 
 test('change-detection string', () => {

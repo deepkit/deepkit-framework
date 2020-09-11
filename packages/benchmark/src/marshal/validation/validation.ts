@@ -1,9 +1,4 @@
-import 'jest';
-import 'reflect-metadata';
-import {f, validatesFactory} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
-
-export const Data = Object.freeze({
+export const good = {
     number: 1,
     negNumber: -1,
     maxNumber: Number.MAX_VALUE,
@@ -14,52 +9,6 @@ export const Data = Object.freeze({
     deeplyNested: {
         foo: 'bar',
         num: 1,
-        bool: false,
-    },
-});
-
-class DeeplyNestedType {
-    @f
-    foo!: string;
-
-    @f
-    num!: number;
-
-    @f
-    bool!: boolean;
-}
-
-class DataType {
-    @f
-    number!: number;
-
-    @f
-    negNumber!: number;
-
-    @f
-    maxNumber!: number;
-
-    @f
-    string!: string;
-
-    @f
-    longString!: string;
-
-    @f
-    boolean!: boolean;
-
-    @f.type(DeeplyNestedType)
-    deeplyNested!: DeeplyNestedType;
-}
-
-const checkData = validatesFactory(DataType);
-
-test('Marshal runtime check', () => {
-    const suite = new BenchSuite('Marshal runtime check');
-    checkData(Data);
-    suite.add('marshal guard', () => {
-        checkData(Data);
-    });
-
-    suite.run();
-});
+        bool: false
+    }
+};

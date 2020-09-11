@@ -1,23 +1,31 @@
 import {t} from '@super-hornet/marshal';
 import {BenchSuite} from '@super-hornet/core';
-import {getJITConverterForSnapshot} from '@super-hornet/marshal-orm';
+import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@super-hornet/marshal-orm';
 
-const schema = t.schema({
-    id: t.primary.number,
-    name: t.string,
-    priority: t.number,
-    tags: t.array(t.string),
-    ready: t.boolean
-});
+export async function main() {
+    const schema = t.schema({
+        id: t.primary.number,
+        name: t.string,
+        priority: t.number,
+        tags: t.array(t.string),
+        ready: t.boolean
+    });
 
-const item = schema.create({id: 0, name: 'Peter', priority: 4, tags: ['a', 'b', 'c'], ready: true});
+    const item = schema.create({id: 0, name: 'Peter', priority: 4, tags: ['a', 'b', 'c'], ready: true});
 
-const bench = new BenchSuite('snapshot creation');
+    const bench = new BenchSuite('change-detection');
+    const createSnapshot = getJITConverterForSnapshot(schema);
 
-const createSnapshot = getJITConverterForSnapshot(schema);
+    bench.add('create-snapshot', () => {
+        const bla = createSnapshot(item);
+    });
 
-bench.add('createSnapshot', () => {
-    const bla = createSnapshot(item);
-});
+    getInstanceState(item).markAsPersisted();
+    item.name = 'Alex';
+    item.tags = ['a', 'b', 'c'];
+    bench.add('build-changeSet', () => {
+        buildChanges(item);
+    });
 
-bench.run();
+    bench.run();
+}

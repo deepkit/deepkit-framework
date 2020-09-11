@@ -102,6 +102,14 @@ export function validate<T extends ClassType | ClassSchema>(classType: T, item: 
     return jitValidate(classType)(item, path);
 }
 
+
+/**
+ * Same as `validate` but as prepared JIT function.
+ */
+export function validateFactory<T extends ClassType | ClassSchema>(classType: T,) {
+    return jitValidate(classType);
+}
+
 /**
  * A type guarded way of using Marshal.
  *

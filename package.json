@@ -35,6 +35,7 @@
     "projects": [
       "packages/marshal",
       "packages/marshal-orm",
+      "packages/marshal-orm-integration",
       "packages/marshal-mongo",
       "packages/marshal-sql",
       "packages/framework-integration",

@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2017",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
 
@@ -19,7 +19,8 @@
     "composite": true
   },
   "include": [
-    "src"
+    "src",
+    "index.ts"
   ],
   "references": [
     {

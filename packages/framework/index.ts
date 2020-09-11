@@ -10,6 +10,7 @@ export * from './src/injector/provider';
 export * from './src/service-container';
 export * from './src/http';
 export * from './src/command';
+export * from './src/router';
 export * from './src/configuration';
 export * from './src/template/template';
 export * from './src/application-server';
