@@ -1,6 +1,6 @@
 import 'jest';
 import {createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, mergeDecorator} from '../src/decorator-builder';
-import {entity, getClassSchema, t} from '../dist';
+import {entity, getClassSchema, t} from '../index';
 
 test('without host', () => {
     class Dec1Model {

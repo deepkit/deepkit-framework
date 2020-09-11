@@ -1,26 +1,11 @@
 import 'reflect-metadata';
+import {BenchSuite} from '@super-hornet/core';
 import {Column, createConnection, Entity as TypeOrmEntity, ObjectIdColumn} from 'typeorm';
-import {performance} from 'perf_hooks';
-
-export async function bench(times: number, title: string, exec: () => void | Promise<void>) {
-    const start = performance.now();
-    for (let i = 0; i < times; i++) {
-        await exec();
-    }
-    const took = performance.now() - start;
-
-    process.stdout.write([
-        (1000 / took) * times, 'ops/s',
-        title,
-        took.toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms,',
-        process.memoryUsage().rss / 1024 / 1024, 'MB memory'
-    ].join(' ') + '\n');
-}
 
 @TypeOrmEntity()
 export class TypeOrmModel {
     @ObjectIdColumn()
-    id: any;
+    id!: any;
 
     @Column() ready?: boolean;
 
@@ -36,27 +21,27 @@ export class TypeOrmModel {
     }
 }
 
-(async () => {
+export async function main() {
     const count = 10_000;
-
     const typeorm = await createConnection({
         type: 'mongodb',
         host: 'localhost',
         port: 27017,
-        database: 'bench-insert',
+        database: 'type-orm-bench',
         entities: [
             TypeOrmModel
         ]
     });
 
-    for (let j = 1; j <= 15; j++) {
-        console.log('round', j);
+    for (let i = 0; i < 5; i++) {
+        console.log('round', i);
         await typeorm.manager.delete(TypeOrmModel, {});
-        await bench(1, 'TypeORM insert', async () => {
+        const bench = new BenchSuite('type-orm');
+
+        await bench.runAsyncFix(1, 'insert', async () => {
             const items: any[] = [];
             for (let i = 1; i <= count; i++) {
                 const user = new TypeOrmModel('Peter ' + i);
-                user.id = i;
                 user.ready = true;
                 user.priority = 5;
                 user.tags = ['a', 'b', 'c'];
@@ -66,10 +51,12 @@ export class TypeOrmModel {
             await typeorm.manager.save(TypeOrmModel, items);
         });
 
-        await bench(1, 'TypeORM fetch', async () => {
+        await bench.runAsyncFix(10, 'fetch', async () => {
             const items = await typeorm.manager.find(TypeOrmModel);
         });
+
+        // const dbItemst
     }
 
     await typeorm.close();
-})();
+}

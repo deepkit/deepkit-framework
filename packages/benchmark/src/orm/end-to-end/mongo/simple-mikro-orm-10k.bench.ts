@@ -1,32 +1,11 @@
 import 'reflect-metadata';
+import {BenchSuite} from '@super-hornet/core';
 import {Entity as MikroEntity, MikroORM, PrimaryKey, Property, ReflectMetadataProvider} from 'mikro-orm';
-import {performance} from 'perf_hooks';
-
-/**
- * Executes given exec() method 3 times and averages the consumed time.
- */
-export async function bench(times: number, title: string, exec: () => void | Promise<void>) {
-    const start = performance.now();
-    for (let i = 0; i < times; i++) {
-        await exec();
-    }
-    const took = performance.now() - start;
-
-    process.stdout.write([
-        (1000 / took) * times, 'ops/s',
-        title,
-        took.toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms,',
-        process.memoryUsage().rss / 1024 / 1024, 'MB memory'
-    ].join(' ') + '\n');
-}
-
 
 @MikroEntity({collection: 'mikro'})
 export class MikroModel {
     @PrimaryKey()
     _id!: any;
-
-    @Property() id2!: number;
 
     @Property() ready?: boolean;
 
@@ -42,25 +21,24 @@ export class MikroModel {
     }
 }
 
-
-(async () => {
+export async function main() {
     const count = 10_000;
-
     const orm = await MikroORM.init({
         entities: [MikroModel],
-        dbName: 'bench-insert',
+        dbName: 'mikro-orm-bench',
         type: 'mongo',
         metadataProvider: ReflectMetadataProvider,
         clientUrl: 'mongodb://localhost:27017'
     });
 
-    for (let j = 1; j <= 15; j++) {
-        console.log('round', j);
+    for (let i = 0; i < 5; i++) {
+        console.log('round', i);
         await orm.em.nativeDelete(MikroModel, {});
-        await bench(1, 'Mikro-ORM insert', async () => {
+        const bench = new BenchSuite('mikro-orm');
+
+        await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {
                 const user = new MikroModel('Peter ' + i);
-                user.id2 = i;
                 user.ready = true;
                 user.priority = 5;
                 user.tags = ['a', 'b', 'c'];
@@ -71,17 +49,29 @@ export class MikroModel {
         });
 
         orm.em.clear();
-        await bench(1, 'Mikro-ORM fetch', async () => {
-            const items = await orm.em.find(MikroModel, {});
+        await bench.runAsyncFix(10, 'fetch', async () => {
+            await orm.em.find(MikroModel, {});
         });
 
         const dbItems = await orm.em.find(MikroModel, {});
         for (const item of dbItems) {
             item.priority++;
         }
-        await bench(1, 'update', async () => {
+
+        await bench.runAsyncFix(1, 'update', async () => {
             await orm.em.flush();
         });
+
+        await bench.runAsyncFix(1, 'remove', async () => {
+            // we need to get around sqlite limitations of max 999 vars in the query
+            let i = 0;
+            while (i + 999 < dbItems.length) {
+                dbItems.slice(i, i + 999).forEach(i => orm.em.remove(i));
+                await orm.em.flush();
+                i += 999;
+            }
+        });
     }
+
     await orm.close();
-})();
+}

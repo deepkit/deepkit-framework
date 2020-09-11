@@ -37,9 +37,13 @@ function getBlocks(stats: number[]): string {
     return res;
 }
 
+type BenchSuiteResult = { [name: string]: { hz: number, elapsed: number, rme: number, mean: number } };
+
 export class BenchSuite {
     suite = new Benchmark.Suite;
-    static onComplete?: (name: string, suite: any[]) => any;
+    static onComplete?: (name: string, result: BenchSuiteResult) => any;
+
+    protected fixResult: BenchSuiteResult = {};
 
     constructor(
         public name: string,
@@ -47,7 +51,16 @@ export class BenchSuite {
     ) {
         this.suite.on('complete', () => {
             const fastest = this.suite.filter('fastest')[0];
-            if (BenchSuite.onComplete) BenchSuite.onComplete(this.name, this.suite.slice());
+            const result: BenchSuiteResult = {};
+            for (const benchmark of this.suite.slice()) {
+                result[benchmark.name] = {
+                    hz: benchmark.hz,
+                    elapsed: benchmark.times.elapsed,
+                    rme: benchmark.stats.rme,
+                    mean: benchmark.stats.mean,
+                };
+            }
+            if (BenchSuite.onComplete) BenchSuite.onComplete(this.name, result);
             print(
                 ' 🏁 Fastest',
                 green(fastest.name),
@@ -69,7 +82,7 @@ export class BenchSuite {
             defer: true,
             maxTime: this.maxTime,
             fn: function (deferred: any) {
-                fn().then(deferred.resolve());
+                fn().then(() => deferred.resolve());
             }
         });
     }
@@ -84,9 +97,20 @@ export class BenchSuite {
         return this.suite.run(options);
     }
 
+    async runAsyncFix(count: number, title: string, fn: () => Promise<void>) {
+        const took = await bench(count, title, fn);
+        this.fixResult[title] = {
+            hz: (1000 / took) * count,
+            elapsed: took,
+            rme: 0,
+            mean: took / count,
+        };
+        if (BenchSuite.onComplete) BenchSuite.onComplete(this.name, this.fixResult);
+    }
+
     async runAsync() {
         print('Start benchmark', green(this.name));
-        await new Promise((resolve) => {
+        await new Promise(async (resolve, reject) => {
             this.suite.run({async: true});
             this.suite.on('complete', () => {
                 console.log('done?');
@@ -99,7 +123,7 @@ export class BenchSuite {
 /**
  * Executes given exec() method 3 times and averages the consumed time.
  */
-export async function bench(times: number, title: string, exec: () => void | Promise<void>) {
+export async function bench(times: number, title: string, exec: () => void | Promise<void>): Promise<number> {
     const start = performance.now();
     for (let i = 0; i < times; i++) {
         await exec();
@@ -114,4 +138,5 @@ export async function bench(times: number, title: string, exec: () => void | Pro
         (took / times).toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms per item',
         process.memoryUsage().rss / 1024 / 1024, 'MB memory'
     ].join(' ') + '\n');
+    return took;
 }
