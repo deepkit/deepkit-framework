@@ -188,6 +188,14 @@ test('$in', () => {
     expect(m2).toEqual({id: {$nin: [1, 2]}});
 });
 
+test('implicit array item', () => {
+    const m = convertPlainQueryToMongo(Simple, {tags: "one"});
+    expect(m).toEqual({tags: "one"});
+
+    const m2 = convertPlainQueryToMongo(Simple, {tags: 3 as any});
+    expect(m2).toEqual({tags: "3"});
+});
+
 test('$all', () => {
     const m = convertPlainQueryToMongo(Simple, {tags: {$all: ['one', 'two', 3] as any}});
     expect(m).toEqual({tags: {$all: ['one', 'two', '3']}});

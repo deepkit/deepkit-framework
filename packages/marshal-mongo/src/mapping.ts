@@ -108,14 +108,24 @@ function convertProperty(
                     fieldNamesMap[name] = true;
                 } else {
                     fieldNamesMap[name] = true;
-                    (fieldValue as any)[key] = converter(schema, name, value);
+                    if (property.isArray && !isArray(value)) {
+                        //implicit array conversion
+                        (fieldValue as any)[key] = converter(schema, name + '.0', value);
+                    } else {
+                        (fieldValue as any)[key] = converter(schema, name, value);
+                    }
                 }
             }
         }
     } else {
         fieldNamesMap[name] = true;
 
-        return converter(schema, name, fieldValue);
+        if (property.isArray && !isArray(fieldValue)) {
+            //implicit array conversion
+            return converter(schema, name + '.0', fieldValue);
+        } else {
+            return converter(schema, name, fieldValue);
+        }
     }
 
     return fieldValue;
