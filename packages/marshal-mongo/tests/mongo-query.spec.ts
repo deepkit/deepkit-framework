@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {convertClassQueryToMongo, convertPlainQueryToMongo} from "../index";
-import {t} from "@super-hornet/marshal";
+import {convertClassQueryToMongo, convertPlainQueryToMongo} from '../index';
+import {t} from '@super-hornet/marshal';
 import {mongoSerializer} from '../src/mongo-serializer';
 
 class SimpleConfig {
@@ -12,6 +12,7 @@ class SimpleConfig {
         this.items = items;
     }
 }
+
 class SimpleConfigRef {
     @t name: string = '';
 
@@ -34,6 +35,9 @@ class Simple {
 
     @t.reference()
     public configRef?: SimpleConfigRef;
+
+    @t.array(t.string)
+    public tags: string[] = [];
 }
 
 test('simple', () => {
@@ -176,15 +180,23 @@ test('and', () => {
     expect(Object.keys(fieldNames)).toEqual(['id']);
 });
 
-test('in', () => {
+test('$in', () => {
     const m = convertPlainQueryToMongo(Simple, {id: {$in: ['1', '2'] as any}});
     expect(m).toEqual({id: {$in: [1, 2]}});
 
     const m2 = convertPlainQueryToMongo(Simple, {id: {$nin: ['1', '2'] as any}});
     expect(m2).toEqual({id: {$nin: [1, 2]}});
+});
 
-    const m3 = convertPlainQueryToMongo(Simple, {label: {$all: [1, '2'] as any}});
-    expect(m3).toEqual({label: {$all: ['1', '2']}});
+test('$all', () => {
+    const m = convertPlainQueryToMongo(Simple, {tags: {$all: ['one', 'two', 3] as any}});
+    expect(m).toEqual({tags: {$all: ['one', 'two', '3']}});
+
+    const m2 = convertPlainQueryToMongo(Simple, {tags: {$not: {$all: ['one', 'two', 3] as any}}});
+    expect(m2).toEqual({tags: {$not: {$all: ['one', 'two', '3']}}});
+
+    const m3 = convertPlainQueryToMongo(Simple, {tags: {$not: {$all: [['one', 'two', 3]] as any}}});
+    expect(m3).toEqual({tags: {$not: {$all: [['one', 'two', '3']]}}});
 });
 
 test('complex', () => {
@@ -199,6 +211,7 @@ test('complex', () => {
 test('complex 2', () => {
     const names = {};
     const date = new Date();
+
     class NodeCluster {
         @t connected: boolean = false;
         @t disabled: boolean = false;
@@ -212,10 +225,12 @@ test('complex 2', () => {
         ]
     }, names);
 
-    expect(m).toEqual({$and: [
+    expect(m).toEqual({
+        $and: [
             {connected: false, disabled: {$ne: true}},
             {$or: [{lastConnectionTry: {$exists: false}}, {lastConnectionTry: {$lt: date}}]}
-        ]});
+        ]
+    });
     expect(Object.keys(names)).toEqual(['connected', 'disabled', 'lastConnectionTry']);
 });
 
