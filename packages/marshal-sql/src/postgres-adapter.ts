@@ -1,5 +1,5 @@
 import {SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
-import {DatabasePersistence, DatabaseSession} from '@super-hornet/marshal-orm';
+import {DatabaseSession} from '@super-hornet/marshal-orm';
 import {PostgresPlatform} from './platform/postgres-platform';
 import {ClassSchema} from '@super-hornet/marshal';
 import {DefaultPlatform} from './platform/default-platform';

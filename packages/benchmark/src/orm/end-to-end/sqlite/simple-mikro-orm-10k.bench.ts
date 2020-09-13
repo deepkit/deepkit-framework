@@ -49,8 +49,8 @@ export async function main() {
             await orm.em.flush();
         });
 
-        orm.em.clear();
         await bench.runAsyncFix(10, 'fetch', async () => {
+            orm.em.clear();
             await orm.em.find(MikroModel, {});
         });
 

@@ -8,26 +8,6 @@ class HelloBody {
     @t name: string = '';
 }
 
-class TestController {
-    @http.GET()
-    helloWorld() {
-        return 'Hello 🌍';
-    }
-
-    @http.POST()
-    addHello(body: HelloBody) {
-        return `Hello ${body.name}`;
-    }
-
-    @http.GET('/:name')
-        .throws(HttpBadRequestError, 'when name is invalid')
-    getHello(name: string) {
-        if (!name) throw new HttpBadRequestError('name is invalid');
-
-        return `Hello ${name}`;
-    }
-}
-
 class Database {
     async getData() {
         return 'async data arrived';
