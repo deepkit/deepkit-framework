@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "benchmark": "ts-node ."
+    "benchmark": "ts-node .",
+    "setup": "sh setup.sh"
   },
   "repository": "https://github.com/super-hornet/super-hornet.ts",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -22,6 +23,8 @@
     "@super-hornet/framework": "^1.0.0-alpha.0",
     "class-transformer": "^0.3.1",
     "cerialize": "^2.0.1",
+    "@prisma/client": "^2.6.2",
+    "@prisma/cli": "^2.6.2",
     "io-ts": "^2.2.10",
     "fp-ts": "^2.8.2",
     "ajv": "^6.12.4",
