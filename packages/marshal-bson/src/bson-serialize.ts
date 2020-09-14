@@ -1,5 +1,5 @@
-import {ClassSchema, getClassSchema, getGlobalStore, JitStack, PropertySchema} from '@super-hornet/marshal';
-import {ClassType, isArray, isObject, toFastProperties} from '@super-hornet/core';
+import {ClassSchema, getClassSchema, getGlobalStore, JitStack, PropertySchema} from '@deepkit/marshal';
+import {ClassType, isArray, isObject, toFastProperties} from '@deepkit/core';
 import {seekElementSize} from './continuation';
 import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,

@@ -1,6 +1,6 @@
 import {PageCollection} from "./PageCollection";
 import {DocumentClass} from "./DocumentClass";
-import {Entity, t, ParentReference, uuid} from '@super-hornet/marshal';
+import {Entity, t, ParentReference, uuid} from '@deepkit/marshal';
 
 @Entity('PageClass')
 export class PageClass {

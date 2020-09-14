@@ -1,4 +1,4 @@
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 
 export type DecoratorFn = (target: object, property?: string, parameterIndexOrDescriptor?: any) => void;
 

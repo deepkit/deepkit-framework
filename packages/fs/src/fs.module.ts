@@ -1,7 +1,7 @@
-import {hornet} from '@super-hornet/framework';
+import {hornet} from '@deepkit/framework';
 import {FsConfig} from './fs.config';
-import {Database, DatabaseAdapter} from '@super-hornet/marshal-orm';
-import {HornetFile} from '@super-hornet/framework-shared';
+import {Database, DatabaseAdapter} from '@deepkit/marshal-orm';
+import {HornetFile} from '@deepkit/framework-shared';
 
 @hornet.module({
     providers: [

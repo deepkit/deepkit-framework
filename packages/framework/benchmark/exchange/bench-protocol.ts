@@ -1,4 +1,4 @@
-import {BenchSuite} from '@super-hornet/core';
+import {BenchSuite} from '@deepkit/core';
 import {decodeMessage, encodeMessage, encodePayloadAsJSONArrayBuffer} from '../../src/exchange/exchange-prot';
 
 const payload = encodePayloadAsJSONArrayBuffer({data: true});

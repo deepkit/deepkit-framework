@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {createBSONSizer, getBSONSerializer, getBSONSizer, hexToByte, uuidStringToByte} from '../src/bson-serialize';
-import {f, plainSerializer, t} from '@super-hornet/marshal';
+import {f, plainSerializer, t} from '@deepkit/marshal';
 import * as Moment from 'moment';
 import {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} from 'bson';
 import {getBSONDecoder} from '../src/bson-jit-parser';

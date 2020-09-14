@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/marshal-orm-integration",
+  "name": "@deepkit/marshal-orm-integration",
   "version": "1.0.0-alpha.0",
   "description": "Marshal ORM integration tests",
   "main": "dist/index.js",
@@ -11,15 +11,15 @@
     "tsc": "tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@super-hornet/core": "^1.0.0-alpha.0",
-    "@super-hornet/marshal": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-sql": "^1.0.0-alpha.0",
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/marshal": "^1.0.0-alpha.0",
+    "@deepkit/marshal-mongo": "^1.0.0-alpha.0",
+    "@deepkit/marshal-orm": "^1.0.0-alpha.0",
+    "@deepkit/marshal-sql": "^1.0.0-alpha.0",
     "sqlite3": "^5.0.0",
     "mariadb": "^2.4.2",
     "postgres": "^2.0.0-beta.0"

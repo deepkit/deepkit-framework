@@ -1,6 +1,6 @@
-import {BenchSuite} from '@super-hornet/core';
-import {getClassSchema, plainSerializer, t} from '@super-hornet/marshal';
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '@super-hornet/marshal-orm';
+import {BenchSuite} from '@deepkit/core';
+import {getClassSchema, plainSerializer, t} from '@deepkit/marshal';
+import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '@deepkit/marshal-orm';
 
 class Image {
     @t title: string = '';

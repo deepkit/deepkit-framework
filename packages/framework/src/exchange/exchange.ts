@@ -1,9 +1,9 @@
 import {Subscription} from 'rxjs';
-import {getEntityName} from '@super-hornet/marshal';
-import {ExchangeEntity, StreamFileResult} from '@super-hornet/framework-shared';
-import {ClassType, ParsedHost, parseHost, sleep} from '@super-hornet/core';
+import {getEntityName} from '@deepkit/marshal';
+import {ExchangeEntity, StreamFileResult} from '@deepkit/framework-shared';
+import {ClassType, ParsedHost, parseHost, sleep} from '@deepkit/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
-import {AsyncSubscription} from '@super-hornet/core-rxjs';
+import {AsyncSubscription} from '@deepkit/core-rxjs';
 import * as WebSocket from 'ws';
 import {ExchangeConfig} from './exchange.config';
 import {injectable} from '../injector/injector';

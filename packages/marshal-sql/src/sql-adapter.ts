@@ -11,9 +11,9 @@ import {
     getJitChangeDetector,
     getJITConverterForSnapshot,
     SORT_ORDER
-} from '@super-hornet/marshal-orm';
-import {ClassType} from '@super-hornet/core';
-import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
+} from '@deepkit/marshal-orm';
+import {ClassType} from '@deepkit/core';
+import {ClassSchema, getClassSchema} from '@deepkit/marshal';
 import {DefaultPlatform} from './platform/default-platform';
 import {SqlBuilder} from './sql-builder';
 import {SqlFormatter} from './sql-formatter';

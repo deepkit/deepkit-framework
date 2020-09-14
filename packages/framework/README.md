@@ -3,7 +3,7 @@
 Installation:
 
 ```
-npm install @super-hornet/framework rxjs
+npm install @deepkit/framework rxjs
 ```
 
 #### Server

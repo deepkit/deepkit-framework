@@ -1,9 +1,9 @@
-import {ProcessLocker} from '@super-hornet/core';
+import {ProcessLocker} from '@deepkit/core';
 import {InternalClient} from './internal-client';
 import {Configuration} from './configuration';
 import {SessionStack} from './session';
 import {ClientConnection} from './client-connection';
-import {ConnectionMiddleware} from '@super-hornet/framework-shared';
+import {ConnectionMiddleware} from '@deepkit/framework-shared';
 import {SecurityStrategy} from './security';
 import {Router} from './router';
 import {HttpHandler} from './http';
@@ -35,7 +35,7 @@ import {ApplicationServer} from './application-server';
         ExchangeModule
     ],
 })
-export class SuperHornetBaseModule {
+export class BaseModule {
     constructor(configuration: Configuration) {
         configuration.loadEnvFile('.env');
     }
@@ -43,7 +43,7 @@ export class SuperHornetBaseModule {
     static forRoot(): DynamicModule {
         return {
             root: true,
-            module: SuperHornetBaseModule,
+            module: BaseModule,
         };
     }
 }

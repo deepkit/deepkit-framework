@@ -1,6 +1,6 @@
 # Marshal BSON
 
-`@super-hornet/marshal-bson` is a high-performance TS implementation of a parser and serializer for BSON,
+`@deepkit/marshal-bson` is a high-performance TS implementation of a parser and serializer for BSON,
  the MongoDB Binary JSON format. It's the fastest JS BSON parser, even faster than native JSON.parse/stringify.
  
 Super Hornet has reimplemented it because its a high-performane framework and both the official JS (js-bson) and C++ (bson-ext) packages are too slow. 
@@ -33,8 +33,8 @@ This makes the official BSON parser 5x slower than native JSON.parse. Marshal-bs
 "Marshal JIT" means a parser/serializer based on a schema like so:
 
 ```typescript
-import {t} from '@super-hornet/marshal';
-import {getBSONDecoder} from '@super-hornet/marshal-bson';
+import {t} from '@deepkit/marshal';
+import {getBSONDecoder} from '@deepkit/marshal-bson';
 
 const schema = t.schema({
     username: t.string,
@@ -51,7 +51,7 @@ const document = decoder(bson);
 whereas "Marshal generic" means schema-less:
 
 ```typescript
-import {parseObject, ParserV2, ParserV3} from '@super-hornet/marshal-bson';
+import {parseObject, ParserV2, ParserV3} from '@deepkit/marshal-bson';
 const bson = new Buffer([]);
 
 const object1 = parseObject(new ParserV2(bson));

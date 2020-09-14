@@ -1,7 +1,7 @@
 import {getClassSchema, PropertyCompilerSchema} from './decorators';
 import {registerCheckerCompiler} from './jit-validation-registry';
 import {getDataCheckerJS, jitValidate} from './jit-validation';
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
+import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
 import {getSortedUnionTypes} from './union';
 
 registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerSchema, utils) => {

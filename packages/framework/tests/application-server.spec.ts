@@ -2,7 +2,7 @@ import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {InMemoryApplicationServer} from '../src/inmemory-application-server';
-import {rpc} from '@super-hornet/framework-shared';
+import {rpc} from '@deepkit/framework-shared';
 import {hornet} from '../src/decorator';
 import {Application} from '../src/application';
 import {ControllerContainer} from '../src/service-container';

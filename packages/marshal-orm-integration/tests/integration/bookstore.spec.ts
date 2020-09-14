@@ -1,10 +1,10 @@
 import 'jest';
 import 'reflect-metadata';
-import {entity, getClassSchema, t} from '@super-hornet/marshal';
+import {entity, getClassSchema, t} from '@deepkit/marshal';
 import {createEnvSetup} from './setup';
 import {User} from './user';
 import {UserCredentials} from './user-credentials';
-import {SQLitePlatform} from '@super-hornet/marshal-sql';
+import {SQLitePlatform} from '@deepkit/marshal-sql';
 
 // process.env['ADAPTER_DRIVER'] = 'mysql';
 // process.env['ADAPTER_DRIVER'] = 'postgres';

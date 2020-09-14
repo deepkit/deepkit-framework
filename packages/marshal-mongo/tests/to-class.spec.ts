@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {cloneClass, t, getEntityName, isExcluded, uuid, getClassSchema, plainSerializer} from '@super-hornet/marshal';
+import {cloneClass, t, getEntityName, isExcluded, uuid, getClassSchema, plainSerializer} from '@deepkit/marshal';
 import {Binary} from "bson";
 import { SimpleModel, Plan, now, SubModel, StringCollectionWrapper } from './entities';
 import {mongoSerializer} from '../src/mongo-serializer';

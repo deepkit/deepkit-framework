@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {arrayBufferFrom, arrayBufferTo, arrayBufferToBase64, plainSerializer, t,} from '@super-hornet/marshal';
+import {arrayBufferFrom, arrayBufferTo, arrayBufferToBase64, plainSerializer, t,} from '@deepkit/marshal';
 import {Plan, SimpleModel, SubModel} from './entities';
 import {Binary, ObjectID} from 'bson';
 import {Buffer} from 'buffer';

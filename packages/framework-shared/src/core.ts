@@ -1,9 +1,9 @@
 import {BehaviorSubject, Observable, Subject, TeardownLogic} from 'rxjs';
-import {tearDown} from '@super-hornet/core-rxjs';
+import {tearDown} from '@deepkit/core-rxjs';
 import {IdInterface} from './contract';
-import {ClassType, CustomError} from '@super-hornet/core';
+import {ClassType, CustomError} from '@deepkit/core';
 import {Buffer} from 'buffer';
-import {arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, t,} from '@super-hornet/marshal';
+import {arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, t,} from '@deepkit/marshal';
 import {skip} from 'rxjs/operators';
 
 @Entity('@error:json')

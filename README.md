@@ -1,24 +1,24 @@
 <div align="center">
-<img src="https://raw.github.com/super-hornet/super-hornet.ts/master/media/super-hornet.png" />
+<img src="https://raw.github.com/deepkit/deepkit-framework/master/media/deepkit-framework-logo.png" />
 </div>
 <br/>
 
 [![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/super-hornet/super-hornet.ts.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/super-hornet/super-hornet.ts/context:javascript)
 
-Super Hornet.ts the new high-performance and real-time Typescript framework for sophisticated isomorphic Typescript
+Deepkit Framework the new high-performance and real-time Typescript framework for sophisticated isomorphic Typescript
 projects like complex admin interfaces, games, desktop and mobile apps.
 
-Super Hornet consists of many high-performance Typescript components aka packages,
-that can be used alone or in combination with the Super Hornet framework.
+Deepkit Framework consists of many high-performance Typescript components aka packages,
+that can be used alone or in combination with the framework.
 
-Super Hornet is all about high-performance:
+Deepkit Framework is all about high-performance:
 
  - High-performance in terms of execution speed.
  - High-performance in terms of development speed.
  - Low development costs by using a single tech-stack (Typescript) only for both, frontend and backend.
  
 The economic advantage of isomorphic Typescript projects (frontend and backend written with Typescript) is enormous
-and Super Hornet wants to utilize this advantage to its fullest.
+and Deepkit Framework wants to utilize this advantage to its fullest.
 
 **NOTE**: We have only recently started refactoring a huge portion of this project and work hard on the first release. 
 **Website and docs will follow soon.**

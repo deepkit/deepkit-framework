@@ -1,5 +1,5 @@
-import {ClassSchema, classSchemaSymbol, getGlobalStore, plainSerializer} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
+import {ClassSchema, classSchemaSymbol, getGlobalStore, plainSerializer} from '@deepkit/marshal';
+import {ClassType} from '@deepkit/core';
 import {IdentityMap} from './identity-map';
 import {getPrimaryKeyHashGenerator} from './converter';
 

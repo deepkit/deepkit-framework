@@ -1,4 +1,4 @@
-import {hornet} from '@super-hornet/framework';
+import {hornet} from '@deepkit/framework';
 
 @hornet.module({
   controllers: []

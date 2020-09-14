@@ -1,4 +1,4 @@
-import {Formatter} from '@super-hornet/marshal-orm';
+import {Formatter} from '@deepkit/marshal-orm';
 
 export class SqlFormatter extends Formatter {
 }

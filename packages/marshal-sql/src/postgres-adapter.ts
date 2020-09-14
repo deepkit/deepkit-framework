@@ -1,7 +1,7 @@
 import {SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
-import {DatabaseSession} from '@super-hornet/marshal-orm';
+import {DatabaseSession} from '@deepkit/marshal-orm';
 import {PostgresPlatform} from './platform/postgres-platform';
-import {ClassSchema} from '@super-hornet/marshal';
+import {ClassSchema} from '@deepkit/marshal';
 import {DefaultPlatform} from './platform/default-platform';
 import {Pool, PoolClient, types} from 'pg';
 

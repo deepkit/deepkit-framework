@@ -1,6 +1,6 @@
 import {BaseResponse, Command} from './command';
-import {ClassSchema, ExtractClassType, getClassSchema, t} from '@super-hornet/marshal';
-import {ClassType, toFastProperties} from '@super-hornet/core';
+import {ClassSchema, ExtractClassType, getClassSchema, t} from '@deepkit/marshal';
+import {ClassType, toFastProperties} from '@deepkit/core';
 import {DEEP_SORT} from '../../query.model';
 
 const findSchema = t.schema({

@@ -1,6 +1,6 @@
-import {ClassSchema, getGlobalStore, PropertySchema, Serializer} from '@super-hornet/marshal';
+import {ClassSchema, getGlobalStore, PropertySchema, Serializer} from '@deepkit/marshal';
 import {DatabaseQueryModel} from './query';
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {getInstanceState, IdentityMap, PKHash} from './identity-map';
 import {getPrimaryKeyHashGenerator} from './converter';
 import {createReferenceClass, getReference} from './reference';

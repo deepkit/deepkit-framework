@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import {BenchSuite} from '@super-hornet/core';
+import {BenchSuite} from '@deepkit/core';
 
 import {PrismaClient} from '@prisma/client';
 

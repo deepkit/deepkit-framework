@@ -5,7 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 
 /**
  * @whatItDoes Configures the {@link Injector} to return an instance of `Type` when `Type' is used

@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import {DynamicModule, hornet, SuperHornetModule} from '../src/decorator';
 import {ControllerContainer, ServiceContainer} from '../src/service-container';
 import {injectable, Injector} from '../src/injector/injector';
-import {rpc} from '@super-hornet/framework-shared';
+import {rpc} from '@deepkit/framework-shared';
 
 
 test('controller', () => {

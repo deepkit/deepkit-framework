@@ -1,4 +1,4 @@
-import {arrayRemoveItem} from '@super-hornet/core';
+import {arrayRemoveItem} from '@deepkit/core';
 import {createHash} from 'crypto';
 
 export class Database {

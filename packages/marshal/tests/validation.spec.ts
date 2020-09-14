@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {plainSerializer, PropertyValidator, PropertyValidatorError, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem} from '../index';
-import {CustomError, isPlainObject} from '@super-hornet/core';
+import {CustomError, isPlainObject} from '@deepkit/core';
 import {getClassSchema, t} from '../src/decorators';
 
 test('test simple', async () => {

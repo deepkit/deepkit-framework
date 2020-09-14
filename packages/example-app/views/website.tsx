@@ -1,4 +1,4 @@
-import {Configuration, injectable, template} from '@super-hornet/framework';
+import {Configuration, injectable, template} from '@deepkit/framework';
 
 @injectable()
 export class Website {

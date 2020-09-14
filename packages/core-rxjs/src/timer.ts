@@ -1,4 +1,4 @@
-import {Timer} from '@super-hornet/core';
+import {Timer} from '@deepkit/core';
 import {Observer} from 'rxjs';
 
 /**

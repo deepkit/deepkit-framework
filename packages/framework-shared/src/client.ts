@@ -3,8 +3,8 @@ import {first} from 'rxjs/operators';
 import {ClientMessageWithoutId, IdInterface, ServerMessageComplete, ServerMessageError, ServerMessageResult} from './contract';
 import {getUnserializedError, StreamBehaviorSubject} from './core';
 import {Collection, CollectionPaginationEvent} from './collection';
-import {getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, PropertySchema, PropertySchemaSerialized} from '@super-hornet/marshal';
-import {ClassType, each} from '@super-hornet/core';
+import {getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, PropertySchema, PropertySchemaSerialized} from '@deepkit/marshal';
+import {ClassType, each} from '@deepkit/core';
 import {EntityState} from './entity-state';
 
 export class MessageSubject<T> extends Subject<T> {

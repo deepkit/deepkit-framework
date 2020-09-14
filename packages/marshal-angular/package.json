@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/marshal-angular",
+  "name": "@deepkit/marshal-angular",
   "version": "1.0.0-alpha.0",
   "description": "Types angular forms",
   "main": "dist/index.js",
@@ -10,7 +10,7 @@
     "tsc": "tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "devDependencies": {

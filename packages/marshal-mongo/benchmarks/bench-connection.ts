@@ -1,6 +1,6 @@
 import {MongoClient as OriMongoClient} from 'mongodb';
-import {bench} from '@super-hornet/core';
-import {Entity, f} from '@super-hornet/marshal';
+import {bench} from '@deepkit/core';
+import {Entity, f} from '@deepkit/marshal';
 import {MongoClient} from '../src/client/client';
 import {DeleteCommand} from '../src/client/command/delete';
 import {InsertCommand} from '../src/client/command/insert';

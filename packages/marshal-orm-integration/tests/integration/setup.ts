@@ -1,9 +1,9 @@
-import {ClassSchema} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
-import {SQLDatabaseAdapter, SQLiteDatabaseAdapter} from '@super-hornet/marshal-sql';
-import {MySQLDatabaseAdapter} from '@super-hornet/marshal-sql';
-import { Database } from '@super-hornet/marshal-orm';
-import {PostgresDatabaseAdapter} from '@super-hornet/marshal-sql';
+import {ClassSchema} from '@deepkit/marshal';
+import {ClassType} from '@deepkit/core';
+import {SQLDatabaseAdapter, SQLiteDatabaseAdapter} from '@deepkit/marshal-sql';
+import {MySQLDatabaseAdapter} from '@deepkit/marshal-sql';
+import { Database } from '@deepkit/marshal-orm';
+import {PostgresDatabaseAdapter} from '@deepkit/marshal-sql';
 
 const databases: Database<any>[] = []
 

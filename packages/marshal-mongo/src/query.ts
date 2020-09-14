@@ -1,4 +1,4 @@
-import {Entity, GenericQuery} from '@super-hornet/marshal-orm';
+import {Entity, GenericQuery} from '@deepkit/marshal-orm';
 import {MongoQueryModel} from './query.model';
 import {MongoQueryResolver} from './query.resolver';
 

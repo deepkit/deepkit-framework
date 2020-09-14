@@ -1,4 +1,4 @@
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {handleCustomValidator, ValidationFailedItem} from './validation';
 import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator} from './decorators';
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';

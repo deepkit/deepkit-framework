@@ -1,11 +1,11 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, f} from '@super-hornet/marshal';
+import {Entity, f} from '@deepkit/marshal';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {hornet, InternalClient, SecurityStrategy, Session} from '@super-hornet/framework';
+import {hornet, InternalClient, SecurityStrategy, Session} from '@deepkit/framework';
 import {Observable} from 'rxjs';
-import {sleep} from '@super-hornet/core';
-import {rpc} from '@super-hornet/framework-shared';
+import {sleep} from '@deepkit/core';
+import {rpc} from '@deepkit/framework-shared';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');

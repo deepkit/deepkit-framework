@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import {deserialize, ObjectId, serialize} from 'bson';
 import * as BSON from 'bson-ext';
 import {BaseParser, parseObject, ParserV2, ParserV3} from '../src/bson-parser';
-import {BenchSuite} from '@super-hornet/core';
-import {t} from '@super-hornet/marshal';
+import {BenchSuite} from '@deepkit/core';
+import {t} from '@deepkit/marshal';
 import {getBSONDecoder} from '../src/bson-jit-parser';
 
 // buildStringIndex(Buffer.from('abcdefgh!'));

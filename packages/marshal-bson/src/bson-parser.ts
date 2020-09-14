@@ -16,7 +16,7 @@ import {
     digitByteSize
 } from './utils';
 import {CachedKeyDecoder, decodeUTF8} from './strings';
-import {nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap} from '@super-hornet/marshal';
+import {nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap} from '@deepkit/marshal';
 
 const TWO_PWR_32_DBL_N = (1n << 16n) * (1n << 16n);
 

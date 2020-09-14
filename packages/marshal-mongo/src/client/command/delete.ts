@@ -1,6 +1,6 @@
 import {BaseResponse, Command} from './command';
-import {ClassSchema, getClassSchema, t} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
+import {ClassSchema, getClassSchema, t} from '@deepkit/marshal';
+import {ClassType} from '@deepkit/core';
 
 class DeleteResponse extends t.class({
     n: t.number,

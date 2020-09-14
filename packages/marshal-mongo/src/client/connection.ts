@@ -1,10 +1,10 @@
-import {asyncOperation, ClassType} from '@super-hornet/core';
+import {asyncOperation, ClassType} from '@deepkit/core';
 import {Host} from './host';
 import {createConnection, Socket} from 'net';
 import {connect as createTLSConnection, TLSSocket} from 'tls';
 import {Command} from './command/command';
-import {ClassSchema} from '@super-hornet/marshal';
-import {getBSONSerializer, getBSONSizer, Writer} from '@super-hornet/marshal-bson';
+import {ClassSchema} from '@deepkit/marshal';
+import {getBSONSerializer, getBSONSizer, Writer} from '@deepkit/marshal-bson';
 import {HandshakeCommand} from './command/handshake';
 import {MongoClientConfig} from './client';
 import {MongoError} from './error';

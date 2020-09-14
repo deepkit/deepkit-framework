@@ -1,5 +1,5 @@
 import {resolveSrv, resolveTxt} from 'dns';
-import {asyncOperation} from '@super-hornet/core';
+import {asyncOperation} from '@deepkit/core';
 
 function matchesParentDomain(srvAddress, parentDomain) {
     const regex = /^.*?\./;

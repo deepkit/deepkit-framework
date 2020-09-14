@@ -1,5 +1,5 @@
-import {validate} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
+import {validate} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
 import * as t from 'io-ts';
 import * as G from 'io-ts/lib/Guard';
 import {isRight} from 'fp-ts/Either';

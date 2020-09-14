@@ -1,5 +1,5 @@
-import {f, plainSerializer} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
+import {f, plainSerializer} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
 
 class Model {
     @f ready?: boolean;

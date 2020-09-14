@@ -1,8 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {arrayBufferFrom, Entity, getClassSchema, getEntityName, plainSerializer, t, uuid,} from '@super-hornet/marshal';
+import {arrayBufferFrom, Entity, getClassSchema, getEntityName, plainSerializer, t, uuid,} from '@deepkit/marshal';
 import {Binary, ObjectID} from 'bson';
-import {getInstanceState} from '@super-hornet/marshal-orm';
+import {getInstanceState} from '@deepkit/marshal-orm';
 import * as moment from 'moment';
 import {SimpleModel, SuperSimple} from './entities';
 import {createDatabaseSession} from './utils';

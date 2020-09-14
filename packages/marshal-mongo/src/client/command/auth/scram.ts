@@ -1,6 +1,6 @@
 import {createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual} from 'crypto';
 import {MongoAuth} from './auth';
-import {t} from '@super-hornet/marshal';
+import {t} from '@deepkit/marshal';
 import {MongoClientConfig} from '../../client';
 import {BaseResponse, Command} from '../command';
 import {MongoError} from '../../error';

@@ -1,9 +1,9 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Database} from "@super-hornet/marshal-orm";
+import {Database} from "@deepkit/marshal-orm";
 import {MongoDatabaseAdapter} from "../src/adapter";
-import {Entity, t} from "@super-hornet/marshal";
+import {Entity, t} from "@deepkit/marshal";
 
 jest.setTimeout(100000);
 

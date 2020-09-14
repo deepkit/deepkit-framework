@@ -1,10 +1,10 @@
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {injectable} from '../injector/injector';
 
 // import {Exchange} from "./exchange";
-// import {getEntityName} from "@super-hornet/marshal";
+// import {getEntityName} from "@deepkit/marshal";
 // import {Observable, Subject, Subscription} from "rxjs";
-// import {convertPlainQueryToMongo, convertQueryToMongo, Database, DatabaseQuery} from "@super-hornet/marshal-mongo";
+// import {convertPlainQueryToMongo, convertQueryToMongo, Database, DatabaseQuery} from "@deepkit/marshal-mongo";
 // import {
 //     Collection,
 //     CollectionSort,
@@ -16,9 +16,9 @@ import {injectable} from '../injector/injector';
 //     IdInterface,
 //     JSONObjectCollection,
 //     ReactiveSubQuery
-// } from "@super-hornet/framework-shared";
-// import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@super-hornet/core";
-// import {AsyncSubscription, Subscriptions} from "@super-hornet/core-rxjs";
+// } from "@deepkit/framework-shared";
+// import {ClassType, each, eachKey, eachPair, getClassName, sleep} from "@deepkit/core";
+// import {AsyncSubscription, Subscriptions} from "@deepkit/core-rxjs";
 // import {findQuerySatisfied} from "./utils";
 //
 // interface SentState {

@@ -6,14 +6,14 @@
 ### Installation
 
 ```
-npm install @super-hornet/core-rxjs
+npm install @deepkit/core-rxjs
 ```
 
 
 ### Usage example
 
 ```typescript
-import {Subscriptions} from "@super-hornet/core-rxjs";
+import {Subscriptions} from "@deepkit/core-rxjs";
 
 class MyComponent implements OnDestroy, OnInit {
     private subs = new Subscriptions;

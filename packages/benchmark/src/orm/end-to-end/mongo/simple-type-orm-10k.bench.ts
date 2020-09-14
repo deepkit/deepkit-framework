@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import {BenchSuite} from '@super-hornet/core';
+import {BenchSuite} from '@deepkit/core';
 import {Column, createConnection, Entity as TypeOrmEntity, ObjectIdColumn} from 'typeorm';
 
 @TypeOrmEntity()

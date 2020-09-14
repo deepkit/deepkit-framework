@@ -10,9 +10,9 @@ import {
     PropertyCompilerSchema,
     typedArrayNamesMap,
     typedArrayToBuffer
-} from '@super-hornet/marshal';
+} from '@deepkit/marshal';
 import {Binary, ObjectID} from 'bson';
-import {hexTable} from '@super-hornet/marshal-bson';
+import {hexTable} from '@deepkit/marshal-bson';
 import * as mongoUuid from 'mongo-uuid';
 
 export function uuid4Binary(u?: string): Binary {

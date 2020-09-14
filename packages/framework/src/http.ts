@@ -1,11 +1,11 @@
 import {Router} from './router';
-import {ClassType, CustomError, getClassName} from '@super-hornet/core';
+import {ClassType, CustomError, getClassName} from '@deepkit/core';
 import {injectable, Injector} from './injector/injector';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
 import {Context, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
-import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, plainSerializer} from '@super-hornet/marshal';
+import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, plainSerializer} from '@deepkit/marshal';
 import {isElementStruct, render} from './template/template';
 import {ApplicationConfig} from './application-config';
 import {join} from 'path';

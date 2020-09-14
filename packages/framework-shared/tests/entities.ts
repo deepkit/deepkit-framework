@@ -1,8 +1,8 @@
 import {
     Entity, t,
     uuid,
-} from "@super-hornet/marshal";
-import {each, eachPair} from "@super-hornet/core";
+} from "@deepkit/marshal";
+import {each, eachPair} from "@deepkit/core";
 import {IdInterface} from "../index";
 
 @Entity('JobAssignedResourcesGpu')

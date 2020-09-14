@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import {Application, http, HttpBadRequestError, template} from '@super-hornet/framework';
-import {entity, t} from '@super-hornet/marshal';
+import {Application, http, HttpBadRequestError, template} from '@deepkit/framework';
+import {entity, t} from '@deepkit/marshal';
 import {Website} from './views/website';
 
 @entity.name('HelloBody')

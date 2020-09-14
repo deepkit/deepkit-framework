@@ -1,6 +1,6 @@
 {
   "name": "root",
-  "repository": "https://github.com/super-hornet/super-hornet",
+  "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "scripts": {

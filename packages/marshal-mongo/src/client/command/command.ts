@@ -1,6 +1,6 @@
-import {ClassSchema, ExtractClassType, getClassSchema, t} from '@super-hornet/marshal';
-import {asyncOperation, ClassType} from '@super-hornet/core';
-import {getBSONDecoder} from '@super-hornet/marshal-bson';
+import {ClassSchema, ExtractClassType, getClassSchema, t} from '@deepkit/marshal';
+import {asyncOperation, ClassType} from '@deepkit/core';
+import {getBSONDecoder} from '@deepkit/marshal-bson';
 import {MongoError} from '../error';
 import {MongoClientConfig} from '../client';
 import {Host} from '../host';

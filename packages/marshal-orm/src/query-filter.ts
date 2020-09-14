@@ -1,5 +1,5 @@
-import {ClassSchema, isArray, Serializer} from '@super-hornet/marshal';
-import {isPlainObject} from '@super-hornet/core';
+import {ClassSchema, isArray, Serializer} from '@deepkit/marshal';
+import {isPlainObject} from '@deepkit/core';
 
 type Filter = { [name: string]: any };
 

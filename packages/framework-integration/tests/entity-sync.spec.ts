@@ -1,12 +1,12 @@
 import 'jest-extended';
-import {Collection, EntitySubject, IdInterface, ReactiveSubQuery, rpc} from '@super-hornet/framework-shared';
-import {ClientConnection, EntityStorage, ExchangeDatabase} from '@super-hornet/framework';
+import {Collection, EntitySubject, IdInterface, ReactiveSubQuery, rpc} from '@deepkit/framework-shared';
+import {ClientConnection, EntityStorage, ExchangeDatabase} from '@deepkit/framework';
 import {closeAllCreatedServers, createServerClientPair} from './util';
-import {Entity, getClassSchema, t, uuid} from '@super-hornet/marshal';
+import {Entity, getClassSchema, t, uuid} from '@deepkit/marshal';
 import {BehaviorSubject, Observable} from 'rxjs';
-import {nextValue} from '@super-hornet/core-rxjs';
-import {sleep} from '@super-hornet/core';
-import {Database} from '@super-hornet/marshal-mongo';
+import {nextValue} from '@deepkit/core-rxjs';
+import {sleep} from '@deepkit/core';
+import {Database} from '@deepkit/marshal-mongo';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');

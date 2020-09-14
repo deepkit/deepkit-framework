@@ -1,4 +1,4 @@
-import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from '@super-hornet/framework-shared';
+import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from '@deepkit/framework-shared';
 import {injectable} from './injector/injector';
 import {EntityStorage} from './autosync/entity-storage';
 

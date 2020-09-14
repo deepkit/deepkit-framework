@@ -1,6 +1,6 @@
 import {WebWorker} from './worker';
 import {ServiceContainer} from './service-container';
-import {each, getClassName} from '@super-hornet/core';
+import {each, getClassName} from '@deepkit/core';
 import {httpClass} from './decorator';
 import * as cluster from 'cluster';
 import {ApplicationConfig} from './application-config';

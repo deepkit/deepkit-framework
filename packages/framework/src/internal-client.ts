@@ -1,4 +1,4 @@
-import {plainSerializer, PropertySchema, uuid} from '@super-hornet/marshal';
+import {plainSerializer, PropertySchema, uuid} from '@deepkit/marshal';
 import {
     ActionTypes,
     ClientMessageWithoutId,
@@ -11,9 +11,9 @@ import {
     ServerMessageError,
     ServerMessageErrorGeneral,
     ServerMessageResult
-} from '@super-hornet/framework-shared';
+} from '@deepkit/framework-shared';
 import {Subscription} from 'rxjs';
-import {each, eachKey, ProcessLocker} from '@super-hornet/core';
+import {each, eachKey, ProcessLocker} from '@deepkit/core';
 import {Exchange} from './exchange/exchange';
 import {injectable} from './injector/injector';
 

@@ -1,6 +1,6 @@
-import {ClassSchema, PropertySchema} from '@super-hornet/marshal';
+import {ClassSchema, PropertySchema} from '@deepkit/marshal';
 import {Subject} from 'rxjs';
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {FieldName, FlattenIfArray} from './utils';
 import {PrimaryKey} from './identity-map';
 import {DatabaseSession} from './database-session';

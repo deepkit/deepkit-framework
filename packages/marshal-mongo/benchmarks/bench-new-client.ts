@@ -1,10 +1,10 @@
 import {MongoClient as OriMongoClient, MongoClientOptions} from 'mongodb';
 import {MongoClient} from '../src/client/client';
-import {bench} from '@super-hornet/core';
+import {bench} from '@deepkit/core';
 import {IsMasterCommand} from '../src/client/command/ismaster';
 import {FindCommand} from '../src/client/command/find';
 import {EmptyCommand} from '../src/client/command/empty';
-import {Entity, f} from '@super-hornet/marshal';
+import {Entity, f} from '@deepkit/marshal';
 
 @Entity('user')
 export class User {

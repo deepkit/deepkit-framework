@@ -1,4 +1,4 @@
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance} from '@deepkit/marshal';
 import {Entity} from './query';
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;

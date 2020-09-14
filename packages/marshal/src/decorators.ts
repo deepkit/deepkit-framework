@@ -1,5 +1,5 @@
 import {PropertyValidatorError} from './validation';
-import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject, toFastProperties,} from '@super-hornet/core';
+import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject, toFastProperties,} from '@deepkit/core';
 import getParameterNames from 'get-parameter-names';
 import {FlattenIfArray, isArray, JSONEntity} from './utils';
 import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
@@ -1503,7 +1503,7 @@ export interface FieldDecoratorResult<T> {
      *
      * @example
      * ```typescript
-     * import {PropertyValidator, PropertyValidatorError} from '@super-hornet/marshal';
+     * import {PropertyValidator, PropertyValidatorError} from '@deepkit/marshal';
      *
      * class MyCustomValidator implements PropertyValidator {
      *      async validate<T>(value: any, target: ClassType<T>, propertyName: string): PropertyValidatorError | void {

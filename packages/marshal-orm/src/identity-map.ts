@@ -1,7 +1,7 @@
-import {ClassSchema, getClassSchema, JSONPartial, PartialEntity, plainSerializer} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, JSONPartial, PartialEntity, plainSerializer} from '@deepkit/marshal';
 import {Entity} from './query';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
-import {isObject, toFastProperties} from '@super-hornet/core';
+import {isObject, toFastProperties} from '@deepkit/core';
 import {inspect} from 'util';
 
 export type PrimaryKey<T> = { [name in keyof T]?: T[name] };

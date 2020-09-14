@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/marshal-sql",
+  "name": "@deepkit/marshal-sql",
   "version": "1.0.0-alpha.0",
   "description": "Marshal SQL adapter.",
   "main": "dist/index.js",
@@ -10,7 +10,7 @@
     "tsc": "tsc --build",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
@@ -18,9 +18,9 @@
     "mariadb": "^2.4.2"
   },
   "dependencies": {
-    "@super-hornet/core": "^1.0.0-alpha.0",
-    "@super-hornet/marshal": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/marshal": "^1.0.0-alpha.0",
+    "@deepkit/marshal-orm": "^1.0.0-alpha.0",
     "sqlstring": "^2.3.2"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 import {getClassSchema, getClassTypeFromInstance, isClassInstance} from './decorators';
-import {isArray, isObject} from '@super-hornet/core';
+import {isArray, isObject} from '@deepkit/core';
 
 type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 

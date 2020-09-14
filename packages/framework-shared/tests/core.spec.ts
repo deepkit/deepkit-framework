@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {FilterQuery, IdInterface, StreamBehaviorSubject} from "../index";
-import {ClassType, sleep} from '@super-hornet/core';
+import {ClassType, sleep} from '@deepkit/core';
 import {BehaviorSubject, Subject} from 'rxjs';
 
 function assert<T, U extends T>() {

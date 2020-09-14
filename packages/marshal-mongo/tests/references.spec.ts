@@ -1,8 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, t} from '@super-hornet/marshal';
+import {Entity, t} from '@deepkit/marshal';
 import {createDatabaseSession} from './utils';
-import {getInstanceState} from '@super-hornet/marshal-orm';
+import {getInstanceState} from '@deepkit/marshal-orm';
 
 @Entity('image')
 class Image {

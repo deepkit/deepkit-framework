@@ -1,5 +1,5 @@
-import {DatabasePersistence, Entity, getInstanceState, getJitChangeDetector, getJITConverterForSnapshot} from '@super-hornet/marshal-orm';
-import {ClassSchema} from '@super-hornet/marshal';
+import {DatabasePersistence, Entity, getInstanceState, getJitChangeDetector, getJITConverterForSnapshot} from '@deepkit/marshal-orm';
+import {ClassSchema} from '@deepkit/marshal';
 import {convertPlainQueryToMongo} from './mapping';
 import {ObjectId} from 'mongodb';
 import {FilterQuery} from './query.model';

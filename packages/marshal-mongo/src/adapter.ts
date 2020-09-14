@@ -1,6 +1,6 @@
-import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from '@super-hornet/marshal-orm';
-import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
+import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from '@deepkit/marshal-orm';
+import {ClassSchema, getClassSchema} from '@deepkit/marshal';
+import {ClassType} from '@deepkit/core';
 import {MongoDatabaseQuery} from './query';
 import {MongoQueryResolver} from './query.resolver';
 import {MongoQueryModel} from './query.model';

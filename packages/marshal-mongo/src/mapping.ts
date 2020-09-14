@@ -1,5 +1,5 @@
-import {ClassSchema, getClassSchema, isArray, JSONEntity, plainSerializer, PropertySchema, resolvePropertyCompilerSchema, TypedArrays,} from '@super-hornet/marshal';
-import {ClassType, isPlainObject} from '@super-hornet/core';
+import {ClassSchema, getClassSchema, isArray, JSONEntity, plainSerializer, PropertySchema, resolvePropertyCompilerSchema, TypedArrays,} from '@deepkit/marshal';
+import {ClassType, isPlainObject} from '@deepkit/core';
 import './mongo-serializer';
 import {Binary} from 'bson';
 import {FilterQuery} from 'mongodb';

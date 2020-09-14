@@ -1,5 +1,5 @@
 import {Injector} from '../src/injector/injector';
-import {bench, BenchSuite} from '@super-hornet/core';
+import {bench, BenchSuite} from '@deepkit/core';
 import {render, template} from '../src/template/template';
 import {Website} from './template/website';
 

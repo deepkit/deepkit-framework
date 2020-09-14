@@ -1,10 +1,10 @@
 import 'jest';
-import {arrayRemoveItem, ClassType, sleep} from '@super-hornet/core';
-import {ApplicationServer, hornet, ExchangeConfig, Application} from '@super-hornet/framework';
-import {RemoteController} from '@super-hornet/framework-shared';
+import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
+import {ApplicationServer, hornet, ExchangeConfig, Application} from '@deepkit/framework';
+import {RemoteController} from '@deepkit/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
-import {SuperHornetClient} from '@super-hornet/framework-client';
+import {SuperHornetClient} from '@deepkit/framework-client';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {

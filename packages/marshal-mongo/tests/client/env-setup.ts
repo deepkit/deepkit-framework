@@ -1,8 +1,8 @@
 import 'jest';
-import {uuid} from '@super-hornet/marshal';
+import {uuid} from '@deepkit/marshal';
 import {ChildProcess, spawn, spawnSync} from 'child_process';
 import {existsSync, mkdirSync, rmdirSync} from 'fs';
-import {sleep} from '@super-hornet/core';
+import {sleep} from '@deepkit/core';
 import {createConnection} from 'net';
 
 interface MongoInstance {

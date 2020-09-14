@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/marshal-orm",
+  "name": "@deepkit/marshal-orm",
   "version": "1.0.0-alpha.0",
   "description": "Marshal ORM, the fastest JIT-based ORM for Typescript",
   "main": "dist/index.js",
@@ -10,13 +10,13 @@
     "tsc": "tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@super-hornet/core": "^1.0.0-alpha.0",
-    "@super-hornet/marshal": "^1.0.0-alpha.0",
-    "@super-hornet/topsort": "^1.0.0-alpha.0",
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/marshal": "^1.0.0-alpha.0",
+    "@deepkit/topsort": "^1.0.0-alpha.0",
     "sqlstring": "^2.3.2"
   },
   "devDependencies": {

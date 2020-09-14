@@ -1,5 +1,5 @@
-import {BenchSuite} from '@super-hornet/core';
-import {Router, http} from '@super-hornet/framework';
+import {BenchSuite} from '@deepkit/core';
+import {Router, http} from '@deepkit/framework';
 
 export async function main() {
 

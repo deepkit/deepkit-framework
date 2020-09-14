@@ -1,4 +1,4 @@
-import {ClientMessageAll,} from '@super-hornet/framework-shared';
+import {ClientMessageAll,} from '@deepkit/framework-shared';
 import {ClientTransportAdapter, TransportConnectionHooks} from './client';
 
 export class WebSocketClientAdapter implements ClientTransportAdapter {

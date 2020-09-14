@@ -5,7 +5,7 @@ import {cloneClass, isExcluded} from '../src/mapper';
 import {getClassSchema, OnLoad, plainSerializer, resolvePropertyCompilerSchema, t, uuid, validate} from '../index';
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from './document-scenario/DocumentClass';
 import {PageClass} from './document-scenario/PageClass';
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
+import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
 import {PageCollection} from './document-scenario/PageCollection';
 
 test('test simple model', () => {

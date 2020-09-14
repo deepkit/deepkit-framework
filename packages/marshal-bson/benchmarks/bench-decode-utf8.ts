@@ -1,4 +1,4 @@
-import {BenchSuite} from '@super-hornet/core';
+import {BenchSuite} from '@deepkit/core';
 import {CachedKeyDecoder} from '../src/strings';
 
 function decodeUTF8Ori(buffer: Uint8Array, size: number) {

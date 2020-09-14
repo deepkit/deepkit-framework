@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, plainSerializer, t} from '@super-hornet/marshal';
+import {getClassSchema, plainSerializer, t} from '@deepkit/marshal';
 import {BaseQuery, DatabaseQueryModel, Formatter, getInstanceState, getNormalizedPrimaryKey} from '../index';
 import {getReference} from '../src/reference';
 

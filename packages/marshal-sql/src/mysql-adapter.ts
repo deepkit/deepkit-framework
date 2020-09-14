@@ -1,8 +1,8 @@
 import {createPool, Pool, PoolConnection, UpsertResult} from 'mariadb';
 import {SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
-import {DatabaseSession} from '@super-hornet/marshal-orm';
+import {DatabaseSession} from '@deepkit/marshal-orm';
 import {MySQLPlatform} from './platform/mysql-platform';
-import {ClassSchema, isArray} from '@super-hornet/marshal';
+import {ClassSchema, isArray} from '@deepkit/marshal';
 import {DefaultPlatform} from './platform/default-platform';
 
 export class MySQLStatement extends SQLStatement {

@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/marshal-module",
+  "name": "@deepkit/marshal-module",
   "version": "1.0.0-alpha.0",
   "description": "Marshal ORM module for Super Hornet",
   "main": "dist/index.js",
@@ -10,12 +10,12 @@
     "tsc": "tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@super-hornet/framework": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-orm": "^1.0.0-alpha.0"
+    "@deepkit/framework": "^1.0.0-alpha.0",
+    "@deepkit/marshal-orm": "^1.0.0-alpha.0"
   },
   "devDependencies": {
     "reflect-metadata": "^0.1.13"

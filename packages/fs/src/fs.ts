@@ -1,14 +1,14 @@
 import {dirname, join} from 'path';
 import {appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, writeFile} from 'fs-extra';
 import {Exchange} from './exchange';
-import {AlreadyEncoded, File, FileMode, FileType, FilterQuery, StreamBehaviorSubject} from '@super-hornet/framework-shared';
-import {eachKey, eachPair} from '@super-hornet/core';
+import {AlreadyEncoded, File, FileMode, FileType, FilterQuery, StreamBehaviorSubject} from '@deepkit/framework-shared';
+import {eachKey, eachPair} from '@deepkit/core';
 import * as crypto from 'crypto';
 import {ProcessLocker} from './process-locker';
-import {Database} from '@super-hornet/marshal-orm';
-import {partialClassToPlain} from '@super-hornet/marshal';
+import {Database} from '@deepkit/marshal-orm';
+import {partialClassToPlain} from '@deepkit/marshal';
 import {decodePayloadAsJson, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
-import {injectable} from '@super-hornet/framework';
+import {injectable} from '@deepkit/framework';
 
 export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
 

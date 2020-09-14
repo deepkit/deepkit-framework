@@ -5,8 +5,8 @@
  */
 import {ReplaySubject, Subject, TeardownLogic} from 'rxjs';
 import {IdInterface} from './contract';
-import {tearDown} from '@super-hornet/core-rxjs';
-import {ClassType, each, getClassName} from '@super-hornet/core';
+import {tearDown} from '@deepkit/core-rxjs';
+import {ClassType, each, getClassName} from '@deepkit/core';
 import {EntitySubject} from './core';
 
 export type FilterParameters = {[name: string]: any | undefined};

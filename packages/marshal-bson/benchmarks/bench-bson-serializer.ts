@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import {calculateObjectSize, serialize} from 'bson';
 import * as BSON from 'bson-ext';
-import {BenchSuite} from '@super-hornet/core';
-import {t} from '@super-hornet/marshal';
+import {BenchSuite} from '@deepkit/core';
+import {t} from '@deepkit/marshal';
 import {createBSONSizer, getBSONSerializer} from '../src/bson-serialize';
 
 const bsonNative = new BSON([BSON.Binary, BSON.Code, BSON.DBRef, BSON.Decimal128, BSON.Double, BSON.Int32, BSON.Long, BSON.Map, BSON.MaxKey, BSON.MinKey, BSON.ObjectId, BSON.BSONRegExp, BSON.Symbol, BSON.Timestamp]);

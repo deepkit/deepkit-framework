@@ -1,5 +1,5 @@
 import {v4} from 'uuid';
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {ClassSchema} from './decorators';
 import { TypedArrays } from './models';
 

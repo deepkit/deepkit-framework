@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {size} from "@super-hornet/core";
+import {size} from "@deepkit/core";
 import {observeItem} from "../src/observer";
 import {Job, JobTask, JobTaskStatus} from "./entities";
 import {EntitySubject} from "../src/core";

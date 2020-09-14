@@ -1,4 +1,4 @@
-import {BenchSuite} from '@super-hornet/core';
+import {BenchSuite} from '@deepkit/core';
 
 const suite = new BenchSuite(`Object hydration`);
 

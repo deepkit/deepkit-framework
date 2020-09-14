@@ -1,7 +1,7 @@
 import {MongoAuth} from './auth';
 import {BaseResponse, Command} from '../command';
 import {MongoClientConfig} from '../../client';
-import {t} from '@super-hornet/marshal';
+import {t} from '@deepkit/marshal';
 
 
 class AuthenticateCommand extends t.class({

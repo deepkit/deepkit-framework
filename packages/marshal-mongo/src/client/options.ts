@@ -1,4 +1,4 @@
-import {t} from '@super-hornet/marshal';
+import {t} from '@deepkit/marshal';
 
 type AuthMechanismProperties = { [name: string]: string | boolean };
 

@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {convertClassQueryToMongo, convertPlainQueryToMongo} from '../index';
-import {t} from '@super-hornet/marshal';
+import {t} from '@deepkit/marshal';
 import {mongoSerializer} from '../src/mongo-serializer';
 
 class SimpleConfig {

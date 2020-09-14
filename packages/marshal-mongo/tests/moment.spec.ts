@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import * as moment from 'moment';
-import {t} from "@super-hornet/marshal";
+import {t} from "@deepkit/marshal";
 import {mongoSerializer} from '../src/mongo-serializer';
 
 test('test moment', () => {

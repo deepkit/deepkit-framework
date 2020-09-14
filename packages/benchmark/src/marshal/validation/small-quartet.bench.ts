@@ -1,5 +1,5 @@
-import {validate} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
+import {validate} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
 import {good} from './validation';
 //we use `e` and not `v` because Marshal supports out of the box error explanations, which quartet does only with `e`.
 import {e} from 'quartet';

@@ -1,6 +1,6 @@
 //see https://docs.mongodb.com/manual/reference/command/isMaster/
 //we add only fields we really need to increase parsing time.
-import {t} from '@super-hornet/marshal';
+import {t} from '@deepkit/marshal';
 import {BaseResponse, Command} from './command';
 import {MongoClientConfig} from '../client';
 import {Host} from '../host';

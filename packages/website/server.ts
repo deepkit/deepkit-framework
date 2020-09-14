@@ -7,9 +7,9 @@ import {join} from 'path';
 import {AppServerModule} from './src/main.server';
 import {APP_BASE_HREF} from '@angular/common';
 import {existsSync} from 'fs';
-import {ApplicationServer, ApplicationServerConfig, hornet} from '@super-hornet/framework';
+import {ApplicationServer, ApplicationServerConfig, hornet} from '@deepkit/framework';
 import {environment} from './src/environments/environment';
-import {rpc} from '@super-hornet/framework-shared';
+import {rpc} from '@deepkit/framework-shared';
 
 (global as any).WebSocket = require('ws');
 
@@ -42,7 +42,7 @@ export function app(): express.Express {
   return server;
 }
 
-async function run() {
+async function run(): Promise<void> {
   const port = parseInt(process.env.PORT || '0', 10) || 4000;
 
   // Start up the Node server
@@ -75,9 +75,9 @@ async function run() {
     config.port = 5200;
   }
 
-  const superHornet = new ApplicationServer(AppModule, config);
+  const appServer = new ApplicationServer(AppModule, config);
 
-  superHornet.start();
+  appServer.start();
 }
 
 // Webpack will replace 'require' with '__webpack_require__'

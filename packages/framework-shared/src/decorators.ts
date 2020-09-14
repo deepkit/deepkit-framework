@@ -1,4 +1,4 @@
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
@@ -7,7 +7,7 @@ import {
     mergeDecorator,
     PropertyDecoratorResult,
     PropertySchema,
-} from '@super-hornet/marshal';
+} from '@deepkit/marshal';
 
 class RpcController {
     name: string = '';

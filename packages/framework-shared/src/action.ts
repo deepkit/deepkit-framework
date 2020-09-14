@@ -1,5 +1,5 @@
-import {eachPair, isPromise} from '@super-hornet/core';
-import {getClassSchema, jitValidateProperty, plainSerializer, PropertySchema, ValidationFailedItem} from '@super-hornet/marshal';
+import {eachPair, isPromise} from '@deepkit/core';
+import {getClassSchema, jitValidateProperty, plainSerializer, PropertySchema, ValidationFailedItem} from '@deepkit/marshal';
 import {ValidationErrorItem, ValidationParameterError} from './core';
 
 export type ActionTypes = { parameters: PropertySchema[] };

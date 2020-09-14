@@ -1,5 +1,5 @@
-import {BenchSuite} from '@super-hornet/core';
-import {plainSerializer} from '@super-hornet/marshal';
+import {BenchSuite} from '@deepkit/core';
+import {plainSerializer} from '@deepkit/marshal';
 import {
     classToPlain,
     plainToClass

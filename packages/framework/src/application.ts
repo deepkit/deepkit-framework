@@ -1,6 +1,6 @@
-import {applyDefaults, ClassType} from '@super-hornet/core';
+import {applyDefaults, ClassType} from '@deepkit/core';
 import {WebWorker} from './worker';
-import {SuperHornetBaseModule} from './super-hornet-base.module';
+import {BaseModule} from './base.module';
 import {ProviderWithScope, ServiceContainer} from './service-container';
 import {DynamicModule, hornet, ModuleOptions} from './decorator';
 import {Command, Config, Options} from '@oclif/config';
@@ -25,7 +25,7 @@ export class Application {
             {provide: ApplicationConfig, useValue: this.config},
         );
 
-        imports.unshift(SuperHornetBaseModule.forRoot());
+        imports.unshift(BaseModule.forRoot());
         this.serviceContainer.processRootModule(appModule, providers, imports);
 
         for (const module of this.serviceContainer.getRegisteredModules()) {

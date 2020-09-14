@@ -1,7 +1,7 @@
-import {getClassSchemaByName, plainSerializer} from '@super-hornet/marshal';
+import {getClassSchemaByName, plainSerializer} from '@deepkit/marshal';
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from '../index';
 import {delete as deleteByPath, set} from 'dot-prop';
-import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@super-hornet/core';
+import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@deepkit/core';
 import {skip} from 'rxjs/operators';
 import {ObjectUnsubscribedError, Subject} from 'rxjs';
 

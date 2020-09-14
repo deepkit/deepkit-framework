@@ -1,5 +1,5 @@
 import 'jest';
-import {getClassSchema, plainSerializer, t} from '@super-hornet/marshal';
+import {getClassSchema, plainSerializer, t} from '@deepkit/marshal';
 import {QueryToSql} from '../src/query-filter';
 import {escape} from 'sqlstring';
 

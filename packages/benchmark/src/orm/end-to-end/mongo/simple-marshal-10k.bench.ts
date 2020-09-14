@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import {Entity, t} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
-import {Database} from '@super-hornet/marshal-orm';
-import {MongoDatabaseAdapter} from '@super-hornet/marshal-mongo';
+import {Entity, t} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
+import {Database} from '@deepkit/marshal-orm';
+import {MongoDatabaseAdapter} from '@deepkit/marshal-mongo';
 
 @Entity('marshal')
 export class MarshalModel {

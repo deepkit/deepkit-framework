@@ -1,5 +1,5 @@
-import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, plainSerializer, PropertySchema, Serializer, SerializerCompilers} from '@super-hornet/marshal';
-import {toFastProperties} from '@super-hornet/core';
+import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, plainSerializer, PropertySchema, Serializer, SerializerCompilers} from '@deepkit/marshal';
+import {toFastProperties} from '@deepkit/core';
 
 function createJITConverterForSnapshot(
     classSchema: ClassSchema,

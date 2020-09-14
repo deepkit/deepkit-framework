@@ -1,12 +1,12 @@
 import {MongoConnection} from './connection';
 import {parse as parseUrl} from 'url';
 import {parse as parseQueryString} from 'querystring';
-import {ClassSchema, getClassSchema, plainSerializer} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, plainSerializer} from '@deepkit/marshal';
 import {resolveSrvHosts} from './dns';
 import {Host} from './host';
 import {isErrorRetryableRead, isErrorRetryableWrite, MongoError} from './error';
 import {ConnectionOptions} from './options';
-import {arrayRemoveItem, ClassType, eachPair, singleStack, sleep} from '@super-hornet/core';
+import {arrayRemoveItem, ClassType, eachPair, singleStack, sleep} from '@deepkit/core';
 import {Command} from './command/command';
 
 /**

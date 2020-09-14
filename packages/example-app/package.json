@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/example-server",
+  "name": "@deepkit/example-server",
   "private": true,
   "version": "1.0.0-alpha.0",
   "description": "",
@@ -7,13 +7,13 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@super-hornet/core": "^1.0.0-alpha.0",
-    "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
-    "@super-hornet/framework-client": "^1.0.0-alpha.0",
-    "@super-hornet/framework": "^1.0.0-alpha.0",
-    "@super-hornet/framework-shared": "^1.0.0-alpha.0",
-    "@super-hornet/marshal": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0",
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/core-rxjs": "^1.0.0-alpha.0",
+    "@deepkit/framework-client": "^1.0.0-alpha.0",
+    "@deepkit/framework": "^1.0.0-alpha.0",
+    "@deepkit/framework-shared": "^1.0.0-alpha.0",
+    "@deepkit/marshal": "^1.0.0-alpha.0",
+    "@deepkit/marshal-mongo": "^1.0.0-alpha.0",
     "buffer": "^5.2.1",
     "rxjs": "~6.5.3",
     "sift": "^7.0.1",

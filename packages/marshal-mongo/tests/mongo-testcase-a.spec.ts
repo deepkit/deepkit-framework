@@ -1,8 +1,8 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, t, uuid, getClassSchema} from '@super-hornet/marshal';
-import {getInstanceState, hydrateEntity} from '@super-hornet/marshal-orm';
+import {Entity, t, uuid, getClassSchema} from '@deepkit/marshal';
+import {getInstanceState, hydrateEntity} from '@deepkit/marshal-orm';
 import {createDatabaseSession} from './utils';
 
 @Entity('user2')

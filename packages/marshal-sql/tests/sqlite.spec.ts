@@ -1,8 +1,8 @@
 import 'jest';
 import 'reflect-metadata';
 import {SQLiteDatabaseAdapter} from '../index';
-import {Entity, plainSerializer, t} from '@super-hornet/marshal';
-import {bench} from '@super-hornet/core';
+import {Entity, plainSerializer, t} from '@deepkit/marshal';
+import {bench} from '@deepkit/core';
 import {createSetup} from './setup';
 
 test('sqlite 10k bench', async () => {

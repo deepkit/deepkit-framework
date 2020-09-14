@@ -1,6 +1,6 @@
 import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema} from './decorators';
 import {isExcluded} from './mapper';
-import {ClassType, toFastProperties} from '@super-hornet/core';
+import {ClassType, toFastProperties} from '@deepkit/core';
 import {getDataConverterJS, reserveVariable} from './serializer-compiler';
 import {Serializer} from './serializer';
 

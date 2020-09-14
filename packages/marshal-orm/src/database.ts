@@ -1,7 +1,7 @@
-import {ClassType, CustomError} from '@super-hornet/core';
+import {ClassType, CustomError} from '@deepkit/core';
 import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
-import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema} from '@deepkit/marshal';
 import {DatabaseSession} from './database-session';
 
 export class NotFoundError extends CustomError {

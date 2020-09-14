@@ -1,7 +1,7 @@
 import {SQLQueryModel} from './sql-adapter';
 import {DefaultPlatform} from './platform/default-platform';
-import {ClassSchema, PropertySchema} from '@super-hornet/marshal';
-import {DatabaseJoinModel, getPrimaryKeyHashGenerator, QueryToSql} from '@super-hornet/marshal-orm';
+import {ClassSchema, PropertySchema} from '@deepkit/marshal';
+import {DatabaseJoinModel, getPrimaryKeyHashGenerator, QueryToSql} from '@deepkit/marshal-orm';
 
 type ConvertDataToDict = (row: any) => { [name: string]: any };
 

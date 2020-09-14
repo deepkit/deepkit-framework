@@ -1,7 +1,7 @@
 import {getClassSchema, PropertyCompilerSchema} from './decorators';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction} from './jit';
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@super-hornet/core';
+import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
 import {getDataConverterJS} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';

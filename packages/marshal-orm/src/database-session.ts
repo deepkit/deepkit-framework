@@ -1,8 +1,8 @@
 import {DatabaseAdapter, DatabasePersistence} from './database';
 import {Entity} from './query';
-import {ClassType, CustomError} from '@super-hornet/core';
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, isArray} from '@super-hornet/marshal';
-import {GroupArraySort} from '@super-hornet/topsort';
+import {ClassType, CustomError} from '@deepkit/core';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, isArray} from '@deepkit/marshal';
+import {GroupArraySort} from '@deepkit/topsort';
 import {getNormalizedPrimaryKey, IdentityMap, PrimaryKey} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
 import {HydratorFn, markAsHydrated} from './formatter';

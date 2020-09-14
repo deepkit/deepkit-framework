@@ -1,5 +1,5 @@
-import {Client, TransportConnectionHooks} from '@super-hornet/framework-client';
-import {ClientMessageAll} from '@super-hornet/framework-shared';
+import {Client, TransportConnectionHooks} from '@deepkit/framework-client';
+import {ClientMessageAll} from '@deepkit/framework-shared';
 import {BaseWorker} from './worker';
 import {ApplicationServer} from './application-server';
 import {injectable} from './injector/injector';

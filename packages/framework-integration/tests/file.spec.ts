@@ -1,10 +1,10 @@
 import 'jest-extended';
-import {File, rpc, StreamBehaviorSubject} from '@super-hornet/framework-shared';
-import {EntityStorage, FS} from '@super-hornet/fs';
+import {File, rpc, StreamBehaviorSubject} from '@deepkit/framework-shared';
+import {EntityStorage, FS} from '@deepkit/fs';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {sleep} from '@super-hornet/core';
+import {sleep} from '@deepkit/core';
 import {Buffer} from 'buffer';
-import {arrayBufferTo} from '@super-hornet/marshal';
+import {arrayBufferTo} from '@deepkit/marshal';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');

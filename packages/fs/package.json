@@ -1,9 +1,9 @@
 {
-  "name": "@super-hornet/fs",
+  "name": "@deepkit/fs",
   "version": "1.0.0-alpha.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
@@ -15,10 +15,10 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "dependencies": {
-    "@super-hornet/framework": "^1.0.0-alpha.0",
-    "@super-hornet/framework-shared": "^1.0.0-alpha.0",
-    "@super-hornet/marshal": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-orm": "^1.0.0-alpha.0",
+    "@deepkit/framework": "^1.0.0-alpha.0",
+    "@deepkit/framework-shared": "^1.0.0-alpha.0",
+    "@deepkit/marshal": "^1.0.0-alpha.0",
+    "@deepkit/marshal-orm": "^1.0.0-alpha.0",
     "rxjs": "~6.5.3"
   },
   "jest": {

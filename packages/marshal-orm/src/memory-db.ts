@@ -1,7 +1,7 @@
 import {DatabaseSession} from './database-session';
 import {DatabaseQueryModel, Entity, GenericQuery} from './query';
-import {ClassSchema, getClassSchema} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
+import {ClassSchema, getClassSchema} from '@deepkit/marshal';
+import {ClassType} from '@deepkit/core';
 import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence} from './database';
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {

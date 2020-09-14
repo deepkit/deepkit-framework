@@ -1,4 +1,4 @@
-import {CustomError} from '@super-hornet/core';
+import {CustomError} from '@deepkit/core';
 
 export class MongoError extends CustomError {
     constructor(message: string, public readonly code?: number) {

@@ -1,10 +1,10 @@
 {
-  "name": "@super-hornet/framework-integration",
+  "name": "@deepkit/framework-integration",
   "version": "1.0.0-alpha.0",
   "main": "src",
   "module": "src",
   "license": "MIT",
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "private": true,
   "scripts": {
@@ -12,13 +12,13 @@
     "tsc-watch": "echo nothing"
   },
   "dependencies": {
-    "@super-hornet/core": "^1.0.0-alpha.0",
-    "@super-hornet/core-rxjs": "^1.0.0-alpha.0",
-    "@super-hornet/framework-client": "^1.0.0-alpha.0",
-    "@super-hornet/framework": "^1.0.0-alpha.0",
-    "@super-hornet/framework-shared": "^1.0.0-alpha.0",
-    "@super-hornet/marshal": "^1.0.0-alpha.0",
-    "@super-hornet/marshal-mongo": "^1.0.0-alpha.0",
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/core-rxjs": "^1.0.0-alpha.0",
+    "@deepkit/framework-client": "^1.0.0-alpha.0",
+    "@deepkit/framework": "^1.0.0-alpha.0",
+    "@deepkit/framework-shared": "^1.0.0-alpha.0",
+    "@deepkit/marshal": "^1.0.0-alpha.0",
+    "@deepkit/marshal-mongo": "^1.0.0-alpha.0",
     "buffer": "^5.2.1",
     "fs-extra": "^9.0.1",
     "rxjs": "~6.5.3",
@@ -39,7 +39,7 @@
     },
     "coverageDirectory": "<rootDir>/coverage/",
     "collectCoverageFrom": [
-      "node_modules/@super-hornet/framework-shared/**/*.ts"
+      "node_modules/@deepkit/framework-shared/**/*.ts"
     ],
     "transformIgnorePatterns": [
       "NIX"

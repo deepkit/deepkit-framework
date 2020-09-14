@@ -1,14 +1,14 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@super-hornet/framework-shared';
+import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@deepkit/framework-shared';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from './util';
 import {Observable} from 'rxjs';
 import {bufferCount, first, skip} from 'rxjs/operators';
-import {Entity, getClassSchema, PropertySchema, t} from '@super-hornet/marshal';
-import {ObserverTimer} from '@super-hornet/core-rxjs';
-import {isArray} from '@super-hornet/core';
-import {ClientProgress} from '@super-hornet/framework-client';
-import {rpc} from '@super-hornet/framework-shared';
+import {Entity, getClassSchema, PropertySchema, t} from '@deepkit/marshal';
+import {ObserverTimer} from '@deepkit/core-rxjs';
+import {isArray} from '@deepkit/core';
+import {ClientProgress} from '@deepkit/framework-client';
+import {rpc} from '@deepkit/framework-shared';
 
 afterAll(async () => {
     await closeAllCreatedServers();

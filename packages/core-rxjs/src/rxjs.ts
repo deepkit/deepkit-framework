@@ -1,5 +1,5 @@
 import {BehaviorSubject, Observable, Subscriber, Subscription, TeardownLogic} from 'rxjs';
-import {arrayRemoveItem, createStack, mergePromiseStack, mergeStack} from '@super-hornet/core';
+import {arrayRemoveItem, createStack, mergePromiseStack, mergeStack} from '@deepkit/core';
 import {first, skip} from 'rxjs/operators';
 
 export class AsyncSubscription {

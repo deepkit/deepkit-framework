@@ -1,5 +1,5 @@
 import {getClassSchema, PropertyCompilerSchema} from './decorators';
-import {isValidEnumValue} from '@super-hornet/core';
+import {isValidEnumValue} from '@deepkit/core';
 import {typedArrayNamesMap, Types} from './models';
 
 export type JSONTypeGuard = (v: any) => boolean;

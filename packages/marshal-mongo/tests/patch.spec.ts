@@ -5,7 +5,7 @@ import {DocumentClass} from './document-scenario/DocumentClass';
 import {PageCollection} from './document-scenario/PageCollection';
 import {PageClass} from './document-scenario/PageClass';
 import {mongoSerializer} from '../src/mongo-serializer';
-import {plainSerializer} from '@super-hornet/marshal';
+import {plainSerializer} from '@deepkit/marshal';
 
 test('partial 2', () => {
     const instance = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {

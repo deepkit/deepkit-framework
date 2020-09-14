@@ -1,4 +1,4 @@
-import {BenchSuite} from '@super-hornet/core';
+import {BenchSuite} from '@deepkit/core';
 import {classToPlain, Exclude as ctExclude, plainToClass, Transform, Type} from 'class-transformer';
 
 export class SubModel {

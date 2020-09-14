@@ -3,7 +3,7 @@ import {
     t,
     uuid,
     MultiIndex
-} from '@super-hornet/marshal';
+} from '@deepkit/marshal';
 
 export class JobTaskQueue {
     @t

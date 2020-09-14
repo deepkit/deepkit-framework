@@ -1,5 +1,5 @@
-import {t, validate, validateFactory} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
+import {t, validate, validateFactory} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
 import {good} from './validation';
 
 const Model = t.schema({

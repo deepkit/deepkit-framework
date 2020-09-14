@@ -1,6 +1,6 @@
-import {FieldDecoratorWrapper, getClassSchema} from '@super-hornet/marshal';
+import {FieldDecoratorWrapper, getClassSchema} from '@deepkit/marshal';
 import {ClassProvider, ExistingProvider, FactoryProvider, Provider, ValueProvider,} from './provider';
-import {ClassType, getClassName, isClass, isFunction} from '@super-hornet/core';
+import {ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
 
 export interface InjectDecorator {
     (target: object, property?: string, parameterIndexOrDescriptor?: any): any;

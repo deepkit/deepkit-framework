@@ -34,7 +34,7 @@ for (const name of packages) {
     // console.log('   -> deps', deps);
 
     for (const dep of deps) {
-        if (dep.startsWith('@super-hornet/')) {
+        if (dep.startsWith('@deepkit/')) {
             if (!tsReferences.has(dep)) {
                 console.log(`  ERR: ${dep} as dependency, but not in tsconfig.json references.`);
             }

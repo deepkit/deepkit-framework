@@ -1,6 +1,6 @@
 import {Command} from './command';
-import {ClassSchema} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
+import {ClassSchema} from '@deepkit/marshal';
+import {ClassType} from '@deepkit/core';
 
 export class GenericCommand<T extends ClassSchema | ClassType> extends Command {
     constructor(protected cmd: any) {

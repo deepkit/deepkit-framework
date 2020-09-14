@@ -1,4 +1,4 @@
-import {entity, t} from '@super-hornet/marshal';
+import {entity, t} from '@deepkit/marshal';
 import {UserCredentials} from './user-credentials';
 
 @entity.name('user')

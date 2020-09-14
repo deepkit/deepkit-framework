@@ -1,9 +1,9 @@
 import * as sqlite3 from 'sqlite3';
 import {SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
-import {DatabaseSession} from '@super-hornet/marshal-orm';
+import {DatabaseSession} from '@deepkit/marshal-orm';
 import {SQLitePlatform} from './platform/sqlite-platform';
-import {ClassSchema} from '@super-hornet/marshal';
-import {asyncOperation} from '@super-hornet/core';
+import {ClassSchema} from '@deepkit/marshal';
+import {asyncOperation} from '@deepkit/core';
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected stmt: sqlite3.Statement) {

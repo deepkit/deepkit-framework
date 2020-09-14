@@ -1,6 +1,6 @@
-import {Database} from '@super-hornet/marshal-orm';
-import {ClassSchema} from '@super-hornet/marshal';
-import {ClassType} from '@super-hornet/core';
+import {Database} from '@deepkit/marshal-orm';
+import {ClassSchema} from '@deepkit/marshal';
+import {ClassType} from '@deepkit/core';
 import {SQLDatabaseAdapter, SQLiteDatabaseAdapter} from '../index';
 import {MySQLDatabaseAdapter} from '../src/mysql-adapter';
 

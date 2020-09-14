@@ -1,5 +1,5 @@
 {
-  "name": "@super-hornet/marshal",
+  "name": "@deepkit/marshal",
   "version": "1.0.0-alpha.0",
   "description": "Marshal.ts the fastest universal TypeScript serializer and validator with JIT engine for frontend, backend, http-transport, RPC, and database, with built-in validations, NestJS support, and MongoDB ORM/Query builder, for Browser/NodeJS.",
   "main": "dist/index.js",
@@ -10,7 +10,7 @@
     "tsc": "tsc --build",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
@@ -20,7 +20,7 @@
     "moment": "^2.0.0"
   },
   "dependencies": {
-    "@super-hornet/core": "^1.0.0-alpha.0",
+    "@deepkit/core": "^1.0.0-alpha.0",
     "buffer": "^5.2.1",
     "clone": "^2.1.1",
     "get-parameter-names": "^0.3.0",

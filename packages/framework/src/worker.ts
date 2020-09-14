@@ -1,5 +1,5 @@
 import {ClientConnection} from './client-connection';
-import {ClientMessageAll, ConnectionWriter, ConnectionWriterStream} from '@super-hornet/framework-shared';
+import {ClientMessageAll, ConnectionWriter, ConnectionWriterStream} from '@deepkit/framework-shared';
 import * as WebSocket from 'ws';
 import * as http from 'http';
 import {IncomingMessage, ServerResponse} from 'http';

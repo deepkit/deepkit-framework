@@ -1,8 +1,8 @@
-import {arrayRemoveItem, ClassType, getClassName, isClass} from '@super-hornet/core';
+import {arrayRemoveItem, ClassType, getClassName, isClass} from '@deepkit/core';
 import {DynamicModule, hornet, httpClass, isDynamicModuleObject, isModuleToken, SuperHornetModule,} from './decorator';
 import {Injector, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, tokenLabel} from './injector/injector';
 import {Provider, ProviderProvide, TypeProvider} from './injector/provider';
-import {rpcClass} from '@super-hornet/framework-shared';
+import {rpcClass} from '@deepkit/framework-shared';
 import {cli} from './command';
 import {RouterControllers} from './router';
 

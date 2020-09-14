@@ -1,5 +1,5 @@
-import {Entity, Formatter, GenericQueryResolver} from '@super-hornet/marshal-orm';
-import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@super-hornet/marshal';
+import {Entity, Formatter, GenericQueryResolver} from '@deepkit/marshal-orm';
+import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@deepkit/marshal';
 import {DEEP_SORT, MongoQueryModel} from './query.model';
 import {convertClassQueryToMongo,} from './mapping';
 import {FilterQuery} from 'mongodb';

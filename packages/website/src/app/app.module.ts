@@ -3,7 +3,7 @@ import {Inject, NgModule, Optional} from '@angular/core';
 
 import {AppRoutingModule} from './app-routing.module';
 import {AppComponent} from './app.component';
-import {SocketClient} from '@super-hornet/framework-client';
+import {SocketClient} from '@deepkit/framework-client';
 import {environment} from '../environments/environment';
 import {DOCUMENT} from '@angular/common';
 

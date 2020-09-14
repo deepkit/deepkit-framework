@@ -1,5 +1,5 @@
-import {ClassSchema, cloneClass, getClassSchema, plainSerializer} from '@super-hornet/marshal';
-import {eachPair, getPathValue, size} from '@super-hornet/core';
+import {ClassSchema, cloneClass, getClassSchema, plainSerializer} from '@deepkit/marshal';
+import {eachPair, getPathValue, size} from '@deepkit/core';
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';
 import {BehaviorSubject} from 'rxjs';

@@ -2,7 +2,7 @@ import {mkdirSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import 'reflect-metadata';
 import * as vm from 'vm';
-import {getGlobalStore} from '@super-hornet/marshal';
+import {getGlobalStore} from '@deepkit/marshal';
 const fg = require('fast-glob');
 
 const filter = process.argv[2] || '';
@@ -32,7 +32,7 @@ async function main() {
             delete require.cache[key];
         }
         getGlobalStore().RegisteredEntities = {};
-        const script = new vm.Script(`require('@super-hornet/core').BenchSuite.onComplete = onComplete; (require(benchmarkPath).main())`);
+        const script = new vm.Script(`require('@deepkit/core').BenchSuite.onComplete = onComplete; (require(benchmarkPath).main())`);
         await script.runInNewContext({benchmarkPath, require, onComplete});
     }
 

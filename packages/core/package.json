@@ -1,10 +1,10 @@
 {
-  "name": "@super-hornet/core",
+  "name": "@deepkit/core",
   "version": "1.0.0-alpha.0",
   "description": "Super Hornet core library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "repository": "https://github.com/super-hornet/super-hornet.ts",
+  "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {

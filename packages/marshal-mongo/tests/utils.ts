@@ -1,4 +1,4 @@
-import {Database, DatabaseSession} from '@super-hornet/marshal-orm';
+import {Database, DatabaseSession} from '@deepkit/marshal-orm';
 import {MongoDatabaseAdapter} from '../src/adapter';
 import {GenericCommand} from '../src/client/command/generic';
 

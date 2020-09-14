@@ -1,6 +1,6 @@
-import {t} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
-import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@super-hornet/marshal-orm';
+import {t} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
+import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@deepkit/marshal-orm';
 
 export async function main() {
     const schema = t.schema({

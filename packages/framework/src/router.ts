@@ -1,7 +1,7 @@
-import {ClassType, CompilerContext, toFastProperties} from '@super-hornet/core';
+import {ClassType, CompilerContext, toFastProperties} from '@deepkit/core';
 import {join} from 'path';
-import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, plainSerializer} from '@super-hornet/marshal';
-import {ValidationError} from '@super-hornet/framework-shared';
+import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, plainSerializer} from '@deepkit/marshal';
+import {ValidationError} from '@deepkit/framework-shared';
 import {httpClass} from './decorator';
 import {injectable} from './injector/injector';
 

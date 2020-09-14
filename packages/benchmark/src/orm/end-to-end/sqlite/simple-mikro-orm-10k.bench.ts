@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import {BenchSuite} from '@super-hornet/core';
+import {BenchSuite} from '@deepkit/core';
 import {Entity as MikroEntity, MikroORM, PrimaryKey, Property, ReflectMetadataProvider} from 'mikro-orm';
 
 @MikroEntity({collection: 'mikro'})

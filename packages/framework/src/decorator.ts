@@ -1,7 +1,7 @@
-import {ClassType, isClass} from '@super-hornet/core';
+import {ClassType, isClass} from '@deepkit/core';
 import {InjectToken} from './injector/injector';
 import {ProviderWithScope} from './service-container';
-import {ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult} from '@super-hornet/marshal';
+import {ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult} from '@deepkit/marshal';
 import {join} from 'path';
 
 export interface ModuleOptions {

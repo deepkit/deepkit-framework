@@ -1,5 +1,5 @@
-import {Entity, f, plainSerializer} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
+import {Entity, f, plainSerializer} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
 
 
 @Entity('sub')

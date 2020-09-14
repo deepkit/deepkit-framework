@@ -1,6 +1,6 @@
 import {ClassSchema, getClassSchema, PropertyCompilerSchema} from './decorators';
 import {TypeConverterCompiler} from './serializer-compiler';
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {
     getClassToXFunction,
     getPartialClassToXFunction,

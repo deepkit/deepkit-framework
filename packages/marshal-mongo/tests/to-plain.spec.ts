@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {ObjectID} from 'mongodb';
-import {plainSerializer, t} from '@super-hornet/marshal';
+import {plainSerializer, t} from '@deepkit/marshal';
 import {mongoSerializer, uuid4Binary} from '../src/mongo-serializer';
 
 test('mongo to plain', () => {

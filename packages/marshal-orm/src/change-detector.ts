@@ -1,6 +1,6 @@
-import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@super-hornet/marshal';
+import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@deepkit/marshal';
 import {getInstanceState} from './identity-map';
-import {getObjectKeysSize} from '@super-hornet/core';
+import {getObjectKeysSize} from '@deepkit/core';
 import {getJITConverterForSnapshot} from './converter';
 
 function genericEqualArray(a: any[], b: any[]): boolean {

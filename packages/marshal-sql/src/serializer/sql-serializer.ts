@@ -9,7 +9,7 @@ import {
     PropertyCompilerSchema,
     typedArrayNamesMap,
     typedArrayToBuffer
-} from '@super-hornet/marshal';
+} from '@deepkit/marshal';
 
 export const hexTable: string[] = [];
 for (let i = 0; i < 256; i++) {

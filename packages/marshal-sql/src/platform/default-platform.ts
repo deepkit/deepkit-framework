@@ -1,7 +1,7 @@
 import {Column, ColumnDiff, Database, ForeignKey, Index, Table, TableDiff} from '../schema/table';
-import {ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@deepkit/marshal';
 import {escape} from 'sqlstring';
-import {ClassType, isPlainObject} from '@super-hornet/core';
+import {ClassType, isPlainObject} from '@deepkit/core';
 import {sqlSerializer} from '../serializer/sql-serializer';
 
 export function isSet(v: any): boolean {

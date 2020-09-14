@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {Collection} from '../src/collection';
-import {uuid} from '@super-hornet/marshal';
+import {uuid} from '@deepkit/marshal';
 
 test('collection basic', () => {
     class Item {

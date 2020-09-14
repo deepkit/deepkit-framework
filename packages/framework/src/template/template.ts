@@ -1,5 +1,5 @@
 import './elements';
-import {ClassType, isClass} from '@super-hornet/core';
+import {ClassType, isClass} from '@deepkit/core';
 import {Injector} from '../injector/injector';
 import {addHook} from 'pirates';
 import {optimize} from './optimize-tsx';

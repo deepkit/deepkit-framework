@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, Patcher, plainSerializer} from '@super-hornet/marshal';
-import {BenchSuite} from '@super-hornet/core';
+import {f, getClassSchema, Patcher, plainSerializer} from '@deepkit/marshal';
+import {BenchSuite} from '@deepkit/core';
 
 test.only('nope');
 

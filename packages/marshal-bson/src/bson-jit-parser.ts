@@ -1,6 +1,6 @@
-import {ClassSchema, getClassSchema, PropertySchema} from '@super-hornet/marshal';
+import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/marshal';
 import {BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_DATE, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize, moment} from './utils';
-import {ClassType} from '@super-hornet/core';
+import {ClassType} from '@deepkit/core';
 import {BaseParser, ParserV2} from './bson-parser';
 import {seekElementSize} from './continuation';
 

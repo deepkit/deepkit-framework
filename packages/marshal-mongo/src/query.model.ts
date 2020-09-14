@@ -1,4 +1,4 @@
-import {DatabaseQueryModel, Entity, SORT_ORDER} from '@super-hornet/marshal-orm';
+import {DatabaseQueryModel, Entity, SORT_ORDER} from '@deepkit/marshal-orm';
 import {Binary} from 'bson';
 
 type BSONTypeAlias =

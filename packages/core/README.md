@@ -6,14 +6,14 @@
 ### Installation
 
 ```
-npm install @super-hornet/core
+npm install @deepkit/core
 ```
 
 
 ### Usage example
 
 ```typescript
-import {each} from "@super-hornet/core";
+import {each} from "@deepkit/core";
 
 for (const item of each({a: 1, b: 2, c: 3})) {
     console.log(item)

@@ -1,10 +1,10 @@
 import {Collection, JSONObjectCollection} from './collection';
 import {ClientMessageAll, CollectionStream, ServerMessageAll} from './contract';
 import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from './core';
-import {Subscriptions} from '@super-hornet/core-rxjs';
+import {Subscriptions} from '@deepkit/core-rxjs';
 import {Observable, Subscription} from 'rxjs';
-import {ClassType, each, getObjectKeysSize, isFunction, sleep} from '@super-hornet/core';
-import {getEntityName, plainSerializer, PropertySchema, PropertySchemaSerialized, Types} from '@super-hornet/marshal';
+import {ClassType, each, getObjectKeysSize, isFunction, sleep} from '@deepkit/core';
+import {getEntityName, plainSerializer, PropertySchema, PropertySchemaSerialized, Types} from '@deepkit/marshal';
 import {skip} from 'rxjs/operators';
 
 export interface ConnectionWriterStream {

@@ -1,5 +1,5 @@
 import {BehaviorSubject, Subject} from 'rxjs';
-import {plainSerializer, PropertySchema} from '@super-hornet/marshal';
+import {plainSerializer, PropertySchema} from '@deepkit/marshal';
 import {
     Batcher,
     ClientMessageAll,
@@ -23,9 +23,9 @@ import {
     ServerMessageResult,
     SimpleConnectionWriter,
     StreamBehaviorSubject,
-} from '@super-hornet/framework-shared';
-import {asyncOperation, ClassType, eachKey, sleep} from '@super-hornet/core';
-import {AsyncSubscription} from '@super-hornet/core-rxjs';
+} from '@deepkit/framework-shared';
+import {asyncOperation, ClassType, eachKey, sleep} from '@deepkit/core';
+import {AsyncSubscription} from '@deepkit/core-rxjs';
 
 export class AuthenticationError extends Error {
     constructor(message: string = 'Authentication failed') {

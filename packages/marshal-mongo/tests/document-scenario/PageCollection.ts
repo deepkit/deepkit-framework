@@ -1,5 +1,5 @@
 import {PageClass} from "./PageClass";
-import {t} from "@super-hornet/marshal";
+import {t} from "@deepkit/marshal";
 
 export class PageCollection {
     constructor(

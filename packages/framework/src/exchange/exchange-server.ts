@@ -1,6 +1,6 @@
 import {decodeMessage, encodeMessage} from './exchange-prot';
-import {ParsedHost, parseHost, ProcessLock, ProcessLocker} from '@super-hornet/core';
-import {Subscriptions} from '@super-hornet/core-rxjs';
+import {ParsedHost, parseHost, ProcessLock, ProcessLocker} from '@deepkit/core';
+import {Subscriptions} from '@deepkit/core-rxjs';
 import {Subscription} from 'rxjs';
 import * as WebSocket from 'ws';
 import {createServer, Server} from 'http';

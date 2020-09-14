@@ -1,6 +1,6 @@
 import {PageCollection} from "./PageCollection";
 import {PageClass} from "./PageClass";
-import {t, ParentReference} from "@super-hornet/marshal";
+import {t, ParentReference} from "@deepkit/marshal";
 
 export class DocumentClass {
     @t.primary.mongoId

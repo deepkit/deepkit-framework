@@ -1,5 +1,5 @@
 import {ClassSchema, getClassSchema, getClassTypeFromInstance} from './decorators';
-import {ClassType, getClassName} from '@super-hornet/core';
+import {ClassType, getClassName} from '@deepkit/core';
 import {JitConverterOptions} from './jit';
 import {plainSerializer} from './plain-serializer';
 

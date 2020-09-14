@@ -1,7 +1,7 @@
 # Marshal.ts
 
 <div align="center">
-<img src="https://raw.github.com/super-hornet/super-hornet.ts/master/packages/marshal/assets/marshal-logo.png" />
+<img src="https://raw.github.com/deepkit/framework/master/packages/marshal/assets/marshal-logo.png" />
 </div>
 
 [![Build Status](https://travis-ci.com/marcj/marshal.ts.svg?branch=master)](https://travis-ci.com/marcj/marshal.ts)
