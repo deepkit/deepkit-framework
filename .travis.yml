@@ -11,11 +11,10 @@ cache:
   - node_modules
 before_script:
 - npm install
-- ./node_modules/.bin/lerna bootstrap --nohoist \* --no-ci
-- ./node_modules/.bin/tsc --version
+- npm run bootstrap
+- npm run tsc
 - sleep 1
 script:
-- ./node_modules/.bin/tsc --build
-- ./node_modules/.bin/jest --coverage --forceExit
+- npm run test
 - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
 - cd packages/benchmark; npm run setup && npm run benchmark
