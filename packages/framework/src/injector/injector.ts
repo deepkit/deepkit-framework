@@ -1,4 +1,4 @@
-import {FieldDecoratorWrapper, getClassSchema} from '@deepkit/marshal';
+import {FieldDecoratorWrapper, getClassSchema} from '@deepkit/type';
 import {ClassProvider, ExistingProvider, FactoryProvider, Provider, ValueProvider,} from './provider';
 import {ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
 
@@ -26,7 +26,7 @@ export function inject(type?: any | ForwardRef<any>): InjectDecorator {
 
     const fn = (target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
         FieldDecoratorWrapper((target: object, property) => {
-            property.data['super-hornet/inject'] = injectOptions;
+            property.data['deepkit/inject'] = injectOptions;
         })(target, propertyOrMethodName, parameterIndexOrDescriptor);
     };
 
@@ -168,7 +168,7 @@ export class Injector {
         const schema = getClassSchema(classType);
 
         for (const property of schema.getMethodProperties('constructor')) {
-            const options = property.data['super-hornet/inject'] as InjectOptions | undefined;
+            const options = property.data['deepkit/inject'] as InjectOptions | undefined;
             let token: any = property.resolveClassType;
             const isOptional = options && options.optional;
 

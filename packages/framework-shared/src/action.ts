@@ -1,5 +1,5 @@
 import {eachPair, isPromise} from '@deepkit/core';
-import {getClassSchema, jitValidateProperty, plainSerializer, PropertySchema, ValidationFailedItem} from '@deepkit/marshal';
+import {getClassSchema, jitValidateProperty, plainSerializer, PropertySchema, ValidationFailedItem} from '@deepkit/type';
 import {ValidationErrorItem, ValidationParameterError} from './core';
 
 export type ActionTypes = { parameters: PropertySchema[] };

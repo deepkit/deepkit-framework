@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "noImplicitAny": false,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2020",
+    "module": "CommonJS",
+
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true,
+    "typeRoots": [
+      "node_modules/@types",
+      "types"
+    ],
+    "types": [
+      "mongo-uuid"
+    ]
+  },
+  "include": [
+    "benchmarks",
+    "src",
+    "tests",
+    "index.ts"
+  ],
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../bson/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.dist.json"
+    },
+    {
+      "path": "../orm/tsconfig.json"
+    }
+  ]
+}

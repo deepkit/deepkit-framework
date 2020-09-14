@@ -1,6 +1,6 @@
 import {hornet} from '@deepkit/framework';
 import {FsConfig} from './fs.config';
-import {Database, DatabaseAdapter} from '@deepkit/marshal-orm';
+import {Database, DatabaseAdapter} from '@deepkit/orm';
 import {HornetFile} from '@deepkit/framework-shared';
 
 @hornet.module({

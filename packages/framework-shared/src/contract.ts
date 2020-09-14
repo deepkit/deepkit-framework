@@ -1,6 +1,6 @@
 import {JSONEntity} from './core';
 import {CollectionPaginationEvent, CollectionSort, FilterParameters} from './collection';
-import {PropertySchemaSerialized} from '@deepkit/marshal';
+import {PropertySchemaSerialized} from '@deepkit/type';
 
 export interface IdInterface {
     id: string;

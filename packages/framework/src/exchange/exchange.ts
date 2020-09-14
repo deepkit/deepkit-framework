@@ -1,5 +1,5 @@
 import {Subscription} from 'rxjs';
-import {getEntityName} from '@deepkit/marshal';
+import {getEntityName} from '@deepkit/type';
 import {ExchangeEntity, StreamFileResult} from '@deepkit/framework-shared';
 import {ClassType, ParsedHost, parseHost, sleep} from '@deepkit/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';

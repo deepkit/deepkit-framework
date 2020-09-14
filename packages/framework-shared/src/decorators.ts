@@ -7,7 +7,7 @@ import {
     mergeDecorator,
     PropertyDecoratorResult,
     PropertySchema,
-} from '@deepkit/marshal';
+} from '@deepkit/type';
 
 class RpcController {
     name: string = '';

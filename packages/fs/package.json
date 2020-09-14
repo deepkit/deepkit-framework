@@ -17,8 +17,8 @@
   "dependencies": {
     "@deepkit/framework": "^1.0.0-alpha.0",
     "@deepkit/framework-shared": "^1.0.0-alpha.0",
-    "@deepkit/marshal": "^1.0.0-alpha.0",
-    "@deepkit/marshal-orm": "^1.0.0-alpha.0",
+    "@deepkit/type": "^1.0.0-alpha.0",
+    "@deepkit/orm": "^1.0.0-alpha.0",
     "rxjs": "~6.5.3"
   },
   "jest": {

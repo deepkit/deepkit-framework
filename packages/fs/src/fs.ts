@@ -5,8 +5,8 @@ import {AlreadyEncoded, File, FileMode, FileType, FilterQuery, StreamBehaviorSub
 import {eachKey, eachPair} from '@deepkit/core';
 import * as crypto from 'crypto';
 import {ProcessLocker} from './process-locker';
-import {Database} from '@deepkit/marshal-orm';
-import {partialClassToPlain} from '@deepkit/marshal';
+import {Database} from '@deepkit/orm';
+import {partialClassToPlain} from '@deepkit/type';
 import {decodePayloadAsJson, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
 import {injectable} from '@deepkit/framework';
 
@@ -30,7 +30,7 @@ export class FS<T extends File> {
         private exchange: Exchange,
         private database: Database,
         private locker: ProcessLocker,
-        private fileDir: string /* .super-hornet/data/files/ */,
+        private fileDir: string /* .deepkit/data/files/ */,
     ) {
     }
 

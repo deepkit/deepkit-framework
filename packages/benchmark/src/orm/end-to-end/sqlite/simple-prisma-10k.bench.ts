@@ -30,7 +30,7 @@ export async function main() {
             const users = await prisma.model.findMany();
         });
 
-        // const dbItems = await session.query(MarshalModel).find();
+        // const dbItems = await session.query(DeepkitModel).find();
         // for (const item of dbItems) {
         //     item.priority++;
         // }

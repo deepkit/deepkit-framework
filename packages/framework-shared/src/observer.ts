@@ -1,4 +1,4 @@
-import {ClassSchema, cloneClass, getClassSchema, plainSerializer} from '@deepkit/marshal';
+import {ClassSchema, cloneClass, getClassSchema, plainSerializer} from '@deepkit/type';
 import {eachPair, getPathValue, size} from '@deepkit/core';
 import {compare, Operation} from 'fast-json-patch';
 import {set} from 'dot-prop';

@@ -17,19 +17,19 @@
       "path": "packages/framework/tsconfig.json"
     },
     {
-      "path": "packages/marshal/tsconfig.dist.json"
+      "path": "packages/type/tsconfig.dist.json"
     },
     {
-      "path": "packages/marshal-bson/tsconfig.json"
+      "path": "packages/bson/tsconfig.json"
     },
     {
-      "path": "packages/marshal-mongo/tsconfig.json"
+      "path": "packages/mongo/tsconfig.json"
     },
     {
-      "path": "packages/marshal-sql/tsconfig.json"
+      "path": "packages/sql/tsconfig.json"
     },
     {
-      "path": "packages/marshal-orm-integration/tsconfig.json"
+      "path": "packages/orm-integration/tsconfig.json"
     }
   ]
 }

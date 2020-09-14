@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, f} from '@deepkit/marshal';
+import {Entity, f} from '@deepkit/type';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
 import {hornet, InternalClient, SecurityStrategy, Session} from '@deepkit/framework';
 import {Observable} from 'rxjs';

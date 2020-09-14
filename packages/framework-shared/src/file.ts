@@ -1,5 +1,5 @@
 import {IdInterface} from './contract';
-import {Entity, t, uuid} from '@deepkit/marshal';
+import {Entity, t, uuid} from '@deepkit/type';
 import {ClassType, eachKey} from '@deepkit/core';
 
 export enum FileMode {

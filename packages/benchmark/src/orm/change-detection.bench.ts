@@ -1,6 +1,6 @@
-import {t} from '@deepkit/marshal';
+import {t} from '@deepkit/type';
 import {BenchSuite} from '@deepkit/core';
-import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@deepkit/marshal-orm';
+import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@deepkit/orm';
 
 export async function main() {
     const schema = t.schema({

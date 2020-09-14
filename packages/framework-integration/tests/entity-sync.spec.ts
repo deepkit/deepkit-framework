@@ -2,11 +2,11 @@ import 'jest-extended';
 import {Collection, EntitySubject, IdInterface, ReactiveSubQuery, rpc} from '@deepkit/framework-shared';
 import {ClientConnection, EntityStorage, ExchangeDatabase} from '@deepkit/framework';
 import {closeAllCreatedServers, createServerClientPair} from './util';
-import {Entity, getClassSchema, t, uuid} from '@deepkit/marshal';
+import {Entity, getClassSchema, t, uuid} from '@deepkit/type';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@deepkit/core-rxjs';
 import {sleep} from '@deepkit/core';
-import {Database} from '@deepkit/marshal-mongo';
+import {Database} from '@deepkit/mongo';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');

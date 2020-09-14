@@ -4,7 +4,7 @@ import {ApplicationServer, hornet, ExchangeConfig, Application} from '@deepkit/f
 import {RemoteController} from '@deepkit/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
-import {SuperHornetClient} from '@deepkit/framework-client';
+import {DeepkitClient} from '@deepkit/framework-client';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -53,9 +53,9 @@ export async function createServerClientPair(
 ): Promise<{
     app: Application,
     server: ApplicationServer,
-    client: SuperHornetClient,
+    client: DeepkitClient,
     close: () => Promise<void>,
-    createClient: () => SuperHornetClient,
+    createClient: () => DeepkitClient,
     createControllerClient: <T>(controllerName: string) => RemoteController<T>
 }> {
     const dbName = 'super_hornet_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
@@ -85,9 +85,9 @@ export async function createServerClientPair(
 
     await appServer.start();
 
-    const createdClients: SuperHornetClient[] = [];
+    const createdClients: DeepkitClient[] = [];
 
-    const socket = new SuperHornetClient('ws+unix://' + socketPath);
+    const socket = new DeepkitClient('ws+unix://' + socketPath);
 
     createdClients.push(socket);
 
@@ -125,12 +125,12 @@ export async function createServerClientPair(
         server: appServer,
         client: socket,
         createClient: () => {
-            const client = new SuperHornetClient('ws+unix://' + socketPath);
+            const client = new DeepkitClient('ws+unix://' + socketPath);
             createdClients.push(client);
             return client;
         },
         createControllerClient: <T>(controllerName: string): RemoteController<T> => {
-            const client = new SuperHornetClient('ws+unix://' + socketPath);
+            const client = new DeepkitClient('ws+unix://' + socketPath);
             createdClients.push(client);
             return client.controller<T>(controllerName);
         },

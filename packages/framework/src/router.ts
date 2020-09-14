@@ -1,6 +1,6 @@
 import {ClassType, CompilerContext, toFastProperties} from '@deepkit/core';
 import {join} from 'path';
-import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, plainSerializer} from '@deepkit/marshal';
+import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, plainSerializer} from '@deepkit/type';
 import {ValidationError} from '@deepkit/framework-shared';
 import {httpClass} from './decorator';
 import {injectable} from './injector/injector';

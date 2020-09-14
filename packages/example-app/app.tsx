@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import {Application, http, HttpBadRequestError, template} from '@deepkit/framework';
-import {entity, t} from '@deepkit/marshal';
+import {entity, t} from '@deepkit/type';
 import {Website} from './views/website';
 
 @entity.name('HelloBody')

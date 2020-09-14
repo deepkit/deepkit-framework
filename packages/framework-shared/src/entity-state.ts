@@ -1,4 +1,4 @@
-import {getClassSchemaByName, plainSerializer} from '@deepkit/marshal';
+import {getClassSchemaByName, plainSerializer} from '@deepkit/type';
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from '../index';
 import {delete as deleteByPath, set} from 'dot-prop';
 import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@deepkit/core';

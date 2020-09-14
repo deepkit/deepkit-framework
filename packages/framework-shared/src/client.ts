@@ -3,7 +3,7 @@ import {first} from 'rxjs/operators';
 import {ClientMessageWithoutId, IdInterface, ServerMessageComplete, ServerMessageError, ServerMessageResult} from './contract';
 import {getUnserializedError, StreamBehaviorSubject} from './core';
 import {Collection, CollectionPaginationEvent} from './collection';
-import {getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, PropertySchema, PropertySchemaSerialized} from '@deepkit/marshal';
+import {getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, PropertySchema, PropertySchemaSerialized} from '@deepkit/type';
 import {ClassType, each} from '@deepkit/core';
 import {EntityState} from './entity-state';
 

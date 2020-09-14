@@ -37,10 +37,10 @@
       "path": "../framework/tsconfig.json"
     },
     {
-      "path": "../marshal/tsconfig.dist.json"
+      "path": "../type/tsconfig.dist.json"
     },
     {
-      "path": "../marshal-mongo/tsconfig.json"
+      "path": "../mongo/tsconfig.json"
     }
   ]
 }

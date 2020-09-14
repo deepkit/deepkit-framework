@@ -5,7 +5,7 @@
 // import {pathExists, readFile, remove} from 'fs-extra';
 // import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
 // import {ClassType} from '@deepkit/core';
-// import {Connection, Database} from '@deepkit/marshal-mongo';
+// import {Connection, Database} from '@deepkit/mongo';
 // import {FileType} from "@deepkit/framework-shared";
 // import {ProcessLocker} from "../src/process-locker";
 // import {ExchangeServer} from "../src/exchange-server";

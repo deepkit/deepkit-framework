@@ -1,0 +1,35 @@
+{
+  "name": "@deepkit/orm",
+  "version": "1.0.0-alpha.0",
+  "description": "Deepkit ORM, the fastest JIT-based ORM for Typescript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "repository": "https://github.com/deepkit/framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "dependencies": {
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/type": "^1.0.0-alpha.0",
+    "@deepkit/topsort": "^1.0.0-alpha.0",
+    "sqlstring": "^2.3.2"
+  },
+  "devDependencies": {
+    "reflect-metadata": "^0.1.13",
+    "@types/sqlstring": "^2.2.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

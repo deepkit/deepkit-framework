@@ -3,7 +3,7 @@ import {tearDown} from '@deepkit/core-rxjs';
 import {IdInterface} from './contract';
 import {ClassType, CustomError} from '@deepkit/core';
 import {Buffer} from 'buffer';
-import {arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, t,} from '@deepkit/marshal';
+import {arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, t,} from '@deepkit/type';
 import {skip} from 'rxjs/operators';
 
 @Entity('@error:json')
@@ -81,7 +81,7 @@ export function getUnserializedError(entityName: string, error: any, stack: any,
     }
 
     if (!hasClassSchemaByName(entityName)) {
-        throw new Error(`Marshal entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
+        throw new Error(`deepkit/type entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
     }
     return plainSerializer.for(getClassSchemaByName(entityName).classType).deserialize(error);
 }
@@ -163,7 +163,7 @@ export type QuerySelector<T> = {
     $bitsAnyClear?: any;
     $bitsAnySet?: any;
 
-    //special super-hornet types
+    //special deepkit types
     $parameter?: string;
 };
 

@@ -2,9 +2,9 @@ import {ClassType} from '@deepkit/core';
 import {injectable} from '../injector/injector';
 
 // import {Exchange} from "./exchange";
-// import {getEntityName} from "@deepkit/marshal";
+// import {getEntityName} from "@deepkit/type";
 // import {Observable, Subject, Subscription} from "rxjs";
-// import {convertPlainQueryToMongo, convertQueryToMongo, Database, DatabaseQuery} from "@deepkit/marshal-mongo";
+// import {convertPlainQueryToMongo, convertQueryToMongo, Database, DatabaseQuery} from "@deepkit/mongo";
 // import {
 //     Collection,
 //     CollectionSort,

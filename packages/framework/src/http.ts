@@ -5,7 +5,7 @@ import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
 import {Context, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
-import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, plainSerializer} from '@deepkit/marshal';
+import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, plainSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
 import {ApplicationConfig} from './application-config';
 import {join} from 'path';

@@ -7,7 +7,7 @@ import {
     FreeFluidDecorator,
     getClassSchema,
     PropertySchema
-} from '@deepkit/marshal';
+} from '@deepkit/type';
 import {IBooleanFlag, IOptionFlag} from '@oclif/parser/lib/flags';
 import {ClassType} from '@deepkit/core';
 import {Command as OclifCommand} from '@oclif/config';

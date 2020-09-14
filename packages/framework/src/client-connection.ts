@@ -2,7 +2,7 @@ import {Subscription} from 'rxjs';
 import {SessionStack} from './session';
 import {ActionTypes, ClientMessageAll, ConnectionMiddleware, ConnectionWriter, executeAction, getActionParameters, getActions} from '@deepkit/framework-shared';
 import {arrayRemoveItem, each, ProcessLock, ProcessLocker} from '@deepkit/core';
-import {PropertySchema, uuid} from '@deepkit/marshal';
+import {PropertySchema, uuid} from '@deepkit/type';
 import {SecurityStrategy} from './security';
 import {Exchange} from './exchange/exchange';
 import {ControllerContainer, SuperHornetController} from './service-container';

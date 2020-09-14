@@ -2,7 +2,7 @@ import {mkdirSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import 'reflect-metadata';
 import * as vm from 'vm';
-import {getGlobalStore} from '@deepkit/marshal';
+import {getGlobalStore} from '@deepkit/type';
 const fg = require('fast-glob');
 
 const filter = process.argv[2] || '';

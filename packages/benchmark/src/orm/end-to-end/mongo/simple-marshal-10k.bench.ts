@@ -1,11 +1,11 @@
 import 'reflect-metadata';
-import {Entity, t} from '@deepkit/marshal';
+import {Entity, t} from '@deepkit/type';
 import {BenchSuite} from '@deepkit/core';
-import {Database} from '@deepkit/marshal-orm';
-import {MongoDatabaseAdapter} from '@deepkit/marshal-mongo';
+import {Database} from '@deepkit/orm';
+import {MongoDatabaseAdapter} from '@deepkit/mongo';
 
-@Entity('marshal')
-export class MarshalModel {
+@Entity('deepkit')
+export class DeepkitModel {
     @t.mongoId.primary public _id?: string;
     @t ready?: boolean;
 
@@ -22,17 +22,17 @@ export class MarshalModel {
 
 export async function main() {
     const count = 10_000;
-    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/bench-small-marshal'));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/bench-small-deepkit'));
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
         const session = database.createSession();
-        await session.query(MarshalModel).deleteMany();
-        const bench = new BenchSuite('marshal');
+        await session.query(DeepkitModel).deleteMany();
+        const bench = new BenchSuite('deepkit');
 
         await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {
-                const user = new MarshalModel(i, 'Peter ' + i);
+                const user = new DeepkitModel(i, 'Peter ' + i);
                 user.ready = true;
                 user.priority = 5;
                 user.tags = ['a', 'b', 'c'];
@@ -43,10 +43,10 @@ export async function main() {
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            await session.query(MarshalModel).disableIdentityMap().find();
+            await session.query(DeepkitModel).disableIdentityMap().find();
         });
 
-        const dbItems = await session.query(MarshalModel).find();
+        const dbItems = await session.query(DeepkitModel).find();
         for (const item of dbItems) {
             item.priority++;
         }

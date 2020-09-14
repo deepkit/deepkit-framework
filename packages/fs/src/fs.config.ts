@@ -1,3 +1,3 @@
 export class FsConfig {
-    storeDir: string = '~.super-hornet/data/files/';
+    storeDir: string = '~.deepkit/data/files/';
 }

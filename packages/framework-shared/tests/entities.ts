@@ -1,7 +1,7 @@
 import {
     Entity, t,
     uuid,
-} from "@deepkit/marshal";
+} from "@deepkit/type";
 import {each, eachPair} from "@deepkit/core";
 import {IdInterface} from "../index";
 

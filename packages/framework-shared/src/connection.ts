@@ -4,7 +4,7 @@ import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from './co
 import {Subscriptions} from '@deepkit/core-rxjs';
 import {Observable, Subscription} from 'rxjs';
 import {ClassType, each, getObjectKeysSize, isFunction, sleep} from '@deepkit/core';
-import {getEntityName, plainSerializer, PropertySchema, PropertySchemaSerialized, Types} from '@deepkit/marshal';
+import {getEntityName, plainSerializer, PropertySchema, PropertySchemaSerialized, Types} from '@deepkit/type';
 import {skip} from 'rxjs/operators';
 
 export interface ConnectionWriterStream {

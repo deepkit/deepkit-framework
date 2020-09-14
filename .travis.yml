@@ -19,9 +19,3 @@ script:
 - ./node_modules/.bin/jest --coverage --forceExit
 - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
 - cd packages/benchmark; npm run setup && npm run benchmark
-
-#deploy:
-#  provider: heroku
-#  api_key:
-#    secure: coQ7AT1JQ6a0qpfIYAcYj46RANSoqsKABe+KU5/G9nkFWL6FP4q9lQo2FMWax0LCaxn9ugfs64UYgcWVC8PqkPK2w+V5nqWOHqmLKyFphhPWlVsFZNrHmv0jZfW4e1RQEOLCiKMZeEBg7nD8ku7LKBVdEF1FADYpGdY+GkTWGpLtJjEjkqnipplUpPXVay8JYmfjigYBgzZ6Y+PFh60cT5cd0dqdhvtWhE8n44dE8JK1yLcryYO0cV7nDIJnPrRSYHs2BjnOs5Yqd0AklzuFJ4wGAC2Fu2Yt1nBdObnSqrc+Q8VhhGiJ6BJabLrsfyvK6F8Gx8f4Wvklqpy3IzgaNfczUjreRp+5a2xLrCg3uJUg/RpvDYXm5s2jeN65jkg1eT+U3wJexj5CDzsxwwmzwBRqHulHXmNG9/FzvxNWBKgpp16248DkK+ozkJGz+mWVbycPmvkr8IM5CSlHU/LjgwSDYdCtLvqo6CNP3QOGTz1npdq+vwrQDQO4zdB/2fFOz3yh8Ift0IiDF3Lv6/ONYtESK5JxAzr5CxVtorSoZe3fNsOe9pcCmyWkDLN/Bvjmv1H1FtRkZBeE14cwt9LyyY2CZXCbaVIyzY8jf6+eXMpp535j3ylhdU7o0h7mF1UKbiYny+gMUi1tIWipEGbkCKTac0JIHfVa/2EktyR2FFw=
-#  app: super-hornet

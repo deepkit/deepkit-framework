@@ -4,7 +4,7 @@ import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterErro
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from './util';
 import {Observable} from 'rxjs';
 import {bufferCount, first, skip} from 'rxjs/operators';
-import {Entity, getClassSchema, PropertySchema, t} from '@deepkit/marshal';
+import {Entity, getClassSchema, PropertySchema, t} from '@deepkit/type';
 import {ObserverTimer} from '@deepkit/core-rxjs';
 import {isArray} from '@deepkit/core';
 import {ClientProgress} from '@deepkit/framework-client';

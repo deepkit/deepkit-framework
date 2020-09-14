@@ -1,5 +1,5 @@
 import {BehaviorSubject, Subject} from 'rxjs';
-import {plainSerializer, PropertySchema} from '@deepkit/marshal';
+import {plainSerializer, PropertySchema} from '@deepkit/type';
 import {
     Batcher,
     ClientMessageAll,

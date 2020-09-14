@@ -1,0 +1,40 @@
+{
+  "name": "@deepkit/bson",
+  "version": "1.0.0-alpha.0",
+  "description": "Deepkit BSON parser",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "repository": "https://github.com/deepkit/framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "dependencies": {
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/type": "^1.0.0-alpha.0",
+    "bson": "^4.0.4",
+    "buffer": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.4",
+    "@types/moment": "^2.13.0",
+    "bson-ext": "^2.0.5",
+    "jest-serial-runner": "^1.1.0",
+    "moment": "^2.27.0",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "~6.5.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

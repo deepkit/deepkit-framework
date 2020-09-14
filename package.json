@@ -10,7 +10,6 @@
     "tsc-watch": "tsc --build --watch",
     "clean": "rm -rf packages/*/dist",
     "docs": "rm -rf docs && typedoc",
-    "docker-image": "docker build -t marshal/website .",
     "publish": "lerna run tsc && lerna publish",
     "publish-website": "heroku container:push web && heroku container:release web"
   },
@@ -33,11 +32,11 @@
   "jest": {
     "testPathIgnorePatterns": ["packages/*/dist"],
     "projects": [
-      "packages/marshal",
-      "packages/marshal-orm",
-      "packages/marshal-orm-integration",
-      "packages/marshal-mongo",
-      "packages/marshal-sql",
+      "packages/type",
+      "packages/orm",
+      "packages/orm-integration",
+      "packages/mongo",
+      "packages/sql",
       "packages/framework-integration",
       "packages/framework",
       "packages/framework-shared",

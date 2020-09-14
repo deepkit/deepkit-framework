@@ -4,7 +4,7 @@ import {EntityStorage, FS} from '@deepkit/fs';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
 import {sleep} from '@deepkit/core';
 import {Buffer} from 'buffer';
-import {arrayBufferTo} from '@deepkit/marshal';
+import {arrayBufferTo} from '@deepkit/type';
 
 // @ts-ignore
 global['WebSocket'] = require('ws');

@@ -1,4 +1,4 @@
-import {plainSerializer, PropertySchema, uuid} from '@deepkit/marshal';
+import {plainSerializer, PropertySchema, uuid} from '@deepkit/type';
 import {
     ActionTypes,
     ClientMessageWithoutId,

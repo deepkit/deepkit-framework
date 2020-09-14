@@ -1,6 +1,6 @@
 import {BenchSuite} from '@deepkit/core';
-import {getClassSchema, plainSerializer, t} from '@deepkit/marshal';
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '@deepkit/marshal-orm';
+import {getClassSchema, plainSerializer, t} from '@deepkit/type';
+import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '@deepkit/orm';
 
 class Image {
     @t title: string = '';

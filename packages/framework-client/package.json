@@ -18,14 +18,14 @@
     "@deepkit/core": "^1.0.0-alpha.0",
     "@deepkit/core-rxjs": "^1.0.0-alpha.0",
     "@deepkit/framework-shared": "^1.0.0-alpha.0",
-    "@deepkit/marshal": "^1.0.0-alpha.0",
+    "@deepkit/type": "^1.0.0-alpha.0",
     "dot-prop": "^5.1.1",
     "rxjs": "~6.5.3",
     "ws": "^7.2.1"
   },
   "devDependencies": {
     "@deepkit/framework-shared": "^0.0.33",
-    "@deepkit/marshal": "^2.1.1",
+    "@deepkit/type": "^2.1.1",
     "@types/dot-prop": "^4.2.0",
     "@types/ws": "^6.0.1",
     "reflect-metadata": "^0.1.13"

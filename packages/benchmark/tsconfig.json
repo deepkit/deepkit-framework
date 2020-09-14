@@ -27,7 +27,7 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../marshal/tsconfig.dist.json"
+      "path": "../type/tsconfig.dist.json"
     },
     {
       "path": "../topsort/tsconfig.json"

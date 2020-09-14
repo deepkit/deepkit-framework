@@ -22,7 +22,7 @@ import {ExchangeConfig} from '../src/exchange/exchange.config';
     }
 
     {
-        const client = new Exchange(ExchangeConfig.forUrl('/tmp/super-hornet-lock-benchmark'));
+        const client = new Exchange(ExchangeConfig.forUrl('/tmp/deepkit-lock-benchmark'));
         await client.connect();
         const start = performance.now();
 
