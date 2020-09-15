@@ -98,8 +98,8 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
         user: 'root',
         database: 'default',
     });
-    protected connectionPool = new MySQLConnectionPool(this.pool);
-    protected platform = new MySQLPlatform(this.pool);
+    public connectionPool = new MySQLConnectionPool(this.pool);
+    public platform = new MySQLPlatform(this.pool);
 
     constructor(protected host: string) {
         super();

@@ -18,7 +18,7 @@ import {DefaultPlatform} from './platform/default-platform';
 import {SqlBuilder} from './sql-builder';
 import {SqlFormatter} from './sql-formatter';
 import {sqlSerializer} from './serializer/sql-serializer';
-import {Database} from './schema/table';
+import {DatabaseModel} from './schema/table';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -68,6 +68,10 @@ export abstract class SQLConnection {
 }
 
 export abstract class SQLConnectionPool {
+    /**
+     * Reserves an existing or new connection. It's important to call `.release()` on it when
+     * done. When release is not called a resource leak occurs and server crashes.
+     */
     abstract getConnection(): SQLConnection;
 
     release(connection: SQLConnection) {
@@ -186,8 +190,8 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 }
 
 export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
-    protected abstract platform: DefaultPlatform = new DefaultPlatform;
-    protected abstract connectionPool: SQLConnectionPool;
+    public abstract platform: DefaultPlatform = new DefaultPlatform;
+    public abstract connectionPool: SQLConnectionPool;
 
     abstract queryFactory(databaseSession: DatabaseSession<this>): SQLDatabaseQueryFactory;
 
@@ -195,14 +199,22 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     abstract getSchemaName(): string;
 
+    protected async ensureMigrationTable() {
+        const connection = this.connectionPool.getConnection();
+        try {
+
+        } finally {
+            connection.release();
+        }
+    }
+
     async migrate(classSchemas: ClassSchema[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();
         try {
-            const database = new Database();
+            const database = new DatabaseModel();
             database.schemaName = this.getSchemaName();
             this.platform.createTables(classSchemas, database);
             const DDLs = this.platform.getAddTablesDDL(database);
-            // console.log('DDLs', DDLs);
             for (const sql of DDLs) {
                 await connection.exec(sql);
             }
@@ -280,7 +292,6 @@ export class SQLPersistence extends DatabasePersistence {
 
         for (const item of items) {
             const converted = scopeSerializer.serialize(item);
-            //todo we need a faster converter, or should we use prepared statements?
             insert.push(fields.map(v => quoteValue(converted[v])).join(', '));
         }
 

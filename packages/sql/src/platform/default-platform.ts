@@ -1,5 +1,5 @@
-import {Column, ColumnDiff, Database, ForeignKey, Index, Table, TableDiff} from '../schema/table';
-import {ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@deepkit/type';
+import {Column, ColumnDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff} from '../schema/table';
+import {binaryTypes, ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@deepkit/type';
 import {escape} from 'sqlstring';
 import {ClassType, isPlainObject} from '@deepkit/core';
 import {sqlSerializer} from '../serializer/sql-serializer';
@@ -24,11 +24,17 @@ export class DefaultNamingStrategy implements NamingStrategy {
     }
 }
 
+interface NativeTypeInformation {
+    needsIndexPrefix: boolean;
+    defaultIndexSize: number;
+}
+
 export class DefaultPlatform {
     protected defaultSqlType = 'text';
     protected typeMapping = new Map<string, { sqlType: string, size?: number, scale?: number }>();
-    public readonly serializer: Serializer = sqlSerializer;
+    protected nativeTypeInformation = new Map<string, Partial<NativeTypeInformation>>();
 
+    public serializer: Serializer = sqlSerializer;
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
 
     constructor() {
@@ -40,12 +46,10 @@ export class DefaultPlatform {
 
     quoteValue(value: any): string {
         if (isPlainObject(value) || isArray(value)) return escape(JSON.stringify(value));
-        //todo, add moment support
         return escape(value);
     }
 
     addBinaryType(sqlType: string, size?: number, scale?: number) {
-        const binaryTypes: Types[] = ['Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'arrayBuffer'];
         for (const type of binaryTypes) {
             this.addType(type, sqlType, size, scale);
         }
@@ -66,14 +70,14 @@ export class DefaultPlatform {
     /**
      * If the platform supports the `PRIMARY KEY` section in `CREATE TABLE(column, column, PRIMARY KEY())`;
      */
-    supportsPrimaryKeyBlock(): boolean {
+    supportsInlinePrimaryKey(): boolean {
         return true;
     }
 
     /**
      * If the platform supports the `CONSTRAINT %s FOREIGN KEY` section in `CREATE TABLE(column, column, CONSTRAINT %s FOREIGN KEY)`;
      */
-    supportsForeignKeyBlock(): boolean {
+    supportsInlineForeignKey(): boolean {
         return true;
     }
 
@@ -96,7 +100,17 @@ export class DefaultPlatform {
         return fields;
     }
 
-    createTables(schemas: (ClassSchema | ClassType)[], database: Database = new Database()): Table[] {
+    protected setColumnType(column: Column, typeProperty: PropertySchema) {
+        column.type = this.defaultSqlType;
+        const map = this.typeMapping.get(typeProperty.type);
+        if (map) {
+            column.type = map.sqlType;
+            column.size = map.size;
+            column.scale = map.scale;
+        }
+    }
+
+    createTables(schemas: (ClassSchema | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
         const generatedTables = new Map<ClassSchema, Table>();
 
         for (let schema of schemas) {
@@ -114,14 +128,8 @@ export class DefaultPlatform {
 
                 const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
 
-                column.type = this.defaultSqlType;
                 const typeProperty = property.isReference ? property.getResolvedClassSchema().getPrimaryField() : property;
-                const map = this.typeMapping.get(typeProperty.type);
-                if (map) {
-                    column.type = map.sqlType;
-                    column.size = map.size;
-                    column.scale = map.scale;
-                }
+                this.setColumnType(column, typeProperty);
 
                 column.defaultValue = property.defaultValue;
 
@@ -229,7 +237,7 @@ export class DefaultPlatform {
         return '';
     }
 
-    getAddTablesDDL(database: Database): string[] {
+    getAddTablesDDL(database: DatabaseModel): string[] {
         const ddl: string[] = [];
 
         ddl.push(this.getBeginDDL());
@@ -237,7 +245,11 @@ export class DefaultPlatform {
         for (const table of database.tables) {
             ddl.push(this.getDropTableDDL(table));
             ddl.push(this.getAddTableDDL(table));
-            ddl.push(this.getAddIndicesDDL(table));
+            ddl.push(...this.getAddIndicesDDL(table));
+        }
+
+        for (const table of database.tables) {
+            if (!this.supportsInlineForeignKey()) ddl.push(...this.getAddForeignKeysDDL(table));
         }
 
         ddl.push(this.getEndDDL());
@@ -245,7 +257,7 @@ export class DefaultPlatform {
         return ddl.filter(isSet);
     }
 
-    getAddSchemasDDL(database: Database): string {
+    getAddSchemasDDL(database: DatabaseModel): string {
         const schemaNames = new Set<string>();
 
         if (database.schemaName) schemaNames.add(database.schemaName);
@@ -331,21 +343,18 @@ export class DefaultPlatform {
     getCreateTableDDL(table: Table): string {
         const lines: string[] = [];
         for (const column of table.columns) lines.push(this.getColumnDDL(column));
-        if (this.supportsPrimaryKeyBlock() && table.hasPrimaryKey()) lines.push(this.getPrimaryKeyDDL(table));
-        for (const unique of table.getUnices()) lines.push(this.getUniqueDDL(unique));
-        if (this.supportsForeignKeyBlock()) {
-            for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
-        }
+        if (this.supportsInlinePrimaryKey() && table.hasPrimaryKey()) lines.push(this.getPrimaryKeyDDL(table));
+        if (this.supportsInlineForeignKey()) for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
 
         return `CREATE TABLE ${this.getIdentifier(table)} (${lines.join(',\n')})`;
     }
 
-    getAddForeignKeysDDL(table: Table): string {
-        return table.foreignKeys.map(v => this.getAddForeignKeyDDL(v)).join('\n');
+    getAddForeignKeysDDL(table: Table): string[] {
+        return table.foreignKeys.map(v => this.getAddForeignKeyDDL(v));
     }
 
-    getAddIndicesDDL(table: Table): string {
-        return table.getIndices().map(v => this.getAddIndexDDL(v)).join('\n');
+    getAddIndicesDDL(table: Table): string[] {
+        return table.indices.map(v => this.getAddIndexDDL(v));
     }
 
     getAddForeignKeyDDL(foreignKey: ForeignKey): string {
@@ -370,7 +379,23 @@ export class DefaultPlatform {
     getAddIndexDDL(index: Index): string {
         const u = index.isUnique ? 'UNIQUE' : '';
 
-        return `CREATE ${u} INDEX ${this.getIdentifier(index)} ON ${this.getIdentifier(index.table)} (${this.getColumnListDDL(index.columns)})`;
+        const columns: string[] = [];
+        for (const column of index.columns) {
+            if (index.size) {
+                columns.push(`${this.getIdentifier(column)}(${index.size})`);
+                continue;
+            }
+
+            const typeInfo = this.nativeTypeInformation.get(column.type || '');
+            if (typeInfo && typeInfo.needsIndexPrefix) {
+                columns.push(`${this.getIdentifier(column)}(${typeInfo.defaultIndexSize || 100})`);
+                continue;
+            }
+
+            columns.push(`${this.getIdentifier(column)}`);
+        }
+
+        return `CREATE ${u} INDEX ${this.getIdentifier(index)} ON ${this.getIdentifier(index.table)} (${columns.join(', ')})`;
     }
 
     getDropTableDDL(table: Table): string {
@@ -430,7 +455,7 @@ export class DefaultPlatform {
     }
 
     getUniqueDDL(unique: Index): string {
-        return `UNIQUE INDEX (${this.getColumnListDDL(unique.columns)})`;
+        return `UNIQUE INDEX ${this.getIdentifier(unique)} (${this.getColumnListDDL(unique.columns)})`;
     }
 
     getColumnDDL(column: Column) {
@@ -447,7 +472,7 @@ export class DefaultPlatform {
 
     getColumnDefaultValueDDL(column: Column) {
         if (undefined === column.defaultValue) return '';
-        //todo: allow to add expressions, like CURRENT_TIMESTAMP etc.
+        //todo: allow to add expressions, like CURRENT_TIMESTAMP
         return 'DEFAULT ' + JSON.stringify(column.defaultValue);
     }
 

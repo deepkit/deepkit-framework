@@ -113,8 +113,8 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
         host: this.host,
         database: 'postgres',
     });
-    protected connectionPool = new PostgresConnectionPool(this.pool);
-    protected platform = new PostgresPlatform();
+    public connectionPool = new PostgresConnectionPool(this.pool);
+    public platform = new PostgresPlatform();
 
     constructor(protected host: string) {
         super();

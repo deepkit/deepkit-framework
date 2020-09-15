@@ -1,8 +1,9 @@
 import {arrayRemoveItem} from '@deepkit/core';
 import {createHash} from 'crypto';
 import {PropertySchema} from '@deepkit/type';
+import {inspect} from "util";
 
-export class Database {
+export class DatabaseModel {
     public schemaName: string = '';
 
     constructor(public tables: Table[] = []) {
@@ -18,6 +19,10 @@ export class Database {
         const table = this.tables.find(v => v.isName(name, schemaName));
         if (!table) throw new Error(`Could not find table ${name} in schema ${schemaName}`);
         return table;
+    }
+
+    getTableNames(): string[] {
+        return this.tables.map(v => v.getName());
     }
 
     getTableForFull(fullName: string, schemaDelimiter: string): Table {
@@ -101,6 +106,10 @@ export class Table {
         return this.indices.filter(v => !v.isUnique);
     }
 
+    getIndex(name: string) {
+        return this.indices.find(v => v.getName() === name);
+    }
+
     getUnices() {
         return this.indices.filter(v => v.isUnique);
     }
@@ -177,6 +186,9 @@ export class Index {
     public columns: Column[] = [];
 
     public spatial: boolean = false;
+    public partial: boolean = false;
+
+    public size: number = 0;
 
     constructor(public table: Table, public name: string, public isUnique = false) {
     }
@@ -194,8 +206,16 @@ export class Index {
         return this.name;
     }
 
+    hasColumn(columnName: string) {
+        return this.columns.some(v => v.getName() === columnName);
+    }
+
     addColumn(columnName: string) {
         this.columns.push(this.table.getColumn(columnName));
+    }
+
+    valueOf(): string {
+        return `${this.isUnique ? 'UNIQUE INDEX' : 'INDEX'} ${this.getName()} COLUMNS(${this.columns.map(v => v.getName())})`;
     }
 }
 
@@ -228,6 +248,18 @@ export class ForeignKey {
         this.localColumns.push(this.table.getColumn(localColumnName));
         this.foreignColumns.push(this.foreign.getColumn(foreignColumnName));
     }
+
+    getColumnMapping(): [from: Column, to: Column][] {
+        const res: [from: Column, to: Column][] = [];
+        for (let i = 0; i < this.localColumns.length; i++) {
+            res.push([this.localColumns[i], this.foreignColumns[i]]);
+        }
+        return res;
+    }
+
+    valueOf() {
+        return `fk=${this.getName()} to ${this.foreign.getName()} (${this.getColumnMapping().map(([from, to]) => `${from.getName()}=>${to.getName()}`)})`;
+    }
 }
 
 export class ColumnPropertyDiff {
@@ -241,6 +273,14 @@ export class ColumnDiff {
         public to: Column,
         public changedProperties = new Map<keyof Column, ColumnPropertyDiff>()
     ) {
+    }
+
+    valueOf() {
+        const res: string[] = [];
+        for (const [key, value] of this.changedProperties.entries()) {
+            res.push(`${key}: ${JSON.stringify(value.from)}=>${JSON.stringify(value.to)}`)
+        }
+        return res.join(',');
     }
 }
 
@@ -276,7 +316,7 @@ export class IndexComparator {
 
 export class ForeignKeyComparator {
     static computeDiff(from: ForeignKey, to: ForeignKey) {
-        if (from.foreign !== to.foreign) return true;
+        if (from.foreign.getName() !== to.foreign.getName()) return true;
 
         const fromFkLocalFields = from.localColumns.map(v => v.name).join(',').toLowerCase();
         const toFkLocalFields = to.localColumns.map(v => v.name).join(',').toLowerCase();
@@ -321,6 +361,88 @@ export class TableDiff {
     hasModifiedColumns(): boolean {
         return this.addedColumns.size > 0 || this.renamedColumns.size > 0 || this.removedColumns.size > 0;
     }
+
+    [inspect.custom]() {
+        let lines: string[] = [];
+        lines.push(`  ${this.from.getName()}:`);
+
+        if (this.addedColumns.size) {
+            lines.push('   addedColumns:');
+            for (const field of this.addedColumns.values()) lines.push(`     ${field.getName()}:`);
+        }
+
+        if (this.removedColumns.size) {
+            lines.push('   removedColumns:');
+            for (const field of this.removedColumns.values()) lines.push(`     ${field.getName()}:`);
+        }
+
+        if (this.renamedColumns.size) {
+            lines.push('   renamedColumns:');
+            for (const [from, to] of this.renamedColumns.values()) lines.push(`     ${from.getName()} -> ${to.getName()}`);
+        }
+
+        if (this.modifiedColumns.size) {
+            lines.push('   modifiedColumns:');
+            for (const diff of this.modifiedColumns.values()) lines.push(`     ${diff.from.getName()}=>${diff.to.getName()} ${diff.valueOf()}`);
+        }
+
+
+        if (this.addedPKColumns.size) {
+            lines.push('   addedPKColumns:');
+            for (const field of this.addedPKColumns.values()) lines.push(`     ${field.getName()}:`);
+        }
+
+        if (this.removedPKColumns.size) {
+            lines.push('   removedPKColumns:');
+            for (const field of this.removedPKColumns.values()) lines.push(`     ${field.getName()}:`);
+        }
+
+        if (this.renamedPKColumns.size) {
+            lines.push('   renamedPKColumns:');
+            for (const [from, to] of this.renamedPKColumns.values()) lines.push(`     ${from.getName()} -> ${to.getName()}`);
+        }
+
+
+        if (this.addedFKs.size) {
+            lines.push('   addedFKs:');
+            for (const fk of this.addedFKs.values()) lines.push(`     ${fk.valueOf()}`);
+        }
+
+        if (this.modifiedFKs.size) {
+            lines.push('   modifiedFKs:');
+            for (const [from, to] of this.modifiedFKs.values()) {
+                lines.push(`     ${from.getName()} => ${to.getName()}`);
+                lines.push(`        ${from.getName()}: ${from.valueOf()}`);
+                lines.push(`        ${to.getName()}: ${to.valueOf()}`);
+            }
+        }
+
+        if (this.removedFKs.size) {
+            lines.push('   removedFKs:');
+            for (const fk of this.removedFKs.values()) lines.push(`     ${fk.getName()}`);
+        }
+
+        if (this.addedIndices.size) {
+            lines.push('   addedIndices:');
+            for (const index of this.addedIndices.values()) lines.push(`     ${index.valueOf()}`);
+        }
+
+        if (this.removedIndices.size) {
+            lines.push('   removedIndices:');
+            for (const index of this.removedIndices.values()) lines.push(`     ${index.valueOf()}`);
+        }
+
+        if (this.modifiedIndices.size) {
+            lines.push('   modifiedIndices:');
+            for (const [from, to] of this.modifiedIndices.values()) {
+                lines.push(`     ${from.getName()} => ${to.getName()}`);
+                lines.push(`        ${from.getName()}: ${from.valueOf()}`);
+                lines.push(`        ${to.getName()}: ${to.valueOf()}`);
+            }
+        }
+
+        return lines.join('\n');
+    }
 }
 
 export class TableComparator {
@@ -330,7 +452,7 @@ export class TableComparator {
         this.diff = new TableDiff(from, to);
     }
 
-    static computeDiff(from: Table, to: Table) {
+    static computeDiff(from: Table, to: Table): TableDiff | undefined {
         const tc = new this(from, to);
 
         let differences = 0;
@@ -349,7 +471,7 @@ export class TableComparator {
 
         // check for new columns in $toEntity
         for (const column of toColumns) {
-            if (this.from.hasColumn(column.name)) {
+            if (!this.from.hasColumn(column.name)) {
                 this.diff.addedColumns.set(column.name, column);
                 differences++;
             }
@@ -357,7 +479,7 @@ export class TableComparator {
 
         // check for removed columns in $toEntity
         for (const column of fromColumns) {
-            if (this.to.hasColumn(column.name)) {
+            if (!this.to.hasColumn(column.name)) {
                 this.diff.removedColumns.set(column.name, column);
                 differences++;
             }
@@ -369,6 +491,7 @@ export class TableComparator {
                 const toColumn = this.to.getColumn(fromColumn.name);
                 const diff = ColumnComparator.computeDiff(fromColumn, toColumn);
                 if (!diff) continue;
+                console.log('column diff', fromColumn.getName(), diff);
                 this.diff.modifiedColumns.set(fromColumn.name, diff);
                 differences++;
             }
@@ -400,7 +523,7 @@ export class TableComparator {
 
         // check for new columns in $toEntity
         for (const column of toColumns) {
-            if (this.from.hasColumn(column.name)) {
+            if (!this.from.hasColumn(column.name)) {
                 this.diff.addedPKColumns.set(column.name, column);
                 differences++;
             }
@@ -408,7 +531,7 @@ export class TableComparator {
 
         // check for removed columns in $toEntity
         for (const column of fromColumns) {
-            if (this.to.hasColumn(column.name)) {
+            if (!this.to.hasColumn(column.name)) {
                 this.diff.removedPKColumns.set(column.name, column);
                 differences++;
             }
@@ -440,14 +563,16 @@ export class TableComparator {
 
         for (const fromIndex of fromIndices.slice()) {
             for (const toIndex of toIndices.slice()) {
-                if (IndexComparator.computeDiff(fromIndex, toIndex)) {
-                    //same name, but different columns
-                    this.diff.modifiedIndices.set(fromIndex.name, [fromIndex, toIndex]);
-                    differences++;
-                }
+                if (fromIndex.getName() === toIndex.getName()) {
+                    if (IndexComparator.computeDiff(fromIndex, toIndex)) {
+                        //same name, but different columns
+                        this.diff.modifiedIndices.set(fromIndex.name, [fromIndex, toIndex]);
+                        differences++;
+                    }
 
-                arrayRemoveItem(fromIndices, fromIndex);
-                arrayRemoveItem(toIndices, toIndex);
+                    arrayRemoveItem(fromIndices, fromIndex);
+                    arrayRemoveItem(toIndices, toIndex);
+                }
             }
         }
 
@@ -471,14 +596,16 @@ export class TableComparator {
 
         for (const fromFK of fromForeignKeys.slice()) {
             for (const toFK of toForeignKys.slice()) {
-                if (ForeignKeyComparator.computeDiff(fromFK, toFK)) {
-                    //same name, but different columns
-                    this.diff.modifiedFKs.set(fromFK.name, [fromFK, toFK]);
-                    differences++;
-                }
+                if (fromFK.getName() === toFK.getName()) {
+                    if (ForeignKeyComparator.computeDiff(fromFK, toFK)) {
+                        //same name, but different columns
+                        this.diff.modifiedFKs.set(fromFK.name, [fromFK, toFK]);
+                        differences++;
+                    }
 
-                arrayRemoveItem(fromForeignKeys, fromFK);
-                arrayRemoveItem(toForeignKys, toFK);
+                    arrayRemoveItem(fromForeignKeys, fromFK);
+                    arrayRemoveItem(toForeignKys, toFK);
+                }
             }
         }
 

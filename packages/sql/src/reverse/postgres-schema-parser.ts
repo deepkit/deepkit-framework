@@ -1,32 +1,22 @@
-import {SQLConnection} from '../sql-adapter';
-import {DefaultPlatform} from '../platform/default-platform';
-import {Database, ForeignKey, Index, Table} from '../schema/table';
-import {parseType} from './schema-parser';
+import {DatabaseModel, ForeignKey, Index, Table} from '../schema/table';
+import {parseType, SchemaParser} from './schema-parser';
 
-
-export class PostgresSchemaParser {
+export class PostgresSchemaParser extends SchemaParser {
     protected defaultPrecisions = {
         'char': 1,
         'character': 1,
         'integer': 32,
         'bigint': 64,
         'smallint': 16,
-        'double precision': 54
+        'double precision': 53
     };
 
-    constructor(
-        protected connection: SQLConnection,
-        protected platform: DefaultPlatform,
-    ) {
-    }
-
-    async parse(database: Database) {
-        await this.parseTables(database);
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {
+        await this.parseTables(database, limitTableNames);
 
         for (const table of database.tables) {
             await this.addColumns(table);
         }
-
 
         for (const table of database.tables) {
             await this.addIndexes(table);
@@ -35,35 +25,39 @@ export class PostgresSchemaParser {
     }
 
     protected async addIndexes(table: Table) {
-        const rows = await this.connection.execAndReturnAll(`
-        select relname as constraint_name, attname as column_name, idx.indisunique as unique, idx.indisprimary as primary
-        from pg_index idx
-                 left join pg_class AS i on i.oid = idx.indexrelid
-                 left join pg_attribute a on a.attrelid = idx.indrelid and a.attnum = ANY (idx.indkey) and a.attnum > 0
-        where indrelid = '"${table.schemaName || 'public'}"."${table.getName()}"'::regclass
+        const oid = `'"${table.schemaName || 'public'}"."${table.getName()}"'::regclass`;
+
+        const indexes = await this.connection.execAndReturnAll(`
+        SELECT DISTINCT ON (cls.relname) cls.relname as idxname, indkey, idx.indisunique as unique, idx.indisprimary as primary
+        FROM pg_index idx
+                 JOIN pg_class cls ON cls.oid = indexrelid
+        WHERE indrelid = ${oid}
+          AND NOT indisprimary
+        ORDER BY cls.relname
         `);
 
-        let lastId: string | undefined;
-        let index: Index | undefined;
-        for (const row of rows) {
-            if (row.constraint_name !== lastId) {
-                if (row.primary) {
-                    lastId = undefined;
-                    table.getColumn(row.column_name).isPrimaryKey = true;
-                    continue;
-                }
-
-                lastId = row.constraint_name;
-                index = table.addIndex(row.constraint_name, row.unique);
+        for (const row of indexes) {
+            if (row.primary) {
+                table.getColumn(row.column_name).isPrimaryKey = true;
+                continue;
             }
 
-            if (index) {
-                index.addColumn(row.column_name);
+            const index = table.addIndex(row.idxname, row.unique);
+
+            const attnums = row.indkey.split(' ');
+            for (const attnum of attnums) {
+                const column = await this.connection.execAndReturnSingle(`
+                    SELECT a.attname
+                    FROM pg_catalog.pg_class c JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
+                    WHERE c.oid = ${oid} AND a.attnum = ${attnum} AND NOT a.attisdropped
+                    ORDER BY a.attnum
+                `);
+                index.addColumn(column.attname);
             }
         }
     }
 
-    protected async addForeignKeys(database: Database, table: Table) {
+    protected async addForeignKeys(database: DatabaseModel, table: Table) {
         const rows = await this.connection.execAndReturnAll(`
         select kcu.table_name      as table_name,
                kcu.constraint_name as constraint_name,
@@ -86,7 +80,7 @@ export class PostgresSchemaParser {
                           and rco.unique_constraint_name = rel_kcu.constraint_name
                           and kcu.ordinal_position = rel_kcu.ordinal_position
         where tco.table_name = '${table.getName()}'
-          and tco.table_schema = '${table.schemaName || 'default'}'
+          and tco.table_schema = '${table.schemaName || 'public'}'
           and tco.constraint_schema = tco.table_schema
           and tco.constraint_type = 'FOREIGN KEY'
         order by kcu.table_schema, kcu.table_name, kcu.ordinal_position
@@ -97,7 +91,7 @@ export class PostgresSchemaParser {
         for (const row of rows) {
             if (row.constraint_name !== lastId) {
                 lastId = row.constraint_name;
-                const foreignTable = database.getTable(row.referenced_table_name, row.referenced_schema_name);
+                const foreignTable = database.getTable(row.referenced_table_name);
                 foreignKey = table.addForeignKey(row.constraint_name, foreignTable);
             }
 
@@ -116,7 +110,7 @@ export class PostgresSchemaParser {
             numeric_precision, numeric_scale, character_maximum_length
         FROM information_schema.columns
         WHERE
-            table_schema = '${table.schemaName}' AND table_name = '${table.getName()}'
+            table_schema = '${table.schemaName || 'public'}' AND table_name = '${table.getName()}'
         `);
 
         for (const row of rows) {
@@ -124,16 +118,16 @@ export class PostgresSchemaParser {
             parseType(column, row.data_type);
             const size = row.character_maximum_length || row.numeric_precision;
             const scale = row.numeric_scale;
-            if (column.type && size !== this.defaultPrecisions[column.type]) {
+            if (size && column.type && size !== this.defaultPrecisions[column.type]) {
                 column.size = size;
             }
 
             if (scale) column.scale = scale;
 
-            column.isNotNull = row.is_null === 'NO';
+            column.isNotNull = row.is_nullable === 'NO';
 
             if ('string' === typeof row.column_default) {
-                if (row.column_default.includes('next(') && row.column_default.includes('::regclass')) {
+                if (row.column_default.includes('nextval(') && row.column_default.includes('::regclass')) {
                     column.isAutoIncrement = true;
                 }
             }
@@ -144,7 +138,7 @@ export class PostgresSchemaParser {
         }
     }
 
-    protected async parseTables(database: Database) {
+    protected async parseTables(database: DatabaseModel, limitTableNames?: string[]) {
         const rows = await this.connection.execAndReturnAll(`
             select table_name, table_schema as schema_name
             from information_schema.tables where table_schema not like 'pg_%' and table_schema = current_schema()
@@ -154,6 +148,8 @@ export class PostgresSchemaParser {
         `);
 
         for (const row of rows) {
+            if (limitTableNames && !limitTableNames.includes(row.table_name)) continue;
+
             const table = database.addTable(row.table_name);
             if (row.schema_name !== 'public') {
                 table.schemaName = row.schema_name || database.schemaName;

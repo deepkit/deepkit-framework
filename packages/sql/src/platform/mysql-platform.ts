@@ -1,13 +1,21 @@
 import {DefaultPlatform} from './default-platform';
 import {Pool} from 'mariadb';
 import {mySqlSerializer} from '../serializer/mysql-serializer';
+import {Column} from '../schema/table';
+import {MySQLOptions, PropertySchema} from '@deepkit/type';
+import {parseType} from '../reverse/schema-parser';
 
 export class MySQLPlatform extends DefaultPlatform {
     protected defaultSqlType = 'longtext';
+
     public readonly serializer = mySqlSerializer;
 
     constructor(protected pool: Pool) {
         super();
+
+        this.nativeTypeInformation.set('blob', {needsIndexPrefix: true, defaultIndexSize: 767});
+        this.nativeTypeInformation.set('longtext', {needsIndexPrefix: true, defaultIndexSize: 767});
+        this.nativeTypeInformation.set('longblob', {needsIndexPrefix: true, defaultIndexSize: 767});
 
         this.addType('number', 'double');
         this.addType('date', 'datetime');
@@ -15,6 +23,16 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType('boolean', 'tinyint');
         this.addType('uuid', 'blob');
         this.addBinaryType('longblob');
+    }
+
+    protected setColumnType(column: Column, typeProperty: PropertySchema) {
+        const db = (typeProperty.data['mysql'] || {}) as MySQLOptions;
+        if (db.type) {
+            parseType(column, db.type);
+            return;
+        }
+
+        super.setColumnType(column, typeProperty);
     }
 
     quoteValue(value: any): string {

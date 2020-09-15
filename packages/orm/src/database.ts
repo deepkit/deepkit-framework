@@ -73,9 +73,10 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
 
-    constructor(public readonly adapter: ADAPTER) {
+    constructor(public readonly adapter: ADAPTER, schemas: (ClassType | ClassSchema)[] = []) {
         const queryFactory = this.adapter.queryFactory(this.rootSession);
         this.query = queryFactory.createQuery.bind(queryFactory);
+        this.registerEntity(...schemas);
     }
 
     /**

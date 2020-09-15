@@ -37,10 +37,16 @@ export function isPropertyValidator(object: any): object is ClassType<PropertyVa
     return isClass(object);
 }
 
+//note: Not all options are supported in all databases.
 type IndexOptions = Partial<{
+    //index size. Necessary for blob/longtext, etc.
+    size: number,
+
     unique: boolean,
     spatial: boolean,
     sparse: boolean,
+
+    //only in mongodb
     synchronize: boolean,
     fulltext: boolean,
     where: string,
@@ -623,8 +629,9 @@ export class ClassSchema<T = any> {
         return !!this.onLoad.find(v => !!v.options.fullLoad);
     }
 
-    public addIndex(name: string, options?: IndexOptions) {
-        this.indices.set(name, {fields: [name], options: options || {}});
+    public addIndex(fieldNames: (keyof T & string)[], name?: string, options?: IndexOptions) {
+        name = name || fieldNames.join('_');
+        this.indices.set(name, {fields: fieldNames, options: options || {}});
     }
 
     public clone(classType: ClassType<any>): ClassSchema {
@@ -1544,6 +1551,33 @@ export interface FieldDecoratorResult<T> {
      * Creates a PropertySchema object from the given definition.
      */
     buildPropertySchema(name?: string): PropertySchema;
+
+    /**
+     * Sets field (column) options for MySQL.
+     */
+    mysql(options: Partial<MySQLOptions>): FieldDecoratorResult<T>;
+
+    /**
+     * Sets field (column) options for PostgreSQL.
+     */
+    postgres(options: Partial<MySQLOptions>): FieldDecoratorResult<T>;
+
+    /**
+     * Sets field (column) options for SQLite.
+     */
+    sqlite(options: Partial<MySQLOptions>): FieldDecoratorResult<T>;
+}
+
+export interface MySQLOptions {
+    type: string;
+}
+
+export interface PostgresOptions {
+    type: string;
+}
+
+export interface SqliteOptions {
+    type: string;
 }
 
 export function isFieldDecorator(t: any): t is FieldDecoratorResult<any> {
@@ -1917,6 +1951,27 @@ function createFieldDecoratorResult<T>(
 
     fn.toString = function () {
         return buildPropertySchema(Object, givenPropertyName).toString();
+    };
+
+    fn.mysql = (options: MySQLOptions) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.data['mysql'] = options;
+        }]);
+    };
+
+    fn.postgres = (options: PostgresOptions) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.data['postgres'] = options;
+        }]);
+    };
+
+    fn.sqlite = (options: SqliteOptions) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.data['sqlite'] = options;
+        }]);
     };
 
     fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn)[]) => {

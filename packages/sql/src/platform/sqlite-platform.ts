@@ -1,5 +1,8 @@
 import {DefaultPlatform, isSet} from './default-platform';
 import {Column, ForeignKey, Table} from '../schema/table';
+import {PropertySchema} from '@deepkit/type/dist/src/decorators';
+import {parseType} from '../reverse/schema-parser';
+import {SqliteOptions} from '@deepkit/type';
 
 export class SQLitePlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
@@ -13,6 +16,16 @@ export class SQLitePlatform extends DefaultPlatform {
         this.addType('boolean', 'integer', 1);
         this.addType('uuid', 'blob');
         this.addBinaryType('blob');
+    }
+
+    protected setColumnType(column: Column, typeProperty: PropertySchema) {
+        const db = (typeProperty.data['sqlite'] || {}) as SqliteOptions;
+        if (db.type) {
+            parseType(column, db.type);
+            return;
+        }
+
+        super.setColumnType(column, typeProperty);
     }
 
     /**
@@ -36,7 +49,7 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     //we manually set PRIMARY KEY in getColumnDDL
-    supportsPrimaryKeyBlock(): boolean {
+    supportsInlinePrimaryKey(): boolean {
         return false;
     }
 

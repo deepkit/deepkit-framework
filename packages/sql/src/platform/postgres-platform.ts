@@ -1,6 +1,9 @@
 import {DefaultPlatform, isSet} from './default-platform';
 import {postgresSerializer} from '../serializer/postgres-serializer';
-import {Column, Database, Index, Table} from '../schema/table';
+import {Column, Index, Table} from '../schema/table';
+import {PropertySchema} from '@deepkit/type/dist/src/decorators';
+import {parseType} from '../reverse/schema-parser';
+import {PostgresOptions} from '@deepkit/type';
 
 export class PostgresPlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
@@ -25,25 +28,14 @@ export class PostgresPlatform extends DefaultPlatform {
         this.addBinaryType('bytea');
     }
 
-    getAddTablesDDL(database: Database): string[] {
-        const ddl: string[] = [];
-
-        ddl.push(this.getBeginDDL());
-        ddl.push(this.getAddSchemasDDL(database));
-
-        for (const table of database.tables) {
-            ddl.push(this.getDropTableDDL(table));
-            ddl.push(this.getAddTableDDL(table));
-            ddl.push(this.getAddIndicesDDL(table));
+    protected setColumnType(column: Column, typeProperty: PropertySchema) {
+        const db = (typeProperty.data['postgres'] || {}) as PostgresOptions;
+        if (db.type) {
+            parseType(column, db.type);
+            return;
         }
 
-        for (const table of database.tables) {
-            ddl.push(this.getAddForeignKeysDDL(table));
-        }
-
-        ddl.push(this.getEndDDL());
-
-        return ddl.filter(isSet);
+        super.setColumnType(column, typeProperty);
     }
 
     getColumnDDL(column: Column) {
@@ -81,7 +73,7 @@ export class PostgresPlatform extends DefaultPlatform {
         return `DROP CONSTRAINT ${this.getIdentifier(index)}`;
     }
 
-    supportsForeignKeyBlock(): boolean {
+    supportsInlineForeignKey(): boolean {
         return false;
     }
 

@@ -1,18 +1,10 @@
-import {SQLConnection} from '../sql-adapter';
-import {DefaultPlatform} from '../platform/default-platform';
-import {Database, ForeignKey, Index, Table} from '../schema/table';
-import {parseType} from './schema-parser';
+import {DatabaseModel, ForeignKey, Index, Table} from '../schema/table';
+import {parseType, SchemaParser} from './schema-parser';
 
 
-export class MysqlSchemaParser {
-    constructor(
-        protected connection: SQLConnection,
-        protected platform: DefaultPlatform,
-    ) {
-    }
-
-    async parse(database: Database) {
-        await this.parseTables(database);
+export class MysqlSchemaParser extends SchemaParser {
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {
+        await this.parseTables(database, limitTableNames);
 
         for (const table of database.tables) {
             await this.addColumns(table);
@@ -50,7 +42,7 @@ export class MysqlSchemaParser {
         }
     }
 
-    protected async addForeignKeys(database: Database, table: Table) {
+    protected async addForeignKeys(database: DatabaseModel, table: Table) {
         const rows = await this.connection.execAndReturnAll(`
         SELECT distinct k.constraint_name, k.column_name, k.referenced_table_name, k.referenced_column_name, c.update_rule, c.delete_rule
         from information_schema.key_column_usage k
@@ -77,7 +69,7 @@ export class MysqlSchemaParser {
 
     protected async addColumns(table: Table) {
         const rows = await this.connection.execAndReturnAll(`
-        SHOW COLUMNS FROM '${table.getName()}'
+            SHOW COLUMNS FROM ${this.platform.quoteIdentifier(table.getName())}
         `);
 
         for (const row of rows) {
@@ -85,7 +77,7 @@ export class MysqlSchemaParser {
             parseType(column, row.Type);
 
             column.isNotNull = row.Null === 'NO';
-            column.defaultValue = row.Default;
+            column.defaultValue = row.Default || undefined;
 
             if (row.Key === 'PRI') column.isPrimaryKey = true;
             if ('string' === typeof row.Extra) {
@@ -94,14 +86,16 @@ export class MysqlSchemaParser {
         }
     }
 
-    protected async parseTables(database: Database) {
+    protected async parseTables(database: DatabaseModel, limitTableNames?: string[]) {
         const rows = await this.connection.execAndReturnAll(`
             SELECT table_name FROM information_schema.tables WHERE
             table_type = 'BASE TABLE' and table_schema = '${database.schemaName || 'default'}'
         `);
 
         for (const row of rows) {
-            const table = database.addTable(row.table_name);
+            if (limitTableNames && !limitTableNames.includes(row.TABLE_NAME)) continue;
+
+            const table = database.addTable(row.TABLE_NAME);
             table.schemaName = database.schemaName;
         }
     }
