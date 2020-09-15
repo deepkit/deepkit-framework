@@ -586,6 +586,12 @@ export class ClassSchema<T = any> {
         this.hasDefaultsInitialized = true;
     }
 
+    getCollectionName(): string {
+        const name = this.collectionName || this.name;
+        if (!name) throw new Error(`No entity name set for ${this.getClassName()}`);
+        return name;
+    }
+
     public getClassPropertyName(name: string): string {
         return this.getClassName() + '.' + name;
     }

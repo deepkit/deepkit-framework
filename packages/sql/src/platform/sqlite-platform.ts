@@ -2,17 +2,17 @@ import {DefaultPlatform, isSet} from './default-platform';
 import {Column, ForeignKey, Table} from '../schema/table';
 
 export class SQLitePlatform extends DefaultPlatform {
-    protected defaultSqlType = 'TEXT';
+    protected defaultSqlType = 'text';
 
     constructor() {
         super();
 
-        this.addType('number', 'INTEGER', 8);
-        this.addType('date', 'INTEGER', 8);
-        this.addType('moment', 'INTEGER', 8);
-        this.addType('boolean', 'INTEGER', 1);
-        this.addType('uuid', 'BLOB');
-        this.addBinaryType('BLOB');
+        this.addType('number', 'integer', 8);
+        this.addType('date', 'integer', 8);
+        this.addType('moment', 'integer', 8);
+        this.addType('boolean', 'integer', 1);
+        this.addType('uuid', 'blob');
+        this.addBinaryType('blob');
     }
 
     /**

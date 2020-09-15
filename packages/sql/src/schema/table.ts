@@ -1,10 +1,29 @@
 import {arrayRemoveItem} from '@deepkit/core';
 import {createHash} from 'crypto';
+import {PropertySchema} from '@deepkit/type';
 
 export class Database {
     public schemaName: string = '';
 
     constructor(public tables: Table[] = []) {
+    }
+
+    addTable(name: string) {
+        const table = new Table(name);
+        this.tables.push(table);
+        return table;
+    }
+
+    getTable(name: string, schemaName?: string): Table {
+        const table = this.tables.find(v => v.isName(name, schemaName));
+        if (!table) throw new Error(`Could not find table ${name} in schema ${schemaName}`);
+        return table;
+    }
+
+    getTableForFull(fullName: string, schemaDelimiter: string): Table {
+        let name = fullName.includes(schemaDelimiter) ? fullName.split(schemaDelimiter)[0] : fullName;
+        let schemaName = fullName.includes(schemaDelimiter) ? fullName.split(schemaDelimiter)[1] : '';
+        return this.getTable(name, schemaName);
     }
 }
 
@@ -12,11 +31,19 @@ export class Table {
     public schemaName: string = '';
     public alias: string = '';
 
+    public columnForProperty: Map<PropertySchema, Column> = new Map;
     public columns: Column[] = [];
     public indices: Index[] = [];
     public foreignKeys: ForeignKey[] = [];
 
-    constructor(public name: string) {
+    constructor(
+        public name: string,
+    ) {
+    }
+
+    isName(name: string, schemaName?: string): boolean {
+        if (schemaName && schemaName !== this.schemaName) return false;
+        return this.name === name;
     }
 
     getName(): string {
@@ -27,9 +54,10 @@ export class Table {
         return (this.schemaName ? this.schemaName + schemaDelimiter : '') + this.name;
     }
 
-    addColumn(name: string): Column {
+    addColumn(name: string, property?: PropertySchema): Column {
         const column = new Column(this, name);
         this.columns.push(column);
+        if (property) this.columnForProperty.set(property, column);
         return column;
     }
 
@@ -49,13 +77,15 @@ export class Table {
         return this.columns.some(v => v.name === name);
     }
 
-    /**
-     * We expect column name to be the propertySchema name without modification.
-     * DDL generator and SQL builder convert that name on demand.
-     */
     getColumn(name: string): Column {
         const column = this.columns.find(v => v.name === name);
         if (!column) throw new Error(`Column ${name} not found at table ${this.name}`);
+        return column;
+    }
+
+    getColumnForProperty(property: PropertySchema): Column {
+        const column = this.columnForProperty.get(property);
+        if (!column) throw new Error(`Column ${property.name} not found at table ${this.name}`);
         return column;
     }
 
@@ -120,11 +150,12 @@ export class Column {
 
     public isNotNull = false;
     public isPrimaryKey = false;
-    public isIndex = false;
-    public isUnique = false;
     public isAutoIncrement = false;
 
-    constructor(public table: Table, public name: string) {
+    constructor(
+        public table: Table,
+        public name: string //real column name (probably transformed to snake case, or something)
+    ) {
     }
 
     getName(): string {
@@ -162,6 +193,10 @@ export class Index {
 
         return this.name;
     }
+
+    addColumn(columnName: string) {
+        this.columns.push(this.table.getColumn(columnName));
+    }
 }
 
 export type ForeignKeyAction = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
@@ -187,6 +222,11 @@ export class ForeignKey {
         }
 
         return this.name;
+    }
+
+    addReference(localColumnName: string, foreignColumnName: string) {
+        this.localColumns.push(this.table.getColumn(localColumnName));
+        this.foreignColumns.push(this.foreign.getColumn(foreignColumnName));
     }
 }
 

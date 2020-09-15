@@ -3,18 +3,18 @@ import {Pool} from 'mariadb';
 import {mySqlSerializer} from '../serializer/mysql-serializer';
 
 export class MySQLPlatform extends DefaultPlatform {
-    protected defaultSqlType = 'LONGTEXT';
+    protected defaultSqlType = 'longtext';
     public readonly serializer = mySqlSerializer;
 
     constructor(protected pool: Pool) {
         super();
 
-        this.addType('number', 'DOUBLE');
-        this.addType('date', 'DATETIME');
-        this.addType('moment', 'DATETIME');
-        this.addType('boolean', 'TINYINT');
-        this.addType('uuid', 'BLOB');
-        this.addBinaryType('LONGBLOB');
+        this.addType('number', 'double');
+        this.addType('date', 'datetime');
+        this.addType('moment', 'datetime');
+        this.addType('boolean', 'tinyint');
+        this.addType('uuid', 'blob');
+        this.addBinaryType('longblob');
     }
 
     quoteValue(value: any): string {

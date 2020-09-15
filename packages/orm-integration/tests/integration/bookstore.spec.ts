@@ -60,7 +60,7 @@ test('tables', () => {
 
     const [userCredentials] = new SQLitePlatform().createTables([UserCredentials, User]);
     expect(userCredentials.getColumn('user').isPrimaryKey).toBe(true);
-    expect(userCredentials.getColumn('user').type).toBe('INTEGER');
+    expect(userCredentials.getColumn('user').type).toBe('integer');
 
     // console.log(new SQLitePlatform().getAddTableDDL(userCredentials));
 });

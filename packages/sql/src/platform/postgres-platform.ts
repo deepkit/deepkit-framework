@@ -3,13 +3,13 @@ import {postgresSerializer} from '../serializer/postgres-serializer';
 import {Column, Database, Index, Table} from '../schema/table';
 
 export class PostgresPlatform extends DefaultPlatform {
-    protected defaultSqlType = 'TEXT';
+    protected defaultSqlType = 'text';
     public readonly serializer = postgresSerializer;
 
     constructor() {
         super();
 
-        this.addType('number', 'DOUBLE PRECISION');
+        this.addType('number', 'double precision');
         this.addType('date', 'timestamp');
         this.addType('moment', 'timestamp');
         this.addType('boolean', 'boolean');
@@ -22,7 +22,7 @@ export class PostgresPlatform extends DefaultPlatform {
         this.addType('patch', 'jsonb');
 
         this.addType('uuid', 'uuid');
-        this.addBinaryType('BYTEA');
+        this.addBinaryType('bytea');
     }
 
     getAddTablesDDL(database: Database): string[] {

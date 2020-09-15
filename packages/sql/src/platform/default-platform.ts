@@ -8,12 +8,34 @@ export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
 }
 
+export interface NamingStrategy {
+    getColumnName(property: PropertySchema): string;
+
+    getTableName(classSchema: ClassSchema): string;
+}
+
+export class DefaultNamingStrategy implements NamingStrategy {
+    getColumnName(property: PropertySchema): string {
+        return property.name;
+    }
+
+    getTableName(classSchema: ClassSchema): string {
+        return classSchema.getCollectionName();
+    }
+}
+
 export class DefaultPlatform {
-    protected defaultSqlType = 'TEXT';
+    protected defaultSqlType = 'text';
     protected typeMapping = new Map<string, { sqlType: string, size?: number, scale?: number }>();
     public readonly serializer: Serializer = sqlSerializer;
 
+    public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
+
     constructor() {
+    }
+
+    getMigrationTableName() {
+        return `deepkit_migration`;
     }
 
     quoteValue(value: any): string {
@@ -82,7 +104,7 @@ export class DefaultPlatform {
 
             if (!schema.name) throw new Error(`No entity name for schema for class ${schema.getClassName()} given`);
 
-            const table = new Table(schema.name);
+            const table = new Table(this.namingStrategy.getTableName(schema));
             generatedTables.set(schema, table);
 
             table.schemaName = schema.databaseSchemaName || database.schemaName;
@@ -90,7 +112,7 @@ export class DefaultPlatform {
             for (const property of this.getEntityFields(schema)) {
                 if (property.backReference) continue;
 
-                const column = table.addColumn(property.name);
+                const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
 
                 column.type = this.defaultSqlType;
                 const typeProperty = property.isReference ? property.getResolvedClassSchema().getPrimaryField() : property;
@@ -106,8 +128,6 @@ export class DefaultPlatform {
                 const isNullable = property.isUndefinedAllowed() || property.isNullable;
                 column.isNotNull = !isNullable;
                 column.isPrimaryKey = property.isId;
-                column.isUnique = property.index && property.index.unique || false;
-                column.isIndex = property.index && !property.index.unique || false;
                 column.isAutoIncrement = property.isAutoIncrement;
             }
         }
@@ -124,9 +144,6 @@ export class DefaultPlatform {
                 const foreignTable = generatedTables.get(property.getResolvedClassSchema())!;
                 const foreignKey = table.addForeignKey('', foreignTable);
                 foreignKey.localColumns = [table.getColumn(property.name)];
-                for (const column of foreignKey.localColumns) {
-                    column.isIndex = true;
-                }
                 foreignKey.foreignColumns = foreignTable.getPrimaryKeys();
             }
         }
@@ -135,13 +152,6 @@ export class DefaultPlatform {
         for (let schema of schemas) {
             schema = getClassSchema(schema);
             const table = generatedTables.get(schema)!;
-
-            for (const column of table.columns) {
-                if (!column.isIndex && !column.isUnique) continue;
-                if (table.hasIndex([column], column.isUnique)) continue;
-                const index = table.addIndex('', column.isUnique);
-                index.columns = [column];
-            }
 
             for (const [name, index] of schema.indices.entries()) {
                 if (table.hasIndexByName(name)) continue;
@@ -157,6 +167,16 @@ export class DefaultPlatform {
                 if (table.hasIndex(foreignKeys.localColumns)) continue;
                 const index = table.addIndex(foreignKeys.getName(), false);
                 index.columns = foreignKeys.localColumns;
+            }
+
+            for (const property of schema.getClassProperties().values()) {
+                if (!property.index) continue;
+
+                const column = table.getColumnForProperty(property);
+                if (table.hasIndex([column], property.index.unique)) continue;
+
+                const index = table.addIndex('', property.index.unique);
+                index.columns = [column];
             }
         }
 
