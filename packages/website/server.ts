@@ -7,7 +7,7 @@ import {join} from 'path';
 import {AppServerModule} from './src/main.server';
 import {APP_BASE_HREF} from '@angular/common';
 import {existsSync} from 'fs';
-import {ApplicationServer, ApplicationServerConfig, hornet} from '@deepkit/framework';
+import {ApplicationServer, ApplicationServerConfig, deepkit} from '@deepkit/framework';
 import {environment} from './src/environments/environment';
 import {rpc} from '@deepkit/framework-shared';
 
@@ -60,7 +60,7 @@ async function run(): Promise<void> {
     }
   }
 
-  @hornet.module({
+  @deepkit.module({
     controllers: [MyController]
   })
   class AppModule {

@@ -23,9 +23,6 @@ function findFileUntilPackageRoot(fileName: string): string | undefined {
 export class Configuration {
     protected container: { [name: string]: any } = {};
 
-    constructor() {
-    }
-
     /**
      * Reads a .env file from given path, based to basePath.
      */
@@ -60,6 +57,10 @@ export class Configuration {
 
             this.container[key] = value;
         }
+    }
+
+    public getKeys(): string[] {
+        return Object.keys(this.container);
     }
 
     /**

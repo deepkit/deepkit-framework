@@ -9,11 +9,22 @@ export interface InjectDecorator {
      * Mark as optional.
      */
     optional(): this;
+
+    /**
+     * Resolves the dependency token from the root injector.
+     */
+    root(): this;
+
+    /**
+     * Resolves a dependency value from a path, defined in the Configuration (.env file)
+     */
+    config(path: string): this;
 }
 
 type InjectOptions = {
     token: any | ForwardRef<any>;
     optional: boolean;
+    root: boolean;
 };
 
 type ForwardRef<T> = () => T;
@@ -21,17 +32,29 @@ type ForwardRef<T> = () => T;
 export function inject(type?: any | ForwardRef<any>): InjectDecorator {
     const injectOptions: InjectOptions = {
         optional: false,
+        root: false,
         token: type,
     };
 
     const fn = (target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
-        FieldDecoratorWrapper((target: object, property) => {
+        FieldDecoratorWrapper((target: object, property, returnType) => {
             property.data['deepkit/inject'] = injectOptions;
+            property.setFromJSType(returnType);
         })(target, propertyOrMethodName, parameterIndexOrDescriptor);
     };
 
     fn.optional = () => {
         injectOptions.optional = true;
+        return fn;
+    };
+
+    fn.root = () => {
+        injectOptions.root = true;
+        return fn;
+    };
+
+    fn.config = (path: string) => {
+        injectOptions.token = 'config.' + path;
         return fn;
     };
 
@@ -89,17 +112,24 @@ export function tokenLabel(token: any): string {
     return token + '';
 }
 
+export interface ConfigContainer {
+    get(path: string): any;
+}
+
 export class Injector {
     protected fetcher = new Map<any, (rootInjector?: Injector) => any>();
     protected resolved = new Map<any, any>();
     public circularCheck: boolean = true;
     public allowUnknown: boolean = false;
 
+    public configContainer?: ConfigContainer;
+
     constructor(
         protected providers: Provider[] = [],
         protected parents: Injector[] = [],
     ) {
         this.addProviders(providers);
+        this.addProvider({provide: Injector, useValue: this});
     }
 
     addProviders(providers: Provider[] = []) {
@@ -176,8 +206,10 @@ export class Injector {
                 token = isFunction(options.token) ? options.token() : options.token;
             }
 
+            const injectorToUse = options && options.root ? rootInjector || this : this;
+
             try {
-                const value = this.get(token, rootInjector);
+                const value = injectorToUse.get(token, rootInjector);
                 args.push(value);
                 argsCheck.push('✓');
             } catch (e) {
@@ -189,7 +221,7 @@ export class Injector {
                         argsCheck.push('?');
                         throw new DependenciesUnmetError(
                             `Unknown constructor argument no ${argsCheck.length} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
-                            `Make sure '${tokenLabel(token)}' is provided.`
+                            `Make sure '${tokenLabel(token)}' is provided. ` + e
                         );
                     }
                 } else {

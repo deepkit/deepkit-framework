@@ -14,4 +14,6 @@ export class ApplicationConfig {
     maxPayload?: number;
 
     publicDir: string = 'public/';
+
+    migrationDir: string = 'migration/';
 }

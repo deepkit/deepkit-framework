@@ -3,10 +3,7 @@ import 'jest';
 import {t} from '@deepkit/type';
 import {schemaMigrationRoundTrip} from './setup';
 import {MySQLDatabaseAdapter} from '../src/mysql-adapter';
-import {MysqlSchemaParser} from '../src/reverse/mysql-schema-parser';
 import {PostgresDatabaseAdapter} from '../src/postgres-adapter';
-import {PostgresSchemaParser} from '../src/reverse/postgres-schema-parser';
-import {SQLiteSchemaParser} from '../src/reverse/sqlite-schema-parser';
 import {SQLiteDatabaseAdapter} from '../src/sqlite-adapter';
 
 
@@ -22,7 +19,7 @@ test('mysql custom type', async () => {
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
 
-    await schemaMigrationRoundTrip([post], adapter, MysqlSchemaParser);
+    await schemaMigrationRoundTrip([post], adapter);
 
     adapter.disconnect();
 });
@@ -42,7 +39,7 @@ test('postgres custom type', async () => {
 
     expect(postTable.getColumn('content').type).toBe('text');
 
-    await schemaMigrationRoundTrip([post], adapter, PostgresSchemaParser);
+    await schemaMigrationRoundTrip([post], adapter);
 
     adapter.disconnect();
 });
@@ -63,7 +60,7 @@ test('sqlite custom type', async () => {
 
     expect(postTable.getColumn('content').type).toBe('text');
 
-    await schemaMigrationRoundTrip([post], adapter, SQLiteSchemaParser);
+    await schemaMigrationRoundTrip([post], adapter);
 
     adapter.disconnect();
 });

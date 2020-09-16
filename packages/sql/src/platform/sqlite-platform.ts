@@ -3,9 +3,11 @@ import {Column, ForeignKey, Table} from '../schema/table';
 import {PropertySchema} from '@deepkit/type/dist/src/decorators';
 import {parseType} from '../reverse/schema-parser';
 import {SqliteOptions} from '@deepkit/type';
+import {SQLiteSchemaParser} from '../reverse/sqlite-schema-parser';
 
 export class SQLitePlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
+    schemaParserType = SQLiteSchemaParser;
 
     constructor() {
         super();

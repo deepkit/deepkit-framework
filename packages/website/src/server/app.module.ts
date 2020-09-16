@@ -1,6 +1,6 @@
-import {hornet} from '@deepkit/framework';
+import {deepkit} from '@deepkit/framework';
 
-@hornet.module({
+@deepkit.module({
   controllers: []
 })
 class AppModule {

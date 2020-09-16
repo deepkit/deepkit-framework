@@ -50,7 +50,7 @@ class UserController implements UserControllerInterface{
     }
 }
 
-@hornet.module({
+@deepkit.module({
     controllers: [UserController],
     connectionProviders: [],
     notifyEntities: [User],

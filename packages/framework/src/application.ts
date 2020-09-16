@@ -2,12 +2,14 @@ import {applyDefaults, ClassType} from '@deepkit/core';
 import {WebWorker} from './worker';
 import {BaseModule} from './base.module';
 import {ProviderWithScope, ServiceContainer} from './service-container';
-import {DynamicModule, hornet, ModuleOptions} from './decorator';
+import {DynamicModule, deepkit, ModuleOptions} from './decorator';
 import {Command, Config, Options} from '@oclif/config';
 import {basename, relative} from 'path';
 import {Main} from '@oclif/command';
+import {ExitError} from '@oclif/errors';
 import {buildOclifCommand} from './command';
 import {ApplicationConfig} from './application-config';
+import {Configuration} from './configuration';
 
 export class Application {
     protected config: ApplicationConfig;
@@ -26,6 +28,18 @@ export class Application {
         );
 
         imports.unshift(BaseModule.forRoot());
+
+        const configuration = new Configuration();
+        configuration.loadEnvFile('.env');
+
+        for (const name of configuration.getKeys()) {
+            providers.push({provide: 'config.' + name, useValue: configuration.get(name)});
+        }
+
+        for (const name of Object.keys(this.config)) {
+            providers.push({provide: 'config.' + name, useValue: (this.config as any)[name]});
+        }
+
         this.serviceContainer.processRootModule(appModule, providers, imports);
 
         for (const module of this.serviceContainer.getRegisteredModules()) {
@@ -36,7 +50,7 @@ export class Application {
     }
 
     static root(module: ModuleOptions, config: Partial<ApplicationConfig> = {}) {
-        @hornet.module(module)
+        @deepkit.module(module)
         class MyModule {
 
         }
@@ -118,7 +132,15 @@ export class Application {
             config.commandsMap[name] = buildOclifCommand(controller);
         }
 
-        await Main.run(argv, config);
+        try {
+            await Main.run(argv, config);
+        } catch (e) {
+            if (e instanceof ExitError) {
+                process.exit(e.oclif.exit);
+            } else {
+                throw e;
+            }
+        }
         return result;
     }
 }

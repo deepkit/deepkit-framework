@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {DynamicModule, hornet, SuperHornetModule} from '../src/decorator';
+import {DynamicModule, deepkit, SuperHornetModule} from '../src/decorator';
 import {ControllerContainer, ServiceContainer} from '../src/service-container';
 import {injectable, Injector} from '../src/injector/injector';
 import {rpc} from '@deepkit/framework-shared';
@@ -28,7 +28,7 @@ test('controller', () => {
     }
 
     {
-        @hornet.module({
+        @deepkit.module({
             providers: [MyService],
             controllers: [MyController],
         })
@@ -64,7 +64,7 @@ test('controller in module and overwrite service', () => {
         }
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [MyService],
         controllers: [MyController],
         exports: [
@@ -75,7 +75,7 @@ test('controller in module and overwrite service', () => {
     }
 
     {
-        @hornet.module({
+        @deepkit.module({
             imports: [ControllerModule],
         })
         class MyModule {
@@ -90,7 +90,7 @@ test('controller in module and overwrite service', () => {
     }
 
     {
-        @hornet.module({
+        @deepkit.module({
             providers: [
                 {provide: MyService, useValue: new MyService('different')}
             ],
@@ -118,7 +118,7 @@ test('simple setup with import and overwrite', () => {
         }
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection]
     })
@@ -128,7 +128,7 @@ test('simple setup with import and overwrite', () => {
     class MyService {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [MyService],
         imports: [DatabaseModule]
     })
@@ -159,7 +159,7 @@ test('simple setup with import and overwrite', () => {
         class OverwrittenConnection {
         }
 
-        @hornet.module({
+        @deepkit.module({
             providers: [MyService, {provide: Connection, useClass: OverwrittenConnection}],
             imports: [DatabaseModule]
         })
@@ -183,7 +183,7 @@ test('deep', () => {
     class DeepService {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [DeepService]
     })
     class DeepModule {
@@ -195,7 +195,7 @@ test('deep', () => {
     class HiddenDatabaseService {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection],
         imports: [DeepModule]
@@ -206,7 +206,7 @@ test('deep', () => {
     class MyService {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [MyService],
         imports: [DatabaseModule]
     })
@@ -233,7 +233,7 @@ test('scopes', () => {
     class SessionHandler {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [MyService, {provide: SessionHandler, scope: 'session'}],
     })
     class MyModule {
@@ -257,7 +257,7 @@ test('for root with exported module', () => {
     class SharedService {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [SharedService],
         exports: [SharedService]
     })
@@ -271,7 +271,7 @@ test('for root with exported module', () => {
         }
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [
             BaseHandler
         ],
@@ -286,7 +286,7 @@ test('for root with exported module', () => {
         }
     }
 
-    @hornet.module({
+    @deepkit.module({
         imports: [
             MyBaseModule.forRoot()
         ]
@@ -309,7 +309,7 @@ test('module with config object', () => {
 
     let bootstrapMainCalledConfig: any;
 
-    @hornet.module({
+    @deepkit.module({
         providers: [
             ExchangeConfig,
         ],
@@ -327,7 +327,7 @@ test('module with config object', () => {
         }
     }
 
-    @hornet.module({
+    @deepkit.module({
         imports: [ExchangeModule]
     })
     class MyBaseModule {
@@ -342,7 +342,7 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        @hornet.module({
+        @deepkit.module({
             imports: [MyBaseModule.forRoot()]
         })
         class MyModule {
@@ -361,7 +361,7 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        @hornet.module({})
+        @deepkit.module({})
         class MyModule {
         }
 
@@ -378,7 +378,7 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        @hornet.module({
+        @deepkit.module({
             imports: [ExchangeModule]
         })
         class MyModule {
@@ -399,7 +399,7 @@ test('module with config object', () => {
         const changedConfig = new ExchangeConfig();
         changedConfig.startOnBootstrap = false;
 
-        @hornet.module({
+        @deepkit.module({
             providers: [
                 {provide: ExchangeConfig, useValue: changedConfig}
             ],
@@ -424,7 +424,7 @@ test('exported module', () => {
     class DatabaseConnection {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [DatabaseConnection],
         exports: [
             DatabaseConnection
@@ -436,7 +436,7 @@ test('exported module', () => {
     class FSService {
     }
 
-    @hornet.module({
+    @deepkit.module({
         providers: [FSService],
         imports: [DatabaseModule],
         exports: [
@@ -447,7 +447,7 @@ test('exported module', () => {
     }
 
     {
-        @hornet.module({
+        @deepkit.module({
             imports: [FSModule]
         })
         class MyModule {

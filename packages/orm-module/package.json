@@ -1,0 +1,46 @@
+{
+  "name": "@deepkit/orm-module",
+  "version": "1.0.0-alpha.0",
+  "description": "deepkit/orm module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc --build",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "repository": "https://github.com/deepkit/framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepkit/framework": "^1.0.0-alpha.0",
+    "@deepkit/orm": "^1.0.0-alpha.0",
+    "@deepkit/sql": "^1.0.0-alpha.0"
+  },
+  "dependencies": {
+    "@deepkit/core": "^1.0.0-alpha.0",
+    "date-fns": "^2.16.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.4",
+    "jest-serial-runner": "^1.1.0",
+    "sqlite3": "^5.0.0",
+    "mariadb": "^2.4.2",
+    "pg": "^8.3.3",
+    "reflect-metadata": "^0.1.13",
+    "@deepkit/framework": "^1.0.0-alpha.0",
+    "@deepkit/orm": "^1.0.0-alpha.0",
+    "@deepkit/sql": "^1.0.0-alpha.0"
+  },
+  "jest": {
+    "runner": "jest-serial-runner",
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

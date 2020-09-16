@@ -1,7 +1,7 @@
 import {EntityStorage} from './entity-storage';
-import {hornet} from '../decorator';
+import {deepkit} from '../decorator';
 
-@hornet.module({
+@deepkit.module({
     providers: [
         {provide: EntityStorage, scope: 'session'}
     ]

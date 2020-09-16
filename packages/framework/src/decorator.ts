@@ -23,11 +23,6 @@ export interface ModuleOptions {
      * Import another module.
      */
     imports?: (ClassType | DynamicModule)[];
-
-    /**
-     * Commands. Classes decorated with @hornet.controller()
-     */
-    commands?: ClassType[];
 }
 
 export interface DynamicModule extends ModuleOptions {
@@ -44,7 +39,7 @@ export function isDynamicModuleObject(obj: any): obj is DynamicModule {
 }
 
 export function isModuleToken(obj: any): obj is (ClassType | DynamicModule) {
-    return (isClass(obj) && undefined !== hornet._fetch(obj)) || isDynamicModuleObject(obj);
+    return (isClass(obj) && undefined !== deepkit._fetch(obj)) || isDynamicModuleObject(obj);
 }
 
 export interface SuperHornetModule {
@@ -81,7 +76,7 @@ class Hornet {
     config?: ModuleOptions;
 }
 
-export const hornet = createClassDecoratorContext(
+export const deepkit = createClassDecoratorContext(
     class {
         t = new Hornet;
 

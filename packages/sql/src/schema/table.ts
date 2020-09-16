@@ -1,7 +1,7 @@
 import {arrayRemoveItem} from '@deepkit/core';
 import {createHash} from 'crypto';
 import {PropertySchema} from '@deepkit/type';
-import {inspect} from "util";
+import {inspect} from 'util';
 
 export class DatabaseModel {
     public schemaName: string = '';
@@ -29,6 +29,10 @@ export class DatabaseModel {
         let name = fullName.includes(schemaDelimiter) ? fullName.split(schemaDelimiter)[0] : fullName;
         let schemaName = fullName.includes(schemaDelimiter) ? fullName.split(schemaDelimiter)[1] : '';
         return this.getTable(name, schemaName);
+    }
+
+    hasTable(name: string, schemaName?: string): boolean {
+        return this.tables.some(v => v.isName(name, schemaName));
     }
 }
 
@@ -278,7 +282,7 @@ export class ColumnDiff {
     valueOf() {
         const res: string[] = [];
         for (const [key, value] of this.changedProperties.entries()) {
-            res.push(`${key}: ${JSON.stringify(value.from)}=>${JSON.stringify(value.to)}`)
+            res.push(`${key}: ${JSON.stringify(value.from)}=>${JSON.stringify(value.to)}`);
         }
         return res.join(',');
     }
@@ -337,29 +341,29 @@ export class TableDiff {
     public addedColumns = new Map<string, Column>();
     public removedColumns = new Map<string, Column>();
     public modifiedColumns = new Map<string, ColumnDiff>();
-    public renamedColumns = new Map<string, [removed: Column, added: Column]>();
+    public renamedColumns: [from: Column, to: Column][] = [];
 
     public addedPKColumns = new Map<string, Column>();
     public removedPKColumns = new Map<string, Column>();
-    public renamedPKColumns = new Map<string, [removed: Column, added: Column]>();
+    public renamedPKColumns: [from: Column, to: Column][] = [];
 
     public addedIndices = new Map<string, Index>();
     public removedIndices = new Map<string, Index>();
-    public modifiedIndices = new Map<string, [from: Index, to: Index]>();
+    public modifiedIndices: [from: Index, to: Index][] = [];
 
     public addedFKs = new Map<string, ForeignKey>();
-    public modifiedFKs = new Map<string, [from: ForeignKey, to: ForeignKey]>();
+    public modifiedFKs: [from: ForeignKey, to: ForeignKey][] = [];
     public removedFKs = new Map<string, ForeignKey>();
 
     constructor(public from: Table, public to: Table) {
     }
 
     hasModifiedPk(): boolean {
-        return this.addedPKColumns.size > 0 || this.renamedPKColumns.size > 0 || this.removedPKColumns.size > 0;
+        return this.addedPKColumns.size > 0 || this.renamedPKColumns.length > 0 || this.removedPKColumns.size > 0;
     }
 
     hasModifiedColumns(): boolean {
-        return this.addedColumns.size > 0 || this.renamedColumns.size > 0 || this.removedColumns.size > 0;
+        return this.addedColumns.size > 0 || this.renamedColumns.length > 0 || this.removedColumns.size > 0;
     }
 
     [inspect.custom]() {
@@ -376,9 +380,9 @@ export class TableDiff {
             for (const field of this.removedColumns.values()) lines.push(`     ${field.getName()}:`);
         }
 
-        if (this.renamedColumns.size) {
+        if (this.renamedColumns.length) {
             lines.push('   renamedColumns:');
-            for (const [from, to] of this.renamedColumns.values()) lines.push(`     ${from.getName()} -> ${to.getName()}`);
+            for (const [from, to] of this.renamedColumns) lines.push(`     ${from.getName()} -> ${to.getName()}`);
         }
 
         if (this.modifiedColumns.size) {
@@ -397,9 +401,9 @@ export class TableDiff {
             for (const field of this.removedPKColumns.values()) lines.push(`     ${field.getName()}:`);
         }
 
-        if (this.renamedPKColumns.size) {
+        if (this.renamedPKColumns.length) {
             lines.push('   renamedPKColumns:');
-            for (const [from, to] of this.renamedPKColumns.values()) lines.push(`     ${from.getName()} -> ${to.getName()}`);
+            for (const [from, to] of this.renamedPKColumns) lines.push(`     ${from.getName()} -> ${to.getName()}`);
         }
 
 
@@ -408,9 +412,9 @@ export class TableDiff {
             for (const fk of this.addedFKs.values()) lines.push(`     ${fk.valueOf()}`);
         }
 
-        if (this.modifiedFKs.size) {
+        if (this.modifiedFKs.length) {
             lines.push('   modifiedFKs:');
-            for (const [from, to] of this.modifiedFKs.values()) {
+            for (const [from, to] of this.modifiedFKs) {
                 lines.push(`     ${from.getName()} => ${to.getName()}`);
                 lines.push(`        ${from.getName()}: ${from.valueOf()}`);
                 lines.push(`        ${to.getName()}: ${to.valueOf()}`);
@@ -432,9 +436,9 @@ export class TableDiff {
             for (const index of this.removedIndices.values()) lines.push(`     ${index.valueOf()}`);
         }
 
-        if (this.modifiedIndices.size) {
+        if (this.modifiedIndices.length) {
             lines.push('   modifiedIndices:');
-            for (const [from, to] of this.modifiedIndices.values()) {
+            for (const [from, to] of this.modifiedIndices) {
                 lines.push(`     ${from.getName()} => ${to.getName()}`);
                 lines.push(`        ${from.getName()}: ${from.valueOf()}`);
                 lines.push(`        ${to.getName()}: ${to.valueOf()}`);
@@ -502,7 +506,7 @@ export class TableComparator {
             for (const removedColumn of this.diff.removedColumns.values()) {
                 if (!ColumnComparator.computeDiff(addedColumn, removedColumn)) {
                     // no difference except the name, that's probably a renaming
-                    this.diff.renamedColumns.set(removedColumn.name, [removedColumn, addedColumn]);
+                    this.diff.renamedColumns.push([removedColumn, addedColumn]);
                     this.diff.addedColumns.delete(addedColumn.name);
                     this.diff.removedColumns.delete(removedColumn.name);
                     differences--;
@@ -542,7 +546,7 @@ export class TableComparator {
             for (const removedColumn of this.diff.removedPKColumns.values()) {
                 if (!ColumnComparator.computeDiff(addedColumn, removedColumn)) {
                     // no difference except the name, that's probably a renaming
-                    this.diff.renamedPKColumns.set(removedColumn.name, [removedColumn, addedColumn]);
+                    this.diff.renamedPKColumns.push([removedColumn, addedColumn]);
                     this.diff.addedPKColumns.delete(addedColumn.name);
                     this.diff.removedPKColumns.delete(removedColumn.name);
                     differences--;
@@ -566,7 +570,7 @@ export class TableComparator {
                 if (fromIndex.getName() === toIndex.getName()) {
                     if (IndexComparator.computeDiff(fromIndex, toIndex)) {
                         //same name, but different columns
-                        this.diff.modifiedIndices.set(fromIndex.name, [fromIndex, toIndex]);
+                        this.diff.modifiedIndices.push([fromIndex, toIndex]);
                         differences++;
                     }
 
@@ -599,7 +603,7 @@ export class TableComparator {
                 if (fromFK.getName() === toFK.getName()) {
                     if (ForeignKeyComparator.computeDiff(fromFK, toFK)) {
                         //same name, but different columns
-                        this.diff.modifiedFKs.set(fromFK.name, [fromFK, toFK]);
+                        this.diff.modifiedFKs.push([fromFK, toFK]);
                         differences++;
                     }
 
@@ -617,6 +621,87 @@ export class TableComparator {
         for (const toFK of toForeignKys) {
             this.diff.addedFKs.set(toFK.name, toFK);
             differences++;
+        }
+
+        return differences;
+    }
+}
+
+
+export class DatabaseDiff {
+    public addedTables: Table[] = [];
+    public removedTables: Table[] = [];
+    public modifiedTables: TableDiff[] = [];
+    public renamedTables: [from: Table, to: Table][] = [];
+
+    constructor(
+        public from: DatabaseModel, public to: DatabaseModel
+    ) {
+    }
+}
+
+export class DatabaseComparator {
+    public readonly diff: DatabaseDiff;
+
+    public withRemoveTable: boolean = true;
+    public withRenaming: boolean = true;
+
+    constructor(
+        public from: DatabaseModel, public to: DatabaseModel
+    ) {
+        this.diff = new DatabaseDiff(from, to);
+    }
+
+    static computeDiff(from: DatabaseModel, to: DatabaseModel) {
+        const dc = new this(from, to);
+        let differences = 0;
+        differences = dc.compareTables();
+
+        return differences ? dc.diff : undefined;
+    }
+
+    protected compareTables() {
+        let differences = 0;
+
+        for (const table of this.to.tables) {
+            if (!this.from.hasTable(table.getName())) {
+                this.diff.addedTables.push(table);
+                differences++;
+            }
+        }
+
+        if (this.withRemoveTable) {
+            for (const table of this.from.tables) {
+                if (!this.to.hasTable(table.getName())) {
+                    this.diff.removedTables.push(table);
+                    differences++;
+                }
+            }
+        }
+
+        for (const table of this.from.tables) {
+            if (this.to.hasTable(table.getName())) {
+                const to = this.to.getTable(table.getName());
+                const diff = TableComparator.computeDiff(table, to);
+                if (!diff) continue;
+                this.diff.modifiedTables.push(diff);
+                differences++;
+            }
+        }
+
+        //check for renamings
+        if (this.withRenaming) {
+            for (const addedTable of this.diff.addedTables.slice()) {
+                for (const removedTable of this.diff.removedTables.slice()) {
+                    if (!TableComparator.computeDiff(addedTable, removedTable)) {
+                        //no difference except the name, that's probably a renaming
+                        arrayRemoveItem(this.diff.addedTables, addedTable);
+                        arrayRemoveItem(this.diff.removedTables, removedTable);
+                        this.diff.renamedTables.push([removedTable, addedTable]);
+                        break;
+                    }
+                }
+            }
         }
 
         return differences;

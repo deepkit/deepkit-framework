@@ -4,10 +4,12 @@ import {Column, Index, Table} from '../schema/table';
 import {PropertySchema} from '@deepkit/type/dist/src/decorators';
 import {parseType} from '../reverse/schema-parser';
 import {PostgresOptions} from '@deepkit/type';
+import {PostgresSchemaParser} from '../reverse/postgres-schema-parser';
 
 export class PostgresPlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
     public readonly serializer = postgresSerializer;
+    schemaParserType = PostgresSchemaParser;
 
     constructor() {
         super();

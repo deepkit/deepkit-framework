@@ -51,14 +51,14 @@ test('migration basic', async () => {
 
 describe('migration round trip', () => {
     test('sqlite', async () => {
-        await schemaMigrationRoundTrip([user, post], new SQLiteDatabaseAdapter(':memory:'), SQLiteSchemaParser);
+        await schemaMigrationRoundTrip([user, post], new SQLiteDatabaseAdapter(':memory:'));
     });
 
     test('mysql', async () => {
-        await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter('localhost'), MysqlSchemaParser);
+        await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter('localhost'));
     });
 
     test('postgres', async () => {
-        await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter('localhost'), PostgresSchemaParser);
+        await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter('localhost'));
     });
 });

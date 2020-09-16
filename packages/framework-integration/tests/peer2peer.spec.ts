@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Entity, f} from '@deepkit/type';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {hornet, InternalClient, SecurityStrategy, Session} from '@deepkit/framework';
+import {deepkit, InternalClient, SecurityStrategy, Session} from '@deepkit/framework';
 import {Observable} from 'rxjs';
 import {sleep} from '@deepkit/core';
 import {rpc} from '@deepkit/framework-shared';
@@ -50,7 +50,7 @@ test('test peer2peer', async () => {
         }
     }
 
-    @hornet.module({
+    @deepkit.module({
         controllers: [TestController],
         providers: [
             {

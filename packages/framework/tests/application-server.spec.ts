@@ -3,12 +3,12 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {InMemoryApplicationServer} from '../src/inmemory-application-server';
 import {rpc} from '@deepkit/framework-shared';
-import {hornet} from '../src/decorator';
+import {deepkit} from '../src/decorator';
 import {Application} from '../src/application';
 import {ControllerContainer} from '../src/service-container';
 
 test('basic bootstrap', async () => {
-    @hornet.module({})
+    @deepkit.module({})
     class AppModule {
     }
 
@@ -32,7 +32,7 @@ test('basic controller', async () => {
         }
     }
 
-    @hornet.module({
+    @deepkit.module({
         controllers: [MyController],
     })
     class AppModule {

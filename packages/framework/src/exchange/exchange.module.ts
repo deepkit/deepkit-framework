@@ -2,9 +2,9 @@ import {ExchangeServer, ExchangeServerFactory} from './exchange-server';
 import {Exchange} from './exchange';
 import {AppLocker} from './app-locker';
 import {ExchangeConfig} from './exchange.config';
-import {hornet, SuperHornetModule} from '../decorator';
+import {deepkit, SuperHornetModule} from '../decorator';
 
-@hornet.module({
+@deepkit.module({
     providers: [
         ExchangeServerFactory,
         Exchange,

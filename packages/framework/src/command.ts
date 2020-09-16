@@ -158,7 +158,8 @@ export function buildOclifCommand(classType: ClassType<Command>): OclifCommand.P
                 async run() {
                     const {flags, args} = this.parse(Clazz);
                     const context = ServiceContainer.getControllerContext(classType);
-                    const instance = new Injector([], [context.getInjector(), context.getCliInjector().fork()]).get(classType);
+                    const injector = new Injector([], [context.getInjector(), context.getCliInjector().fork()]);
+                    const instance = injector.get(classType);
                     const methodArgs: any[] = [];
 
                     for (const property of properties) {

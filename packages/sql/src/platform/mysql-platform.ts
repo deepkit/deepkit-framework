@@ -4,9 +4,11 @@ import {mySqlSerializer} from '../serializer/mysql-serializer';
 import {Column} from '../schema/table';
 import {MySQLOptions, PropertySchema} from '@deepkit/type';
 import {parseType} from '../reverse/schema-parser';
+import {MysqlSchemaParser} from '../reverse/mysql-schema-parser';
 
 export class MySQLPlatform extends DefaultPlatform {
     protected defaultSqlType = 'longtext';
+    schemaParserType = MysqlSchemaParser;
 
     public readonly serializer = mySqlSerializer;
 

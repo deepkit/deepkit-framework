@@ -57,6 +57,8 @@ export abstract class DatabaseAdapter {
  * like MySQL, PostgreSQL, SQLite, and MongoDB.
  */
 export class Database<ADAPTER extends DatabaseAdapter> {
+    public name: string = 'default';
+
     /**
      * The entity register. This is mainly used for migration utilities.
      */
@@ -77,6 +79,15 @@ export class Database<ADAPTER extends DatabaseAdapter> {
         const queryFactory = this.adapter.queryFactory(this.rootSession);
         this.query = queryFactory.createQuery.bind(queryFactory);
         this.registerEntity(...schemas);
+    }
+
+    static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ClassSchema)[] = []): ClassType<Database<T>> {
+        return class extends Database<T> {
+            constructor(oAdapter = adapter, oSchemas = schemas) {
+                super(oAdapter, oSchemas);
+                this.name = name;
+            }
+        };
     }
 
     /**

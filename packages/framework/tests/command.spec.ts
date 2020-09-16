@@ -2,7 +2,7 @@ import 'jest';
 import 'reflect-metadata';
 import {arg, cli, Command} from '../src/command';
 import {Application} from '../src/application';
-import {hornet} from '../src/decorator';
+import {deepkit} from '../src/decorator';
 import {ServiceContainer} from '../src/service-container';
 
 @cli.controller('my')
@@ -26,7 +26,7 @@ test('command simple', () => {
 
 test('command execute', async () => {
 
-    @hornet.module({
+    @deepkit.module({
         controllers: [MyCli]
     })
     class MyModule {}

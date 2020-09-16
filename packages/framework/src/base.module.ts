@@ -8,15 +8,14 @@ import {SecurityStrategy} from './security';
 import {Router} from './router';
 import {HttpHandler} from './http';
 import {ServerListenController} from './cli/server-listen';
-import {DynamicModule, hornet} from './decorator';
+import {DynamicModule, deepkit} from './decorator';
 import {ExchangeModule} from './exchange/exchange.module';
 import {ApplicationServer} from './application-server';
 
-@hornet.module({
+@deepkit.module({
     providers: [
         ProcessLocker,
         InternalClient,
-        Configuration,
         SecurityStrategy,
         ApplicationServer,
         Router,
@@ -29,21 +28,17 @@ import {ApplicationServer} from './application-server';
         ServerListenController,
     ],
     imports: [
-        ExchangeModule
-    ],
-    exports: [
-        ExchangeModule
+        ExchangeModule,
     ],
 })
 export class BaseModule {
-    constructor(configuration: Configuration) {
-        configuration.loadEnvFile('.env');
-    }
-
     static forRoot(): DynamicModule {
+        const imports: any[] = [];
+
         return {
             root: true,
             module: BaseModule,
+            imports: imports,
         };
     }
 }

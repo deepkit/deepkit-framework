@@ -190,7 +190,7 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 }
 
 export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
-    public abstract platform: DefaultPlatform = new DefaultPlatform;
+    public abstract platform: DefaultPlatform;
     public abstract connectionPool: SQLConnectionPool;
 
     abstract queryFactory(databaseSession: DatabaseSession<this>): SQLDatabaseQueryFactory;

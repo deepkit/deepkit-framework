@@ -1,6 +1,6 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
-import {ApplicationServer, hornet, ExchangeConfig, Application} from '@deepkit/framework';
+import {ApplicationServer, deepkit, ExchangeConfig, Application} from '@deepkit/framework';
 import {RemoteController} from '@deepkit/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
@@ -38,7 +38,7 @@ export async function closeAllCreatedServers() {
 }
 
 export function appModuleForControllers(controllers: ClassType<any>[]): ClassType<any> {
-    @hornet.module({
+    @deepkit.module({
         controllers: controllers
     })
     class AppModule {
@@ -70,7 +70,7 @@ export async function createServerClientPair(
         });
     });
 
-    @hornet.module({})
+    @deepkit.module({})
     class ConfigModule {
         constructor(exchangeConfig: ExchangeConfig) {
             exchangeConfig.hostOrUnixPath = exchangeSocketPath;

@@ -1,8 +1,9 @@
-import {Column, ColumnDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff} from '../schema/table';
+import {Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff} from '../schema/table';
 import {binaryTypes, ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@deepkit/type';
 import {escape} from 'sqlstring';
 import {ClassType, isPlainObject} from '@deepkit/core';
 import {sqlSerializer} from '../serializer/sql-serializer';
+import {SchemaParser} from '../reverse/schema-parser';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -29,16 +30,15 @@ interface NativeTypeInformation {
     defaultIndexSize: number;
 }
 
-export class DefaultPlatform {
+export abstract class DefaultPlatform {
     protected defaultSqlType = 'text';
     protected typeMapping = new Map<string, { sqlType: string, size?: number, scale?: number }>();
     protected nativeTypeInformation = new Map<string, Partial<NativeTypeInformation>>();
 
+    public abstract schemaParserType: ClassType<SchemaParser>;
+
     public serializer: Serializer = sqlSerializer;
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
-
-    constructor() {
-    }
 
     getMigrationTableName() {
         return `deepkit_migration`;
@@ -94,6 +94,7 @@ export class DefaultPlatform {
     getEntityFields(schema: ClassSchema): PropertySchema[] {
         const fields: PropertySchema[] = [];
         for (const property of schema.getClassProperties().values()) {
+            if (property.isParentReference) continue;
             if (property.backReference) continue;
             fields.push(property);
         }
@@ -108,6 +109,31 @@ export class DefaultPlatform {
             column.size = map.size;
             column.scale = map.scale;
         }
+    }
+
+    getModifyDatabaseDDL(databaseDiff: DatabaseDiff): string[] {
+        const lines: string[] = [];
+
+        for (const table of databaseDiff.removedTables) lines.push(this.getDropTableDDL(table));
+        for (const [from, to] of databaseDiff.renamedTables) lines.push(this.getRenameTableDDL(from, to));
+
+        for (const table of databaseDiff.addedTables) {
+            lines.push(...this.getAddTableDDL(table));
+            lines.push(...this.getAddIndicesDDL(table));
+        }
+
+        for (const tableDiff of databaseDiff.modifiedTables) lines.push(...this.getModifyTableDDL(tableDiff));
+
+        if (!this.supportsInlineForeignKey()) {
+            for (const table of databaseDiff.addedTables) lines.push(...this.getAddForeignKeysDDL(table));
+        }
+
+        if (lines.length) {
+            lines.unshift(this.getBeginDDL());
+            lines.push(this.getEndDDL());
+        }
+
+        return lines.filter(isSet);
     }
 
     createTables(schemas: (ClassSchema | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
@@ -244,7 +270,7 @@ export class DefaultPlatform {
 
         for (const table of database.tables) {
             ddl.push(this.getDropTableDDL(table));
-            ddl.push(this.getAddTableDDL(table));
+            ddl.push(...this.getAddTableDDL(table));
             ddl.push(...this.getAddIndicesDDL(table));
         }
 
@@ -328,7 +354,7 @@ export class DefaultPlatform {
         return ddl.filter(isSet).join(';\n');
     }
 
-    getAddTableDDL(table: Table): string {
+    getAddTableDDL(table: Table): string[] {
         const lines: string[] = [];
 
         lines.push(this.getUseSchemaDDL(table));
@@ -337,7 +363,7 @@ export class DefaultPlatform {
 
         lines.push(this.getResetSchemaDDL(table));
 
-        return lines.filter(isSet).join(';\n');
+        return lines.filter(isSet);
     }
 
     getCreateTableDDL(table: Table): string {
@@ -350,7 +376,7 @@ export class DefaultPlatform {
     }
 
     getAddForeignKeysDDL(table: Table): string[] {
-        return table.foreignKeys.map(v => this.getAddForeignKeyDDL(v));
+        return table.foreignKeys.map(v => this.getAddForeignKeyDDL(v)).filter(isSet);
     }
 
     getAddIndicesDDL(table: Table): string[] {

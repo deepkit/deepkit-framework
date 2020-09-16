@@ -1,5 +1,5 @@
 import {arrayRemoveItem, ClassType, getClassName, isClass} from '@deepkit/core';
-import {DynamicModule, hornet, httpClass, isDynamicModuleObject, isModuleToken, SuperHornetModule,} from './decorator';
+import {DynamicModule, deepkit, httpClass, isDynamicModuleObject, isModuleToken, SuperHornetModule,} from './decorator';
 import {Injector, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, tokenLabel} from './injector/injector';
 import {Provider, ProviderProvide, TypeProvider} from './injector/provider';
 import {rpcClass} from '@deepkit/framework-shared';
@@ -246,8 +246,8 @@ export class ServiceContainer {
         additionalImports: (ClassType | DynamicModule)[] = []
     ): Context {
         let module = isDynamicModuleObject(appModule) ? appModule.module : appModule;
-        const decorator = hornet._fetch(module);
-        if (!decorator || !decorator.config) throw new Error(`Module ${getClassName(module)} has no @hornet.module() decorator`);
+        const decorator = deepkit._fetch(module);
+        if (!decorator || !decorator.config) throw new Error(`Module ${getClassName(module)} has no @deepkit.module() decorator`);
         const options = decorator.config;
 
         const exports = options.exports ? options.exports.slice(0) : [];
@@ -290,6 +290,7 @@ export class ServiceContainer {
         }
 
         for (const imp of imports) {
+            if (!imp) continue;
             this.processModule(imp, context);
         }
 
