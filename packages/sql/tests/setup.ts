@@ -18,6 +18,7 @@ export async function schemaMigrationRoundTrip(types: (ClassType | ClassSchema)[
 
     const db = new Database(adapter, types);
     const connection = await adapter.connectionPool.getConnection();
+
     try {
         await db.migrate();
         const schemaParser = new adapter.platform.schemaParserType(connection, adapter.platform);

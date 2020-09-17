@@ -1,8 +1,9 @@
 import {DatabaseModel, ForeignKey, Index, Table} from '../schema/table';
 import {parseType, SchemaParser} from './schema-parser';
 
-
 export class MysqlSchemaParser extends SchemaParser {
+    public defaultSchema = 'default';
+
     async parse(database: DatabaseModel, limitTableNames?: string[]) {
         await this.parseTables(database, limitTableNames);
 
@@ -19,7 +20,7 @@ export class MysqlSchemaParser extends SchemaParser {
     protected async addIndexes(table: Table) {
         const rows = await this.connection.execAndReturnAll(`
             SHOW INDEX FROM ${this.platform.quoteIdentifier(table.getName())}
-            FROM ${this.platform.quoteIdentifier(table.schemaName || 'default')}
+            FROM ${this.platform.quoteIdentifier(table.schemaName || this.defaultSchema)}
         `);
 
         let lastId: string | undefined;
@@ -88,14 +89,14 @@ export class MysqlSchemaParser extends SchemaParser {
 
     protected async parseTables(database: DatabaseModel, limitTableNames?: string[]) {
         const rows = await this.connection.execAndReturnAll(`
-            SELECT table_name FROM information_schema.tables WHERE
-            table_type = 'BASE TABLE' and table_schema = '${database.schemaName || 'default'}'
+            SELECT table_name as table_name FROM information_schema.tables WHERE
+            table_type = 'BASE TABLE' and table_schema = '${database.schemaName || this.defaultSchema}'
         `);
 
         for (const row of rows) {
-            if (limitTableNames && !limitTableNames.includes(row.TABLE_NAME)) continue;
+            if (limitTableNames && !limitTableNames.includes(row.table_name)) continue;
 
-            const table = database.addTable(row.TABLE_NAME);
+            const table = database.addTable(row.table_name);
             table.schemaName = database.schemaName;
         }
     }
