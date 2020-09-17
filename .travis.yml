@@ -17,6 +17,6 @@ before_script:
 - sleep 1
 script:
 - npm run test
-- cd packages/orm-integration; npm run test
 - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
-- cd packages/benchmark; npm run setup && npm run benchmark
+- cd packages/orm-integration && npm run test && cd -
+- cd packages/benchmark; npm run setup && npm run benchmark && cd -
