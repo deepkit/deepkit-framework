@@ -113,12 +113,18 @@ export class SchemaMigration implements Migration {
      */
     version = ${Math.floor(date.getTime() / 1000)};
     
+    /**
+     * SQL queries executed one by one, to apply a migration.
+     */
     up() {
         return [
 ${upSql.map(serializeSQLLine).map(indent(12)).join(',\n')}
         ];
     }
 
+    /**
+     * SQL queries executed one by one, to revert a migration.
+     */
     down() {
         return [
 ${downSql.map(serializeSQLLine).map(indent(12)).join(',\n')}

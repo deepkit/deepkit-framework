@@ -20,8 +20,6 @@ test('mysql custom type', async () => {
     expect(postTable.getColumn('slug').size).toBe(255);
 
     await schemaMigrationRoundTrip([post], adapter);
-
-    adapter.disconnect();
 });
 
 
@@ -40,8 +38,6 @@ test('postgres custom type', async () => {
     expect(postTable.getColumn('content').type).toBe('text');
 
     await schemaMigrationRoundTrip([post], adapter);
-
-    adapter.disconnect();
 });
 
 
@@ -61,6 +57,4 @@ test('sqlite custom type', async () => {
     expect(postTable.getColumn('content').type).toBe('text');
 
     await schemaMigrationRoundTrip([post], adapter);
-
-    adapter.disconnect();
 });

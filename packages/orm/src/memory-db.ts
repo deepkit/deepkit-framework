@@ -8,7 +8,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
     async migrate(classSchemas: Iterable<ClassSchema>) {
     }
 
-    createPersistence(databaseSession: DatabaseSession<this>): DatabasePersistence {
+    createPersistence(): DatabasePersistence {
         class Persistence extends DatabasePersistence {
             async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
                 return Promise.resolve(undefined);
@@ -16,6 +16,10 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
 
             async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
                 return Promise.resolve(undefined);
+            }
+
+            async release() {
+
             }
         }
 

@@ -48,7 +48,8 @@ export class PostgresConnection extends SQLConnection {
 
     constructor(
         connectionPool: PostgresConnectionPool,
-        protected getConnection: () => Promise<PoolClient>) {
+        protected getConnection: () => Promise<PoolClient>
+    ) {
         super(connectionPool);
     }
 
@@ -79,6 +80,7 @@ export class PostgresConnectionPool extends SQLConnectionPool {
     }
 
     getConnection(): PostgresConnection {
+        this.activeConnections++;
         return new PostgresConnection(this, () => this.pool.connect());
     }
 }
@@ -129,14 +131,15 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(databaseSession: DatabaseSession<any>): SQLPersistence {
+    createPersistence(): SQLPersistence {
         return new PostgresPersistence(this.platform, this.connectionPool.getConnection());
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
-        return new SQLDatabaseQueryFactory(this.connectionPool.getConnection(), this.platform, databaseSession);
+        return new SQLDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
     }
 
     disconnect(force?: boolean): void {
+        this.pool.end().catch(console.error);
     }
 }

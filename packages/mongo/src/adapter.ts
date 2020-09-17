@@ -43,7 +43,7 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
         return '';
     }
 
-    createPersistence(databaseSession: DatabaseSession<any>): MongoPersistence {
+    createPersistence(): MongoPersistence {
         return new MongoPersistence(this.client);
     }
 

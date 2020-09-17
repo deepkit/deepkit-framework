@@ -1358,7 +1358,7 @@ export interface FieldDecoratorResult<T> {
      *
      * Only available for the database abstraction.
      */
-    autoIncrement: this;
+    autoIncrement: FieldDecoratorResult<T | undefined>;
 
     /**
      * Defines template arguments of a generic class. Very handy for types like Observables.

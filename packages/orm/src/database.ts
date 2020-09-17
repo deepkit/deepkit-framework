@@ -2,7 +2,8 @@ import {ClassType, CustomError} from '@deepkit/core';
 import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
-import {DatabaseSession} from './database-session';
+import {DatabaseSession, DatabaseSessionImmediate} from './database-session';
+import {IdentityMap} from './identity-map';
 
 export class NotFoundError extends CustomError {
 }
@@ -28,6 +29,12 @@ export abstract class DatabasePersistence {
     abstract async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
 
     abstract async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+
+    /**
+     * When DatabasePersistence instance is not used anymore, this function will be called.
+     * Good place to release a connection for example.
+     */
+    abstract release(): void;
 }
 
 /**
@@ -38,7 +45,7 @@ export abstract class DatabasePersistence {
 export abstract class DatabaseAdapter {
     abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
 
-    abstract createPersistence(databaseSession: DatabaseSession<this>): DatabasePersistence;
+    abstract createPersistence(): DatabasePersistence;
 
     abstract disconnect(force?: boolean): void;
 
@@ -135,5 +142,32 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      */
     async migrate() {
         await this.adapter.migrate([...this.classSchemas.values()]);
+    }
+
+    /**
+     * Simple direct persist. The persistence layer (batch) inserts or updates the record
+     * depending on the state of the given items. This is different to createSession()+add() in a way
+     * that `add` adds the given items to the queue (which is then committed using commit())
+     * and database.persist just simply inserts/updates the given items immediately, completely bypassing
+     * the unit of work.
+     *
+     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     */
+    public async persist<T extends Entity>(...items: T[]) {
+        const immediate = new DatabaseSessionImmediate(new IdentityMap(), this.adapter);
+        await immediate.persist(...items);
+    }
+
+    /**
+     * Simple direct remove. The persistence layer (batch) removes all given items.
+     * This is different to createSession()+add() in a way that `remove` adds the given items to the queue
+     * (which is then committed using commit()) and immediate.remove just simply removes the given items immediately,
+     * completely bypassing the unit of work.
+     *
+     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     */
+    public async remove<T extends Entity>(...items: T[]) {
+        const immediate = new DatabaseSessionImmediate(new IdentityMap(), this.adapter);
+        await immediate.remove(...items);
     }
 }

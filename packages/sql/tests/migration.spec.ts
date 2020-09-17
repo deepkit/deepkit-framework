@@ -2,10 +2,7 @@ import 'reflect-metadata';
 import {t} from '@deepkit/type';
 import 'jest';
 import {MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLiteDatabaseAdapter, SQLitePlatform} from '../index';
-import {SQLiteSchemaParser} from '../src/reverse/sqlite-schema-parser';
 import {Index} from '../src/schema/table';
-import {MysqlSchemaParser} from '../src/reverse/mysql-schema-parser';
-import {PostgresSchemaParser} from '../src/reverse/postgres-schema-parser';
 import {schemaMigrationRoundTrip} from './setup';
 
 const user = t.schema({

@@ -38,7 +38,8 @@ export class MySQLConnection extends SQLConnection {
 
     constructor(
         connectionPool: SQLConnectionPool,
-        protected getConnection: () => Promise<PoolConnection>) {
+        protected getConnection: () => Promise<PoolConnection>
+    ) {
         super(connectionPool);
     }
 
@@ -70,6 +71,7 @@ export class MySQLConnectionPool extends SQLConnectionPool {
     }
 
     getConnection(): MySQLConnection {
+        this.activeConnections++;
         return new MySQLConnection(this, () => this.pool.getConnection());
     }
 }
@@ -114,14 +116,15 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(databaseSession: DatabaseSession<any>): SQLPersistence {
+    createPersistence(): SQLPersistence {
         return new MySQLPersistence(this.platform, this.connectionPool.getConnection());
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
-        return new SQLDatabaseQueryFactory(this.connectionPool.getConnection(), this.platform, databaseSession);
+        return new SQLDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
     }
 
     disconnect(force?: boolean): void {
+        this.pool.end().catch(console.error);
     }
 }

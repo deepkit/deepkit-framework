@@ -14,6 +14,10 @@ export class MongoPersistence extends DatabasePersistence {
         super();
     }
 
+    release() {
+
+    }
+
     async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
         const scopeSerializer = mongoSerializer.for(classSchema);
 

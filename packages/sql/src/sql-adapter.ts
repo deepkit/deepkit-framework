@@ -38,7 +38,7 @@ export abstract class SQLStatement {
 }
 
 export abstract class SQLConnection {
-    buys: boolean = false;
+    released: boolean = false;
 
     constructor(protected connectionPool: SQLConnectionPool) {
     }
@@ -69,14 +69,21 @@ export abstract class SQLConnection {
 }
 
 export abstract class SQLConnectionPool {
+    protected activeConnections = 0;
+
     /**
      * Reserves an existing or new connection. It's important to call `.release()` on it when
      * done. When release is not called a resource leak occurs and server crashes.
      */
     abstract getConnection(): SQLConnection;
 
+    public getActiveConnections() {
+        return this.activeConnections;
+    }
+
     release(connection: SQLConnection) {
-        connection.buys = false;
+        this.activeConnections--;
+        connection.released = true;
     }
 }
 
@@ -86,7 +93,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
     protected quote = this.platform.quoteValue.bind(this.platform);
 
     constructor(
-        protected connection: SQLConnection,
+        protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ClassSchema<T>,
         databaseSession: DatabaseSession<DatabaseAdapter>
@@ -110,17 +117,27 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
     async count(model: SQLQueryModel<T>): Promise<number> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
-        const row = await this.connection.execAndReturnSingle(sql);
-        //postgres has bigint as return type of COUNT, so we need to convert always
-        return Number(row.count);
+        const connection = this.connectionPool.getConnection();
+        try {
+            const row = await connection.execAndReturnSingle(sql);
+            //postgres has bigint as return type of COUNT, so we need to convert always
+            return Number(row.count);
+        } finally {
+            connection.release();
+        }
     }
 
     async deleteMany(model: SQLQueryModel<T>): Promise<number> {
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
-        await this.connection.exec(sql);
-        return await this.connection.getChanges();
+        const connection = this.connectionPool.getConnection();
+        try {
+            await connection.exec(sql);
+            return await connection.getChanges();
+        } finally {
+            connection.release()
+        }
     }
 
     async deleteOne(model: SQLQueryModel<T>): Promise<boolean> {
@@ -133,22 +150,32 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
-
-        const rows = await this.connection.execAndReturnAll(sql);
-        const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
-        const formatter = this.createFormatter(model.withIdentityMap);
-        return converted.map(v => formatter.hydrate(model, v));
+        const connection = this.connectionPool.getConnection();
+        try {
+            const rows = await connection.execAndReturnAll(sql);
+            const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
+            const formatter = this.createFormatter(model.withIdentityMap);
+            return converted.map(v => formatter.hydrate(model, v));
+        } finally {
+            connection.release();
+        }
     }
 
     async findOneOrUndefined(model: SQLQueryModel<T>): Promise<T | undefined> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
-        const row = await this.connection.execAndReturnSingle(sql);
-        if (!row) return;
 
-        const converted = sqlBuilder.convertRows(this.classSchema, model, [row]);
-        const formatter = this.createFormatter(model.withIdentityMap);
-        return formatter.hydrate(model, converted[0]);
+        const connection = this.connectionPool.getConnection();
+        try {
+            const row = await connection.execAndReturnSingle(sql);
+            if (!row) return;
+
+            const converted = sqlBuilder.convertRows(this.classSchema, model, [row]);
+            const formatter = this.createFormatter(model.withIdentityMap);
+            return formatter.hydrate(model, converted[0]);
+        } finally {
+            connection.release();
+        }
     }
 
     async has(model: SQLQueryModel<T>): Promise<boolean> {
@@ -175,7 +202,7 @@ export class SQLDatabaseQuery<T extends Entity,
 }
 
 export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
-    constructor(protected connection: SQLConnection, protected platform: DefaultPlatform, protected databaseSession: DatabaseSession<any>) {
+    constructor(protected connectionPool: SQLConnectionPool, protected platform: DefaultPlatform, protected databaseSession: DatabaseSession<any>) {
         super();
     }
 
@@ -183,7 +210,7 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         classType: ClassType<T> | ClassSchema<T>
     ): SQLDatabaseQuery<T> {
         const schema = getClassSchema(classType);
-        return new SQLDatabaseQuery(schema, new SQLQueryModel(), new SQLQueryResolver(this.connection, this.platform, schema, this.databaseSession));
+        return new SQLDatabaseQuery(schema, new SQLQueryModel(), new SQLQueryResolver(this.connectionPool, this.platform, schema, this.databaseSession));
     }
 }
 
@@ -238,7 +265,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     abstract queryFactory(databaseSession: DatabaseSession<this>): SQLDatabaseQueryFactory;
 
-    abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
+    abstract createPersistence(): SQLPersistence;
 
     abstract getSchemaName(): string;
 
@@ -264,6 +291,10 @@ export class SQLPersistence extends DatabasePersistence {
         protected connection: SQLConnection,
     ) {
         super();
+    }
+
+    release() {
+        this.connection.release();
     }
 
     protected prepareAutoIncrement(classSchema: ClassSchema, count: number) {

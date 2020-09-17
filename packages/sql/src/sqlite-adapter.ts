@@ -40,7 +40,7 @@ export class SQLiteStatement extends SQLStatement {
     }
 
     release() {
-        this.stmt.reset();
+        this.stmt.finalize();
     }
 }
 
@@ -54,12 +54,11 @@ export class SQLiteConnection extends SQLConnection {
 
     async prepare(sql: string) {
         return await asyncOperation<SQLiteStatement>((resolve, reject) => {
-            const self = this;
             this.db.prepare(sql, function (err) {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve(new SQLiteStatement(self.db.prepare(sql)));
+                    resolve(new SQLiteStatement(this));
                 }
             });
         });
@@ -91,6 +90,7 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
     }
 
     getConnection(): SQLConnection {
+        this.activeConnections++;
         return new SQLiteConnection(this, this.db);
     }
 }
@@ -119,9 +119,13 @@ export class SQLiteQueryResolver<T> extends SQLQueryResolver<T> {
 
         const selectQuery = sqlBuilder.select(this.classSchema, model, {select: ['rowid']});
         const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE rowid IN (${selectQuery})`;
-
-        await this.connection.exec(sql);
-        return await this.connection.getChanges();
+        const connection = this.connectionPool.getConnection();
+        try {
+            await connection.exec(sql);
+            return await connection.getChanges();
+        } finally {
+            connection.release();
+        }
     }
 }
 
@@ -130,7 +134,7 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
         classType: ClassType<T> | ClassSchema<T>
     ): SQLDatabaseQuery<T> {
         const schema = getClassSchema(classType);
-        return new SQLDatabaseQuery(schema, new SQLQueryModel(), new SQLiteQueryResolver(this.connection, this.platform, schema, this.databaseSession));
+        return new SQLDatabaseQuery(schema, new SQLQueryModel(), new SQLiteQueryResolver(this.connectionPool, this.platform, schema, this.databaseSession));
     }
 }
 
@@ -155,14 +159,18 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(databaseSession: DatabaseSession<any>): SQLPersistence {
+    createPersistence(): SQLPersistence {
         return new SQLitePersistence(this.platform, this.connectionPool.getConnection());
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
-        return new SQLiteDatabaseQueryFactory(this.connectionPool.getConnection(), this.platform, databaseSession);
+        return new SQLiteDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
     }
 
     disconnect(force?: boolean): void {
+        if (this.connectionPool.getActiveConnections() > 0) {
+            throw new Error(`There are still active connections. Please release() any fetched connection first.`);
+        }
+        this.db.close();
     }
 }
