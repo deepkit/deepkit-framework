@@ -491,7 +491,6 @@ export class TableComparator {
                 const toColumn = this.to.getColumn(fromColumn.name);
                 const diff = ColumnComparator.computeDiff(fromColumn, toColumn);
                 if (!diff) continue;
-                console.log('column diff', fromColumn.getName(), diff);
                 this.diff.modifiedColumns.push(diff);
                 differences++;
             }

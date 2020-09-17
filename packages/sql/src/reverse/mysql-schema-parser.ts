@@ -45,25 +45,27 @@ export class MysqlSchemaParser extends SchemaParser {
 
     protected async addForeignKeys(database: DatabaseModel, table: Table) {
         const rows = await this.connection.execAndReturnAll(`
-        SELECT distinct k.constraint_name, k.column_name, k.referenced_table_name, k.referenced_column_name, c.update_rule, c.delete_rule
+        SELECT distinct k.constraint_name as constraint_name, 
+        k.column_name as column_name, k.referenced_table_name as referenced_table_name, k.referenced_column_name as referenced_column_name, 
+        c.update_rule as update_rule, c.delete_rule as delete_rule
         from information_schema.key_column_usage k
-        inner join information_schema.referential_constraints c on c.constraint_name = k.constraint_name and c.table_name = '${table.getName()}'
+        inner join information_schema.referential_constraints c on c.constraint_name = k.constraint_name and c.table_name = k.table_name
         where k.table_name = '${table.getName()}' and k.table_schema = database() and c.constraint_schema = database() and k.referenced_column_name is not null 
         `);
 
         let lastId: string | undefined;
         let foreignKey: ForeignKey | undefined;
         for (const row of rows) {
-            if (row.CONSTRAINT_NAME !== lastId) {
-                const foreignTable = database.getTableForFull(row.REFERENCED_TABLE_NAME, this.platform.getSchemaDelimiter());
-                foreignKey = table.addForeignKey(row.CONSTRAINT_NAME, foreignTable);
-                lastId = row.CONSTRAINT_NAME;
+            if (row.constraint_name !== lastId) {
+                const foreignTable = database.getTableForFull(row.referenced_table_name, this.platform.getSchemaDelimiter());
+                foreignKey = table.addForeignKey(row.constraint_name, foreignTable);
+                lastId = row.constraint_name;
             }
 
             if (foreignKey) {
-                foreignKey.addReference(row.COLUMN_NAME, row.REFERENCED_COLUMN_NAME);
-                foreignKey.onDelete = row.DELETE_RULE;
-                foreignKey.onUpdate = row.UPDATE_RULE;
+                foreignKey.addReference(row.column_name, row.referenced_column_name);
+                foreignKey.onDelete = row.delete_rule;
+                foreignKey.onUpdate = row.update_rule;
             }
         }
     }
