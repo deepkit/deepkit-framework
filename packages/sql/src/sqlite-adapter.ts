@@ -99,8 +99,8 @@ export class SQLitePersistence extends SQLPersistence {
     protected async populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
         //it might be that between this call and the previous INSERT we have additional sql commands on the same
         //connection, which would break this algo. So its better to lock this connection until we are done.
-        const stmt = await this.connection.prepare(`SELECT last_insert_rowid() as rowid`);
-        const lastInserted = (await stmt.get()).rowid;
+        const row = await this.connection.execAndReturnSingle(`SELECT last_insert_rowid() as rowid`);
+        const lastInserted = row.rowid;
         let start = lastInserted - items.length + 1;
         const autoIncrement = classSchema.getAutoIncrementField();
         if (!autoIncrement) return;
