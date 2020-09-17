@@ -1,6 +1,5 @@
 import {ProcessLocker} from '@deepkit/core';
 import {InternalClient} from './internal-client';
-import {Configuration} from './configuration';
 import {SessionStack} from './session';
 import {ClientConnection} from './client-connection';
 import {ConnectionMiddleware} from '@deepkit/framework-shared';
@@ -8,9 +7,10 @@ import {SecurityStrategy} from './security';
 import {Router} from './router';
 import {HttpHandler} from './http';
 import {ServerListenController} from './cli/server-listen';
-import {DynamicModule, deepkit} from './decorator';
+import {deepkit, DynamicModule} from './decorator';
 import {ExchangeModule} from './exchange/exchange.module';
 import {ApplicationServer} from './application-server';
+import {ConsoleTransport, Logger} from './logger';
 
 @deepkit.module({
     providers: [
@@ -20,6 +20,7 @@ import {ApplicationServer} from './application-server';
         ApplicationServer,
         Router,
         HttpHandler,
+        {provide: Logger, useFactory: () => new Logger([new ConsoleTransport()], [])},
         {provide: SessionStack, scope: 'session'},
         {provide: ClientConnection, scope: 'session'},
         {provide: ConnectionMiddleware, scope: 'session'},

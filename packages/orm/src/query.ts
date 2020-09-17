@@ -7,7 +7,7 @@ import {DatabaseSession} from './database-session';
 import {DatabaseAdapter} from './database';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
-export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T]?: ORDER };
+export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
 export interface DatabaseJoinModel {
     //this is the parent classSchema, the foreign classSchema is stored in `query`

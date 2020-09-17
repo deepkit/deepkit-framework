@@ -41,7 +41,7 @@ export abstract class DefaultPlatform {
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
 
     getMigrationTableName() {
-        return `deepkit_migration`;
+        return `deepkit_orm_migration`;
     }
 
     quoteValue(value: any): string {
@@ -311,7 +311,7 @@ export abstract class DefaultPlatform {
         return `ALTER TABLE ${this.getIdentifier(from)} RENAME TO ${this.getIdentifier(to)}`;
     }
 
-    getModifyTableDDL(diff: TableDiff): string {
+    getModifyTableDDL(diff: TableDiff): string[] {
         const ddl: string[] = [];
 
         // drop indices, foreign keys
@@ -334,15 +334,15 @@ export abstract class DefaultPlatform {
         // alter entity structure
         if (diff.hasModifiedPk()) add(this.getDropPrimaryKeyDDL(diff.from));
         for (const [from, to] of diff.renamedColumns.values()) add(this.getRenameColumnDDL(from, to));
-        if (diff.modifiedColumns.size) add(this.getModifyColumnsDDL(diff.modifiedColumns.values()));
-        if (diff.addedColumns.size) add(this.getAddColumnsDDL(diff.addedColumns.values()));
+        if (diff.modifiedColumns.size) for (const columnDiff of diff.modifiedColumns.values()) add(this.getModifyColumnDDL(columnDiff));
+        if (diff.addedColumns.size) for (const column of diff.addedColumns.values()) add(this.getAddColumnDDL(column));
         for (const column of diff.removedColumns.values()) add(this.getRemoveColumnDDL(column));
 
         // add new indices and foreign keys
         if (diff.hasModifiedPk()) add(this.getAddPrimaryKeyDDL(diff.to));
 
         if (alterTableLines.length) {
-            ddl.push(`ALTER TABLE ${this.getIdentifier(diff.to)} ${alterTableLines.join(', ')}`);
+            ddl.push(`ALTER TABLE ${alterTableLines.join(', ')}`);
         }
 
         // create indices, foreign keys
@@ -351,7 +351,7 @@ export abstract class DefaultPlatform {
         for (const [, to] of diff.modifiedFKs.values()) ddl.push(this.getAddForeignKeyDDL(to));
         for (const foreignKey of diff.addedFKs.values()) ddl.push(this.getAddForeignKeyDDL(foreignKey));
 
-        return ddl.filter(isSet).join(';\n');
+        return ddl.filter(isSet);
     }
 
     getAddTableDDL(table: Table): string[] {
@@ -372,7 +372,7 @@ export abstract class DefaultPlatform {
         if (this.supportsInlinePrimaryKey() && table.hasPrimaryKey()) lines.push(this.getPrimaryKeyDDL(table));
         if (this.supportsInlineForeignKey()) for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
 
-        return `CREATE TABLE ${this.getIdentifier(table)} (${lines.join(',\n')})`;
+        return `CREATE TABLE ${this.getIdentifier(table)} (\n    ${lines.join(',\n    ')}\n)`;
     }
 
     getAddForeignKeysDDL(table: Table): string[] {
@@ -444,32 +444,12 @@ export abstract class DefaultPlatform {
     //     return `ALTER TABLE ${this.getIdentifier(column.table)} MODIFY ${this.getColumnDDL(column)}`;
     // }
 
-    getModifyColumnsDDL(columnDiffs: Iterable<ColumnDiff>): string {
-        const lines: string[] = [];
-        let table: Table | undefined;
-
-        for (const diff of columnDiffs) {
-            table = diff.to.table;
-            lines.push(this.getColumnDDL(diff.to));
-        }
-
-        if (!table) return '';
-
-        return `ALTER TABLE ${this.getIdentifier(table)} MODIFY (${lines.join(',\n')})`;
+    getModifyColumnDDL(diff: ColumnDiff): string {
+        return `ALTER TABLE ${this.getIdentifier(diff.to.table)} MODIFY ${this.getColumnDDL(diff.to)}`;
     }
 
-    getAddColumnsDDL(columns: Iterable<Column>) {
-        const lines: string[] = [];
-        let table: Table | undefined;
-
-        for (const column of columns) {
-            table = column.table;
-            lines.push(this.getColumnDDL(column));
-        }
-
-        if (!table) return '';
-
-        return `ALTER TABLE ${this.getIdentifier(table)} ADD (${lines.join(',\n')})`;
+    getAddColumnDDL(column: Column) {
+        return `ALTER TABLE ${this.getIdentifier(column.table)} ADD ${this.getColumnDDL(column)}`;
     }
 
     getDropForeignKeyDDL(foreignKey: ForeignKey): string {

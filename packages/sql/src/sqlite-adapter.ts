@@ -41,26 +41,29 @@ export class SQLiteConnection extends SQLConnection {
     }
 
     async prepare(sql: string) {
-        // console.log('prepare', sql);
-        return new SQLiteStatement(this.db.prepare(sql));
+        return await asyncOperation<SQLiteStatement>((resolve, reject) => {
+            this.db.prepare(sql, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(new SQLiteStatement(this.db.prepare(sql)));
+                }
+            });
+        });
     }
 
     async exec(sql: string) {
-        try {
-            const self = this;
-            await asyncOperation((resolve, reject) => {
-                this.db.run(sql, function (err) {
-                    if (err) reject(err);
-                    else {
-                        self.changes = this.changes;
-                        resolve(self.changes);
-                    }
-                });
+        const self = this;
+        await asyncOperation((resolve, reject) => {
+            this.db.run(sql, function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    self.changes = this.changes;
+                    resolve(self.changes);
+                }
             });
-        } catch (error) {
-            console.error('sql', sql);
-            throw error;
-        }
+        });
     }
 
     async getChanges(): Promise<number> {

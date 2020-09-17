@@ -1,3 +1,4 @@
+export * from './src/logger';
 export * from './src/session';
 export * from './src/application';
 export * from './src/client-connection';

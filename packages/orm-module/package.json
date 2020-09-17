@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@deepkit/core": "^1.0.0-alpha.0",
-    "date-fns": "^2.16.1"
+    "date-fns": "^2.16.1",
+    "fast-glob": "^3.2.4"
   },
   "devDependencies": {
     "@types/jest": "^26.0.4",

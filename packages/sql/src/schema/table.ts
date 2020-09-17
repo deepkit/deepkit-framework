@@ -470,7 +470,7 @@ export class TableComparator {
 
     protected compareColumns() {
         const fromColumns = this.from.columns;
-        const toColumns = this.from.columns;
+        const toColumns = this.to.columns;
         let differences = 0;
 
         // check for new columns in $toEntity

@@ -1,4 +1,5 @@
 import {
+    Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
     DatabasePersistence,
@@ -13,7 +14,7 @@ import {
     SORT_ORDER
 } from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
-import {ClassSchema, getClassSchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, t} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
 import {SqlBuilder} from './sql-builder';
 import {SqlFormatter} from './sql-formatter';
@@ -189,6 +190,46 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     }
 }
 
+export class SqlMigrationHandler {
+    protected migrationEntity: ClassSchema;
+
+    constructor(protected database: Database<SQLDatabaseAdapter>) {
+        this.migrationEntity = t.schema({
+            version: t.number.primary,
+            created: t.date,
+        }, {name: database.adapter.platform.getMigrationTableName()});
+    }
+
+    public async setLatestMigrationVersion(version: number): Promise<void> {
+        const session = this.database.createSession();
+        session.add(this.migrationEntity.create({
+            version: version,
+            created: new Date,
+        }));
+        await session.commit();
+    }
+
+    public async getLatestMigrationVersion(): Promise<number> {
+        const session = this.database.createSession();
+        try {
+            const version = await session.query(this.migrationEntity).sort({version: 'desc'}).findOne();
+            return version.version;
+        } catch (error) {
+            const connection = await this.database.adapter.connectionPool.getConnection();
+            try {
+                const [table] = this.database.adapter.platform.createTables([this.migrationEntity]);
+                const createSql = this.database.adapter.platform.getAddTableDDL(table);
+                for (const sql of createSql) {
+                    await connection.exec(sql);
+                }
+                return 0;
+            } finally {
+                connection.release();
+            }
+        }
+    }
+}
+
 export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     public abstract platform: DefaultPlatform;
     public abstract connectionPool: SQLConnectionPool;
@@ -198,15 +239,6 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
 
     abstract getSchemaName(): string;
-
-    protected async ensureMigrationTable() {
-        const connection = this.connectionPool.getConnection();
-        try {
-
-        } finally {
-            connection.release();
-        }
-    }
 
     async migrate(classSchemas: ClassSchema[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();

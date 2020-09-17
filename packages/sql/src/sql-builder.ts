@@ -166,8 +166,20 @@ export class SqlBuilder {
     public select(schema: ClassSchema, model: SQLQueryModel<any>): string {
         const map = this.selectColumns(schema, model);
         this.rootConverter = this.buildConverter(map.startIndex, map.fields);
+        const order: string[] = [];
+        if (model.sort) {
+            for (const [name, sort] of Object.entries(model.sort)) {
+                order.push(`${this.platform.quoteIdentifier(name)} ${sort}`);
+            }
+        }
 
-        return this.build(schema, model, 'SELECT ' + this.sqlSelect.join(', '));
+        let sql = this.build(schema, model, 'SELECT ' + this.sqlSelect.join(', '));
+
+        if (order.length) {
+            sql += ' ORDER BY ' + (order.join(', '));
+        }
+
+        return sql;
     }
 
 }
