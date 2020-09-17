@@ -5,6 +5,7 @@ import {DatabaseProvider} from './provider';
 import {ClassType} from '@deepkit/core';
 import {MigrationPendingCommand} from './cli/migration-pending-command';
 import {MigrationUpCommand} from './cli/migration-up-command';
+import {MigrationDownCommand} from './cli/migration-down-command';
 
 
 @deepkit.module({
@@ -12,6 +13,7 @@ import {MigrationUpCommand} from './cli/migration-up-command';
         MigrationCreateController,
         MigrationPendingCommand,
         MigrationUpCommand,
+        MigrationDownCommand,
     ]
 })
 export class OrmModule {

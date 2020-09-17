@@ -1,17 +1,14 @@
 import 'reflect-metadata';
-import {Application, http, HttpBadRequestError, template} from '@deepkit/framework';
+import {Application, http, template} from '@deepkit/framework';
 import {entity, t} from '@deepkit/type';
 import {Website} from './views/website';
+import {OrmModule} from '@deepkit/orm-module';
+import {Database} from '@deepkit/orm';
+import {SQLiteDatabaseAdapter} from '@deepkit/sql';
 
 @entity.name('HelloBody')
 class HelloBody {
     @t name: string = '';
-}
-
-class Database {
-    async getData() {
-        return 'async data arrived';
-    }
 }
 
 class HelloWorldController {
@@ -23,7 +20,20 @@ class HelloWorldController {
     }
 }
 
+const user = t.schema({
+    id: t.number.primary.autoIncrement,
+    username: t.string,
+    created: t.date,
+}, {name: 'user'});
+
+const SQLiteDatabase = Database.createClass('sqlite', new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [user]);
+
 Application.root({
-    providers: [Database],
+    providers: [
+        SQLiteDatabase
+    ],
     controllers: [HelloWorldController],
+    imports: [
+        OrmModule.forDatabases(SQLiteDatabase)
+    ]
 }).run();

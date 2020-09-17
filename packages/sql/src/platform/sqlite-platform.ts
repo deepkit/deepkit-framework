@@ -1,5 +1,5 @@
 import {DefaultPlatform, isSet} from './default-platform';
-import {Column, ForeignKey, Table} from '../schema/table';
+import {Column, ForeignKey, Table, TableDiff} from '../schema/table';
 import {PropertySchema} from '@deepkit/type/dist/src/decorators';
 import {parseType} from '../reverse/schema-parser';
 import {SqliteOptions} from '@deepkit/type';
@@ -18,6 +18,92 @@ export class SQLitePlatform extends DefaultPlatform {
         this.addType('boolean', 'integer', 1);
         this.addType('uuid', 'blob');
         this.addBinaryType('blob');
+    }
+
+
+    getModifyTableDDL(diff: TableDiff): string[] {
+        let changeViaMigrationTableNeeded =
+            false
+            || diff.modifiedFKs.length > 0
+            || diff.modifiedIndices.length > 0
+            || diff.modifiedColumns.length > 0
+            || diff.renamedColumns.length > 0
+
+            || diff.removedFKs.length > 0
+            || diff.removedIndices.length > 0
+            || diff.removedColumns.length > 0
+
+            || diff.addedIndices.length > 0
+            || diff.addedFKs.length > 0
+            || diff.addedPKColumns.length > 0
+        ;
+
+        for (const column of diff.addedColumns) {
+            const sqlChangeNotSupported = false
+                //The field may not have a PRIMARY KEY or UNIQUE constraint.
+                || column.isPrimaryKey
+                || diff.to.hasIndex([column], true)
+
+                //The field may not have a default value of CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP,
+                //or an expression in parentheses.
+                || 'string' === typeof column.defaultValue && column.defaultValue.includes('(')
+
+                //If a NOT NULL constraint is specified, then the field must have a default value other than NULL.
+                || column.isNotNull && column.defaultValue === undefined
+            ;
+
+            if (sqlChangeNotSupported) {
+                changeViaMigrationTableNeeded = true;
+                break;
+            }
+        }
+
+        if (changeViaMigrationTableNeeded) {
+            return this.getMigrationTableDDL(diff);
+        }
+
+        return super.getModifyTableDDL(diff);
+    }
+
+    protected getMigrationTableDDL(diff: TableDiff): string[] {
+        const lines: string[] = [];
+
+        // const tempName = diff.to.getName() + '__temp__' + (Math.floor(Math.random() * 10000));
+        // const select = diff.from.columns.map(v => this.quoteIdentifier(v.name));
+
+        const oldToName = diff.to.getName();
+        const tempToName = oldToName + '__temp_new__' + (Math.floor(Math.random() * 10000));
+        diff.to.name = tempToName;
+        lines.push(this.getDropTableDDL(diff.to));
+        lines.push(...this.getAddTableDDL(diff.to));
+        diff.to.name = oldToName;
+
+        // lines.push(`CREATE TABLE ${this.quoteIdentifier(tempName)} AS SELECT ${select.join(',')} FROM ${this.getIdentifier(diff.to)}`);
+        const selectMap = new Map<string, string>();
+        for (const columnDiff of diff.modifiedColumns) {
+            selectMap.set(columnDiff.from.name, columnDiff.to.name);
+        }
+
+        for (const [from, to] of diff.renamedColumns) {
+            selectMap.set(from.name, to.name);
+        }
+
+        for (const column of diff.to.columns) {
+            if (diff.from.hasColumn(column.name)) {
+                if (!selectMap.has(column.name)) {
+                    selectMap.set(column.name, column.name);
+                }
+            }
+        }
+
+        const fromSelect = [...selectMap.keys()].map(v => this.quoteIdentifier(v));
+        const toSelect = [...selectMap.values()].map(v => this.quoteIdentifier(v));
+
+        lines.push(`INSERT INTO ${this.quoteIdentifier(tempToName)} (${toSelect.join(', ')}) SELECT ${fromSelect.join(',')} FROM ${this.getIdentifier(diff.from)}`);
+        lines.push(`DROP TABLE ${this.getIdentifier(diff.from)}`);
+        lines.push(`ALTER TABLE ${this.quoteIdentifier(tempToName)} RENAME TO ${this.getIdentifier(diff.to)}`);
+
+        return lines.filter(isSet);
     }
 
     protected setColumnType(column: Column, typeProperty: PropertySchema) {

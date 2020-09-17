@@ -2,7 +2,7 @@ import {cli, Command, flag, inject, Injector, Logger} from '@deepkit/framework';
 import {DatabaseProvider} from '../provider';
 import {DatabaseComparator, DatabaseModel, SQLDatabaseAdapter} from '@deepkit/sql';
 import {dirname, join} from 'path';
-import { format } from 'date-fns';
+import {format} from 'date-fns';
 import {existsSync, mkdirSync, writeFileSync} from 'fs';
 import {indent} from '@deepkit/core';
 
@@ -23,8 +23,9 @@ export class MigrationCreateController implements Command {
     }
 
     async execute(
-        @flag.optional.description('Limit the migration to a specific database.') database?: string,
-        @flag.optional.description('Do not drop any table that is not available anymore as entity.') noDrop?: boolean,
+        @flag.optional.description('Limit the migration to a specific database') database?: string,
+        @flag.optional.description('Do not drop any table that is not available anymore as entity') noDrop: boolean = false,
+        @flag.optional.description('Create an empty migration file') empty: boolean = false,
     ): Promise<void> {
         for (const db of this.databaseProvider.getDatabases()) {
             if (database && db.name !== database) continue;
@@ -46,20 +47,24 @@ export class MigrationCreateController implements Command {
 
                 // console.log('databaseModel', databaseModel.tables[0]);
                 // console.log('parsedDatabaseModel', parsedDatabaseModel.tables[0]);
+                let upSql: string[] = [];
+                let downSql: string[] = [];
+
                 const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
-                if (!databaseDiff) {
+                if (!empty && !databaseDiff) {
                     this.logger.error(db.name, 'No database differences found.');
                     return;
                 }
 
-                const sql = db.adapter.platform.getModifyDatabaseDDL(databaseDiff);
-                if (!sql.length) {
-                    this.logger.error(db.name, 'No generates sql found.');
-                    continue;
+                if (databaseDiff) {
+                    upSql = db.adapter.platform.getModifyDatabaseDDL(databaseDiff);
+                    if (!empty && !upSql.length) {
+                        this.logger.error(db.name, 'No generates sql found.');
+                        continue;
+                    }
                 }
 
                 let migrationName = '';
-
                 const date = new Date;
 
                 for (let i = 1; i < 100; i++) {
@@ -72,8 +77,10 @@ export class MigrationCreateController implements Command {
                 }
                 const migrationFile = join(this.migrationDir, migrationName + '.ts');
 
-                const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
-                const reverseSql =  reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff) : [];
+                if (databaseDiff) {
+                    const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
+                    downSql = reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff) : [];
+                }
 
                 const code = `
 import {Migration} from '@deepkit/orm-module';
@@ -85,29 +92,36 @@ import {Migration} from '@deepkit/orm-module';
 */
 export class SchemaMigration implements Migration {
     /**
+     * The migration name/title. Defaults to the file name, but can be overwritten here and to give a nice explanation what has been done.
+     */
+    name = \`\`;
+
+    /**
      * Database name used for this migration. Should usually not be changed. 
      * If you change your database names later, you can adjust those here as well to make sure
      * migration files are correctly assigned to the right database connection.
+     *
+     * Used adapter: ${JSON.stringify(db.adapter.getName())}
      */
     databaseName = ${JSON.stringify(db.name)};
     
-    adapterName = ${JSON.stringify(db.adapter.getName())};
-    
     /**
-     * This date should not be changed since it is used to detect if this migration 
+     * This version should not be changed since it is used to detect if this migration 
      * has been already executed against the database.
+     *
+     * This version was created at ${date.toISOString()}. 
      */
-    created = new Date('${date.toJSON()}');
+    version = ${Math.floor(date.getTime() / 1000)};
     
     up() {
         return [
-${sql.map(serializeSQLLine).map(indent(12)).join(',\n')}
+${upSql.map(serializeSQLLine).map(indent(12)).join(',\n')}
         ];
     }
 
     down() {
         return [
-${reverseSql.map(serializeSQLLine).map(indent(12)).join(',\n')}
+${downSql.map(serializeSQLLine).map(indent(12)).join(',\n')}
         ];
     }
 }

@@ -1,9 +1,20 @@
 import * as sqlite3 from 'sqlite3';
-import {SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
-import {DatabaseSession} from '@deepkit/orm';
+import {
+    SQLConnection,
+    SQLConnectionPool,
+    SQLDatabaseAdapter,
+    SQLDatabaseQuery,
+    SQLDatabaseQueryFactory,
+    SQLPersistence,
+    SQLQueryModel,
+    SQLQueryResolver,
+    SQLStatement
+} from './sql-adapter';
+import {DatabaseSession, Entity} from '@deepkit/orm';
 import {SQLitePlatform} from './platform/sqlite-platform';
-import {ClassSchema} from '@deepkit/type';
-import {asyncOperation} from '@deepkit/core';
+import {ClassSchema, getClassSchema} from '@deepkit/type';
+import {asyncOperation, ClassType} from '@deepkit/core';
+import {SqlBuilder} from './sql-builder';
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected stmt: sqlite3.Statement) {
@@ -29,6 +40,7 @@ export class SQLiteStatement extends SQLStatement {
     }
 
     release() {
+        this.stmt.reset();
     }
 }
 
@@ -42,11 +54,12 @@ export class SQLiteConnection extends SQLConnection {
 
     async prepare(sql: string) {
         return await asyncOperation<SQLiteStatement>((resolve, reject) => {
-            this.db.prepare(sql, (err) => {
+            const self = this;
+            this.db.prepare(sql, function (err) {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve(new SQLiteStatement(this.db.prepare(sql)));
+                    resolve(new SQLiteStatement(self.db.prepare(sql)));
                 }
             });
         });
@@ -57,6 +70,7 @@ export class SQLiteConnection extends SQLConnection {
         await asyncOperation((resolve, reject) => {
             this.db.run(sql, function (err) {
                 if (err) {
+                    console.log('exec error', sql, err);
                     reject(err);
                 } else {
                     self.changes = this.changes;
@@ -97,6 +111,29 @@ export class SQLitePersistence extends SQLPersistence {
     }
 }
 
+export class SQLiteQueryResolver<T> extends SQLQueryResolver<T> {
+
+    async deleteMany(model: SQLQueryModel<T>): Promise<number> {
+        if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
+        const sqlBuilder = new SqlBuilder(this.platform);
+
+        const selectQuery = sqlBuilder.select(this.classSchema, model, {select: ['rowid']});
+        const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE rowid IN (${selectQuery})`;
+
+        await this.connection.exec(sql);
+        return await this.connection.getChanges();
+    }
+}
+
+export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
+    createQuery<T extends Entity>(
+        classType: ClassType<T> | ClassSchema<T>
+    ): SQLDatabaseQuery<T> {
+        const schema = getClassSchema(classType);
+        return new SQLDatabaseQuery(schema, new SQLQueryModel(), new SQLiteQueryResolver(this.connection, this.platform, schema, this.databaseSession));
+    }
+}
+
 export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     public readonly db: sqlite3.Database;
     public readonly connectionPool: SQLiteConnectionPool;
@@ -111,7 +148,7 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     }
 
     getName(): string {
-        return 'mongo';
+        return 'sqlite';
     }
 
     getSchemaName(): string {
@@ -123,7 +160,7 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
-        return new SQLDatabaseQueryFactory(this.connectionPool.getConnection(), this.platform, databaseSession);
+        return new SQLiteDatabaseQueryFactory(this.connectionPool.getConnection(), this.platform, databaseSession);
     }
 
     disconnect(force?: boolean): void {

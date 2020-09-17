@@ -334,11 +334,10 @@ export abstract class DefaultPlatform {
         // alter entity structure
         if (diff.hasModifiedPk()) add(this.getDropPrimaryKeyDDL(diff.from));
         for (const [from, to] of diff.renamedColumns.values()) add(this.getRenameColumnDDL(from, to));
-        if (diff.modifiedColumns.size) for (const columnDiff of diff.modifiedColumns.values()) add(this.getModifyColumnDDL(columnDiff));
-        if (diff.addedColumns.size) for (const column of diff.addedColumns.values()) add(this.getAddColumnDDL(column));
+        if (diff.modifiedColumns.length) for (const columnDiff of diff.modifiedColumns) add(this.getModifyColumnDDL(columnDiff));
+        if (diff.addedColumns.length) for (const column of diff.addedColumns) add(this.getAddColumnDDL(column));
         for (const column of diff.removedColumns.values()) add(this.getRemoveColumnDDL(column));
 
-        // add new indices and foreign keys
         if (diff.hasModifiedPk()) add(this.getAddPrimaryKeyDDL(diff.to));
 
         if (alterTableLines.length) {

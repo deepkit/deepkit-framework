@@ -127,10 +127,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         model = model.clone();
         model.limit = 1;
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
-        await this.connection.exec(sql);
-        return await this.connection.getChanges() === 1;
+        return await this.deleteMany(model) >= 1;
     }
 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
@@ -209,11 +206,16 @@ export class SqlMigrationHandler {
         await session.commit();
     }
 
+    public async removeMigrationVersion(version: number): Promise<void> {
+        const session = this.database.createSession();
+        await session.query(this.migrationEntity).filter({version}).deleteOne();
+    }
+
     public async getLatestMigrationVersion(): Promise<number> {
         const session = this.database.createSession();
         try {
-            const version = await session.query(this.migrationEntity).sort({version: 'desc'}).findOne();
-            return version.version;
+            const version = await session.query(this.migrationEntity).sort({version: 'desc'}).findOneOrUndefined();
+            return version ? version.version : 0;
         } catch (error) {
             const connection = await this.database.adapter.connectionPool.getConnection();
             try {

@@ -163,9 +163,18 @@ export class SqlBuilder {
         return sql;
     }
 
-    public select(schema: ClassSchema, model: SQLQueryModel<any>): string {
-        const map = this.selectColumns(schema, model);
-        this.rootConverter = this.buildConverter(map.startIndex, map.fields);
+    public select(
+        schema: ClassSchema,
+        model: SQLQueryModel<any>,
+        options: {select?: string[]} = {}
+    ): string {
+        const manualSelect = options.select && options.select.length ? options.select : undefined;
+
+        if (!manualSelect){
+            const map = this.selectColumns(schema, model);
+            this.rootConverter = this.buildConverter(map.startIndex, map.fields);
+        }
+
         const order: string[] = [];
         if (model.sort) {
             for (const [name, sort] of Object.entries(model.sort)) {
@@ -173,7 +182,7 @@ export class SqlBuilder {
             }
         }
 
-        let sql = this.build(schema, model, 'SELECT ' + this.sqlSelect.join(', '));
+        let sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
 
         if (order.length) {
             sql += ' ORDER BY ' + (order.join(', '));

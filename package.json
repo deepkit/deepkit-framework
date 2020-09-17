@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "test": "jest --coverage --forceExit",
-    "bootstrap": "lerna bootstrap",
+    "bootstrap": "lerna bootstrap --no-ci",
     "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
     "clean": "rm -rf packages/*/dist",

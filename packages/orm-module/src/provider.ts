@@ -71,8 +71,8 @@ export class DatabaseProvider {
         }
 
         migrations.sort((a, b) => {
-            if (a.created > b.created) return +1;
-            if (a.created < b.created) return -1;
+            if (a.version > b.version) return +1;
+            if (a.version < b.version) return -1;
             return 0;
         });
 

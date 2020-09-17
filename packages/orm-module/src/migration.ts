@@ -1,7 +1,6 @@
 export interface Migration {
     databaseName: string;
-    adapterName: string;
-    created: Date;
+    version: number;
     name?: string;
 
     up(): string[];
