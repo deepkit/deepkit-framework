@@ -11,20 +11,12 @@ export class MySQLStatement extends SQLStatement {
     }
 
     async get(params: any[] = []) {
-        try {
-            const rows = await this.connection.query(this.sql, params);
-            return rows[0];
-        } finally {
-            this.connection.release();
-        }
+        const rows = await this.connection.query(this.sql, params);
+        return rows[0];
     }
 
     async all(params: any[] = []) {
-        try {
-            return await this.connection.query(this.sql, params);
-        } finally {
-            this.connection.release();
-        }
+        return await this.connection.query(this.sql, params);
     }
 
     release() {
@@ -35,6 +27,7 @@ export class MySQLStatement extends SQLStatement {
 export class MySQLConnection extends SQLConnection {
     protected changes: number = 0;
     public lastBatchResult?: UpsertResult[];
+    protected connection?: PoolConnection = undefined;
 
     constructor(
         connectionPool: SQLConnectionPool,
@@ -43,21 +36,25 @@ export class MySQLConnection extends SQLConnection {
         super(connectionPool);
     }
 
+    release() {
+        super.release();
+        if (this.connection) {
+            this.connection.release();
+            this.connection = undefined;
+        }
+    }
+
     async prepare(sql: string) {
-        const connection = await this.getConnection();
-        return new MySQLStatement(sql, connection);
+        if (!this.connection) this.connection = await this.getConnection();
+        return new MySQLStatement(sql, this.connection);
     }
 
     async exec(sql: string) {
-        const connection = await this.getConnection();
-        try {
-            //batch returns in reality a single UpsertResult if only one query is given
-            const res = (await connection.batch(sql, [])) as UpsertResult[] | UpsertResult;
-            if (isArray(res)) this.lastBatchResult = res;
-            else this.lastBatchResult = [res];
-        } finally {
-            connection.release();
-        }
+        if (!this.connection) this.connection = await this.getConnection();
+        //batch returns in reality a single UpsertResult if only one query is given
+        const res = (await this.connection.batch(sql, [])) as UpsertResult[] | UpsertResult;
+        if (isArray(res)) this.lastBatchResult = res;
+        else this.lastBatchResult = [res];
     }
 
     async getChanges(): Promise<number> {

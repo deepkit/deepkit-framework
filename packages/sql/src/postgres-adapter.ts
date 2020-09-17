@@ -15,36 +15,23 @@ export class PostgresStatement extends SQLStatement {
     }
 
     async get(params: any[] = []) {
-        try {
-            const res = await this.client.query(this.sql, params);
-            return res.rows[0];
-        } finally {
-            this.released = true;
-            this.client.release();
-        }
+        const res = await this.client.query(this.sql, params);
+        return res.rows[0];
     }
 
     async all(params: any[] = []) {
-        try {
-            const res = await this.client.query(this.sql, params);
-            return res.rows;
-        } finally {
-            this.released = true;
-            this.client.release();
-        }
+        const res = await this.client.query(this.sql, params);
+        return res.rows;
     }
 
     release() {
-        if (this.released) return;
-
-        this.released = true;
-        this.client.release();
     }
 }
 
 export class PostgresConnection extends SQLConnection {
     protected changes: number = 0;
     public lastReturningRows: any[] = [];
+    protected connection?: PoolClient = undefined;
 
     constructor(
         connectionPool: PostgresConnectionPool,
@@ -53,20 +40,25 @@ export class PostgresConnection extends SQLConnection {
         super(connectionPool);
     }
 
+    release() {
+        super.release();
+        if (this.connection) {
+            this.connection.release();
+            this.connection = undefined;
+        }
+    }
+
     async prepare(sql: string) {
-        const connection = await this.getConnection();
-        return new PostgresStatement(sql, connection);
+        if (!this.connection) this.connection = await this.getConnection();
+        return new PostgresStatement(sql, this.connection);
     }
 
     async exec(sql: string) {
-        const connection = await this.getConnection();
-        try {
-            const res = await connection.query(sql);
-            this.lastReturningRows = res.rows;
-            this.changes = res.rowCount;
-        } finally {
-            connection.release();
-        }
+        if (!this.connection) this.connection = await this.getConnection();
+        const res = await this.connection.query(sql);
+        this.lastReturningRows = res.rows;
+        this.changes = res.rowCount;
+
     }
 
     async getChanges(): Promise<number> {

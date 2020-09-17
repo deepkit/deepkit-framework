@@ -11,9 +11,11 @@ test('connection MySQLConnectionPool', async () => {
     });
     const connectionPool = new MySQLConnectionPool(pool);
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 1000; i++) {
         const connection = connectionPool.getConnection();
-        await (await connection.prepare('SELECT 1')).all();
+        const stmt = await connection.prepare('SELECT 1');
+        await stmt.all();
+        stmt.release();
         connection.release();
     }
 
