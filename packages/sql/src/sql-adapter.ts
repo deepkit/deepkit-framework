@@ -153,7 +153,6 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
         const connection = this.connectionPool.getConnection();
         try {
             const rows = await connection.execAndReturnAll(sql);
-            console.log('rows', rows);
             const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
             const formatter = this.createFormatter(model.withIdentityMap);
             return converted.map(v => formatter.hydrate(model, v));

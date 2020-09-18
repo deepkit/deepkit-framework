@@ -22,7 +22,6 @@ test('connection MySQLConnectionPool', async () => {
     }
 
     expect(connectionPool.getActiveConnections()).toBe(0);
-    expect(pool.activeConnections()).toBe(0);
     await pool.end();
 });
 

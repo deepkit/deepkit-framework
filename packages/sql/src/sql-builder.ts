@@ -249,7 +249,6 @@ export class SqlBuilder {
         if (order.length) {
             sql += ' ORDER BY ' + (order.join(', '));
         }
-        console.log('select sql', sql);
 
         return sql;
     }
