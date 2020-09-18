@@ -7,3 +7,4 @@ export * from './src/utils';
 export * from './src/converter';
 export * from './src/change-detector';
 export * from './src/query-filter';
+export * from './src/active-record';

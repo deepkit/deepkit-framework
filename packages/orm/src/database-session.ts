@@ -33,22 +33,17 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return this.committed;
     }
 
-    public add<T extends Entity>(item: T | T[], deep: boolean = true): void {
+    public add<T extends Entity>(...items: T[]): void {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
-        if (isArray(item)) {
-            item.map(v => this.add(v));
-            return;
-        }
+        for (const item of items) {
+            if (this.removeQueue.has(item)) continue;
+            if (this.addQueue.has(item)) continue;
 
-        if (this.removeQueue.has(item)) return;
-        if (this.addQueue.has(item)) return;
+            this.addQueue.add(item);
 
-        this.addQueue.add(item);
-
-        if (deep) {
             for (const dep of this.getReferenceDependencies(item)) {
-                this.add(dep, deep);
+                this.add(dep);
             }
         }
     }
@@ -60,6 +55,8 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         const old = this.global.unpopulatedCheckActive;
         this.global.unpopulatedCheckActive = false;
         for (const reference of classSchema.references.values()) {
+            if (reference.backReference) continue;
+
             //todo, check if join was populated. will throw otherwise
             const v = item[reference.name as keyof T] as any;
             if (!v) continue;
@@ -74,14 +71,16 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return result;
     }
 
-    public remove<T extends Entity>(item: T) {
+    public remove(...items: Entity[]) {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
         //todo: check if already deleted
         //todo: check if new Entity() has persisted (use WeakMap for that)
 
-        this.removeQueue.add(item);
-        this.addQueue.delete(item);
+        for (const item of items) {
+            this.removeQueue.add(item);
+            this.addQueue.delete(item);
+        }
     }
 
     public async commit(persistence: DatabasePersistence) {
@@ -140,23 +139,19 @@ export class DatabaseSessionImmediate {
      * Simple direct persist. The persistence layer (batch) inserts or updates the record
      * depending on the state of the given items. This is different to add() in a way
      * that `add` adds the given items to the queue (which is then committed using commit())
-     * and immediate.persist just simply inserts/updates the given items immediately, completely bypassing
-     * the unit of work.
+     * and immediate.persist just simply inserts/updates the given items immediately,
+     * completely bypassing the advantages of the unit of work.
      *
-     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async persist<T extends Entity>(...items: T[]) {
+    public async persist(...items: Entity[]) {
+        const round = new DatabaseSessionRound(this.identityMap);
+        round.add(...items);
         const persistence = this.adapter.createPersistence();
-
         try {
-            for (const [classSchema, groupItems] of getClassSchemaInstancePairs(items)) {
-                await persistence.persist(classSchema, groupItems);
-                for (const item of groupItems) {
-                    this.identityMap.store(classSchema, item);
-                }
-            }
+            await round.commit(persistence);
         } finally {
-            await persistence.release();
+            persistence.release();
         }
     }
 
@@ -164,20 +159,18 @@ export class DatabaseSessionImmediate {
      * Simple direct remove. The persistence layer (batch) removes all given items.
      * This is different to remove() in a way that `remove` adds the given items to the queue
      * (which is then committed using commit()) and immediate.remove just simply removes the given items immediately,
-     * completely bypassing the unit of work.
+     * completely bypassing the advantages of the unit of work.
      *
-     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async remove<T extends Entity>(...items: T[]) {
+    public async remove(...items: Entity[]) {
+        const round = new DatabaseSessionRound(this.identityMap);
+        round.remove(...items);
         const persistence = this.adapter.createPersistence();
-
         try {
-            for (const [classSchema, groupItems] of getClassSchemaInstancePairs(items)) {
-                await persistence.remove(classSchema, groupItems);
-                this.identityMap.deleteMany(classSchema, groupItems);
-            }
+            await round.commit(persistence);
         } finally {
-            await persistence.release();
+            persistence.release();
         }
     }
 }
@@ -241,20 +234,28 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         this.rounds.push(new DatabaseSessionRound(this.identityMap));
     }
 
-    public add<T>(item: T | T[], deep: boolean = true): void {
+    /**
+     * Adds a single or multiple to the to add/update queue. Use session.commit() to persist all queued items to the database.
+     *
+     * This works like Git: you add files, and later commit all in one batch.
+     */
+    public add(...items: Entity[]): void {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
 
-        this.getCurrentRound().add(item, deep);
+        this.getCurrentRound().add(...items);
     }
 
-    public remove<T>(item: T) {
+    /**
+     * Adds a item to the remove queue. Use session.commit() to remove queued items from the database all at once.
+     */
+    public remove(...items: Entity[]) {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
 
-        this.getCurrentRound().remove(item);
+        this.getCurrentRound().remove(...items);
     }
 
     public reset() {

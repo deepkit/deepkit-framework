@@ -529,6 +529,11 @@ export class ClassSchema<T = any> {
      */
     jit: any = {};
 
+    /**
+     * Arbitrary data container to assign additional data to a schema.
+     */
+    data: {[key: string]: any } = {};
+
     symbol = Symbol('ClassSchema');
 
     /**
@@ -1278,6 +1283,8 @@ export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<Cl
 
 export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType<any>) => PropertyValidatorError | undefined | void;
 
+export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
+
 export interface FieldDecoratorResult<T> {
     (target: object, property?: string, parameterIndexOrDescriptor?: any): void;
 
@@ -1297,7 +1304,7 @@ export interface FieldDecoratorResult<T> {
      * Owning reference means: Additional foreign key fields are automatically added if not already explicitly done.
      * Those additional fields are used to store the primary key of the foreign class.
      */
-    reference(): this;
+    reference(options?: {onDelete?: ReferenceActions, onUpdate?: ReferenceActions}): this;
 
     /**
      * Marks this reference as not-owning side.

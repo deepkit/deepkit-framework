@@ -154,7 +154,7 @@ test('user account', async () => {
         const user2Cred = new UserCredentials(user2);
         user2Cred.password = 'secret2';
 
-        session.add([user1, user2, user1Cred, user2Cred]);
+        session.add(user1, user2, user1Cred, user2Cred);
         await session.commit();
 
         expect(user1.id).toBe(1);

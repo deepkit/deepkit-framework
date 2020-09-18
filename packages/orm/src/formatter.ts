@@ -148,7 +148,6 @@ export class Formatter {
         }
 
         if (this.identityMap && !model.isPartial()) {
-            // const pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
             const item = this.identityMap.getByHash(classSchema, pkHash);
 
             if (item) {
@@ -164,7 +163,11 @@ export class Formatter {
                         if (propName === classSchema.idField) continue;
 
                         const prop = classSchema.getClassProperties().get(propName)!;
+                        if (propName in item) continue;
+
                         if (prop.isReference || prop.backReference) {
+                            if (prop.isArray) continue;
+
                             Object.defineProperty(item, propName, {
                                 enumerable: true,
                                 configurable: true,

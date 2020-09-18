@@ -1,6 +1,6 @@
 export class CircularDependencyException<T> extends Error {
     constructor(public readonly nodes: T[]) {
-        super(`Circular reference found ${nodes.join(' -> ')}`);
+        super(`Circular reference found ${nodes.map(v => (v as any).constructor.name).join(' -> ')}`);
     }
 
     public getStart(): T {

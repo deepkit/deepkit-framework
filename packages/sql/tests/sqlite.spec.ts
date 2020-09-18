@@ -45,7 +45,7 @@ test('sqlite basic', async () => {
 
         expect(await session.query(User).count()).toBe(0);
 
-        session.add([user1, user2, user3]);
+        session.add(user1, user2, user3);
         await session.commit();
         expect(await session.query(User).count()).toBe(3);
 

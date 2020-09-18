@@ -8,7 +8,7 @@ import {indent} from '@deepkit/core';
 
 
 function serializeSQLLine(sql: string): string {
-    return '`' + sql.replace(/`/g, '\`') + '`';
+    return '`' + sql.replace(/`/g, '\\`') + '`';
 }
 
 @cli.controller('migration:create', {

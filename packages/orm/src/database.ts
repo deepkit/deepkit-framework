@@ -4,6 +4,7 @@ import {getDatabaseSessionHydrator, isHydrated} from './formatter';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {DatabaseSession, DatabaseSessionImmediate} from './database-session';
 import {IdentityMap} from './identity-map';
+import {isActiveRecordType} from './active-record';
 
 export class NotFoundError extends CustomError {
 }
@@ -78,13 +79,15 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      *  - Entity instances ARE NOT cached or tracked.
      *
      * Use a DatabaseSession (createSession()) with query() in your workflow to enable
-     * instance pooling and transaction support.
+     * identity map.
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
 
     constructor(public readonly adapter: ADAPTER, schemas: (ClassType | ClassSchema)[] = []) {
-        const queryFactory = this.adapter.queryFactory(this.rootSession);
-        this.query = queryFactory.createQuery.bind(queryFactory);
+        this.query = (classType: ClassType<any> | ClassSchema<any>) => {
+            const session = this.createSession();
+            return session.query(classType);
+        };
         this.registerEntity(...schemas);
     }
 
@@ -131,10 +134,20 @@ export class Database<ADAPTER extends DatabaseAdapter> {
     }
 
     /**
-     * Registers a new entity to this database. This is mainly used for db migration utilities.
+     * Registers a new entity to this database.
+     * This is mainly used for db migration utilities and active record.
+     * If you want to use active record, you have to assign your entities first the a database
+     * using this method.
      */
     registerEntity(...entities: (ClassType | ClassSchema)[]): void {
-        entities.map(entity => this.classSchemas.add(getClassSchema(entity)));
+        for (const entity of entities) {
+            const schema = getClassSchema(entity);
+
+            this.classSchemas.add(schema);
+
+            schema.data['orm.database'] = this;
+            if (isActiveRecordType(entity)) entity.registerDatabase(this);
+        }
     }
 
     /**
@@ -148,26 +161,28 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      * Simple direct persist. The persistence layer (batch) inserts or updates the record
      * depending on the state of the given items. This is different to createSession()+add() in a way
      * that `add` adds the given items to the queue (which is then committed using commit())
-     * and database.persist just simply inserts/updates the given items immediately, completely bypassing
-     * the unit of work.
+     * and database.persist() just simply inserts/updates the given items immediately,
+     * completely bypassing the advantages of the unit of work.
      *
-     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
     public async persist<T extends Entity>(...items: T[]) {
-        const immediate = new DatabaseSessionImmediate(new IdentityMap(), this.adapter);
-        await immediate.persist(...items);
+        const session = this.createSession();
+        session.add(...items);
+        await session.commit();
     }
 
     /**
      * Simple direct remove. The persistence layer (batch) removes all given items.
      * This is different to createSession()+add() in a way that `remove` adds the given items to the queue
-     * (which is then committed using commit()) and immediate.remove just simply removes the given items immediately,
-     * completely bypassing the unit of work.
+     * (which is then committed using commit()) and immediate.remove() just simply removes the given items immediately,
+     * completely bypassing the advantages of the unit of work.
      *
-     * You should prefer the add/remove & commit() workflow to fully utilizing database performance.
+     * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
     public async remove<T extends Entity>(...items: T[]) {
-        const immediate = new DatabaseSessionImmediate(new IdentityMap(), this.adapter);
-        await immediate.remove(...items);
+        const session = this.createSession();
+        session.remove(...items);
+        await session.commit();
     }
 }
