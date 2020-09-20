@@ -45,17 +45,16 @@ test('migration basic', async () => {
     expect(tablePost.foreignKeys[0].foreignColumns[0].name).toBe('id');
 });
 
-
 describe('migration round trip', () => {
     test('sqlite', async () => {
         await schemaMigrationRoundTrip([user, post], new SQLiteDatabaseAdapter(':memory:'));
     });
 
     test('mysql', async () => {
-        await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter('localhost'));
+        await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'}));
     });
 
     test('postgres', async () => {
-        await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter('localhost'));
+        await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres'}));
     });
 });

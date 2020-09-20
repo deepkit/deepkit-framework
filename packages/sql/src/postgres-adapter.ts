@@ -3,7 +3,7 @@ import {DatabaseSession} from '@deepkit/orm';
 import {PostgresPlatform} from './platform/postgres-platform';
 import {ClassSchema} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
-import {Pool, PoolClient, types} from 'pg';
+import {Pool, PoolClient, PoolConfig, types} from 'pg';
 
 types.setTypeParser(1700, parseFloat);
 types.setTypeParser(20, BigInt);
@@ -103,14 +103,11 @@ export class PostgresPersistence extends SQLPersistence {
 }
 
 export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
-    protected pool = new Pool({
-        host: this.host,
-        database: 'postgres',
-    });
+    protected pool = new Pool(this.options);
     public connectionPool = new PostgresConnectionPool(this.pool);
     public platform = new PostgresPlatform();
 
-    constructor(protected host: string) {
+    constructor(protected options: PoolConfig) {
         super();
     }
 

@@ -14,7 +14,7 @@ test('mysql custom type', async () => {
         content: t.string,
     }, {name: 'post'});
 
-    const adapter = new MySQLDatabaseAdapter('localhost');
+    const adapter = new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'});
     const [postTable] = adapter.platform.createTables([post]);
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
@@ -30,7 +30,7 @@ test('postgres custom type', async () => {
         content: t.string.postgres({type: 'text'}),
     }, {name: 'post'});
 
-    const adapter = new PostgresDatabaseAdapter('localhost');
+    const adapter = new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres'});
     const [postTable] = adapter.platform.createTables([post]);
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);

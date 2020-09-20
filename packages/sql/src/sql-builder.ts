@@ -182,8 +182,8 @@ export class SqlBuilder {
                 onClause.push(`${pivotName}.${this.platform.quoteIdentifier(pivotToRight.name)} = ${joinName}.${this.platform.quoteIdentifier(join.query.classSchema.getPrimaryField().name)}`);
                 joins.push(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (${onClause.join(' AND ')})`);
 
-                // const moreJoins = this.getJoinSQL(join.query.model, joinName, prefix + '__' + join.propertySchema.name);
-                // if (moreJoins) joins.push(moreJoins);
+                const moreJoins = this.getJoinSQL(join.query.model, joinName, prefix + '__' + join.propertySchema.name);
+                if (moreJoins) joins.push(moreJoins);
 
                 continue;
             }

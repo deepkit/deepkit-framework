@@ -18,9 +18,9 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
     if (driver === 'sqlite') {
         adapter = new SQLiteDatabaseAdapter(':memory:');
     } else if (driver === 'mysql') {
-        adapter = new MySQLDatabaseAdapter('localhost');
+        adapter = new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'});
     } else if (driver === 'postgres') {
-        adapter = new PostgresDatabaseAdapter('localhost');
+        adapter = new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres'});
     }
 
     if (!adapter) throw new Error(`Could not detect adapter from ${driver}`);

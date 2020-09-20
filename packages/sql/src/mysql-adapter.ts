@@ -1,4 +1,4 @@
-import {createPool, Pool, PoolConnection, UpsertResult} from 'mariadb';
+import {createPool, Pool, PoolConfig, PoolConnection, UpsertResult} from 'mariadb';
 import {SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQueryFactory, SQLPersistence, SQLStatement} from './sql-adapter';
 import {DatabaseSession} from '@deepkit/orm';
 import {MySQLPlatform} from './platform/mysql-platform';
@@ -92,15 +92,13 @@ export class MySQLPersistence extends SQLPersistence {
 }
 
 export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
-    protected pool = createPool({
-        host: this.host,
-        user: 'root',
-        database: 'default',
-    });
+    protected pool = createPool(this.options);
     public connectionPool = new MySQLConnectionPool(this.pool);
     public platform = new MySQLPlatform(this.pool);
 
-    constructor(protected host: string) {
+    constructor(
+        protected options: PoolConfig = {}
+    ) {
         super();
     }
 

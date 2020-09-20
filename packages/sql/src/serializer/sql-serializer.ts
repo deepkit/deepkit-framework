@@ -64,7 +64,6 @@ sqlSerializer.fromClass.register('date', (setter, accessor) => {
     return `${setter} = ${accessor}`;
 });
 
-
 sqlSerializer.fromClass.register('moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = ${accessor}.toDate();`;
 });

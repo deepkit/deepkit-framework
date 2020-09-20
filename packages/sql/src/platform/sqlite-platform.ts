@@ -4,17 +4,20 @@ import {PropertySchema} from '@deepkit/type/dist/src/decorators';
 import {parseType} from '../reverse/schema-parser';
 import {SqliteOptions} from '@deepkit/type';
 import {SQLiteSchemaParser} from '../reverse/sqlite-schema-parser';
+import {SqliteSerializer} from '../serializer/sqlite-serializer';
 
 export class SQLitePlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
     schemaParserType = SQLiteSchemaParser;
 
+    public readonly serializer = SqliteSerializer;
+
     constructor() {
         super();
 
-        this.addType('number', 'integer', 8);
-        this.addType('date', 'integer', 8);
-        this.addType('moment', 'integer', 8);
+        this.addType('number', 'float');
+        this.addType('date', 'text');
+        this.addType('moment', 'text');
         this.addType('boolean', 'integer', 1);
         this.addType('uuid', 'blob');
         this.addBinaryType('blob');
@@ -110,6 +113,11 @@ export class SQLitePlatform extends DefaultPlatform {
         const db = (typeProperty.data['sqlite'] || {}) as SqliteOptions;
         if (db.type) {
             parseType(column, db.type);
+            return;
+        }
+
+        if (column.isAutoIncrement) {
+            column.type = 'integer';
             return;
         }
 

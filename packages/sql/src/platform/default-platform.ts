@@ -154,15 +154,15 @@ export abstract class DefaultPlatform {
 
                 const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
 
-                const typeProperty = property.isReference ? property.getResolvedClassSchema().getPrimaryField() : property;
-                this.setColumnType(column, typeProperty);
-
                 column.defaultValue = property.defaultValue;
 
                 const isNullable = property.isUndefinedAllowed() || property.isNullable;
                 column.isNotNull = !isNullable;
                 column.isPrimaryKey = property.isId;
                 column.isAutoIncrement = property.isAutoIncrement;
+
+                const typeProperty = property.isReference ? property.getResolvedClassSchema().getPrimaryField() : property;
+                this.setColumnType(column, typeProperty);
             }
         }
 

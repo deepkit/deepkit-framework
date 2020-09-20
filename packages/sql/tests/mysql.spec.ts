@@ -31,7 +31,7 @@ test('connection release persistence/query', async () => {
         username: t.string
     }, {name: 'test_connection_user'});
 
-    const adapter = new MySQLDatabaseAdapter('localhost');
+    const adapter = new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'});
     const database = new Database(adapter);
     database.registerEntity(user);
     await database.migrate();
