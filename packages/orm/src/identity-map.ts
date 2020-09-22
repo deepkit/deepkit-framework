@@ -4,7 +4,7 @@ import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGen
 import {isObject, toFastProperties} from '@deepkit/core';
 import {inspect} from 'util';
 
-export type PrimaryKey<T> = { [name in keyof T]?: T[name] };
+export type PrimaryKey<T> = { [name in keyof T & string]?: T[name] };
 
 export function getNormalizedPrimaryKey(schema: ClassSchema<any>, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();

@@ -56,7 +56,7 @@ export class SQLiteConnection extends SQLConnection {
         return await asyncOperation<SQLiteStatement>((resolve, reject) => {
             this.db.prepare(sql, function (err) {
                 if (err) {
-                    reject(err);
+                    reject(new Error(err.message));
                 } else {
                     resolve(new SQLiteStatement(this));
                 }
@@ -70,7 +70,7 @@ export class SQLiteConnection extends SQLConnection {
             this.db.run(sql, function (err) {
                 if (err) {
                     console.log('exec error', sql, err);
-                    reject(err);
+                    reject(new Error(err.message));
                 } else {
                     self.changes = this.changes;
                     resolve(self.changes);
@@ -112,7 +112,6 @@ export class SQLitePersistence extends SQLPersistence {
 }
 
 export class SQLiteQueryResolver<T> extends SQLQueryResolver<T> {
-
     async deleteMany(model: SQLQueryModel<T>): Promise<number> {
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const sqlBuilder = new SqlBuilder(this.platform);
@@ -129,12 +128,15 @@ export class SQLiteQueryResolver<T> extends SQLQueryResolver<T> {
     }
 }
 
+export class SQLiteDatabaseQuery<T> extends SQLDatabaseQuery<T> {
+    protected resolver = new SQLiteQueryResolver(this.connectionPool, this.platform, this.classSchema, this.databaseSession);
+}
+
 export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends Entity>(
         classType: ClassType<T> | ClassSchema<T>
-    ): SQLDatabaseQuery<T> {
-        const schema = getClassSchema(classType);
-        return new SQLDatabaseQuery(schema, new SQLQueryModel(), new SQLiteQueryResolver(this.connectionPool, this.platform, schema, this.databaseSession));
+    ): SQLiteDatabaseQuery<T> {
+        return new SQLiteDatabaseQuery(getClassSchema(classType), this.databaseSession, this.connectionPool, this.platform);
     }
 }
 

@@ -2,6 +2,7 @@ import 'jest-extended';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer, str2ab} from '../../src/exchange/exchange-prot';
 import {closeCreatedExchange, createExchange} from './utils';
 import {performance} from 'perf_hooks';
+import {t} from '@deepkit/type';
 
 afterAll(async () => {
     closeCreatedExchange();
@@ -144,23 +145,25 @@ test('test version', async () => {
 
 test('test get/set', async () => {
     const client = await createExchange();
+    const type = t.schema({nix: t.string});
 
-    await client.set('myKey', encodePayloadAsJSONArrayBuffer({nix: 'data'}));
+    await client.set('myKey', type, {nix: 'data'});
 
-    expect(decodePayloadAsJson(await client.get('myKey')).nix).toBe('data');
+    expect((await client.get('myKey', type))!.nix).toBe('data');
 
-    await client.set('myKey2', encodePayloadAsJSONArrayBuffer({nix: 'data2'}));
-    expect(decodePayloadAsJson(await client.get('myKey')).nix).toBe('data');
-    expect(decodePayloadAsJson(await client.get('myKey2')).nix).toBe('data2');
+    await client.set('myKey2', type, {nix: 'data2'});
+    expect((await client.get('myKey', type))!.nix).toBe('data');
+    expect((await client.get('myKey2', type))!.nix).toBe('data2');
 
     await client.del('myKey2');
-    expect(decodePayloadAsJson(await client.get('myKey')).nix).toBe('data');
-    expect(decodePayloadAsJson(await client.get('myKey2'))).toBeUndefined();
+    expect((await client.get('myKey', type))!.nix).toBe('data');
+    expect((await client.get('myKey2', type))).toBeUndefined();
 });
 
 test('test get/set benchmark', async () => {
     const client = await createExchange();
     const count = 1_000;
+    const type = t.schema({nix: t.string});
 
     // {
     //     const start = performance.now();
@@ -174,43 +177,18 @@ test('test get/set benchmark', async () => {
     {
         const start = performance.now();
         for (let i = 0; i < count; i++) {
-            await client.set(String(i), encodePayloadAsJSONArrayBuffer({nix: 'data'}));
+            await client.set(String(i), type, {nix: 'data'});
         }
-        console.log(count, 'client.set & encode', performance.now() - start, 'ms', (performance.now() - start) / count);
+        console.log(count, 'client.set', performance.now() - start, 'ms', (performance.now() - start) / count);
     }
 
     {
         const start = performance.now();
         for (let i = 0; i < count; i++) {
-            await client.get(String(i));
+            await client.get(String(i), type);
         }
         console.log(count, 'client.get', performance.now() - start, 'ms', (performance.now() - start) / count);
     }
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            await client.get(String(i));
-        }
-        console.log(count, 'client.get', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            decodePayloadAsJson(await client.get(String(i)));
-        }
-        console.log(count, 'client.get & decode', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
-
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            await client.get(String(i));
-        }
-        console.log(count, 'client.get', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
-
 });
 
 

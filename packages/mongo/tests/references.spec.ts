@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {Entity, t} from '@deepkit/type';
-import {createDatabaseSession} from './utils';
+import {createDatabase} from './utils';
 import {getInstanceState} from '@deepkit/orm';
 
 @Entity('image')
@@ -46,7 +46,8 @@ class UserPicture {
 }
 
 test('test back reference', async () => {
-    const session = await createDatabaseSession('reference a');
+    const db = await createDatabase('reference a');
+    const session = db.createSession();
 
     const image1 = new Image(1, 'peter.png');
     const peter = new User(2, 'peter');
@@ -88,7 +89,8 @@ test('test back reference', async () => {
 });
 
 test('test unlink reference', async () => {
-    const session = await createDatabaseSession('reference a');
+    const db = await createDatabase('reference a');
+    const session = db.createSession();
 
     const image1 = new Image(1, 'peter.png');
     const peter = new User(2, 'peter');

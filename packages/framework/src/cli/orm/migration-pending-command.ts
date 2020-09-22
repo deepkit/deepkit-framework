@@ -1,6 +1,7 @@
-import {cli, flag, Logger} from '@deepkit/framework';
-import {DatabaseProvider} from '../provider';
 import {SqlMigrationHandler} from '@deepkit/sql';
+import {cli, flag} from '../../command';
+import {Logger} from '../../logger';
+import {MigrationProvider} from '../../migration-provider';
 
 @cli.controller('migration:pending', {
     description: 'Shows pending migration files.'
@@ -8,7 +9,7 @@ import {SqlMigrationHandler} from '@deepkit/sql';
 export class MigrationPendingCommand {
     constructor(
         protected logger: Logger,
-        protected databaseProvider: DatabaseProvider,
+        protected databaseProvider: MigrationProvider,
     ) {
     }
 

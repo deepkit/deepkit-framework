@@ -1,8 +1,7 @@
 import {DefaultPlatform, isSet} from './default-platform';
 import {Column, ForeignKey, Table, TableDiff} from '../schema/table';
-import {PropertySchema} from '@deepkit/type/dist/src/decorators';
+import {PropertySchema, SqliteOptions} from '@deepkit/type';
 import {parseType} from '../reverse/schema-parser';
-import {SqliteOptions} from '@deepkit/type';
 import {SQLiteSchemaParser} from '../reverse/sqlite-schema-parser';
 import {SqliteSerializer} from '../serializer/sqlite-serializer';
 
@@ -116,7 +115,7 @@ export class SQLitePlatform extends DefaultPlatform {
             return;
         }
 
-        if (column.isAutoIncrement) {
+        if (typeProperty.isAutoIncrement) {
             column.type = 'integer';
             return;
         }

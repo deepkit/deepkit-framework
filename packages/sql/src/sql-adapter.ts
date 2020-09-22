@@ -3,14 +3,12 @@ import {
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
     DatabasePersistence,
+    DatabasePersistenceChangeSet,
     DatabaseQueryModel,
     DatabaseSession,
     Entity,
     GenericQuery,
     GenericQueryResolver,
-    getInstanceState,
-    getJitChangeDetector,
-    getJITConverterForSnapshot,
     SORT_ORDER
 } from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
@@ -87,7 +85,7 @@ export abstract class SQLConnectionPool {
     }
 }
 
-export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, DatabaseAdapter, SQLQueryModel<T>> {
+export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> {
     protected tableId = this.platform.getTableIdentifier.bind(this.platform);
     protected quoteIdentifier = this.platform.quoteIdentifier.bind(this.platform);
     protected quote = this.platform.quoteValue.bind(this.platform);
@@ -136,15 +134,15 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
             await connection.exec(sql);
             return await connection.getChanges();
         } finally {
-            connection.release()
+            connection.release();
         }
     }
 
-    async deleteOne(model: SQLQueryModel<T>): Promise<boolean> {
+    async deleteOne(model: SQLQueryModel<T>): Promise<number> {
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         model = model.clone();
         model.limit = 1;
-        return await this.deleteMany(model) >= 1;
+        return await this.deleteMany(model);
     }
 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
@@ -186,8 +184,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
         return Promise.resolve(0);
     }
 
-    patchOne(model: SQLQueryModel<T>, value: { [p: string]: any }): Promise<boolean> {
-        return Promise.resolve(false);
+    patchOne(model: SQLQueryModel<T>, value: { [p: string]: any }): Promise<number> {
+        return Promise.resolve(0);
     }
 
     updateOne(model: SQLQueryModel<T>, value: T): Promise<boolean> {
@@ -195,10 +193,18 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T, 
     }
 }
 
-export class SQLDatabaseQuery<T extends Entity,
-    MODEL extends SQLQueryModel<T> = SQLQueryModel<T>,
-    RESOLVER extends SQLQueryResolver<T> = SQLQueryResolver<T>> extends GenericQuery<T, MODEL, SQLQueryResolver<T>> {
+export class SQLDatabaseQuery<T extends Entity> extends GenericQuery<T, SQLQueryResolver<T>> {
+    protected resolver = new SQLQueryResolver(this.connectionPool, this.platform, this.classSchema, this.databaseSession);
 
+    constructor(
+        classSchema: ClassSchema<T>,
+        protected databaseSession: DatabaseSession<DatabaseAdapter>,
+        protected connectionPool: SQLConnectionPool,
+        protected platform: DefaultPlatform,
+    ) {
+        super(classSchema, databaseSession);
+        if (!databaseSession.withIdentityMap) this.disableIdentityMap();
+    }
 }
 
 export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
@@ -209,8 +215,7 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     createQuery<T extends Entity>(
         classType: ClassType<T> | ClassSchema<T>
     ): SQLDatabaseQuery<T> {
-        const schema = getClassSchema(classType);
-        return new SQLDatabaseQuery(schema, new SQLQueryModel(), new SQLQueryResolver(this.connectionPool, this.platform, schema, this.databaseSession));
+        return new SQLDatabaseQuery(getClassSchema(classType), this.databaseSession, this.connectionPool, this.platform);
     }
 }
 
@@ -303,50 +308,36 @@ export class SQLPersistence extends DatabasePersistence {
     protected populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
     }
 
-    async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
+    async insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
+        await this.prepareAutoIncrement(classSchema, items.length);
+        await this.doInsert(classSchema, items);
+        await this.populateAutoIncrementFields(classSchema, items);
+    }
+
+    async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const scopeSerializer = this.platform.serializer.for(classSchema);
-        const changeDetector = getJitChangeDetector(classSchema);
-        const doSnapshot = getJITConverterForSnapshot(classSchema);
+        const updates: string[] = [];
 
-        const inserted: T[] = [];
-        const sqls: string[] = [];
+        for (const changeSet of changeSets) {
+            const set: string[] = [];
+            const where: string[] = [];
 
-        for (const item of items) {
-            const state = getInstanceState(item);
-            if (state.isKnownInDatabase()) {
-                const lastSnapshot = state.getSnapshot();
-                const currentSnapshot = doSnapshot(item);
-                const changes = changeDetector(lastSnapshot, currentSnapshot, item);
-                if (!changes) continue;
-
-                const set: string[] = [];
-                const where: string[] = [];
-
-                const pk = scopeSerializer.partialSerialize(state.getLastKnownPK());
-                for (const i in pk) {
-                    where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
-                }
-                const value = scopeSerializer.partialSerialize(changes);
-                for (const i in value) {
-                    set.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(value[i])}`);
-                }
-
-                sqls.push(`UPDATE ${this.platform.getTableIdentifier(classSchema)} SET ${set.join(', ')} WHERE ${where.join(' AND ')}`);
-            } else {
-                inserted.push(item);
+            const pk = scopeSerializer.partialSerialize(changeSet.primaryKey);
+            for (const i in pk) {
+                if (!pk.hasOwnProperty(i)) continue;
+                where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
             }
+            const value = scopeSerializer.partialSerialize(changeSet.updates);
+            for (const i in value) {
+                if (!value.hasOwnProperty(i)) continue;
+                set.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(value[i])}`);
+            }
+
+            updates.push(`UPDATE ${this.platform.getTableIdentifier(classSchema)} SET ${set.join(', ')} WHERE ${where.join(' AND ')}`);
         }
 
-        if (inserted.length) {
-            await this.prepareAutoIncrement(classSchema, inserted.length);
-            await this.doInsert(classSchema, inserted);
-            await this.populateAutoIncrementFields(classSchema, inserted);
-        }
-
-        if (sqls.length) {
-            //try bulk update via https://stackoverflow.com/questions/11563869/update-multiple-rows-with-different-values-in-a-single-sql-query
-            await this.connection.exec(sqls.join(';\n'));
-        }
+        //try bulk update via https://stackoverflow.com/questions/11563869/update-multiple-rows-with-different-values-in-a-single-sql-query
+        await this.connection.exec(updates.join(';\n'));
     }
 
     protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {

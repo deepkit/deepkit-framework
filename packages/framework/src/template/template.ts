@@ -3,6 +3,7 @@ import {ClassType, isClass} from '@deepkit/core';
 import {Injector} from '../injector/injector';
 import {addHook} from 'pirates';
 import {optimize} from './optimize-tsx';
+import {isArray} from '@deepkit/type';
 
 function transform(code: string, filename: string) {
     if (code.indexOf('template.createElement(') === -1) return code;
@@ -47,10 +48,30 @@ const voidElements: { [name: string]: true } = {
     wbr: true,
 };
 
-type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, contents: (ElementStruct | string)[] };
+type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, contents: (ElementStruct | string | ElementStruct[])[] };
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
+}
+
+async function renderChildren(injector: Injector, contents: (ElementStruct | string | ElementStruct[])[]): Promise<string> {
+    let children = '';
+    //this is 3x faster than contents.join('')
+    // for (const content of struct.contents) {
+    for (const item of contents) {
+        if (item === undefined) continue;
+        if (isArray(item)) {
+            children += await renderChildren(injector, item);
+        } else {
+            if (item.constructor === Object) {
+                children += await render(injector, item);
+            } else {
+                children += item;
+            }
+        }
+    }
+
+    return children;
 }
 
 export async function render(injector: Injector, struct: ElementStruct | string): Promise<any> {
@@ -58,17 +79,9 @@ export async function render(injector: Injector, struct: ElementStruct | string)
         return struct;
     }
 
-    let children = '';
+    let children = await renderChildren(injector, struct.contents);
     //this is 3x faster than contents.join('')
     // for (const content of struct.contents) {
-    for (let i = 0; i < struct.contents.length; i++) {
-        // for (const content of struct.contents) {
-        if (struct.contents[i] && struct.contents[i].constructor === Object) {
-            children += await render(injector, struct.contents[i] as any);
-        } else {
-            children += struct.contents[i];
-        }
-    }
 
     if ('string' === typeof struct.render) {
         const tag = struct.render;

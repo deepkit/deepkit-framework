@@ -7,6 +7,7 @@ import {buildChanges} from '../src/change-detector';
 import {DatabaseSession} from '../src/database-session';
 import {MemoryDatabaseAdapter} from '../src/memory-db';
 import {getInstanceState} from '../src/identity-map';
+import {UnitOfWorkDatabaseEmitter} from '../src/event';
 
 test('change-detection', () => {
     class Image {

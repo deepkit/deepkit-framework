@@ -2,8 +2,6 @@ import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} f
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {MongoDatabaseQuery} from './query';
-import {MongoQueryResolver} from './query.resolver';
-import {MongoQueryModel} from './query.model';
 import {MongoPersistence} from './persistence';
 import {MongoClient} from './client/client';
 
@@ -18,11 +16,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     createQuery<T extends Entity>(
         classType: ClassType<T> | ClassSchema<T>
     ): MongoDatabaseQuery<T> {
-        const classSchema = getClassSchema(classType);
-        const queryResolver = new MongoQueryResolver<T>(classSchema, this.databaseSession);
-        const model = new MongoQueryModel<T>();
-        model.withIdentityMap = this.databaseSession.withIdentityMap;
-        return new MongoDatabaseQuery(classSchema, model, queryResolver);
+        return new MongoDatabaseQuery(getClassSchema(classType), this.databaseSession);
     }
 }
 

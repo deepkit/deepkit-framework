@@ -1,39 +1,50 @@
 import 'reflect-metadata';
-import {Application, http, template} from '@deepkit/framework';
+import {Application, Databases, http, template} from '@deepkit/framework';
 import {entity, t} from '@deepkit/type';
 import {Website} from './views/website';
-import {OrmModule} from '@deepkit/orm-module';
-import {Database} from '@deepkit/orm';
+import {ActiveRecord, Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
 
-@entity.name('HelloBody')
-class HelloBody {
-    @t name: string = '';
-}
+@entity.name('user')
+class User extends ActiveRecord {
+    @t.primary.autoIncrement id?: number;
+    @t created: Date = new Date;
 
-class HelloWorldController {
-    @http.GET('/')
-    startPage() {
-        return <Website title="Startpage">
-            <p>Hello there!</p>
-        </Website>;
+    constructor(
+        @t public username: string
+    ) {
+        super()
     }
 }
 
-const user = t.schema({
-    id: t.number.primary.autoIncrement,
-    username: t.string,
-    created: t.date,
-}, {name: 'user'});
+class SQLiteDatabase extends Database.createClass('sqlite', new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [User]) {
+}
 
-const SQLiteDatabase = Database.createClass('sqlite', new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [user]);
+@http.controller()
+class HelloWorldController {
+    @http.GET('/')
+    async startPage() {
+        const users = await User.query<User>().find();
 
-Application.root({
-    providers: [
-        SQLiteDatabase
-    ],
+        return <Website title="Users">
+            <h1>Users</h1>
+            <div>
+                {users.map(user => <div>#{user.id} <strong>{user.username}</strong>, created {user.created}</div>)}
+            </div>
+        </Website>;
+    }
+
+    @http.GET('/add/:username')
+    async add(username: string) {
+        await new User(username).save();
+        return <div>{username} added!</div>;
+    }
+}
+
+Application.run({
+    providers: [],
     controllers: [HelloWorldController],
     imports: [
-        OrmModule.forDatabases(SQLiteDatabase)
+        Databases.for(SQLiteDatabase)
     ]
-}).run();
+});

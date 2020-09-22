@@ -24,6 +24,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
     protected groupLevel: number = 0;
 
     public sameTypeExtraGrouping: boolean = false;
+    public throwOnNonExistingDependency: boolean = true;
 
     set(elements: Map<{ item: T, type: TYPE }, T[]>) {
         for (const [key, deps] of elements.entries()) {
@@ -54,7 +55,12 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
 
                 for (const dependency of element.dependencies) {
                     let item = this.elements.get(dependency);
-                    if (!item) throw new ElementNotFoundException(element.item, dependency);
+                    if (!item) {
+                        if (this.throwOnNonExistingDependency) {
+                            throw new ElementNotFoundException(element.item, dependency);
+                        }
+                        continue;
+                    }
 
                     const addedAtGroupLevel = this.visit(item, parents);
                     if (addedAtGroupLevel > minLevel) minLevel = addedAtGroupLevel;

@@ -1,10 +1,12 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
-import {ApplicationServer, deepkit, ExchangeConfig, Application} from '@deepkit/framework';
+import {ApplicationServer, deepkit, ExchangeConfig, Application, Databases} from '@deepkit/framework';
 import {RemoteController} from '@deepkit/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
 import {DeepkitClient} from '@deepkit/framework-client';
+import {Database} from '@deepkit/orm';
+import {MongoDatabaseAdapter} from '@deepkit/mongo';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -37,9 +39,17 @@ export async function closeAllCreatedServers() {
     }
 }
 
-export function appModuleForControllers(controllers: ClassType<any>[]): ClassType<any> {
+export function appModuleForControllers(controllers: ClassType<any>[], entities: ClassType[] = []): ClassType<any> {
+    const database = Database.createClass('default', new MongoDatabaseAdapter('mongodb://localhost'), entities);
+
     @deepkit.module({
-        controllers: controllers
+        controllers: controllers,
+        providers: [
+            {provide: Database, useClass: database},
+        ],
+        imports: [
+            Databases.for(database)
+        ]
     })
     class AppModule {
     }

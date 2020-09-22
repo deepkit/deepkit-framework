@@ -1,5 +1,5 @@
 import {Subscription} from 'rxjs';
-import {getEntityName} from '@deepkit/type';
+import {ClassSchema, getEntityName} from '@deepkit/type';
 import {ExchangeEntity, StreamFileResult} from '@deepkit/framework-shared';
 import {ClassType, ParsedHost, parseHost, sleep} from '@deepkit/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
@@ -7,6 +7,7 @@ import {AsyncSubscription} from '@deepkit/core-rxjs';
 import * as WebSocket from 'ws';
 import {ExchangeConfig} from './exchange.config';
 import {injectable} from '../injector/injector';
+import {getBSONDecoder, getBSONSerializer} from '@deepkit/bson';
 
 type Callback<T> = (message: T) => void;
 
@@ -124,16 +125,26 @@ export class Exchange {
         }
     }
 
-    public async get(key: string): Promise<ArrayBuffer | undefined> {
+    public async get<T>(
+        key: string,
+        dataType: ClassSchema<T> | ClassType<T>,
+    ): Promise<T | undefined> {
         const reply = await this.sendAndWaitForReply('get', key);
-        return reply.payload;
+        if (reply.payload) {
+            return getBSONDecoder(dataType)(Buffer.from(reply.payload));
+        }
+        return;
     }
 
-    /**
-     * @param key
-     * @param payload you have to call JSON.stringify if its a JSON value.
-     */
-    public async set(key: string, payload: any): Promise<any> {
+    public async set<T>(
+        key: string,
+        dataType: ClassSchema<T> | ClassType<T>,
+        data: T,
+    ): Promise<any> {
+        let payload: ArrayBuffer | undefined;
+        if (dataType && data !== undefined) {
+            payload = getBSONSerializer(dataType)(data);
+        }
         await this.send('set', key, payload);
     }
 
@@ -145,10 +156,10 @@ export class Exchange {
         await this.send('increase', [key, increase]);
     }
 
-    public async getSubscribedEntityFields<T>(classType: ClassType<T>): Promise<string[]> {
-        const a = await this.sendAndWaitForReply('get-entity-subscribe-fields', getEntityName(classType));
-        return a.arg;
-    }
+    // public async getSubscribedEntityFields<T>(classType: ClassType<T>): Promise<string[]> {
+    //     const a = await this.sendAndWaitForReply('get-entity-subscribe-fields', getEntityName(classType));
+    //     return a.arg;
+    // }
 
     public async del(key: string) {
         await this.send('del', key);
@@ -157,42 +168,42 @@ export class Exchange {
     // /**
     //  * This tells the ExchangeDatabase which field values you additionally need in a patch-message.
     //  */
-    public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
-        const messageId = await this.send('entity-subscribe-fields', [getEntityName(classType), fields]);
+    // public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
+    //     const messageId = await this.send('entity-subscribe-fields', [getEntityName(classType), fields]);
+    //
+    //     return new AsyncSubscription(async () => {
+    //         this.send('del-entity-subscribe-fields', String(messageId)).catch(console.error);
+    //     });
+    // }
 
-        return new AsyncSubscription(async () => {
-            this.send('del-entity-subscribe-fields', String(messageId)).catch(console.error);
-        });
-    }
-
-    public publishEntity<T>(classType: ClassType<T>, message: ExchangeEntity) {
-        const channelName = 'entity/' + getEntityName(classType);
+    public publishEntity<T>(classSchema: ClassSchema<T>, message: ExchangeEntity) {
+        const channelName = 'deepkit/entity/' + classSchema.getName();
         this.publish(channelName, message);
     }
 
     public publishFile<T>(fileId: string, message: StreamFileResult) {
-        const channelName = 'file/' + fileId;
+        const channelName = 'deepkit/file/' + fileId;
         this.publish(channelName, message);
     }
 
-    public subscribeEntity<T>(classType: ClassType<T>, cb: Callback<ExchangeEntity>): Subscription {
-        const channelName = 'entity/' + getEntityName(classType);
+    public subscribeEntity<T>(classSchema: ClassSchema<T>, cb: Callback<ExchangeEntity>): Subscription {
+        const channelName = 'deepkit/entity/' + classSchema.getName();
         return this.subscribe(channelName, cb);
     }
 
     public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>): Subscription {
-        const channelName = 'file/' + fileId;
+        const channelName = 'deepkit/file/' + fileId;
         return this.subscribe(channelName, cb);
     }
 
-    protected async send(type: string, arg: any, payload?: ArrayBuffer): Promise<number> {
+    protected async send(type: string, arg: any, payload?: ArrayBuffer | Uint8Array): Promise<number> {
         const messageId = this.messageId++;
         const message = encodeMessage(messageId, type, arg, payload);
         (await this.connect()).send(message);
         return messageId;
     }
 
-    protected async sendAndWaitForReply(type: string, arg: any, payload?: ArrayBuffer): Promise<{arg: any, payload: ArrayBuffer | undefined}> {
+    protected async sendAndWaitForReply(type: string, arg: any, payload?: ArrayBuffer): Promise<{ arg: any, payload: ArrayBuffer | undefined }> {
         const messageId = this.messageId++;
 
         return new Promise(async (resolve) => {
@@ -242,7 +253,7 @@ export class Exchange {
         if (!this.subscriptions[channelName]) {
             this.subscriptions[channelName] = [];
             this.subscriptions[channelName].push(callback);
-            this.send('subscribe', channelName);
+            this.send('subscribe', channelName).catch(console.error);
         } else {
             this.subscriptions[channelName].push(callback);
         }
@@ -257,7 +268,7 @@ export class Exchange {
 
             if (this.subscriptions[channelName].length === 0) {
                 delete this.subscriptions[channelName];
-                this.send('unsubscribe', channelName);
+                this.send('unsubscribe', channelName).catch(console.error);
             }
         });
     }

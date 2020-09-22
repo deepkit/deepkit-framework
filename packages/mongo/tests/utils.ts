@@ -19,7 +19,7 @@ export async function bench(times: number, title: string, exec: (i: number) => P
 
 const databases: Database<MongoDatabaseAdapter>[] = [];
 
-export async function createDatabaseSession(dbName: string = 'testing'): Promise<DatabaseSession<MongoDatabaseAdapter>> {
+export async function createDatabase(dbName: string = 'testing') {
     dbName = dbName.replace(/\s+/g, '-');
     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/' + dbName));
     await database.adapter.client.execute(new GenericCommand({
@@ -27,7 +27,7 @@ export async function createDatabaseSession(dbName: string = 'testing'): Promise
         $db: dbName,
     }));
     databases.push(database);
-    return database.createSession();
+    return database;
 }
 
 afterEach(async () => {

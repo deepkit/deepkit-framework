@@ -50,7 +50,7 @@ export class ApplicationServer {
             }
         }
 
-        console.log(`Server up and running`);
+        console.log(`Server up and running at http://${this.config.host}:${this.config.port}/`);
     }
 
     protected async bootstrap() {

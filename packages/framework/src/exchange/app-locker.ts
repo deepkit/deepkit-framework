@@ -7,7 +7,6 @@ export class AppLocker {
     }
 
     /**
-     *
      * @param id
      * @param timeout optional defines when the times automatically unlocks.
      */

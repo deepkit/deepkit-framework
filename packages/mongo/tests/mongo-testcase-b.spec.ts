@@ -1,25 +1,25 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {User} from "./testcase-b/user";
-import {createDatabaseSession} from "./utils";
+import {createDatabase} from "./utils";
 
 async function setupTestCase(name: string) {
-    const session = await createDatabaseSession(name);
+    const db = await createDatabase(name);
 
     const marc = new User('marc', 'marcPassword');
     const peter = new User('peter', 'peterPassword');
     const marcel = new User('marcel');
 
-    await session.immediate.persist(marc.credentials);
-    await session.immediate.persist(peter.credentials);
-    await session.immediate.persist(marcel.credentials);
+    await db.persist(marc.credentials);
+    await db.persist(peter.credentials);
+    await db.persist(marcel.credentials);
 
-    await session.immediate.persist(marc);
-    await session.immediate.persist(peter);
-    await session.immediate.persist(marcel);
+    await db.persist(marc);
+    await db.persist(peter);
+    await db.persist(marcel);
 
     return {
-        database: session, marc, peter, marcel,
+        database: db, marc, peter, marcel,
     }
 }
 

@@ -1,7 +1,7 @@
 import {DefaultPlatform, isSet} from './default-platform';
 import {postgresSerializer} from '../serializer/postgres-serializer';
 import {Column, Index, Table} from '../schema/table';
-import {PropertySchema} from '@deepkit/type/dist/src/decorators';
+import {PropertySchema} from '@deepkit/type';
 import {parseType} from '../reverse/schema-parser';
 import {PostgresOptions} from '@deepkit/type';
 import {PostgresSchemaParser} from '../reverse/postgres-schema-parser';

@@ -333,7 +333,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
 
     public deleted: boolean = false;
 
-    get id(): string {
+    get id(): string | number {
         return this.value.id;
     }
 

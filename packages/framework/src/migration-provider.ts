@@ -1,40 +1,25 @@
-import {Database} from '@deepkit/orm/dist';
+import {Database} from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
-import {inject, Injector} from '@deepkit/framework';
 import * as glob from 'fast-glob';
 import {basename, join} from 'path';
 import {Migration} from './migration';
+import {Databases} from './databases';
+import {inject} from './injector/injector';
 
-export class DatabaseProvider {
+export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
 
     constructor(
-        @inject().root() protected injector: Injector,
+        @inject().root() protected databases: Databases,
         @inject().config('migrationDir') protected migrationDir: string,
-        @inject('orm.databases') public databaseTypes: ClassType<Database<any>>[]
     ) {
-        for (const databaseType of databaseTypes) {
-            const database = this.injector.get(databaseType);
-            if (this.databaseMap.has(database.name)) {
-                throw new Error(`Database with name ${database.name} already registered`);
-            }
-            this.databaseMap.set(database.name, database);
-        }
-    }
-
-    getDatabases() {
-        return this.databaseMap.values();
-    }
-
-    getDatabase(name: string): Database<any> | undefined {
-        return this.databaseMap.get(name);
     }
 
     async getMigrationsPerDatabase(limitDatabase?: string) {
         const migrationsPerDatabase = new Map<Database<any>, Migration[]>();
 
         for (const migration of await this.getMigrations(this.migrationDir)) {
-            const database = this.getDatabase(migration.databaseName);
+            const database = this.databases.getDatabase(migration.databaseName);
             if (!database) continue;
             if (limitDatabase && database.name !== limitDatabase) continue;
 
@@ -78,5 +63,4 @@ export class DatabaseProvider {
 
         return migrations;
     }
-
 }

@@ -10,3 +10,4 @@ export * from './src/bench';
 export * from './src/perf';
 export * from './src/compiler';
 export * from './src/string';
+export * from './src/emitter';

@@ -3,7 +3,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Entity, t, uuid, getClassSchema} from '@deepkit/type';
 import {getInstanceState, hydrateEntity} from '@deepkit/orm';
-import {createDatabaseSession} from './utils';
+import {createDatabase} from './utils';
 
 @Entity('user2')
 class User {
@@ -55,7 +55,8 @@ class OrganisationMembership {
 jest.setTimeout(1000000);
 
 async function setupTestCase(name: string) {
-    const session = await createDatabaseSession(name);
+    const db = await createDatabase(name);
+    const session = db.createSession();
 
     const admin = new User('admin');
     const marc = new User('marc');
@@ -65,85 +66,86 @@ async function setupTestCase(name: string) {
     const microsoft = new Organisation('Microsoft', admin);
     const apple = new Organisation('Apple', admin);
 
-    await session.immediate.persist(admin);
-    await session.immediate.persist(marc);
-    await session.immediate.persist(peter);
-    await session.immediate.persist(marcel);
+    session.add(admin);
+    session.add(marc);
+    session.add(peter);
+    session.add(marcel);
 
-    await session.immediate.persist(microsoft);
-    await session.immediate.persist(apple);
+    session.add(microsoft);
+    session.add(apple);
 
-    await session.immediate.persist(new OrganisationMembership(marc, apple));
-    await session.immediate.persist(new OrganisationMembership(marc, microsoft));
-    await session.immediate.persist(new OrganisationMembership(peter, microsoft));
-    await session.immediate.persist(new OrganisationMembership(marcel, microsoft));
+    session.add(new OrganisationMembership(marc, apple));
+    session.add(new OrganisationMembership(marc, microsoft));
+    session.add(new OrganisationMembership(peter, microsoft));
+    session.add(new OrganisationMembership(marcel, microsoft));
+    await session.commit();
 
     return {
-        session: session, admin, marc, peter, marcel, microsoft, apple,
+        db, session, admin, marc, peter, marcel, microsoft, apple,
     };
 }
 
 test('check if foreign keys are deleted correctly', async () => {
-    const {
-        session,
-    } = await setupTestCase('check if foreign keys are deleted correctly');
+    const {db} = await setupTestCase('check if foreign keys are deleted correctly');
 
     const manager = new User('manager');
-    await session.immediate.persist(manager);
+    await db.persist(manager);
 
     {
-        const marc = await session.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({name: 'marc'}).findOne();
         expect(marc.manager).toBeUndefined();
 
         marc.manager = manager;
         expect(marc.manager).toBe(manager);
-        await session.immediate.persist(marc);
+        await db.persist(marc);
     }
 
     {
-        const marc = await session.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({name: 'marc'}).findOne();
         expect(marc.manager!.id).toBe(manager.id);
     }
 
     {
-        const marc = await session.query(User).joinWith('manager').filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).joinWith('manager').filter({name: 'marc'}).findOne();
         expect(marc.manager!.id).toBe(manager.id);
         expect(marc.manager!.name).toBe('manager');
     }
 
     {
-        const marc = await session.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({name: 'marc'}).findOne();
         marc.manager = undefined;
 
-        await session.immediate.persist(marc);
+        await db.persist(marc);
     }
 
     {
-        const marc = await session.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({name: 'marc'}).findOne();
         expect(marc.manager).toBeUndefined();
     }
 });
 
 test('disabled identity map', async () => {
-    const {
-        session, admin, marc, peter, marcel, apple, microsoft
-    } = await setupTestCase('disabled identity map');
+    const {session, marc, peter, marcel} = await setupTestCase('disabled identity map');
 
     const manager1 = new User('manager1');
-    await session.immediate.persist(manager1);
+    session.add(manager1);
+    await session.commit();
     session.withIdentityMap = false;
 
     expect(await session.query(User).count()).toBe(5);
 
     marc.manager = manager1;
-    await session.immediate.persist(marc);
+    session.add(marc);
+    await session.commit();
     expect(await session.query(User).count()).toBe(5);
 
     peter.manager = manager1;
-    await session.immediate.persist(peter);
+    session.add(peter);
+    await session.commit();
 
     marcel.manager = manager1;
-    await session.immediate.persist(marcel);
+    session.add(marcel);
+    await session.commit();
 
     {
         const item = await session.query(User).filter({name: 'marc'}).findOne();
@@ -171,8 +173,9 @@ test('disabled identity map', async () => {
 
 test('parameters', async () => {
     const {
-        session, admin, marc, peter, marcel, apple, microsoft
+        db, admin, marc, peter, marcel, apple, microsoft
     } = await setupTestCase('parameters');
+    const session = db.createSession();
 
     await expect(session.query(User).filter({'name': {$parameter: 'name'}}).find()).rejects.toThrow('Parameter name not defined');
 
@@ -191,8 +194,9 @@ test('parameters', async () => {
 
 test('hydrate', async () => {
     const {
-        session, admin, marc, peter, marcel, apple, microsoft
+        db, admin, marc, peter, marcel, apple, microsoft
     } = await setupTestCase('hydrate');
+    const session = db.createSession();
 
     {
         const item = await session.query(OrganisationMembership).filter({
@@ -602,7 +606,8 @@ test('joins', async () => {
         expect(items.length).toBe(2);
     }
 
-    await session.immediate.remove(peter);
+    session.remove(peter);
+    await session.commit();
 
     {
         const query = session.query(OrganisationMembership).joinWith('user').filter({user: peter});

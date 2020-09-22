@@ -15,21 +15,22 @@ export class Website {
             <title>{this.props.title} - My Website!</title>
         </head>
 
-        <body>
-        <nav>
-            <a href="/">Home</a>
-            <a href="/product">Product</a>
-            <a href="/about">About</a>
-        </nav>
+        <body style="display: flex; justify-content: center">
+        <div style="max-width: 800px; border: 1px solid silver;">
+            <nav>
+                <a href="/">Home</a>
+                <a href="/product">Product</a>
+                <a href="/about">About</a>
+            </nav>
 
-        Hi {this.config.get('TEST')}
+            Hi {this.config.get('TEST')}
 
-        <div id="asd" class="content">
-            {this.contents}
+            <div id="asd" class="content">
+                {this.contents}
+            </div>
+
+            {/*Database: {await this.database.getData()}*/}
         </div>
-
-        {/*Database: {await this.database.getData()}*/}
-
         </body>
         </html>;
     }

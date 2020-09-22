@@ -1,14 +1,11 @@
 import {dirname, join} from 'path';
 import {appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, writeFile} from 'fs-extra';
-import {Exchange} from './exchange';
-import {AlreadyEncoded, File, FileMode, FileType, FilterQuery, StreamBehaviorSubject} from '@deepkit/framework-shared';
-import {eachKey, eachPair} from '@deepkit/core';
+import {AlreadyEncoded, DeepkitFile, FileMode, FileType, FilterQuery, StreamBehaviorSubject} from '@deepkit/framework-shared';
+import {eachKey, eachPair, ProcessLocker} from '@deepkit/core';
 import * as crypto from 'crypto';
-import {ProcessLocker} from './process-locker';
-import {Database} from '@deepkit/orm';
-import {partialClassToPlain} from '@deepkit/type';
-import {decodePayloadAsJson, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
-import {injectable} from '@deepkit/framework';
+import {Database, DatabaseAdapter} from '@deepkit/orm';
+import {Exchange, inject, injectable} from '@deepkit/framework';
+import {plainSerializer, t} from '@deepkit/type';
 
 export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
 
@@ -23,14 +20,19 @@ export function getMd5(content: string | Buffer): string {
     return md5;
 }
 
+const FSCacheMessage = t.schema({
+    id: t.string.optional,
+    md5: t.string.optional,
+});
+
 @injectable()
-export class FS<T extends File> {
+export class FS<T extends DeepkitFile> {
     constructor(
         public readonly fileType: FileType<T>,
         private exchange: Exchange,
-        private database: Database,
+        private database: Database<DatabaseAdapter>,
         private locker: ProcessLocker,
-        private fileDir: string /* .deepkit/data/files/ */,
+        @inject('fs.dir') private fileDir: string /* .deepkit/data/files/ */,
     ) {
     }
 
@@ -39,7 +41,7 @@ export class FS<T extends File> {
     }
 
     public async removeAll(filter: FilterQuery<T>): Promise<boolean> {
-        const files = await this.session.query(this.fileType.classType).filter(filter).find();
+        const files = await this.database.query(this.fileType.classType).filter(filter).find();
         return this.removeFiles(files);
     }
 
@@ -78,26 +80,21 @@ export class FS<T extends File> {
             });
         }
 
-        await this.exchangeDatabase.deleteMany<File>(this.fileType.classType, {
+        await this.database.query(this.fileType.classType).filter({
             $and: [{
                 id: {$in: fileIds}
             }]
-        });
+        }).deleteMany();
 
-        //found which md5s are still linked
-        const fileCollection = await this.exchangeDatabase.collection<File>(this.fileType.classType as any);
-
-        const foundMd5s = await fileCollection.find({
-            md5: {$in: Object.keys(md5ToCheckMap)}
-        }, {
-            projection: {md5: 1}
-        }).toArray();
+        //find which md5s are still linked
+        const foundMd5s = await this.database.query(this.fileType.classType)
+            .select('md5')
+            .filter({md5: {$in: Object.keys(md5ToCheckMap)}})
+            .find();
 
         //iterate over still linked md5 files, and remove missing ones
         for (const row of foundMd5s) {
-            if (row.md5) {
-                md5ToCheckMap[row.md5]++;
-            }
+            if (row.md5) md5ToCheckMap[row.md5]++;
         }
 
         const deletes: Promise<any>[] = [];
@@ -116,15 +113,15 @@ export class FS<T extends File> {
     }
 
     public async ls(filter: FilterQuery<T>): Promise<T[]> {
-        return await this.session.query(this.fileType.classType).filter(filter).find();
+        return await this.database.query(this.fileType.classType).filter(filter).find();
     }
 
     public async findOne(path: string, filter: FilterQuery<T> = {}): Promise<T | undefined> {
-        return await this.session.query(this.fileType.classType).filter({path: path, ...filter} as T).findOneOrUndefined();
+        return await this.database.query(this.fileType.classType).filter({path: path, ...filter} as T).findOneOrUndefined();
     }
 
     public async registerFile(md5: string, path: string, fields: Partial<T> = {}): Promise<T> {
-        const file = await this.session.query(this.fileType.classType).filter({md5: md5} as T).findOneOrUndefined();
+        const file = await this.database.query(this.fileType.classType).filter({md5: md5} as T).findOneOrUndefined();
 
         if (!file) {
             throw new Error(`No file with '${md5}' found.`);
@@ -149,12 +146,11 @@ export class FS<T extends File> {
     }
 
     public async hasMd5InDb(md5: string): Promise<boolean> {
-        const collection = await this.exchangeDatabase.collection<File>(this.fileType.classType);
-        return 0 < await collection.countDocuments({md5: md5});
+        return await this.database.query(this.fileType.classType).filter({md5}).has();
     }
 
     public async hasMd5(md5: string) {
-        const file = await this.session.query(this.fileType.classType).filter({md5: md5}).findOneOrUndefined();
+        const file = await this.database.query(this.fileType.classType).filter({md5: md5}).findOneOrUndefined();
 
         if (file && file.md5) {
             const localPath = this.getLocalPathForMd5(md5);
@@ -297,21 +293,19 @@ export class FS<T extends File> {
 
     public async refreshFileMetaCache(path: string, fields: Partial<T> = {}, id: string, md5?: string) {
         const filter = {path, ...fields};
-        const cacheKey = JSON.stringify(partialClassToPlain(this.fileType.classType, filter));
+        const cacheKey = JSON.stringify(plainSerializer.for(this.fileType.classType).partialSerialize(filter));
 
-        await this.exchange.set('file-meta/' + cacheKey, encodePayloadAsJSONArrayBuffer({id, md5}));
+        await this.exchange.set('file-meta/' + cacheKey, FSCacheMessage, {id, md5});
     }
 
     public async getFileMetaCache(path: string, fields: Partial<T> = {}): Promise<{ id?: string, md5?: string }> {
         const filter = {path, ...fields};
-        const cacheKey = JSON.stringify(partialClassToPlain(this.fileType.classType, filter));
+        const cacheKey = JSON.stringify(plainSerializer.for(this.fileType.classType).partialSerialize(filter));
 
-        const fromCache = await this.exchange.get('file-meta/' + cacheKey);
-        if (fromCache) {
-            return decodePayloadAsJson(fromCache);
-        }
+        const fromCache = await this.exchange.get('file-meta/' + cacheKey, FSCacheMessage);
+        if (fromCache) return fromCache;
 
-        const item = await this.session.query(this.fileType.classType).filter({path, ...fields}).findOneOrUndefined();
+        const item = await this.database.query(this.fileType.classType).filter({path, ...fields}).findOneOrUndefined();
         if (item) {
             await this.refreshFileMetaCache(path, fields, item.id, item.md5);
             return {id: item.id, md5: item.md5};
@@ -370,8 +364,8 @@ export class FS<T extends File> {
             if (file) {
                 //when a subscribes is listening to this file,
                 //we publish this only when the file is written to disk.
-                await this.exchangeDatabase.add(file);
-                this.refreshFileMetaCache(path, fields, meta.id!, undefined);
+                await this.database.persist(file);
+                this.refreshFileMetaCache(path, fields, meta.id!, undefined).catch(console.error);
             }
 
             await this.exchange.publishFile(meta.id!, {
@@ -449,6 +443,7 @@ export class FS<T extends File> {
                     streamContent(id);
                 }
             });
+
             subject.addTearDown(() => {
                 if (sub) sub.unsubscribe();
             });

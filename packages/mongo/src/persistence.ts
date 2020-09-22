@@ -1,6 +1,6 @@
-import {DatabasePersistence, Entity, getInstanceState, getJitChangeDetector, getJITConverterForSnapshot} from '@deepkit/orm';
+import {DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState, getJitChangeDetector, getJITConverterForSnapshot} from '@deepkit/orm';
 import {ClassSchema} from '@deepkit/type';
-import {convertPlainQueryToMongo} from './mapping';
+import {convertClassQueryToMongo, convertPlainQueryToMongo} from './mapping';
 import {ObjectId} from 'mongodb';
 import {FilterQuery} from './query.model';
 import {MongoClient} from './client/client';
@@ -38,6 +38,37 @@ export class MongoPersistence extends DatabasePersistence {
             }
             await this.client.execute(new DeleteCommand(classSchema, {$or: fields}));
         }
+    }
+
+    async insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
+        const insert: any[] = [];
+        const has_Id = classSchema.hasProperty('_id');
+        const scopeSerializer = mongoSerializer.for(classSchema);
+
+        for (const item of items) {
+            const converted = scopeSerializer.serialize(item);
+            if (has_Id && !item['_id']) {
+                converted['_id'] = new ObjectId();
+                item['_id'] = converted['_id'].toHexString();
+            }
+            insert.push(converted);
+        }
+        await this.client.execute(new InsertCommand(classSchema, insert));
+    }
+
+    async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const updates: { q: any, u: any, multi: boolean }[] = [];
+        const scopeSerializer = mongoSerializer.for(classSchema);
+
+        for (const changeSet of changeSets) {
+            updates.push({
+                q: convertClassQueryToMongo(classSchema.classType, changeSet.primaryKey),
+                u: {$set: scopeSerializer.partialSerialize(changeSet.updates)},
+                multi: false,
+            });
+        }
+
+        await this.client.execute(new UpdateCommand(classSchema, updates));
     }
 
     async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {

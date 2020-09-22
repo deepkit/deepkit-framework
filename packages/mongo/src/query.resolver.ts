@@ -27,8 +27,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         count: t.number
     });
 
-    public async deleteOne(queryModel: MongoQueryModel<T>): Promise<boolean> {
-        return await this.delete(queryModel, false) === 1;
+    public async deleteOne(queryModel: MongoQueryModel<T>): Promise<number> {
+        return await this.delete(queryModel, false);
     }
 
     async has(model: MongoQueryModel<T>): Promise<boolean> {
@@ -77,16 +77,18 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     }
 
     public async delete(queryModel: MongoQueryModel<T>, multi: boolean = false): Promise<number> {
-        const {primaryKeys} = await this.fetchIds(queryModel, multi);
-        if (primaryKeys.length === 0) return 0;
-        this.databaseSession.identityMap.deleteMany(this.classSchema, primaryKeys);
+        // const {primaryKeys} = await this.fetchIds(queryModel, multi);
+        //
+        // if (primaryKeys.length === 0) return 0;
+        // this.databaseSession.identityMap.deleteMany(this.classSchema, primaryKeys);
+
         const mongoFilter = getMongoFilter(this.classSchema, queryModel);
         const limit = multi ? 0 : 1;
         return await this.databaseSession.adapter.client.execute(new DeleteCommand(this.classSchema, mongoFilter, limit));
     }
 
-    public async patchOne(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<boolean> {
-        return await this.update(queryModel, {$set: value}) === 1;
+    public async patchOne(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<number> {
+        return await this.update(queryModel, {$set: value});
     }
 
     public async patchMany(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<number> {

@@ -51,7 +51,7 @@ test('snapshot correct state', () => {
     const formatter = new Formatter(user, plainSerializer);
 
     {
-        const query = new BaseQuery(user, new DatabaseQueryModel<any, any, any>());
+        const query = new BaseQuery(user);
         const user1 = formatter.hydrate(query.model, {username: 'Peter', id: '2', image: '1'});
         const snapshot = getInstanceState(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);
@@ -70,7 +70,7 @@ test('snapshot correct state', () => {
     }
 
     {
-        const query = new BaseQuery(user, new DatabaseQueryModel<any, any, any>());
+        const query = new BaseQuery(user);
         const user1 = formatter.hydrate(query.model, {username: 'Peter2', id: '3', image: '1', image2: null});
         const snapshot = getInstanceState(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);

@@ -5,28 +5,65 @@ import {FieldName, FlattenIfArray} from './utils';
 import {PrimaryKey} from './identity-map';
 import {DatabaseSession} from './database-session';
 import {DatabaseAdapter} from './database';
+import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, QueryDatabaseUpdateEvent} from './event';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
-export interface DatabaseJoinModel {
+export interface DatabaseJoinModel<T, PARENT extends BaseQuery<any>> {
     //this is the parent classSchema, the foreign classSchema is stored in `query`
-    classSchema: ClassSchema<any>,
+    classSchema: ClassSchema<T>,
     propertySchema: PropertySchema,
     type: 'left' | 'inner' | string,
     populate: boolean,
     //defines the field name under which the database engine populated the results.
     //necessary for the formatter to pick it up, convert and set correct to the real field name
     as?: string,
-    query: JoinDatabaseQuery<any, any, any>,
+    query: JoinDatabaseQuery<T, PARENT>,
     foreignPrimaryKey: PropertySchema,
 }
 
-export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>, SORT extends Sort<Entity>> {
+export type QuerySelector<T> = {
+    // Comparison
+    $eq?: T;
+    $gt?: T;
+    $gte?: T;
+    $in?: T[];
+    $lt?: T;
+    $lte?: T;
+    $ne?: T;
+    $nin?: T[];
+    // Logical
+    $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
+    $regex?: T extends string ? (RegExp | string) : never;
+
+    //special deepkit/type type
+    $parameter?: string;
+};
+
+export type RootQuerySelector<T> = {
+    $and?: Array<FilterQuery<T>>;
+    $nor?: Array<FilterQuery<T>>;
+    $or?: Array<FilterQuery<T>>;
+    // we could not find a proper TypeScript generic to support nested queries e.g. 'user.friends.name'
+    // this will mark all unrecognized properties as any (including nested queries)
+    [key: string]: any;
+};
+
+type RegExpForString<T> = T extends string ? (RegExp | T) : T;
+type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
+export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
+
+export type FilterQuery<T> = {
+    [P in keyof T]?: Condition<T[P]>;
+} &
+    RootQuerySelector<T>;
+
+export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Entity> = FilterQuery<Entity>, SORT extends Sort<Entity> = Sort<Entity>> {
     public withIdentityMap: boolean = true;
     public filter?: FILTER;
     public select: Set<string> = new Set<string>();
-    public joins: DatabaseJoinModel[] = [];
+    public joins: DatabaseJoinModel<any, any>[] = [];
     public skip?: number;
     public limit?: number;
     public parameters: { [name: string]: any } = {};
@@ -37,7 +74,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>
         this.change.next();
     }
 
-    clone(parentQuery?: BaseQuery<T, any>): DatabaseQueryModel<T, FILTER, SORT> {
+    clone(parentQuery?: BaseQuery<T>): DatabaseQueryModel<T, FILTER, SORT> {
         const m = new DatabaseQueryModel<T, FILTER, SORT>();
         m.filter = this.filter;
         m.withIdentityMap = this.withIdentityMap;
@@ -51,7 +88,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>
                 populate: v.populate,
                 query: v.query.clone(parentQuery),
                 foreignPrimaryKey: v.foreignPrimaryKey,
-            }
+            };
         });
 
         m.skip = this.skip;
@@ -85,12 +122,17 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends Partial<Entity>
 export class ItemNotFound extends Error {
 }
 
-export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>> {
+export class BaseQuery<T extends Entity> {
     public format: 'class' | 'json' | 'raw' = 'class';
 
+    protected createModel<T>() {
+        return new DatabaseQueryModel<T, FilterQuery<T>, Sort<T>>();
+    }
+
+    public model = this.createModel<T>();
+
     constructor(
-        public readonly classSchema: ClassSchema<T>,
-        public model: MODEL
+        public readonly classSchema: ClassSchema<T>
     ) {
     }
 
@@ -142,15 +184,15 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
         return this;
     }
 
-    filter(filter?: MODEL['filter']): this {
-        if (filter && !Object.keys(filter).length) filter = undefined;
+    filter(filter?: this['model']['filter']): this {
+        if (filter && !Object.keys(filter as object).length) filter = undefined;
 
         this.model.filter = filter;
         this.model.changed();
         return this;
     }
 
-    sort(sort?: MODEL['sort']): this {
+    sort(sort?: this['model']['sort']): this {
         this.model.sort = sort;
         this.model.changed();
         return this;
@@ -158,7 +200,7 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
 
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.model);
-        cloned.model = this.model.clone(cloned) as MODEL;
+        cloned.model = this.model.clone(cloned) as this['model'];
         cloned.format = this.format;
         return cloned;
     }
@@ -173,8 +215,7 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
             throw new Error(`Field ${field} is not marked as reference. Use @f.reference()`);
         }
 
-        const model = new DatabaseQueryModel<ENTITY, Partial<ENTITY>, Sort<ENTITY>>();
-        const query = new JoinDatabaseQuery<ENTITY, typeof model, this>(propertySchema.getResolvedClassSchema(), model, this);
+        const query = new JoinDatabaseQuery<ENTITY, this>(propertySchema.getResolvedClassSchema(), this);
 
         this.model.joins.push({
             propertySchema, query, populate, type,
@@ -190,8 +231,7 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K):
-        JoinDatabaseQuery<ENTITY, DatabaseQueryModel<ENTITY, Partial<ENTITY>, Sort<ENTITY>>, this> {
+    useJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'left');
         return this.model.joins[this.model.joins.length - 1].query;
     }
@@ -207,14 +247,12 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoinWith<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K):
-        JoinDatabaseQuery<ENTITY, DatabaseQueryModel<ENTITY, Partial<ENTITY>, Sort<ENTITY>>, this> {
+    useJoinWith<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'left', true);
         return this.model.joins[this.model.joins.length - 1].query;
     }
 
-    getJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K):
-        JoinDatabaseQuery<ENTITY, DatabaseQueryModel<ENTITY, Partial<ENTITY>, Sort<ENTITY>>, this> {
+    getJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         for (const join of this.model.joins) {
             if (join.propertySchema.name === field) return join.query;
         }
@@ -232,8 +270,7 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
      * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoinWith<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K):
-        JoinDatabaseQuery<ENTITY, DatabaseQueryModel<ENTITY, Partial<ENTITY>, Sort<ENTITY>>, this> {
+    useInnerJoinWith<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'inner', true);
         return this.model.joins[this.model.joins.length - 1].query;
     }
@@ -251,8 +288,7 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K):
-        JoinDatabaseQuery<ENTITY, DatabaseQueryModel<ENTITY, Partial<ENTITY>, Sort<ENTITY>>, this> {
+    useInnerJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'inner');
         return this.model.joins[this.model.joins.length - 1].query;
     }
@@ -261,7 +297,7 @@ export class BaseQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any
 export interface Entity {
 }
 
-export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter, MODEL extends DatabaseQueryModel<T, any, any>> {
+export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ClassSchema<T>,
         protected databaseSession: DatabaseSession<ADAPTER>,
@@ -274,29 +310,31 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter, M
 
     abstract async findOneOrUndefined(model: MODEL): Promise<T | undefined>;
 
-    abstract async updateOne(model: MODEL, value: {}): Promise<boolean>;
+    abstract async updateOne(model: MODEL, value: T): Promise<boolean>;
 
     abstract async deleteMany(model: MODEL): Promise<number>;
 
-    abstract async deleteOne(model: MODEL): Promise<boolean>;
+    abstract async deleteOne(model: MODEL): Promise<number>;
 
     abstract async patchMany(model: MODEL, value: { [path: string]: any }): Promise<number>;
 
-    abstract async patchOne(model: MODEL, value: { [path: string]: any }): Promise<boolean>;
+    abstract async patchOne(model: MODEL, value: { [path: string]: any }): Promise<number>;
 
     abstract async has(model: MODEL): Promise<boolean>;
-    
+
 }
 
 /**
  * This a generic query abstraction which should supports most basics database interactions.
  *
- * All query implementations should extend this since  db agnostic consumers are probably
- * coding against this interface via using Database<DatabaseAdapter>.
+ * All query implementations should extend this since db agnostic consumers are probably
+ * coded against this interface via Database<DatabaseAdapter> which uses this GenericQuery.
  */
-export class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, any, any>, RESOLVER extends GenericQueryResolver<T, any, MODEL>> extends BaseQuery<T, MODEL> {
-    constructor(classSchema: ClassSchema<T>, model: MODEL, protected resolver: RESOLVER) {
-        super(classSchema, model);
+export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQueryResolver<T, DatabaseAdapter, DatabaseQueryModel<T>> = GenericQueryResolver<T, DatabaseAdapter, DatabaseQueryModel<T>>> extends BaseQuery<T> {
+    protected abstract resolver: RESOLVER;
+
+    constructor(classSchema: ClassSchema<T>, protected databaseSession: DatabaseSession<DatabaseAdapter>) {
+        super(classSchema);
     }
 
     clone(): this {
@@ -324,30 +362,129 @@ export class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, 
     }
 
     public async updateOne(value: T): Promise<boolean> {
-        return this.resolver.updateOne(this.model, value);
+        const hasEvents = this.databaseSession.queryEmitter.onUpdatePre.hasSubscriptions() || this.databaseSession.queryEmitter.onUpdatePost.hasSubscriptions();
+        if (!hasEvents) {
+            return this.resolver.updateOne(this.model, value);
+        }
+
+        const primaryKeys = await this.ids(false);
+        if (!primaryKeys.length) return false;
+
+        if (this.databaseSession.queryEmitter.onUpdatePre.hasSubscriptions()) {
+            const event = new QueryDatabaseUpdateEvent<any>(this.databaseSession, this.classSchema, primaryKeys[0], value);
+            await this.databaseSession.queryEmitter.onUpdatePre.emit(event);
+            if (event.stopped) return event.updated ?? false;
+        }
+
+        const primaryKeyModel = this.model.clone();
+        primaryKeyModel.filter = primaryKeys[0] as FilterQuery<T>;
+        const updated = await this.resolver.updateOne(primaryKeyModel, value);
+
+        if (this.databaseSession.queryEmitter.onUpdatePost.hasSubscriptions()) {
+            const event = new QueryDatabaseUpdateEvent<any>(this.databaseSession, this.classSchema, primaryKeys[0], value);
+            await this.databaseSession.queryEmitter.onUpdatePost.emit(event);
+            if (event.stopped) return event.updated ?? updated;
+        }
+
+        return updated;
     }
 
     public async deleteMany(): Promise<number> {
         return this.resolver.deleteMany(this.model);
     }
 
-    public async deleteOne(): Promise<boolean> {
+    public async deleteOne(): Promise<number> {
         return this.resolver.deleteOne(this.model);
     }
 
-    public async patchMany(value: { [path: string]: any }): Promise<number> {
-        return this.resolver.patchMany(this.model, value);
+    protected async delete(model: this['model'], many = false) {
+        const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions();
+        if (!hasEvents) {
+            return many ? this.resolver.deleteMany(model) : this.resolver.deleteOne(model);
+        }
+
+        let deleted = 0;
+
+        const primaryKeys = await this.ids(false);
+        if (!many) primaryKeys.splice(1, primaryKeys.length);
+
+        if (this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions()) {
+            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, primaryKeys);
+            await this.databaseSession.queryEmitter.onDeletePre.emit(event);
+            if (event.stopped) return event.deleted ?? 0;
+        }
+
+        const primaryKeyModel = model.clone();
+        primaryKeyModel.filter = {$or: primaryKeys} as FilterQuery<T>;
+
+        if (many) {
+            deleted = await this.resolver.deleteMany(primaryKeyModel);
+        } else {
+            deleted = await this.resolver.deleteOne(primaryKeyModel);
+        }
+
+        if (this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions()) {
+            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, primaryKeys);
+            await this.databaseSession.queryEmitter.onDeletePost.emit(event);
+            if (event.stopped) return event.deleted ?? deleted;
+        }
+
+        return deleted;
     }
 
-    public async patchOne(value: { [path: string]: any }): Promise<boolean> {
-        return this.resolver.patchOne(this.model, value);
+    //todo, add new patch type
+    public async patchMany(patch: { [path: string]: any }): Promise<number> {
+        return this.patch(this.model, true, patch);
+    }
+
+    //todo, add new patch type
+    public async patchOne(patch: { [path: string]: any }): Promise<number> {
+        return this.patch(this.model, false, patch);
+    }
+
+    //todo, add new patch type
+    protected async patch(model: this['model'], many = false, patch: { [path: string]: any },): Promise<number> {
+        const hasEvents = this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions() || this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions();
+        console.log('patch', hasEvents);
+        if (!hasEvents) {
+            return many ? this.resolver.patchMany(model, patch) : this.resolver.patchOne(model, patch);
+        }
+
+        const primaryKeys = await this.ids(false);
+        if (!many) primaryKeys.splice(1, primaryKeys.length);
+
+        if (this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions()) {
+            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, patch);
+            await this.databaseSession.queryEmitter.onDeletePre.emit(event);
+            if (event.stopped) return event.updated ?? 0;
+        }
+
+        const primaryKeyModel = model.clone();
+        primaryKeyModel.filter = {$or: primaryKeys} as FilterQuery<T>;
+
+        let patched = 0;
+        if (many) {
+            patched = await this.resolver.patchMany(primaryKeyModel, patch);
+        } else {
+            patched = await this.resolver.patchOne(primaryKeyModel, patch);
+        }
+
+        if (this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions()) {
+            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, patch);
+            await this.databaseSession.queryEmitter.onPatchPost.emit(event);
+            if (event.stopped) return event.updated ?? patched;
+        }
+
+        return patched;
     }
 
     public async has(): Promise<boolean> {
         return await this.count() > 0;
     }
 
-    public async ids(singleKey: boolean = false): Promise<PrimaryKey<T>[]> {
+    public async ids(singleKey?: false): Promise<PrimaryKey<T>[]>;
+    public async ids<T = string>(singleKey: true): Promise<T[]>;
+    public async ids(singleKey: boolean = false): Promise<(PrimaryKey<T> | any)[]> {
         const pks = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
         if (singleKey && pks.length > 1) {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key. singleKey impossible.`);
@@ -377,21 +514,18 @@ export class GenericQuery<T extends Entity, MODEL extends DatabaseQueryModel<T, 
     }
 }
 
-export class JoinDatabaseQuery<T extends Entity,
-    MODEL extends DatabaseQueryModel<T, any, any>,
-    PARENT extends BaseQuery<any, any>> extends BaseQuery<T, MODEL> {
+export class JoinDatabaseQuery<T extends Entity, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
     constructor(
         public readonly foreignClassSchema: ClassSchema,
-        public model: MODEL,
         public readonly parentQuery: PARENT,
     ) {
-        super(foreignClassSchema, model);
+        super(foreignClassSchema);
         this.model.change.subscribe(parentQuery.model.change);
     }
 
     clone(parentQuery?: PARENT): this {
-        const query: this = new (this['constructor'] as ClassType<this>)(this.foreignClassSchema, this.model, parentQuery!);
-        query.model = this.model.clone(query) as MODEL;
+        const query: this = new (this['constructor'] as ClassType<this>)(this.foreignClassSchema, parentQuery!);
+        query.model = this.model.clone(query);
         return query;
     }
 

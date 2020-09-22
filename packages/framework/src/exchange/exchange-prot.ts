@@ -20,7 +20,7 @@ export function decodeMessage(array: ArrayBuffer): {id: number, type: string, ar
     };
 }
 
-export function encodeMessage(messageId: number, type: string, arg: any, payload?: ArrayBuffer): ArrayBuffer {
+export function encodeMessage(messageId: number, type: string, arg: any, payload?: ArrayBuffer | Uint8Array): ArrayBuffer {
     const header = messageId + '.' + type + ':' + JSON.stringify(arg) + '\0';
     const headerBuffer = new Uint8Array(str2ab(header));
 

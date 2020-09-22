@@ -40,6 +40,8 @@ export class Application {
             providers.push({provide: 'config.' + name, useValue: (this.config as any)[name]});
         }
 
+        providers.push({provide: Configuration, useValue: configuration});
+
         this.serviceContainer.processRootModule(appModule, providers, imports);
 
         for (const module of this.serviceContainer.getRegisteredModules()) {
@@ -58,6 +60,10 @@ export class Application {
         return new Application(MyModule, config);
     }
 
+    static async run(module: ModuleOptions, config: Partial<ApplicationConfig> = {}) {
+        return this.root(module, config).execute(process.argv.slice(2));
+    }
+
     public async shutdown() {
         for (const module of this.serviceContainer.getRegisteredModules()) {
             if (module.onShutDown) {
@@ -72,10 +78,6 @@ export class Application {
 
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T): R {
         return this.serviceContainer.getRootContext().getInjector().get(token);
-    }
-
-    public async run() {
-        return this.execute(process.argv.slice(2));
     }
 
     public async execute(argv: string[]) {

@@ -1,6 +1,7 @@
-import {ClassType, getClassName} from '@deepkit/core';
+import {getClassName} from '@deepkit/core';
 import {Database} from './database';
 import {getClassSchema} from '@deepkit/type';
+import {GenericQuery} from './query';
 
 export interface ActiveRecordType {
     new(...args: any[]): ActiveRecord;
@@ -37,7 +38,7 @@ export class ActiveRecord {
         await db.remove(this);
     }
 
-    public static query() {
+    public static query<T>(): GenericQuery<T> {
         return this.getDatabase().query(this);
     }
 }

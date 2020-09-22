@@ -18,6 +18,7 @@
     "@deepkit/framework": "^1.0.0-alpha.0",
     "@deepkit/framework-shared": "^1.0.0-alpha.0",
     "@deepkit/type": "^1.0.0-alpha.0",
+    "@deepkit/orm": "^1.0.0-alpha.0",
     "@deepkit/mongo": "^1.0.0-alpha.0",
     "buffer": "^5.2.1",
     "fs-extra": "^9.0.1",
@@ -49,7 +50,8 @@
     ],
     "testMatch": [
       "**/tests/**/controller-basic.spec.ts",
-      "**/tests/**/peer2peer.spec.ts"
+      "**/tests/**/peer2peer.spec.ts",
+      "**/tests/**/entity-sync.spec.ts"
     ]
   }
 }

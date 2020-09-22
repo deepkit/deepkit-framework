@@ -1,13 +1,15 @@
-import {DatabaseAdapter, DatabasePersistence} from './database';
+import {DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet} from './database';
 import {Entity} from './query';
 import {ClassType, CustomError} from '@deepkit/core';
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, isArray} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore} from '@deepkit/type';
 import {GroupArraySort} from '@deepkit/topsort';
-import {getNormalizedPrimaryKey, IdentityMap, PrimaryKey} from './identity-map';
+import {getInstanceState, getNormalizedPrimaryKey, IdentityMap, PrimaryKey} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
 import {HydratorFn, markAsHydrated} from './formatter';
-import {getPrimaryKeyExtractor} from './converter';
+import {getJITConverterForSnapshot, getPrimaryKeyExtractor} from './converter';
 import {getReference} from './reference';
+import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent} from './event';
+import {getJitChangeDetector} from './change-detector';
 
 let SESSION_IDS = 0;
 
@@ -19,8 +21,10 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     protected committed: boolean = false;
     protected global: GlobalStore = getGlobalStore();
 
+
     constructor(
         protected identityMap: IdentityMap,
+        protected emitter: UnitOfWorkDatabaseEmitter,
     ) {
 
     }
@@ -74,9 +78,6 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     public remove(...items: Entity[]) {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
-        //todo: check if already deleted
-        //todo: check if new Entity() has persisted (use WeakMap for that)
-
         for (const item of items) {
             this.removeQueue.add(item);
             this.addQueue.delete(item);
@@ -99,14 +100,25 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
     protected async doDelete(persistence: DatabasePersistence) {
         for (const [classSchema, items] of getClassSchemaInstancePairs(this.removeQueue.values())) {
+            if (this.emitter.onDeletePre.hasSubscriptions()) {
+                const event = new UnitOfWorkEvent(classSchema, items);
+                await this.emitter.onDeletePre.emit(event);
+            }
+
             await persistence.remove(classSchema, items);
             this.identityMap.deleteMany(classSchema, items);
+
+            if (this.emitter.onDeletePost.hasSubscriptions()) {
+                const event = new UnitOfWorkEvent(classSchema, items);
+                await this.emitter.onDeletePost.emit(event);
+            }
         }
     }
 
     protected async doPersist(persistence: DatabasePersistence) {
         const sorter = new GroupArraySort<Entity, ClassSchema<any>>();
         sorter.sameTypeExtraGrouping = true;
+        sorter.throwOnNonExistingDependency = false;
 
         // const start = performance.now();
         for (const item of this.addQueue.values()) {
@@ -119,60 +131,53 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         // console.log('dependency resolution of', items.length, 'items took', performance.now() - start, 'ms');
 
         for (const group of groups) {
-            await persistence.persist(group.type, group.items);
+            const inserts: Entity[] = [];
+            const changeSets: DatabasePersistenceChangeSet<Entity>[] = [];
+            const changeDetector = getJitChangeDetector(group.type);
+            const doSnapshot = getJITConverterForSnapshot(group.type);
+
+            for (const item of group.items) {
+                const state = getInstanceState(item);
+                if (state.isKnownInDatabase()) {
+                    const lastSnapshot = state.getSnapshot();
+                    const currentSnapshot = doSnapshot(item);
+                    const changes = changeDetector(lastSnapshot, currentSnapshot, item);
+                    if (!changes) continue;
+                    changeSets.push({
+                        updates: changes,
+                        primaryKey: state.getLastKnownPK(),
+                    });
+                } else {
+                    inserts.push(item);
+                }
+            }
+
+            if (inserts.length) {
+                if (this.emitter.onInsertPre.hasSubscriptions()) {
+                    await this.emitter.onInsertPre.emit(new UnitOfWorkEvent(group.type, inserts));
+                }
+                await persistence.insert(group.type, inserts);
+                if (this.emitter.onInsertPost.hasSubscriptions()) {
+                    await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, inserts));
+                }
+            }
+
+            if (changeSets.length) {
+                if (this.emitter.onUpdatePre.hasSubscriptions()) {
+                    await this.emitter.onUpdatePre.emit(new UnitOfWorkUpdateEvent(group.type, changeSets));
+                }
+                await persistence.update(group.type, changeSets);
+                if (this.emitter.onUpdatePost.hasSubscriptions()) {
+                    await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, changeSets));
+                }
+            }
+
             this.identityMap.storeMany(group.type, group.items);
         }
     }
 }
 
 export class SessionClosedException extends CustomError {
-}
-
-export class DatabaseSessionImmediate {
-    constructor(
-        protected identityMap: IdentityMap,
-        protected adapter: DatabaseAdapter
-    ) {
-    }
-
-    /**
-     * Simple direct persist. The persistence layer (batch) inserts or updates the record
-     * depending on the state of the given items. This is different to add() in a way
-     * that `add` adds the given items to the queue (which is then committed using commit())
-     * and immediate.persist just simply inserts/updates the given items immediately,
-     * completely bypassing the advantages of the unit of work.
-     *
-     * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
-     */
-    public async persist(...items: Entity[]) {
-        const round = new DatabaseSessionRound(this.identityMap);
-        round.add(...items);
-        const persistence = this.adapter.createPersistence();
-        try {
-            await round.commit(persistence);
-        } finally {
-            persistence.release();
-        }
-    }
-
-    /**
-     * Simple direct remove. The persistence layer (batch) removes all given items.
-     * This is different to remove() in a way that `remove` adds the given items to the queue
-     * (which is then committed using commit()) and immediate.remove just simply removes the given items immediately,
-     * completely bypassing the advantages of the unit of work.
-     *
-     * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
-     */
-    public async remove(...items: Entity[]) {
-        const round = new DatabaseSessionRound(this.identityMap);
-        round.remove(...items);
-        const persistence = this.adapter.createPersistence();
-        try {
-            await round.commit(persistence);
-        } finally {
-            persistence.release();
-        }
-    }
 }
 
 export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
@@ -194,13 +199,10 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
     protected currentPersistence?: DatabasePersistence = undefined;
 
-    /**
-     * Immediate operations without unit of work. Its faster for few operations, and slower for many operations.
-     */
-    public readonly immediate = new DatabaseSessionImmediate(this.identityMap, this.adapter);
-
     constructor(
-        public readonly adapter: ADAPTER
+        public readonly adapter: ADAPTER,
+        public readonly unitOfWorkEmitter: UnitOfWorkDatabaseEmitter = new UnitOfWorkDatabaseEmitter,
+        public readonly queryEmitter: QueryDatabaseEmitter = new QueryDatabaseEmitter(),
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);
@@ -231,7 +233,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this.identityMap));
+        this.rounds.push(new DatabaseSessionRound(this.identityMap, this.unitOfWorkEmitter));
     }
 
     /**

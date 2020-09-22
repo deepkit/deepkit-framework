@@ -1,13 +1,13 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {HornetFile} from '../src/file';
+import {DeepkitFile} from '../src/file';
 
 test('file', () => {
-    const files: HornetFile[] = [
-        new HornetFile('root.txt'),
-        new HornetFile('dir/text1.txt'),
-        new HornetFile('dir/text2.txt'),
-        new HornetFile('anotherone/text1.txt'),
+    const files: DeepkitFile[] = [
+        new DeepkitFile('root.txt'),
+        new DeepkitFile('dir/text1.txt'),
+        new DeepkitFile('dir/text2.txt'),
+        new DeepkitFile('anotherone/text1.txt'),
     ];
 
     expect(files[0].getDirectory()).toBe('/');

@@ -26,17 +26,17 @@ export interface CollectionAdd {
 
 export interface CollectionRemove {
     type: 'remove';
-    id: string;
+    id: string | number;
 }
 
 export interface CollectionSetSort {
     type: 'sort';
-    ids: string[];
+    ids: (string|number)[];
 }
 
 export interface CollectionRemoveMany {
     type: 'removeMany';
-    ids: string[];
+    ids: (string|number)[];
 }
 
 export interface CollectionSet {
@@ -239,7 +239,7 @@ export class CollectionPagination<T extends IdInterface> {
 }
 
 export interface CollectionEntitySubjectFetcher {
-    fetch<T extends IdInterface>(classType: ClassType<T>, id: string): EntitySubject<T>;
+    fetch<T extends IdInterface>(classType: ClassType<T>, id: string | number): EntitySubject<T>;
 }
 
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
@@ -272,15 +272,15 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     public getEntitySubject(idOrItem: string | T): EntitySubject<T> {
-        const id: string = idOrItem instanceof this.classType ? idOrItem.id : String(idOrItem);
+        const id: string | number = idOrItem instanceof this.classType ? idOrItem.id : String(idOrItem);
         return this.entitySubjects[id];
     }
 
-    public has(id: string) {
+    public has(id: string | number) {
         return 'undefined' !== typeof this.itemsMapped[id];
     }
 
-    public get(id: string): T | undefined {
+    public get(id: string | number): T | undefined {
         return this.itemsMapped[id];
     }
 
@@ -354,8 +354,8 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         return this.items.length;
     }
 
-    public ids(): string[] {
-        const ids: string[] = [];
+    public ids(): (string|number)[] {
+        const ids: (string|number)[] = [];
         for (const i of this.items) {
             ids.push(i.id);
         }
@@ -386,7 +386,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
     }
 
-    public seItem(id: string, item: T) {
+    public seItem(id: string | number, item: T) {
         if (this.itemsMapped[item.id]) {
             const index = this.items.indexOf(this.itemsMapped[item.id]);
             this.items[index] = item;
@@ -422,7 +422,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
     }
 
-    public setSort(ids: string[]) {
+    public setSort(ids: (string | number)[]) {
         this.items.splice(0, this.items.length);
         for (const id of ids) {
             this.items.push(this.itemsMapped[id]);
@@ -432,7 +432,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         this.loaded();
     }
 
-    public removeMany(ids: string[], withEvent = true) {
+    public removeMany(ids: (string|number)[], withEvent = true) {
         for (const id of ids) {
             const item = this.itemsMapped[id];
             delete this.itemsMapped[id];
@@ -471,7 +471,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
     }
 
-    public remove(id: string, withEvent = true) {
+    public remove(id: string | number, withEvent = true) {
         if (this.itemsMapped[id]) {
             const item = this.itemsMapped[id];
             delete this.itemsMapped[id];

@@ -142,10 +142,10 @@ export class Injector {
      */
     public fork(newRoot?: Injector) {
         const injector = new Injector();
-        if (newRoot && injector.parents.length === 1 && injector.parents[0].isRoot()) {
+        if (newRoot && (this.parents.length === 0 || (this.parents.length === 1 && this.parents[0].isRoot()))) {
             injector.parents = [newRoot];
         } else {
-            injector.parents = injector.parents.map(v => v.fork());
+            injector.parents = this.parents.map(v => v.fork(newRoot));
         }
 
         injector.fetcher = this.fetcher;
@@ -164,6 +164,8 @@ export class Injector {
             });
         } else if (isClassProvider(provider)) {
             this.fetcher.set(provider.provide, (rootInjector?: Injector) => {
+                const resolved = this.resolved.get(provider.useClass);
+                if (resolved) return resolved;
                 return this.create(provider.useClass, rootInjector);
             });
         } else if (isExistingProvider(provider)) {

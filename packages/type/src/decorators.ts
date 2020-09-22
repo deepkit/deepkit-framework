@@ -532,7 +532,7 @@ export class ClassSchema<T = any> {
     /**
      * Arbitrary data container to assign additional data to a schema.
      */
-    data: {[key: string]: any } = {};
+    data: { [key: string]: any } = {};
 
     symbol = Symbol('ClassSchema');
 
@@ -605,6 +605,12 @@ export class ClassSchema<T = any> {
 
     public getClassPropertyName(name: string): string {
         return this.getClassName() + '.' + name;
+    }
+
+    public getName(): string {
+        if (!this.name) throw new Error(`Class ${this.getClassName()} has no entity name set`);
+
+        return this.name;
     }
 
     public getClassName(): string {
@@ -1304,7 +1310,7 @@ export interface FieldDecoratorResult<T> {
      * Owning reference means: Additional foreign key fields are automatically added if not already explicitly done.
      * Those additional fields are used to store the primary key of the foreign class.
      */
-    reference(options?: {onDelete?: ReferenceActions, onUpdate?: ReferenceActions}): this;
+    reference(options?: { onDelete?: ReferenceActions, onUpdate?: ReferenceActions }): this;
 
     /**
      * Marks this reference as not-owning side.

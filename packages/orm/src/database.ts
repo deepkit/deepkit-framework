@@ -1,16 +1,10 @@
-import {ClassType, CustomError} from '@deepkit/core';
-import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, Sort} from './query';
+import {ClassType} from '@deepkit/core';
+import {Entity, GenericQuery} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
-import {DatabaseSession, DatabaseSessionImmediate} from './database-session';
-import {IdentityMap} from './identity-map';
+import {DatabaseSession} from './database-session';
 import {isActiveRecordType} from './active-record';
-
-export class NotFoundError extends CustomError {
-}
-
-export class NoIDDefinedError extends CustomError {
-}
+import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -23,13 +17,20 @@ export async function hydrateEntity<T>(item: T) {
 }
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): GenericQuery<T, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>, GenericQueryResolver<T, any, DatabaseQueryModel<T, Partial<T> | any, Sort<T>>>>;
+    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): GenericQuery<T>;
+}
+
+export interface DatabasePersistenceChangeSet<T> {
+    updates: Partial<T>;
+    primaryKey: Partial<T>;
 }
 
 export abstract class DatabasePersistence {
     abstract async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
 
-    abstract async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+    abstract async insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+
+    abstract async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
 
     /**
      * When DatabasePersistence instance is not used anymore, this function will be called.
@@ -41,7 +42,7 @@ export abstract class DatabasePersistence {
 /**
  * A generic database adapter you can use if the API of `GenericQuery` is sufficient.
  *
- * You can specify a more specialized adapter like MySqlDatabaseAdapter with special API for MySQL.
+ * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
  */
 export abstract class DatabaseAdapter {
     abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
@@ -56,7 +57,6 @@ export abstract class DatabaseAdapter {
 
     abstract getSchemaName(): string;
 }
-
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
  *
@@ -64,7 +64,7 @@ export abstract class DatabaseAdapter {
  * This means that you can use the deepkit/type database API that works across a variety of database engines
  * like MySQL, PostgreSQL, SQLite, and MongoDB.
  */
-export class Database<ADAPTER extends DatabaseAdapter> {
+export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public name: string = 'default';
 
     /**
@@ -72,7 +72,9 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      */
     public readonly classSchemas = new Set<ClassSchema>();
 
-    protected rootSession = new DatabaseSession<ADAPTER>(this.adapter);
+    public readonly queryEvents = new QueryDatabaseEmitter();
+
+    public readonly unitOfWorkEvents = new UnitOfWorkDatabaseEmitter();
 
     /**
      * Creates a new DatabaseQuery instance which can be used to query data.
@@ -83,8 +85,11 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
 
-    constructor(public readonly adapter: ADAPTER, schemas: (ClassType | ClassSchema)[] = []) {
-        this.query = (classType: ClassType<any> | ClassSchema<any>) => {
+    constructor(
+        public readonly adapter: ADAPTER,
+        schemas: (ClassType | ClassSchema)[] = []
+    ) {
+        this.query = (classType: ClassType | ClassSchema) => {
             const session = this.createSession();
             return session.query(classType);
         };
@@ -114,7 +119,7 @@ export class Database<ADAPTER extends DatabaseAdapter> {
      * All entity instances fetched/stored during this session are cached and tracked.
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter);
+        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents);
     }
 
     /**

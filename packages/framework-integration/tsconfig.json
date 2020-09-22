@@ -37,6 +37,9 @@
       "path": "../framework/tsconfig.json"
     },
     {
+      "path": "../orm/tsconfig.json"
+    },
+    {
       "path": "../type/tsconfig.dist.json"
     },
     {

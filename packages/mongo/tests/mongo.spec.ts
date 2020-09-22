@@ -5,7 +5,7 @@ import {Binary, ObjectID} from 'bson';
 import {getInstanceState} from '@deepkit/orm';
 import * as moment from 'moment';
 import {SimpleModel, SuperSimple} from './entities';
-import {createDatabaseSession} from './utils';
+import {createDatabase} from './utils';
 import {mongoSerializer} from '../src/mongo-serializer';
 
 jest.setTimeout(12312313);
@@ -18,20 +18,20 @@ test('test moment db', async () => {
         created: moment.Moment = moment();
     }
 
-    const session = await createDatabaseSession('test moment db');
+    const db = await createDatabase('test moment db');
 
     const m = new Model;
     m.created = moment(new Date('2018-10-13T12:17:35.000Z'));
 
-    await session.immediate.persist(m);
-    const m2 = await session.query(Model).findOne();
+    await db.persist(m);
+    const m2 = await db.query(Model).findOne();
     expect(m2).toBeInstanceOf(Model);
     expect(moment.isMoment(m2!.created)).toBe(true);
     expect(m2!.created.toJSON()).toBe('2018-10-13T12:17:35.000Z');
 });
 
 test('test save undefined values', async () => {
-    const session = await createDatabaseSession('test save undefined values');
+    const session = await createDatabase('test save undefined values');
 
     @Entity('undefined-model-value')
     class Model {
@@ -47,7 +47,7 @@ test('test save undefined values', async () => {
     //
     // {
     //     await collection.deleteMany({});
-    //     await session.immediate.persist(new Model(undefined));
+    //     await db.persist(new Model(undefined));
     //     const mongoItem = await collection.find().toArray();
     //     expect(mongoItem[0].name).toBe(null);
     //     const marshalItem = await session.query(Model).findOne();
@@ -56,14 +56,15 @@ test('test save undefined values', async () => {
     //
     // {
     //     await collection.deleteMany({});
-    //     await session.immediate.persist(new Model('peter'));
+    //     await db.persist(new Model('peter'));
     //     const mongoItem = await collection.find().toArray();
     //     expect(mongoItem[0].name).toBe('peter');
     // }
 });
 
 test('test save model', async () => {
-    const session = await createDatabaseSession('testing');
+    const db = await createDatabase('testing');
+    const session = db.createSession();
 
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
 
@@ -71,7 +72,8 @@ test('test save model', async () => {
         name: 'myName',
     });
 
-    await session.immediate.persist(instance);
+    session.add(instance);
+    await session.commit();
 
     expect(await session.query(SimpleModel).count()).toBe(1);
     expect(await session.query(SimpleModel).filter({name: 'myName'}).count()).toBe(1);
@@ -130,17 +132,18 @@ test('test save model', async () => {
     }
 
     instance.name = 'New Name';
-    await session.immediate.persist(instance);
+    await db.persist(instance);
     expect(await session.query(SimpleModel).filter({name: 'MyName'}).has()).toBeFalse();
     expect(await session.query(SimpleModel).filter({name: 'New Name'}).has()).toBeTrue();
 });
 
 test('test patchAll', async () => {
-    const session = await createDatabaseSession('testing');
+    const db = await createDatabase('testing');
+    const session = db.createSession();
 
-    await session.immediate.persist(new SimpleModel('myName1'));
-    await session.immediate.persist(new SimpleModel('myName2'));
-    await session.immediate.persist(new SimpleModel('peter'));
+    await db.persist(new SimpleModel('myName1'));
+    await db.persist(new SimpleModel('myName2'));
+    await db.persist(new SimpleModel('peter'));
 
     expect(await session.query(SimpleModel).filter({name: {$regex: /^myName?/}}).count()).toBe(2);
     expect(await session.query(SimpleModel).filter({name: {$regex: /^peter.*/}}).count()).toBe(1);
@@ -163,7 +166,8 @@ test('test patchAll', async () => {
 });
 
 test('test delete', async () => {
-    const session = await createDatabaseSession('testing');
+    const db = await createDatabase('testing');
+    const session = db.createSession();
 
     const instance1 = plainSerializer.for(SimpleModel).deserialize({
         name: 'myName1',
@@ -173,8 +177,9 @@ test('test delete', async () => {
         name: 'myName2',
     });
 
-    await session.immediate.persist(instance1);
-    await session.immediate.persist(instance2);
+    session.add(instance1);
+    session.add(instance2);
+    await session.commit();
     expect(getInstanceState(instance1).isKnownInDatabase()).toBe(true);
     expect(getInstanceState(instance2).isKnownInDatabase()).toBe(true);
 
@@ -183,7 +188,8 @@ test('test delete', async () => {
     expect(await session.query(SimpleModel).filter({name: 'myName2'}).count()).toBe(1);
     expect(await session.query(SimpleModel).filter({name: 'myName3'}).count()).toBe(0);
 
-    await session.immediate.remove(instance1);
+    session.remove(instance1);
+    await session.commit();
 
     expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);
 
@@ -192,7 +198,8 @@ test('test delete', async () => {
     expect(await session.query(SimpleModel).filter({name: 'myName2'}).count()).toBe(1);
     expect(await session.query(SimpleModel).filter({name: 'myName3'}).count()).toBe(0);
 
-    await session.immediate.remove(instance2);
+    session.remove(instance2);
+    await session.commit();
     expect(getInstanceState(instance2).isKnownInDatabase()).toBe(false);
 
     expect(await session.query(SimpleModel).count()).toBe(0);
@@ -202,8 +209,9 @@ test('test delete', async () => {
     expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);
     expect(getInstanceState(instance2).isKnownInDatabase()).toBe(false);
 
-    await session.immediate.persist(instance1);
-    await session.immediate.persist(instance2);
+    session.add(instance1);
+    session.add(instance2);
+    await session.commit();
     expect(getInstanceState(instance1).isKnownInDatabase()).toBe(true);
     expect(getInstanceState(instance2).isKnownInDatabase()).toBe(true);
     expect(await session.query(SimpleModel).count()).toBe(2);
@@ -213,8 +221,9 @@ test('test delete', async () => {
 
     expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);
 
-    await session.immediate.persist(instance1);
-    await session.immediate.persist(instance2);
+    session.add(instance1);
+    session.add(instance2);
+    await session.commit();
     expect(await session.query(SimpleModel).count()).toBe(2);
 
     await session.query(SimpleModel).filter({name: {$regex: /myName[0-9]/}}).deleteOne();
@@ -225,14 +234,15 @@ test('test delete', async () => {
 });
 
 test('test super simple model', async () => {
-    const session = await createDatabaseSession('testing-simple-model');
+    const db = await createDatabase('testing-simple-model');
+    const session = db.createSession();
 
     const instance = plainSerializer.for(SuperSimple).deserialize({
         name: 'myName',
     });
 
     expect(instance._id).toBeUndefined();
-    await session.immediate.persist(instance);
+    await db.persist(instance);
     expect(instance._id).not.toBeUndefined();
 
     {
@@ -244,7 +254,7 @@ test('test super simple model', async () => {
 });
 
 // test('test databaseName', async () => {
-//     const session = await createDatabaseSession('testing-databaseName');
+//     const session = await createDatabase('testing-databaseName');
 //     await (await session.adapter.connection.connect()).db('testing2').dropDatabase();
 //
 //     @Entity('DifferentDataBase', 'differentCollection')
@@ -265,7 +275,7 @@ test('test super simple model', async () => {
 //     expect(session.adapter.connection.resolveCollectionName(getClassSchema(DifferentDataBase))).toBe('differentCollection');
 //
 //     expect(instance._id).toBeUndefined();
-//     await session.immediate.persist(instance);
+//     await db.persist(instance);
 //     expect(instance._id).not.toBeUndefined();
 //
 //     const collection = await session.adapter.connection.getCollection(getClassSchema(DifferentDataBase));
@@ -277,7 +287,7 @@ test('test super simple model', async () => {
 // });
 
 test('no id', async () => {
-    const session = await createDatabaseSession('testing');
+    const db = await createDatabase('testing');
 
     @Entity('NoId')
     class NoId {
@@ -292,12 +302,13 @@ test('no id', async () => {
         name: 'myName',
     });
 
-    await expect(session.immediate.persist(instance)).rejects.toThrow('has no primary field');
+    await expect(db.persist(instance)).rejects.toThrow('has no primary field');
 });
 
 
 test('second object id', async () => {
-    const session = await createDatabaseSession('testing');
+    const db = await createDatabase('testing');
+    const session = db.createSession();
 
     @Entity('SecondObjectId')
     class SecondObjectId {
@@ -337,7 +348,8 @@ test('second object id', async () => {
         preview: 'QmFhcg==', //Baar
     });
 
-    await session.immediate.persist(instance);
+    session.add(instance);
+    await session.commit();
 
     const dbItem = await session.query(SecondObjectId).filter({name: 'myName'}).findOne();
     expect(dbItem!.name).toBe('myName');
@@ -359,7 +371,8 @@ test('second object id', async () => {
 });
 
 test('references back', async () => {
-    const session = await createDatabaseSession('testing-references-back');
+    const db = await createDatabase('testing-references-back');
+    const session = db.createSession();
 
     @Entity('user1')
     class User {
@@ -388,7 +401,7 @@ test('references back', async () => {
 
     const userSchema = getClassSchema(User);
     expect(userSchema.getProperty('images').backReference).not.toBeUndefined();
-    const imageSchema = getClassSchema(Image);
+    // const imageSchema = getClassSchema(Image);
     // expect(imageSchema.getProperty('userId')).toBeInstanceOf(PropertySchema);
     // expect(imageSchema.getProperty('userId').type).toBe('uuid');
 
@@ -396,16 +409,17 @@ test('references back', async () => {
     const peter = new User('peter');
     const marcel = new User('marcel');
 
-    await session.immediate.persist(marc);
-    await session.immediate.persist(peter);
-    await session.immediate.persist(marcel);
+    session.add(marc);
+    session.add(peter);
+    session.add(marcel);
 
     const image2 = new Image(marc, 'image2');
-    await session.immediate.persist(new Image(marc, 'image1'));
-    await session.immediate.persist(image2);
-    await session.immediate.persist(new Image(marc, 'image3'));
+    session.add(new Image(marc, 'image1'));
+    session.add(image2);
+    session.add(new Image(marc, 'image3'));
 
-    await session.immediate.persist(new Image(peter, 'image1'));
+    session.add(new Image(peter, 'image1'));
+    await session.commit();
 
     {
         expect(getInstanceState(marc).isFromDatabase()).toBe(false);
@@ -483,10 +497,12 @@ test('references back', async () => {
 });
 
 test('test identityMap', async () => {
-    const session = await createDatabaseSession('testing');
+    const db = await createDatabase('testing');
+    const session = db.createSession();
 
     const item = new SimpleModel('myName1');
-    await session.immediate.persist(item);
+    session.add(item);
+    await session.commit();
 
     const pkHash = getInstanceState(item).getLastKnownPKHash();
     const idItem = session.identityMap.getByHash(getClassSchema(SimpleModel), pkHash);

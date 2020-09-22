@@ -30,9 +30,6 @@
     },
     {
       "path": "packages/orm-integration/tsconfig.json"
-    },
-    {
-      "path": "packages/orm-module/tsconfig.json"
     }
   ]
 }

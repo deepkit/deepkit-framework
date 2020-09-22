@@ -33,6 +33,12 @@
       "path": "../framework-shared/tsconfig.json"
     },
     {
+      "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../sql/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     },
     {

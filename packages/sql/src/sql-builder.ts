@@ -7,7 +7,7 @@ type ConvertDataToDict = (row: any) => { [name: string]: any };
 
 export class SqlBuilder {
     protected sqlSelect: string[] = [];
-    protected joins: { join: DatabaseJoinModel, forJoinIndex: number, startIndex: number, converter: ConvertDataToDict }[] = [];
+    protected joins: { join: DatabaseJoinModel<any, any>, forJoinIndex: number, startIndex: number, converter: ConvertDataToDict }[] = [];
 
     public rootConverter?: ConvertDataToDict;
 

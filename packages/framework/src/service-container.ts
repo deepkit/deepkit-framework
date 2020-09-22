@@ -247,13 +247,12 @@ export class ServiceContainer {
     ): Context {
         let module = isDynamicModuleObject(appModule) ? appModule.module : appModule;
         const decorator = deepkit._fetch(module);
-        if (!decorator || !decorator.config) throw new Error(`Module ${getClassName(module)} has no @deepkit.module() decorator`);
-        const options = decorator.config;
+        const options = decorator && decorator.config ? decorator.config : undefined;
 
-        const exports = options.exports ? options.exports.slice(0) : [];
-        const providers = options.providers ? options.providers.slice(0) : [];
-        const controllers = options.controllers ? options.controllers.slice(0) : [];
-        const imports = options.imports ? options.imports.slice(0) : [];
+        const exports = options && options.exports ? options.exports.slice(0) : [];
+        const providers = options && options.providers ? options.providers.slice(0) : [];
+        const controllers = options && options.controllers ? options.controllers.slice(0) : [];
+        const imports = options && options.imports ? options.imports.slice(0) : [];
 
         //if the module is a DynamicModule, its providers/exports/controllers are added to the base
         if (isDynamicModuleObject(appModule)) {
@@ -294,7 +293,7 @@ export class ServiceContainer {
             this.processModule(imp, context);
         }
 
-        if (options.controllers) {
+        if (options && options.controllers) {
             for (const controller of options.controllers) {
                 const rpcConfig = rpcClass._fetch(controller);
                 if (rpcConfig) {

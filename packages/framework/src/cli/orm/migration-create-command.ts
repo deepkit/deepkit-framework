@@ -1,10 +1,13 @@
-import {cli, Command, flag, inject, Injector, Logger} from '@deepkit/framework';
-import {DatabaseProvider} from '../provider';
 import {DatabaseComparator, DatabaseModel, SQLDatabaseAdapter} from '@deepkit/sql';
 import {dirname, join} from 'path';
 import {format} from 'date-fns';
 import {existsSync, mkdirSync, writeFileSync} from 'fs';
 import {indent} from '@deepkit/core';
+import {cli, flag, Command} from '../../command';
+import {Logger} from '../../logger';
+import {MigrationProvider} from '../../migration-provider';
+import {Databases} from '../../databases';
+import {inject} from '../../injector/injector';
 
 
 function serializeSQLLine(sql: string): string {
@@ -17,7 +20,8 @@ function serializeSQLLine(sql: string): string {
 export class MigrationCreateController implements Command {
     constructor(
         protected logger: Logger,
-        protected databaseProvider: DatabaseProvider,
+        protected databases: Databases,
+        protected databaseProvider: MigrationProvider,
         @inject().config('migrationDir') protected migrationDir: string,
     ) {
     }
@@ -27,7 +31,7 @@ export class MigrationCreateController implements Command {
         @flag.optional.description('Do not drop any table that is not available anymore as entity') noDrop: boolean = false,
         @flag.optional.description('Create an empty migration file') empty: boolean = false,
     ): Promise<void> {
-        for (const db of this.databaseProvider.getDatabases()) {
+        for (const db of this.databases.getDatabases()) {
             if (database && db.name !== database) continue;
 
             if (db.adapter instanceof SQLDatabaseAdapter) {
@@ -83,7 +87,7 @@ export class MigrationCreateController implements Command {
                 }
 
                 const code = `
-import {Migration} from '@deepkit/orm-module';
+import {Migration} from '@deepkit/framework';
 
 /**
  * Schema migration created automatically. You should commit this into your Git repository.

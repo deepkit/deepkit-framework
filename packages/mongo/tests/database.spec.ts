@@ -22,7 +22,7 @@ test('simple', async () => {
 
     {
         const item = new Test('asd');
-        await database.createSession().immediate.persist(item);
+        await database.persist(item);
     }
 
     {
@@ -60,7 +60,7 @@ test('unit of work', async () => {
         expect(item.name).toBe('asd');
     }
 
-    await session.immediate.remove(item);
+    await session.remove(item);
     await session.commit();
     expect(await session.query(Test).filter({name: 'asd'}).has()).toBe(false);
     database.disconnect();
@@ -79,7 +79,7 @@ test('repository', async () => {
     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
     await database.query(Test).deleteMany();
     const item = new Test('asda');
-    await database.createSession().immediate.persist(item);
+    await database.persist(item);
 
     class TestRepository {
         constructor(protected database: Database<MongoDatabaseAdapter>) {

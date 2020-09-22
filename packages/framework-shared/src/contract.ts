@@ -3,18 +3,18 @@ import {CollectionPaginationEvent, CollectionSort, FilterParameters} from './col
 import {PropertySchemaSerialized} from '@deepkit/type';
 
 export interface IdInterface {
-    id: string;
+    id: string | number;
 
-    version: number;
+    // version: number;
 }
 
 export interface EntityPatches {
-    set: {[path: string]: any};
-    unset: {[path: string]: any};
+    [path: string]: any;
+    $inc?: {[path: string]: number};
 }
 
 export interface ExchangeEntityBase {
-    id: string;
+    id: string | number;
     version: number;
 }
 
@@ -160,7 +160,7 @@ export type ClientMessageAll = (ClientMessageWithoutId & ClientMessageId);
 
 export interface MessageEntityBase {
     entityName: string;
-    id: string;
+    id: string | number;
     version: number;
 }
 
@@ -171,7 +171,7 @@ export interface ServerMessageEntityRemove extends MessageEntityBase {
 export interface ServerMessageEntityRemoveMany {
     entityName: string;
     type: 'entity/removeMany';
-    ids: string[];
+    ids: (string | number)[];
 }
 
 export interface ServerMessageEntityUpdate extends MessageEntityBase {
@@ -194,7 +194,7 @@ export interface CollectionStreamSet {
 
 export interface CollectionStreamSort {
     type: 'sort';
-    ids: string[];
+    ids: (string | number)[];
 }
 
 export interface CollectionStreamAdd {
@@ -216,12 +216,12 @@ export interface CollectionStreamReady {
 
 export interface CollectionStreamRemove {
     type: 'remove';
-    id: string;
+    id: string | number;
 }
 
 export interface CollectionStreamRemoveMany {
     type: 'removeMany';
-    ids: string[];
+    ids: (string|number)[];
 }
 
 export interface StreamFileSet {

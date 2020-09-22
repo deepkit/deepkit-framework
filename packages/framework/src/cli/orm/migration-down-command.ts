@@ -1,7 +1,8 @@
-import {cli, flag, Logger} from '@deepkit/framework';
-import {DatabaseProvider} from '../provider';
 import {SQLDatabaseAdapter, SqlMigrationHandler} from '@deepkit/sql';
 import {indent} from '@deepkit/core';
+import {cli, flag} from '../../command';
+import {Logger} from '../../logger';
+import {MigrationProvider} from '../../migration-provider';
 
 
 @cli.controller('migration:down', {
@@ -10,7 +11,7 @@ import {indent} from '@deepkit/core';
 export class MigrationDownCommand {
     constructor(
         protected logger: Logger,
-        protected databaseProvider: DatabaseProvider,
+        protected databaseProvider: MigrationProvider,
     ) {
     }
 
@@ -35,18 +36,22 @@ export class MigrationDownCommand {
                     }
 
                     const connection = database.adapter.connectionPool.getConnection();
-                    this.logger.log(`    Migration down <yellow>${migration.name}</yellow>`);
-                    if (fake) {
-                        this.logger.log(`       Faking migration.`);
-                    } else {
-                        let i = 1;
-                        for (const sql of migration.down()) {
-                            this.logger.log(`<yellow>    ${i++}. ${indent(4)(sql)}</yellow>`);
-                            await connection.exec(sql);
+                    try {
+                        this.logger.log(`    Migration down <yellow>${migration.name}</yellow>`);
+                        if (fake) {
+                            this.logger.log(`       Faking migration.`);
+                        } else {
+                            let i = 1;
+                            for (const sql of migration.down()) {
+                                this.logger.log(`<yellow>    ${i++}. ${indent(4)(sql)}</yellow>`);
+                                await connection.exec(sql);
+                            }
                         }
+                        await migrationHandler.removeMigrationVersion(migration.version);
+                        this.logger.log(`<green>Successfully migrated down to version ${migration.version}</green>`);
+                    } finally {
+                        connection.release();
                     }
-                    await migrationHandler.removeMigrationVersion(migration.version);
-                    this.logger.log(`<green>Successfully migrated down to version ${migration.version}</green>`);
                 } finally {
                     database.disconnect();
                 }

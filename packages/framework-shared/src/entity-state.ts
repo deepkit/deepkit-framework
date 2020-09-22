@@ -9,7 +9,7 @@ class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T> } = {};
     consumers: { [id: string]: { count: number } } = {};
 
-    public async forkUnsubscribed(id: string) {
+    public async forkUnsubscribed(id: string | number) {
         if (!this.consumers[id]) {
             return;
         }
@@ -28,7 +28,7 @@ class EntitySubjectStore<T extends IdInterface> {
      *  it would unsubscribe for ALL subscribers of that particular entity item.
      *  so we fork it. The fork can be unsubscribed without touching the origin.
      */
-    public createFork(id: string, item?: T): EntitySubject<T> {
+    public createFork(id: string | number, item?: T): EntitySubject<T> {
         const originSubject = this.getOrCreateSubject(id, item);
 
         if (!this.consumers[id]) {
@@ -79,7 +79,7 @@ class EntitySubjectStore<T extends IdInterface> {
         return getObjectKeysSize(this.subjects);
     }
 
-    public getForkCount(id: string): number {
+    public getForkCount(id: string | number): number {
         if (this.consumers[id]) {
             return this.consumers[id].count;
         }
@@ -87,7 +87,7 @@ class EntitySubjectStore<T extends IdInterface> {
         return 0;
     }
 
-    protected getOrCreateSubject(id: string, item?: T): EntitySubject<T> {
+    protected getOrCreateSubject(id: string | number, item?: T): EntitySubject<T> {
         if (!this.subjects[id]) {
             if (item) {
                 this.subjects[id] = new EntitySubject<T>(item);
@@ -99,7 +99,7 @@ class EntitySubjectStore<T extends IdInterface> {
         return this.subjects[id];
     }
 
-    public getItem(id: string): T {
+    public getItem(id: string | number): T {
         if (this.subjects[id]) {
             const item = this.subjects[id].getValue();
 
@@ -111,7 +111,7 @@ class EntitySubjectStore<T extends IdInterface> {
         throw new Error(`Not non-undefined item for in SubjectStore for ${id}`);
     }
 
-    public removeItemAndNotifyObservers(id: string) {
+    public removeItemAndNotifyObservers(id: string | number) {
         if (this.subjects[id]) {
             try {
                 this.subjects[id].next(undefined);
@@ -124,15 +124,15 @@ class EntitySubjectStore<T extends IdInterface> {
         }
     }
 
-    public notifyForks(id: string) {
+    public notifyForks(id: string | number) {
         this.subjects[id].next(this.subjects[id].getValue());
     }
 
-    public notifyForksAboutPatches(id: string, patches: { [path: string]: any }) {
+    public notifyForksAboutPatches(id: string | number, patches: { [path: string]: any }) {
         this.subjects[id].patches.next(patches);
     }
 
-    public setItemAndNotifyForks(id: string, item: T) {
+    public setItemAndNotifyForks(id: string | number, item: T) {
         if (!this.subjects[id]) {
             throw new Error(`Item not found in store for $id}`);
         }
@@ -141,7 +141,7 @@ class EntitySubjectStore<T extends IdInterface> {
         this.subjects[id].next(item);
     }
 
-    public hasStoreItem(id: string): boolean {
+    public hasStoreItem(id: string | number): boolean {
         return !!this.subjects[id];
     }
 }
@@ -190,7 +190,8 @@ export class EntityState {
                 //we cant do a version check like `item.version < toVersion`, since exchange issues versions always from 0 when restarted
                 //so we apply all incoming patches.
                 if (item) {
-                    const patches = plainSerializer.for(classType).partialDeserialize(stream.patch.set);
+                    //todo rework: patch supports now $inc/$unset as well, which is not compatible with serializer.
+                    const patches = plainSerializer.for(classType).partialDeserialize(stream.patch);
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(patches)) {
@@ -202,7 +203,7 @@ export class EntityState {
                         set(patches, path, undefined);
                     }
 
-                    item.version = toVersion;
+                    // item.version = toVersion;
 
                     try {
                         store.notifyForksAboutPatches(stream.id, patches);
