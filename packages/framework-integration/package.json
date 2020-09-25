@@ -50,8 +50,7 @@
     ],
     "testMatch": [
       "**/tests/**/controller-basic.spec.ts",
-      "**/tests/**/peer2peer.spec.ts",
-      "**/tests/**/entity-sync.spec.ts"
+      "**/tests/**/peer2peer.spec.ts"
     ]
   }
 }

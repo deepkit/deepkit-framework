@@ -29,6 +29,7 @@ import {LiveDatabase} from './exchange/live-database';
         HttpHandler,
         MigrationProvider,
         Databases,
+        {provide: 'orm.databases', useValue: []},
         {provide: Logger, useFactory: () => new Logger([new ConsoleTransport()], [])},
         {provide: SessionStack, scope: 'session'},
         {provide: ClientConnection, scope: 'session'},
