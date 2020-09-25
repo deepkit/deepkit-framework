@@ -1,6 +1,6 @@
 import {ClassSchema, getClassSchema, JSONPartial, PartialEntity, plainSerializer} from '@deepkit/type';
-import {Entity} from './query';
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
+import {Entity} from './type';
+import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator} from './converter';
 import {isObject, toFastProperties} from '@deepkit/core';
 import {inspect} from 'util';
 import {changeSetSymbol} from './changes';
@@ -133,8 +133,22 @@ export class IdentityMap {
 
     deleteMany<T>(classSchema: ClassSchema<T>, pks: Partial<T>[]) {
         const store = this.getStore(classSchema);
+        const pkHashGenerator = getPrimaryKeyHashGenerator(classSchema, plainSerializer);
         for (const pk of pks) {
-            const pkHash = getPrimaryKeyHashGenerator(classSchema, plainSerializer)(pk);
+            const pkHash = pkHashGenerator(pk);
+            let item = store.get(pkHash);
+            if (item) {
+                store.delete(pkHash);
+                getInstanceState(item.ref).markAsDeleted();
+            }
+        }
+    }
+
+    deleteManyBySimplePK<T>(classSchema: ClassSchema<T>, pks: any[]) {
+        const store = this.getStore(classSchema);
+        const pkHashGenerator = getSimplePrimaryKeyHashGenerator(classSchema);
+        for (const pk of pks) {
+            const pkHash = pkHashGenerator(pk);
             let item = store.get(pkHash);
             if (item) {
                 store.delete(pkHash);

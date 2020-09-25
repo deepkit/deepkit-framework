@@ -10,11 +10,10 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from './sql-adapter';
-import {Changes, DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, Entity, PatchResult} from '@deepkit/orm';
+import {Changes, DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
 import {SQLitePlatform} from './platform/sqlite-platform';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {ClassType, empty} from '@deepkit/core';
-import {SqlBuilder} from './sql-builder';
 import {DefaultPlatform} from './platform/default-platform';
 
 export class SQLiteStatement extends SQLStatement {
@@ -44,15 +43,6 @@ export class SQLiteConnection extends SQLConnection {
 
     async prepare(sql: string) {
         return new SQLiteStatement(this.db.prepare(sql));
-        // return await asyncOperation<SQLiteStatement>((resolve, reject) => {
-        //     this.db.prepare(sql, function (err) {
-        //         if (err) {
-        //             reject(new Error(err.message));
-        //         } else {
-        //             resolve(new SQLiteStatement(this));
-        //         }
-        //     });
-        // });
     }
 
     async run(sql: string) {
@@ -68,20 +58,6 @@ export class SQLiteConnection extends SQLConnection {
             throw error;
         }
     }
-
-
-    // async all(sql: string) {
-    //     await asyncOperation((resolve, reject) => {
-    //         this.db.exec(sql, function (err) {
-    //             if (err) {
-    //                 console.log('all error', sql, err);
-    //                 reject(new Error(err.message));
-    //             } else {
-    //                 resolve(undefined);
-    //             }
-    //         });
-    //     });
-    // }
 
     async getChanges(): Promise<number> {
         return this.changes;
@@ -261,18 +237,26 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         super(connectionPool, platform, classSchema, databaseSession);
     }
 
-    async delete(model: SQLQueryModel<T>,): Promise<number> {
+    async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         // if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
-        const sqlBuilder = new SqlBuilder(this.platform);
-
+        const pkName = this.classSchema.getPrimaryField().name;
         const pkField = this.platform.quoteIdentifier(this.classSchema.getPrimaryField().name);
+        const select = this.sqlBuilder.select(this.classSchema, model, {select: [pkField]});
 
-        const selectQuery = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
-        const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (${selectQuery})`;
         const connection = this.connectionPool.getConnection();
         try {
+            await connection.exec(`
+                DROP TABLE IF EXISTS _tmp_d;
+                CREATE TEMPORARY TABLE _tmp_d as ${select};
+            `);
+
+            const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (SELECT * FROM _tmp_d)`;
             await connection.run(sql);
-            return await connection.getChanges();
+            const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
+            deleteResult.modified = await connection.getChanges();
+            for (const row of rows) {
+                deleteResult.primaryKeys.push(row[pkName]);
+            }
         } finally {
             connection.release();
         }
@@ -334,7 +318,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             }
 
             for (const returning of returnings) {
-                patchResult.primaryKeys.push(returning[pkName])
+                patchResult.primaryKeys.push(returning[pkName]);
                 for (const i in aggregateFields) {
                     patchResult.returning[i].push(returning[i]);
                 }

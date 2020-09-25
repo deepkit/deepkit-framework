@@ -1,9 +1,10 @@
 import {DatabaseSession} from './database-session';
-import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, PatchResult} from './query';
+import {DatabaseQueryModel, GenericQuery, GenericQueryResolver} from './query';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet} from './database';
 import {Changes} from './changes';
+import {Entity, PatchResult} from './type';
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     async migrate(classSchemas: Iterable<ClassSchema>) {
@@ -50,8 +51,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                         return Promise.resolve(0);
                     }
 
-                    async delete(model: DatabaseQueryModel<T>): Promise<number> {
-                        return Promise.resolve(0);
+                    async delete(model: DatabaseQueryModel<T>): Promise<void> {
                     }
 
                     async find(model: DatabaseQueryModel<T>): Promise<T[]> {

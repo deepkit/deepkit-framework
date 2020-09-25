@@ -64,8 +64,8 @@ test('sqlite basic', async () => {
 
     {
         const session = database.createSession();
-        expect(await session.query(User).deleteMany()).toBe(3);
-        expect(await session.query(User).deleteMany()).toBe(0);
+        expect((await session.query(User).deleteMany()).modified).toBe(3);
+        expect((await session.query(User).deleteMany()).modified).toBe(0);
     }
 });
 

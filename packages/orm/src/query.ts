@@ -7,6 +7,7 @@ import {DatabaseSession} from './database-session';
 import {DatabaseAdapter} from './database';
 import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent} from './event';
 import {Changes} from './changes';
+import {DeleteResult, Entity, PatchResult} from './type';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -300,11 +301,6 @@ export class BaseQuery<T extends Entity> {
     }
 }
 
-export interface Entity {
-}
-
-export type PatchResult<T, K extends (keyof T) | never = never, PKEY = string> = { modified: number, returning: { [name in K]: T[name][] }, primaryKeys: PKEY[] };
-
 export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ClassSchema<T>,
@@ -318,7 +314,7 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
 
     abstract async findOneOrUndefined(model: MODEL): Promise<T | undefined>;
 
-    abstract async delete(model: MODEL): Promise<number>;
+    abstract async delete(model: MODEL, deleteResult: DeleteResult<T>): Promise<void>;
 
     abstract async patch(model: MODEL, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
 
@@ -362,47 +358,46 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         return item;
     }
 
-    public async deleteMany(): Promise<number> {
-        return this.resolver.delete(this.model);
+    public async deleteMany(): Promise<DeleteResult<T>> {
+        return this.delete(this.model);
     }
 
-    public async deleteOne(): Promise<number> {
+    public async deleteOne(): Promise<DeleteResult<T>> {
         const model = this.model.clone();
         model.limit = 1;
-        return this.resolver.delete(model);
+        return this.delete(model);
     }
 
-    protected async delete(model: this['model'], many = false) {
+    protected async delete(model: this['model']): Promise<DeleteResult<T>> {
         const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions();
+
+        const deleteResult: DeleteResult<T> = {
+            modified: 0,
+            primaryKeys: []
+        };
+
         if (!hasEvents) {
-            return this.resolver.delete(model);
+            await this.resolver.delete(model, deleteResult);
+            this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
+            return deleteResult;
         }
-
-        let deleted = 0;
-
-        const primaryKeys = await this.ids(false);
-        if (!many) primaryKeys.splice(1, primaryKeys.length);
 
         if (this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions()) {
-            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, primaryKeys);
+            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, deleteResult);
             await this.databaseSession.queryEmitter.onDeletePre.emit(event);
-            if (event.stopped) return event.deleted ?? 0;
+            if (event.stopped) return deleteResult;
         }
 
-        const primaryKeyModel = model.clone();
-        primaryKeyModel.filter = {$or: primaryKeys} as FilterQuery<T>;
-
-        if (many) {
-            deleted = await this.resolver.delete(primaryKeyModel);
-        }
+        await this.resolver.delete(model, deleteResult);
+        this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
 
         if (this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions()) {
-            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, primaryKeys);
+            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, deleteResult);
             await this.databaseSession.queryEmitter.onDeletePost.emit(event);
-            if (event.stopped) return event.deleted ?? deleted;
+            if (event.stopped) return deleteResult;
         }
 
-        return deleted;
+        return deleteResult;
     }
 
     public async patchMany(patch: Changes<T> | Partial<T>): Promise<PatchResult<T>> {
@@ -416,11 +411,14 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
     }
 
     protected async patch(model: this['model'], patch: Partial<T> | Changes<T>): Promise<PatchResult<T>> {
-        const changes: Changes<T> = patch;
+        const changes: Changes<T> = {...patch};
         if (!changes.$set) changes.$set = {};
 
         for (const property of this.classSchema.getClassProperties().values()) {
-            if (property.name in patch) changes.$set![property.name as FieldName<T>] = (patch as any)[property.name];
+            if (property.name in patch) {
+                changes.$set![property.name as FieldName<T>] = (patch as any)[property.name];
+                delete (changes as any)[property.name];
+            }
         }
 
         const patchResult: PatchResult<T> = {

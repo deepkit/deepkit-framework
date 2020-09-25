@@ -6,7 +6,7 @@ import {
     DatabasePersistence,
     DatabasePersistenceChangeSet,
     DatabaseQueryModel,
-    DatabaseSession,
+    DatabaseSession, DeleteResult,
     Entity,
     GenericQuery,
     GenericQueryResolver,
@@ -159,13 +159,14 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         }
     }
 
-    async delete(model: SQLQueryModel<T>): Promise<number> {
+    async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const sql = this.sqlBuilder.build(this.classSchema, model, 'DELETE');
         const connection = this.connectionPool.getConnection();
         try {
             await connection.run(sql);
-            return await connection.getChanges();
+            deleteResult.modified = await connection.getChanges();
+            //todo, implement deleteResult.primaryKeys
         } finally {
             connection.release();
         }

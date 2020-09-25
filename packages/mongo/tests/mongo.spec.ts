@@ -216,7 +216,7 @@ test('test delete', async () => {
     expect(getInstanceState(instance2).isKnownInDatabase()).toBe(true);
     expect(await session.query(SimpleModel).count()).toBe(2);
 
-    expect(await session.query(SimpleModel).filter({name: {$regex: /myName[0-9]/}}).deleteMany()).toBe(2);
+    expect((await session.query(SimpleModel).filter({name: {$regex: /myName[0-9]/}}).deleteMany()).modified).toBe(2);
     expect(await session.query(SimpleModel).count()).toBe(0);
 
     expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);

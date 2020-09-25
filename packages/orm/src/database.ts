@@ -1,5 +1,5 @@
 import {ClassType} from '@deepkit/core';
-import {Entity, GenericQuery} from './query';
+import {GenericQuery} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {DatabaseSession} from './database-session';
@@ -7,6 +7,7 @@ import {isActiveRecordType} from './active-record';
 import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
 import {Changes} from './changes';
 import {PrimaryKeyFields} from './identity-map';
+import {Entity} from './type';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.

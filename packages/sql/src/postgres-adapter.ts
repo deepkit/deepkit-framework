@@ -9,7 +9,7 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from './sql-adapter';
-import {Changes, DatabasePersistenceChangeSet, DatabaseSession, Entity, PatchResult} from '@deepkit/orm';
+import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
 import {PostgresPlatform} from './platform/postgres-platform';
 import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
@@ -255,6 +255,35 @@ export class PostgresPersistence extends SQLPersistence {
 }
 
 export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
+
+    async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
+        const pkName = this.classSchema.getPrimaryField().name;
+        const pkField = this.platform.quoteIdentifier(pkName);
+
+        const select = this.sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const tableName = this.platform.getTableIdentifier(this.classSchema);
+
+        const connection = this.connectionPool.getConnection();
+        try {
+            const sql = `
+                WITH _ AS (${select})
+                DELETE
+                FROM ${tableName} USING _
+                WHERE ${tableName}.${pkField} = _.${pkField}
+                RETURNING ${tableName}.${pkField}
+            `;
+
+            const rows = await connection.execAndReturnAll(sql);
+            deleteResult.modified = rows.length;
+            for (const row of rows) {
+                deleteResult.primaryKeys.push(row[pkName]);
+            }
+        } finally {
+            connection.release();
+        }
+    }
+
+
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);

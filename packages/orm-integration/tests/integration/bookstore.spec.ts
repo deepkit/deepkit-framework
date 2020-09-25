@@ -5,7 +5,7 @@ import {createEnvSetup} from './setup';
 import {User} from './user';
 import {UserCredentials} from './user-credentials';
 import {SQLitePlatform} from '@deepkit/sql';
-import {atomicChange} from '@deepkit/orm';
+import {atomicChange, getInstanceState} from '@deepkit/orm';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
@@ -63,8 +63,6 @@ test('tables', () => {
     const [userCredentials] = new SQLitePlatform().createTables([UserCredentials, User]);
     expect(userCredentials.getColumn('user').isPrimaryKey).toBe(true);
     expect(userCredentials.getColumn('user').type).toBe('integer');
-
-    // console.log(new SQLitePlatform().getAddTableDDL(userCredentials));
 });
 
 test('basics', async () => {
@@ -156,11 +154,36 @@ test('basics', async () => {
         //cascade foreign key deletes also the book
         expect(await session.query(Book).count()).toBe(1);
     }
+});
+
+test('test instance state', async () => {
+    const database = await createEnvSetup(entities);
+    {
+        const session = database.createSession();
+        expect(await session.query(User).count()).toBe(0);
+
+        const peter = new User('Peter');
+        const herbert = new User('Herbert');
+        expect(getInstanceState(peter).isKnownInDatabase()).toBe(false);
+        expect(getInstanceState(herbert).isKnownInDatabase()).toBe(false);
+
+        session.add(peter);
+        session.add(herbert);
+
+        await session.commit();
+        expect(getInstanceState(peter).isKnownInDatabase()).toBe(true);
+        expect(getInstanceState(herbert).isKnownInDatabase()).toBe(true);
+    }
 
     {
-        // await session.query(User).deleteMany();
-        // expect(getInstanceState(peter).isKnownInDatabase()).toBe(false);
-        // expect(getInstanceState(herbert).isKnownInDatabase()).toBe(false);
+        const session = database.createSession();
+        const [peter, herbert] = await session.query(User).find();
+        expect(getInstanceState(peter).isKnownInDatabase()).toBe(true);
+        expect(getInstanceState(herbert).isKnownInDatabase()).toBe(true);
+
+        await session.query(User).deleteMany();
+        expect(getInstanceState(peter).isKnownInDatabase()).toBe(false);
+        expect(getInstanceState(herbert).isKnownInDatabase()).toBe(false);
     }
 });
 

@@ -226,7 +226,7 @@ export abstract class DefaultPlatform {
 
     getTableIdentifier(schema: ClassSchema): string {
         if (!schema.name) throw new Error(`Class ${schema.getClassName()} has no name defined`);
-        const collectionName = schema.collectionName || schema.name;
+        const collectionName = this.namingStrategy.getTableName(schema);
 
         if (schema.databaseSchemaName) return this.quoteIdentifier(schema.databaseSchemaName + this.getSchemaDelimiter() + collectionName);
         return this.quoteIdentifier(collectionName);

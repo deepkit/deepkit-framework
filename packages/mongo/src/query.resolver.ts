@@ -1,4 +1,4 @@
-import {Changes, Entity, Formatter, GenericQueryResolver, PatchResult} from '@deepkit/orm';
+import {Changes, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult} from '@deepkit/orm';
 import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@deepkit/type';
 import {DEEP_SORT, MongoQueryModel} from './query.model';
 import {convertClassQueryToMongo,} from './mapping';
@@ -39,42 +39,39 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return pk;
     }
 
-    protected async fetchIds(queryModel: MongoQueryModel<T>, multi: boolean = false) {
-        const converter = mongoSerializer.for(this.classSchema);
-
-        const projection = this.getPrimaryKeysProjection(this.classSchema);
-        const mongoFilters: any[] = [];
-        const primaryKeys: any[] = [];
+    protected async fetchIds(queryModel: MongoQueryModel<T>, limit: number = 0): Promise<any[]> {
+        const primaryKeyName = this.classSchema.getPrimaryField().name;
+        const projection = {[primaryKeyName]: 1 as const};
 
         if (queryModel.hasJoins()) {
             const pipeline = this.buildAggregationPipeline(queryModel);
-            if (!multi) pipeline.push({$limit: 1});
+            if (limit) pipeline.push({$limit: limit});
             pipeline.push({$project: projection});
             const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline));
-            for (const v of items) {
-                mongoFilters.push(converter.partialSerialize(v));
-                primaryKeys.push(converter.partialDeserialize(v));
-            }
+            return items.map(v => v[primaryKeyName]);
+            // return items.map(v => {
+            //     return {[primaryKeyName]: v[primaryKeyName]}
+            // }) as Partial<T>[];
         } else {
-            const limit = multi ? 0 : 1;
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
             const items = await this.databaseSession.adapter.client.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit));
-            for (const v of items) {
-                mongoFilters.push(converter.partialSerialize(v));
-                primaryKeys.push(converter.partialDeserialize(v));
-            }
+            return items.map(v => v[primaryKeyName]);
+            // return items.map(v => {
+            //     return {[primaryKeyName]: v[primaryKeyName]}
+            // }) as Partial<T>[];
         }
-
-        return {mongoFilter: {$or: mongoFilters}, primaryKeys: primaryKeys};
     }
 
-    public async delete(queryModel: MongoQueryModel<T>): Promise<number> {
-        // const {primaryKeys} = await this.fetchIds(queryModel, multi);
-        //
-        // if (primaryKeys.length === 0) return 0;
-        // this.databaseSession.identityMap.deleteMany(this.classSchema, primaryKeys);
-        const mongoFilter = getMongoFilter(this.classSchema, queryModel);
-        return await this.databaseSession.adapter.client.execute(new DeleteCommand(this.classSchema, mongoFilter, queryModel.limit));
+    public async delete(queryModel: MongoQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
+        const primaryKeys = await this.fetchIds(queryModel, queryModel.limit);
+
+        if (primaryKeys.length === 0) return;
+        deleteResult.modified = primaryKeys.length;
+        deleteResult.primaryKeys = primaryKeys;
+        const primaryKeyName = this.classSchema.getPrimaryField().name;
+
+        const query = convertClassQueryToMongo(this.classSchema.classType, {[primaryKeyName]: {$in: primaryKeys}} as FilterQuery<T>);
+        await this.databaseSession.adapter.client.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
     }
 
     public async patch(model: MongoQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
@@ -83,11 +80,12 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         }
         let filter = getMongoFilter(this.classSchema, model);
         //todo implement "returning"
-        patchResult.modified = await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
+        const res = await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
             q: filter || {},
             u: changes,
-            multi: model.limit === 0
+            multi: !model.limit
         }]));
+        patchResult.modified = res;
     }
 
     public async count(queryModel: MongoQueryModel<T>) {

@@ -1,5 +1,5 @@
 import {DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet} from './database';
-import {Entity} from './query';
+import {Entity} from './type';
 import {ClassType, CustomError} from '@deepkit/core';
 import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore} from '@deepkit/type';
 import {GroupArraySort} from '@deepkit/topsort';

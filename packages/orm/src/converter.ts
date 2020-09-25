@@ -118,6 +118,14 @@ export function getPrimaryKeyHashGenerator(
     return jit.pkHash[serializer.name];
 }
 
+function simplePrimaryKeyHash(value: any): string {
+    return '\0' + value;
+}
+
+export function getSimplePrimaryKeyHashGenerator(classSchema: ClassSchema) {
+    return simplePrimaryKeyHash;
+}
+
 function createPrimaryKeyHashGenerator(
     classSchema: ClassSchema,
     serializer: Serializer

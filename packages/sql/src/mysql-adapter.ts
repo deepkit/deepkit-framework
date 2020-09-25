@@ -10,7 +10,7 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from './sql-adapter';
-import {Changes, DatabasePersistenceChangeSet, DatabaseSession, Entity, PatchResult} from '@deepkit/orm';
+import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
 import {MySQLPlatform} from './platform/mysql-platform';
 import {ClassSchema, getClassSchema, isArray} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
@@ -260,6 +260,33 @@ export class MySQLPersistence extends SQLPersistence {
 }
 
 export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
+    async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
+        const pkName = this.classSchema.getPrimaryField().name;
+        const pkField = this.platform.quoteIdentifier(pkName);
+
+        const select = this.sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const tableName = this.platform.getTableIdentifier(this.classSchema);
+
+        const connection = this.connectionPool.getConnection();
+        try {
+            const sql = `
+                WITH _ AS (${select})
+                DELETE ${tableName}
+                FROM ${tableName} INNER JOIN _ INNER JOIN (SELECT @_pk := JSON_ARRAYAGG(${pkField}) FROM _ GROUP BY '0') as _pk
+                WHERE ${tableName}.${pkField} = _.${pkField};
+                SELECT @_pk
+            `;
+
+            const rows = await connection.execAndReturnAll(sql);
+            const returning = rows[1];
+            const pk = returning[0]['@_pk'];
+            if (pk) deleteResult.primaryKeys = JSON.parse(pk);
+            deleteResult.modified = await connection.getChanges();
+        } finally {
+            connection.release();
+        }
+    }
+
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);

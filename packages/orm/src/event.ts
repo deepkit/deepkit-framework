@@ -4,7 +4,7 @@ import {DatabasePersistenceChangeSet} from './database';
 import {PrimaryKeyFields} from './identity-map';
 import {DatabaseSession} from './database-session';
 import {Changes} from './changes';
-import {PatchResult} from './query';
+import {DeleteResult, PatchResult} from './type';
 
 export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     constructor(
@@ -43,12 +43,10 @@ export class UnitOfWorkDatabaseEmitter {
 }
 
 export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
-    public deleted?: number;
-
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public readonly primaryKeys: PrimaryKeyFields<T>[]
+        public readonly deleteResult: DeleteResult<T>
     ) {
         super()
     }

@@ -79,7 +79,7 @@ export class SQLiteSchemaParser extends SchemaParser {
                 WHERE
                   tbl_name = ${this.platform.quoteValue(tableName)}
                 AND
-                  sql LIKE "%AUTOINCREMENT%"`);
+                  sql LIKE '%AUTOINCREMENT%'`);
 
                 if (aiRow && aiRow.tbl_name === tableName) column.isAutoIncrement = true;
             }
