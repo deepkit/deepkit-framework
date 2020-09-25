@@ -1,8 +1,10 @@
 import {AsyncEmitterEvent, AsyncEventEmitter} from '@deepkit/core';
 import {ClassSchema} from '@deepkit/type';
 import {DatabasePersistenceChangeSet} from './database';
-import {PrimaryKey} from './identity-map';
+import {PrimaryKeyFields} from './identity-map';
 import {DatabaseSession} from './database-session';
+import {Changes} from './changes';
+import {PatchResult} from './query';
 
 export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     constructor(
@@ -46,20 +48,19 @@ export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public readonly primaryKeys: PrimaryKey<T>[]
+        public readonly primaryKeys: PrimaryKeyFields<T>[]
     ) {
         super()
     }
 }
 
 export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
-    public updated?: number;
-
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public readonly primaryKeys: PrimaryKey<T>[],
-        public readonly patch: Partial<T>,
+        public readonly primaryKeys: PrimaryKeyFields<T>[],
+        public readonly patch: Changes<T>,
+        public readonly patchResult: PatchResult<T>
     ) {
         super()
     }
@@ -71,7 +72,7 @@ export class QueryDatabaseUpdateEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public readonly primaryKey: PrimaryKey<T>,
+        public readonly primaryKey: PrimaryKeyFields<T>,
         public readonly item: T,
     ) {
         super()

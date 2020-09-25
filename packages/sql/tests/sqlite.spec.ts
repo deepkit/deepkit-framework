@@ -6,11 +6,12 @@ import {bench} from '@deepkit/core';
 import {createSetup} from './setup';
 
 test('sqlite 10k bench', async () => {
-    const User = t.class({
+    class User extends t.class({
         id: t.primary.number,
         name: t.string,
         created: t.date,
-    }, {name: 'user'});
+    }, {name: 'user'}) {
+    }
 
     const database = await createSetup(new SQLiteDatabaseAdapter(':memory:'), [User]);
     const session = database.createSession();
@@ -52,6 +53,7 @@ test('sqlite basic', async () => {
         user1.name = 'Changed';
         await session.commit();
         expect(await session.query(User).count()).toBe(3);
+        expect((await session.query(User).disableIdentityMap().filter(user1).findOne()).name).toBe('Changed');
     }
 
     {

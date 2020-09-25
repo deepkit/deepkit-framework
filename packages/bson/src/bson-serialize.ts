@@ -67,7 +67,7 @@ function isObjectId(value: any): boolean {
     return value && value['_bsontype'] === 'ObjectID';
 }
 
-function getValueSize(value: any): number {
+export function getValueSize(value: any): number {
     if ('boolean' === typeof value) {
         return 1;
     } else if ('string' === typeof value) {
@@ -127,6 +127,7 @@ function getValueSize(value: any): number {
         let size = 4; //object size
         for (let i in value) {
             if (!value.hasOwnProperty(i)) continue;
+            if (value[i] === undefined) continue;
             size += 1; //element type
             size += stringByteLength(i) + 1; //element name + null
             size += getValueSize(value[i]);

@@ -3,8 +3,9 @@ import {Entity} from './query';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from './converter';
 import {isObject, toFastProperties} from '@deepkit/core';
 import {inspect} from 'util';
+import {changeSetSymbol} from './changes';
 
-export type PrimaryKey<T> = { [name in keyof T & string]?: T[name] };
+export type PrimaryKeyFields<T> = { [name in keyof T & string]?: T[name] };
 
 export function getNormalizedPrimaryKey(schema: ClassSchema<any>, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();
@@ -76,6 +77,7 @@ class InstanceState<T extends Entity> {
     markAsPersisted() {
         this.snapshot = getJITConverterForSnapshot(this.classSchema)(this.item);
         this.knownInDatabase = true;
+        (this.item as any)[changeSetSymbol] = {};
     }
 
     getLastKnownPK(): Partial<T> {
@@ -103,6 +105,16 @@ export function getInstanceState<T>(item: T): InstanceState<T> {
         });
         toFastProperties((item as any)['constructor'].prototype);
     }
+
+    if (!(item as any)['constructor'].prototype.hasOwnProperty(changeSetSymbol)) {
+        Object.defineProperty((item as any)['constructor'].prototype, changeSetSymbol, {
+            writable: true,
+            enumerable: false,
+            value: null
+        });
+        toFastProperties((item as any)['constructor'].prototype);
+    }
+
 
     if (!(item as any)[instanceStateSymbol]) {
         (item as any)[instanceStateSymbol] = new InstanceState(item);

@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {createBSONSizer, getBSONSerializer, getBSONSizer, hexToByte, uuidStringToByte} from '../src/bson-serialize';
+import {createBSONSizer, getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte} from '../src/bson-serialize';
 import {f, plainSerializer, t} from '@deepkit/type';
 import * as Moment from 'moment';
 import {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} from 'bson';
@@ -960,4 +960,31 @@ test('typed array', () => {
 
     const back = getBSONDecoder(schema)(bson);
     expect(back.preview).toEqual(message.preview);
+});
+
+test('typed any and undefined', () => {
+    const schema = t.schema({
+        data: t.any,
+    })
+
+    const message = plainSerializer.for(schema).deserialize({
+        data: {
+            $set: {},
+            $inc: undefined,
+        },
+    });
+
+    expect(getValueSize({$inc: undefined})).toBe(calculateObjectSize({$inc: undefined}));
+    expect(getValueSize({$inc: [undefined]})).toBe(calculateObjectSize({$inc: [undefined]}));
+
+    const size = getBSONSizer(schema)(message);
+    expect(size).toBe(calculateObjectSize(message));
+
+    const bson = getBSONSerializer(schema)(message);
+
+    expect(bson).toEqual(serialize(message));
+
+    const back = getBSONDecoder(schema)(bson);
+    expect(back.data.$set).toEqual({});
+    expect(back.data.$inc).toEqual(undefined);
 });

@@ -5,6 +5,21 @@ import {BenchSuite} from '@deepkit/core';
 
 test.only('nope');
 
+test('parse JSON_ARRAYAGG', () => {
+    const bench = new BenchSuite('JSON_ARRAYAGG');
+    const res = '[1.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0]';
+
+    bench.add('json.parse', () => {
+        JSON.parse(res);
+    });
+
+    bench.add('split&parseInt', () => {
+        res.substring(0, res.length - 1).split(',').map(parseInt);
+    });
+
+    bench.run();
+});
+
 test('object keys', () => {
     const bench = new BenchSuite('object keys');
 

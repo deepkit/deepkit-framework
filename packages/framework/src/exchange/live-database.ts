@@ -649,17 +649,20 @@ export class LiveDatabase {
         const database = this.databases.getDatabaseForEntity(classType);
         if (this.entitySubscriptions.has(schema)) return;
 
-        const primaryKeyName = schema.getPrimaryField().name;
-        const scopedSerialized = plainSerializer.for(schema);
-
         const subscriptions: AsyncEventSubscription[] = [];
 
         subscriptions.push(database.unitOfWorkEvents.onInsertPost.subscribe((event) => {
             console.log('shit inserted', event);
         }));
 
+        subscriptions.push(database.unitOfWorkEvents.onUpdatePre.subscribe((event) => {
+            for (const changeSet of event.changeSets) {
+                changeSet.changes.$inc = {version: 1};
+            }
+        }));
+
         subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe((event) => {
-            console.log('shit updated', event);
+            //publish
         }));
 
         subscriptions.push(database.unitOfWorkEvents.onDeletePost.subscribe((event) => {
@@ -679,19 +682,19 @@ export class LiveDatabase {
             console.log('query shit patched', event);
             const version = await this.exchange.version();
 
-            for (const primaryKey of event.primaryKeys) {
-                const id = primaryKey[primaryKeyName];
-
-                this.exchange.publishEntity(schema, {
-                    type: 'patch',
-                    id: id,
-                    version: version, //this is the new version in the db, which we end up having when `patch` is applied.
-                    // item: scopedSerialized.serialize(),
-                    item: {},
-                    //todo rework: event.patch supports now $inc/$unset as well, which is not compatible with serializer.
-                    patch: scopedSerialized.serialize(event.patch),
-                });
-            }
+            // for (const primaryKey of event.primaryKeys) {
+            //     const id = primaryKey[primaryKeyName];
+            //
+            //     this.exchange.publishEntity(schema, {
+            //         type: 'patch',
+            //         id: id,
+            //         version: version, //this is the new version in the db, which we end up having when `patch` is applied.
+            //         // item: scopedSerialized.serialize(),
+            //         item: {},
+            //         //todo rework: event.patch supports now $inc/$unset as well, which is not compatible with serializer.
+            //         patch: scopedSerialized.serialize(event.patch),
+            //     });
+            // }
         }));
 
         subscriptions.push(database.queryEvents.onUpdatePost.subscribe((event) => {

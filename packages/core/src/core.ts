@@ -145,7 +145,7 @@ export function isObject(obj: any): obj is {[key: string]: any} {
  * @public
  */
 export function isArray(obj: any): obj is any[] {
-    return Array.isArray(obj);
+    return (obj && 'number' === typeof obj.length && 'function' === typeof obj.reduce);
 }
 
 /**
@@ -236,7 +236,8 @@ export function empty<T>(array: T[] | { [key: string]: T }): boolean {
     if (isArray(array)) {
         return array.length === 0;
     } else {
-        return getObjectKeysSize(array) === 0;
+        for (const i in array) if (array.hasOwnProperty(i)) return false;
+        return true;
     }
 }
 
@@ -505,7 +506,6 @@ export function humanBytes(bytes: number, si: boolean = false): string {
 
     return bytes.toFixed(2) + ' ' + units[u];
 }
-
 
 /**
  * Returns the number of properties on `obj`. This is 20x faster than Object.keys(obj).length.

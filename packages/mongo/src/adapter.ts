@@ -21,7 +21,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 }
 
 export class MongoDatabaseAdapter implements DatabaseAdapter {
-    public readonly client: MongoClient;
+        public readonly client: MongoClient;
 
     constructor(
         connectionString: string

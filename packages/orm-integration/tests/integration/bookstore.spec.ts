@@ -5,7 +5,9 @@ import {createEnvSetup} from './setup';
 import {User} from './user';
 import {UserCredentials} from './user-credentials';
 import {SQLitePlatform} from '@deepkit/sql';
+import {atomicChange} from '@deepkit/orm';
 
+// process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
 // process.env['ADAPTER_DRIVER'] = 'postgres';
 
@@ -65,7 +67,7 @@ test('tables', () => {
     // console.log(new SQLitePlatform().getAddTableDDL(userCredentials));
 });
 
-test('basics', async () =>{
+test('basics', async () => {
     const database = await createEnvSetup(entities);
     {
         const session = database.createSession();
@@ -91,6 +93,21 @@ test('basics', async () =>{
 
         expect(await session.query(User).count()).toBe(2);
         expect(await session.query(Book).count()).toBe(2);
+    }
+
+    {
+        const session = database.createSession();
+        const users = await session.query(User).find();
+        for (const user of users) {
+            user.logins++;
+        }
+        await session.commit();
+
+        {
+            const users = await database.query(User).disableIdentityMap().find();
+            expect(users[0].logins).toBe(1);
+            expect(users[1].logins).toBe(1);
+        }
     }
 
     {
@@ -139,6 +156,12 @@ test('basics', async () =>{
         //cascade foreign key deletes also the book
         expect(await session.query(Book).count()).toBe(1);
     }
+
+    {
+        // await session.query(User).deleteMany();
+        // expect(getInstanceState(peter).isKnownInDatabase()).toBe(false);
+        // expect(getInstanceState(herbert).isKnownInDatabase()).toBe(false);
+    }
 });
 
 test('user account', async () => {
@@ -158,7 +181,7 @@ test('user account', async () => {
         await session.commit();
 
         expect(user1.id).toBe(1);
-        expect(user1Cred.user.id).toBe(1)
+        expect(user1Cred.user.id).toBe(1);
     }
 
     {
@@ -173,5 +196,48 @@ test('user account', async () => {
         const userWrongPwButLeftJoin = await session.query(User).filter({name: 'peter'}).useJoinWith('credentials').filter({password: 'wrongPassword'}).end().findOne();
         expect(userWrongPwButLeftJoin.id).toBe(1);
         expect(userWrongPwButLeftJoin.credentials).toBeUndefined();
+    }
+});
+
+test('atomic operations', async () => {
+    const database = await createEnvSetup(entities);
+    {
+        const user = new User('Peter');
+        user.logins = 1;
+        await database.persist(user);
+
+        atomicChange(user).increase('logins', 2);
+        expect(user.logins).toBe(3);
+        await database.persist(user);
+
+        expect((await database.query(User).filter(user).findOne()).logins).toBe(3);
+    }
+
+    {
+        const user = new User('Peter');
+        user.logins = 1;
+        await database.persist(user);
+
+        const changes = await database.query(User).filter(user).patchOne({logins: 10});
+        expect(changes.modified).toBe(1);
+        expect(changes.primaryKeys[0]).toBe(user.id);
+    }
+
+    {
+        const user = new User('Peter');
+        user.logins = 1;
+        await database.persist(user);
+
+        atomicChange(user).increase('logins', 2);
+
+        const changes = await database.query(User).filter(user).patchOne({$inc: {logins: 10}});
+        expect(changes.modified).toBe(1);
+        expect(changes.primaryKeys[0]).toBe(user.id);
+        expect(changes.returning['logins'][0]).toBe(11);
+
+        await database.persist(user);
+        expect(user.logins).toBe(1 + 2 + 10);
+
+        expect((await database.query(User).filter(user).findOne()).logins).toBe(1 + 2 + 10);
     }
 });

@@ -62,8 +62,12 @@ export class MongoPersistence extends DatabasePersistence {
 
         for (const changeSet of changeSets) {
             updates.push({
-                q: convertClassQueryToMongo(classSchema.classType, changeSet.primaryKey),
-                u: {$set: scopeSerializer.partialSerialize(changeSet.updates)},
+                q: convertClassQueryToMongo(classSchema.classType, changeSet.primaryKey as FilterQuery<T>),
+                u: {
+                    $set: changeSet.changes.$set ? scopeSerializer.partialSerialize(changeSet.changes.$set) : {},
+                    $inc: changeSet.changes.$inc,
+                    $unset: changeSet.changes.$unset,
+                },
                 multi: false,
             });
         }

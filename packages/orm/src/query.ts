@@ -2,10 +2,11 @@ import {ClassSchema, PropertySchema} from '@deepkit/type';
 import {Subject} from 'rxjs';
 import {ClassType} from '@deepkit/core';
 import {FieldName, FlattenIfArray} from './utils';
-import {PrimaryKey} from './identity-map';
+import {PrimaryKeyFields} from './identity-map';
 import {DatabaseSession} from './database-session';
 import {DatabaseAdapter} from './database';
-import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, QueryDatabaseUpdateEvent} from './event';
+import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent} from './event';
+import {Changes} from './changes';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -55,7 +56,7 @@ type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : Re
 export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
 export type FilterQuery<T> = {
-    [P in keyof T]?: Condition<T[P]>;
+    [P in keyof T & string]?: Condition<T[P]>;
 } &
     RootQuerySelector<T>;
 
@@ -184,10 +185,15 @@ export class BaseQuery<T extends Entity> {
         return this;
     }
 
-    filter(filter?: this['model']['filter']): this {
+    filter(filter?: this['model']['filter'] | T): this {
         if (filter && !Object.keys(filter as object).length) filter = undefined;
 
-        this.model.filter = filter;
+        if (filter instanceof this.classSchema.classType) {
+            const primaryKey = this.classSchema.getPrimaryField();
+            this.model.filter = {[primaryKey.name]: filter[primaryKey.name as FieldName<T>]} as this['model']['filter'];
+        } else {
+            this.model.filter = filter;
+        }
         this.model.changed();
         return this;
     }
@@ -297,6 +303,8 @@ export class BaseQuery<T extends Entity> {
 export interface Entity {
 }
 
+export type PatchResult<T, K extends (keyof T) | never = never, PKEY = string> = { modified: number, returning: { [name in K]: T[name][] }, primaryKeys: PKEY[] };
+
 export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ClassSchema<T>,
@@ -310,18 +318,11 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
 
     abstract async findOneOrUndefined(model: MODEL): Promise<T | undefined>;
 
-    abstract async updateOne(model: MODEL, value: T): Promise<boolean>;
+    abstract async delete(model: MODEL): Promise<number>;
 
-    abstract async deleteMany(model: MODEL): Promise<number>;
-
-    abstract async deleteOne(model: MODEL): Promise<number>;
-
-    abstract async patchMany(model: MODEL, value: { [path: string]: any }): Promise<number>;
-
-    abstract async patchOne(model: MODEL, value: { [path: string]: any }): Promise<number>;
+    abstract async patch(model: MODEL, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
 
     abstract async has(model: MODEL): Promise<boolean>;
-
 }
 
 /**
@@ -361,46 +362,20 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         return item;
     }
 
-    public async updateOne(value: T): Promise<boolean> {
-        const hasEvents = this.databaseSession.queryEmitter.onUpdatePre.hasSubscriptions() || this.databaseSession.queryEmitter.onUpdatePost.hasSubscriptions();
-        if (!hasEvents) {
-            return this.resolver.updateOne(this.model, value);
-        }
-
-        const primaryKeys = await this.ids(false);
-        if (!primaryKeys.length) return false;
-
-        if (this.databaseSession.queryEmitter.onUpdatePre.hasSubscriptions()) {
-            const event = new QueryDatabaseUpdateEvent<any>(this.databaseSession, this.classSchema, primaryKeys[0], value);
-            await this.databaseSession.queryEmitter.onUpdatePre.emit(event);
-            if (event.stopped) return event.updated ?? false;
-        }
-
-        const primaryKeyModel = this.model.clone();
-        primaryKeyModel.filter = primaryKeys[0] as FilterQuery<T>;
-        const updated = await this.resolver.updateOne(primaryKeyModel, value);
-
-        if (this.databaseSession.queryEmitter.onUpdatePost.hasSubscriptions()) {
-            const event = new QueryDatabaseUpdateEvent<any>(this.databaseSession, this.classSchema, primaryKeys[0], value);
-            await this.databaseSession.queryEmitter.onUpdatePost.emit(event);
-            if (event.stopped) return event.updated ?? updated;
-        }
-
-        return updated;
-    }
-
     public async deleteMany(): Promise<number> {
-        return this.resolver.deleteMany(this.model);
+        return this.resolver.delete(this.model);
     }
 
     public async deleteOne(): Promise<number> {
-        return this.resolver.deleteOne(this.model);
+        const model = this.model.clone();
+        model.limit = 1;
+        return this.resolver.delete(model);
     }
 
     protected async delete(model: this['model'], many = false) {
         const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions();
         if (!hasEvents) {
-            return many ? this.resolver.deleteMany(model) : this.resolver.deleteOne(model);
+            return this.resolver.delete(model);
         }
 
         let deleted = 0;
@@ -418,9 +393,7 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         primaryKeyModel.filter = {$or: primaryKeys} as FilterQuery<T>;
 
         if (many) {
-            deleted = await this.resolver.deleteMany(primaryKeyModel);
-        } else {
-            deleted = await this.resolver.deleteOne(primaryKeyModel);
+            deleted = await this.resolver.delete(primaryKeyModel);
         }
 
         if (this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions()) {
@@ -432,59 +405,66 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         return deleted;
     }
 
-    //todo, add new patch type
-    public async patchMany(patch: { [path: string]: any }): Promise<number> {
-        return this.patch(this.model, true, patch);
+    public async patchMany(patch: Changes<T> | Partial<T>): Promise<PatchResult<T>> {
+        return this.patch(this.model, patch);
     }
 
-    //todo, add new patch type
-    public async patchOne(patch: { [path: string]: any }): Promise<number> {
-        return this.patch(this.model, false, patch);
+    public async patchOne(patch: Changes<T> | Partial<T>): Promise<PatchResult<T>> {
+        const model = this.model.clone();
+        model.limit = 1;
+        return this.patch(model, patch);
     }
 
-    //todo, add new patch type
-    protected async patch(model: this['model'], many = false, patch: { [path: string]: any },): Promise<number> {
+    protected async patch(model: this['model'], patch: Partial<T> | Changes<T>): Promise<PatchResult<T>> {
+        const changes: Changes<T> = patch;
+        if (!changes.$set) changes.$set = {};
+
+        for (const property of this.classSchema.getClassProperties().values()) {
+            if (property.name in patch) changes.$set![property.name as FieldName<T>] = (patch as any)[property.name];
+        }
+
+        const patchResult: PatchResult<T> = {
+            modified: 0,
+            returning: {},
+            primaryKeys: []
+        };
+
         const hasEvents = this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions() || this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions();
-        console.log('patch', hasEvents);
         if (!hasEvents) {
-            return many ? this.resolver.patchMany(model, patch) : this.resolver.patchOne(model, patch);
+            await this.resolver.patch(model, changes, patchResult);
+            return patchResult;
         }
 
         const primaryKeys = await this.ids(false);
-        if (!many) primaryKeys.splice(1, primaryKeys.length);
+        if (model.limit === 1) primaryKeys.splice(1, primaryKeys.length);
 
         if (this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions()) {
-            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, patch);
-            await this.databaseSession.queryEmitter.onDeletePre.emit(event);
-            if (event.stopped) return event.updated ?? 0;
+            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, changes, patchResult);
+            await this.databaseSession.queryEmitter.onPatchPre.emit(event);
+            if (event.stopped) return patchResult;
         }
 
         const primaryKeyModel = model.clone();
         primaryKeyModel.filter = {$or: primaryKeys} as FilterQuery<T>;
 
-        let patched = 0;
-        if (many) {
-            patched = await this.resolver.patchMany(primaryKeyModel, patch);
-        } else {
-            patched = await this.resolver.patchOne(primaryKeyModel, patch);
-        }
+        await this.resolver.patch(primaryKeyModel, changes, patchResult);
 
         if (this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions()) {
-            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, patch);
+            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, changes, patchResult);
             await this.databaseSession.queryEmitter.onPatchPost.emit(event);
-            if (event.stopped) return event.updated ?? patched;
+            if (event.stopped) return patchResult;
         }
 
-        return patched;
+        return patchResult;
     }
 
     public async has(): Promise<boolean> {
         return await this.count() > 0;
     }
 
-    public async ids(singleKey?: false): Promise<PrimaryKey<T>[]>;
+    public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;
     public async ids<T = string>(singleKey: true): Promise<T[]>;
-    public async ids(singleKey: boolean = false): Promise<(PrimaryKey<T> | any)[]> {
+    public async ids(singleKey: boolean = false): Promise<(PrimaryKeyFields<T> | any)[]> {
         const pks = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
         if (singleKey && pks.length > 1) {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key. singleKey impossible.`);

@@ -1,4 +1,4 @@
-import {Entity, Formatter, GenericQueryResolver} from '@deepkit/orm';
+import {Changes, Entity, Formatter, GenericQueryResolver, PatchResult} from '@deepkit/orm';
 import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@deepkit/type';
 import {DEEP_SORT, MongoQueryModel} from './query.model';
 import {convertClassQueryToMongo,} from './mapping';
@@ -27,16 +27,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         count: t.number
     });
 
-    public async deleteOne(queryModel: MongoQueryModel<T>): Promise<number> {
-        return await this.delete(queryModel, false);
-    }
-
     async has(model: MongoQueryModel<T>): Promise<boolean> {
         return await this.count(model) > 0;
-    }
-
-    public async deleteMany(queryModel: MongoQueryModel<T>): Promise<number> {
-        return await this.delete(queryModel, true);
     }
 
     protected getPrimaryKeysProjection(classSchema: ClassSchema) {
@@ -76,42 +68,25 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return {mongoFilter: {$or: mongoFilters}, primaryKeys: primaryKeys};
     }
 
-    public async delete(queryModel: MongoQueryModel<T>, multi: boolean = false): Promise<number> {
+    public async delete(queryModel: MongoQueryModel<T>): Promise<number> {
         // const {primaryKeys} = await this.fetchIds(queryModel, multi);
         //
         // if (primaryKeys.length === 0) return 0;
         // this.databaseSession.identityMap.deleteMany(this.classSchema, primaryKeys);
-
         const mongoFilter = getMongoFilter(this.classSchema, queryModel);
-        const limit = multi ? 0 : 1;
-        return await this.databaseSession.adapter.client.execute(new DeleteCommand(this.classSchema, mongoFilter, limit));
+        return await this.databaseSession.adapter.client.execute(new DeleteCommand(this.classSchema, mongoFilter, queryModel.limit));
     }
 
-    public async patchOne(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<number> {
-        return await this.update(queryModel, {$set: value});
-    }
-
-    public async patchMany(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<number> {
-        return await this.update(queryModel, {$set: value}, true);
-    }
-
-    public async updateOne(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<boolean> {
-        return await this.update(queryModel, value) === 1;
-    }
-
-    public async updateMany(queryModel: MongoQueryModel<T>, value: { [path: string]: any }): Promise<number> {
-        return await this.update(queryModel, value, true);
-    }
-
-    public async update(queryModel: MongoQueryModel<T>, value: { [path: string]: any }, multi: boolean = false): Promise<number> {
-        if (queryModel.hasJoins()) {
+    public async patch(model: MongoQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
+        if (model.hasJoins()) {
             throw new Error('Not implemented: Use aggregate to retrieve ids, then do the query');
         }
-        let filter = getMongoFilter(this.classSchema, queryModel);
-        return await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
+        let filter = getMongoFilter(this.classSchema, model);
+        //todo implement "returning"
+        patchResult.modified = await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
             q: filter || {},
-            u: value,
-            multi: multi
+            u: changes,
+            multi: model.limit === 0
         }]));
     }
 

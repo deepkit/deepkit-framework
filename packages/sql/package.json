@@ -25,11 +25,11 @@
   },
   "devDependencies": {
     "@types/jest": "^26.0.4",
-    "@types/sqlite3": "^3.1.6",
+    "@types/better-sqlite3": "^5.4.0",
     "@types/sqlstring": "^2.2.1",
     "@types/pg": "^7.14.4",
     "jest-serial-runner": "^1.1.0",
-    "sqlite3": "^5.0.0",
+    "better-sqlite3": "^7.1.1",
     "mariadb": "^2.4.2",
     "pg": "^8.3.3",
     "reflect-metadata": "^0.1.13"

@@ -5,6 +5,8 @@ import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {DatabaseSession} from './database-session';
 import {isActiveRecordType} from './active-record';
 import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
+import {Changes} from './changes';
+import {PrimaryKeyFields} from './identity-map';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -21,8 +23,9 @@ export abstract class DatabaseAdapterQueryFactory {
 }
 
 export interface DatabasePersistenceChangeSet<T> {
-    updates: Partial<T>;
-    primaryKey: Partial<T>;
+    changes: Changes<T>;
+    item: T;
+    primaryKey: PrimaryKeyFields<T>;
 }
 
 export abstract class DatabasePersistence {

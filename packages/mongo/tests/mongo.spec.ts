@@ -112,10 +112,10 @@ test('test save model', async () => {
     expect(listAll[0].name).toBe('myName');
     expect(listAll[0].id).toBe(instance.id);
 
-    expect(await session.query(SimpleModel).filter({name: 'noneExisting'}).patchOne({name: 'myName2'})).toBe(false);
+    expect((await session.query(SimpleModel).filter({name: 'noneExisting'}).patchOne({name: 'myName2'})).modified).toBe(0);
 
     expect(await session.query(SimpleModel).filter({id: instance.id}).ids(true)).toEqual([instance.id]);
-    expect(await session.query(SimpleModel).filter({id: instance.id}).patchOne({name: 'myName2'})).toBe(true);
+    expect((await session.query(SimpleModel).filter({id: instance.id}).patchOne({name: 'myName2'})).modified).toBe(1);
 
     {
         const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();

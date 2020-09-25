@@ -3,7 +3,7 @@ import {Entity} from './query';
 import {ClassType, CustomError} from '@deepkit/core';
 import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore} from '@deepkit/type';
 import {GroupArraySort} from '@deepkit/topsort';
-import {getInstanceState, getNormalizedPrimaryKey, IdentityMap, PrimaryKey} from './identity-map';
+import {getInstanceState, getNormalizedPrimaryKey, IdentityMap, PrimaryKeyFields} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
 import {HydratorFn, markAsHydrated} from './formatter';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor} from './converter';
@@ -141,10 +141,11 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                 if (state.isKnownInDatabase()) {
                     const lastSnapshot = state.getSnapshot();
                     const currentSnapshot = doSnapshot(item);
-                    const changes = changeDetector(lastSnapshot, currentSnapshot, item);
-                    if (!changes) continue;
+                    const changeSet = changeDetector(lastSnapshot, currentSnapshot, item);
+                    if (!changeSet) continue;
                     changeSets.push({
-                        updates: changes,
+                        changes: changeSet,
+                        item: item,
                         primaryKey: state.getLastKnownPK(),
                     });
                 } else {
@@ -166,7 +167,9 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                 if (this.emitter.onUpdatePre.hasSubscriptions()) {
                     await this.emitter.onUpdatePre.emit(new UnitOfWorkUpdateEvent(group.type, changeSets));
                 }
+
                 await persistence.update(group.type, changeSets);
+
                 if (this.emitter.onUpdatePost.hasSubscriptions()) {
                     await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, changeSets));
                 }
@@ -220,7 +223,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      * const user = database.getReference(User, 1);
      * ```
      */
-    public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKey<T>): T {
+    public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKeyFields<T>): T {
         const schema = getClassSchema(classType);
         const pk = getNormalizedPrimaryKey(schema, primaryKey);
         return getReference(schema, pk, this.identityMap);

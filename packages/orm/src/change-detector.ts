@@ -1,7 +1,8 @@
 import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@deepkit/type';
 import {getInstanceState} from './identity-map';
-import {getObjectKeysSize} from '@deepkit/core';
+import {empty} from '@deepkit/core';
 import {getJITConverterForSnapshot} from './converter';
+import {Changes, changeSetSymbol} from './changes';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;
@@ -47,17 +48,22 @@ function genericEqual(a: any, b: any): boolean {
     return a === b;
 }
 
-function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitStack = new JitStack()): (lastSnapshot: any, currentSnapshot: any) => any {
+function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitStack = new JitStack()): (lastSnapshot: any, currentSnapshot: any) => Changes<any> {
     const context = new Map<any, any>();
     const prepared = jitStack.prepare(schema);
     context.set('genericEqual', genericEqual);
-    context.set('getObjectKeysSize', getObjectKeysSize);
+    context.set('empty', empty);
     const props: string[] = [];
+
+    function has(accessor: string): string {
+        return `(changeSet.$inc && '${accessor}' in changeSet.$inc) || (changeSet.$unset && '${accessor}' in changeSet.$unset)`;
+    }
 
     function getComparator(property: PropertySchema, last: string, current: string, changedName: string, onChanged: string, jitStack: JitStack): string {
         if (property.isArray) {
             const l = reserveVariable(context, 'l');
             return `
+                if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
                 
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
@@ -73,11 +79,13 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                          ${getComparator(property.getSubType(), `${last}[${l}]`, `${current}[${l}]`, changedName, 'break root;', jitStack)}
                     }
                 }
+                }
             `;
 
         } else if (property.isMap || property.isPartial) {
             const i = reserveVariable(context, 'i');
             return `
+                if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
                     
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
@@ -93,6 +101,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                          ${getComparator(property.getSubType(), `${last}[${i}]`, `${current}[${i}]`, changedName, 'break root;', jitStack)}
                     }
                 }
+                }
             `;
         } else if (property.type === 'class') {
             if (property.isReference) {
@@ -104,6 +113,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                     `);
                 }
                 return `
+                if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
                 
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
@@ -111,6 +121,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                     ${onChanged}
                 } else {
                     ${checks.join('\n')}
+                }
                 }
             `;
             }
@@ -120,6 +131,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             context.set(jitChangeDetectorThis, jitStack.getOrCreate(classSchema, () => createJITChangeDetectorForSnapshot(classSchema, jitStack)));
 
             return `
+                if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
                 
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
@@ -127,27 +139,32 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                     ${onChanged}
                 } else {
                     const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, item);
-                    if (getObjectKeysSize(thisChanged)) {
+                    if (!empty(thisChanged)) {
                         changes.${changedName} = item.${changedName};
                         ${onChanged}    
                     }
                 }
+                }
             `;
         } else if (property.type === 'any' || property.type === 'union') {
             return `
+                if (!${has(changedName)}) {
                 if (!genericEqual(${last}, ${current})) {
                     changes.${changedName} = item.${changedName};
                     ${onChanged}
                 }
+                }
             `;
         } else {
-            //binary, date, boolean, etc are encoded as simple JSON objects (number, boolean, or string)
-            //primitive
+            //binary, date, boolean, etc are encoded as simple JSON objects (number, boolean, or string) primitives
             return `
+            if (!${has(changedName)}) {
             if (${last} !== ${current}) {
                 changes.${changedName} = item.${changedName};
                 ${onChanged}
-            }`;
+            }
+            }
+            `;
         }
     }
 
@@ -158,11 +175,19 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
         props.push(getComparator(property, `last.${property.name}`, `current.${property.name}`, property.name, '', jitStack));
     }
 
+    context.set('changeSetSymbol', changeSetSymbol);
+
     const functionCode = `
         return function(last, current, item) {
+            var changeSet = item[changeSetSymbol] || {};
             var changes = {};
             ${props.join('\n')}
-            return getObjectKeysSize(changes) > 0 ? changes : undefined;
+            if (empty(changes)) {
+                delete changeSet.$set
+            } else {
+                changeSet.$set = changes;
+            }
+            return empty(changeSet) ? undefined : changeSet;
         }
         `;
 
@@ -182,11 +207,11 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
 const changeDetectorSymbol = Symbol('changeDetector');
 
-export function getJitChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => Partial<T> {
+export function getJitChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => Changes<T> | undefined {
     return classSchema.getJit(changeDetectorSymbol, () => createJITChangeDetectorForSnapshot(classSchema));
 }
 
-export function buildChanges<T>(item: T) {
+export function buildChanges<T>(item: T): Changes<T> {
     const state = getInstanceState(item);
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = getJITConverterForSnapshot(state.classSchema)(item);

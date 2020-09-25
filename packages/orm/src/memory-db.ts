@@ -1,8 +1,9 @@
 import {DatabaseSession} from './database-session';
-import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver} from './query';
+import {DatabaseQueryModel, Entity, GenericQuery, GenericQueryResolver, PatchResult} from './query';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet} from './database';
+import {Changes} from './changes';
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     async migrate(classSchemas: Iterable<ClassSchema>) {
@@ -49,11 +50,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                         return Promise.resolve(0);
                     }
 
-                    async deleteMany(model: DatabaseQueryModel<T>): Promise<number> {
-                        return Promise.resolve(0);
-                    }
-
-                    async deleteOne(model: DatabaseQueryModel<T>): Promise<number> {
+                    async delete(model: DatabaseQueryModel<T>): Promise<number> {
                         return Promise.resolve(0);
                     }
 
@@ -69,16 +66,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                         return Promise.resolve(false);
                     }
 
-                    async patchMany(model: DatabaseQueryModel<T>, value: { [p: string]: any }): Promise<number> {
-                        return Promise.resolve(0);
-                    }
-
-                    async patchOne(model: DatabaseQueryModel<T>, value: { [p: string]: any }): Promise<number> {
-                        return Promise.resolve(0);
-                    }
-
-                    async updateOne(model: DatabaseQueryModel<T>, value: {}): Promise<boolean> {
-                        return Promise.resolve(false);
+                    async patch(model: DatabaseQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
                     }
                 }
 

@@ -12,6 +12,8 @@ export class User {
     @t email: string = '';
     @t.optional birthdate?: Date;
 
+    @t logins: number = 0;
+
     @t.type(() => UserCredentials).optional.backReference()
     credentials?: UserCredentials;
 

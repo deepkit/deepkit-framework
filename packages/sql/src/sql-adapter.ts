@@ -1,4 +1,5 @@
 import {
+    Changes,
     Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
@@ -9,6 +10,7 @@ import {
     Entity,
     GenericQuery,
     GenericQueryResolver,
+    PatchResult,
     SORT_ORDER
 } from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
@@ -47,7 +49,10 @@ export abstract class SQLConnection {
 
     abstract prepare(sql: string): Promise<SQLStatement>;
 
-    abstract exec(sql: string): Promise<any>;
+    /**
+     * Runs a single SQL query.
+     */
+    abstract run(sql: string): Promise<any>;
 
     abstract getChanges(): Promise<number>;
 
@@ -85,10 +90,40 @@ export abstract class SQLConnectionPool {
     }
 }
 
+function buildSetFromChanges(platform: DefaultPlatform, classSchema: ClassSchema, changes: Changes<any>): string[] {
+    const set: string[] = [];
+    const scopeSerializer = platform.serializer.for(classSchema);
+
+    if (changes.$set) {
+        const value = scopeSerializer.partialSerialize(changes.$set);
+        for (const i in value) {
+            if (!value.hasOwnProperty(i)) continue;
+            set.push(`${platform.quoteIdentifier(i)} = ${platform.quoteValue(value[i])}`);
+        }
+    }
+
+    if (changes.$inc) {
+        for (const i in changes.$inc) {
+            if (!changes.$inc.hasOwnProperty(i)) continue;
+            set.push(`${platform.quoteIdentifier(i)} = ${platform.quoteIdentifier(i)} + ${platform.quoteValue(changes.$inc[i])}`);
+        }
+    }
+
+    if (changes.$unset) {
+        for (const i in changes.$unset) {
+            if (!changes.$unset.hasOwnProperty(i)) continue;
+            set.push(`${platform.quoteIdentifier(i)} = NULL`);
+        }
+    }
+
+    return set;
+}
+
 export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> {
     protected tableId = this.platform.getTableIdentifier.bind(this.platform);
     protected quoteIdentifier = this.platform.quoteIdentifier.bind(this.platform);
     protected quote = this.platform.quoteValue.bind(this.platform);
+    protected sqlBuilder = new SqlBuilder(this.platform);
 
     constructor(
         protected connectionPool: SQLConnectionPool,
@@ -113,8 +148,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 
     async count(model: SQLQueryModel<T>): Promise<number> {
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
+        const sql = this.sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
         const connection = this.connectionPool.getConnection();
         try {
             const row = await connection.execAndReturnSingle(sql);
@@ -125,33 +159,24 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         }
     }
 
-    async deleteMany(model: SQLQueryModel<T>): Promise<number> {
+    async delete(model: SQLQueryModel<T>): Promise<number> {
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
+        const sql = this.sqlBuilder.build(this.classSchema, model, 'DELETE');
         const connection = this.connectionPool.getConnection();
         try {
-            await connection.exec(sql);
+            await connection.run(sql);
             return await connection.getChanges();
         } finally {
             connection.release();
         }
     }
 
-    async deleteOne(model: SQLQueryModel<T>): Promise<number> {
-        if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
-        model = model.clone();
-        model.limit = 1;
-        return await this.deleteMany(model);
-    }
-
     async find(model: SQLQueryModel<T>): Promise<T[]> {
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const sql = sqlBuilder.select(this.classSchema, model);
+        const sql = this.sqlBuilder.select(this.classSchema, model);
         const connection = this.connectionPool.getConnection();
         try {
             const rows = await connection.execAndReturnAll(sql);
-            const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
+            const converted = this.sqlBuilder.convertRows(this.classSchema, model, rows);
             const formatter = this.createFormatter(model.withIdentityMap);
             return converted.map(v => formatter.hydrate(model, v));
         } finally {
@@ -160,15 +185,14 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 
     async findOneOrUndefined(model: SQLQueryModel<T>): Promise<T | undefined> {
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const sql = sqlBuilder.select(this.classSchema, model);
+        const sql = this.sqlBuilder.select(this.classSchema, model);
 
         const connection = this.connectionPool.getConnection();
         try {
             const row = await connection.execAndReturnSingle(sql);
             if (!row) return;
 
-            const converted = sqlBuilder.convertRows(this.classSchema, model, [row]);
+            const converted = this.sqlBuilder.convertRows(this.classSchema, model, [row]);
             const formatter = this.createFormatter(model.withIdentityMap);
             return formatter.hydrate(model, converted[0]);
         } finally {
@@ -180,16 +204,17 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         return await this.count(model) > 0;
     }
 
-    patchMany(model: SQLQueryModel<T>, value: { [p: string]: any }): Promise<number> {
-        return Promise.resolve(0);
-    }
-
-    patchOne(model: SQLQueryModel<T>, value: { [p: string]: any }): Promise<number> {
-        return Promise.resolve(0);
-    }
-
-    updateOne(model: SQLQueryModel<T>, value: T): Promise<boolean> {
-        return Promise.resolve(false);
+    async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
+        //this is the default SQL implementation that does not support RETURNING functionality (e.g. returning values from changes.$inc)
+        const set = buildSetFromChanges(this.platform, this.classSchema, changes);
+        const sql = this.sqlBuilder.update(this.classSchema, model, set);
+        const connection = this.connectionPool.getConnection();
+        try {
+            await connection.run(sql);
+            patchResult.modified = await connection.getChanges();
+        } finally {
+            connection.release();
+        }
     }
 }
 
@@ -254,7 +279,7 @@ export class SqlMigrationHandler {
                 const [table] = this.database.adapter.platform.createTables([this.migrationEntity]);
                 const createSql = this.database.adapter.platform.getAddTableDDL(table);
                 for (const sql of createSql) {
-                    await connection.exec(sql);
+                    await connection.run(sql);
                 }
                 return 0;
             } finally {
@@ -282,7 +307,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
             this.platform.createTables(classSchemas, database);
             const DDLs = this.platform.getAddTablesDDL(database);
             for (const sql of DDLs) {
-                await connection.exec(sql);
+                await connection.run(sql);
             }
         } finally {
             connection.release();
@@ -315,6 +340,8 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        //simple update implementation that is not particular performant nor does it support atomic updates (like $inc)
+
         const scopeSerializer = this.platform.serializer.for(classSchema);
         const updates: string[] = [];
 
@@ -327,7 +354,7 @@ export class SQLPersistence extends DatabasePersistence {
                 if (!pk.hasOwnProperty(i)) continue;
                 where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
             }
-            const value = scopeSerializer.partialSerialize(changeSet.updates);
+            const value = scopeSerializer.partialSerialize(changeSet.changes.$set || {});
             for (const i in value) {
                 if (!value.hasOwnProperty(i)) continue;
                 set.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(value[i])}`);
@@ -337,7 +364,7 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         //try bulk update via https://stackoverflow.com/questions/11563869/update-multiple-rows-with-different-values-in-a-single-sql-query
-        await this.connection.exec(updates.join(';\n'));
+        await this.connection.run(updates.join(';\n'));
     }
 
     protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
@@ -352,7 +379,7 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         const sql = this.getInsertSQL(classSchema, fields.map(v => this.platform.quoteIdentifier(v)), insert);
-        await this.connection.exec(sql);
+        await this.connection.run(sql);
     }
 
     protected getInsertSQL(classSchema: ClassSchema, fields: string[], values: string[]): string {
@@ -367,6 +394,6 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         const inValues = pks.map(v => this.platform.quoteValue(v)).join(', ');
-        await this.connection.exec(`DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`);
+        await this.connection.run(`DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`);
     }
 }

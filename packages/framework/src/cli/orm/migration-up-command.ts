@@ -45,7 +45,7 @@ export class MigrationUpCommand {
                             let i = 1;
                             for (const sql of migration.up()) {
                                 this.logger.log(`<yellow>    ${i++}. ${indent(4)(sql)}</yellow>`);
-                                await connection.exec(sql);
+                                await connection.run(sql);
                             }
                         }
                         await migrationHandler.setLatestMigrationVersion(migration.version);

@@ -1,13 +1,13 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, plainSerializer, t} from '@deepkit/type';
+import {getClassSchema, plainSerializer, t} from '@deepkit/type';
 import {Formatter} from '../src/formatter';
 import {DatabaseQueryModel} from '../src/query';
 import {buildChanges} from '../src/change-detector';
 import {DatabaseSession} from '../src/database-session';
 import {MemoryDatabaseAdapter} from '../src/memory-db';
 import {getInstanceState} from '../src/identity-map';
-import {UnitOfWorkDatabaseEmitter} from '../src/event';
+import {atomicChange} from '../src/changes';
 
 test('change-detection', () => {
     class Image {
@@ -48,30 +48,30 @@ test('change-detection', () => {
         expect(() => user.image.data).toThrow(`Can not access Image.data since class was not completely hydrated`);
 
         user.username = 'Bar';
-        expect(buildChanges(user)).toEqual({username: 'Bar'});
+        expect(buildChanges(user)).toEqual({$set: {username: 'Bar'}});
 
         expect(buildChanges(user.image)).toEqual({});
         user.image.data = 'changed';
         expect(user.image.data).toBe('changed');
-        expect(buildChanges(user.image)).toEqual({data: 'changed'});
+        expect(buildChanges(user.image)).toEqual({$set: {data: 'changed'}});
 
         //changing user.image.data doesnt trigger for user
-        expect(buildChanges(user)).toEqual({username: 'Bar'});
+        expect(buildChanges(user)).toEqual({$set: {username: 'Bar'}});
 
         user.image.id = 233;
-        expect(buildChanges(user)).toEqual({username: 'Bar', image: user.image});
+        expect(buildChanges(user)).toEqual({$set: {username: 'Bar', image: user.image}});
 
         user.image.id = 1;
-        expect(buildChanges(user)).toEqual({username: 'Bar'});
+        expect(buildChanges(user)).toEqual({$set: {username: 'Bar'}});
 
         user.image = session.getReference(Image, 2);
-        expect(buildChanges(user)).toEqual({username: 'Bar', image: user.image});
+        expect(buildChanges(user)).toEqual({$set: {username: 'Bar', image: user.image}});
 
         user.image = session.getReference(Image, 1);
-        expect(buildChanges(user)).toEqual({username: 'Bar'});
+        expect(buildChanges(user)).toEqual({$set: {username: 'Bar'}});
 
         user.image = undefined;
-        expect(buildChanges(user)).toEqual({username: 'Bar', image: undefined});
+        expect(buildChanges(user)).toEqual({$set: {username: 'Bar', image: undefined}});
     }
 });
 
@@ -85,7 +85,30 @@ test('change-detection string', () => {
 
     item.username = 'Alex';
 
-    expect(buildChanges(item)).toEqual({username: 'Alex'});
+    expect(buildChanges(item)).toEqual({$set: {username: 'Alex'}});
+});
+
+test('change-detection number', () => {
+    const s = t.schema({
+        position: t.number,
+    });
+
+    {
+        const item = plainSerializer.for(s).deserialize({position: 1});
+        getInstanceState(item).markAsPersisted();
+        item.position = 2;
+        expect(buildChanges(item)).toEqual({$set: {position: 2}});
+    }
+
+    {
+        const item = plainSerializer.for(s).deserialize({position: 1});
+        getInstanceState(item).markAsPersisted();
+
+        atomicChange(item).increase('position', 5);
+        expect(item.position).toBe(6);
+
+        expect(buildChanges(item)).toEqual({$inc: {position: 5}});
+    }
 });
 
 test('change-detection array', () => {
@@ -98,7 +121,7 @@ test('change-detection array', () => {
         const item = plainSerializer.for(s).deserialize({id: 1, tags: ['a', 'b', 'c']});
         getInstanceState(item).markAsPersisted();
         item.tags![0] = '000';
-        expect(buildChanges(item)).toEqual({tags: ['000', 'b', 'c']});
+        expect(buildChanges(item)).toEqual({$set: {tags: ['000', 'b', 'c']}});
     }
 
     {
@@ -108,10 +131,10 @@ test('change-detection array', () => {
         item.tags!.splice(1, 1); //remove b
         expect(item.tags).toEqual(['a', 'c']);
 
-        expect(buildChanges(item)).toEqual({tags: ['a', 'c']});
+        expect(buildChanges(item)).toEqual({$set: {tags: ['a', 'c']}});
 
         item.tags = undefined;
-        expect(buildChanges(item)).toEqual({tags: undefined});
+        expect(buildChanges(item)).toEqual({$set: {tags: undefined}});
     }
 });
 
@@ -126,7 +149,7 @@ test('change-detection object', () => {
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toEqual({});
         item.tags!.b = false;
-        expect(buildChanges(item)).toEqual({tags: {a: true, b: false}});
+        expect(buildChanges(item)).toEqual({$set: {tags: {a: true, b: false}}});
     }
 
     {
@@ -136,10 +159,10 @@ test('change-detection object', () => {
         delete item.tags!.b;
         expect(item.tags).toEqual({a: true});
 
-        expect(buildChanges(item)).toEqual({tags: {a: true}});
+        expect(buildChanges(item)).toEqual({$set: {tags: {a: true}}});
 
         item.tags = undefined;
-        expect(buildChanges(item)).toEqual({tags: undefined});
+        expect(buildChanges(item)).toEqual({$set: {tags: undefined}});
     }
 });
 
@@ -161,10 +184,10 @@ test('change-detection union', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.tags = {type: 'b', size: 5};
-        expect(buildChanges(item)).toEqual({tags: {type: 'b', size: 5}});
+        expect(buildChanges(item)).toEqual({$set: {tags: {type: 'b', size: 5}}});
 
         item.tags = undefined;
-        expect(buildChanges(item)).toEqual({tags: undefined});
+        expect(buildChanges(item)).toEqual({$set: {tags: undefined}});
     }
 });
 
@@ -186,10 +209,10 @@ test('change-detection enum', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.enum = MyEnum.stopped;
-        expect(buildChanges(item)).toEqual({enum: MyEnum.stopped});
+        expect(buildChanges(item)).toEqual({$set: {enum: MyEnum.stopped}});
 
         item.enum = undefined;
-        expect(buildChanges(item)).toEqual({enum: undefined});
+        expect(buildChanges(item)).toEqual({$set: {enum: undefined}});
     }
 });
 
@@ -205,7 +228,7 @@ test('change-detection arrayBuffer', () => {
         expect(buildChanges(item)).toEqual({});
 
         new Uint8Array(item.buffer)[5] = 5;
-        expect(buildChanges(item)).toEqual({buffer: item.buffer});
+        expect(buildChanges(item)).toEqual({$set: {buffer: item.buffer}});
 
         new Uint8Array(item.buffer)[5] = 0;
         expect(buildChanges(item)).toEqual({});
@@ -225,7 +248,7 @@ test('change-detection typedArray', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.buffer[4] = 5;
-        expect(buildChanges(item)).toEqual({buffer: item.buffer});
+        expect(buildChanges(item)).toEqual({$set: {buffer: item.buffer}});
 
         item.buffer[4] = 0;
         expect(buildChanges(item)).toEqual({});
@@ -244,19 +267,19 @@ test('change-detection array in array', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.tags = [];
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = [['a'], ['c']];
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = [['a', 'b'], []];
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = [['a', 'b'], ['c']];
         expect(buildChanges(item)).toEqual({});
 
         item.tags = [['a', 'b'], ['d']];
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
     }
 });
 
@@ -272,13 +295,13 @@ test('change-detection array in object', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.tags = {};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = {foo: ['a']};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = {foo: ['a', 'b'], bar: ['d']};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = {foo: ['a', 'b'], bar: ['c']};
         expect(buildChanges(item)).toEqual({});
@@ -297,22 +320,22 @@ test('change-detection object in object', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.tags = {};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = {foo: {a: true}, bar: {b: true}};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = {foo: {a: true}, bar: {}};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = {foo: {a: true}, bar: {b: false}};
         expect(buildChanges(item)).toEqual({});
 
         item.tags = {foo: {}, bar: {b: false}};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
 
         item.tags = {foo: {a: true}};
-        expect(buildChanges(item)).toEqual({tags: item.tags});
+        expect(buildChanges(item)).toEqual({$set: {tags: item.tags}});
     }
 });
 
@@ -334,13 +357,13 @@ test('change-detection class', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.config = {a: 'bar', b: 'bar'};
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = {a: undefined, b: 'bar'};
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = {a: 'foo', b: 'bar2'};
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = {a: 'foo', b: 'bar'};
         expect(buildChanges(item)).toEqual({});
@@ -365,25 +388,25 @@ test('change-detection class in array', () => {
         expect(buildChanges(item)).toEqual({});
 
         item.config = [{name: 'foo', value: 'bar'}];
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = [{name: 'foo2', value: 'bar2'}];
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = [{name: 'foo3', value: 'bar'}, {name: 'foo2', value: 'bar2'}];
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = [{name: 'foo', value: 'bar'}, {name: 'foo4', value: 'bar2'}];
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = [{name: 'foo4', value: 'bar2'}];
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = [];
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = [{name: 'foo', value: 'bar'}, {name: 'foo2', value: 'bar2'}, {name: 'foo3', value: 'bar3'}];
-        expect(buildChanges(item)).toEqual({config: item.config});
+        expect(buildChanges(item)).toEqual({$set: {config: item.config}});
 
         item.config = [{name: 'foo', value: 'bar'}, {name: 'foo2', value: 'bar2'}];
         expect(buildChanges(item)).toEqual({});

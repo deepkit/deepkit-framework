@@ -212,7 +212,6 @@ export class SqlBuilder {
     }
 
     public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string): string {
-
         const tableName = this.platform.getTableIdentifier(schema);
         const whereClause = this.getWhereSQL(schema, model.filter) || 'true';
         const joins = this.getJoinSQL(model, tableName);
@@ -221,8 +220,15 @@ export class SqlBuilder {
         if (model.limit !== undefined) sql += ' LIMIT ' + this.platform.quoteValue(model.limit);
         if (model.skip !== undefined) sql += ' SKIP ' + this.platform.quoteValue(model.skip);
 
-        // console.log('build', sql);
         return sql;
+    }
+
+    public update<T>(schema: ClassSchema, model: SQLQueryModel<T>, set: string[]): string {
+        const tableName = this.platform.getTableIdentifier(schema);
+        const primaryKey = schema.getPrimaryField();
+        const select = this.select(schema, model, {select: [primaryKey.name]});
+
+        return `UPDATE ${tableName} SET ${set.join(', ')} WHERE ${this.platform.quoteIdentifier(primaryKey.name)} IN (SELECT * FROM (${select}) as __)`;
     }
 
     public select(
