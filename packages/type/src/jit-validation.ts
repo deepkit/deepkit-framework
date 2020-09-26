@@ -6,7 +6,7 @@ import './jit-validation-templates';
 import {reserveVariable} from './serializer-compiler';
 import {JitStack, resolvePropertyCompilerSchema} from './jit';
 
-const jitFunctions = new WeakMap<ClassSchema<any>, any>();
+const jitFunctions = new WeakMap<ClassSchema, any>();
 const CacheJitPropertyMap = new Map<PropertyCompilerSchema, any>();
 const CacheValidatorInstances = new Map<ClassType<PropertyValidator>, PropertyValidator>();
 
@@ -133,7 +133,7 @@ export function getDataCheckerJS(
     }
 }
 
-export function jitValidateProperty(property: PropertyCompilerSchema, classType?: ClassType<any>): (value: any, path?: string, errors?: ValidationFailedItem[], overwritePah?: string) => ValidationFailedItem[] {
+export function jitValidateProperty(property: PropertyCompilerSchema, classType?: ClassType): (value: any, path?: string, errors?: ValidationFailedItem[], overwritePah?: string) => ValidationFailedItem[] {
     if (property.type === 'class') {
         const foreignSchema = getClassSchema(property.resolveClassType!);
         if (foreignSchema.decorator) {

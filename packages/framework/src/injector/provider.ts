@@ -31,7 +31,7 @@ import {ClassType} from '@deepkit/core';
  *
  * @stable
  */
-export interface TypeProvider extends ClassType<any> {
+export interface TypeProvider extends ClassType {
 }
 /**
  * @whatItDoes Configures the {@link Injector} to return a value for a token.
@@ -98,7 +98,7 @@ export interface ClassProvider {
     /**
      * Class to instantiate for the `token`.
      */
-    useClass: ClassType<any>;
+    useClass: ClassType;
     /**
      * If true, then injector returns an array of instances. This is useful to allow multiple
      * providers spread across many files to provide configuration information to a common token.

@@ -49,7 +49,7 @@ export function handleCustomValidator<T>(
     value: any,
     propertyPath: string,
     errors: ValidationFailedItem[],
-    classType?: ClassType<any>,
+    classType?: ClassType,
 ) {
     try {
         const result = validator.validate(value, propSchema.name, classType);

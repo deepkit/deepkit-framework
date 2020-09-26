@@ -17,7 +17,7 @@ export function findParent<T>(parents: any[], parentType: ClassType<T>): T | voi
     }
 }
 
-const resolvedReflectionCaches = new Map<ClassType<any>, { [path: string]: PropertyCompilerSchema }>();
+const resolvedReflectionCaches = new Map<ClassType, { [path: string]: PropertyCompilerSchema }>();
 
 /**
  * This resolves the PropertyCompilerSchema for a property path.
@@ -312,11 +312,11 @@ export function getClassToXFunction<T>(schema: ClassSchema<T>, serializer: Seria
     return jit[serializer.fromClassSymbol];
 }
 
-export function getGeneratedJitFunctionFromClass(schema: ClassSchema<any>, serializer: Serializer) {
+export function getGeneratedJitFunctionFromClass(schema: ClassSchema, serializer: Serializer) {
     return schema.jit[serializer.fromClassSymbol];
 }
 
-export function getJitFunctionXToClass(schema: ClassSchema<any>, serializer: Serializer) {
+export function getJitFunctionXToClass(schema: ClassSchema, serializer: Serializer) {
     return schema.jit[serializer.toClassSymbol];
 }
 

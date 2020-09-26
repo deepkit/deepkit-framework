@@ -204,7 +204,7 @@ export class ConnectionMiddleware {
     protected collections: { [messageId: string]: Collection<any> } = {};
     protected subjectSubscriptions: { [messageId: string]: Subscriptions } = {};
     protected observables: { [messageId: string]: { p?: PropertySchema, prefix: string, observable: Observable<any>, subscriber: { [subscriberId: string]: Subscription } } } = {};
-    protected entitySent: { [messageId: string]: { classType: ClassType<any>, id: string } } = {};
+    protected entitySent: { [messageId: string]: { classType: ClassType, id: string } } = {};
 
     public destroy() {
         for (const sub of each(this.collectionSubscriptions)) {

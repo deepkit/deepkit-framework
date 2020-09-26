@@ -7,8 +7,8 @@ export type FieldName<T> = keyof T & string;
 export type Relations<T> = { [P in keyof T]: T[P] extends object ? T[P] : (T[P] extends Array<infer U> ? U extends object ? T[P] : never : never) };
 export type RelationName<T> = keyof Relations<T> & string;
 
-export function getClassSchemaInstancePairs<T extends Entity>(items: Iterable<T>): Map<ClassSchema<any>, T[]> {
-    const map = new Map<ClassSchema<any>, T[]>();
+export function getClassSchemaInstancePairs<T extends Entity>(items: Iterable<T>): Map<ClassSchema, T[]> {
+    const map = new Map<ClassSchema, T[]>();
 
     for (const item of items) {
         const classSchema = getClassSchema(getClassTypeFromInstance(item));

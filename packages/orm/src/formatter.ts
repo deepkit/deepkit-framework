@@ -56,7 +56,7 @@ export class Formatter {
     ) {
     }
 
-    protected getInstancePoolForClass(classType: ClassType<any>): Map<PKHash, any> {
+    protected getInstancePoolForClass(classType: ClassType): Map<PKHash, any> {
         if (!this.instancePools.has(classType)) {
             this.instancePools.set(classType, new Map());
         }

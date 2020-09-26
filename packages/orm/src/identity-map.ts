@@ -7,7 +7,7 @@ import {changeSetSymbol} from './changes';
 
 export type PrimaryKeyFields<T> = { [name in keyof T & string]?: T[name] };
 
-export function getNormalizedPrimaryKey(schema: ClassSchema<any>, primaryKey: any) {
+export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();
 
     if (primaryFields.length > 1) {

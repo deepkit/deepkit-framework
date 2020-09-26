@@ -116,7 +116,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     }
 
     protected async doPersist(persistence: DatabasePersistence) {
-        const sorter = new GroupArraySort<Entity, ClassSchema<any>>();
+        const sorter = new GroupArraySort<Entity, ClassSchema>();
         sorter.sameTypeExtraGrouping = true;
         sorter.throwOnNonExistingDependency = false;
 

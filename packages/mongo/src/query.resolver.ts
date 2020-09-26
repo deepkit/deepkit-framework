@@ -301,7 +301,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return pipeline;
     }
 
-    protected getProjection<T>(classSchema: ClassSchema<any>, select: Set<string>): { [name: string]: 0 | 1 } | undefined {
+    protected getProjection<T>(classSchema: ClassSchema, select: Set<string>): { [name: string]: 0 | 1 } | undefined {
         const res: { [name: string]: 0 | 1 } = {};
 
         if (select.size) {

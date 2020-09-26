@@ -121,7 +121,7 @@ export function isPromise(obj: any): obj is Promise<any> {
  *
  * @public
  */
-export function isClass(obj: any): obj is ClassType<any> {
+export function isClass(obj: any): obj is ClassType {
     if ('function' === typeof obj) {
         return obj.toString().startsWith('class ') || obj.toString().startsWith('class{');
     }

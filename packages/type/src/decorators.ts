@@ -7,7 +7,7 @@ import {plainSerializer} from './plain-serializer';
 import {PartialField, typedArrayMap, typedArrayNamesMap, Types} from './models';
 
 export interface GlobalStore {
-    RegisteredEntities: { [name: string]: ClassType<any> | ClassSchema };
+    RegisteredEntities: { [name: string]: ClassType | ClassSchema };
     unpopulatedCheckActive: boolean;
 }
 
@@ -30,7 +30,7 @@ export function getGlobalStore(): GlobalStore {
 }
 
 export interface PropertyValidator {
-    validate<T>(value: any, propertyName: string, classType?: ClassType<any>,): PropertyValidatorError | undefined | void;
+    validate<T>(value: any, propertyName: string, classType?: ClassType,): PropertyValidatorError | undefined | void;
 }
 
 export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
@@ -145,7 +145,7 @@ export class PropertyCompilerSchema {
 
     constructor(
         public name: string,
-        public classType?: ClassType<any>
+        public classType?: ClassType
     ) {
     }
 
@@ -183,7 +183,7 @@ export class PropertyCompilerSchema {
         throw new Error('No array or map type');
     }
 
-    get resolveClassType(): ClassType<any> | undefined {
+    get resolveClassType(): ClassType | undefined {
         return this.classType;
     }
 
@@ -294,7 +294,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         throw new Error('No array or map type');
     }
 
-    setClassType(classType?: ClassType<any>) {
+    setClassType(classType?: ClassType) {
         this.classType = classType;
     }
 
@@ -438,14 +438,14 @@ export class PropertySchema extends PropertyCompilerSchema {
         return this.templateArgs ? this.templateArgs[position] : undefined;
     }
 
-    get resolveClassType(): ClassType<any> | undefined {
+    get resolveClassType(): ClassType | undefined {
         if (this.type === 'class' || this.type === 'enum') {
             return this.getResolvedClassType();
         }
         return;
     }
 
-    getResolvedClassTypeForValidType(): ClassType<any> | undefined {
+    getResolvedClassTypeForValidType(): ClassType | undefined {
         if (this.type === 'class' || this.type === 'enum') {
             return this.getResolvedClassType();
         }
@@ -462,7 +462,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         return false;
     }
 
-    getResolvedClassType(): ClassType<any> {
+    getResolvedClassType(): ClassType {
         if (this.isArray || this.isMap) return this.getSubType().getResolvedClassType();
 
         if (this.classTypeResolved) {
@@ -566,7 +566,7 @@ export class ClassSchema<T = any> {
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
     protected hasFullLoadHooksCheck = false;
 
-    constructor(classType: ClassType<any>) {
+    constructor(classType: ClassType) {
         this.classType = classType;
     }
 
@@ -645,7 +645,7 @@ export class ClassSchema<T = any> {
         this.indices.set(name, {fields: fieldNames, options: options || {}});
     }
 
-    public clone(classType: ClassType<any>): ClassSchema {
+    public clone(classType: ClassType): ClassSchema {
         const s = new ClassSchema(classType);
         s.name = this.name;
         s.collectionName = this.collectionName;
@@ -939,7 +939,7 @@ export class ClassSchema<T = any> {
      * found, we return it. When more than one found, we throw an error saying the user he
      * should make its relation mapping not ambiguous.
      */
-    public findReverseReference(toClassType: ClassType<any>, fromReference: PropertySchema): PropertySchema {
+    public findReverseReference(toClassType: ClassType, fromReference: PropertySchema): PropertySchema {
         if (fromReference.backReference && fromReference.backReference.mappedBy) {
             if (fromReference.getResolvedClassTypeForValidType() === this.classType) {
                 return this.getProperty(fromReference.backReference.mappedBy as string);
@@ -1272,7 +1272,7 @@ export interface BackReferenceOptions<T> {
     /**
      * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
      */
-    via?: ClassType<any> | ForwardRefFn<ClassType<any>>,
+    via?: ClassType | ForwardRefFn<ClassType>,
 
     /**
      * A reference/backReference can define which reference on the other side
@@ -1282,12 +1282,12 @@ export interface BackReferenceOptions<T> {
     mappedBy?: keyof T & string,
 }
 
-export function resolveClassTypeOrForward(type: ClassType<any> | ForwardRefFn<ClassType<any>>): ClassType<any> {
+export function resolveClassTypeOrForward(type: ClassType | ForwardRefFn<ClassType>): ClassType {
     return isFunction(type) ? (type as Function)() : type;
 }
 
 
-export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType<any>) => PropertyValidatorError | undefined | void;
+export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType) => PropertyValidatorError | undefined | void;
 
 export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
 
@@ -1398,7 +1398,7 @@ export interface FieldDecoratorResult<T> {
      * }
      * ```
      */
-    template(...templateArgs: (ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]): this;
+    template(...templateArgs: (ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]): this;
 
     /**
      * Used to define an index on a field.
@@ -1546,7 +1546,7 @@ export interface FieldDecoratorResult<T> {
      *     @f.validator(MyCustomValidator)
      *     name: string;
      *
-     *     @f.validator((value: any, target: ClassType<any>, propertyName: string) => {
+     *     @f.validator((value: any, target: ClassType, propertyName: string) => {
      *          if (value.length > 255) {
      *              return new PropertyValidatorError('too_long', 'Too long :()');
      *          }
@@ -1673,8 +1673,8 @@ function createFieldDecoratorResult<T>(
                 methodsParamNames[parameterIndexOrDescriptor] = givenPropertyName;
             } else if (methodName === 'constructor') {
                 //only for constructor methods
-                const constructorParamNames = getParameterNames((target as ClassType<any>).prototype.constructor);
-                // const constructorParamNames = getCachedParameterNames((target as ClassType<any>).prototype.constructor);
+                const constructorParamNames = getParameterNames((target as ClassType).prototype.constructor);
+                // const constructorParamNames = getCachedParameterNames((target as ClassType).prototype.constructor);
                 givenPropertyName = constructorParamNames[parameterIndexOrDescriptor];
 
                 if (givenPropertyName) {
@@ -1922,7 +1922,7 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.template = (...templateArgs: (ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]) => {
+    fn.template = (...templateArgs: (ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.templateArgs = [];
@@ -1952,7 +1952,7 @@ function createFieldDecoratorResult<T>(
 
     function createValidator(validator: ValidatorFn) {
         return class implements PropertyValidator {
-            validate<T>(value: any, propertyName: string, classType?: ClassType<any>): PropertyValidatorError | undefined | void {
+            validate<T>(value: any, propertyName: string, classType?: ClassType): PropertyValidatorError | undefined | void {
                 return validator(value, propertyName, classType);
             }
         };
@@ -2170,7 +2170,7 @@ function Exclude(t: 'all' | string = 'all') {
     };
 }
 
-type FieldTypes<T> = string | ClassType<any> | ForwardRefFn<T>;
+type FieldTypes<T> = string | ClassType | ForwardRefFn<T>;
 
 type ForwardRefFn<T> = () => T;
 
@@ -2306,11 +2306,11 @@ fRaw['class'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cla
     return fRaw.schema(props, options).classType;
 };
 
-fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>): FieldDecoratorResult<ExtractType<T>[]> {
+fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>): FieldDecoratorResult<ExtractType<T>[]> {
     return Field('array').template(type);
 };
 
-fRaw['map'] = function <T extends ClassType<any> | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType: FieldDecoratorResult<any> = fRaw.any): FieldDecoratorResult<{ [name: string]: ExtractType<T> }> {
+fRaw['map'] = function <T extends ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType: FieldDecoratorResult<any> = fRaw.any): FieldDecoratorResult<{ [name: string]: ExtractType<T> }> {
     return Field('map').template(keyType, type);
 };
 
@@ -2326,13 +2326,13 @@ fRaw['literal'] = function <T extends number | string | boolean>(this: FieldDeco
     });
 };
 
-fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType<any> | ForwardRefFn<any> | ClassSchema | string | number | boolean | PlainSchemaProps | FieldDecoratorResult<any>)[]): FieldDecoratorResult<T> {
+fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType | ForwardRefFn<any> | ClassSchema | string | number | boolean | PlainSchemaProps | FieldDecoratorResult<any>)[]): FieldDecoratorResult<T> {
     return Field('union').use((target, property) => {
         property.setType('union');
     }).template(...types);
 };
 
-fRaw['partial'] = function <T extends ClassType<any>>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
+fRaw['partial'] = function <T extends ClassType>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
     return Field('partial').template(type);
 };
 
@@ -2366,7 +2366,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    type<T extends string | ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>>;
+    type<T extends string | ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>>;
 
     /**
      * Defines a discriminated union type.
@@ -2394,7 +2394,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    union<T extends (ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]>(...type: T): FieldDecoratorResult<ExtractType<T[number]>>;
+    union<T extends (ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]>(...type: T): FieldDecoratorResult<ExtractType<T[number]>>;
 
     /**
      * Marks a field as discriminant. This field MUST have a default value.
@@ -2412,7 +2412,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    array<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>[]>;
+    array<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>[]>;
 
     /**
      * Creates a new ClassSchema from a plain object.
@@ -2498,7 +2498,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    partial<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<PartialField<ExtractType<T>>>;
+    partial<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<PartialField<ExtractType<T>>>;
 
     /**
      * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
@@ -2526,7 +2526,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    map<T extends ClassType<any> | ForwardRefFn<any> | ClassSchema<any> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
+    map<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
 }
 
 /**

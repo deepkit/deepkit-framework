@@ -149,7 +149,7 @@ class EntitySubjectStore<T extends IdInterface> {
 export class EntityState {
     public readonly deleted = new Subject<IdInterface>();
 
-    private readonly items = new Map<ClassType<any>, EntitySubjectStore<any>>();
+    private readonly items = new Map<ClassType, EntitySubjectStore<any>>();
 
     public clear() {
         this.items.clear();

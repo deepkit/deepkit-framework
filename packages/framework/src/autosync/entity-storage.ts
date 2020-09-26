@@ -128,7 +128,7 @@ import {injectable} from '../injector/injector';
 // }
 //
 // export class ReactiveQuery<T> {
-//     public providers: { name: string, classType: ClassType<any>, filter: ReactiveQuery<any>, field: string }[] = [];
+//     public providers: { name: string, classType: ClassType, filter: ReactiveQuery<any>, field: string }[] = [];
 //     public providerCollections: { [name: string]: Collection<any> } = {};
 //     public providersSet = new Set<string>();
 //     public parameters: { [name: string]: any } = {};
@@ -268,7 +268,7 @@ import {injectable} from '../injector/injector';
 //
 //     public getClassQuery(): { query: any, fieldNames: string[] } {
 //         const fieldNames = {};
-//         const query = convertQueryToMongo(this.classType, this.query, (convertClassType: ClassType<any>, path: string, value: any) => {
+//         const query = convertQueryToMongo(this.classType, this.query, (convertClassType: ClassType, path: string, value: any) => {
 //             return value;
 //         }, fieldNames, {
 //             '$parameter': (name, value) => {
@@ -291,10 +291,10 @@ import {injectable} from '../injector/injector';
 //  */
 @injectable()
 export class EntityStorage {
-//     protected sentEntities = new Map<ClassType<any>, { [id: string]: SentState }>();
+//     protected sentEntities = new Map<ClassType, { [id: string]: SentState }>();
 //
-//     protected entitySubscription = new Map<ClassType<any>, Subscription>();
-//     protected entitySubscribed = new Set<ClassType<any>>();
+//     protected entitySubscription = new Map<ClassType, Subscription>();
+//     protected entitySubscribed = new Set<ClassType>();
 //
 //     constructor(
 //         protected readonly writer: ConnectionWriter,

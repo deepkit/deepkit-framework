@@ -39,7 +39,7 @@ export async function closeAllCreatedServers() {
     }
 }
 
-export function appModuleForControllers(controllers: ClassType<any>[], entities: ClassType[] = []): ClassType<any> {
+export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): ClassType {
     const database = Database.createClass('default', new MongoDatabaseAdapter('mongodb://localhost'), entities);
 
     @deepkit.module({
@@ -59,7 +59,7 @@ export function appModuleForControllers(controllers: ClassType<any>[], entities:
 
 export async function createServerClientPair(
     dbTestName: string,
-    AppModule: ClassType<any>
+    AppModule: ClassType
 ): Promise<{
     app: Application,
     server: ApplicationServer,

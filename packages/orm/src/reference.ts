@@ -67,7 +67,7 @@ export function getReference<T>(
     pk: any,
     identityMap?: IdentityMap,
     pool?: Map<string, T>,
-    ReferenceClass?: ClassType<any>
+    ReferenceClass?: ClassType
 ): T {
     let pkHash = '';
     if (identityMap || pool) {
