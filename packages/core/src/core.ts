@@ -224,19 +224,21 @@ export function copy<T>(v: T[]): T[] {
 }
 
 /**
- * Checks whether given array or object is empty (no keys)
+ * Checks whether given array or object is empty (no keys). If given object is falsy, returns false.
  *
  * @public
  */
-export function empty<T>(array: T[] | { [key: string]: T }): boolean {
-    if (!array) {
+export function empty<T>(value?: T[] | object | {}): boolean {
+    if (!value) return true;
+
+    if (!value) {
         return true;
     }
 
-    if (isArray(array)) {
-        return array.length === 0;
+    if (isArray(value)) {
+        return value.length === 0;
     } else {
-        for (const i in array) if (array.hasOwnProperty(i)) return false;
+        for (const i in value) if (value.hasOwnProperty(i)) return false;
         return true;
     }
 }
