@@ -3,7 +3,7 @@ import {Entity} from './type';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator} from './converter';
 import {isObject, toFastProperties} from '@deepkit/core';
 import {inspect} from 'util';
-import {changeSetSymbol} from './changes';
+import {changeSetSymbol, ItemChanges} from './changes';
 
 export type PrimaryKeyFields<T> = { [name in keyof T & string]?: T[name] };
 
@@ -77,7 +77,7 @@ class InstanceState<T extends Entity> {
     markAsPersisted() {
         this.snapshot = getJITConverterForSnapshot(this.classSchema)(this.item);
         this.knownInDatabase = true;
-        (this.item as any)[changeSetSymbol] = {};
+        (this.item as any)[changeSetSymbol] = new ItemChanges({}, this.item);
     }
 
     getLastKnownPK(): Partial<T> {

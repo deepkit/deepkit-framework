@@ -14,6 +14,8 @@ export class User {
 
     @t logins: number = 0;
 
+    @t version: number = 0;
+
     @t.type(() => UserCredentials).optional.backReference()
     credentials?: UserCredentials;
 

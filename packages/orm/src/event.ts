@@ -1,4 +1,4 @@
-import {AsyncEmitterEvent, AsyncEventEmitter} from '@deepkit/core';
+import {AsyncEmitterEvent, AsyncEventEmitter, ClassType} from '@deepkit/core';
 import {ClassSchema} from '@deepkit/type';
 import {DatabasePersistenceChangeSet} from './database';
 import {PrimaryKeyFields} from './identity-map';
@@ -13,6 +13,10 @@ export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     ) {
         super();
     }
+
+    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is UnitOfWorkEvent<T> {
+        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    }
 }
 
 export class UnitOfWorkUpdateEvent<T> extends AsyncEmitterEvent {
@@ -21,6 +25,10 @@ export class UnitOfWorkUpdateEvent<T> extends AsyncEmitterEvent {
         public readonly changeSets: DatabasePersistenceChangeSet<T>[]
     ) {
         super();
+    }
+
+    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is UnitOfWorkUpdateEvent<T> {
+        return this.classSchema.isSchemaOf(classTypeOrSchema);
     }
 }
 
@@ -50,17 +58,24 @@ export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
     ) {
         super()
     }
+
+    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseDeleteEvent<T> {
+        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    }
 }
 
 export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public readonly primaryKeys: PrimaryKeyFields<T>[],
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>
     ) {
         super()
+    }
+
+    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabasePatchEvent<T> {
+        return this.classSchema.isSchemaOf(classTypeOrSchema);
     }
 }
 
@@ -74,6 +89,10 @@ export class QueryDatabaseUpdateEvent<T> extends AsyncEmitterEvent {
         public readonly item: T,
     ) {
         super()
+    }
+
+    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseUpdateEvent<T> {
+        return this.classSchema.isSchemaOf(classTypeOrSchema);
     }
 }
 

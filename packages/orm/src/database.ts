@@ -5,7 +5,7 @@ import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {DatabaseSession} from './database-session';
 import {isActiveRecordType} from './active-record';
 import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
-import {Changes} from './changes';
+import {ItemChanges} from './changes';
 import {PrimaryKeyFields} from './identity-map';
 import {Entity} from './type';
 
@@ -24,7 +24,7 @@ export abstract class DatabaseAdapterQueryFactory {
 }
 
 export interface DatabasePersistenceChangeSet<T> {
-    changes: Changes<T>;
+    changes: ItemChanges<T>;
     item: T;
     primaryKey: PrimaryKeyFields<T>;
 }

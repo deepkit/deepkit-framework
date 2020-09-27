@@ -654,3 +654,38 @@ test('f.data', () => {
 
     expect(getClassSchema(User).getProperty('username').data['myData']).toBe('myValue');
 });
+
+
+test('isSchemaOf', () => {
+
+    class BaseUser {
+        @t username!: string;
+    }
+
+    class FrontendUser extends BaseUser {
+        @t password?: string;
+    }
+
+    class DbUser extends FrontendUser {
+        @t id!: string;
+    }
+
+    class Nix {}
+
+    expect(getClassSchema(BaseUser).isSchemaOf(BaseUser)).toBe(true);
+    expect(getClassSchema(BaseUser).isSchemaOf(FrontendUser)).toBe(false);
+    expect(getClassSchema(BaseUser).isSchemaOf(DbUser)).toBe(false);
+    expect(getClassSchema(BaseUser).isSchemaOf(Nix)).toBe(false);
+
+    expect(getClassSchema(FrontendUser).isSchemaOf(BaseUser)).toBe(true);
+    expect(getClassSchema(FrontendUser).isSchemaOf(FrontendUser)).toBe(true);
+    expect(getClassSchema(FrontendUser).isSchemaOf(DbUser)).toBe(false);
+    expect(getClassSchema(FrontendUser).isSchemaOf(Nix)).toBe(false);
+
+    expect(getClassSchema(DbUser).isSchemaOf(BaseUser)).toBe(true);
+    expect(getClassSchema(DbUser).isSchemaOf(FrontendUser)).toBe(true);
+    expect(getClassSchema(DbUser).isSchemaOf(DbUser)).toBe(true);
+    expect(getClassSchema(DbUser).isSchemaOf(Nix)).toBe(false);
+
+    expect(getClassSchema(DbUser).isSchemaOf(Nix)).toBe(false);
+});

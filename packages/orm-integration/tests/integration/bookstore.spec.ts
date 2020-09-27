@@ -6,6 +6,7 @@ import {User} from './user';
 import {UserCredentials} from './user-credentials';
 import {SQLitePlatform} from '@deepkit/sql';
 import {atomicChange, getInstanceState} from '@deepkit/orm';
+import { isArray } from '@deepkit/core';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
@@ -219,6 +220,105 @@ test('user account', async () => {
         const userWrongPwButLeftJoin = await session.query(User).filter({name: 'peter'}).useJoinWith('credentials').filter({password: 'wrongPassword'}).end().findOne();
         expect(userWrongPwButLeftJoin.id).toBe(1);
         expect(userWrongPwButLeftJoin.credentials).toBeUndefined();
+    }
+});
+
+test('events', async () => {
+    const database = await createEnvSetup(entities);
+
+    {
+        let insertPostCalled = 0;
+        const sub = database.unitOfWorkEvents.onInsertPost.subscribe(() => {
+            insertPostCalled++;
+        });
+        await database.persist(new User('Peter'), new User('Peter2'), new User('Peter3'));
+        expect(insertPostCalled).toBe(1);
+
+        insertPostCalled = 0;
+        const session = database.createSession();
+        session.add(new User('Peter'), new User('Peter2'), new User('Peter3'));
+        session.add(new Book(new User('Peter4'), 'Peter4s book'));
+        await session.commit();
+        expect(insertPostCalled).toBe(2);
+        sub.unsubscribe();
+    }
+
+    {
+        const sub = database.unitOfWorkEvents.onInsertPre.subscribe((event) => {
+            if (event.isSchemaOf(User)) {
+                for (const item of event.items) {
+                    item.logins = 10;
+                }
+            }
+        });
+        const user = new User('jo');
+        await database.persist(user);
+        expect(user.logins).toBe(10);
+        sub.unsubscribe();
+    }
+
+    {
+        const sub = database.unitOfWorkEvents.onUpdatePre.subscribe((event) => {
+            if (event.isSchemaOf(User)) {
+                for (const changeSet of event.changeSets) {
+                    changeSet.changes.set('logins', 50);
+                }
+            }
+        });
+        const user = new User('jo');
+        await database.persist(user);
+
+        user.name = 'Changed';
+        await database.persist(user);
+        expect(user.logins).toBe(50);
+
+        sub.unsubscribe();
+    }
+
+    {
+        const session = database.createSession();
+        const sub1 = database.unitOfWorkEvents.onUpdatePre.subscribe((event) => {
+            if (event.isSchemaOf(User)) {
+                for (const changeSet of event.changeSets) {
+                    changeSet.changes.increase('version', 1);
+                }
+            }
+        });
+
+        const sub2 = database.queryEvents.onPatchPre.subscribe((event) => {
+            if (event.isSchemaOf(User)) {
+                event.patch.increase('version', 1);
+            }
+        });
+        const sub3 = database.queryEvents.onPatchPost.subscribe((event) => {
+            if (event.isSchemaOf(User)) {
+                expect(isArray(event.patchResult.returning['version'])).toBe(true);
+                expect(event.patchResult.returning['version'][0]).toBeGreaterThan(0);
+            }
+        });
+        const user = new User('jo');
+        session.add(user);
+        await session.commit();
+
+        user.name = 'Changed';
+        await session.commit();
+        expect(user.version).toBe(1);
+
+        user.name = 'Changed2';
+        await session.commit();
+        expect(user.version).toBe(2);
+
+        await session.query(User).filter(user).patchOne({name: 'Changed3'});
+        expect(user.name).toBe('Changed3');
+        expect(user.version).toBe(3);
+
+        await session.query(User).filter(user).patchOne({$inc: {logins: 10}});
+        expect(user.logins).toBe(10);
+        expect(user.version).toBe(4);
+
+        sub1.unsubscribe();
+        sub2.unsubscribe();
+        sub3.unsubscribe();
     }
 });
 

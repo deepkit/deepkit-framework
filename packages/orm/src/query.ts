@@ -6,8 +6,9 @@ import {PrimaryKeyFields} from './identity-map';
 import {DatabaseSession} from './database-session';
 import {DatabaseAdapter} from './database';
 import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent} from './event';
-import {Changes} from './changes';
+import {Changes, ChangesInterface} from './changes';
 import {DeleteResult, Entity, PatchResult} from './type';
+import {getSimplePrimaryKeyHashGenerator} from './converter';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -400,24 +401,26 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         return deleteResult;
     }
 
-    public async patchMany(patch: Changes<T> | Partial<T>): Promise<PatchResult<T>> {
+    public async patchMany(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
         return this.patch(this.model, patch);
     }
 
-    public async patchOne(patch: Changes<T> | Partial<T>): Promise<PatchResult<T>> {
+    public async patchOne(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
         const model = this.model.clone();
         model.limit = 1;
         return this.patch(model, patch);
     }
 
-    protected async patch(model: this['model'], patch: Partial<T> | Changes<T>): Promise<PatchResult<T>> {
-        const changes: Changes<T> = {...patch};
-        if (!changes.$set) changes.$set = {};
+    protected async patch(model: this['model'], patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+        const changes: Changes<T> = new Changes<T>({
+            $set: (patch as Changes<T>).$set || {},
+            $inc: (patch as Changes<T>).$inc,
+            $unset: (patch as Changes<T>).$unset,
+        });
 
         for (const property of this.classSchema.getClassProperties().values()) {
             if (property.name in patch) {
-                changes.$set![property.name as FieldName<T>] = (patch as any)[property.name];
-                delete (changes as any)[property.name];
+                changes.set(property.name as any, (patch as any)[property.name]);
             }
         }
 
@@ -433,22 +436,30 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
             return patchResult;
         }
 
-        const primaryKeys = await this.ids(false);
-        if (model.limit === 1) primaryKeys.splice(1, primaryKeys.length);
-
         if (this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions()) {
-            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, changes, patchResult);
+            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, changes, patchResult);
             await this.databaseSession.queryEmitter.onPatchPre.emit(event);
             if (event.stopped) return patchResult;
         }
 
-        const primaryKeyModel = model.clone();
-        primaryKeyModel.filter = {$or: primaryKeys} as FilterQuery<T>;
+        await this.resolver.patch(model, changes, patchResult);
 
-        await this.resolver.patch(primaryKeyModel, changes, patchResult);
+        const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
+        for (let i = 0; i < patchResult.primaryKeys.length; i++) {
+            const item = this.databaseSession.identityMap.getByHash(this.classSchema, pkHashGenerator(patchResult.primaryKeys[i]));
+            if (!item) continue;
+
+            if (changes.$set) for (const name in changes.$set) {
+                (item as any)[name] = (changes.$set as any)[name];
+            }
+
+            for (const name in patchResult.returning) {
+                (item as any)[name] = (patchResult.returning as any)[name][i];
+            }
+        }
 
         if (this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions()) {
-            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, primaryKeys, changes, patchResult);
+            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, changes, patchResult);
             await this.databaseSession.queryEmitter.onPatchPost.emit(event);
             if (event.stopped) return patchResult;
         }

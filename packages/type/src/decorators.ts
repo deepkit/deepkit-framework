@@ -800,6 +800,20 @@ export class ClassSchema<T = any> {
         this.references.add(property);
     }
 
+    public isSchemaOf(classTypeOrSchema: ClassType | ClassSchema): boolean {
+        const classSchema = getClassSchema(classTypeOrSchema);
+        if (this === classSchema) return true;
+        if (classSchema.classType) {
+            let currentProto = Object.getPrototypeOf(this.classType.prototype);
+            while (currentProto && currentProto !== Object.prototype) {
+                if (getClassSchema(currentProto) === classSchema) return true;
+                currentProto = Object.getPrototypeOf(currentProto);
+            }
+        }
+
+        return false;
+    }
+
     protected initializeMethod(name: string) {
         if (!this.initializedMethods.has(name)) {
             if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {

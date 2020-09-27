@@ -2,7 +2,7 @@ import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@deepkit/t
 import {getInstanceState} from './identity-map';
 import {empty} from '@deepkit/core';
 import {getJITConverterForSnapshot} from './converter';
-import {Changes, changeSetSymbol} from './changes';
+import {Changes, changeSetSymbol, ItemChanges} from './changes';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;
@@ -48,7 +48,7 @@ function genericEqual(a: any, b: any): boolean {
     return a === b;
 }
 
-function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitStack = new JitStack()): (lastSnapshot: any, currentSnapshot: any) => Changes<any> {
+function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitStack = new JitStack()): (lastSnapshot: any, currentSnapshot: any) => ItemChanges<any> {
     const context = new Map<any, any>();
     const prepared = jitStack.prepare(schema);
     context.set('genericEqual', genericEqual);
@@ -176,10 +176,11 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
     }
 
     context.set('changeSetSymbol', changeSetSymbol);
+    context.set('ItemChanges', ItemChanges);
 
     const functionCode = `
         return function(last, current, item) {
-            var changeSet = item[changeSetSymbol] || {};
+            var changeSet = item[changeSetSymbol] || new ItemChanges(item);
             var changes = {};
             ${props.join('\n')}
             if (empty(changes)) {
@@ -207,7 +208,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
 const changeDetectorSymbol = Symbol('changeDetector');
 
-export function getJitChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => Changes<T> | undefined {
+export function getJitChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
     return classSchema.getJit(changeDetectorSymbol, () => createJITChangeDetectorForSnapshot(classSchema));
 }
 
@@ -215,7 +216,7 @@ export function buildChanges<T>(item: T): Changes<T> {
     const state = getInstanceState(item);
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = getJITConverterForSnapshot(state.classSchema)(item);
-    return getJitChangeDetector(state.classSchema)(lastSnapshot, currentSnapshot, item) || {};
+    return getJitChangeDetector(state.classSchema)(lastSnapshot, currentSnapshot, item) || new Changes;
 }
 
 export function buildChangeOld<T>(item: T) {
