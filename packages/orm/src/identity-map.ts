@@ -5,8 +5,6 @@ import {isObject, toFastProperties} from '@deepkit/core';
 import {inspect} from 'util';
 import {changeSetSymbol, ItemChanges} from './changes';
 
-export type PrimaryKeyFields<T> = { [name in keyof T & string]?: T[name] };
-
 export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();
 

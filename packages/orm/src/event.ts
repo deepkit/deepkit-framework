@@ -1,7 +1,6 @@
 import {AsyncEmitterEvent, AsyncEventEmitter, ClassType} from '@deepkit/core';
-import {ClassSchema} from '@deepkit/type';
+import {ClassSchema, PrimaryKeyFields} from '@deepkit/type';
 import {DatabasePersistenceChangeSet} from './database';
-import {PrimaryKeyFields} from './identity-map';
 import {DatabaseSession} from './database-session';
 import {Changes} from './changes';
 import {DeleteResult, PatchResult} from './type';

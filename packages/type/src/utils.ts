@@ -2,6 +2,7 @@ import {v4} from 'uuid';
 import {ClassType} from '@deepkit/core';
 import {ClassSchema} from './decorators';
 import { TypedArrays } from './models';
+import {ExtractPrimaryKeyOrReferenceType} from './types';
 
 export function uuid(): string {
     return v4();
@@ -21,7 +22,7 @@ export type JSONPartialSingle<T> = T extends Date ? string :
                         T extends boolean ? number | string | T :
                             T extends number ? T | string : T;
 
-export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<T[name]> };
+export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<ExtractPrimaryKeyOrReferenceType<T[name]>> };
 
 export type JSONSingle<T> = T extends Date ? string | Date :
     T extends Array<infer K> ? Array<JSONSingle<K>> :
@@ -31,8 +32,7 @@ export type JSONSingle<T> = T extends Date ? string | Date :
                     T extends string ? T :
                         T extends boolean ? T :
                             T extends number ? T : T;
-
-export type JSONEntity<T> = { [name in keyof T & string]: JSONSingle<T[name]> };
+export type JSONEntity<T> = { [name in keyof T & string]: JSONSingle<ExtractPrimaryKeyOrReferenceType<T[name]>> };
 
 export type AnyEntitySingle<T> =
     T extends Array<infer K> ? Array<AnyEntitySingle<K>> :
@@ -42,11 +42,9 @@ export type AnyEntitySingle<T> =
                     T extends string ? any :
                         T extends boolean ? any :
                             T extends number ? any : any;
-export type AnyEntity<T> = { [name in keyof T & string]: AnyEntitySingle<T[name]> };
+export type AnyEntity<T> = { [name in keyof T & string]: AnyEntitySingle<ExtractPrimaryKeyOrReferenceType<T[name]>> };
 
 export type JSONPatch<T> = { [name in keyof T & string]: JSONSingle<T[name]> } | { [name: string]: any };
-
-export type EntityPatch<T> = { [name in keyof T & string]: T[name] } | { [name: string]: any };
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
 

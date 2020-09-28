@@ -271,7 +271,7 @@ test('joins', async () => {
     expect(await session.query(OrganisationMembership).filter({organisation: microsoft}).count()).toBe(3);
 
     expect(() => {
-        session.query(Organisation).join('id');
+        session.query(Organisation).join('id' as any);
     }).toThrow('is not marked as reference');
 
     session.withIdentityMap = false;

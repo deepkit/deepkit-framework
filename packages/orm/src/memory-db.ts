@@ -45,7 +45,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
 
     queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory {
         return new class {
-            createQuery(classType: ClassType) {
+            createQuery<T>(classType: ClassType<T>) {
                 class Resolver<T> extends GenericQueryResolver<T> {
                     async count(model: DatabaseQueryModel<T>): Promise<number> {
                         return Promise.resolve(0);

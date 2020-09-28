@@ -1,3 +1,4 @@
+export * from './src/types';
 export * from './src/models';
 export * from './src/core';
 export * from './src/decorator-builder';

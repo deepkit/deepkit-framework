@@ -1,4 +1,4 @@
-import {entity, t} from '@deepkit/type';
+import {entity, PrimaryKey, Reference, t} from '@deepkit/type';
 import {User} from './user';
 
 
@@ -6,6 +6,6 @@ import {User} from './user';
 export class UserCredentials {
     @t password: string = '';
 
-    constructor(@t.type(() => User).primary.reference() public user: User) {
+    constructor(@t.type(() => User).primary.reference() public user: PrimaryKey<Reference<User>>) {
     }
 }

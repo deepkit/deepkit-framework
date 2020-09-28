@@ -1,12 +1,11 @@
 import {ClassType} from '@deepkit/core';
 import {GenericQuery} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
-import {ClassSchema, getClassSchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, PrimaryKeyFields} from '@deepkit/type';
 import {DatabaseSession} from './database-session';
 import {isActiveRecordType} from './active-record';
 import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
 import {ItemChanges} from './changes';
-import {PrimaryKeyFields} from './identity-map';
 import {Entity} from './type';
 
 /**

@@ -1,10 +1,10 @@
-import {entity, t} from '@deepkit/type';
+import {entity, PrimaryKey, Reference, t} from '@deepkit/type';
 import {UserCredentials} from './user-credentials';
 import {Group} from './group';
 
 @entity.name('user')
 export class User {
-    @t.primary.autoIncrement public id?: number;
+    @t.primary.autoIncrement public id?: PrimaryKey<number>;
     @t created: Date = new Date;
 
     @t firstName: string = '';
@@ -17,10 +17,10 @@ export class User {
     @t version: number = 0;
 
     @t.type(() => UserCredentials).optional.backReference()
-    credentials?: UserCredentials;
+    credentials?: Reference<UserCredentials>;
 
     @t.array(() => Group).backReference({via: () => UserGroup})
-    groups: Group[] = [];
+    groups: Reference<Group[]> = [];
 
     constructor(
         @t public name: string,
@@ -30,10 +30,10 @@ export class User {
 
 @entity.name('user-group')
 export class UserGroup {
-    @t.primary.autoIncrement public id?: number;
+    @t.primary.autoIncrement public id?: PrimaryKey<number>;
     constructor(
-        @t.reference() public user: User,
-        @t.reference() public group: Group,
+        @t.reference() public user: Reference<User>,
+        @t.reference() public group: Reference<Group>,
     ) {
     }
 }

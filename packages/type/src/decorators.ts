@@ -5,6 +5,7 @@ import {FlattenIfArray, isArray, JSONEntity} from './utils';
 import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
 import {plainSerializer} from './plain-serializer';
 import {PartialField, typedArrayMap, typedArrayNamesMap, Types} from './models';
+import {BackReference, isPrimaryKey, Reference} from './types';
 
 export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType | ClassSchema };
@@ -478,7 +479,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
 
         if (!this.classType || isArray(this.classType)) {
-            throw new Error(`No ClassType given for field ${this.name}. Use @f.type(() => MyClass) for circular dependencies. Did you \`import 'reflect-metadata'\` in your root script?`);
+            throw new Error(`No ClassType given for field ${this.name}. Use @t.type(() => MyClass) for circular dependencies. Did you \`import 'reflect-metadata'\` in your root script?`);
         }
 
         return this.classType;
@@ -514,7 +515,7 @@ export class ClassSchema<T = any> {
 
     /**
      * Name of the property that is a discriminant of this class.
-     * This is automatically set when at least one property has @f.discriminant.
+     * This is automatically set when at least one property has @t.discriminant.
      */
     discriminant?: string;
 
@@ -760,7 +761,7 @@ export class ClassSchema<T = any> {
      */
     public getPrimaryField(): PropertySchema {
         if (!this.idField) {
-            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @f.primary() to define one.`);
+            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @t.primary to define one.`);
         }
 
         return this.getProperty(this.idField);
@@ -1002,7 +1003,7 @@ export class ClassSchema<T = any> {
 
         if (candidates.length > 1) {
             throw new Error(`Class ${getClassName(this.classType)} has multiple potential reverse references [${candidates.map(v => v.name).join(', ')}] for ${fromReference.name} to class ${getClassName(toClassType)}. ` +
-                `Please specify each back reference by using 'mappedBy', e.g. @f.backReference({mappedBy: 'fieldNameOnTheOtherSide'} so its not ambiguous anymore.`);
+                `Please specify each back reference by using 'mappedBy', e.g. @t.backReference({mappedBy: 'fieldNameOnTheOtherSide'} so its not ambiguous anymore.`);
         }
 
         if (candidates.length === 1) return candidates[0];
@@ -1324,7 +1325,7 @@ export interface FieldDecoratorResult<T> {
      * Owning reference means: Additional foreign key fields are automatically added if not already explicitly done.
      * Those additional fields are used to store the primary key of the foreign class.
      */
-    reference(options?: { onDelete?: ReferenceActions, onUpdate?: ReferenceActions }): this;
+    reference(options?: { onDelete?: ReferenceActions, onUpdate?: ReferenceActions }): FieldDecoratorResult<Reference<T>>;
 
     /**
      * Marks this reference as not-owning side.
@@ -1333,12 +1334,12 @@ export interface FieldDecoratorResult<T> {
      *              using the `via` option. Make sure that the given class in `via` contains both reference
      *              (one back to this class and one to the actual foreign class).
      *
-     * options.mappedBy: Explicitly set the name of the @f.reference() of the foreign class to which this backReference belongs to.
+     * options.mappedBy: Explicitly set the name of the @t.reference() of the foreign class to which this backReference belongs to.
      *                   Per default it is automatically detected, but will fail if you the foreign class contains more
-     *                   than one @f.reference() to this class.
+     *                   than one @t.reference() to this class.
      * @param options
      */
-    backReference(options?: BackReferenceOptions<FlattenIfArray<T>>): this;
+    backReference(options?: BackReferenceOptions<FlattenIfArray<T>>): FieldDecoratorResult<BackReference<T>>;
 
     /**
      * Marks this type as optional (allow to set as undefined). Per default the type is required, this makes it optional.
@@ -1359,7 +1360,7 @@ export interface FieldDecoratorResult<T> {
 
     /**
      * Marks this field as discriminant for the discriminator in union types.
-     * See @f.union()
+     * See @t.union()
      */
     discriminant: this;
 
@@ -1367,7 +1368,7 @@ export interface FieldDecoratorResult<T> {
      * Used to define a field as excluded when serialized from class to different targets (like mongo or plain).
      * PlainToClass or mongoToClass is not effected by this.
      * This exclusion is during compile time, if you need a runtime exclude/include mechanism,
-     * please use @f.group('groupName') and use in classToPain/partialClassToPlain the options
+     * please use @t.group('groupName') and use in classToPain/partialClassToPlain the options
      * argument to filter, e.g. {groupsExclude: ['groupName']}.
      */
     exclude(t?: 'all' | 'database' | 'plain' | string): this;
@@ -1378,7 +1379,7 @@ export interface FieldDecoratorResult<T> {
      *
      * Only one field in a class can be the ID.
      */
-    primary: this;
+    primary: FieldDecoratorResult<T & { [isPrimaryKey]?: T }>;
 
     /**
      * Marks this field as auto increment.
@@ -1395,7 +1396,7 @@ export interface FieldDecoratorResult<T> {
      * }
      *
      * class Page {
-     *     @f.template(Stuff)
+     *     @t.template(Stuff)
      *     downloadStuff(): Observable<Stuff> {
      *          return new Observable<Stuff>((observer) => {
      *              observer.next(new Stuff());
@@ -1403,7 +1404,7 @@ export interface FieldDecoratorResult<T> {
      *     }
      *
      *     //or more verbose way if the type is more complex.
-     *     @f.template(f.type(Stuff).optional)
+     *     @t.template(f.type(Stuff).optional)
      *     downloadStuffWrapper(): Observable<Stuff | undefined> {
      *          return new Observable<Stuff>((observer) => {
      *              observer.next(new Stuff());
@@ -1437,9 +1438,9 @@ export interface FieldDecoratorResult<T> {
      *
      * class User {
      *     @f username: string;
-     *     @f.group(Group.confidential) password: string;
+     *     @t.group(Group.confidential) password: string;
      *
-     *     @f.group('bar') foo: string;
+     *     @t.group('bar') foo: string;
      * }
      *
      * const user = new User();
@@ -1454,11 +1455,11 @@ export interface FieldDecoratorResult<T> {
      *
      * ```typescript
      * class Page {
-     *     @f.mongoId
+     *     @t.mongoId
      *     referenceToSomething?: string;
      *
      *     constructor(
-     *         @f.primary.mongoId
+     *         @t.primary.mongoId
      *         public readonly _id: string
      *     ) {
      *
@@ -1491,7 +1492,7 @@ export interface FieldDecoratorResult<T> {
      * Example
      * ```typescript
      * export class PageCollection {
-     *     @f.type(() => PageClass).decorated
+     *     @t.type(() => PageClass).decorated
      *     private readonly pages: PageClass[] = [];
      *
      *     constructor(pages: PageClass[] = []) {
@@ -1508,13 +1509,13 @@ export interface FieldDecoratorResult<T> {
      * }
      *
      * export class PageClass {
-     *     @f.uuid
+     *     @t.uuid
      *     id: string = uuid();
      *
      *     @f
      *     name: string;
      *
-     *     @f.type(() => PageCollection)
+     *     @t.type(() => PageCollection)
      *     children: PageCollection = new PageCollection;
      *
      *     constructor(name: string) {
@@ -1554,13 +1555,13 @@ export interface FieldDecoratorResult<T> {
      * }
      *
      * class Entity {
-     *     @f.validator(MyCustomValidator)
+     *     @t.validator(MyCustomValidator)
      *     name: string;
      *
-     *     @f.validator(MyCustomValidator)
+     *     @t.validator(MyCustomValidator)
      *     name: string;
      *
-     *     @f.validator((value: any, target: ClassType, propertyName: string) => {
+     *     @t.validator((value: any, target: ClassType, propertyName: string) => {
      *          if (value.length > 255) {
      *              return new PropertyValidatorError('too_long', 'Too long :()');
      *          }
@@ -1679,7 +1680,7 @@ function createFieldDecoratorResult<T>(
                 //we got a new decorator with a different name on a constructor param
                 //since we cant not resolve logically which name to use, we forbid that case.
                 throw new Error(`Defining multiple deepkit/type decorators with different names at arguments of ${getClassName(target)}::${methodName} #${parameterIndexOrDescriptor} is forbidden.` +
-                    ` @f.asName('name') is required. Got ${methodsParamNames[parameterIndexOrDescriptor] || methodsParamNamesAutoResolved[parameterIndexOrDescriptor]} !== ${givenPropertyName}`);
+                    ` @t.asName('name') is required. Got ${methodsParamNames[parameterIndexOrDescriptor] || methodsParamNamesAutoResolved[parameterIndexOrDescriptor]} !== ${givenPropertyName}`);
             }
 
             if (givenPropertyName) {
@@ -2105,7 +2106,7 @@ function GroupName(...names: string[]) {
  * Example one direction.
  * ```typescript
  * class JobConfig {
- *     @f.type(() => Job).parentReference //forward necessary since circular dependency
+ *     @t.type(() => Job).parentReference //forward necessary since circular dependency
  *     job: Job;
  *
  * }
@@ -2118,16 +2119,16 @@ function GroupName(...names: string[]) {
  * Example circular parent-child setup.
  * ```typescript
  * export class PageClass {
- *     @f.uuid
+ *     @t.uuid
  *     id: string = uuid();
  *
  *     @f
  *     name: string;
  *
- *     @f.type(() => PageClass) //forward necessary since circular dependency
+ *     @t.type(() => PageClass) //forward necessary since circular dependency
  *     children: PageClass[] = [];
  *
- *     @f.type(() => PageClass).optional.parentReference //forward necessary since circular dependency
+ *     @t.type(() => PageClass).optional.parentReference //forward necessary since circular dependency
  *     parent?: PageClass;
  *
  *     constructor(name: string) {
@@ -2238,24 +2239,24 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
             if (type && property.isArray && returnType !== Array) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use the correct type in @f.type(T).`
+                    `Please use the correct type in @t.type(T).`
                 );
             }
 
             if (type && !property.isArray && returnType === Array) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use @f.array(MyType) or @f.array(() => MyType), e.g. @f.array(String) for '${propertyName}: string[]'.`);
+                    `Please use @t.array(MyType) or @t.array(() => MyType), e.g. @t.array(String) for '${propertyName}: string[]'.`);
             }
 
             if (type && property.isMap && returnType !== Object) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
-                    `Please use the correct type in @f.type(TYPE).`);
+                    `Please use the correct type in @t.type(TYPE).`);
             }
 
             if (!type && returnType === Array) {
                 throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
-                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.type(() => MyType).`
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @t.type(String).\n` +
+                    `If you don't have a type, use @t.any(). If you reference a class with circular dependency, use @t.type(() => MyType).`
                 );
             }
 
@@ -2263,8 +2264,8 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
                 //typescript puts `Object` for undefined types.
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is Object or undefined. ` +
                     `Please note that Typescript's reflection system does not support type hints based on interfaces or types, but only classes and primitives (String, Number, Boolean, Date). ` +
-                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @f.type(String).\n` +
-                    `If you don't have a type, use @f.any(). If you reference a class with circular dependency, use @f.type(() => MyType).`
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @t.type(String).\n` +
+                    `If you don't have a type, use @t.any(). If you reference a class with circular dependency, use @t.type(() => MyType).`
                 );
             }
         }
@@ -2276,8 +2277,8 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
         if (type && !isArray(type) && !property.isMap && !property.isPartial && isCustomObject && returnType === Object) {
             throw new Error(`${id} type mismatch. Given ${property}, but declared is Object or undefined. ` +
-                `The actual type is an object, but you specified a class in @f.type(T).\n` +
-                `Please declare a type or use @f.map(${getClassName(type)}) for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
+                `The actual type is an object, but you specified a class in @t.type(T).\n` +
+                `Please declare a type or use @t.map(${getClassName(type)}) for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
         }
     }, true);
 }
@@ -2375,7 +2376,7 @@ export interface MainDecorator {
      * ```typescript
      * class User {
      *     //not necessary
-     *     @f.type(MyClass)
+     *     @t.type(MyClass)
      *     tags: MyClass = new MyClass;
      * }
      * ```
@@ -2387,7 +2388,7 @@ export interface MainDecorator {
      *
      * ```typescript
      * class ConfigA {
-     *     @f.discriminator
+     *     @t.discriminator
      *     kind: string = 'a';
      *
      *     @f
@@ -2395,7 +2396,7 @@ export interface MainDecorator {
      * }
      *
      * class ConfigB {
-     *     @f.discriminator
+     *     @t.discriminator
      *     kind: string = 'b';
      *
      *     @f
@@ -2403,7 +2404,7 @@ export interface MainDecorator {
      * }
      *
      * class User {
-     *     @f.union(ConfigA, ConfigB)
+     *     @t.union(ConfigA, ConfigB)
      *     config: ConfigA | ConfigB = new ConfigA;
      * }
      * ```
@@ -2412,7 +2413,7 @@ export interface MainDecorator {
 
     /**
      * Marks a field as discriminant. This field MUST have a default value.
-     * The default value is used to discriminate this class type when used in a union type. See @f.union.
+     * The default value is used to discriminate this class type when used in a union type. See @t.union.
      */
     discriminant<T>(): FieldDecoratorResult<T>;
 
@@ -2421,7 +2422,7 @@ export interface MainDecorator {
      *
      * ```typescript
      * class User {
-     *     @f.array(@f.string)
+     *     @t.array(@t.string)
      *     tags: string[] = [];
      * }
      * ```
@@ -2479,7 +2480,7 @@ export interface MainDecorator {
      * }
      *
      * class User {
-     *     @f.enum(MyEnum)
+     *     @t.enum(MyEnum)
      *     level: MyEnum = MyEnum.low;
      * }
      * ```
@@ -2507,7 +2508,7 @@ export interface MainDecorator {
      * }
      *
      * class User {
-     *     @f.partial(Config)
+     *     @t.partial(Config)
      *     config: PartialField<Config> = {};
      * }
      * ```
@@ -2532,10 +2533,10 @@ export interface MainDecorator {
      *
      * ```typescript
      * class User {
-     *     @f.map(f.string)
+     *     @t.map(f.string)
      *     tags: {[k: string]: string};
      *
-     *     @f.map(@f.type(() => MyClass))
+     *     @t.map(@t.type(() => MyClass))
      *     tags: {[k: string]: MyClass};
      * }
      * ```
@@ -2558,32 +2559,32 @@ export interface MainDecorator {
  * }
  *
  * class SimpleModel {
- *   @f.primary().uuid()
+ *   @t.primary.uuid
  *   id: string = uuid();
  *
- *   @f.array(String)
+ *   @t.array(f.string)
  *   tags: string[] = [];
  *
- *   @f.type(ArrayBuffer).optional() //binary
+ *   @t.type(ArrayBuffer).optional() //binary
  *   picture?: ArrayBuffer;
  *
  *   @f
  *   type: number = 0;
  *
- *   @f.enum(Plan)
+ *   @t.enum(Plan)
  *   plan: Plan = Plan.DEFAULT;
  *
  *   @f
  *   created: Date = new Date;
  *
- *   @f.array(SubModel)
+ *   @t.array(SubModel)
  *   children: SubModel[] = [];
  *
- *   @f.map(SubModel)
+ *   @t.map(SubModel)
  *   childrenMap: {[key: string]: SubModel} = {};
  *
  *   constructor(
- *       @f.index().asName('name') //asName is required for minimized code
+ *       @t.index().name('name') //name is required for minimized code
  *       public name: string
  *   ) {}
  * }

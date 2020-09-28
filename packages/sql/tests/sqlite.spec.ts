@@ -7,7 +7,7 @@ import {createSetup} from './setup';
 
 test('sqlite 10k bench', async () => {
     class User extends t.class({
-        id: t.primary.number,
+        id: t.number.primary,
         name: t.string,
         created: t.date,
     }, {name: 'user'}) {
@@ -30,7 +30,7 @@ test('sqlite 10k bench', async () => {
 
 test('sqlite basic', async () => {
     const User = t.schema({
-        id: t.primary.number,
+        id: t.number.primary,
         name: t.string,
         created: t.date,
     }, {name: 'user'});

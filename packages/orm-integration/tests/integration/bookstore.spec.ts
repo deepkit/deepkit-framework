@@ -1,12 +1,12 @@
 import 'jest';
 import 'reflect-metadata';
-import {entity, getClassSchema, t} from '@deepkit/type';
+import {entity, getClassSchema, PrimaryKey, Reference, t} from '@deepkit/type';
 import {createEnvSetup} from './setup';
 import {User} from './user';
 import {UserCredentials} from './user-credentials';
 import {SQLitePlatform} from '@deepkit/sql';
 import {atomicChange, getInstanceState} from '@deepkit/orm';
-import { isArray } from '@deepkit/core';
+import {isArray} from '@deepkit/core';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
@@ -14,10 +14,10 @@ import { isArray } from '@deepkit/core';
 
 @entity.name('book')
 class Book {
-    @t.primary.autoIncrement public id?: number;
+    @t.primary.autoIncrement public id?: PrimaryKey<number>;
 
     constructor(
-        @t.reference() public author: User,
+        @t.reference() public author: Reference<User>,
         @t public title: string,
     ) {
     }
@@ -31,14 +31,14 @@ enum ReviewStatus {
 
 @entity.name('review')
 class Review {
-    @t.primary.autoIncrement public id?: number;
+    @t.primary.autoIncrement public id?: PrimaryKey<number>;
     @t created: Date = new Date;
     @t stars: number = 0;
     @t.enum(ReviewStatus) status: ReviewStatus = ReviewStatus.published;
 
     constructor(
-        @t public user: User,
-        @t public book: Book,
+        @t.reference() public user: Reference<User>,
+        @t.reference() public book: Reference<Book>,
     ) {
     }
 }
@@ -92,6 +92,14 @@ test('basics', async () => {
 
         expect(await session.query(User).count()).toBe(2);
         expect(await session.query(Book).count()).toBe(2);
+        {
+            const ids = await session.query(Book).ids(true);
+            expect(ids[0]).toBe(book1.id);
+        }
+        {
+            const ids = await session.query(Book).ids();
+            expect(ids[0].id).toBe(book1.id);
+        }
     }
 
     {

@@ -1,9 +1,9 @@
 import {DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet} from './database';
 import {Entity} from './type';
 import {ClassType, CustomError} from '@deepkit/core';
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, PrimaryKeyFields} from '@deepkit/type';
 import {GroupArraySort} from '@deepkit/topsort';
-import {getInstanceState, getNormalizedPrimaryKey, IdentityMap, PrimaryKeyFields} from './identity-map';
+import {getInstanceState, getNormalizedPrimaryKey, IdentityMap} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
 import {HydratorFn, markAsHydrated} from './formatter';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor} from './converter';

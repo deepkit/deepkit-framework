@@ -1,8 +1,7 @@
-import {ClassSchema, PropertySchema} from '@deepkit/type';
+import {ClassSchema, PropertySchema, PrimaryKeyFields, ExtractPrimaryKeyType, ExtractReferences} from '@deepkit/type';
 import {Subject} from 'rxjs';
 import {ClassType} from '@deepkit/core';
 import {FieldName, FlattenIfArray} from './utils';
-import {PrimaryKeyFields} from './identity-map';
 import {DatabaseSession} from './database-session';
 import {DatabaseAdapter} from './database';
 import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent} from './event';
@@ -217,7 +216,7 @@ export class BaseQuery<T extends Entity> {
      * Adds a left join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    join<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
+    join<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference && !propertySchema.backReference) {
             throw new Error(`Field ${field} is not marked as reference. Use @f.reference()`);
@@ -239,7 +238,7 @@ export class BaseQuery<T extends Entity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'left');
         return this.model.joins[this.model.joins.length - 1].query;
     }
@@ -247,7 +246,7 @@ export class BaseQuery<T extends Entity> {
     /**
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      */
-    joinWith<K extends FieldName<T>>(field: K): this {
+    joinWith<K extends ExtractReferences<T>>(field: K): this {
         return this.join(field, 'left', true);
     }
 
@@ -255,12 +254,12 @@ export class BaseQuery<T extends Entity> {
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoinWith<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoinWith<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'left', true);
         return this.model.joins[this.model.joins.length - 1].query;
     }
 
-    getJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    getJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         for (const join of this.model.joins) {
             if (join.propertySchema.name === field) return join.query;
         }
@@ -270,7 +269,7 @@ export class BaseQuery<T extends Entity> {
     /**
      * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
      */
-    innerJoinWith<K extends FieldName<T>>(field: K): this {
+    innerJoinWith<K extends ExtractReferences<T>>(field: K): this {
         return this.join(field, 'inner', true);
     }
 
@@ -278,7 +277,7 @@ export class BaseQuery<T extends Entity> {
      * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoinWith<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoinWith<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'inner', true);
         return this.model.joins[this.model.joins.length - 1].query;
     }
@@ -287,7 +286,7 @@ export class BaseQuery<T extends Entity> {
      * Adds a inner join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    innerJoin<K extends FieldName<T>>(field: K): this {
+    innerJoin<K extends ExtractReferences<T>>(field: K): this {
         return this.join(field, 'inner');
     }
 
@@ -296,7 +295,7 @@ export class BaseQuery<T extends Entity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoin<K extends FieldName<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         this.join(field, 'inner');
         return this.model.joins[this.model.joins.length - 1].query;
     }
@@ -472,18 +471,18 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
     }
 
     public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;
-    public async ids<T = string>(singleKey: true): Promise<T[]>;
-    public async ids(singleKey: boolean = false): Promise<(PrimaryKeyFields<T> | any)[]> {
+    public async ids(singleKey: true): Promise<ExtractPrimaryKeyType<T>[]>;
+    public async ids(singleKey: boolean = false): Promise<PrimaryKeyFields<T>[] | ExtractPrimaryKeyType<T>[]> {
         const pks = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
         if (singleKey && pks.length > 1) {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key. singleKey impossible.`);
         }
 
         if (singleKey) {
-            return (await this.clone().select(pks).find()).map(v => v[pks[0]]);
+            return (await this.clone().select(pks).find()).map(v => v[pks[0]]) as any;
         }
 
-        return await this.clone().select(pks).find();
+        return await this.clone().select(pks).find() as any;
     }
 
     public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
