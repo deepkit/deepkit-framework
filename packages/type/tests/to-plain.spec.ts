@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {plainSerializer, t} from '../index';
+import {jsonSerializer, t} from '../index';
 import {Plan, SimpleModel, SubModel} from './entities';
 import {getClassSchema} from '../src/decorators';
 
@@ -10,7 +10,7 @@ test('test simple model', () => {
     expect(classSchema.getProperty('id').type).toBe('uuid');
 
     expect(instance['id']).toBeString();
-    const json = plainSerializer.for(SimpleModel).serialize(instance);
+    const json = jsonSerializer.for(SimpleModel).serialize(instance);
 
     expect(json['id']).toBeString();
     expect(json['name']).toBe('myName');
@@ -27,7 +27,7 @@ test('test simple model all fields', () => {
     instance.childrenMap.foo = new SubModel('bar');
     instance.childrenMap.foo2 = new SubModel('bar2');
 
-    const json = plainSerializer.for(SimpleModel).serialize(instance);
+    const json = jsonSerializer.for(SimpleModel).serialize(instance);
 
     console.log('json', json);
 
@@ -58,17 +58,17 @@ test('nullable', () => {
     const item = new s.classType;
     item.username = 'asd';
 
-    expect(plainSerializer.for(s).serialize(item)).toEqual({username: 'asd'});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd'});
 
     item.password = null;
-    expect(plainSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null});
 
     item.optional = undefined;
-    expect(plainSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null});
 
     item.optional = 'yes';
-    expect(plainSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null, optional: 'yes'});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null, optional: 'yes'});
 
     item.password = 'secret';
-    expect(plainSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: 'secret', optional: 'yes'});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: 'secret', optional: 'yes'});
 });

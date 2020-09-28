@@ -1,4 +1,4 @@
-import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, plainSerializer, PropertySchema, Serializer, SerializerCompilers} from '@deepkit/type';
+import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, jsonSerializer, PropertySchema, Serializer, SerializerCompilers} from '@deepkit/type';
 import {toFastProperties} from '@deepkit/core';
 
 function createJITConverterForSnapshot(
@@ -77,7 +77,7 @@ export function getJITConverterForSnapshot(
     const jit = classSchema.jit;
     if (jit.snapshotConverter) return jit.snapshotConverter;
 
-    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values(), plainSerializer.fromClass);
+    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values(), jsonSerializer.fromClass);
     toFastProperties(jit);
     return jit.snapshotConverter;
 }
@@ -91,7 +91,7 @@ export function getPrimaryKeyExtractor<T>(
     const jit = classSchema.jit;
     if (jit.primaryKey) return jit.primaryKey;
 
-    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields(), plainSerializer.toClass);
+    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields(), jsonSerializer.toClass);
     toFastProperties(jit);
     return jit.primaryKey;
 }
@@ -149,7 +149,7 @@ function createPrimaryKeyHashGenerator(
                 //getPrimaryKeyExtractor ${property.name}->${pk.name} class:snapshot:${property.type} reference
                 lastValue = '';
                 ${getDataConverterJS(`lastValue`, `_value.${property.name}.${pk.name}`, pk, serializer.toClass, context, jitStack)}
-                ${getDataConverterJS(`lastValue`, `lastValue`, pk, plainSerializer.fromClass, context, jitStack)}
+                ${getDataConverterJS(`lastValue`, `lastValue`, pk, jsonSerializer.fromClass, context, jitStack)}
                 _result += '\\0' + lastValue;
             `);
             }
@@ -173,7 +173,7 @@ function createPrimaryKeyHashGenerator(
             //getPrimaryKeyHashGenerator ${property.name} class:plain:${property.type}
             lastValue = '';
             ${getDataConverterJS(`lastValue`, `_value.${property.name}`, property, serializer.toClass, context, jitStack)}
-            ${getDataConverterJS(`lastValue`, `lastValue`, property, plainSerializer.fromClass, context, jitStack)}
+            ${getDataConverterJS(`lastValue`, `lastValue`, property, jsonSerializer.fromClass, context, jitStack)}
             _result += '\\0' + lastValue;
         `);
     }

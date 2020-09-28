@@ -1,5 +1,5 @@
 import {eachPair, isPromise} from '@deepkit/core';
-import {getClassSchema, jitValidateProperty, plainSerializer, PropertySchema, ValidationFailedItem} from '@deepkit/type';
+import {getClassSchema, jitValidateProperty, jsonSerializer, PropertySchema, ValidationFailedItem} from '@deepkit/type';
 import {ValidationErrorItem, ValidationParameterError} from './core';
 
 export type ActionTypes = { parameters: PropertySchema[] };
@@ -30,7 +30,7 @@ export async function executeAction(
                 errors.map(error => new ValidationErrorItem(error.path, error.message, error.code)));
         }
 
-        args[i] = plainSerializer.deserializeProperty(p, args[i]);
+        args[i] = jsonSerializer.deserializeProperty(p, args[i]);
     }
 
     let result = (controllerInstance as any)[methodName](...args);

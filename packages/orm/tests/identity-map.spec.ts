@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, plainSerializer, t} from '@deepkit/type';
+import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
 import {BaseQuery, DatabaseQueryModel, Formatter, getInstanceState, getNormalizedPrimaryKey} from '../index';
 import {getReference} from '../src/reference';
 
@@ -48,7 +48,7 @@ test('snapshot correct state', () => {
         image: t.type(image).optional.reference(),
         image2: t.type(image).optional.reference(),
     });
-    const formatter = new Formatter(user, plainSerializer);
+    const formatter = new Formatter(user, jsonSerializer);
 
     {
         const query = new BaseQuery(user);

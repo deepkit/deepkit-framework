@@ -4,7 +4,7 @@ import {EntitySubject, getSerializedErrorPair, StreamBehaviorSubject} from './co
 import {Subscriptions} from '@deepkit/core-rxjs';
 import {Observable, Subscription} from 'rxjs';
 import {ClassType, each, getObjectKeysSize, isFunction, sleep} from '@deepkit/core';
-import {getEntityName, plainSerializer, PropertySchema, PropertySchemaSerialized, Types} from '@deepkit/type';
+import {getEntityName, jsonSerializer, PropertySchema, PropertySchemaSerialized, Types} from '@deepkit/type';
 import {skip} from 'rxjs/operators';
 
 export interface ConnectionWriterStream {
@@ -42,7 +42,7 @@ function encodeValue(v: any, p: PropertySchema | undefined, prefixMessage: strin
     try {
         return {
             encoding: p.toJSON(),
-            value: plainSerializer.serializeProperty(p, v),
+            value: jsonSerializer.serializeProperty(p, v),
         };
     } catch (error) {
         console.log('could not parse value', v, p);
@@ -374,7 +374,7 @@ export class ConnectionMiddleware {
                 id: message.id,
                 returnType: 'entity',
                 entityName: entityName,
-                item: entityName ? plainSerializer.for(item.constructor).serialize(item) : item
+                item: entityName ? jsonSerializer.for(item.constructor).serialize(item) : item
             });
             writer.complete(message.id);
             //no further subscribes/messages necessary since the 'entity' channel handles updating.
@@ -445,7 +445,7 @@ export class ConnectionMiddleware {
                 entityName: getEntityName(collection.classType)
             });
             let nextValue: CollectionStream | undefined;
-            const serializer = plainSerializer.for(collection.classType);
+            const serializer = jsonSerializer.for(collection.classType);
 
             const items = collection instanceof JSONObjectCollection
                 ? collection.all()
@@ -517,7 +517,7 @@ export class ConnectionMiddleware {
                 if (event.type === 'add') {
                     const item = collection instanceof JSONObjectCollection
                         ? event.item
-                        : plainSerializer.for(collection.classType).serialize(event.item);
+                        : jsonSerializer.for(collection.classType).serialize(event.item);
 
                     nextValue = {type: 'add', item: item};
                     writer.write({type: 'next/collection', id: message.id, next: nextValue});
@@ -545,7 +545,7 @@ export class ConnectionMiddleware {
                 if (event.type === 'set') {
                     //consider batching the items, so we don't block the connection stack
                     //when we have thousand of items and we get a nice loading bar.
-                    const serializer = plainSerializer.for(collection.classType);
+                    const serializer = jsonSerializer.for(collection.classType);
 
                     const items = collection instanceof JSONObjectCollection
                         ? event.items

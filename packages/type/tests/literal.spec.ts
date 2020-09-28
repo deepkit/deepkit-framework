@@ -1,6 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
-import {plainSerializer, t, validate} from '../index';
+import {jsonSerializer, t, validate} from '../index';
 
 test('literal', () => {
     const s = t.schema({
@@ -25,22 +25,22 @@ test('literal string', () => {
     });
 
     // {
-    //     const item = plainSerializer.for(s).deserialize({type: 'a'});
+    //     const item = jsonSerializer.for(s).deserialize({type: 'a'});
     //     expect(item.type).toBe('a');
     // }
     //
     // {
-    //     const item = plainSerializer.for(s).deserialize({type: 'ff'});
+    //     const item = jsonSerializer.for(s).deserialize({type: 'ff'});
     //     expect(item.type).toBe('a');
     // }
 
     {
-        const item = plainSerializer.for(s).deserialize({});
+        const item = jsonSerializer.for(s).deserialize({});
         expect(item.type).toBe('a');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({type: null});
+        const item = jsonSerializer.for(s).deserialize({type: null});
         expect(item.type).toBe('a');
     }
 

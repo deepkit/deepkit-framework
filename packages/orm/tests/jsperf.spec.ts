@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {f, getClassSchema, Patcher, plainSerializer} from '@deepkit/type';
+import {f, getClassSchema, Patcher, jsonSerializer} from '@deepkit/type';
 import {BenchSuite} from '@deepkit/core';
 
 test.only('nope');
@@ -289,18 +289,18 @@ test('classToPlain vs copy-on-write hooks', () => {
     const classSchema = getClassSchema(DeepkitModel);
     const suite = new BenchSuite('classToPlain vs copy-on-write hooks');
     suite.add('classToPlain', () => {
-        const item = plainSerializer.for(DeepkitModel).deserialize({
+        const item = jsonSerializer.for(DeepkitModel).deserialize({
             name: 'name',
             id: 1,
             tags: ['a', 'b', 'c'],
             priority: 5,
             ready: true,
         });
-        plainSerializer.for(DeepkitModel).serialize(item);
+        jsonSerializer.for(DeepkitModel).serialize(item);
     });
 
     suite.add('proxy', () => {
-        const item = plainSerializer.for(DeepkitModel).deserialize({
+        const item = jsonSerializer.for(DeepkitModel).deserialize({
             name: 'name',
             id: 1,
             tags: ['a', 'b', 'c'],
@@ -323,7 +323,7 @@ test('classToPlain vs copy-on-write hooks', () => {
     }
 
     suite.add('defineProperty', () => {
-        const item = plainSerializer.for(DeepkitModel).deserialize({
+        const item = jsonSerializer.for(DeepkitModel).deserialize({
             name: 'name',
             id: 1,
             tags: ['a', 'b', 'c'],

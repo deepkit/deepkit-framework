@@ -1,4 +1,4 @@
-import {ClassSchema, getClassSchema, isArray, JSONEntity, plainSerializer, PropertySchema, resolvePropertyCompilerSchema, TypedArrays,} from '@deepkit/type';
+import {ClassSchema, getClassSchema, isArray, JSONEntity, jsonSerializer, PropertySchema, resolvePropertyCompilerSchema, TypedArrays,} from '@deepkit/type';
 import {ClassType, isPlainObject} from '@deepkit/core';
 import './mongo-serializer';
 import {Binary} from 'bson';
@@ -49,7 +49,7 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
 ): { [path: string]: any } {
     return convertQueryToMongo(classType, target, (convertClassType: ClassSchema, path: string, value: any) => {
         const property = resolvePropertyCompilerSchema(convertClassType, path);
-        const classValue = plainSerializer.deserializeProperty(property, value);
+        const classValue = jsonSerializer.deserializeProperty(property, value);
         return mongoSerializer.serializeProperty(property, classValue);
     }, fieldNamesMap, customMapping);
 }

@@ -1,5 +1,5 @@
 import {BenchSuite} from '@deepkit/core';
-import {plainSerializer} from '@deepkit/type';
+import {jsonSerializer} from '@deepkit/type';
 import {
     classToPlain,
     plainToClass

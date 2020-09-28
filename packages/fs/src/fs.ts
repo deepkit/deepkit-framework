@@ -5,7 +5,7 @@ import {eachKey, eachPair, ProcessLocker} from '@deepkit/core';
 import * as crypto from 'crypto';
 import {Database, DatabaseAdapter} from '@deepkit/orm';
 import {Exchange, inject, injectable} from '@deepkit/framework';
-import {plainSerializer, t} from '@deepkit/type';
+import {jsonSerializer, t} from '@deepkit/type';
 
 export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
 
@@ -293,14 +293,14 @@ export class FS<T extends DeepkitFile> {
 
     public async refreshFileMetaCache(path: string, fields: Partial<T> = {}, id: string, md5?: string) {
         const filter = {path, ...fields};
-        const cacheKey = JSON.stringify(plainSerializer.for(this.fileType.classType).partialSerialize(filter));
+        const cacheKey = JSON.stringify(jsonSerializer.for(this.fileType.classType).partialSerialize(filter));
 
         await this.exchange.set('file-meta/' + cacheKey, FSCacheMessage, {id, md5});
     }
 
     public async getFileMetaCache(path: string, fields: Partial<T> = {}): Promise<{ id?: string, md5?: string }> {
         const filter = {path, ...fields};
-        const cacheKey = JSON.stringify(plainSerializer.for(this.fileType.classType).partialSerialize(filter));
+        const cacheKey = JSON.stringify(jsonSerializer.for(this.fileType.classType).partialSerialize(filter));
 
         const fromCache = await this.exchange.get('file-meta/' + cacheKey, FSCacheMessage);
         if (fromCache) return fromCache;

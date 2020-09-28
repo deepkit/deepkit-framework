@@ -1,6 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
-import {plainSerializer, t, validate} from '../index';
+import {jsonSerializer, t, validate} from '../index';
 
 test('union ClassType', () => {
     class RegularUser {
@@ -24,13 +24,13 @@ test('union ClassType', () => {
     });
 
     {
-        const item = plainSerializer.for(s).deserialize({union: {type: 'regular'}});
+        const item = jsonSerializer.for(s).deserialize({union: {type: 'regular'}});
         expect(item.union.type).toBe('regular');
         expect(item.union).toBeInstanceOf(RegularUser);
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: {type: 'admin'}});
+        const item = jsonSerializer.for(s).deserialize({union: {type: 'admin'}});
         expect(item.union.type).toBe('admin');
         expect(item.union).toBeInstanceOf(AdminUser);
     }
@@ -67,12 +67,12 @@ test('union ClassSchema', () => {
     expect(s.getProperty('union').templateArgs[1].getResolvedClassSchema().getProperty('type').literalValue).toBe('admin');
 
     {
-        const item = plainSerializer.for(s).deserialize({union: {type: 'regular'}});
+        const item = jsonSerializer.for(s).deserialize({union: {type: 'regular'}});
         expect(item.union.type).toBe('regular');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: {type: 'admin'}});
+        const item = jsonSerializer.for(s).deserialize({union: {type: 'admin'}});
         expect(item.union.type).toBe('admin');
     }
 
@@ -99,12 +99,12 @@ test('union ClassSchema simple', () => {
     expect(s.getProperty('union').templateArgs[1].getResolvedClassSchema().getProperty('type').literalValue).toBe('admin');
 
     {
-        const item = plainSerializer.for(s).deserialize({union: {type: 'regular'}});
+        const item = jsonSerializer.for(s).deserialize({union: {type: 'regular'}});
         expect(item.union.type).toBe('regular');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: {type: 'admin'}});
+        const item = jsonSerializer.for(s).deserialize({union: {type: 'admin'}});
         expect(item.union.type).toBe('admin');
     }
 
@@ -146,22 +146,22 @@ test('union literal', () => {
     expect(s.getProperty('union').templateArgs[2].type).toBe('literal');
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'a'});
+        const item = jsonSerializer.for(s).deserialize({union: 'a'});
         expect(item.union).toBe('a');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'b'});
+        const item = jsonSerializer.for(s).deserialize({union: 'b'});
         expect(item.union).toBe('b');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'c'});
+        const item = jsonSerializer.for(s).deserialize({union: 'c'});
         expect(item.union).toBe('c');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: '0'});
+        const item = jsonSerializer.for(s).deserialize({union: '0'});
         expect(item.union).toBe('a');
     }
 
@@ -178,17 +178,17 @@ test('union literal and string', () => {
     });
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'a'});
+        const item = jsonSerializer.for(s).deserialize({union: 'a'});
         expect(item.union).toBe('a');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'asdasd'});
+        const item = jsonSerializer.for(s).deserialize({union: 'asdasd'});
         expect(item.union).toBe('asdasd');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: '0'});
+        const item = jsonSerializer.for(s).deserialize({union: '0'});
         expect(item.union).toBe('0');
     }
 
@@ -206,12 +206,12 @@ test('union string | string[]', () => {
     });
 
     {
-        const item = plainSerializer.for(s).deserialize({union: '123'});
+        const item = jsonSerializer.for(s).deserialize({union: '123'});
         expect(item.union).toBe('123');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: ['455']});
+        const item = jsonSerializer.for(s).deserialize({union: ['455']});
         expect(item.union).toEqual(['455']);
     }
 
@@ -232,22 +232,22 @@ test('union string | string[][]', () => {
     // console.log(getJitFunctionXToClass(s, 'plain').toString());
 
     {
-        const item = plainSerializer.for(s).deserialize({union: '123'});
+        const item = jsonSerializer.for(s).deserialize({union: '123'});
         expect(item.union).toBe('123');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: [['455'], ['4']]});
+        const item = jsonSerializer.for(s).deserialize({union: [['455'], ['4']]});
         expect(item.union).toEqual([['455'], ['4']]);
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: [123]});
+        const item = jsonSerializer.for(s).deserialize({union: [123]});
         expect(item.union).toEqual([[]]);
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: ['455']});
+        const item = jsonSerializer.for(s).deserialize({union: ['455']});
         expect(item.union).toEqual([[]]);
     }
 
@@ -267,12 +267,12 @@ test('union string | map', () => {
     });
 
     {
-        const item = plainSerializer.for(s).deserialize({union: '123'});
+        const item = jsonSerializer.for(s).deserialize({union: '123'});
         expect(item.union).toBe('123');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: {a: '455'}});
+        const item = jsonSerializer.for(s).deserialize({union: {a: '455'}});
         expect(item.union).toEqual({a: '455'});
     }
 
@@ -289,27 +289,27 @@ test('union string | number', () => {
     });
 
     {
-        const item = plainSerializer.for(s).deserialize({union: false});
+        const item = jsonSerializer.for(s).deserialize({union: false});
         expect(item.union).toBe('b');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'a'});
+        const item = jsonSerializer.for(s).deserialize({union: 'a'});
         expect(item.union).toBe('a');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'asdasd'});
+        const item = jsonSerializer.for(s).deserialize({union: 'asdasd'});
         expect(item.union).toBe('asdasd');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 5});
+        const item = jsonSerializer.for(s).deserialize({union: 5});
         expect(item.union).toBe(5);
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 88});
+        const item = jsonSerializer.for(s).deserialize({union: 88});
         expect(item.union).toBe(88);
     }
 
@@ -328,12 +328,12 @@ test('union string | date', () => {
     });
 
     {
-        const item = plainSerializer.for(s).deserialize({union: 'foo'});
+        const item = jsonSerializer.for(s).deserialize({union: 'foo'});
         expect(item.union).toBe('foo');
     }
 
     {
-        const item = plainSerializer.for(s).deserialize({union: '2012-08-13T22:57:24.716Z'});
+        const item = jsonSerializer.for(s).deserialize({union: '2012-08-13T22:57:24.716Z'});
         expect(item.union).toBeInstanceOf(Date);
     }
 

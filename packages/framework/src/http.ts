@@ -5,7 +5,7 @@ import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
 import {Context, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
-import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, plainSerializer} from '@deepkit/type';
+import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
 import {ApplicationConfig} from './application-config';
 import {join} from 'path';
@@ -140,7 +140,7 @@ export class HttpHandler {
             res.writeHead(200, {
                 'Content-Type': 'application/json; charset=utf-8'
             });
-            res.end(plainSerializer.for(getClassTypeFromInstance(response)).serialize(response));
+            res.end(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response));
         }
 
         //- call RESPONSE listener

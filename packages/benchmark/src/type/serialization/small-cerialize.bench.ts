@@ -1,5 +1,5 @@
 import {BenchSuite} from '@deepkit/core';
-import {plainSerializer} from '@deepkit/type';
+import {jsonSerializer} from '@deepkit/type';
 import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from "cerialize";
 
 export class Model {

@@ -1,5 +1,5 @@
 import 'jest';
-import {getClassSchema, plainSerializer, t} from '@deepkit/type';
+import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
 import {QueryToSql} from '../src/query-filter';
 import {escape} from 'sqlstring';
 
@@ -16,7 +16,7 @@ test('QueryToSql', () => {
         created: t.date,
     });
 
-    const queryToSql = new QueryToSql(getClassSchema(User), quoteId('user'), plainSerializer, escape, quoteId);
+    const queryToSql = new QueryToSql(getClassSchema(User), quoteId('user'), jsonSerializer, escape, quoteId);
 
     expect(queryToSql.convert({id: 123})).toBe(`user.id = 123`);
     expect(queryToSql.convert({id: '$id'})).toBe(`user.id = user.id`);

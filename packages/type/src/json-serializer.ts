@@ -8,28 +8,28 @@ import {Serializer} from './serializer';
 import {moment} from './moment';
 import {typedArrayNamesMap} from './models';
 
-export class PlainSerializer extends Serializer {
+export class JSONSerializer extends Serializer {
     constructor() {
-        super('plain');
+        super('json');
     }
 }
 
-export const plainSerializer = new PlainSerializer();
+export const jsonSerializer = new JSONSerializer();
 
 export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : ''+${accessor};`;
 }
 
-plainSerializer.toClass.register('string', compilerToString);
+jsonSerializer.toClass.register('string', compilerToString);
 
 export function compilerToNumber(setter: string, accessor: string, property: PropertyCompilerSchema) {
     return `${setter} = typeof ${accessor} === 'number' ? ${accessor} : +${accessor};`;
 }
 
-plainSerializer.toClass.register('number', compilerToNumber);
-plainSerializer.fromClass.register('number', compilerToNumber);
+jsonSerializer.toClass.register('number', compilerToNumber);
+jsonSerializer.fromClass.register('number', compilerToNumber);
 
-plainSerializer.toClass.register('literal', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+jsonSerializer.toClass.register('literal', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     const literalValue = '_literal_value_' + property.name;
 
     return {
@@ -38,7 +38,7 @@ plainSerializer.toClass.register('literal', (setter: string, accessor: string, p
     };
 });
 
-plainSerializer.toClass.extend('undefined', (setter: string, accessor: string, property: PropertyCompilerSchema, compiler) => {
+jsonSerializer.toClass.extend('undefined', (setter: string, accessor: string, property: PropertyCompilerSchema, compiler) => {
     if (property.type === 'literal' && !property.isOptional) {
         const literalValue = '_literal_value_' + property.name;
         return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
@@ -46,7 +46,7 @@ plainSerializer.toClass.extend('undefined', (setter: string, accessor: string, p
     return;
 });
 
-plainSerializer.toClass.extend('null', (setter: string, accessor: string, property: PropertyCompilerSchema, compiler) => {
+jsonSerializer.toClass.extend('null', (setter: string, accessor: string, property: PropertyCompilerSchema, compiler) => {
     if (property.type === 'literal' && !property.isNullable) {
         const literalValue = '_literal_value_' + property.name;
         return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
@@ -54,18 +54,18 @@ plainSerializer.toClass.extend('null', (setter: string, accessor: string, proper
     return;
 });
 
-plainSerializer.toClass.register('date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+jsonSerializer.toClass.register('date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `${setter} = new Date(${accessor});`;
 });
 
-plainSerializer.toClass.register('moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+jsonSerializer.toClass.register('moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return {
         template: `${setter} = moment(${accessor});`,
         context: {moment}
     };
 });
 
-plainSerializer.toClass.register('boolean', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
+jsonSerializer.toClass.register('boolean', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return `
     if ('boolean' === typeof ${accessor}) {
         ${setter} = ${accessor};
@@ -76,7 +76,7 @@ plainSerializer.toClass.register('boolean', (setter: string, accessor: string, p
     `;
 });
 
-plainSerializer.toClass.register('enum', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable}) => {
+jsonSerializer.toClass.register('enum', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable}) => {
     //this a candidate where we can extract ENUM information during build time and check very fast during
     //runtime, so we don't need a call to getResolvedClassTypeForValidType(), isValidEnumValue(), etc in runtime anymore.
     const allowLabelsAsValue = property.allowLabelsAsValue;
@@ -105,7 +105,7 @@ plainSerializer.toClass.register('enum', (setter: string, accessor: string, prop
     };
 });
 
-plainSerializer.toClass.registerForBinary((setter: string, accessor: string, property: PropertyCompilerSchema) => {
+jsonSerializer.toClass.registerForBinary((setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return {
         template: `${setter} = base64ToTypedArray(${accessor}, typedArrayNamesMap.get('${property.type}'));`,
         context: {
@@ -115,14 +115,14 @@ plainSerializer.toClass.registerForBinary((setter: string, accessor: string, pro
     };
 });
 
-plainSerializer.toClass.register('arrayBuffer', (setter, getter) => {
+jsonSerializer.toClass.register('arrayBuffer', (setter, getter) => {
     return {
         template: `${setter} = base64ToArrayBuffer(${getter});`,
         context: {base64ToArrayBuffer}
     };
 });
 
-plainSerializer.fromClass.registerForBinary((setter: string, accessor: string, property: PropertyCompilerSchema) => {
+jsonSerializer.fromClass.registerForBinary((setter: string, accessor: string, property: PropertyCompilerSchema) => {
     return {
         template: `${setter} = typedArrayToBase64(${accessor});`,
         context: {
@@ -131,7 +131,7 @@ plainSerializer.fromClass.registerForBinary((setter: string, accessor: string, p
     };
 });
 
-plainSerializer.fromClass.register('arrayBuffer', (setter: string, getter: string) => {
+jsonSerializer.fromClass.register('arrayBuffer', (setter: string, getter: string) => {
     return {
         template: `${setter} = arrayBufferToBase64(${getter});`,
         context: {arrayBufferToBase64}
@@ -142,10 +142,10 @@ const convertToPlainUsingToJson = (setter: string, accessor: string, property: P
     return `${setter} = ${accessor}.toJSON();`;
 };
 
-plainSerializer.fromClass.register('date', convertToPlainUsingToJson);
-plainSerializer.fromClass.register('moment', convertToPlainUsingToJson);
+jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
+jsonSerializer.fromClass.register('moment', convertToPlainUsingToJson);
 
-plainSerializer.fromClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
+jsonSerializer.fromClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
     const classSchemaVar = reserveVariable('classSchema');
     const classSchema = getClassSchema(property.resolveClassType!);
     const classToX = reserveVariable('classToX');
@@ -159,7 +159,7 @@ plainSerializer.fromClass.register('class', (setter: string, accessor: string, p
     };
 });
 
-plainSerializer.toClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
+jsonSerializer.toClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
     const classSchemaVar = reserveVariable('classSchema');
     const classSchema = getClassSchema(property.resolveClassType!);
     const xToClass = reserveVariable('xToClass');
@@ -189,7 +189,7 @@ plainSerializer.toClass.register('class', (setter: string, accessor: string, pro
     };
 });
 
-plainSerializer.toClass.register('union', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, rootContext, jitStack, serializerCompilers}) => {
+jsonSerializer.toClass.register('union', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, rootContext, jitStack, serializerCompilers}) => {
 
     let discriminator: string[] = [`if (false) { }`];
     const discriminants: string[] = [];
@@ -228,7 +228,7 @@ plainSerializer.toClass.register('union', (setter: string, accessor: string, pro
         `;
 });
 
-plainSerializer.toClass.register('partial', (setter, accessor, property, compiler) => {
+jsonSerializer.toClass.register('partial', (setter, accessor, property, compiler) => {
     const partialXToClass = compiler.reserveVariable('partialXToClass');
     const classSchema = getClassSchema(property.getSubType().resolveClassType!);
 
@@ -240,7 +240,7 @@ plainSerializer.toClass.register('partial', (setter, accessor, property, compile
     };
 });
 
-plainSerializer.fromClass.register('partial', (setter, accessor, property, compiler) => {
+jsonSerializer.fromClass.register('partial', (setter, accessor, property, compiler) => {
     const partialClassToX = compiler.reserveVariable('partialClassToX');
     const classSchema = getClassSchema(property.getSubType().resolveClassType!);
 

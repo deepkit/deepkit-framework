@@ -1,6 +1,6 @@
 import {ClassType, CompilerContext, toFastProperties} from '@deepkit/core';
 import {join} from 'path';
-import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, plainSerializer} from '@deepkit/type';
+import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer} from '@deepkit/type';
 import {ValidationError} from '@deepkit/framework-shared';
 import {httpClass} from './decorator';
 import {injectable} from './injector/injector';
@@ -54,7 +54,7 @@ export class Router {
                 if (!methodArgumentProperties[argumentIndex]) throw new Error(`Method ${schema.getClassPropertyName(action.methodName)} has no argument defined at #${argumentIndex}`);
 
                 validators.push(jitValidateProperty(methodArgumentProperties[argumentIndex]));
-                converter.push(getPropertyXtoClassFunction(methodArgumentProperties[argumentIndex], plainSerializer));
+                converter.push(getPropertyXtoClassFunction(methodArgumentProperties[argumentIndex], jsonSerializer));
                 argumentIndex++;
                 return action.parameterRegularExpressions[name] || String.raw`([^/]+)`;
             });

@@ -1,4 +1,4 @@
-import {Entity, f, plainSerializer} from '@deepkit/type';
+import {Entity, f, jsonSerializer} from '@deepkit/type';
 import {BenchSuite} from '@deepkit/core';
 
 
@@ -61,7 +61,7 @@ export class Model {
         this.name = name;
     }
 }
-const ModelSerializer = plainSerializer.for(Model);
+const ModelSerializer = jsonSerializer.for(Model);
 
 export async function main() {
     const suite = new BenchSuite('deepkit');
@@ -78,7 +78,7 @@ export async function main() {
         ModelSerializer.deserialize(plain);
     });
 
-    const item = plainSerializer.for(Model).deserialize(plain);
+    const item = jsonSerializer.for(Model).deserialize(plain);
     suite.add('serialize', () => {
         ModelSerializer.serialize(item);
     });

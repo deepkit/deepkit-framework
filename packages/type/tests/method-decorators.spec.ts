@@ -2,7 +2,7 @@ import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, PropertySchema, t} from '../src/decorators';
-import {PartialField, plainSerializer, validateMethodArgs} from '../index';
+import {PartialField, jsonSerializer, validateMethodArgs} from '../index';
 
 test('Basic array', () => {
     class Other {
@@ -242,7 +242,7 @@ test('partial', () => {
     expect(s.getProperty('config2').isPartial).toBe(true);
     expect(s.getProperty('config2').getSubType().getResolvedClassType()).toBe(Config);
 
-    const u = plainSerializer.for(User).deserialize({
+    const u = jsonSerializer.for(User).deserialize({
         config: {
             name: 'peter',
         }
@@ -309,19 +309,19 @@ test('argument convertion', () => {
     expect(schema.getMethodProperties('foo')[0].type).toBe('string');
 
     {
-        const name = plainSerializer.for(Controller).serializeMethodArgument('foo', 0, 2);
+        const name = jsonSerializer.for(Controller).serializeMethodArgument('foo', 0, 2);
         expect(name).toBe(2);
 
-        const res = plainSerializer.for(Controller).deserializeMethodResult('foo', {name: 3});
+        const res = jsonSerializer.for(Controller).deserializeMethodResult('foo', {name: 3});
         expect(res).toEqual({name: '3'});
     }
 
     {
-        const config = plainSerializer.for(Controller).deserializeMethodArgument('bar', 0, {prio: '2'});
+        const config = jsonSerializer.for(Controller).deserializeMethodArgument('bar', 0, {prio: '2'});
         expect(config).toBeInstanceOf(Config);
         expect(config.prio).toBe(2);
 
-        const res = plainSerializer.for(Controller).deserializeMethodResult('bar', {'sub': {name: 3}});
+        const res = jsonSerializer.for(Controller).deserializeMethodResult('bar', {'sub': {name: 3}});
         expect(res).toBeInstanceOf(Config);
         expect(res.sub).toBeInstanceOf(Config);
         expect(res.sub.name).toBe('3');

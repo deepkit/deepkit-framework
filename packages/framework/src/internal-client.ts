@@ -1,4 +1,4 @@
-import {plainSerializer, PropertySchema, uuid} from '@deepkit/type';
+import {jsonSerializer, PropertySchema, uuid} from '@deepkit/type';
 import {
     ActionTypes,
     ClientMessageWithoutId,
@@ -207,7 +207,7 @@ export class InternalClientConnection {
                 const types = await this.getActionTypes(controller, name);
 
                 for (const i of eachKey(args)) {
-                    args[i] = plainSerializer.serializeProperty(types.parameters[i], args[i]);
+                    args[i] = jsonSerializer.serializeProperty(types.parameters[i], args[i]);
                 }
 
                 const subject = this.sendMessage<ServerMessageResult>(controller, {

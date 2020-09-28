@@ -5,10 +5,10 @@ import {DocumentClass} from './document-scenario/DocumentClass';
 import {PageCollection} from './document-scenario/PageCollection';
 import {PageClass} from './document-scenario/PageClass';
 import {mongoSerializer} from '../src/mongo-serializer';
-import {plainSerializer} from '@deepkit/type';
+import {jsonSerializer} from '@deepkit/type';
 
 test('partial 2', () => {
-    const instance = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+    const instance = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
         name: 'Hi',
         'children.0.label': 'Foo'
     });
@@ -20,23 +20,23 @@ test('partial 2', () => {
     expect(instance['children.0.label']).toBe('Foo');
 
     {
-        expect(mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        expect(mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'children.0.label': 2
         })).toEqual({'children.0.label': '2'});
 
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'children.0': new SubModel('3')
         });
         expect(i['children.0'].label).toBe('3');
     }
 
     {
-        expect(mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        expect(mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'children.0.label': 2
         })).toEqual({'children.0.label': '2'});
 
 
-        const ic = plainSerializer.for(SimpleModel).patchDeserialize({
+        const ic = jsonSerializer.for(SimpleModel).patchDeserialize({
             'children.0': {label: 3}
         });
         expect(ic['children.0']).toBeInstanceOf(SubModel);
@@ -49,13 +49,13 @@ test('partial 2', () => {
         expect(im['children.0']).toBeObject();
         expect(im['children.0'].label).toBe('3');
 
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'children.0': {label: 3}
         });
         expect(i['children.0']).toBeObject();
         expect(i['children.0'].label).toBe('3');
 
-        const i2 = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i2 = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'children.0': {label: 3}
         });
         expect(i2['children.0'].label).toBe('3');
@@ -64,13 +64,13 @@ test('partial 2', () => {
 
 test('partial 4', () => {
     {
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'stringChildrenCollection.0': 4
         });
         expect(i['stringChildrenCollection.0']).toBe('4');
     }
     {
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'stringChildrenCollection.0': 4
         });
         expect(i['stringChildrenCollection.0']).toBe('4');
@@ -79,13 +79,13 @@ test('partial 4', () => {
 
 test('partial 5', () => {
     {
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'childrenMap.foo.label': 5
         });
         expect(i['childrenMap.foo.label']).toBe('5');
     }
     {
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'childrenMap.foo.label': 5
         });
         expect(i['childrenMap.foo.label']).toBe('5');
@@ -94,13 +94,13 @@ test('partial 5', () => {
 
 test('partial 7', () => {
     {
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'types.0': [7]
         });
         expect(i['types.0']).toEqual('7');
     }
     {
-        const i = mongoSerializer.for(SimpleModel).fromPatch(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'types.0': [7]
         });
         expect(i['types.0']).toEqual('7');
@@ -123,7 +123,7 @@ test('partial document', () => {
 
     {
         const doc = new DocumentClass;
-        const document = mongoSerializer.for(DocumentClass).fromPatch(plainSerializer, {
+        const document = mongoSerializer.for(DocumentClass).fromPatch(jsonSerializer, {
             'pages.0.name': 5,
             'pages.0.children.0.name': 6,
             'pages.0.children': [{name: 7}]

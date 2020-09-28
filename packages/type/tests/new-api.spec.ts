@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, t} from '../src/decorators';
-import {emptySerializer, getClassToXFunction, getGeneratedJitFunctionFromClass, getJitFunctionXToClass, getXToClassFunction, plainSerializer, uuid} from '../index';
+import {emptySerializer, getClassToXFunction, getGeneratedJitFunctionFromClass, getJitFunctionXToClass, getXToClassFunction, jsonSerializer, uuid} from '../index';
 
 test('new api', async () => {
     class Test {
@@ -48,13 +48,13 @@ test('nested types correctly converted', async () => {
         const config = new Config();
         config.name = 'asd';
         test.configs.push(config);
-        const plain = plainSerializer.for(Test).serialize(test);
+        const plain = jsonSerializer.for(Test).serialize(test);
         expect(plain).not.toBeInstanceOf(Test);
         expect(plain.configs[0].name).toBe('asd');
         expect(plain.configs[0]).not.toBeInstanceOf(Config);
     }
 
-    expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), plainSerializer)).toBeInstanceOf(Function);
+    expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), jsonSerializer)).toBeInstanceOf(Function);
 });
 
 test('different origin', async () => {
@@ -84,12 +84,12 @@ test('different origin', async () => {
     }
 
     {
-        const d = mySerializer.for(Test).to(plainSerializer, {date: 'my:2018-10-13T12:17:35.000Z'});
+        const d = mySerializer.for(Test).to(jsonSerializer, {date: 'my:2018-10-13T12:17:35.000Z'});
         expect(d.date).toEqual('2018-10-13T12:17:35.000Z');
     }
 
     {
-        const d = mySerializer.for(Test).from(plainSerializer, {date: '2018-10-13T12:17:35.000Z'});
+        const d = mySerializer.for(Test).from(jsonSerializer, {date: '2018-10-13T12:17:35.000Z'});
         expect(d.date).toEqual('my:2018-10-13T12:17:35.000Z');
     }
 });
@@ -100,7 +100,7 @@ test('custom serialization formats', async () => {
         @t number: number = 0;
     }
 
-    const mySerializer = new class extends plainSerializer.fork('myFormat') {
+    const mySerializer = new class extends jsonSerializer.fork('myFormat') {
         serializedSingleType: any;
         serializedType: any;
     };
@@ -114,7 +114,7 @@ test('custom serialization formats', async () => {
     });
     const scopedSerializer = mySerializer.for(Test);
 
-    expect(plainSerializer.toClass.get('number')).toBeFunction();
+    expect(jsonSerializer.toClass.get('number')).toBeFunction();
     expect(mySerializer.toClass.get('number')).toBeFunction();
 
     expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
@@ -122,18 +122,18 @@ test('custom serialization formats', async () => {
     const test = new Test;
     const myFormat = getClassToXFunction(getClassSchema(Test), mySerializer)(test);
     console.log('myFormat', myFormat);
-    const plain = getClassToXFunction(getClassSchema(Test), plainSerializer)(test);
+    const plain = getClassToXFunction(getClassSchema(Test), jsonSerializer)(test);
     expect(plain.id).toBe('myName');
     expect(myFormat.id).toBe('string:myName');
     expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), mySerializer)).toBeInstanceOf(Function);
-    expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), plainSerializer)).toBeInstanceOf(Function);
+    expect(getGeneratedJitFunctionFromClass(getClassSchema(Test), jsonSerializer)).toBeInstanceOf(Function);
 
     const testBack = getXToClassFunction(getClassSchema(Test), mySerializer)(myFormat);
-    const testBackClass = getXToClassFunction(getClassSchema(Test), plainSerializer)(myFormat);
+    const testBackClass = getXToClassFunction(getClassSchema(Test), jsonSerializer)(myFormat);
     expect(testBack.id).toBe('myName');
     expect(testBackClass.id).toBe('string:myName');
     expect(getJitFunctionXToClass(getClassSchema(Test), mySerializer)).toBeInstanceOf(Function);
-    expect(getJitFunctionXToClass(getClassSchema(Test), plainSerializer)).toBeInstanceOf(Function);
+    expect(getJitFunctionXToClass(getClassSchema(Test), jsonSerializer)).toBeInstanceOf(Function);
 
     {
         expect(scopedSerializer.serializeProperty('id', 123)).toBe('string:123');

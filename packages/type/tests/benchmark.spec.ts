@@ -29,7 +29,7 @@ test('nix', () => {
 //         instance.ready = true;
 //     });
 //
-//     const serializer = plainSerializer.for(DeepkitModel);
+//     const serializer = jsonSerializer.for(DeepkitModel);
 //
 //     benchSuite.add('Deserialize JSON', () => {
 //         const instance = serializer.deserialize({
@@ -62,7 +62,7 @@ test('nix', () => {
 // test('benchmark classToPlain', () => {
 //     const count = 100_000;
 //
-//     const b = jitplainSerializer.for(DeepkitModel).deserialize({
+//     const b = jitjsonSerializer.for(DeepkitModel).deserialize({
 //         name: 'name1',
 //         id: 1,
 //         tags: ['a', 2, 'c'],
@@ -80,12 +80,12 @@ test('nix', () => {
 //     });
 //
 //     bench(count, 'classToPlain jit', () => {
-//         const plain = jitplainSerializer.for(DeepkitModel).serialize(b);
+//         const plain = jitjsonSerializer.for(DeepkitModel).serialize(b);
 //     });
 //
 //     // console.log('jit', JITToPlainCacheFN.get(DeepkitModel).toString());
 //
-//     const plain = jitplainSerializer.for(DeepkitModel).serialize(b);
+//     const plain = jitjsonSerializer.for(DeepkitModel).serialize(b);
 //     expect(plain.name).toBe('name1');
 //     expect(plain.id).toBe(1);
 //     expect(plain.tags).toEqual(['a', '2', 'c']);
@@ -105,10 +105,10 @@ test('nix', () => {
 //     const count = 100_000;
 //
 //     bench(count, 'partialPlainToClass jit', () => {
-//         const partialWithClassValues = jitplainSerializer.for(DeepkitModel).partialDeserialize(partial);
+//         const partialWithClassValues = jitjsonSerializer.for(DeepkitModel).partialDeserialize(partial);
 //     });
 //
-//     const partialWithClassValues = jitplainSerializer.for(DeepkitModel).partialDeserialize(partial);
+//     const partialWithClassValues = jitjsonSerializer.for(DeepkitModel).partialDeserialize(partial);
 //
 //     expect(partialWithClassValues.name).toBe('name1');
 //     expect(partialWithClassValues.id).toBe(2);
@@ -120,7 +120,7 @@ test('nix', () => {
 //     const count = 10_000;
 //
 //     bench(count, 'supersimple non-jit', (i) => {
-//         const instance = plainSerializer.for(DeepkitSuperSimple).deserialize({
+//         const instance = jsonSerializer.for(DeepkitSuperSimple).deserialize({
 //             name: 'name' + i,
 //             id: i,
 //         });
@@ -131,7 +131,7 @@ test('nix', () => {
 //     });
 //
 //     bench(count, 'supersimple jit', (i) => {
-//         const instance = jitplainSerializer.for(DeepkitSuperSimple).deserialize({
+//         const instance = jitjsonSerializer.for(DeepkitSuperSimple).deserialize({
 //             name: 'name' + i,
 //             id: i,
 //         });

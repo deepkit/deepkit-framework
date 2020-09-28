@@ -1,4 +1,4 @@
-import {getClassSchemaByName, plainSerializer} from '@deepkit/type';
+import {getClassSchemaByName, jsonSerializer} from '@deepkit/type';
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from '../index';
 import {delete as deleteByPath, set} from 'dot-prop';
 import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@deepkit/core';
@@ -174,7 +174,7 @@ export class EntityState {
 
         if (stream.type === 'entity/update') {
             if (store.hasStoreItem(stream.id)) {
-                const item = plainSerializer.for(classType).deserialize(stream.data);
+                const item = jsonSerializer.for(classType).deserialize(stream.data);
                 //todo, we should not overwrite it, but modify the item in-place. This prevents bugs mis-expectations.
                 store.setItemAndNotifyForks(stream.id, item);
             } else {
@@ -191,7 +191,7 @@ export class EntityState {
                 //so we apply all incoming patches.
                 if (item) {
                     //todo rework: patch supports now $inc/$unset as well, which is not compatible with serializer.
-                    const patches = plainSerializer.for(classType).partialDeserialize(stream.patch);
+                    const patches = jsonSerializer.for(classType).partialDeserialize(stream.patch);
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(patches)) {
@@ -241,7 +241,7 @@ export class EntityState {
      */
     public handleEntity<T extends IdInterface>(classType: ClassType<T>, jsonItem: JSONEntity<T>): EntitySubject<T> {
         const store = this.getStore(classType);
-        const item = plainSerializer.for(classType).deserialize(jsonItem);
+        const item = jsonSerializer.for(classType).deserialize(jsonItem);
 
         return store.createFork(item.id, item);
     }
@@ -256,7 +256,7 @@ export class EntityState {
             const setItems: T[] = [];
             for (const itemRaw of stream.items) {
                 if (!collection.entitySubjects[itemRaw.id]) {
-                    const item = plainSerializer.for(classType).deserialize(itemRaw as any);
+                    const item = jsonSerializer.for(classType).deserialize(itemRaw as any);
                     const subject = store.createFork(item.id, item);
 
                     setItems.push(subject.getValue());
@@ -326,7 +326,7 @@ export class EntityState {
 
         if (stream.type === 'add') {
             if (!collection.entitySubjects[stream.item.id]) {
-                const item = plainSerializer.for(classType).deserialize(stream.item as any);
+                const item = jsonSerializer.for(classType).deserialize(stream.item as any);
                 const subject = store.createFork(item.id, item);
 
                 collection.entitySubjects[item.id] = subject;

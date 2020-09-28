@@ -1,7 +1,7 @@
 import {MongoConnection} from './connection';
 import {parse as parseUrl} from 'url';
 import {parse as parseQueryString} from 'querystring';
-import {ClassSchema, getClassSchema, plainSerializer} from '@deepkit/type';
+import {ClassSchema, getClassSchema, jsonSerializer} from '@deepkit/type';
 import {resolveSrvHosts} from './dns';
 import {Host} from './host';
 import {isErrorRetryableRead, isErrorRetryableWrite, MongoError} from './error';
@@ -91,7 +91,7 @@ export class MongoClientConfig {
             }
         }
 
-        this.options = plainSerializer.for(ConnectionOptions).validatedDeserialize(parsed.query ? parseQueryString(parsed.query) : {});
+        this.options = jsonSerializer.for(ConnectionOptions).validatedDeserialize(parsed.query ? parseQueryString(parsed.query) : {});
 
         if (url.startsWith('mongodb+srv://')) {
             this.isSrv = true;
@@ -144,7 +144,7 @@ export class MongoClientConfig {
 
             const hostsData = await this.resolveSrvHosts();
             const options = {...hostsData.options ? parseQueryString(hostsData.options) : {}};
-            const partialOptions = plainSerializer.for(ConnectionOptions).validatedDeserialize(options) as {};
+            const partialOptions = jsonSerializer.for(ConnectionOptions).validatedDeserialize(options) as {};
             for (const [k, v] of eachPair(partialOptions)) {
                 this.options[k] = v;
             }

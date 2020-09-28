@@ -6,7 +6,7 @@ import {
     base64ToArrayBuffer,
     base64ToTypedArray,
     getPropertyClassToXFunction,
-    plainSerializer,
+    jsonSerializer,
     typedArrayMap,
     typedArrayNamesMap,
     typedArrayToBase64,
@@ -49,11 +49,11 @@ test('Int8Array', async () => {
 
     expect(getClassSchema(Clazz).getProperty('ints').type).toBe('Int8Array');
 
-    const plain = plainSerializer.for(Clazz).serialize(clazz);
+    const plain = jsonSerializer.for(Clazz).serialize(clazz);
     expect(plain.ints).toBeString();
     expect(plain.ints).toBe('YW0=');
 
-    const clazz2 = plainSerializer.for(Clazz).deserialize(plain);
+    const clazz2 = jsonSerializer.for(Clazz).deserialize(plain);
     expect(clazz2.ints).toBeInstanceOf(Int8Array);
     expect(clazz2.ints[0]).toBe('a'.charCodeAt(0));
     expect(clazz2.ints[1]).toBe('m'.charCodeAt(0));
@@ -82,7 +82,7 @@ test('Float32Array', async () => {
     expect(new Float32Array(base64ToArrayBuffer('AACAQ+Tqs0Y=')).length).toBe(2);
     expect(base64ToTypedArray('AACAQ+Tqs0Y=', Float32Array).length).toBe(2);
 
-    const plain = plainSerializer.for(Clazz).serialize(clazz);
+    const plain = jsonSerializer.for(Clazz).serialize(clazz);
     expect(plain.floats).toBeString();
     expect(plain.floats).toBe('AACAQ+Tqs0Y=');
 
@@ -98,7 +98,7 @@ test('Float32Array', async () => {
 
     expect(new Float32Array(new Uint8Array(Buffer.from('AACAQ/ZDCU8=', 'base64')).buffer).length).toBe(2);
 
-    const clazz2 = plainSerializer.for(Clazz).deserialize(plain);
+    const clazz2 = jsonSerializer.for(Clazz).deserialize(plain);
     expect(clazz2.floats).toBeInstanceOf(Float32Array);
     expect(clazz2.floats.length).toBe(2);
     expect(clazz2.floats.byteLength).toBe(8);
@@ -133,11 +133,11 @@ test('arrayBuffer', async () => {
     expect(new Int8Array(clazz.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz.ints!)[1]).toBe(64);
 
-    const plain = plainSerializer.for(Clazz).serialize(clazz);
+    const plain = jsonSerializer.for(Clazz).serialize(clazz);
     expect(plain.ints).toBeString();
     expect(plain.ints).toBe('AUA=');
 
-    const clazz2 = plainSerializer.for(Clazz).deserialize(plain);
+    const clazz2 = jsonSerializer.for(Clazz).deserialize(plain);
     expect(clazz2.ints).not.toBeInstanceOf(Int8Array);
     expect(clazz2.ints).toBeInstanceOf(ArrayBuffer);
     expect(clazz2.ints!.byteLength).toBe(2);
@@ -155,7 +155,7 @@ test('Buffer compat', () => {
     expect(p.type).toBe('Uint8Array');
     const transport = {
         encoding: p.toJSON(),
-        value: getPropertyClassToXFunction(p, plainSerializer)(v)
+        value: getPropertyClassToXFunction(p, jsonSerializer)(v)
     };
 
     expect((p.isTypedArray)).toBe(true);

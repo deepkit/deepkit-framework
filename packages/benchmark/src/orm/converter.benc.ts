@@ -1,5 +1,5 @@
 import {BenchSuite} from '@deepkit/core';
-import {getClassSchema, plainSerializer, t} from '@deepkit/type';
+import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '@deepkit/orm';
 
 class Image {
@@ -34,7 +34,7 @@ export async function main() {
     });
 
     suite.add('primaryKeyHashGenerator-getter', () => {
-        getPrimaryKeyHashGenerator(schema, plainSerializer);
+        getPrimaryKeyHashGenerator(schema, jsonSerializer);
     });
 
     suite.add('primaryKeyExtractor', () => {
@@ -46,10 +46,10 @@ export async function main() {
     });
 
     suite.add('primaryKeyHashGenerator', () => {
-        const converted = getPrimaryKeyHashGenerator(schema, plainSerializer)(item);
+        const converted = getPrimaryKeyHashGenerator(schema, jsonSerializer)(item);
     });
 
-    const hash = getPrimaryKeyHashGenerator(schema, plainSerializer);
+    const hash = getPrimaryKeyHashGenerator(schema, jsonSerializer);
     suite.add('primaryKeyHashGenerator-saved', () => {
         const converted = hash(item);
     });

@@ -5,7 +5,7 @@ import {
     moment,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
-    plainSerializer,
+    jsonSerializer,
     PropertyCompilerSchema,
     typedArrayNamesMap,
     typedArrayToBuffer
@@ -16,7 +16,7 @@ for (let i = 0; i < 256; i++) {
     hexTable[i] = (i <= 15 ? '0' : '') + i.toString(16);
 }
 
-export const sqlSerializer = new class extends plainSerializer.fork('sql') {
+export const sqlSerializer = new class extends jsonSerializer.fork('sql') {
 };
 
 export function uuid4Binary(u: string): Buffer {

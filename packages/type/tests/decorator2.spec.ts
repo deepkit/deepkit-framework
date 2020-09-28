@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, getClassSchema, plainSerializer, PropertySchema, t} from '../index';
+import {Entity, getClassSchema, jsonSerializer, PropertySchema, t} from '../index';
 import {uuid} from '../src/utils';
 
 test('test optional', () => {
@@ -177,7 +177,7 @@ test('test asName', () => {
         }
     }
 
-    const user = plainSerializer.for(User).deserialize({
+    const user = jsonSerializer.for(User).deserialize({
         fieldA: 'a',
         fieldB: 'b'
     });

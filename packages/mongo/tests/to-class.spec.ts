@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {cloneClass, t, getEntityName, isExcluded, uuid, getClassSchema, plainSerializer} from '@deepkit/type';
+import {cloneClass, t, getEntityName, isExcluded, uuid, getClassSchema, jsonSerializer} from '@deepkit/type';
 import {Binary} from "bson";
 import { SimpleModel, Plan, now, SubModel, StringCollectionWrapper } from './entities';
 import {mongoSerializer} from '../src/mongo-serializer';
@@ -52,7 +52,7 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo.label).toBe('bar');
     expect(instance.childrenMap.foo2.label).toBe('bar2');
 
-    const plain = plainSerializer.for(SimpleModel).serialize(instance);
+    const plain = jsonSerializer.for(SimpleModel).serialize(instance);
     expect(plain.yesNo).toBeTrue();
     expect(plain.plan).toBe(1);
 
@@ -64,13 +64,13 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo2 !== copy.childrenMap.foo2).toBeTrue();
     expect(instance.created !== copy.created).toBeTrue();
 
-    expect(plain).toEqual(plainSerializer.for(SimpleModel).serialize(copy));
+    expect(plain).toEqual(jsonSerializer.for(SimpleModel).serialize(copy));
 });
 
 test('test simple model all fields plainToMongo', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
 
-    const mongoItem = mongoSerializer.for(SimpleModel).from(plainSerializer, {
+    const mongoItem = mongoSerializer.for(SimpleModel).from(jsonSerializer, {
         name: 'myName',
         type: 5,
         plan: 1,
@@ -115,7 +115,7 @@ test('test simple model all fields plainToMongo', () => {
     expect(mongoItem.childrenMap.foo.label).toBe('bar');
     expect(mongoItem.childrenMap.foo2.label).toBe('bar2');
 
-    const plain = mongoSerializer.for(SimpleModel).to(plainSerializer, mongoItem);
+    const plain = mongoSerializer.for(SimpleModel).to(jsonSerializer, mongoItem);
     expect(plain.yesNo).toBeTrue();
     expect(plain.plan).toBe(1);
 });
@@ -131,7 +131,7 @@ test('test simple model with not mapped fields', () => {
     expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBeTrue();
     expect(isExcluded(schema, 'excludedForMongo', 'plain')).toBeFalse();
 
-    const instance = plainSerializer.for(SimpleModel).deserialize({
+    const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         type: 5,
         yesNo: '1',
@@ -148,7 +148,7 @@ test('test simple model with not mapped fields', () => {
     expect(instance.excludedForPlain).toBe('excludedForPlain');
     expect(instance.excludedForMongo).toBe('excludedForMongo');
 
-    const mongoEntry = mongoSerializer.for(SimpleModel).from(plainSerializer, {
+    const mongoEntry = mongoSerializer.for(SimpleModel).from(jsonSerializer, {
         id: uuid(),
         name: 'myName',
         type: 5,
@@ -166,7 +166,7 @@ test('test simple model with not mapped fields', () => {
     expect(mongoEntry.excludedForPlain).toBe('excludedForPlain');
     expect(mongoEntry.excludedForMongo).toBeUndefined();
 
-    const plainObject = plainSerializer.for(SimpleModel).serialize(instance);
+    const plainObject = jsonSerializer.for(SimpleModel).serialize(instance);
 
     expect(plainObject.id).toBeString();
     expect(plainObject.name).toBe('myName');
@@ -190,7 +190,7 @@ test('test @Decorated', async () => {
     instance.stringChildrenCollection.add('Bar2');
     expect(instance.stringChildrenCollection.items[2]).toBe('Bar2');
 
-    const plain = plainSerializer.for(SimpleModel).serialize(instance);
+    const plain = jsonSerializer.for(SimpleModel).serialize(instance);
     expect(plain.name).toBe('myName');
     expect(plain.stringChildrenCollection).toEqual(['Foo', 'Bar', 'Bar2']);
 

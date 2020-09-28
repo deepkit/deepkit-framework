@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '../index';
-import {getClassSchema, plainSerializer, t} from '@deepkit/type';
+import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
 
 class Image {
     @t title: string = '';
@@ -61,7 +61,7 @@ test('getPrimaryKeyExtractor', () => {
 test('getPrimaryKeyHashGenerator', () => {
     const schema = getClassSchema(User);
     expect(schema.getPrimaryFields().length).toBe(1);
-    const converter = getPrimaryKeyHashGenerator(schema, plainSerializer);
+    const converter = getPrimaryKeyHashGenerator(schema, jsonSerializer);
 
     {
         const converted = converter({id: 22, title: 'Peter'});

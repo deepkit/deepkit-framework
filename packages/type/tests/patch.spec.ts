@@ -5,11 +5,11 @@ import {DocumentClass} from './document-scenario/DocumentClass';
 import {PageCollection} from './document-scenario/PageCollection';
 import {resolvePropertyCompilerSchema} from '../src/jit';
 import {getClassSchema} from '../src/decorators';
-import {plainSerializer} from '../src/plain-serializer';
+import {jsonSerializer} from '../src/json-serializer';
 
 
 test('partial 2', () => {
-    const instance = plainSerializer.for(SimpleModel).patchDeserialize({
+    const instance = jsonSerializer.for(SimpleModel).patchDeserialize({
         name: 'Hi',
         'children.0.label': 'Foo'
     });
@@ -20,11 +20,11 @@ test('partial 2', () => {
     expect(instance.name).toBe('Hi');
     expect(instance['children.0.label']).toBe('Foo');
 
-    expect(plainSerializer.for(SimpleModel).patchDeserialize({
+    expect(jsonSerializer.for(SimpleModel).patchDeserialize({
         'children.0.label': 2
     })).toEqual({'children.0.label': '2'});
 
-    const i2 = plainSerializer.for(SimpleModel).patchDeserialize({
+    const i2 = jsonSerializer.for(SimpleModel).patchDeserialize({
         'children.0': {'label': 3}
     });
     expect(i2['children.0']).toBeInstanceOf(SubModel);
@@ -33,14 +33,14 @@ test('partial 2', () => {
 
 
 test('partial 4', () => {
-    const i2 = plainSerializer.for(SimpleModel).patchDeserialize({
+    const i2 = jsonSerializer.for(SimpleModel).patchDeserialize({
         'stringChildrenCollection.0': 4
     });
     expect(i2['stringChildrenCollection.0']).toBe('4');
 });
 
 test('partial 5', () => {
-    const i2 = plainSerializer.for(SimpleModel).patchDeserialize({
+    const i2 = jsonSerializer.for(SimpleModel).patchDeserialize({
         'childrenMap.foo.label': 5
     });
     expect(i2['childrenMap.foo.label']).toBe('5');
@@ -48,7 +48,7 @@ test('partial 5', () => {
 
 
 test('partial 7', () => {
-    const i = plainSerializer.for(SimpleModel).patchDeserialize({
+    const i = jsonSerializer.for(SimpleModel).patchDeserialize({
         'types.0': [7]
     });
     expect(i['types.0']).toEqual('7');
@@ -56,7 +56,7 @@ test('partial 7', () => {
 
 test('partial document', () => {
     const docParent = new DocumentClass();
-    const document = plainSerializer.for(DocumentClass).patchDeserialize({
+    const document = jsonSerializer.for(DocumentClass).patchDeserialize({
         'pages.0.name': 5,
         'pages.0.children.0.name': 6,
         'pages.0.children': [{name: 7}],
@@ -101,7 +101,7 @@ test('partial 2', () => {
     const i = new SimpleModel('Hi');
     i.children.push(new SubModel('Foo'));
 
-    const plain = plainSerializer.for(SimpleModel).patchSerialize({
+    const plain = jsonSerializer.for(SimpleModel).patchSerialize({
         'children.0': i.children[0],
         'stringChildrenCollection': new StringCollectionWrapper(['Foo', 'Bar']),
         'childrenCollection': new CollectionWrapper([new SubModel('Bar3')]),

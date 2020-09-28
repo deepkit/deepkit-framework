@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, plainSerializer, t, uuid} from '../index';
+import {Entity, jsonSerializer, t, uuid} from '../index';
 import {Channel, Job} from './big-entity';
 
 @Entity('jobModelGraphSnapshotLayer')
@@ -46,7 +46,7 @@ test('break JitPropertyConverter', () => {
         const c = new Channel();
         c.lastValue = [12, 44];
         c.main = true;
-        const v = plainSerializer.for(Job).serializeProperty('channels.test123', c);
+        const v = jsonSerializer.for(Job).serializeProperty('channels.test123', c);
         expect(v).toEqual({
             kpiTrace: 0,
             lastValue: [12, 44],
@@ -61,7 +61,7 @@ test('break JitPropertyConverter', () => {
         sl.saved = new Date;
         sl.outputFilePath = './my/output.path';
 
-        const v = plainSerializer.for(JobModelGraphSnapshot).serializeProperty('layerInfo.bla', sl);
+        const v = jsonSerializer.for(JobModelGraphSnapshot).serializeProperty('layerInfo.bla', sl);
         //this breaks when we cache only getCacheKey() for virtual properties schemas
         expect(v).toEqual({
             saved: sl.saved.toJSON(),

@@ -1,7 +1,7 @@
 import {Collection, ConnectionWriter, EntitySubject, ExchangeEntity, IdInterface} from '@deepkit/framework-shared';
 import {injectable} from '../injector/injector';
 import {AsyncEventSubscription, ClassType} from '@deepkit/core';
-import {ClassSchema, getClassSchema, plainSerializer} from '@deepkit/type';
+import {ClassSchema, getClassSchema, jsonSerializer} from '@deepkit/type';
 import {Observable, Subscription} from 'rxjs';
 import {Exchange} from './exchange';
 import {findQuerySatisfied} from '../utils';

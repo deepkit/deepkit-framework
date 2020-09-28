@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {plainSerializer, PropertyValidator, PropertyValidatorError, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem} from '../index';
+import {jsonSerializer, PropertyValidator, PropertyValidatorError, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem} from '../index';
 import {CustomError, isPlainObject} from '@deepkit/core';
 import {getClassSchema, t} from '../src/decorators';
 
@@ -273,14 +273,14 @@ test('test boolean', async () => {
 
     expect(getClassSchema(Model).getProperty('bo').type).toBe('boolean');
 
-    expect(plainSerializer.for(Model).deserialize({bo: false}).bo).toBe(false);
-    expect(plainSerializer.for(Model).deserialize({bo: true}).bo).toBe(true);
-    expect(plainSerializer.for(Model).deserialize({bo: 'false'}).bo).toBe(false);
-    expect(plainSerializer.for(Model).deserialize({bo: 'true'}).bo).toBe(true);
-    expect(plainSerializer.for(Model).deserialize({bo: '1'}).bo).toBe(true);
-    expect(plainSerializer.for(Model).deserialize({bo: '0'}).bo).toBe(false);
-    expect(plainSerializer.for(Model).deserialize({bo: 1}).bo).toBe(true);
-    expect(plainSerializer.for(Model).deserialize({bo: 0}).bo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({bo: false}).bo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({bo: true}).bo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({bo: 'false'}).bo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({bo: 'true'}).bo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({bo: '1'}).bo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({bo: '0'}).bo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({bo: 1}).bo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({bo: 0}).bo).toBe(false);
 
     expect(validate(Model, {bo: false})).toEqual([]);
     expect(validate(Model, {bo: true})).toEqual([]);
@@ -344,32 +344,32 @@ test('test Date', async () => {
     }]);
 
     {
-        const o = plainSerializer.for(Model).deserialize({endTime: date.toString()});
+        const o = jsonSerializer.for(Model).deserialize({endTime: date.toString()});
         expect(o.endTime).toEqual(date);
     }
 
     {
-        const o = plainSerializer.for(Model).deserialize({endTime: date.toJSON()});
+        const o = jsonSerializer.for(Model).deserialize({endTime: date.toJSON()});
         expect(o.endTime).toEqual(date);
     }
 
     {
-        const o = plainSerializer.for(Model).deserialize({endTime: null});
+        const o = jsonSerializer.for(Model).deserialize({endTime: null});
         expect(o.endTime).toBe(undefined);
     }
 
     {
-        const o = plainSerializer.for(Model).deserialize({endTime: undefined});
+        const o = jsonSerializer.for(Model).deserialize({endTime: undefined});
         expect(o.endTime).toBe(undefined);
     }
 
     {
-        const o = plainSerializer.for(Model).validatedDeserialize({endTime: '2019-03-19T10:41:45.000Z'});
+        const o = jsonSerializer.for(Model).validatedDeserialize({endTime: '2019-03-19T10:41:45.000Z'});
         expect(o.endTime).toEqual(date);
     }
 
     try {
-        plainSerializer.for(Model).validatedDeserialize({endTime: 'asd'});
+        jsonSerializer.for(Model).validatedDeserialize({endTime: 'asd'});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -377,7 +377,7 @@ test('test Date', async () => {
     }
 
     try {
-        plainSerializer.for(Model).validatedDeserialize({endTime: ''});
+        jsonSerializer.for(Model).validatedDeserialize({endTime: ''});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -385,7 +385,7 @@ test('test Date', async () => {
     }
 
     try {
-        plainSerializer.for(Model).validatedDeserialize({endTime: null});
+        jsonSerializer.for(Model).validatedDeserialize({endTime: null});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -393,7 +393,7 @@ test('test Date', async () => {
     }
 
     try {
-        plainSerializer.for(Model).validatedDeserialize({endTime: undefined});
+        jsonSerializer.for(Model).validatedDeserialize({endTime: undefined});
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
@@ -559,15 +559,15 @@ test('test decorated', async () => {
         infos: [{name: 'foo', value: 'bar'}]
     })).toEqual([]);
 
-    expect(validate(AClass, plainSerializer.for(AClass).deserialize({infos: []}))).toEqual([]);
-    expect(validate(AClass, plainSerializer.for(AClass).deserialize({}))).toEqual([]);
-    expect(validate(AClass, plainSerializer.for(AClass).deserialize({infos: []}))).toEqual([]);
+    expect(validate(AClass, jsonSerializer.for(AClass).deserialize({infos: []}))).toEqual([]);
+    expect(validate(AClass, jsonSerializer.for(AClass).deserialize({}))).toEqual([]);
+    expect(validate(AClass, jsonSerializer.for(AClass).deserialize({infos: []}))).toEqual([]);
 
     {
         expect(validate(AClass, {infos: ['string']})).toEqual([
             {code: 'invalid_type', message: 'Type is not an object', path: 'infos.0'},
         ]);
-        const item = plainSerializer.for(AClass).deserialize({infos: ['string']});
+        const item = jsonSerializer.for(AClass).deserialize({infos: ['string']});
         expect(item.infos.all()).toEqual([]);
         expect(validate(AClass, item)).toEqual([]);
     }
@@ -577,7 +577,7 @@ test('test decorated', async () => {
             {code: 'required', message: 'Required value is undefined', path: 'infos.0.name'},
             {code: 'required', message: 'Required value is undefined', path: 'infos.0.value'},
         ]);
-        const item = plainSerializer.for(AClass).deserialize({infos: [{}]});
+        const item = jsonSerializer.for(AClass).deserialize({infos: [{}]});
         expect(item.infos.all()).toEqual([{name: undefined, value: undefined}]);
         expect(validate(AClass, item)).toEqual([
             {code: 'required', message: 'Required value is undefined', path: 'infos.0.name'},
@@ -585,7 +585,7 @@ test('test decorated', async () => {
         ]);
     }
 
-    expect(validate(AClass, plainSerializer.for(AClass).deserialize({
+    expect(validate(AClass, jsonSerializer.for(AClass).deserialize({
         infos: [{name: 'foo', value: 'bar'}]
     }))).toEqual([]);
 });
@@ -745,7 +745,7 @@ test('test valdiation on real life case', () => {
         }
     };
 
-    plainSerializer.for(NodeResources).deserialize(object);
+    jsonSerializer.for(NodeResources).deserialize(object);
 
     expect(isPlainObject(object.assignedJobTaskInstances['a09be358-d6ce-477f-829a-0dc27219de34.0.main'].assignedResources)).toBeTrue();
 

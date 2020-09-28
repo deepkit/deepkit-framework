@@ -1,5 +1,5 @@
 import {BehaviorSubject, Subject} from 'rxjs';
-import {plainSerializer, PropertySchema} from '@deepkit/type';
+import {jsonSerializer, PropertySchema} from '@deepkit/type';
 import {
     Batcher,
     ClientMessageAll,
@@ -508,7 +508,7 @@ export class Client {
             const types = await this.getActionTypes(controller, name, timeoutInSeconds);
 
             for (const i of eachKey(args)) {
-                args[i] = plainSerializer.serializeProperty(types.parameters[i], args[i]);
+                args[i] = jsonSerializer.serializeProperty(types.parameters[i], args[i]);
             }
 
             const activeSubject = this.sendMessage<ServerMessageResult>({

@@ -4,7 +4,7 @@ import {getClassSchema, PropertyValidator, t} from '../src/decorators';
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from './big-entity';
 import {jitValidateProperty} from '../src/jit-validation';
-import {plainSerializer, uuid} from '../index';
+import {jsonSerializer, uuid} from '../index';
 
 test('test any deep array', async () => {
     class Peter {
@@ -150,7 +150,7 @@ test('test custom validator on array items', async () => {
     }
 
     try {
-        const instance = plainSerializer.for(SimpleModel).validatedDeserialize({
+        const instance = jsonSerializer.for(SimpleModel).validatedDeserialize({
             name: 'myName',
             tags: ['foowererererefdrwerer', 'bar'],
             tag: 'foowererererefdrwerer',

@@ -6,7 +6,7 @@ import {
     moment,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
-    plainSerializer,
+    jsonSerializer,
     PropertyCompilerSchema,
     typedArrayNamesMap,
     typedArrayToBuffer
@@ -19,11 +19,11 @@ export function uuid4Binary(u?: string): Binary {
     return mongoUuid(Binary, u);
 }
 
-export const mongoSerializer = new class extends plainSerializer.fork('mongo') {
+export const mongoSerializer = new class extends jsonSerializer.fork('mongo') {
 };
 
 mongoSerializer.fromClass.noop('date'); //we dont stringify date
-plainSerializer.fromClass.register('string', compilerToString);
+jsonSerializer.fromClass.register('string', compilerToString);
 
 export function uuid4Stringify(binary: Binary): string {
     if (!binary.buffer) {

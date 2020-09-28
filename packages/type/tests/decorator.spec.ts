@@ -13,7 +13,7 @@ import {
     isArrayType,
     isMapType,
     isRegisteredEntity,
-    plainSerializer,
+    jsonSerializer,
     PropertySchema,
     t,
 } from '../index';
@@ -163,7 +163,7 @@ test('test asName', () => {
         }
     }
 
-    const user = plainSerializer.for(User).deserialize({
+    const user = jsonSerializer.for(User).deserialize({
         fieldA: 'a',
         fieldB: 'b'
     });
@@ -355,7 +355,7 @@ test('more decorator', () => {
     }
 
     {
-        const instance = plainSerializer.for(Model).deserialize({
+        const instance = jsonSerializer.for(Model).deserialize({
             bool: 'wow',
             whatever: {'any': false}
         });
@@ -367,42 +367,42 @@ test('more decorator', () => {
     }
 
     {
-        const instance = plainSerializer.for(Model).deserialize({
+        const instance = jsonSerializer.for(Model).deserialize({
             bool: 'true',
         });
         expect(instance.bool).toBeTrue();
     }
 
     {
-        const instance = plainSerializer.for(Model).deserialize({
+        const instance = jsonSerializer.for(Model).deserialize({
             bool: '1',
         });
         expect(instance.bool).toBeTrue();
     }
 
     {
-        const instance = plainSerializer.for(Model).deserialize({
+        const instance = jsonSerializer.for(Model).deserialize({
             bool: 1,
         });
         expect(instance.bool).toBeTrue();
     }
 
     {
-        const instance = plainSerializer.for(Model).deserialize({
+        const instance = jsonSerializer.for(Model).deserialize({
             bool: 'false',
         });
         expect(instance.bool).toBeFalse();
     }
 
     {
-        const instance = plainSerializer.for(Model).deserialize({
+        const instance = jsonSerializer.for(Model).deserialize({
             bool: '0',
         });
         expect(instance.bool).toBeFalse();
     }
 
     {
-        const instance = plainSerializer.for(Model).deserialize({
+        const instance = jsonSerializer.for(Model).deserialize({
             bool: 0,
         });
         expect(instance.bool).toBeFalse();
@@ -439,11 +439,11 @@ test('binary', () => {
     const i = new Model();
     expect(Buffer.from(i.preview).toString('utf8')).toBe('FooBar');
 
-    const plain = plainSerializer.for(Model).serialize(i);
+    const plain = jsonSerializer.for(Model).serialize(i);
     expect(plain.preview).toBe('Rm9vQmFy');
     expect(plain.preview).toBe(Buffer.from('FooBar', 'utf8').toString('base64'));
 
-    const back = plainSerializer.for(Model).deserialize(plain);
+    const back = jsonSerializer.for(Model).deserialize(plain);
     expect(back.preview).toBeInstanceOf(ArrayBuffer);
     expect(Buffer.from(back.preview).toString('utf8')).toBe('FooBar');
     expect(back.preview.byteLength).toBe(6);
@@ -484,64 +484,64 @@ test('group', () => {
     const user = new User();
 
     {
-        const plain = plainSerializer.for(User).partialSerialize(user);
+        const plain = jsonSerializer.for(User).partialSerialize(user);
         expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily', 'language']);
     }
 
     {
-        const plain = plainSerializer.for(User).partialSerialize(user, {groups: ['confidential']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: ['confidential']});
         expect(Object.keys(plain)).toEqual(['password']);
     }
 
     {
-        const plain = plainSerializer.for(User).serialize(user, {groups: ['confidential']});
+        const plain = jsonSerializer.for(User).serialize(user, {groups: ['confidential']});
         expect(Object.keys(plain)).toEqual(['password']);
     }
 
     {
-        const plain = plainSerializer.for(User).partialSerialize(user, {groupsExclude: ['confidential']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: ['confidential']});
         expect(Object.keys(plain)).toEqual(['username', 'config', 'foo']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily', 'language']);
     }
 
     {
-        const plain = plainSerializer.for(User).partialSerialize(user, {groupsExclude: ['confidential', 'details']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: ['confidential', 'details']});
         expect(Object.keys(plain)).toEqual(['username', 'foo']);
     }
 
     {
-        const plain = plainSerializer.for(User).partialSerialize(user, {groupsExclude: ['theme']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: ['theme']});
         expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
         expect(Object.keys(plain.config)).toEqual(['language']);
     }
 
     {
-        const plain = plainSerializer.for(User).serialize(user, {groupsExclude: ['theme']});
+        const plain = jsonSerializer.for(User).serialize(user, {groupsExclude: ['theme']});
         expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
         expect(Object.keys(plain.config)).toEqual(['language']);
     }
 
     {
-        const plain = plainSerializer.for(User).partialSerialize(user, {groups: ['theme', 'details']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: ['theme', 'details']});
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily']);
     }
 
     {
-        const plain = plainSerializer.for(User).serialize(user, {groups: ['theme', 'details']});
+        const plain = jsonSerializer.for(User).serialize(user, {groups: ['theme', 'details']});
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily']);
     }
 
     {
-        const plain = plainSerializer.for(User).partialSerialize(user, {groups: ['text', 'details']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: ['text', 'details']});
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['fontSize', 'fontFamily']);
     }
 
     {
-        const plain = plainSerializer.for(User).serialize(user, {groups: ['text', 'details']});
+        const plain = jsonSerializer.for(User).serialize(user, {groups: ['text', 'details']});
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['fontSize', 'fontFamily']);
     }
@@ -549,7 +549,7 @@ test('group', () => {
     const plain = {foo: 'bar2', username: 'peter2', password: 'password2', config: {color: 'blue'}};
 
     {
-        const user2 = plainSerializer.for(User).deserialize(plain);
+        const user2 = jsonSerializer.for(User).deserialize(plain);
         expect(user2.foo).toBe('bar2');
         expect(user2.username).toBe('peter2');
         expect(user2.password).toBe('password2');
@@ -558,7 +558,7 @@ test('group', () => {
     }
 
     {
-        const user2 = plainSerializer.for(User).deserialize(plain, {groups: ['confidential']});
+        const user2 = jsonSerializer.for(User).deserialize(plain, {groups: ['confidential']});
         expect(user2.foo).toBe(user.foo);
         expect(user2.username).toBe(user.username);
         expect(user2.password).toBe('password2');
@@ -567,7 +567,7 @@ test('group', () => {
     }
 
     {
-        const user2 = plainSerializer.for(User).deserialize(plain, {groups: ['theme', 'details']});
+        const user2 = jsonSerializer.for(User).deserialize(plain, {groups: ['theme', 'details']});
         expect(user2.foo).toBe(user.foo);
         expect(user2.username).toBe(user.username);
         expect(user2.password).toBe(user.password);
@@ -576,7 +576,7 @@ test('group', () => {
     }
 
     {
-        const user2 = plainSerializer.for(User).deserialize(plain, {groupsExclude: ['confidential']});
+        const user2 = jsonSerializer.for(User).deserialize(plain, {groupsExclude: ['confidential']});
         expect(user2.foo).toBe('bar2');
         expect(user2.username).toBe('peter2');
         expect(user2.password).toBe(user.password);

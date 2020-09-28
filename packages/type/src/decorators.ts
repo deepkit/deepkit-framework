@@ -3,7 +3,7 @@ import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumbe
 import getParameterNames from 'get-parameter-names';
 import {FlattenIfArray, isArray, JSONEntity} from './utils';
 import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
-import {plainSerializer} from './plain-serializer';
+import {jsonSerializer} from './json-serializer';
 import {PartialField, typedArrayMap, typedArrayNamesMap, Types} from './models';
 import {BackReference, isPrimaryKey, Reference} from './types';
 
@@ -1036,7 +1036,7 @@ export class ClassSchema<T = any> {
     }
 
     public create(propertyValues: JSONEntity<T>): T {
-        return plainSerializer.for(this).deserialize(propertyValues);
+        return jsonSerializer.for(this).deserialize(propertyValues);
     }
 }
 

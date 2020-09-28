@@ -3,7 +3,7 @@ import {tearDown} from '@deepkit/core-rxjs';
 import {IdInterface} from './contract';
 import {ClassType, CustomError} from '@deepkit/core';
 import {Buffer} from 'buffer';
-import {arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, t,} from '@deepkit/type';
+import {arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, jsonSerializer, t,} from '@deepkit/type';
 import {skip} from 'rxjs/operators';
 
 @Entity('@error:json')
@@ -60,7 +60,7 @@ export function getSerializedErrorPair(error: any): [string, any, any] {
     } else {
         const entityName = getClassSchema(error['constructor'] as ClassType<typeof error>).name;
         if (entityName) {
-            return [entityName, plainSerializer.for(error['constructor'] as ClassType<typeof error>).serialize(error), error ? error.stack : undefined];
+            return [entityName, jsonSerializer.for(error['constructor'] as ClassType<typeof error>).serialize(error), error ? error.stack : undefined];
         }
     }
 
@@ -83,7 +83,7 @@ export function getUnserializedError(entityName: string, error: any, stack: any,
     if (!hasClassSchemaByName(entityName)) {
         throw new Error(`deepkit/type entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
     }
-    return plainSerializer.for(getClassSchemaByName(entityName).classType).deserialize(error);
+    return jsonSerializer.for(getClassSchemaByName(entityName).classType).deserialize(error);
 }
 
 // export type Query<T> = {

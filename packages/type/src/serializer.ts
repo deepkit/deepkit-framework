@@ -56,7 +56,7 @@ export class SerializerCompilers {
      *
      * INTERNAL WARNING: Coming from `plain` to `x` the property values usually come from user input which makes
      * it necessary to check the type and convert it if necessary. This is extremely important to not
-     * introduce security issues. Deepkiting from plain to your target format is made by calling first plainSerializer.deserialize()
+     * introduce security issues. Deepkiting from plain to your target format is made by calling first jsonSerializer.deserialize()
      * and then yourSerializer.serialize() with the result, deepkit/type is fast enough to buy this convenience
      * (of not having to declare too many compiler templates).
      */

@@ -1,14 +1,14 @@
 import {ClassSchema, getClassSchema, getClassTypeFromInstance} from './decorators';
 import {ClassType, getClassName} from '@deepkit/core';
 import {JitConverterOptions} from './jit';
-import {plainSerializer} from './plain-serializer';
+import {jsonSerializer} from './json-serializer';
 
 
 /**
  * Clones a class instance deeply.
  */
 export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
-    const s = plainSerializer.for(getClassTypeFromInstance(target));
+    const s = jsonSerializer.for(getClassTypeFromInstance(target));
     return s.deserialize(s.serialize(target, options), options, options?.parents);
 }
 

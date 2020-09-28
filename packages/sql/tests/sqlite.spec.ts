@@ -1,7 +1,7 @@
 import 'jest';
 import 'reflect-metadata';
 import {SQLiteDatabaseAdapter} from '../index';
-import {Entity, plainSerializer, t} from '@deepkit/type';
+import {Entity, jsonSerializer, t} from '@deepkit/type';
 import {bench} from '@deepkit/core';
 import {createSetup} from './setup';
 
@@ -19,7 +19,7 @@ test('sqlite 10k bench', async () => {
     expect(await session.query(User).count()).toBe(0);
 
     for (let i = 0; i < 10_000; i++) {
-        session.add(plainSerializer.for(User).deserialize({id: i, name: 'Peter' + i, created: new Date()}));
+        session.add(jsonSerializer.for(User).deserialize({id: i, name: 'Peter' + i, created: new Date()}));
     }
     await bench(1, 'insert', async () => {
         await session.commit();

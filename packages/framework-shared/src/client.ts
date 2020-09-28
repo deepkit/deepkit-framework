@@ -3,7 +3,7 @@ import {first} from 'rxjs/operators';
 import {ClientMessageWithoutId, IdInterface, ServerMessageComplete, ServerMessageError, ServerMessageResult} from './contract';
 import {getUnserializedError, StreamBehaviorSubject} from './core';
 import {Collection, CollectionPaginationEvent} from './collection';
-import {getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, plainSerializer, PropertySchema, PropertySchemaSerialized} from '@deepkit/type';
+import {getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, jsonSerializer, PropertySchema, PropertySchemaSerialized} from '@deepkit/type';
 import {ClassType, each} from '@deepkit/core';
 import {EntityState} from './entity-state';
 
@@ -105,7 +105,7 @@ export function handleActiveSubject(
     let streamBehaviorSubject: StreamBehaviorSubject<any> | undefined;
 
     function deserializeResult(encoding: PropertySchemaSerialized, next: any): any {
-        return plainSerializer.deserializeProperty(PropertySchema.fromJSON(encoding), next);
+        return jsonSerializer.deserializeProperty(PropertySchema.fromJSON(encoding), next);
     }
 
     const sub = activeSubject.subscribe((reply: ServerMessageResult) => {

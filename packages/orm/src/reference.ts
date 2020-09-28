@@ -1,4 +1,4 @@
-import {ClassSchema, classSchemaSymbol, getGlobalStore, plainSerializer} from '@deepkit/type';
+import {ClassSchema, classSchemaSymbol, getGlobalStore, jsonSerializer} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {IdentityMap} from './identity-map';
 import {getPrimaryKeyHashGenerator} from './converter';
@@ -71,7 +71,7 @@ export function getReference<T>(
 ): T {
     let pkHash = '';
     if (identityMap || pool) {
-        pkHash = getPrimaryKeyHashGenerator(classSchema, plainSerializer)(pk);
+        pkHash = getPrimaryKeyHashGenerator(classSchema, jsonSerializer)(pk);
         if (pool) {
             const item = pool.get(pkHash);
             if (item) return item;

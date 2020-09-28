@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {arrayBufferFrom, arrayBufferTo, arrayBufferToBase64, plainSerializer, t,} from '@deepkit/type';
+import {arrayBufferFrom, arrayBufferTo, arrayBufferToBase64, jsonSerializer, t,} from '@deepkit/type';
 import {Plan, SimpleModel, SubModel} from './entities';
 import {Binary, ObjectID} from 'bson';
 import {Buffer} from 'buffer';
@@ -72,17 +72,17 @@ test('make sure undefined is undefined', () => {
     }
 
     {
-        const mongo = mongoSerializer.for(Model).from(plainSerializer, {name: 'peter'});
+        const mongo = mongoSerializer.for(Model).from(jsonSerializer, {name: 'peter'});
         expect(mongo.name).toBe('peter');
     }
 
     {
-        const mongo = mongoSerializer.for(Model).from(plainSerializer, {name: undefined});
+        const mongo = mongoSerializer.for(Model).from(jsonSerializer, {name: undefined});
         expect(mongo.name).toBe(null);
     }
 
     {
-        const mongo = mongoSerializer.for(Model).from(plainSerializer, {});
+        const mongo = mongoSerializer.for(Model).from(jsonSerializer, {});
         expect(mongo.name).toBe(null);
     }
 });
@@ -164,7 +164,7 @@ test('partial 3', () => {
     }
 
     {
-        const i = mongoSerializer.for(SimpleModel).fromPartial(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPartial(jsonSerializer, {
             'children': [{label: 3}]
         });
         expect(i['children'][0].label).toBe('3');
@@ -173,7 +173,7 @@ test('partial 3', () => {
 
 test('partial with required doesnt throw', () => {
     {
-        mongoSerializer.for(SimpleModel).fromPartial(plainSerializer, {
+        mongoSerializer.for(SimpleModel).fromPartial(jsonSerializer, {
             'children': [{}]
         });
     }
@@ -188,7 +188,7 @@ test('partial 6', () => {
         expect(i['types']).toEqual(['6', '7']);
     }
     {
-        const i = mongoSerializer.for(SimpleModel).fromPartial(plainSerializer, {
+        const i = mongoSerializer.for(SimpleModel).fromPartial(jsonSerializer, {
             'types': [6, 7]
         });
         expect(i['types']).toEqual(['6', '7']);
@@ -198,7 +198,7 @@ test('partial 6', () => {
 test('partial invalid', () => {
 
     expect(() => {
-        mongoSerializer.for(SimpleModel).fromPartial(plainSerializer, {
+        mongoSerializer.for(SimpleModel).fromPartial(jsonSerializer, {
             id: 'invalid-id'
         });
     }).toThrow('Invalid UUID v4 given in property id');
@@ -210,7 +210,7 @@ test('partial invalid', () => {
     }).toThrow('Invalid UUID v4 given in property id');
 
     expect(() => {
-        mongoSerializer.for(DocumentClass).fromPartial(plainSerializer, {
+        mongoSerializer.for(DocumentClass).fromPartial(jsonSerializer, {
             _id: 'invalid-id'
         });
     }).toThrow('Invalid ObjectID given in property _id');
@@ -230,30 +230,30 @@ test('partial invalid', () => {
     }
 
     {
-        const m =  mongoSerializer.for(DocumentClass).fromPartial(plainSerializer, {
+        const m =  mongoSerializer.for(DocumentClass).fromPartial(jsonSerializer, {
             _id: null as any,
         });
 
         expect(m._id).toBe(undefined);
     }
 
-     mongoSerializer.for(DocumentClass).fromPartial(plainSerializer, {
+     mongoSerializer.for(DocumentClass).fromPartial(jsonSerializer, {
         _id: undefined
     });
-     mongoSerializer.for(DocumentClass).fromPartial(plainSerializer, {
+     mongoSerializer.for(DocumentClass).fromPartial(jsonSerializer, {
         _id: undefined
     });
 });
 
 test('partial does not fail, that is the job of validation', () => {
-    mongoSerializer.for(SimpleModel).from(plainSerializer, new SimpleModel('peter'));
+    mongoSerializer.for(SimpleModel).from(jsonSerializer, new SimpleModel('peter'));
 
     mongoSerializer.for(SimpleModel).deserialize({
         name: 'peter',
         children: [new SubModel('p')]
     });
 
-    mongoSerializer.for(SimpleModel).from(plainSerializer, {
+    mongoSerializer.for(SimpleModel).from(jsonSerializer, {
         name: 'peter',
         children: [
             {name: 'p'},
@@ -267,7 +267,7 @@ test('partial does not fail, that is the job of validation', () => {
 test('partial any does not copy ', () => {
     const anyV = {'peter': 1};
 
-    const m = mongoSerializer.for(SimpleModel).from(plainSerializer, {
+    const m = mongoSerializer.for(SimpleModel).from(jsonSerializer, {
         name: 'peter',
         anyField: anyV
     });
@@ -291,7 +291,7 @@ test('partial mongo to plain ', () => {
     }
 
     {
-        const u = mongoSerializer.for(User).from(plainSerializer, {
+        const u = mongoSerializer.for(User).from(jsonSerializer, {
             name: 'peter',
             picture: null,
             tags: {},
@@ -321,7 +321,7 @@ test('partial mongo to plain ', () => {
     const bin = arrayBufferFrom('Hello', 'utf8');
 
     {
-        const m = mongoSerializer.for(User).toPartial(plainSerializer, {
+        const m = mongoSerializer.for(User).toPartial(jsonSerializer, {
             name: undefined,
             picture: null as any,
             tags: {} as any
@@ -347,7 +347,7 @@ test('partial mongo to plain ', () => {
     }
 
     {
-        const m = mongoSerializer.for(User).toPartial(plainSerializer, {
+        const m = mongoSerializer.for(User).toPartial(jsonSerializer, {
             picture: new Binary(Buffer.from(bin)),
             name: 'peter'
         });
@@ -368,7 +368,7 @@ test('partial mongo to plain ', () => {
     }
 
     {
-        const m =  mongoSerializer.for(User).fromPartial(plainSerializer, {
+        const m =  mongoSerializer.for(User).fromPartial(jsonSerializer, {
             picture: arrayBufferToBase64(bin),
             name: 'peter',
             tags: {} as any
@@ -386,7 +386,7 @@ test('optional is stored as null and converted back to undefined', () => {
         username: t.string.optional
     });
 
-    const instance = plainSerializer.for(s).deserialize({});
+    const instance = jsonSerializer.for(s).deserialize({});
     const mongo = mongoSerializer.for(s).serialize(instance);
     expect(mongo.username).toBe(null);
 

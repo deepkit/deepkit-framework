@@ -1,4 +1,4 @@
-import {ClassSchema, getClassSchema, JSONPartial, PartialEntity, plainSerializer} from '@deepkit/type';
+import {ClassSchema, getClassSchema, JSONPartial, PartialEntity, jsonSerializer} from '@deepkit/type';
 import {Entity} from './type';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator} from './converter';
 import {isObject, toFastProperties} from '@deepkit/core';
@@ -83,7 +83,7 @@ class InstanceState<T extends Entity> {
     }
 
     getLastKnownPKHash(): string {
-        return getPrimaryKeyHashGenerator(this.classSchema, plainSerializer)(this.snapshot);
+        return getPrimaryKeyHashGenerator(this.classSchema, jsonSerializer)(this.snapshot);
     }
 
     markAsDeleted() {
@@ -131,7 +131,7 @@ export class IdentityMap {
 
     deleteMany<T>(classSchema: ClassSchema<T>, pks: Partial<T>[]) {
         const store = this.getStore(classSchema);
-        const pkHashGenerator = getPrimaryKeyHashGenerator(classSchema, plainSerializer);
+        const pkHashGenerator = getPrimaryKeyHashGenerator(classSchema, jsonSerializer);
         for (const pk of pks) {
             const pkHash = pkHashGenerator(pk);
             let item = store.get(pkHash);
@@ -170,7 +170,7 @@ export class IdentityMap {
         if (!classSchema.hasPrimaryFields()) throw new Error(`Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`);
         const store = this.getStore(classSchema);
         for (const item of items) {
-            const pkHash = getPrimaryKeyHashGenerator(classSchema, plainSerializer)(item);
+            const pkHash = getPrimaryKeyHashGenerator(classSchema, jsonSerializer)(item);
             store.set(pkHash, {ref: item, stale: false});
             getInstanceState(item).markAsPersisted();
         }
