@@ -884,7 +884,7 @@ export class JobModelGraph {
 
 @Entity('job', 'jobs')
 export class Job implements IdInterface {
-    @t.uuid.exclude('plain')
+    @t.uuid.exclude('json')
     accessToken: string = uuid();
 
     @t

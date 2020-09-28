@@ -6,6 +6,6 @@ import {User} from './user';
 export class UserCredentials {
     @t password: string = '';
 
-    constructor(@t.type(() => User).primary.reference() public user: PrimaryKey<Reference<User>>) {
+    constructor(@t.type(() => User).primary.reference() public user: User) {
     }
 }

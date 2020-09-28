@@ -4,6 +4,7 @@ import {
     ClassSchema,
     DatabaseName,
     Entity,
+    ExtractPrimaryKeyType,
     getClassSchema,
     getClassSchemaByName,
     getDatabaseName,
@@ -670,7 +671,8 @@ test('isSchemaOf', () => {
         @t id!: string;
     }
 
-    class Nix {}
+    class Nix {
+    }
 
     expect(getClassSchema(BaseUser).isSchemaOf(BaseUser)).toBe(true);
     expect(getClassSchema(BaseUser).isSchemaOf(FrontendUser)).toBe(false);
@@ -688,4 +690,22 @@ test('isSchemaOf', () => {
     expect(getClassSchema(DbUser).isSchemaOf(Nix)).toBe(false);
 
     expect(getClassSchema(DbUser).isSchemaOf(Nix)).toBe(false);
+});
+
+test('external schema', () => {
+    class Peter {
+        id: number = 0;
+
+        constructor(public name: string) {
+        }
+    }
+
+    expect(getClassSchema(Peter).hasProperty('id')).toBe(false);
+
+    t.schema({
+        id: t.number,
+        name: t.string,
+    }, {classType: Peter});
+
+    expect(getClassSchema(Peter).getProperty('id').type).toBe('number');
 });

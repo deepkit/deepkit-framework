@@ -183,12 +183,8 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             var changeSet = item[changeSetSymbol] || new ItemChanges(item);
             var changes = {};
             ${props.join('\n')}
-            if (empty(changes)) {
-                delete changeSet.$set
-            } else {
-                changeSet.$set = changes;
-            }
-            return empty(changeSet) ? undefined : changeSet;
+            changeSet.replaceSet(changes);
+            return changeSet.empty ? undefined : changeSet;
         }
         `;
 

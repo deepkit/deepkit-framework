@@ -206,7 +206,7 @@ export class BaseQuery<T extends Entity> {
     }
 
     clone(): this {
-        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.model);
+        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema);
         cloned.model = this.model.clone(cloned) as this['model'];
         cloned.format = this.format;
         return cloned;
@@ -335,7 +335,9 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
     }
 
     clone(): this {
-        const cloned = super.clone() as this;
+        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession);
+        cloned.model = this.model.clone(cloned) as this['model'];
+        cloned.format = this.format;
         cloned.resolver = this.resolver;
         return cloned;
     }

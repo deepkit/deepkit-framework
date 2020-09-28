@@ -54,7 +54,7 @@ export class Model {
     @f.exclude()
     excluded: string = 'default';
 
-    @f.exclude('plain')
+    @f.exclude('json')
     excludedForPlain: string = 'excludedForPlain';
 
     constructor(name: string) {

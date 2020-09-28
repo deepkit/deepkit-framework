@@ -123,13 +123,13 @@ test('test simple model all fields plainToMongo', () => {
 test('test simple model with not mapped fields', () => {
     const schema = getClassSchema(SimpleModel);
     expect(isExcluded(schema, 'excluded', 'mongo')).toBeTrue();
-    expect(isExcluded(schema, 'excluded', 'plain')).toBeTrue();
+    expect(isExcluded(schema, 'excluded', 'json')).toBeTrue();
 
     expect(isExcluded(schema, 'excludedForPlain', 'mongo')).toBeFalse();
-    expect(isExcluded(schema, 'excludedForPlain', 'plain')).toBeTrue();
+    expect(isExcluded(schema, 'excludedForPlain', 'json')).toBeTrue();
 
     expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBeTrue();
-    expect(isExcluded(schema, 'excludedForMongo', 'plain')).toBeFalse();
+    expect(isExcluded(schema, 'excludedForMongo', 'json')).toBeFalse();
 
     const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',

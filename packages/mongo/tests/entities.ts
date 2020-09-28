@@ -123,7 +123,7 @@ export class SimpleModel {
     @t.exclude('mongo')
     excludedForMongo: string = 'excludedForMongo';
 
-    @t.exclude('plain')
+    @t.exclude('json')
     excludedForPlain: string = 'excludedForPlain';
 
     constructor(name: string) {

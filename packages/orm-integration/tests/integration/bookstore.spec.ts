@@ -14,10 +14,10 @@ import {isArray} from '@deepkit/core';
 
 @entity.name('book')
 class Book {
-    @t.primary.autoIncrement public id?: PrimaryKey<number>;
+    @t.primary.autoIncrement public id?: number;
 
     constructor(
-        @t.reference() public author: Reference<User>,
+        @t.reference() public author: User,
         @t public title: string,
     ) {
     }
@@ -31,14 +31,14 @@ enum ReviewStatus {
 
 @entity.name('review')
 class Review {
-    @t.primary.autoIncrement public id?: PrimaryKey<number>;
+    @t.primary.autoIncrement public id?: number;
     @t created: Date = new Date;
     @t stars: number = 0;
     @t.enum(ReviewStatus) status: ReviewStatus = ReviewStatus.published;
 
     constructor(
-        @t.reference() public user: Reference<User>,
-        @t.reference() public book: Reference<Book>,
+        @t.reference() public user: User,
+        @t.reference() public book: Book,
     ) {
     }
 }

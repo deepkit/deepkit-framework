@@ -2285,7 +2285,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
 const fRaw: any = Field();
 
-fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, extend?: E } = {}): ClassSchema {
+fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, extend?: E, classType?: ClassType } = {}): ClassSchema {
     let extendClazz: ClassType | undefined;
     if (options.extend) {
         if (options.extend instanceof ClassSchema) {
@@ -2296,8 +2296,8 @@ fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cl
     }
 
     const clazz = extendClazz ? class extends extendClazz {
-    } : class {
-    };
+    } : (options.classType ?? class {
+    });
 
     const schema = createClassSchema(clazz, options.name);
 
@@ -2431,8 +2431,9 @@ export interface MainDecorator {
 
     /**
      * Creates a new ClassSchema from a plain object.
+     * If you want to decorate an external/already existing class, use `options.classType`.
      */
-    schema<T extends PlainSchemaProps, E extends ClassSchema | ClassType>(props: T, options?: { name?: string, extend?: E }): ClassSchema<ExtractClassDefinition<T>>;
+    schema<T extends PlainSchemaProps, E extends ClassSchema | ClassType>(props: T, options?: { name?: string, extend?: E, classType?: ClassType }): ClassSchema<ExtractClassDefinition<T>>;
 
     class<T extends PlainSchemaProps, E extends ClassSchema | ClassType>(props: T, options?: { name?: string, extend?: E }): ClassType<ExtractClassDefinition<T>>;
 

@@ -231,6 +231,14 @@ export class SQLDatabaseQuery<T extends Entity> extends GenericQuery<T, SQLQuery
         super(classSchema, databaseSession);
         if (!databaseSession.withIdentityMap) this.disableIdentityMap();
     }
+
+    clone(): this {
+        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.connectionPool, this.platform);
+        cloned.model = this.model.clone(cloned) as this['model'];
+        cloned.format = this.format;
+        cloned.resolver = this.resolver;
+        return cloned;
+    }
 }
 
 export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {

@@ -6,13 +6,13 @@ import {BookTag} from './book-tag';
 
 @entity.name('book')
 export class Book extends ActiveRecord {
-    @t.primary.autoIncrement public id?: PrimaryKey<number>;
+    @t.primary.autoIncrement public id?: number;
 
     @t.array(() => Tag).backReference({via: () => BookTag})
-    tags: Reference<Tag[]> = [];
+    tags: Tag[] = [];
 
     constructor(
-        @t.reference() public author: Reference<User>,
+        @t.reference() public author: User,
         @t public title: string,
     ) {
         super();

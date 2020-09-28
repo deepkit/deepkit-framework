@@ -315,7 +315,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
             this.enterNewRound();
         }
 
-
         //make sure all stuff in the identity-map is known
         const round = this.getCurrentRound();
         for (const map of this.identityMap.registry.values()) {

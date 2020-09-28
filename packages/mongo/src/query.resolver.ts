@@ -79,10 +79,15 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             throw new Error('Not implemented: Use aggregate to retrieve ids, then do the query');
         }
         let filter = getMongoFilter(this.classSchema, model);
+
         //todo implement "returning"
+        const u = {$set: changes.$set, $unset: changes.$unset, $inc: changes.$inc}
+        if (u.$set) {
+            u.$set = mongoSerializer.for(this.classSchema).partialSerialize(u.$set);
+        }
         const res = await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
             q: filter || {},
-            u: changes,
+            u: u,
             multi: !model.limit
         }]));
         patchResult.modified = res;

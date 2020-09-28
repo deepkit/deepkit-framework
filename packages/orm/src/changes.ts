@@ -15,6 +15,7 @@ export class Changes<T> {
     $set?: Partial<T> | T;
     $unset?: Unset<T>;
     $inc?: Partial<Pick<T, NumberFields<T>>>;
+    empty = true;
 
     constructor(
         {$set, $unset, $inc}: ChangesInterface<T> = {}
@@ -22,21 +23,34 @@ export class Changes<T> {
         this.$set = empty($set) ? undefined : $set;
         this.$unset = empty($unset) ? undefined : $unset;
         this.$inc = empty($inc) ? undefined : $inc;
+        this.detectEmpty();
+    }
+
+    protected detectEmpty() {
+        this.empty = this.$set === undefined && this.$unset === undefined && this.$inc === undefined;
+    }
+
+    replaceSet($set: Partial<T> | T) {
+        this.$set = empty($set) ? undefined : $set;
+        this.detectEmpty();
     }
 
     increase(property: NumberFields<T>, increase: number = 1) {
         if (!this.$inc) this.$inc = {};
         (this.$inc as any)[property] = increase;
+        this.empty = false;
     }
 
     set(property: keyof T & string, value: any) {
         if (!this.$set) this.$set = {};
         (this.$set as any)[property] = value;
+        this.empty = false;
     }
 
     unset(property: keyof T & string, unset = true) {
         if (!this.$unset) this.$unset = {};
         (this.$unset as any)[property] = unset;
+        this.empty = false;
     }
 }
 
