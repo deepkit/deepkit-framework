@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
-import {BaseQuery, DatabaseQueryModel, Formatter, getInstanceState, getNormalizedPrimaryKey} from '../index';
+import {BaseQuery, Formatter, getInstanceState, getNormalizedPrimaryKey} from '../index';
 import {getReference} from '../src/reference';
 
 test('getNormalizedPrimaryKey', () => {
