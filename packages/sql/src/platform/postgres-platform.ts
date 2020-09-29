@@ -1,10 +1,43 @@
 import {DefaultPlatform, isSet} from './default-platform';
 import {postgresSerializer} from '../serializer/postgres-serializer';
 import {Column, Index, Table} from '../schema/table';
-import {PropertySchema} from '@deepkit/type';
+import {ClassSchema, isArray, PropertySchema} from '@deepkit/type';
 import {parseType} from '../reverse/schema-parser';
 import {PostgresOptions} from '@deepkit/type';
 import {PostgresSchemaParser} from '../reverse/postgres-schema-parser';
+import {PostgreSQLFilterBuilder} from '../postgres/sql-filter-builder';
+import {isPlainObject} from '@deepkit/core';
+import {escape} from 'sqlstring';
+
+function escapeLiteral(value: any): string {
+    if (value === null || value === undefined) return 'null';
+    if (value instanceof Date) return escape(value);
+    if ('number' === typeof value || 'bigint' === typeof value) return String(value);
+    if ('string' !== typeof value) return escapeLiteral(String(value));
+
+    let hasBackslash = false;
+    let escaped = '\'';
+
+    for (let i = 0; i < value.length; i++) {
+        const c = value[i];
+        if (c === '\'') {
+            escaped += c + c;
+        } else if (c === '\\') {
+            escaped += c + c;
+            hasBackslash = true;
+        } else {
+            escaped += c;
+        }
+    }
+
+    escaped += '\'';
+
+    if (hasBackslash) {
+        escaped = ' E' + escaped;
+    }
+
+    return escaped;
+}
 
 export class PostgresPlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
@@ -28,6 +61,15 @@ export class PostgresPlatform extends DefaultPlatform {
 
         this.addType('uuid', 'uuid');
         this.addBinaryType('bytea');
+    }
+
+    createSqlFilterBuilder(schema: ClassSchema, tableName: string): PostgreSQLFilterBuilder {
+        return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+    }
+
+    quoteValue(value: any): string {
+        if (isPlainObject(value) || isArray(value)) return escapeLiteral(JSON.stringify(value));
+        return escapeLiteral(value);
     }
 
     protected setColumnType(column: Column, typeProperty: PropertySchema) {

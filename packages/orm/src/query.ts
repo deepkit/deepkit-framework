@@ -371,7 +371,7 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
     }
 
     protected async delete(model: this['model']): Promise<DeleteResult<T>> {
-        const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions();
+        const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions();
 
         const deleteResult: DeleteResult<T> = {
             modified: 0,

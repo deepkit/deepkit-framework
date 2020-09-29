@@ -14,7 +14,7 @@ import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, En
 import {MySQLPlatform} from './platform/mysql-platform';
 import {ClassSchema, getClassSchema, isArray} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
-import {ClassType, empty} from '@deepkit/core';
+import {asyncOperation, ClassType, empty} from '@deepkit/core';
 
 export class MySQLStatement extends SQLStatement {
     constructor(protected sql: string, protected connection: PoolConnection) {
@@ -22,12 +22,19 @@ export class MySQLStatement extends SQLStatement {
     }
 
     async get(params: any[] = []) {
-        const rows = await this.connection.query(this.sql, params);
-        return rows[0];
+        return asyncOperation<any[]>((resolve, reject) => {
+            this.connection.query(this.sql, params).then((rows) => {
+                resolve(rows[0]);
+            }).catch(reject);
+        });
     }
 
     async all(params: any[] = []) {
-        return await this.connection.query(this.sql, params);
+        //mysql/mariadb driver does not maintain error.stack when they throw errors, so
+        //we have to manually convert it using asyncOperation.
+        return asyncOperation<any[]>((resolve, reject) => {
+            this.connection.query(this.sql, params).then(resolve).catch(reject);
+        });
     }
 
     release() {

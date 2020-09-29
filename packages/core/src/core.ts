@@ -231,10 +231,6 @@ export function copy<T>(v: T[]): T[] {
 export function empty<T>(value?: T[] | object | {}): boolean {
     if (!value) return true;
 
-    if (!value) {
-        return true;
-    }
-
     if (isArray(value)) {
         return value.length === 0;
     } else {

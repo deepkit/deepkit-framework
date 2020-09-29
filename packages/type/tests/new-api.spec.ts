@@ -1,7 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, t} from '../src/decorators';
-import {emptySerializer, getClassToXFunction, getGeneratedJitFunctionFromClass, getJitFunctionXToClass, getXToClassFunction, jsonSerializer, uuid} from '../index';
+import {emptySerializer, getClassToXFunction, getGeneratedJitFunctionFromClass, getJitFunctionXToClass, getXToClassFunction, JSONSerializer, jsonSerializer, uuid} from '../index';
 
 test('new api', async () => {
     class Test {
@@ -148,4 +148,40 @@ test('custom serialization formats', async () => {
         //no compiler found for number, so it should pick the parent
         expect(scopedSerializer.deserializeProperty('number', '123')).toBe(123);
     }
+});
+
+test('multi level extend', async () => {
+    const base = new JSONSerializer();
+    let baseCalled = 0;
+    base.fromClass.register('number', (setter, accessor) => {
+        baseCalled++;
+        return `${setter} = ${accessor}`;
+    });
+
+    const middle = new (base.fork('middle'));
+    let middleCalled = 0;
+
+    middle.fromClass.extend('number', (setter, accessor, property) => {
+        middleCalled++;
+        if (property.name === 'id') {
+            return `${setter} = 100;`;
+        }
+        return;
+    });
+
+    const end = new (middle.fork('end'));
+
+    class Peter {
+        @t id: number = 0;
+    }
+
+    const s = t.schema({
+        id: t.number,
+        logins: t.number
+    });
+
+    const result = end.for(s).serialize({id: 5, logins: 124});
+    expect(result).toEqual({id: 100, logins: 124});
+    expect(baseCalled).toBe(1);
+    expect(middleCalled).toBe(2);
 });

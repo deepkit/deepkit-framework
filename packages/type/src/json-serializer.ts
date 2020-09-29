@@ -184,6 +184,8 @@ jsonSerializer.toClass.register('class', (setter: string, accessor: string, prop
             //object and not an array
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
                 ${setter} = ${xToClass}.fn(${accessor}, _options, getParents(), _state);
+            } else if ('string' === typeof ${accessor}) {
+                ${setter} = ${xToClass}.fn(JSON.parse(${accessor}), _options, getParents(), _state);
             }
         `, context
     };

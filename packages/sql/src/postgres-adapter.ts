@@ -14,7 +14,7 @@ import {PostgresPlatform} from './platform/postgres-platform';
 import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
 import {Pool, PoolClient, PoolConfig, types} from 'pg';
-import {ClassType, empty} from '@deepkit/core';
+import {asyncOperation, ClassType, empty} from '@deepkit/core';
 
 types.setTypeParser(1700, parseFloat);
 types.setTypeParser(20, BigInt);
@@ -27,13 +27,19 @@ export class PostgresStatement extends SQLStatement {
     }
 
     async get(params: any[] = []) {
-        const res = await this.client.query(this.sql, params);
-        return res.rows[0];
+        return asyncOperation<any>((resolve, reject) => {
+            this.client.query(this.sql, params).then((res) => {
+                resolve(res.rows[0]);
+            }).catch(reject);
+        });
     }
 
     async all(params: any[] = []) {
-        const res = await this.client.query(this.sql, params);
-        return res.rows;
+        return asyncOperation<any>((resolve, reject) => {
+            this.client.query(this.sql, params).then((res) => {
+                resolve(res.rows);
+            }).catch(reject);
+        });
     }
 
     release() {
@@ -66,11 +72,14 @@ export class PostgresConnection extends SQLConnection {
     }
 
     async run(sql: string) {
-        if (!this.connection) this.connection = await this.getConnection();
-        const res = await this.connection.query(sql);
-        this.lastReturningRows = res.rows;
-        this.changes = res.rowCount;
-
+        await asyncOperation(async (resolve, reject) => {
+            if (!this.connection) this.connection = await this.getConnection();
+            this.connection.query(sql).then((res) => {
+                this.lastReturningRows = res.rows;
+                this.changes = res.rowCount;
+                resolve(undefined);
+            }, reject);
+        });
     }
 
     async getChanges(): Promise<number> {
@@ -195,7 +204,7 @@ export class PostgresPersistence extends SQLPersistence {
                 select.push(`ELSE _.${this.platform.quoteIdentifier(i)} END as ${this.platform.quoteIdentifier(i)}`);
                 selects.push(select.join(' '));
             } else {
-                selects.push('_.' + i);
+                selects.push('_.' + this.platform.quoteIdentifier(i));
             }
         }
 
@@ -207,10 +216,12 @@ export class PostgresPersistence extends SQLPersistence {
             }
         }
 
+        const escapedValuesNames = valuesNames.map(v => this.platform.quoteIdentifier(v));
+
         const sql = `
-              WITH _b(${valuesNames.join(', ')}) AS (
+              WITH _b(${escapedValuesNames.join(', ')}) AS (
                 SELECT ${selects.join(', ')} FROM 
-                    (VALUES ${valuesValues.join(', ')}) as _(${valuesNames.join(', ')})
+                    (VALUES ${valuesValues.join(', ')}) as _(${escapedValuesNames.join(', ')})
                     INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField})
               )
               UPDATE ${tableName}

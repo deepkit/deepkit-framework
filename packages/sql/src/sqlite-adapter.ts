@@ -231,7 +231,7 @@ export class SQLitePersistence extends SQLPersistence {
 export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
     constructor(
         protected connectionPool: SQLiteConnectionPool,
-        platform: DefaultPlatform,
+        protected platform: DefaultPlatform,
         classSchema: ClassSchema<T>,
         databaseSession: DatabaseSession<DatabaseAdapter>) {
         super(connectionPool, platform, classSchema, databaseSession);

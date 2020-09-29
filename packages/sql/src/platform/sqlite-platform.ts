@@ -1,9 +1,12 @@
 import {DefaultPlatform, isSet} from './default-platform';
 import {Column, ForeignKey, Table, TableDiff} from '../schema/table';
-import {PropertySchema, SqliteOptions} from '@deepkit/type';
+import {ClassSchema, isArray, PropertySchema, SqliteOptions} from '@deepkit/type';
 import {parseType} from '../reverse/schema-parser';
 import {SQLiteSchemaParser} from '../reverse/sqlite-schema-parser';
 import {SqliteSerializer} from '../serializer/sqlite-serializer';
+import {SQLiteFilterBuilder} from '../sql-filter-builder.sqlite';
+import {isPlainObject} from '@deepkit/core';
+import {escape} from 'sqlstring-sqlite';
 
 export class SQLitePlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
@@ -13,7 +16,6 @@ export class SQLitePlatform extends DefaultPlatform {
 
     constructor() {
         super();
-
         this.addType('number', 'float');
         this.addType('date', 'text');
         this.addType('moment', 'text');
@@ -22,6 +24,14 @@ export class SQLitePlatform extends DefaultPlatform {
         this.addBinaryType('blob');
     }
 
+    quoteValue(value: any): string {
+        if (isPlainObject(value) || isArray(value)) return escape(JSON.stringify(value));
+        return escape(value);
+    }
+
+    createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLiteFilterBuilder {
+        return new SQLiteFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+    }
 
     getModifyTableDDL(diff: TableDiff): string[] {
         let changeViaMigrationTableNeeded =

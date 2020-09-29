@@ -15,7 +15,7 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
     const driver = process.env['ADAPTER_DRIVER'] || 'sqlite';
     let adapter: DatabaseAdapter | undefined;
     if (driver === 'sqlite') {
-        adapter = new SQLiteDatabaseAdapter(':memory:');
+        adapter = new SQLiteDatabaseAdapter('/tmp/bookstore.sqlite');
     } else if (driver === 'mysql') {
         adapter = new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'});
     } else if (driver === 'postgres') {

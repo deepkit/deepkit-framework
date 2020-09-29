@@ -4,6 +4,7 @@ import {escape} from 'sqlstring';
 import {ClassType, isPlainObject} from '@deepkit/core';
 import {sqlSerializer} from '../serializer/sql-serializer';
 import {SchemaParser} from '../reverse/schema-parser';
+import {SQLFilterBuilder} from '../sql-filter-builder';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -39,6 +40,10 @@ export abstract class DefaultPlatform {
 
     public serializer: Serializer = sqlSerializer;
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
+
+    createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLFilterBuilder {
+        return new SQLFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+    }
 
     getMigrationTableName() {
         return `deepkit_orm_migration`;

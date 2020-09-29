@@ -1,6 +1,6 @@
 import 'jest';
 import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
-import {QueryToSql} from '../src/query-filter';
+import {SQLFilterBuilder} from '../src/sql-filter-builder';
 import {escape} from 'sqlstring';
 
 function quoteId(value: string): string {
@@ -16,7 +16,7 @@ test('QueryToSql', () => {
         created: t.date,
     });
 
-    const queryToSql = new QueryToSql(getClassSchema(User), quoteId('user'), jsonSerializer, escape, quoteId);
+    const queryToSql = new SQLFilterBuilder(getClassSchema(User), quoteId('user'), jsonSerializer, escape, quoteId);
 
     expect(queryToSql.convert({id: 123})).toBe(`user.id = 123`);
     expect(queryToSql.convert({id: '$id'})).toBe(`user.id = user.id`);

@@ -1,4 +1,4 @@
-import {DatabaseModel, ForeignKey, Index, Table} from '../schema/table';
+import {DatabaseModel, ForeignKey, Table} from '../schema/table';
 import {parseType, SchemaParser} from './schema-parser';
 
 export class PostgresSchemaParser extends SchemaParser {

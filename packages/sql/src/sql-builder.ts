@@ -1,7 +1,7 @@
 import {SQLQueryModel} from './sql-adapter';
 import {DefaultPlatform} from './platform/default-platform';
 import {ClassSchema, getClassSchema, PropertySchema, resolveClassTypeOrForward} from '@deepkit/type';
-import {DatabaseJoinModel, getPrimaryKeyHashGenerator, QueryToSql} from '@deepkit/orm';
+import {DatabaseJoinModel, getPrimaryKeyHashGenerator} from '@deepkit/orm';
 
 type ConvertDataToDict = (row: any) => { [name: string]: any };
 
@@ -16,7 +16,7 @@ export class SqlBuilder {
 
     protected getWhereSQL(schema: ClassSchema, filter: any, tableName?: string) {
         tableName = tableName ?? this.platform.getTableIdentifier(schema);
-        return new QueryToSql(schema, tableName, this.platform.serializer, this.platform.quoteValue.bind(this.platform), this.platform.quoteIdentifier.bind(this.platform)).convert(filter);
+        return this.platform.createSqlFilterBuilder(schema, tableName).convert(filter);
     }
 
     protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {

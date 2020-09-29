@@ -119,13 +119,15 @@ sqlSerializer.toClass.extend('class', (setter: string, accessor: string, propert
             }
         };
     }
+
     return;
 });
 
 sqlSerializer.fromClass.extend('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, rootContext, jitStack}) => {
     //When property is a reference we store the actual primary (as foreign key) of the referenced instance instead of the actual instance.
-    //This way we implemented basically relations in mongodb
+    //This way we implemented basically relations in the database
     const classSchema = getClassSchema(property.resolveClassType!);
+
     if (property.isReference) {
         const classType = reserveVariable();
         const primary = classSchema.getPrimaryField();

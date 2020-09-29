@@ -1,6 +1,6 @@
 import 'jest';
 import 'reflect-metadata';
-import {entity, getClassSchema, PrimaryKey, Reference, t} from '@deepkit/type';
+import {entity, getClassSchema, t} from '@deepkit/type';
 import {createEnvSetup} from './setup';
 import {User} from './user';
 import {UserCredentials} from './user-credentials';
@@ -10,11 +10,23 @@ import {isArray} from '@deepkit/core';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
-// process.env['ADAPTER_DRIVER'] = 'postgres';
+process.env['ADAPTER_DRIVER'] = 'postgres';
+
+class BookModeration {
+    @t locked: boolean = false;
+
+    @t.optional maxDate?: Date;
+
+    @t.optional admin?: User;
+
+    @t.array(User) moderators: User[] = [];
+}
 
 @entity.name('book')
 class Book {
     @t.primary.autoIncrement public id?: number;
+
+    @t moderation: BookModeration = new BookModeration;
 
     constructor(
         @t.reference() public author: User,
@@ -76,15 +88,12 @@ test('basics', async () => {
 
         const peter = new User('Peter');
         const herbert = new User('Herbert');
-
-        session.add(peter);
-        session.add(herbert);
+        session.add(peter, herbert);
 
         const book1 = new Book(peter, 'Peters book');
-        session.add(book1);
-
         const book2 = new Book(herbert, 'Herberts book');
-        session.add(book2);
+        session.add(book1, book2);
+
         await session.commit();
 
         expect(peter.id).toBe(1);
@@ -164,6 +173,47 @@ test('basics', async () => {
 
         //cascade foreign key deletes also the book
         expect(await session.query(Book).count()).toBe(1);
+    }
+});
+
+test('sub documents', async () => {
+    const database = await createEnvSetup(entities);
+    const admin = new User('Admin');
+    const peter = new User('Peter');
+    const herbert = new User('Herbert');
+
+    {
+        const session = database.createSession();
+        session.add(admin, peter, herbert);
+
+        const book1 = new Book(peter, 'Peters book');
+        book1.moderation.locked = true;
+
+        const book2 = new Book(herbert, 'Herberts book');
+        book2.moderation.admin = admin;
+        session.add(book1, book2);
+
+        await session.commit();
+    }
+
+    {
+        const book1 = await database.query(Book).filter({author: peter}).findOne();
+        expect(book1.title).toBe('Peters book');
+        expect(book1.moderation).toBeInstanceOf(BookModeration);
+        expect(book1.moderation.locked).toBe(true);
+    }
+
+    {
+        const book2 = await database.query(Book).filter({author: herbert}).findOne();
+        expect(book2.title).toBe('Herberts book');
+        expect(book2.moderation).toBeInstanceOf(BookModeration);
+        expect(book2.moderation.locked).toBe(false);
+        expect(book2.moderation.admin).toBeInstanceOf(User);
+    }
+
+    {
+        const books = await database.query(Book).filter({'moderation.locked': true}).find();
+        expect(books.length).toBe(1);
     }
 });
 
