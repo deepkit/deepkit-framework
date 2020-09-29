@@ -10,7 +10,7 @@ import {isArray} from '@deepkit/core';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
-process.env['ADAPTER_DRIVER'] = 'postgres';
+// process.env['ADAPTER_DRIVER'] = 'postgres';
 
 class BookModeration {
     @t locked: boolean = false;
