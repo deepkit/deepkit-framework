@@ -44,13 +44,13 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
         const jit = schema.jit;
         let specialisedResponse = jit.mdbFind;
         if (!specialisedResponse) {
-            specialisedResponse = t.schema({
+            specialisedResponse = t.extendSchema(BaseResponse, {
                 cursor: {
                     id: t.number,
                     firstBatch: t.array(schema),
                     nextBatch: t.array(schema),
                 },
-            }, {extend: BaseResponse});
+            });
             jit.mdbFind = specialisedResponse;
             toFastProperties(jit);
         }

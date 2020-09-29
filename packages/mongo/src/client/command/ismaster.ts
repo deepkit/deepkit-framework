@@ -5,7 +5,7 @@ import {BaseResponse, Command} from './command';
 import {MongoClientConfig} from '../client';
 import {Host} from '../host';
 
-export class IsMasterResponse extends t.class({
+export class IsMasterResponse extends t.extendClass(BaseResponse, {
     ismaster: t.boolean,
     maxBsonObjectSize: t.number,
     maxMessageSizeBytes: t.number,
@@ -29,7 +29,7 @@ export class IsMasterResponse extends t.class({
     secondary: t.boolean,
     arbiterOnly: t.boolean,
     hidden: t.boolean,
-}, {extend: BaseResponse}) {
+}) {
 }
 
 const isMasterSchema = t.schema({

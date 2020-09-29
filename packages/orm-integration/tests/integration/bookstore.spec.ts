@@ -70,6 +70,8 @@ test('basics', async () => {
     const database = await createEnvSetup(entities);
     {
         const session = database.createSession();
+        await session.query(User).deleteMany();
+
         expect(await session.query(User).count()).toBe(0);
 
         const peter = new User('Peter');

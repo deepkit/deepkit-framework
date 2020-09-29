@@ -132,6 +132,11 @@ export class PropertyCompilerSchema {
      */
     isReference: boolean = false;
 
+    referenceOptions: { onDelete: ReferenceActions, onUpdate: ReferenceActions } = {
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+    };
+
     /**
      * When the constructor sets a default value.
      */
@@ -1182,6 +1187,8 @@ export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | Pla
 
 export type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends FieldDecoratorResult<infer K> ? K : never;
 
+export type MergeSchemaAndBase<T extends PlainSchemaProps, BASE extends ClassSchema | ClassType | undefined> = BASE extends ClassSchema | ClassType ? ExtractType<BASE> & ExtractClassDefinition<T> : ExtractClassDefinition<T>;
+
 export type ExtractClassDefinition<T extends PlainSchemaProps> = {
     [name in keyof T]:
     T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> :
@@ -1324,6 +1331,19 @@ export interface FieldDecoratorResult<T> {
      *
      * Owning reference means: Additional foreign key fields are automatically added if not already explicitly done.
      * Those additional fields are used to store the primary key of the foreign class.
+     *
+     * ReferenceActions defines what happens when either the target item is deleted (onDelete) or when
+     * the primary key of the target item is changed (onUpdate).
+     *
+     * The default is CASCADE.
+     *
+     *   - RESTRICT: Forbids to delete the target item or change its primary key.
+     *   - NO ACTION: WHen the target item is deled or primary key changed, no action is taken.
+     *                The database might however throw FOREIGN KEY constraint failure errors when the target is
+     *                deleted without setting this owning reference first to NULL or something different.
+     *   - CASCADE: When the target item is deleted, then this item will be deleted as well. If the target primary key changes, then this reference adjusts automatically.
+     *   - SET NULL: Sets this reference to NULL when target item is deleted or its primary key changed.
+     *   - SET DEFAULT: Sets this reference to DEFAULT when target item is deleted or its primary key changed.
      */
     reference(options?: { onDelete?: ReferenceActions, onUpdate?: ReferenceActions }): FieldDecoratorResult<Reference<T>>;
 
@@ -1336,7 +1356,7 @@ export interface FieldDecoratorResult<T> {
      *
      * options.mappedBy: Explicitly set the name of the @t.reference() of the foreign class to which this backReference belongs to.
      *                   Per default it is automatically detected, but will fail if you the foreign class contains more
-     *                   than one @t.reference() to this class.
+     *                   than one @t.reference() to the same class.
      * @param options
      */
     backReference(options?: BackReferenceOptions<FlattenIfArray<T>>): FieldDecoratorResult<BackReference<T>>;
@@ -1884,11 +1904,13 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, decorator]);
     };
 
-    fn.reference = () => {
+    fn.reference = (options?: { onDelete?: ReferenceActions, onUpdate?: ReferenceActions }) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             if (property.isArray || property.isMap) throw new Error('Reference can not be of type array or map. Inverse the relation, or use backReference()');
             property.isReference = true;
+            if (options && options.onDelete) property.referenceOptions.onDelete = options.onDelete;
+            if (options && options.onUpdate) property.referenceOptions.onUpdate = options.onUpdate;
             getClassSchema(target).registerReference(property);
         }]);
     };
@@ -2285,13 +2307,13 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
 const fRaw: any = Field();
 
-fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, extend?: E, classType?: ClassType } = {}): ClassSchema {
+fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, classType?: ClassType } = {}, base?: E): ClassSchema {
     let extendClazz: ClassType | undefined;
-    if (options.extend) {
-        if (options.extend instanceof ClassSchema) {
-            extendClazz = options.extend.classType;
+    if (base) {
+        if (base instanceof ClassSchema) {
+            extendClazz = base.classType;
         } else {
-            extendClazz = options.extend as ClassType;
+            extendClazz = base as ClassType;
         }
     }
 
@@ -2317,8 +2339,16 @@ fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cl
     return schema;
 };
 
-fRaw['class'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, extend?: E } = {}): ClassType {
+fRaw['extendSchema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(base: E, props: PlainSchemaProps, options: { name?: string, classType?: ClassType } = {}): ClassSchema {
+    return fRaw['schema'](props, options, base);
+}
+
+fRaw['class'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string } = {}, base?: E): ClassType {
     return fRaw.schema(props, options).classType;
+};
+
+fRaw['extendClass'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(base: E, props: PlainSchemaProps, options: { name?: string } = {}): ClassType {
+    return fRaw.schema(props, options, base).classType;
 };
 
 fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>): FieldDecoratorResult<ExtractType<T>[]> {
@@ -2430,12 +2460,19 @@ export interface MainDecorator {
     array<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>[]>;
 
     /**
-     * Creates a new ClassSchema from a plain object.
+     * Creates a new ClassSchema from a plain schema definition object.
      * If you want to decorate an external/already existing class, use `options.classType`.
      */
-    schema<T extends PlainSchemaProps, E extends ClassSchema | ClassType>(props: T, options?: { name?: string, extend?: E, classType?: ClassType }): ClassSchema<ExtractClassDefinition<T>>;
+    schema<T extends PlainSchemaProps>(props: T, options?: { name?: string, classType?: ClassType }): ClassSchema<ExtractClassDefinition<T>>;
 
-    class<T extends PlainSchemaProps, E extends ClassSchema | ClassType>(props: T, options?: { name?: string, extend?: E }): ClassType<ExtractClassDefinition<T>>;
+    extendSchema<T extends PlainSchemaProps, BASE extends ClassSchema | ClassType>(base: BASE, props: T, options?: { name?: string, classType?: ClassType }): ClassSchema<MergeSchemaAndBase<T, BASE>>;
+
+    /**
+     * Creates a new javascript class from a plain schema definition object.
+     */
+    class<T extends PlainSchemaProps>(props: T, options?: { name?: string}): ClassType<ExtractClassDefinition<T>>;
+
+    extendClass<T extends PlainSchemaProps, BASE extends ClassSchema | ClassType>(base: BASE, props: T, options?: { name?: string}): ClassType<MergeSchemaAndBase<T, BASE>>;
 
     /**
      * Marks a field as string.

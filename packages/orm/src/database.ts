@@ -1,12 +1,13 @@
 import {ClassType} from '@deepkit/core';
 import {GenericQuery} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
-import {ClassSchema, getClassSchema, PrimaryKeyFields} from '@deepkit/type';
+import {ClassSchema, getClassSchema, PrimaryKeyFields, PropertySchema} from '@deepkit/type';
 import {DatabaseSession} from './database-session';
 import {isActiveRecordType} from './active-record';
 import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
 import {ItemChanges} from './changes';
 import {Entity} from './type';
+import {VirtualForeignKeyConstraint} from './virtual-foreign-key-constraint';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -59,7 +60,10 @@ export abstract class DatabaseAdapter {
     abstract getName(): string;
 
     abstract getSchemaName(): string;
+
+    abstract isNativeForeignKeyConstraintSupported(): boolean;
 }
+
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
  *
@@ -71,22 +75,30 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public name: string = 'default';
 
     /**
-     * The entity register. This is mainly used for migration utilities.
+     * The entity schema registry.
      */
     public readonly classSchemas = new Set<ClassSchema>();
 
+    /**
+     * Event API for DatabaseQuery events.
+     */
     public readonly queryEvents = new QueryDatabaseEmitter();
 
+    /**
+     * Event API for the unit of work.
+     */
     public readonly unitOfWorkEvents = new UnitOfWorkDatabaseEmitter();
 
     /**
      * Creates a new DatabaseQuery instance which can be used to query data.
      *  - Entity instances ARE NOT cached or tracked.
      *
-     * Use a DatabaseSession (createSession()) with query() in your workflow to enable
+     * Use a DatabaseSession (createSession()) with its query() in your workflow to enable
      * identity map.
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
+
+    protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
 
     constructor(
         public readonly adapter: ADAPTER,
@@ -97,6 +109,22 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             return session.query(classType);
         };
         this.registerEntity(...schemas);
+
+        if (!this.adapter.isNativeForeignKeyConstraintSupported()) {
+            this.unitOfWorkEvents.onDeletePost.subscribe(async (event) => {
+                await this.virtualForeignKeyConstraint.onUoWDelete(event);
+            });
+            this.unitOfWorkEvents.onUpdatePost.subscribe(async (event) => {
+                await this.virtualForeignKeyConstraint.onUoWUpdate(event);
+            });
+
+            this.queryEvents.onPatchPost.subscribe(async (event) => {
+                await this.virtualForeignKeyConstraint.onQueryPatch(event);
+            });
+            this.queryEvents.onDeletePost.subscribe(async (event) => {
+                await this.virtualForeignKeyConstraint.onQueryDelete(event);
+            });
+        }
     }
 
     static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ClassSchema)[] = []): ClassType<Database<T>> {
@@ -117,35 +145,48 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     /**
      * Creates a new database session. This is the preferred way of working with the database
-     * and to enjoy all ORM features. Call DatabaseSession.commit to persist changes all at once.
+     * and to enjoy all ORM features. Call DatabaseSession.commit to persist changes all at once
+     * in the most performant way possible. The creation of a DatabaseSession is very low cost,
+     * so creating many or often is the preferred way.
+     **
+     * All entity instances fetched/stored during this session are cached and tracked automatically.
      *
-     * All entity instances fetched/stored during this session are cached and tracked.
+     * Note: This is not equal to a database transaction. A session means a work block
+     * where you need to fetch, change, and save entity instances. Every instance fetched
+     * stays in the identity-map of that session and keeps it alive, so make sure
+     * to not keep a session for too long (especially not cross requests).
+
+     * @example
+     * ```typescript
+     * const database = new Database(...);
+     *
+     * express.on('request', async (req) => {
+     *     const session = database.createSession();
+     *     const user = session.query(User).filter({id: req.params.id}).findOne();
+     *     user.name = req.params.name;
+     *     await session.commit(); //session will be garbage collected and should NOT be stored for the next request
+     * });
+     * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
         return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents);
     }
 
     /**
-     * Executes given callback in a new session/transaction and automatically commits it when executed successfully.
-     * Automatically does a rollback when callback throws an error.
+     * Executes given callback in a new session and automatically commits it when executed successfully.
+     * Automatically does a rollback when callback throws an error. This has the same semantics as `createSession`.
      */
     public async session<T>(worker: (session: DatabaseSession<ADAPTER>) => Promise<T>): Promise<T> {
         const session = this.createSession();
-        try {
-            const res = await worker(session);
-            await session.commit();
-            return res;
-        } catch (error) {
-            session.rollback();
-            throw error;
-        }
+        const res = await worker(session);
+        await session.commit();
+        return res;
     }
 
     /**
      * Registers a new entity to this database.
      * This is mainly used for db migration utilities and active record.
-     * If you want to use active record, you have to assign your entities first the a database
-     * using this method.
+     * If you want to use active record, you have to assign your entities first to a database using this method.
      */
     registerEntity(...entities: (ClassType | ClassSchema)[]): void {
         for (const entity of entities) {
@@ -160,6 +201,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     /**
      * Makes sure the schemas types, indices, uniques, etc are reflected in the database.
+     *
+     * WARNING: DON'T USE THIS IN PRODUCTION AS THIS CAN CAUSE EASILY DATA LOSS.
+     * SEE THE MIGRATION DOCUMENTATION TO UNDERSTAND ITS IMPLICATIONS.
      */
     async migrate() {
         await this.adapter.migrate([...this.classSchemas.values()]);
@@ -168,9 +212,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     /**
      * Simple direct persist. The persistence layer (batch) inserts or updates the record
      * depending on the state of the given items. This is different to createSession()+add() in a way
-     * that `add` adds the given items to the queue (which is then committed using commit())
-     * and database.persist() just simply inserts/updates the given items immediately,
-     * completely bypassing the advantages of the unit of work.
+     * that `DatabaseSession.add` adds the given items to the queue (which is then committed using commit())
+     * while this `database.persist` just simply inserts/updates the given items immediately,
+     * completely bypassing the advantages of the unit of work for multiple items.
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
@@ -182,9 +226,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     /**
      * Simple direct remove. The persistence layer (batch) removes all given items.
-     * This is different to createSession()+add() in a way that `remove` adds the given items to the queue
-     * (which is then committed using commit()) and immediate.remove() just simply removes the given items immediately,
-     * completely bypassing the advantages of the unit of work.
+     * This is different to createSession()+remove() in a way that `DatabaseSession.remove` adds the given items to the queue
+     * (which is then committed using commit()) while this `database.remove` just simply removes the given items immediately,
+     * completely bypassing the advantages of the unit of work for multiple items.
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */

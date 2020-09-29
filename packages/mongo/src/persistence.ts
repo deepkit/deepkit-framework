@@ -1,5 +1,5 @@
 import {DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState, getJitChangeDetector, getJITConverterForSnapshot} from '@deepkit/orm';
-import {ClassSchema} from '@deepkit/type';
+import {ClassSchema, t} from '@deepkit/type';
 import {convertClassQueryToMongo, convertPlainQueryToMongo} from './mapping';
 import {ObjectId} from 'mongodb';
 import {FilterQuery} from './query.model';
@@ -8,9 +8,14 @@ import {InsertCommand} from './client/command/insert';
 import {UpdateCommand} from './client/command/update';
 import {DeleteCommand} from './client/command/delete';
 import {mongoSerializer} from './mongo-serializer';
+import {FindAndModifyCommand} from './client/command/find-and-modify';
+import {empty} from '@deepkit/core';
+import {FindCommand} from './client/command/find';
+
 
 export class MongoPersistence extends DatabasePersistence {
-    constructor(protected client: MongoClient) {
+
+    constructor(protected client: MongoClient, protected ormSequences: ClassSchema) {
         super();
     }
 
@@ -45,8 +50,25 @@ export class MongoPersistence extends DatabasePersistence {
         const has_Id = classSchema.hasProperty('_id');
         const scopeSerializer = mongoSerializer.for(classSchema);
 
+        const autoIncrement = classSchema.getAutoIncrementField();
+        let autoIncrementValue = 0;
+        if (autoIncrement) {
+            const command = new FindAndModifyCommand(
+                this.ormSequences,
+                {name: classSchema.getCollectionName(),},
+                {$inc: {value: items.length}}
+            );
+            command.returnNew = true;
+            command.fields = ['value'];
+            command.upsert = true;
+            const res = await this.client.execute(command);
+            autoIncrementValue = res.value['value'] - items.length;
+        }
+
         for (const item of items) {
+            if (autoIncrement) item[autoIncrement.name] = ++autoIncrementValue;
             const converted = scopeSerializer.serialize(item);
+
             if (has_Id && !item['_id']) {
                 converted['_id'] = new ObjectId();
                 item['_id'] = converted['_id'].toHexString();
@@ -60,11 +82,36 @@ export class MongoPersistence extends DatabasePersistence {
         const updates: { q: any, u: any, multi: boolean }[] = [];
         const scopeSerializer = mongoSerializer.for(classSchema);
 
+        let hasAtomic = false;
+        const primaryKeyName = classSchema.getPrimaryField().name;
+        const pks: any[] = [];
+        const projection: {[name: string]: 1} = {};
+        projection[primaryKeyName] = 1;
+        const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
+
         for (const changeSet of changeSets) {
+            if (!hasAtomic && !empty(changeSet.changes.$inc)) hasAtomic = true;
+            pks.push(changeSet.primaryKey[primaryKeyName]);
+
+            const id = changeSet.primaryKey[primaryKeyName];
+
+            if (!empty(changeSet.changes.$inc)) {
+                for (const i in changeSet.changes.$inc) {
+                    if (!changeSet.changes.$inc.hasOwnProperty(i)) continue;
+
+                    if (!assignReturning[id]) {
+                        assignReturning[id] = {item: changeSet.item, names: []};
+                    }
+                    projection[i] = 1;
+
+                    assignReturning[id].names.push(i);
+                }
+            }
+
             updates.push({
                 q: convertClassQueryToMongo(classSchema.classType, changeSet.primaryKey as FilterQuery<T>),
                 u: {
-                    $set: changeSet.changes.$set ? scopeSerializer.partialSerialize(changeSet.changes.$set) : {},
+                    $set: !empty(changeSet.changes.$set) ? scopeSerializer.partialSerialize(changeSet.changes.$set!) : undefined,
                     $inc: changeSet.changes.$inc,
                     $unset: changeSet.changes.$unset,
                 },
@@ -72,40 +119,17 @@ export class MongoPersistence extends DatabasePersistence {
             });
         }
 
-        await this.client.execute(new UpdateCommand(classSchema, updates));
-    }
+        const res = await this.client.execute(new UpdateCommand(classSchema, updates));
 
-    async persist<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
-        const insert: any[] = [];
-        const updates: { q: any, u: any, multi: boolean }[] = [];
-        const has_Id = classSchema.hasProperty('_id');
-        const scopeSerializer = mongoSerializer.for(classSchema);
-        const changeDetector = getJitChangeDetector(classSchema);
-        const doSnapshot = getJITConverterForSnapshot(classSchema);
+        if (res > 0 && hasAtomic) {
+            const returnings = await this.client.execute(new FindCommand(classSchema, {[primaryKeyName]: {$in: pks}}, projection));
+            for (const returning of returnings) {
+                const r = assignReturning[returning[primaryKeyName]];
 
-        for (const item of items) {
-            const state = getInstanceState(item);
-            if (state.isKnownInDatabase()) {
-                const lastSnapshot = state.getSnapshot();
-                const currentSnapshot = doSnapshot(item);
-                const changes = changeDetector(lastSnapshot, currentSnapshot, item);
-                if (!changes) continue;
-                updates.push({
-                    q: convertPlainQueryToMongo(classSchema.classType, state.getLastKnownPK() as FilterQuery<T>),
-                    u: {$set: scopeSerializer.partialSerialize(changes)},
-                    multi: false,
-                });
-            } else {
-                const converted = scopeSerializer.serialize(item);
-                if (has_Id && !item['_id']) {
-                    converted['_id'] = new ObjectId();
-                    item['_id'] = converted['_id'].toHexString();
+                for (const name of r.names) {
+                    r.item[name] = returning[name];
                 }
-                insert.push(converted);
             }
         }
-
-        if (insert.length) await this.client.execute(new InsertCommand(classSchema, insert));
-        if (updates.length) await this.client.execute(new UpdateCommand(classSchema, updates));
     }
 }

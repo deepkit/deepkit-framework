@@ -2,9 +2,9 @@ import {BaseResponse, Command} from './command';
 import {ClassSchema, getClassSchema, t} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 
-class UpdateResponse extends t.class({
+class UpdateResponse extends t.extendClass(BaseResponse, {
     n: t.number,
-}, {extend: BaseResponse}) {
+}) {
 }
 
 const updateSchema = t.schema({

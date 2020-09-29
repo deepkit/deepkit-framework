@@ -2,9 +2,9 @@ import {BaseResponse, Command} from './command';
 import {ClassSchema, ExtractClassType, getClassSchema, t} from '@deepkit/type';
 import {ClassType, toFastProperties} from '@deepkit/core';
 
-class InsertResponse extends t.class({
+class InsertResponse extends t.extendClass(BaseResponse, {
     n: t.number,
-}, {extend: BaseResponse}) {
+}) {
 }
 
 const insertSchema = t.schema({
@@ -32,9 +32,9 @@ export class InsertCommand<T extends ClassSchema | ClassType> extends Command {
         const jit = schema.jit;
         let specialisedSchema = jit.mdbInsert;
         if (!specialisedSchema) {
-            specialisedSchema = t.schema({
+            specialisedSchema = t.extendSchema(insertSchema, {
                 documents: t.array(schema)
-            }, {extend: insertSchema});
+            });
             jit.mdbInsert = specialisedSchema;
             toFastProperties(jit);
         }

@@ -308,6 +308,10 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     abstract getSchemaName(): string;
 
+    isNativeForeignKeyConstraintSupported() {
+        return true;
+    }
+
     async migrate(classSchemas: ClassSchema[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();
         try {

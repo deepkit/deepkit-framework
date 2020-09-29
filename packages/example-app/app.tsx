@@ -13,11 +13,14 @@ class User extends ActiveRecord {
     constructor(
         @t public username: string
     ) {
-        super()
+        super();
     }
 }
 
-class SQLiteDatabase extends Database.createClass('sqlite', new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [User]) {
+class SQLiteDatabase extends Database.createClass(
+    'sqlite',
+    new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'),
+    [User]) {
 }
 
 @http.controller()

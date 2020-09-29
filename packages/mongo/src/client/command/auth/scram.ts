@@ -18,11 +18,11 @@ class SaslStartCommand extends t.class({
 }) {
 }
 
-class SaslStartResponse extends t.class({
+class SaslStartResponse extends t.extendClass(BaseResponse, {
     conversationId: t.number,
     payload: t.type(Uint8Array),
     done: t.boolean,
-}, {extend: BaseResponse}) {
+}) {
 }
 
 
@@ -34,11 +34,11 @@ class SaslContinueCommand extends t.class({
 }) {
 }
 
-class SaslContinueResponse extends t.class({
+class SaslContinueResponse extends t.extendClass(BaseResponse, {
     conversationId: t.literal(1),
     payload: t.type(Uint8Array),
     done: t.boolean,
-}, {extend: BaseResponse}) {
+}) {
 }
 
 function H(method: string, text: Buffer) {

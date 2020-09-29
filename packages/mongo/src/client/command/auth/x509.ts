@@ -12,10 +12,8 @@ class AuthenticateCommand extends t.class({
 }) {
 }
 
-class AuthenticateResponse extends t.class({
-}, {extend: BaseResponse}) {
+class AuthenticateResponse extends t.extendClass(BaseResponse, {}) {
 }
-
 
 export class X509Auth implements MongoAuth {
     async auth(command: Command, config: MongoClientConfig): Promise<void> {

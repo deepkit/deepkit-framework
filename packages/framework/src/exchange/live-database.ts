@@ -1,7 +1,7 @@
 import {Collection, ConnectionWriter, EntitySubject, ExchangeEntity, IdInterface} from '@deepkit/framework-shared';
 import {injectable} from '../injector/injector';
 import {AsyncEventSubscription, ClassType} from '@deepkit/core';
-import {ClassSchema, getClassSchema, jsonSerializer} from '@deepkit/type';
+import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {Observable, Subscription} from 'rxjs';
 import {Exchange} from './exchange';
 import {findQuerySatisfied} from '../utils';
@@ -697,9 +697,9 @@ export class LiveDatabase {
             // }
         }));
 
-        subscriptions.push(database.queryEvents.onUpdatePost.subscribe((event) => {
-            console.log('query shit updated', event);
-        }));
+        // subscriptions.push(database.queryEvents.onUpdatePost.subscribe((event) => {
+        //     console.log('query shit updated', event);
+        // }));
 
         this.entitySubscriptions.set(schema, subscriptions);
     }

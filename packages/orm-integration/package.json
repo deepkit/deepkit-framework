@@ -7,7 +7,7 @@
   "sideEffects": false,
   "private": true,
   "scripts": {
-    "test": "ADAPTER_DRIVER=sqlite jest --forceExit; ADAPTER_DRIVER=mysql jest --forceExit; ADAPTER_DRIVER=postgres jest --forceExit;",
+    "test": "ADAPTER_DRIVER=sqlite jest --forceExit; ADAPTER_DRIVER=mongo jest --forceExit; ADAPTER_DRIVER=mysql jest --forceExit; ADAPTER_DRIVER=postgres jest --forceExit;",
     "tsc": "tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },

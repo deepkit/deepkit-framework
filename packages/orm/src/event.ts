@@ -8,6 +8,7 @@ import {DeleteResult, PatchResult} from './type';
 export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly classSchema: ClassSchema<T>,
+        public readonly databaseSession: DatabaseSession<any>,
         public readonly items: T[]
     ) {
         super();
@@ -21,6 +22,7 @@ export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
 export class UnitOfWorkUpdateEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly classSchema: ClassSchema<T>,
+        public readonly databaseSession: DatabaseSession<any>,
         public readonly changeSets: DatabasePersistenceChangeSet<T>[]
     ) {
         super();
@@ -78,29 +80,9 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
     }
 }
 
-export class QueryDatabaseUpdateEvent<T> extends AsyncEmitterEvent {
-    public updated?: boolean;
-
-    constructor(
-        public readonly databaseSession: DatabaseSession<any>,
-        public readonly classSchema: ClassSchema<T>,
-        public readonly primaryKey: PrimaryKeyFields<T>,
-        public readonly item: T,
-    ) {
-        super()
-    }
-
-    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseUpdateEvent<T> {
-        return this.classSchema.isSchemaOf(classTypeOrSchema);
-    }
-}
-
 export class QueryDatabaseEmitter {
     public readonly onDeletePre: AsyncEventEmitter<QueryDatabaseDeleteEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
     public readonly onDeletePost: AsyncEventEmitter<QueryDatabaseDeleteEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePost);
-
-    public readonly onUpdatePre: AsyncEventEmitter<QueryDatabaseUpdateEvent<any>> = new AsyncEventEmitter(this.parent?.onUpdatePre);
-    public readonly onUpdatePost: AsyncEventEmitter<QueryDatabaseUpdateEvent<any>> = new AsyncEventEmitter(this.parent?.onUpdatePost);
 
     public readonly onPatchPre: AsyncEventEmitter<QueryDatabasePatchEvent<any>> = new AsyncEventEmitter(this.parent?.onPatchPre);
     public readonly onPatchPost: AsyncEventEmitter<QueryDatabasePatchEvent<any>> = new AsyncEventEmitter(this.parent?.onPatchPost);

@@ -23,6 +23,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
 
     constructor(
+        protected session: DatabaseSession<any>,
         protected identityMap: IdentityMap,
         protected emitter: UnitOfWorkDatabaseEmitter,
     ) {
@@ -101,7 +102,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     protected async doDelete(persistence: DatabasePersistence) {
         for (const [classSchema, items] of getClassSchemaInstancePairs(this.removeQueue.values())) {
             if (this.emitter.onDeletePre.hasSubscriptions()) {
-                const event = new UnitOfWorkEvent(classSchema, items);
+                const event = new UnitOfWorkEvent(classSchema, this.session, items);
                 await this.emitter.onDeletePre.emit(event);
             }
 
@@ -109,7 +110,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             this.identityMap.deleteMany(classSchema, items);
 
             if (this.emitter.onDeletePost.hasSubscriptions()) {
-                const event = new UnitOfWorkEvent(classSchema, items);
+                const event = new UnitOfWorkEvent(classSchema, this.session, items);
                 await this.emitter.onDeletePost.emit(event);
             }
         }
@@ -155,23 +156,23 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
             if (inserts.length) {
                 if (this.emitter.onInsertPre.hasSubscriptions()) {
-                    await this.emitter.onInsertPre.emit(new UnitOfWorkEvent(group.type, inserts));
+                    await this.emitter.onInsertPre.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
                 }
                 await persistence.insert(group.type, inserts);
                 if (this.emitter.onInsertPost.hasSubscriptions()) {
-                    await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, inserts));
+                    await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
                 }
             }
 
             if (changeSets.length) {
                 if (this.emitter.onUpdatePre.hasSubscriptions()) {
-                    await this.emitter.onUpdatePre.emit(new UnitOfWorkUpdateEvent(group.type, changeSets));
+                    await this.emitter.onUpdatePre.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
                 }
 
                 await persistence.update(group.type, changeSets);
 
                 if (this.emitter.onUpdatePost.hasSubscriptions()) {
-                    await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, changeSets));
+                    await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
                 }
             }
 
@@ -236,7 +237,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this.identityMap, this.unitOfWorkEmitter));
+        this.rounds.push(new DatabaseSessionRound(this, this.identityMap, this.unitOfWorkEmitter));
     }
 
     /**
@@ -271,10 +272,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
             this.currentPersistence.release();
             this.currentPersistence = undefined;
         }
-    }
-
-    public rollback() {
-        //todo: implement
     }
 
     public getHydrator(): HydratorFn {

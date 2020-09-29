@@ -37,13 +37,13 @@ export class AggregateCommand<T extends ClassSchema | ClassType, R extends Class
         const jit = resultSchema.jit;
         let specialisedResponse = jit.mdbAggregate;
         if (!specialisedResponse) {
-            specialisedResponse = t.schema({
+            specialisedResponse = t.extendSchema(BaseResponse, {
                 cursor: {
                     id: t.number,
                     firstBatch: t.array(resultSchema),
                     nextBatch: t.array(resultSchema),
                 },
-            }, {extend: BaseResponse});
+            });
             jit.mdbAggregate = specialisedResponse;
             toFastProperties(jit);
         }

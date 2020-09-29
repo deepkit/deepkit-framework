@@ -2,7 +2,7 @@ import {ClassSchema} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLiteDatabaseAdapter} from '@deepkit/sql';
 import {Database, DatabaseAdapter} from '@deepkit/orm';
-import {MongoDatabaseAdapter} from '@deepkit/mongo';
+import {GenericCommand, MongoDatabaseAdapter} from '@deepkit/mongo';
 
 const databases: Database<any>[] = []
 
@@ -30,6 +30,10 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
     databases.push(database);
     database.registerEntity(...schemas);
     await database.migrate();
+    if (adapter instanceof MongoDatabaseAdapter) {
+        await adapter.resetAutoIncrementSequences();
+        await adapter.client.execute(new GenericCommand({dropDatabase: 1, $db: 'bookstore'}));
+    }
 
     return database;
 }

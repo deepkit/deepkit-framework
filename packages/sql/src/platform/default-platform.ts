@@ -179,6 +179,8 @@ export abstract class DefaultPlatform {
                 const foreignKey = table.addForeignKey('', foreignTable);
                 foreignKey.localColumns = [table.getColumn(property.name)];
                 foreignKey.foreignColumns = foreignTable.getPrimaryKeys();
+                foreignKey.onDelete = property.referenceOptions.onDelete;
+                foreignKey.onUpdate = property.referenceOptions.onUpdate;
             }
         }
 

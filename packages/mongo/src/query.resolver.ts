@@ -10,6 +10,8 @@ import {AggregateCommand} from './client/command/aggregate';
 import {CountCommand} from './client/command/count';
 import {FindCommand} from './client/command/find';
 import {mongoSerializer} from './mongo-serializer';
+import {FindAndModifyCommand} from './client/command/find-and-modify';
+import {inspect} from 'util';
 
 export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema.classType, (model.filter || {}) as FilterQuery<T>, {}, {
@@ -78,19 +80,59 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         if (model.hasJoins()) {
             throw new Error('Not implemented: Use aggregate to retrieve ids, then do the query');
         }
-        let filter = getMongoFilter(this.classSchema, model);
 
-        //todo implement "returning"
-        const u = {$set: changes.$set, $unset: changes.$unset, $inc: changes.$inc}
+        const filter = getMongoFilter(this.classSchema, model) || {};
+
+        const u = {$set: changes.$set, $unset: changes.$unset, $inc: changes.$inc};
         if (u.$set) {
             u.$set = mongoSerializer.for(this.classSchema).partialSerialize(u.$set);
         }
-        const res = await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
-            q: filter || {},
+        const primaryKeyName = this.classSchema.getPrimaryField().name;
+
+        const returning = changes.getReturning();
+
+        if (model.limit === 1) {
+            const command = new FindAndModifyCommand(
+                this.classSchema,
+                filter,
+                u
+            );
+            command.returnNew = true;
+            command.fields = [primaryKeyName, ...returning];
+            const res = await this.databaseSession.adapter.client.execute(command);
+            patchResult.modified = res.value ? 1 : 0;
+
+            if (res.value) {
+                patchResult.primaryKeys = [res.value[primaryKeyName]];
+                for (const name of returning) {
+                    patchResult.returning[name] = [res.value[name]];
+                }
+            }
+            return;
+        }
+
+        patchResult.modified = await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
+            q: filter,
             u: u,
             multi: !model.limit
         }]));
-        patchResult.modified = res;
+
+        if (!returning.length) return;
+
+        const projection: { [name: string]: 1 | 0 } = {};
+        projection[primaryKeyName] = 1;
+        for (const name of returning) {
+            projection[name] = 1;
+            patchResult.returning[name] = [];
+        }
+
+        const items = await this.databaseSession.adapter.client.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit));
+        for (const item of items) {
+            patchResult.primaryKeys.push(item[primaryKeyName]);
+            for (const name of returning) {
+                patchResult.returning[name].push(item[name]);
+            }
+        }
     }
 
     public async count(queryModel: MongoQueryModel<T>) {
@@ -252,7 +294,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         pipeline.push({
                             $lookup: {
                                 from: this.databaseSession.adapter.client.resolveCollectionName(foreignSchema),
-                                let: {foreign_id: '$' + foreignSchema.getPrimaryField().name},
+                                let: {foreign_id: '$' + join.classSchema.getPrimaryField().name},
                                 pipeline: joinPipeline,
                                 as: join.as,
                             },

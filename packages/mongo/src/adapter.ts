@@ -1,9 +1,10 @@
 import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from '@deepkit/orm';
-import {ClassSchema, getClassSchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, t} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {MongoDatabaseQuery} from './query';
 import {MongoPersistence} from './persistence';
 import {MongoClient} from './client/client';
+import {DeleteCommand} from './client/command/delete';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -21,7 +22,12 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 }
 
 export class MongoDatabaseAdapter implements DatabaseAdapter {
-        public readonly client: MongoClient;
+    public readonly client: MongoClient;
+
+    protected ormSequences = t.schema({
+        name: t.string,
+        value: t.number,
+    }, {name: this.getAutoIncrementSequencesCollection()});
 
     constructor(
         connectionString: string
@@ -38,7 +44,11 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
     }
 
     createPersistence(): MongoPersistence {
-        return new MongoPersistence(this.client);
+        return new MongoPersistence(this.client, this.ormSequences);
+    }
+
+    isNativeForeignKeyConstraintSupported() {
+        return false;
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): MongoDatabaseQueryFactory {
@@ -47,6 +57,14 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
 
     disconnect(force?: boolean): void {
         this.client.close();
+    }
+
+    getAutoIncrementSequencesCollection(): string {
+        return 'orm_sequences';
+    }
+
+    async resetAutoIncrementSequences() {
+        await this.client.execute(new DeleteCommand(this.ormSequences));
     }
 
     async migrate(classSchemas: Iterable<ClassSchema>) {

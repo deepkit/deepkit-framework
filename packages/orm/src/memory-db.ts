@@ -10,6 +10,10 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
     async migrate(classSchemas: Iterable<ClassSchema>) {
     }
 
+    isNativeForeignKeyConstraintSupported(): boolean {
+        return false;
+    }
+
     createPersistence(): DatabasePersistence {
         class Persistence extends DatabasePersistence {
             async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {

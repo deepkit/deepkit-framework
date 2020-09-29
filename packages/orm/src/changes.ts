@@ -26,6 +26,16 @@ export class Changes<T> {
         this.detectEmpty();
     }
 
+    getReturning(): string[] {
+        const names: string[] = [];
+
+        if (this.$inc) {
+            for (const i in this.$inc) if (this.$inc.hasOwnProperty(i)) names.push(i);
+        }
+
+        return names;
+    }
+
     protected detectEmpty() {
         this.empty = this.$set === undefined && this.$unset === undefined && this.$inc === undefined;
     }
@@ -51,6 +61,10 @@ export class Changes<T> {
         if (!this.$unset) this.$unset = {};
         (this.$unset as any)[property] = unset;
         this.empty = false;
+    }
+
+    has(name: keyof T & string): boolean {
+        return Boolean((this.$set && name in this.$set) || (this.$unset && name in this.$unset) || (this.$inc && name in this.$inc));
     }
 }
 
