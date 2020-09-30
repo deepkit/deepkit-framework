@@ -4,7 +4,7 @@ import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@deepk
 
 export async function main() {
     const schema = t.schema({
-        id: t.primary.number,
+        id: t.number.primary,
         name: t.string,
         priority: t.number,
         tags: t.array(t.string),

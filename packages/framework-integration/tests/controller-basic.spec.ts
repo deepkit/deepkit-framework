@@ -167,9 +167,16 @@ test('basic serialisation: primitives', async () => {
 
     const test = client.controller<TestController>('test');
 
-    expect(await test.names({} as any as string)).toEqual(['a', 'b', 'c', "15", "[object Object]"]);
-    expect(await test.names(14 as any as string)).toEqual(['a', 'b', 'c', "15", "14"]);
-    expect(await test.names("16")).toEqual(['a', 'b', 'c', "15", "16"]);
+    try {
+        await test.names(16 as any as string);
+        fail('should fail');
+    } catch (error) {
+        expect(error.message).toContain('names#0: No string given');
+    }
+
+    const names = await test.names("16");
+
+    expect(names).toEqual(['a', 'b', 'c', "15", "16"]);
 
     await close();
 });

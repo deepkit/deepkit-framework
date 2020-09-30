@@ -7,7 +7,6 @@ import {Tag} from './active-record/tag';
 import {BookTag} from './active-record/book-tag';
 import {Group} from './group';
 
-jest.setTimeout(100000);
 
 test('basic operations', async () => {
     const database = await createEnvSetup([User, Book, Tag, BookTag]);
