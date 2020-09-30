@@ -37,6 +37,7 @@ export class VirtualForeignKeyConstraint {
     async onQueryDelete(event: QueryDatabaseDeleteEvent<any>) {
         const references = this.resolveReferencesTo(event.classSchema);
         if (!references.length) return;
+        if (!event.deleteResult.primaryKeys.length) return;
 
         for (const {classSchema, property} of references) {
             const query = event.databaseSession.query(classSchema).filter({[property.name]: {$in: event.deleteResult.primaryKeys}});
@@ -53,6 +54,7 @@ export class VirtualForeignKeyConstraint {
     async onQueryPatch(event: QueryDatabasePatchEvent<any>) {
         const references = this.resolveReferencesTo(event.classSchema);
         if (!references.length) return;
+        if (!event.patchResult.primaryKeys.length) return;
         const primaryKeyName = event.classSchema.getPrimaryField().name;
 
         for (const {classSchema, property} of references) {

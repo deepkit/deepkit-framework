@@ -1,7 +1,17 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, t} from '../src/decorators';
-import {emptySerializer, getClassToXFunction, getGeneratedJitFunctionFromClass, getJitFunctionXToClass, getXToClassFunction, JSONSerializer, jsonSerializer, uuid} from '../index';
+import {getClassSchema, PropertyCompilerSchema, t} from '../src/decorators';
+import {
+    emptySerializer,
+    getClassToXFunction,
+    getGeneratedJitFunctionFromClass,
+    getJitFunctionXToClass,
+    getXToClassFunction,
+    JSONSerializer,
+    jsonSerializer,
+    Serializer,
+    uuid
+} from '../index';
 
 test('new api', async () => {
     class Test {
@@ -184,4 +194,47 @@ test('multi level extend', async () => {
     expect(result).toEqual({id: 100, logins: 124});
     expect(baseCalled).toBe(1);
     expect(middleCalled).toBe(2);
+});
+
+
+test('inheritance', () => {
+    const baseSerializer = new Serializer('base');
+
+    baseSerializer.fromClass.register('date', (setter, accessor, property, compiler) => {
+        // expect(compiler.serializerCompilers).toBe(noDateSerializer.fromClass);
+        return `${setter} = ${accessor}.toJSON();`;
+    });
+
+    baseSerializer.fromClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
+        const classSchemaVar = reserveVariable('classSchema');
+        const classSchema = getClassSchema(property.resolveClassType!);
+        const classToX = reserveVariable('classToX');
+
+        return {
+            template: `${setter} = ${classToX}.fn(${accessor}, _options);`,
+            context: {
+                [classSchemaVar]: classSchema,
+                [classToX]: jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, serializerCompilers.serializer, jitStack))
+            }
+        };
+    });
+
+    const noDateSerializer = new (baseSerializer.fork('noDate'));
+    noDateSerializer.fromClass.noop('date');
+
+    const s = t.schema({
+        created: t.date,
+    });
+
+    const baseRes = baseSerializer.for(s).serialize({created: new Date()});
+    expect(typeof baseRes.created).toBe('string');
+
+    const s2 = t.schema({
+        moderator: s,
+        created: t.date,
+    });
+
+    const res = noDateSerializer.for(s2).serialize({moderator: {created: new Date()}, created: new Date()});
+    expect(res.created).toBeInstanceOf(Date);
+    expect(res.moderator.created).toBeInstanceOf(Date);
 });

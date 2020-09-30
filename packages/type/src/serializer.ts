@@ -87,8 +87,8 @@ export class SerializerCompilers {
         for (const type of binaryTypes) this.register(type, compiler);
     }
 
-    fork() {
-        return new SerializerCompilers(this.serializer, this);
+    fork(serializer: Serializer) {
+        return new SerializerCompilers(serializer, this);
     }
 
     get(type: CompilerTypes): TypeConverterCompiler | undefined {
@@ -105,7 +105,7 @@ export class SerializerCompilers {
     }
 }
 
-export abstract class Serializer {
+export class Serializer {
     public toClass = new SerializerCompilers(this);
     public fromClass = new SerializerCompilers(this);
 
@@ -129,8 +129,8 @@ export abstract class Serializer {
         abstract class Res extends Serializer {
             constructor() {
                 super(name);
-                this.toClass = self.toClass.fork();
-                this.fromClass = self.fromClass.fork();
+                this.toClass = self.toClass.fork(this);
+                this.fromClass = self.fromClass.fork(this);
             }
         }
 

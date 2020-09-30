@@ -23,7 +23,7 @@ export const mongoSerializer = new class extends jsonSerializer.fork('mongo') {
 };
 
 mongoSerializer.fromClass.noop('date'); //we dont stringify date
-jsonSerializer.fromClass.register('string', compilerToString);
+mongoSerializer.fromClass.register('string', compilerToString);
 
 export function uuid4Stringify(binary: Binary): string {
     if (!binary.buffer) {

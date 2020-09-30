@@ -582,6 +582,9 @@ function getPropertySerializerCode(
         code = `
             writer.writeByte(${BSON_DATA_DATE});
             ${nameWriter}
+            if (!(${accessor} instanceof Date)) {
+                throw new Error(${JSON.stringify(accessor)} + " not a Date object");
+            }
             const long = Long.fromNumber(${accessor}.getTime());
             writer.writeUint32(long.getLowBits());
             writer.writeUint32(long.getHighBits());
