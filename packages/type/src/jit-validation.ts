@@ -1,6 +1,6 @@
 import {ClassType} from '@deepkit/core';
 import {handleCustomValidator, ValidationFailedItem} from './validation';
-import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator} from './decorators';
+import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol} from './decorators';
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
 import './jit-validation-templates';
 import {reserveVariable} from './serializer-compiler';
@@ -18,6 +18,7 @@ export function getDataCheckerJS(
     jitStack: JitStack
 ): string {
     let compiler = validationRegistry.get(property.type);
+    if (property.noValidation) return '';
 
     const notOptionalCheckThrow = (property.isUndefinedAllowed()) ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is undefined'));`;
     const notNullableCheckThrow = property.isNullable ? '' : `_errors.push(new ValidationError(${path}, 'required', 'Required value is null'));`;
@@ -57,7 +58,8 @@ export function getDataCheckerJS(
 
         return `
             //property ${property.name}, ${property.type} ${property.isUndefinedAllowed()}
-            if (${accessor} === undefined) {
+            if (${accessor} === unpopulatedSymbol) {
+            } else if (${accessor} === undefined) {
                 ${notOptionalCheckThrow}
             } else if (${accessor} === null) {
                 ${notNullableCheckThrow}
@@ -76,7 +78,8 @@ export function getDataCheckerJS(
     } else if (property.isMap) {
         return `
             //property ${property.name}, ${property.type}
-            if (${accessor} === undefined) {
+            if (${accessor} === unpopulatedSymbol) {
+            } else if (${accessor} === undefined) {
                 ${notOptionalCheckThrow}
             } else if (${accessor} === null) {
                 ${notNullableCheckThrow}
@@ -97,7 +100,8 @@ export function getDataCheckerJS(
         rootContext.set(varClassType, property.getSubType().resolveClassType);
         return `
         //property ${property.name}, ${property.type}
-        if (${accessor} === undefined) {
+        if (${accessor} === unpopulatedSymbol) {
+        } else if (${accessor} === undefined) {
             ${notOptionalCheckThrow}
         } else if (${accessor} === null) {
             ${notNullableCheckThrow}
@@ -110,7 +114,8 @@ export function getDataCheckerJS(
         `;
     } else if (compiler) {
         return `
-        if (${accessor} === undefined) {
+        if (${accessor} === unpopulatedSymbol) {
+        } else if (${accessor} === undefined) {
             ${notOptionalCheckThrow}
         } else if (${accessor} === null) {
             ${notNullableCheckThrow}
@@ -122,7 +127,8 @@ export function getDataCheckerJS(
         `;
     } else {
         return `
-        if (${accessor} === undefined) {
+        if (${accessor} === unpopulatedSymbol) {
+        } else if (${accessor} === undefined) {
             ${notOptionalCheckThrow}
         } else if (${accessor} === null) {
             ${notNullableCheckThrow}
@@ -150,12 +156,19 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
     const jitStack = new JitStack();
     context.set('_classType', classType);
     context.set('ValidationError', ValidationFailedItem);
+    context.set('_globalStore', getGlobalStore());
+    context.set('ReturnSymbol', UnpopulatedCheck.ReturnSymbol);
+    context.set('unpopulatedSymbol', unpopulatedSymbol);
 
     const functionCode = `
         return function(_data, _path, _errors, _overwritePath) {
+            const _oldPopulatedCheck = _globalStore.unpopulatedCheck; 
+            _globalStore.unpopulatedCheck = ReturnSymbol;
             _path = _path || '';
             _errors = _errors ? _errors : [];
+            const _stack = [];
             ${getDataCheckerJS(`(_overwritePath || _path  || '${property.name}')`, `_data`, property, context, jitStack)}
+            _globalStore.unpopulatedCheck = _oldPopulatedCheck;
             return _errors;
         }
         `;
@@ -184,10 +197,12 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
 
     context.set('_classType', schema.classType);
     context.set('ValidationError', ValidationFailedItem);
+    context.set('_globalStore', getGlobalStore());
+    context.set('ReturnSymbol', UnpopulatedCheck.ReturnSymbol);
+    context.set('unpopulatedSymbol', unpopulatedSymbol);
 
     const checks: string[] = [];
 
-    schema.loadDefaults();
     for (let property of schema.getClassProperties().values()) {
         const originProperty = property;
         let isDecorated = false;
@@ -215,10 +230,15 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
     }
 
     const functionCode = `
-        return function(_data, _path, _errors) {
+        return function(_data, _path, _errors, _stack) {
+            const _oldPopulatedCheck = _globalStore.unpopulatedCheck; 
+            _globalStore.unpopulatedCheck = ReturnSymbol;
             _path = _path ? _path + '.' : '';
             _errors = _errors || [];
+            _stack = _stack || [];
+            _stack.push(_data);
             ${checks.join('\n')}
+            _globalStore.unpopulatedCheck = _oldPopulatedCheck;
             return _errors;
         }
         `;
@@ -240,7 +260,6 @@ export function jitValidatePartial<T, K extends keyof T>(
 ): ValidationFailedItem[] {
     errors = errors ? errors : [];
     const schema = getClassSchema(classType);
-    schema.loadDefaults();
 
     for (const i in partial) {
         if (!partial.hasOwnProperty(i)) continue;

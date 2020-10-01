@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import {getClassSchema, jsonSerializer, PropertyCompilerSchema, t, validate} from '../index';
 
 class ConfigA {
-    @t.discriminant
+    @t.literal('a').discriminant
     kind: 'a' = 'a';
 
     @t
@@ -11,7 +11,7 @@ class ConfigA {
 }
 
 class ConfigB {
-    @t.discriminant
+    @t.literal('b').discriminant
     kind: 'b' = 'b';
 
     @t
@@ -43,7 +43,7 @@ test('test discriminator schema', () => {
     expect(getClassSchema(ConfigB).getProperty('myValue2').isResolvedClassTypeIsDecorated()).toEqual(false);
 
     const schemaConfigA = getClassSchema(ConfigA);
-    expect(schemaConfigA.getProperty('kind').type).toBe('string');
+    expect(schemaConfigA.getProperty('kind').type).toBe('literal');
     expect(schemaConfigA.getProperty('kind').isDiscriminant).toBe(true);
     expect(schemaConfigA.getProperty('myValue').isDiscriminant).toBe(false);
     expect(schemaConfigA.getProperty('myValue').isArray).toBe(false);
@@ -182,7 +182,7 @@ test('test discriminator validation in array', () => {
 
 test('test discriminator no default value', () => {
     class ConfigA {
-        @t.discriminant
+        @t.literal('a').discriminant
         kind: 'a' = 'a';
 
         @t

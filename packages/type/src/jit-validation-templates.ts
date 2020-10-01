@@ -108,7 +108,9 @@ registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSc
     return {
         template: `
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                ${jitValidateThis}.fn(${accessor}, ${utils.path}, _errors);
+                if (!_stack.includes(${accessor})) {
+                    ${jitValidateThis}.fn(${accessor}, ${utils.path}, _errors, _stack);
+                }
             } else {
                 ${utils.raise('invalid_type', 'Type is not an object')};
             }

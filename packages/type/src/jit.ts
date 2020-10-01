@@ -1,4 +1,4 @@
-import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema} from './decorators';
+import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema, UnpopulatedCheck} from './decorators';
 import {isExcluded} from './mapper';
 import {ClassType, toFastProperties} from '@deepkit/core';
 import {getDataConverterJS, reserveVariable} from './serializer-compiler';
@@ -282,10 +282,10 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         functionCode = `
         return function(_instance, _options) {
             var _data = {};
-            var _oldUnpopulatedCheckActive = _global.unpopulatedCheckActive;
-            _global.unpopulatedCheckActive = false;
+            var _oldUnpopulatedCheck = _global.unpopulatedCheck;
+            _global.unpopulatedCheck = UnpopulatedCheckNone;
             ${convertProperties.join('\n')}
-            _global.unpopulatedCheckActive = _oldUnpopulatedCheckActive;
+            _global.unpopulatedCheck = _oldUnpopulatedCheck;
             return _data;
         }
         `;
@@ -294,6 +294,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
     context.set('_classType', schema.classType);
     context.set('_global', getGlobalStore());
     context.set('isGroupAllowed', isGroupAllowed);
+    context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled(...context.values());

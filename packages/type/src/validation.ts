@@ -33,6 +33,10 @@ export class ValidationFailedItem {
         public readonly message: string,
     ) {
     }
+
+    toString() {
+        return `${this.path}(${this.code}): ${this.message}`;
+    }
 }
 
 /**
@@ -71,7 +75,6 @@ export function handleCustomValidator<T>(
 export function validateMethodArgs<T>(classType: ClassType<T>, methodName: string, args: any[]): ValidationFailedItem[] {
     const errors: ValidationFailedItem[] = [];
     const schema = getClassSchema(classType);
-    schema.loadDefaults();
 
     const properties = schema.getMethodProperties(methodName);
 

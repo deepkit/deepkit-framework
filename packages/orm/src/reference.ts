@@ -1,4 +1,4 @@
-import {ClassSchema, classSchemaSymbol, getGlobalStore, jsonSerializer} from '@deepkit/type';
+import {ClassSchema, classSchemaSymbol, getGlobalStore, jsonSerializer, UnpopulatedCheck, unpopulatedSymbol} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {IdentityMap} from './identity-map';
 import {getPrimaryKeyHashGenerator} from './converter';
@@ -37,12 +37,16 @@ export function createReferenceClass<T>(
                     return this[property.symbol];
                 }
 
-                if (globalStore.unpopulatedCheckActive) {
+                if (globalStore.unpopulatedCheck === UnpopulatedCheck.Throw) {
                     throw new Error(message);
+                }
+
+                if (globalStore.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
+                    return unpopulatedSymbol;
                 }
             },
             set(v) {
-                if (!globalStore.unpopulatedCheckActive) {
+                if (globalStore.unpopulatedCheck === UnpopulatedCheck.None) {
                     //when this check is off, this item is being constructed
                     //so we ignore initial set operations
                     return;
@@ -88,16 +92,21 @@ export function getReference<T>(
         args.push(pk[prop.name]);
     }
 
-    getGlobalStore().unpopulatedCheckActive = false;
-    ReferenceClass = ReferenceClass ?? createReferenceClass(classSchema);
+    const old = getGlobalStore().unpopulatedCheck;
+    getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
 
-    const ref = new ReferenceClass(...args);
-    Object.assign(ref, pk);
+    try {
+        ReferenceClass = ReferenceClass ?? createReferenceClass(classSchema);
 
-    getGlobalStore().unpopulatedCheckActive = true;
+        const ref = new ReferenceClass(...args);
+        Object.assign(ref, pk);
 
-    if (pool) pool.set(pkHash, ref);
-    if (identityMap) identityMap.store(classSchema, ref);
 
-    return ref;
+        if (pool) pool.set(pkHash, ref);
+        if (identityMap) identityMap.store(classSchema, ref);
+
+        return ref;
+    } finally {
+        getGlobalStore().unpopulatedCheck = old;
+    }
 }

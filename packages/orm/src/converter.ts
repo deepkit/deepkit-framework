@@ -1,4 +1,4 @@
-import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, jsonSerializer, PropertySchema, Serializer, SerializerCompilers} from '@deepkit/type';
+import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, jsonSerializer, PropertySchema, Serializer, SerializerCompilers, UnpopulatedCheck} from '@deepkit/type';
 import {toFastProperties} from '@deepkit/core';
 
 function createJITConverterForSnapshot(
@@ -49,17 +49,20 @@ function createJITConverterForSnapshot(
     const functionCode = `
         return function(_value, _parents, _options) {
             var _result = {};
-            var _oldCheckActive = _global.unpopulatedCheckActive;
-            _global.unpopulatedCheckActive = false;
+            var oldUnpopulatedCheck = _global.unpopulatedCheck;
+            _global.unpopulatedCheck = UnpopulatedCheckNone;
             ${setProperties.join('\n')}
-            _global.unpopulatedCheckActive = _oldCheckActive;
+            _global.unpopulatedCheck = oldUnpopulatedCheck;
             return _result;
         }
         `;
 
-    // console.log('functionCode', functionCode);
-    const compiled = new Function('_global', ...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, getGlobalStore(), ...context.values())();
+
+    context.set('_global', getGlobalStore());
+    context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
+
+    const compiled = new Function(...context.keys(), functionCode);
+    const fn = compiled.bind(undefined, ...context.values())();
     fn.buildId = classSchema.buildId;
     return fn;
 }
@@ -187,8 +190,8 @@ function createPrimaryKeyHashGenerator(
         }
     `;
 
-    const compiled = new Function('_global', ...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, getGlobalStore(), ...context.values())();
+    const compiled = new Function(...context.keys(), functionCode);
+    const fn = compiled.bind(undefined, ...context.values())();
     fn.buildId = classSchema.buildId;
     return fn;
 }

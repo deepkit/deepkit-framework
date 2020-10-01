@@ -21,10 +21,10 @@ class Image {
 
 @Entity('user')
 class User {
-    @t.reference()
+    @t.reference().optional
     profileImage?: Image;
 
-    @t.array(Image).backReference({via: () => UserPicture})
+    @t.array(Image).optional.backReference({via: () => UserPicture})
     pictures?: Image[];
 
     constructor(

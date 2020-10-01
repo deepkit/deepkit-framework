@@ -14,7 +14,6 @@ export function registerJSONTypeGuard(type: Types, factory: JSONTypeGuardFactory
 registerJSONTypeGuard('class', (property: PropertyCompilerSchema) => {
     const schema = getClassSchema(property.resolveClassType!);
     if (schema.discriminant) {
-        schema.loadDefaults();
         const discriminant = schema.getProperty(schema.discriminant);
         const discriminantValue = discriminant.type === 'literal' ? discriminant.literalValue : discriminant.defaultValue;
         if (discriminantValue === undefined) {

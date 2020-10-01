@@ -312,7 +312,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 }
 
                 if (join.propertySchema.isArray) {
-                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.array(t.type(foreignSchema)));
+                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation);
 
                     if (join.type === 'inner') {
                         pipeline.push({
@@ -320,7 +320,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         });
                     }
                 } else {
-                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.type(foreignSchema));
+                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.type(foreignSchema).noValidation);
 
                     //for *toOne relations, since mongodb joins always as array
                     pipeline.push({

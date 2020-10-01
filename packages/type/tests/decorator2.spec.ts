@@ -361,16 +361,3 @@ test('test invalid @f', () => {
         }
     }
 });
-
-test('faulty constructor', () => {
-    class Faulty {
-        constructor(@t public name: string) {
-            if (!name) throw new Error('No name given!!');
-        }
-    }
-
-    const schema = getClassSchema(Faulty);
-    expect(() => {
-        schema.loadDefaults();
-    }).toThrow('Class Faulty constructor is not callable without values');
-});

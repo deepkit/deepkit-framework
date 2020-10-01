@@ -26,9 +26,11 @@
     "jest": "^26.1.0"
   },
   "devDependencies": {
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "jest-serial-runner": "^1.1.0"
   },
   "jest": {
+    "runner": "jest-serial-runner",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

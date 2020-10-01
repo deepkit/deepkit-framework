@@ -1,7 +1,7 @@
 import {Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff} from '../schema/table';
 import {binaryTypes, ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@deepkit/type';
 import {escape} from 'sqlstring';
-import {ClassType, isPlainObject} from '@deepkit/core';
+import {ClassType, isObject, isPlainObject} from '@deepkit/core';
 import {sqlSerializer} from '../serializer/sql-serializer';
 import {SchemaParser} from '../reverse/schema-parser';
 import {SQLFilterBuilder} from '../sql-filter-builder';
@@ -164,7 +164,10 @@ export abstract class DefaultPlatform {
                 const isNullable = property.isUndefinedAllowed() || property.isNullable;
                 column.isNotNull = !isNullable;
                 column.isPrimaryKey = property.isId;
-                column.isAutoIncrement = property.isAutoIncrement;
+                if (property.isAutoIncrement) {
+                    column.isAutoIncrement = true;
+                    column.isNotNull = true;
+                }
 
                 const typeProperty = property.isReference ? property.getResolvedClassSchema().getPrimaryField() : property;
                 this.setColumnType(column, typeProperty);
@@ -485,7 +488,7 @@ export abstract class DefaultPlatform {
     getColumnDefaultValueDDL(column: Column) {
         if (undefined === column.defaultValue) return '';
         //todo: allow to add expressions, like CURRENT_TIMESTAMP
-        return 'DEFAULT ' + JSON.stringify(column.defaultValue);
+        return 'DEFAULT ' + this.quoteValue(isObject(column.defaultValue) ? JSON.stringify(column.defaultValue) : column.defaultValue);
     }
 
     getAutoIncrement() {

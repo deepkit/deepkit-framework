@@ -275,6 +275,15 @@ test('argument partial', () => {
     expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name'}]);
     expect(validateMethodArgs(User, 'foo', [{name: []}])).toEqual([{'code': 'invalid_string', 'message': 'No string given', 'path': '#0.name'}]);
     expect(validateMethodArgs(User, 'foo', [{name: ''}])).toEqual([]);
+
+    const userSchema = getClassSchema(User);
+    const [configProperty] = userSchema.getMethodProperties('foo2');
+    expect(configProperty.name).toBe('config');
+    expect(configProperty.isOptional).toBe(false);
+
+    const configSchema = getClassSchema(Config);
+    expect(configSchema.getProperty('name').isOptional).toBe(false);
+
     expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name'}]);
     expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: undefined}])).toEqual([]);
     expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: {peter: true}}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.sub.name'}]);

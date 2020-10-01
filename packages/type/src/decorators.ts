@@ -6,10 +6,19 @@ import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-bui
 import {jsonSerializer} from './json-serializer';
 import {PartialField, typedArrayMap, typedArrayNamesMap, Types} from './models';
 import {BackReference, isPrimaryKey, Reference} from './types';
+import {extractMethod} from './code-parser';
+
+export enum UnpopulatedCheck {
+    None,
+    Throw, //throws regular error
+    ReturnSymbol, //returns `unpopulatedSymbol`
+}
+
+export const unpopulatedSymbol = Symbol('unpopulated');
 
 export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType | ClassSchema };
-    unpopulatedCheckActive: boolean;
+    unpopulatedCheck: UnpopulatedCheck;
 }
 
 function getGlobal(): any {
@@ -23,7 +32,7 @@ export function getGlobalStore(): GlobalStore {
     if (!global.DeepkitStore) {
         global.DeepkitStore = {
             RegisteredEntities: {},
-            unpopulatedCheckActive: true,
+            unpopulatedCheck: UnpopulatedCheck.Throw,
         } as GlobalStore;
     }
 
@@ -72,6 +81,7 @@ export interface PropertySchemaSerialized {
     groupNames?: string[];
     templateArgs?: PropertySchemaSerialized[];
     classType?: string;
+    noValidation?: boolean;
 }
 
 /**
@@ -83,6 +93,8 @@ export class PropertyCompilerSchema {
     type: Types = 'any';
 
     literalValue?: string | number | boolean;
+
+    noValidation: boolean = false;
 
     /**
      * Object to store JIT function for this schema.
@@ -323,6 +335,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (this.typeSet) props['typeSet'] = true;
         if (this.methodName) props['methodName'] = this.methodName;
         if (this.groupNames.length) props['groupNames'] = this.groupNames;
+        props['noValidation'] = this.noValidation;
 
         if (this.templateArgs.length) {
             props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
@@ -355,6 +368,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (props['typeSet']) p.typeSet = true;
         if (props['methodName']) p.methodName = props['methodName'];
         if (props['groupNames']) p.groupNames = props['groupNames'];
+        if (props['noValidation']) p.noValidation = props['noValidation'];
 
         if (props['templateArgs']) {
             p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v));
@@ -564,7 +578,6 @@ export class ClassSchema<T = any> {
     public readonly references = new Set<PropertySchema>();
 
     protected referenceInitialized = false;
-    protected hasDefaultsInitialized = false;
 
     protected primaryKeys?: PropertySchema[];
     protected autoIncrements?: PropertySchema[];
@@ -572,35 +585,44 @@ export class ClassSchema<T = any> {
     onLoad: { methodName: string, options: { fullLoad?: boolean } }[] = [];
     protected hasFullLoadHooksCheck = false;
 
+    private detectedDefaultValueProperties: string[] = [];
+
     constructor(classType: ClassType) {
         this.classType = classType;
+
+        this.loadDefaults();
     }
 
-    loadDefaults() {
-        if (this.hasDefaultsInitialized) return;
-
-        //its important that the class supports calling the constructor without any values
-        //same for proxy instances btw.
-        try {
-            const instance: any = new this.classType();
-            for (const property of this.classProperties.values()) {
-                if (instance[property.name] !== null && instance[property.name] !== undefined) {
-                    try {
-                        property.defaultValue = instance[property.name];
-                        property.hasDefaultValue = true;
-                    } catch (error) {
-                        //we simply ignore it
-                    }
-                }
-            }
-        } catch (error) {
-            throw new Error(
-                `Class ${this.getClassName()} constructor is not callable without values. ` +
-                `Make sure not to depend on constructor arguments. This is necessary for default value checking. ` +
-                `Error: ${error}`
-            );
+    /**
+     * To not force the user to always annotate `.optional` to properties that
+     * are actually optional (properties with default values),
+     * we automatically read the code of the constructor and check if which properties
+     * are actually optional. If we find an assignment, we assume it has a default value,
+     * and set property.hasDefaultValue = true;
+     */
+    protected loadDefaults() {
+        const originCode = this.classType.toString();
+        if (!originCode.startsWith('class')) {
+            console.log('originCode', originCode);
+            throw new Error('@deepkit/type does not support ES5 fake-classes');
         }
-        this.hasDefaultsInitialized = true;
+
+        if (!originCode.includes('constructor(')) return;
+
+        const constructorCode = extractMethod(originCode, 'constructor');
+        const findAssignment = RegExp(`this\.([^ \t\.=]+)[^=]*=([^ \n\t;]+)?`, 'g');
+        let match: any;
+
+        while ((match = findAssignment.exec(constructorCode)) !== null) {
+            const lname = match[1];
+            const rname = match[2];
+            if (lname === rname) {
+                //its a `this.name=name` assignment, very likely to be a direct construct dependency
+                //so it's not per-se optional. If it's optional it can be marked as once later on.
+                continue;
+            }
+            this.detectedDefaultValueProperties.push(lname);
+        }
     }
 
     getCollectionName(): string {
@@ -712,6 +734,14 @@ export class ClassSchema<T = any> {
         //apply decorator, which adds properties automatically
         decorator(this.classType, name);
         this.resetCache();
+    }
+
+    public registerProperty(property: PropertySchema) {
+        if (!property.methodName && this.detectedDefaultValueProperties.includes(property.name)) {
+            property.hasDefaultValue = true;
+        }
+
+        this.classProperties.set(property.name, property);
     }
 
     protected resetCache() {
@@ -1596,6 +1626,11 @@ export interface FieldDecoratorResult<T> {
     ): this;
 
     /**
+     * Ignores validation on this property.
+     */
+    noValidation: this;
+
+    /**
      * Creates a PropertySchema object from the given definition.
      */
     buildPropertySchema(name?: string): PropertySchema;
@@ -1761,7 +1796,9 @@ function createFieldDecoratorResult<T>(
                 //decorator is used on a method argument. Might be on constructor or any other method.
                 if (methodName === 'constructor') {
                     if (!schema.getClassProperties(false).has(givenPropertyName)) {
-                        schema.getClassProperties(false).set(givenPropertyName, new PropertySchema(givenPropertyName));
+                        const property = new PropertySchema(givenPropertyName);
+                        property.methodName = 'constructor';
+                        schema.registerProperty(property);
                         schema.propertyNames.push(givenPropertyName);
                     }
 
@@ -1783,7 +1820,7 @@ function createFieldDecoratorResult<T>(
                 }
 
                 if (!schema.getClassProperties(false).has(givenPropertyName)) {
-                    schema.getClassProperties(false).set(givenPropertyName, new PropertySchema(givenPropertyName));
+                    schema.registerProperty(new PropertySchema(givenPropertyName));
                     schema.propertyNames.push(givenPropertyName);
                 }
 
@@ -1852,6 +1889,16 @@ function createFieldDecoratorResult<T>(
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
                 property.isAutoIncrement = true;
+                property.isOptional = true;
+            }]);
+        }
+    });
+
+    Object.defineProperty(fn, 'noValidation', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+                property.noValidation = true;
             }]);
         }
     });
@@ -2341,7 +2388,7 @@ fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cl
 
 fRaw['extendSchema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(base: E, props: PlainSchemaProps, options: { name?: string, classType?: ClassType } = {}): ClassSchema {
     return fRaw['schema'](props, options, base);
-}
+};
 
 fRaw['class'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string } = {}, base?: E): ClassType {
     return fRaw.schema(props, options).classType;
@@ -2368,6 +2415,7 @@ fRaw['type'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<a
 fRaw['literal'] = function <T extends number | string | boolean>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field('literal').use((target, property) => {
         property.literalValue = type;
+        property.defaultValue = type;
     });
 };
 
@@ -2470,9 +2518,9 @@ export interface MainDecorator {
     /**
      * Creates a new javascript class from a plain schema definition object.
      */
-    class<T extends PlainSchemaProps>(props: T, options?: { name?: string}): ClassType<ExtractClassDefinition<T>>;
+    class<T extends PlainSchemaProps>(props: T, options?: { name?: string }): ClassType<ExtractClassDefinition<T>>;
 
-    extendClass<T extends PlainSchemaProps, BASE extends ClassSchema | ClassType>(base: BASE, props: T, options?: { name?: string}): ClassType<MergeSchemaAndBase<T, BASE>>;
+    extendClass<T extends PlainSchemaProps, BASE extends ClassSchema | ClassType>(base: BASE, props: T, options?: { name?: string }): ClassType<MergeSchemaAndBase<T, BASE>>;
 
     /**
      * Marks a field as string.
@@ -2644,6 +2692,9 @@ export const t: MainDecorator & FieldDecoratorResult<any> = fRaw as any;
 function MongoIdField() {
     return (target: object, property: PropertySchema) => {
         property.setType('objectId');
+        if (property.name === '_id') {
+            property.isOptional = true;
+        }
     };
 }
 
@@ -2662,7 +2713,7 @@ function UUIDField() {
 function Index(options?: IndexOptions, name?: string) {
     return (target: object, property: PropertySchema) => {
         const schema = getOrCreateEntitySchema(target);
-        if (property.methodName) {
+        if (property.methodName && property.methodName !== 'constructor') {
             throw new Error('Index could not be used on method arguments.');
         }
 

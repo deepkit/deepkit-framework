@@ -1,7 +1,7 @@
 import {DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet} from './database';
-import {Entity} from './type';
+import {DatabaseValidationError, Entity} from './type';
 import {ClassType, CustomError} from '@deepkit/core';
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, PrimaryKeyFields} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate} from '@deepkit/type';
 import {GroupArraySort} from '@deepkit/topsort';
 import {getInstanceState, getNormalizedPrimaryKey, IdentityMap} from './identity-map';
 import {getClassSchemaInstancePairs} from './utils';
@@ -57,21 +57,24 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         const result: Entity[] = [];
         const classSchema = getClassSchema(getClassTypeFromInstance(item));
 
-        const old = this.global.unpopulatedCheckActive;
-        this.global.unpopulatedCheckActive = false;
-        for (const reference of classSchema.references.values()) {
-            if (reference.backReference) continue;
+        const old = this.global.unpopulatedCheck;
+        this.global.unpopulatedCheck = UnpopulatedCheck.None;
+        try {
+            for (const reference of classSchema.references.values()) {
+                if (reference.backReference) continue;
 
-            //todo, check if join was populated. will throw otherwise
-            const v = item[reference.name as keyof T] as any;
-            if (!v) continue;
-            if (reference.isArray) {
-                result.push(...v);
-            } else {
-                result.push(v);
+                //todo, check if join was populated. will throw otherwise
+                const v = item[reference.name as keyof T] as any;
+                if (!v) continue;
+                if (reference.isArray) {
+                    result.push(...v);
+                } else {
+                    result.push(v);
+                }
             }
+        } finally {
+            this.global.unpopulatedCheck = old;
         }
-        this.global.unpopulatedCheckActive = old;
 
         return result;
     }
@@ -120,63 +123,74 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         const sorter = new GroupArraySort<Entity, ClassSchema>();
         sorter.sameTypeExtraGrouping = true;
         sorter.throwOnNonExistingDependency = false;
+        const unpopulatedCheck = getGlobalStore().unpopulatedCheck;
+        getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
 
-        // const start = performance.now();
-        for (const item of this.addQueue.values()) {
-            const classSchema = getClassSchema(getClassTypeFromInstance(item));
-            sorter.add(item, classSchema, this.getReferenceDependencies(item));
-        }
-
-        sorter.sort();
-        const groups = sorter.getGroups();
-        // console.log('dependency resolution of', items.length, 'items took', performance.now() - start, 'ms');
-
-        for (const group of groups) {
-            const inserts: Entity[] = [];
-            const changeSets: DatabasePersistenceChangeSet<Entity>[] = [];
-            const changeDetector = getJitChangeDetector(group.type);
-            const doSnapshot = getJITConverterForSnapshot(group.type);
-
-            for (const item of group.items) {
-                const state = getInstanceState(item);
-                if (state.isKnownInDatabase()) {
-                    const lastSnapshot = state.getSnapshot();
-                    const currentSnapshot = doSnapshot(item);
-                    const changeSet = changeDetector(lastSnapshot, currentSnapshot, item);
-                    if (!changeSet) continue;
-                    changeSets.push({
-                        changes: changeSet,
-                        item: item,
-                        primaryKey: state.getLastKnownPK(),
-                    });
-                } else {
-                    inserts.push(item);
-                }
+        try {
+            // const start = performance.now();
+            for (const item of this.addQueue.values()) {
+                const classSchema = getClassSchema(getClassTypeFromInstance(item));
+                sorter.add(item, classSchema, this.getReferenceDependencies(item));
             }
 
-            if (inserts.length) {
-                if (this.emitter.onInsertPre.hasSubscriptions()) {
-                    await this.emitter.onInsertPre.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+            sorter.sort();
+            const groups = sorter.getGroups();
+            // console.log('dependency resolution of', items.length, 'items took', performance.now() - start, 'ms');
+
+            for (const group of groups) {
+                const inserts: Entity[] = [];
+                const changeSets: DatabasePersistenceChangeSet<Entity>[] = [];
+                const changeDetector = getJitChangeDetector(group.type);
+                const doSnapshot = getJITConverterForSnapshot(group.type);
+
+                for (const item of group.items) {
+                    const state = getInstanceState(item);
+                    const errors = validate(state.classSchema, item);
+                    if (errors.length) {
+                        throw new DatabaseValidationError(state.classSchema, errors);
+                    }
+
+                    if (state.isKnownInDatabase()) {
+                        const lastSnapshot = state.getSnapshot();
+                        const currentSnapshot = doSnapshot(item);
+                        const changeSet = changeDetector(lastSnapshot, currentSnapshot, item);
+                        if (!changeSet) continue;
+                        changeSets.push({
+                            changes: changeSet,
+                            item: item,
+                            primaryKey: state.getLastKnownPK(),
+                        });
+                    } else {
+                        inserts.push(item);
+                    }
                 }
-                await persistence.insert(group.type, inserts);
-                if (this.emitter.onInsertPost.hasSubscriptions()) {
-                    await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+
+                if (inserts.length) {
+                    if (this.emitter.onInsertPre.hasSubscriptions()) {
+                        await this.emitter.onInsertPre.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+                    }
+                    await persistence.insert(group.type, inserts);
+                    if (this.emitter.onInsertPost.hasSubscriptions()) {
+                        await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+                    }
                 }
+
+                if (changeSets.length) {
+                    if (this.emitter.onUpdatePre.hasSubscriptions()) {
+                        await this.emitter.onUpdatePre.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
+                    }
+
+                    await persistence.update(group.type, changeSets);
+
+                    if (this.emitter.onUpdatePost.hasSubscriptions()) {
+                        await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
+                    }
+                }
+
+                this.identityMap.storeMany(group.type, group.items);
             }
-
-            if (changeSets.length) {
-                if (this.emitter.onUpdatePre.hasSubscriptions()) {
-                    await this.emitter.onUpdatePre.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
-                }
-
-                await persistence.update(group.type, changeSets);
-
-                if (this.emitter.onUpdatePost.hasSubscriptions()) {
-                    await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
-                }
-            }
-
-            this.identityMap.storeMany(group.type, group.items);
+        } finally {
+            getGlobalStore().unpopulatedCheck = unpopulatedCheck;
         }
     }
 }

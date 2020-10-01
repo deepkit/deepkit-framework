@@ -57,7 +57,9 @@ export class ValidationParameterError {
 export function getSerializedErrorPair(error: any): [string, any, any] {
     if (error instanceof Error) {
         return ['@error:default', error.message, error.stack];
-    } else {
+    } else if ('string' === typeof error) {
+        return ['@error:default', error, (new Error).stack];
+    } else if ('function' === typeof error['constructor']) {
         const entityName = getClassSchema(error['constructor'] as ClassType<typeof error>).name;
         if (entityName) {
             return [entityName, jsonSerializer.for(error['constructor'] as ClassType<typeof error>).serialize(error), error ? error.stack : undefined];

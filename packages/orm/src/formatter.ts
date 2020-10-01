@@ -1,4 +1,4 @@
-import {ClassSchema, getGlobalStore, PropertySchema, Serializer} from '@deepkit/type';
+import {ClassSchema, getGlobalStore, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol} from '@deepkit/type';
 import {DatabaseQueryModel} from './query';
 import {ClassType} from '@deepkit/core';
 import {getInstanceState, IdentityMap, PKHash} from './identity-map';
@@ -77,8 +77,12 @@ export class Formatter {
                     return this[propertySchema.symbol];
                 }
 
-                if (getGlobalStore().unpopulatedCheckActive) {
+                if (getGlobalStore().unpopulatedCheck === UnpopulatedCheck.Throw) {
                     throw new Error(`Reference ${classSchema.getClassName()}.${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                }
+
+                if (getGlobalStore().unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
+                    return unpopulatedSymbol;
                 }
             },
             set(v: any) {
