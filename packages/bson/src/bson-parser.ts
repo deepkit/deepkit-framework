@@ -1,5 +1,7 @@
-import {Binary, Long} from 'bson';
+import {Long} from 'bson';
 import {
+    BSON_BINARY_SUBTYPE_BYTE_ARRAY,
+    BSON_BINARY_SUBTYPE_UUID,
     BSON_DATA_ARRAY,
     BSON_DATA_BINARY,
     BSON_DATA_BOOLEAN,
@@ -88,7 +90,14 @@ export class BaseParser {
         let size = this.eatUInt32();
         const subType = this.eatByte();
 
-        if (subType === Binary.SUBTYPE_BYTE_ARRAY) {
+        if (subType === BSON_BINARY_SUBTYPE_UUID) {
+            const nextPosition = this.offset + size;
+            const string = this.parseUUID();
+            this.offset = nextPosition;
+            return string;
+        }
+
+        if (subType === BSON_BINARY_SUBTYPE_BYTE_ARRAY) {
             size = this.eatUInt32();
         }
 
@@ -132,9 +141,6 @@ export class BaseParser {
     parseUUID() {
         //e.g. bef8de96-41fe-442f-b70c-c3a150f8c96c
         //         4      2    2    2       6
-        this.eatUInt32();
-        this.eatByte();
-
         const offset = this.offset, b = this.buffer;
         let o = hexTable[b[offset]]
             + hexTable[b[offset + 1]]

@@ -1,5 +1,5 @@
 import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/type';
-import {BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_DATE, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize, moment} from './utils';
+import {BSON_BINARY_SUBTYPE_UUID, BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_DATE, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize, moment} from './utils';
 import {ClassType} from '@deepkit/core';
 import {BaseParser, ParserV2} from './bson-parser';
 import {seekElementSize} from './continuation';
@@ -33,6 +33,9 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
     } else if (property.type === 'uuid') {
         return `
             if (elementType === ${BSON_DATA_BINARY}) {
+                parser.eatUInt32(); //size
+                const subType = parser.eatByte();
+                if (subType !== ${BSON_BINARY_SUBTYPE_UUID}) throw new Error('${property.name} BSON binary type invalid. Expected UUID(4), but got ' + subType); 
                 ${setter} = parser.parseUUID();
             } else {
                 ${nullOrSeek}
