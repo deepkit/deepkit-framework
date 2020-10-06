@@ -14,6 +14,8 @@ registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerS
         } else {
             ${utils.raise('invalid_number', 'No number given')}
         }
+    } else if (!Number.isFinite(${accessor})) {
+        ${utils.raise('invalid_number', 'No valid number given, got NaN')}
     }
     `;
 });

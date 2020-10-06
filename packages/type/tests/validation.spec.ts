@@ -455,6 +455,7 @@ test('test number', async () => {
         message: 'No number given',
         path: 'id'
     }]);
+    expect(validate(ModelOptional, {id: NaN})).toEqual([{code: 'invalid_number', message: 'No valid number given, got NaN', path: 'id'}]);
     expect(validate(ModelOptional, {id: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'id'}]);
     expect(validate(ModelOptional, {id: undefined})).toEqual([]);
     expect(validate(ModelOptional, {})).toEqual([]);
