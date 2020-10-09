@@ -23,7 +23,7 @@ export class ExchangeModule implements SuperHornetModule {
 
     constructor(
         protected config: ExchangeConfig,
-        protected exchangeServerFactory: ExchangeServerFactory
+        protected exchangeServerFactory: ExchangeServerFactory,
     ) {
     }
 

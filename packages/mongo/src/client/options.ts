@@ -47,9 +47,9 @@ export class ConnectionOptions extends t.class({
     tlsAllowInvalidHostnames: t.boolean.optional,
     tlsInsecure: t.boolean.optional,
 
-    maxPoolSize: t.number.default(100),
-    minPoolSize: t.number.default(0),
-    maxIdleTimeMS: t.number.default(0),
+    maxPoolSize: t.number.default(50),
+    minPoolSize: t.number.default(1),
+    maxIdleTimeMS: t.number.default(100),
     waitQueueTimeoutMS: t.number.default(0),
 }) {
     getAuthMechanismProperties(): AuthMechanismProperties {

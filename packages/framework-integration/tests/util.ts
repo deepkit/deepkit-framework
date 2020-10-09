@@ -1,12 +1,13 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
-import {ApplicationServer, deepkit, ExchangeConfig, Application, Databases} from '@deepkit/framework';
+import {Application, ApplicationServer, Databases, deepkit, ExchangeConfig} from '@deepkit/framework';
 import {RemoteController} from '@deepkit/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
 import {DeepkitClient} from '@deepkit/framework-client';
 import {Database} from '@deepkit/orm';
 import {MongoDatabaseAdapter} from '@deepkit/mongo';
+import {performance} from 'perf_hooks';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -68,8 +69,6 @@ export async function createServerClientPair(
     createClient: () => DeepkitClient,
     createControllerClient: <T>(controllerName: string) => RemoteController<T>
 }> {
-    const dbName = 'super_hornet_tests_' + dbTestName.replace(/[^a-zA-Z0-9]+/g, '_');
-
     const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
     const exchangeSocketPath = socketPath + '_exchange';
 
@@ -92,15 +91,11 @@ export async function createServerClientPair(
     }, [], [ConfigModule]);
 
     const appServer = app.get(ApplicationServer);
-
     await appServer.start();
-
     const createdClients: DeepkitClient[] = [];
-
     const socket = new DeepkitClient('ws+unix://' + socketPath);
 
     createdClients.push(socket);
-
     let closed = false;
 
     const close = async () => {
@@ -113,6 +108,7 @@ export async function createServerClientPair(
         console.log('server close ...');
         // await db.dropDatabase(dbName);
         closed = true;
+        server.close();
 
         for (const client of createdClients) {
             try {
@@ -126,6 +122,7 @@ export async function createServerClientPair(
         await sleep(0.1); //let the server read the disconnect
         const start = performance.now();
         await appServer.close();
+        await app.shutdown();
         console.log('server closed', performance.now() - start);
     };
 

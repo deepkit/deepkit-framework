@@ -1,7 +1,7 @@
 import {Subscription} from 'rxjs';
-import {ClassSchema, getEntityName} from '@deepkit/type';
-import {ExchangeEntity, StreamFileResult} from '@deepkit/framework-shared';
-import {ClassType, ParsedHost, parseHost, sleep} from '@deepkit/core';
+import {ClassSchema} from '@deepkit/type';
+import {ExchangeEntity, StreamBehaviorSubject, StreamFileResult} from '@deepkit/framework-shared';
+import {asyncOperation, ClassType, ParsedHost, parseHost, sleep} from '@deepkit/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
 import {AsyncSubscription} from '@deepkit/core-rxjs';
 import * as WebSocket from 'ws';
@@ -33,6 +33,8 @@ export class Exchange {
 
     protected host: ParsedHost = parseHost(this.config.hostOrUnixPath);
 
+    protected usedEntityFieldsSubjects = new Map<string, StreamBehaviorSubject<string[]>>();
+
     constructor(
         protected config: ExchangeConfig
     ) {
@@ -46,7 +48,7 @@ export class Exchange {
 
     public async connect(): Promise<WebSocket> {
         while (this.connectionPromise) {
-            await sleep(0.01);
+            await sleep(0.001);
             await this.connectionPromise;
         }
 
@@ -72,7 +74,7 @@ export class Exchange {
     protected async doConnect(): Promise<void> {
         this.socket = undefined;
 
-        return new Promise<void>((resolve, reject) => {
+        return asyncOperation<void>((resolve, reject) => {
             const url = this.host.getWebSocketUrl();
             this.socket = new WebSocket(url);
             this.socket.binaryType = 'arraybuffer';
@@ -107,10 +109,18 @@ export class Exchange {
             delete this.replyResolver[m.id];
         }
 
+        if (m.type === 'entity-fields') {
+            const [entityName, fields] = m.arg;
+            this.getUsedEntityFields(entityName).next(fields);
+            this.send('ack-entity-fields', true).catch(console.error);
+        }
+
         if (m.type === 'publish') {
-            if (this.subscriptions[m.arg[0]]) {
+            const [channelName, ttl] = m.arg;
+
+            if (this.subscriptions[channelName]) {
                 let decodedJson: any;
-                for (const cb of this.subscriptions[m.arg[0]].slice(0)) {
+                for (const cb of this.subscriptions[channelName].slice(0)) {
                     if (this.rawSubscriber.get(cb) === true) {
                         cb(m.payload);
                     } else {
@@ -130,7 +140,7 @@ export class Exchange {
         dataType: ClassSchema<T> | ClassType<T>,
     ): Promise<T | undefined> {
         const reply = await this.sendAndWaitForReply('get', key);
-        if (reply.payload) {
+        if (reply.payload && reply.payload.byteLength) {
             return getBSONDecoder(dataType)(Buffer.from(reply.payload));
         }
         return;
@@ -165,16 +175,31 @@ export class Exchange {
         await this.send('del', key);
     }
 
-    // /**
-    //  * This tells the ExchangeDatabase which field values you additionally need in a patch-message.
-    //  */
-    // public async subscribeEntityFields<T>(classType: ClassType<T>, fields: string[]): Promise<AsyncSubscription> {
-    //     const messageId = await this.send('entity-subscribe-fields', [getEntityName(classType), fields]);
-    //
-    //     return new AsyncSubscription(async () => {
-    //         this.send('del-entity-subscribe-fields', String(messageId)).catch(console.error);
-    //     });
-    // }
+    /**
+     * This tells the LiveDatabase which field values you additionally need in a patch bus-message.
+     */
+    public async publishUsedEntityFields<T>(classSchema: ClassSchema, fields: string[]): Promise<AsyncSubscription> {
+        const messageId = await this.send('used-entity-fields', [classSchema.getName(), fields]);
+
+        await asyncOperation(async (resolve) => {
+            this.replyResolver[messageId] = resolve;
+        });
+
+        return new AsyncSubscription(async () => {
+            this.send('del-used-entity-fields', messageId).catch(console.error);
+        });
+    }
+
+    public getUsedEntityFields(classSchema: ClassSchema | string) {
+        const entityName = 'string' === typeof classSchema ? classSchema : classSchema.getName();
+        let subject = this.usedEntityFieldsSubjects.get(entityName);
+        if (subject) return subject;
+
+        subject = new StreamBehaviorSubject<string[]>([]);
+        this.usedEntityFieldsSubjects.set(entityName, subject);
+
+        return subject;
+    }
 
     public publishEntity<T>(classSchema: ClassSchema<T>, message: ExchangeEntity) {
         const channelName = 'deepkit/entity/' + classSchema.getName();
@@ -206,7 +231,7 @@ export class Exchange {
     protected async sendAndWaitForReply(type: string, arg: any, payload?: ArrayBuffer): Promise<{ arg: any, payload: ArrayBuffer | undefined }> {
         const messageId = this.messageId++;
 
-        return new Promise(async (resolve) => {
+        return asyncOperation(async (resolve) => {
             this.replyResolver[messageId] = resolve;
             (await this.connect()).send(encodeMessage(messageId, type, arg, payload));
         });

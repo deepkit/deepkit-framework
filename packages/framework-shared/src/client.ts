@@ -197,7 +197,6 @@ export function handleActiveSubject(
 
                 const classType = getClassSchemaByName(reply.entityName!).classType as ClassType<IdInterface>;
 
-
                 const collection = new Collection<any>(classType);
 
                 if (reply.pagination.active) {
@@ -206,21 +205,21 @@ export function handleActiveSubject(
                     collection.pagination.setTotal(reply.pagination.total);
                     collection.pagination.setPage(reply.pagination.page);
                     collection.pagination.setSort(reply.pagination.sort);
-                    collection.pagination.setParameters(reply.pagination.parameters);
-
-                    collection.pagination.event.subscribe((event: CollectionPaginationEvent) => {
-                        if (event.type === 'apply') {
-                            activeSubject.sendMessage({
-                                forId: reply.id,
-                                name: 'collection/pagination',
-                                sort: collection.pagination.getSort(),
-                                parameters: collection.pagination.getParameters(),
-                                page: collection.pagination.getPage(),
-                                itemsPerPage: collection.pagination.getItemsPerPage(),
-                            }).firstOrUndefinedThenClose();
-                        }
-                    });
                 }
+                collection.pagination.setParameters(reply.pagination.parameters);
+
+                collection.pagination.event.subscribe((event: CollectionPaginationEvent) => {
+                    if (event.type === 'apply') {
+                        activeSubject.sendMessage({
+                            forId: reply.id,
+                            name: 'collection/pagination',
+                            sort: collection.pagination.getSort(),
+                            parameters: collection.pagination.getParameters(),
+                            page: collection.pagination.getPage(),
+                            itemsPerPage: collection.pagination.getItemsPerPage(),
+                        }).firstOrUndefinedThenClose();
+                    }
+                });
 
                 returnValue = collection;
 

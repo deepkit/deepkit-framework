@@ -1,12 +1,14 @@
-import {Collection, ConnectionWriter, EntitySubject, ExchangeEntity, IdInterface} from '@deepkit/framework-shared';
+import {Collection, CollectionSort, ConnectionWriter, EntityPatches, EntitySubject, ExchangeEntity, IdInterface} from '@deepkit/framework-shared';
 import {injectable} from '../injector/injector';
-import {AsyncEventSubscription, ClassType} from '@deepkit/core';
-import {ClassSchema, getClassSchema} from '@deepkit/type';
+import {AsyncEventSubscription, asyncOperation, ClassType, eachPair} from '@deepkit/core';
+import {ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward} from '@deepkit/type';
 import {Observable, Subscription} from 'rxjs';
 import {Exchange} from './exchange';
 import {findQuerySatisfied} from '../utils';
 import {Databases} from '../databases';
-import {BaseQuery, Database, DatabaseQueryModel, FilterQuery, Sort} from '@deepkit/orm';
+import {BaseQuery, Database, DatabaseQueryModel, exportQueryFilterFieldNames, FilterQuery, GenericQuery, replaceQueryFilterParameter, Sort} from '@deepkit/orm';
+import {QueryDatabaseDeleteEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent} from '@deepkit/orm/dist/src/event';
+import {AsyncSubscription} from '@deepkit/core-rxjs';
 
 interface SentState {
     lastSentVersion?: number;
@@ -16,6 +18,17 @@ interface SentState {
 class SubscriptionHandler {
     protected sentEntities: { [id: string]: SentState } = {};
     protected entitySubscription?: Subscription;
+
+    /**
+     * Which fields other subscriber in the topology require so
+     * they are able to match their query filters.
+     * We basically add for all query's `returning` those fields
+     * and the values in patch bus-message.
+     *
+     * This is required for live-collections to answer the question:
+     *  - What if it wasn't a known item, but WOULD become one after the patch?
+     */
+    public usedFields: string[] = [];
 
     constructor(
         protected writer: ConnectionWriter,
@@ -104,7 +117,6 @@ class SubscriptionHandler {
 
             // useful debugging lines
             // const state = this.getSentState(classType, message.id);
-            // console.log('subscribeEntity message', entityName, this.needsToBeSend(classType, message.id, message.version), message);
 
             if (this.needsToBeSend(message.id, message.version)) {
                 this.setSent(message.id, message.version);
@@ -130,14 +142,6 @@ class SubscriptionHandler {
                         entityName: entityName,
                         id: message.id,
                         version: message.version,
-                    });
-                } else if (message.type === 'update') {
-                    this.writer.write({
-                        type: 'entity/update',
-                        entityName: entityName,
-                        id: message.id,
-                        version: message.version,
-                        data: message.item
                     });
                 } else if (message.type === 'add') {
                     //nothing to do.
@@ -174,6 +178,363 @@ class LiveDatabaseQueryModel<T> extends DatabaseQueryModel<T, FilterQuery<T>, So
         page: 1,
         itemsPerPage: 10,
     };
+
+    clone(parentQuery?: BaseQuery<T>): this {
+        const m = super.clone(parentQuery);
+        m.pagination = {...this.pagination};
+
+        return m;
+    }
+
+    public disableEntityChangeFeed = false;
+
+    isChangeFeedActive() {
+        return !this.disableEntityChangeFeed;
+    }
+
+    getCollectionSort(): CollectionSort[] {
+        const sort: CollectionSort[] = [];
+        if (!this.sort) return sort;
+
+        for (const [name, direction] of Object.entries(this.sort as Sort<T>)) {
+            sort.push({field: name, direction: direction as 'asc' | 'desc'});
+        }
+        return sort;
+    }
+}
+
+class LiveCollection<T extends IdInterface> {
+    protected joinedClassSchemas: {
+        classSchema: ClassSchema,
+        fields: string[],
+        filter: FilterQuery<any>,
+        usedEntityFieldsSubscription?: AsyncSubscription,
+        entitySubscription?: Subscription,
+    }[] = [];
+
+    protected rootFields: string[] = [];
+    protected rootUsedEntityFieldsSubscription?: AsyncSubscription;
+    protected entitySubscription?: Subscription;
+
+    protected knownIDs = new Set<string | number>();
+
+    protected classSchema = getClassSchema(this.collection.classType);
+
+    constructor(
+        protected collection: Collection<any>,
+        protected model: LiveDatabaseQueryModel<T>,
+        protected exchange: Exchange,
+        protected database: Database,
+        protected subscriptionHandler: SubscriptionHandler,
+        protected writer: ConnectionWriter,
+    ) {
+        this.rootFields = exportQueryFilterFieldNames(this.classSchema, model.filter || {});
+        // figure out what entities are involved (by going through all joins)
+        this.extractJoins(model);
+    }
+
+    protected extractJoins(model: DatabaseQueryModel<any>) {
+        for (const join of model.joins) {
+            if (join.propertySchema.backReference && join.propertySchema.backReference.via) {
+                const schema = getClassSchema(resolveClassTypeOrForward(join.propertySchema.backReference.via));
+                this.joinedClassSchemas.push({
+                    classSchema: schema,
+                    filter: {},
+                    fields: [],
+                });
+            }
+
+            this.extractModelData(join.query.classSchema, join.query.model);
+        }
+    }
+
+    protected extractModelData(classSchema: ClassSchema, model: DatabaseQueryModel<any>) {
+        this.joinedClassSchemas.push({
+            classSchema,
+            filter: model.filter || {},
+            fields: model.filter ? exportQueryFilterFieldNames(classSchema, model.filter) : [],
+        });
+
+        this.extractJoins(model);
+    }
+
+    protected async publishUseEntityFields() {
+        const promises: Promise<any>[] = [];
+
+        if (this.rootFields.length) promises.push(this.exchange.publishUsedEntityFields(this.classSchema, this.rootFields).then(v => this.rootUsedEntityFieldsSubscription = v));
+
+        for (const info of this.joinedClassSchemas) {
+            if (!info.fields.length) continue;
+            promises.push(this.exchange.publishUsedEntityFields(info.classSchema, info.fields).then(sub => {
+                info.usedEntityFieldsSubscription = sub;
+            }));
+        }
+        await Promise.all(promises);
+    }
+
+    public async stopSync() {
+        if (this.entitySubscription) this.entitySubscription.unsubscribe();
+        const promises: Promise<any>[] = [];
+        for (const [, info] of this.joinedClassSchemas.entries()) {
+            if (info.usedEntityFieldsSubscription) promises.push(info.usedEntityFieldsSubscription.unsubscribe());
+            if (info.entitySubscription) info.entitySubscription.unsubscribe();
+        }
+        if (this.rootUsedEntityFieldsSubscription) promises.push(this.rootUsedEntityFieldsSubscription.unsubscribe());
+        await Promise.all(promises);
+        this.joinedClassSchemas = [];
+
+        for (const id of this.knownIDs.values()) {
+            if (this.model.isChangeFeedActive()) this.subscriptionHandler.decreaseUsage(id);
+        }
+    }
+
+    protected lastUpdatePromise: any;
+
+    protected async updateCollection(databaseChanged: boolean = false) {
+        if (this.lastUpdatePromise) return this.lastUpdatePromise;
+
+        this.lastUpdatePromise = asyncOperation((resolve) => {
+            // this.lastUpdatePromiseResolver = resolve;
+            setTimeout(async () => {
+                await this._updateCollection(databaseChanged);
+                this.lastUpdatePromise = undefined;
+                resolve(undefined);
+            }, 100);
+        });
+        return this.lastUpdatePromise;
+    }
+
+    protected async _updateCollection(databaseChanged: boolean = false) {
+        if (!this.entitySubscription) return;
+
+        let pagingHash = '';
+        let parametersHash = '';
+
+        //when database is changed during entityFeed events, we don't check that stuff
+        if (databaseChanged) {
+            pagingHash = this.collection.pagination.getPagingHash();
+            parametersHash = this.collection.pagination.getParametersHash();
+        } else {
+            const newPagingHash = this.collection.pagination.getPagingHash();
+            const newParametersHash = this.collection.pagination.getParametersHash();
+            let needUpdate = false;
+
+            if (pagingHash !== newPagingHash) {
+                pagingHash = newPagingHash;
+                needUpdate = true;
+            }
+
+            if (parametersHash !== newParametersHash) {
+                parametersHash = newParametersHash;
+                // if (reactiveQuery.haveParametersChanged()) {
+                //     needUpdate = true;
+                // }
+            }
+
+            if (!needUpdate) {
+                console.log('updateCollection needUpdate=false', newPagingHash, newParametersHash);
+                return;
+            }
+        }
+
+        //- query the database and put all items in our list
+        const query = this.database.query(this.classSchema);
+        query.model = this.model.clone();
+
+        query.model.limit = undefined;
+        query.model.skip = undefined;
+        const total = await query.count();
+
+        this.applyPagination(query);
+        const items = await query.find();
+        this.collection.batchStart();
+        const copiedKnownIds = new Set(this.knownIDs.values());
+
+        for (const item of items) {
+            copiedKnownIds.delete(item.id);
+
+            if (!this.knownIDs.has(item.id)) {
+                this.knownIDs.add(item.id);
+                if (this.model.isChangeFeedActive()) this.subscriptionHandler.increaseUsage(item.id);
+                this.collection.add(item);
+            }
+        }
+
+        //items left in copiedKnownIds have been deleted or filter doesn't match anymore.
+        for (const id of copiedKnownIds.values()) {
+            this.knownIDs.delete(id);
+            if (this.model.isChangeFeedActive()) this.subscriptionHandler.decreaseUsage(id);
+        }
+
+        const idsToRemove = [...copiedKnownIds.values()];
+        if (idsToRemove.length > 0) this.collection.removeMany(idsToRemove);
+
+        //todo, call it only when really changed
+        this.collection.setSort(items.map(v => v.id));
+
+        if (this.collection.pagination.getTotal() !== total) {
+            this.collection.pagination.setTotal(total);
+            this.collection.pagination.event.next({type: 'internal_server_change'});
+        }
+        this.collection.batchEnd();
+    }
+
+    protected async getItem(id: string | number): Promise<T | undefined> {
+        const query = this.database.query(this.classSchema);
+        query.model = this.model.clone();
+        query.filter({id: id});
+        return query.findOneOrUndefined();
+    }
+
+    protected applyPagination(query: GenericQuery<T>) {
+        if (!this.collection.pagination.isActive()) {
+            query.model.limit = this.model.limit;
+            query.model.skip = this.model.skip;
+            return;
+        }
+
+        query.limit(this.collection.pagination.getItemsPerPage());
+        query.skip((this.collection.pagination.getPage() * this.collection.pagination.getItemsPerPage()) - this.collection.pagination.getItemsPerPage());
+
+        if (this.collection.pagination.hasSort()) {
+            const sort: Sort<T> = {};
+            for (const order of this.collection.pagination.getSort()) {
+                sort[order.field as keyof T & string] = order.direction;
+            }
+            query.sort(sort);
+        }
+    }
+
+    public async startSync() {
+        if (this.entitySubscription) throw new Error('Collection sync already started');
+
+        await this.publishUseEntityFields();
+
+        for (const info of this.joinedClassSchemas) {
+            if (info.entitySubscription) continue;
+            //if its part of our join filter, we reload the collection
+            info.entitySubscription = this.exchange.subscribeEntity(info.classSchema, (message) => {
+                //todo: check if item belongs to the join criteria
+                this.updateCollection(true);
+            });
+        }
+
+        let currentQuery = replaceQueryFilterParameter(this.classSchema, this.model.filter || {}, this.model.parameters);
+
+        const scopedSerializer = jsonSerializer.for(this.classSchema);
+        this.entitySubscription = this.exchange.subscribeEntity(this.classSchema, async (message) => {
+            // console.log(
+            //     'subscribeEntity message', this.classSchema.getName(), (message as any)['id'],
+            //     {
+            //         known: this.knownIDs.has((message as any)['id']),
+            //         querySatisfied: (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : 'no .item',
+            //         paginationActive: this.collection.pagination.isActive()
+            //     },
+            //     currentQuery,
+            //     message
+            // );
+
+            if (message.type === 'removeMany') {
+                if (this.collection.pagination.isActive()) {
+                    await this.updateCollection(true);
+                    return;
+                }
+
+                for (const id of message.ids) {
+                    this.knownIDs.delete(id);
+                    if (this.model.isChangeFeedActive()) this.subscriptionHandler.decreaseUsage(id);
+                }
+                this.collection.removeMany(message.ids);
+            }
+
+            if (message.type === 'add' && !this.knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
+                if (this.collection.pagination.isActive()) {
+                    await this.updateCollection(true);
+                    return;
+                }
+
+                this.knownIDs.add(message.id);
+                if (this.model.isChangeFeedActive()) this.subscriptionHandler.increaseUsage(message.id);
+                this.collection.add(scopedSerializer.deserialize(message.item));
+            }
+
+            if (message.type === 'patch') {
+                const querySatisfied = findQuerySatisfied(message.item, currentQuery);
+
+                if (this.knownIDs.has(message.id) && !querySatisfied) {
+                    if (this.collection.pagination.isActive()) {
+                        await this.updateCollection(true);
+                    } else {
+                        //got invalid after updates?
+                        this.knownIDs.delete(message.id);
+                        if (this.model.isChangeFeedActive()) this.subscriptionHandler.decreaseUsage(message.id);
+                        this.collection.remove(message.id);
+                    }
+                } else if (!this.knownIDs.has(message.id) && querySatisfied) {
+                    if (this.collection.pagination.isActive()) {
+                        await this.updateCollection(true);
+                    } else {
+                        //got valid after updates?
+                        this.knownIDs.add(message.id);
+                        if (this.model.isChangeFeedActive()) this.subscriptionHandler.increaseUsage(message.id);
+
+                        const item = await this.getItem(message.id);
+                        if (item) {
+                            this.collection.add(item);
+                        } else {
+                            await this.updateCollection(true);
+                        }
+                    }
+                }
+            }
+
+            if (message.type === 'remove' && this.knownIDs.has(message.id)) {
+                if (this.collection.pagination.isActive()) {
+                    await this.updateCollection();
+                } else {
+                    this.knownIDs.delete(message.id);
+                    if (this.model.isChangeFeedActive()) this.subscriptionHandler.decreaseUsage(message.id);
+                    this.collection.remove(message.id);
+                }
+            }
+        });
+
+        this.collection.pagination.event.subscribe(async (event) => {
+            if (event.type === 'client:apply' || event.type === 'apply') {
+                //its important to not reassign a new object ref to this.model.parameters, since the ref
+                //is stored in joined query models as well.
+                const newParameters = this.collection.pagination.getParameters();
+                for (const [i, value] of eachPair(newParameters)) {
+                    this.model.parameters[i] = value;
+                }
+                currentQuery = replaceQueryFilterParameter(this.classSchema, this.model.filter || {}, this.model.parameters);
+
+                await this.updateCollection();
+
+                if (event.type === 'client:apply') this.collection.pagination.event.next({type: 'server:apply/finished'});
+                if (event.type === 'apply') this.collection.pagination._applyFinished();
+            }
+        });
+
+
+        const query = this.database.query(this.classSchema);
+        query.model = this.model;
+
+        query.model.limit = undefined;
+        query.model.skip = undefined;
+        const total = await query.count();
+        this.collection.pagination.setTotal(total);
+
+        this.applyPagination(query);
+        const items = await query.find();
+
+        for (const item of items) {
+            this.knownIDs.add(item.id);
+            if (this.model.isChangeFeedActive()) this.subscriptionHandler.increaseUsage(item.id);
+        }
+
+        this.collection.set(items);
+    }
 }
 
 export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
@@ -194,12 +555,18 @@ export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
         return this;
     }
 
+    disableEntityChangeFeed(): this {
+        this.model.disableEntityChangeFeed = true;
+        return this;
+    }
+
     itemsPerPage(items: number): this {
         this.model.pagination.itemsPerPage = items;
         return this;
     }
 
     page(page: number): this {
+        this.model.pagination.enabled = true;
         this.model.pagination.page = page;
         return this;
     }
@@ -253,333 +620,23 @@ export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
 
     async find(): Promise<Collection<T>> {
         const collection = new Collection(this.classSchema.classType);
+
+        if (this.model.pagination.enabled) {
+            collection.pagination._activate();
+            collection.pagination.setPage(this.model.pagination.page);
+            collection.pagination.setItemsPerPage(this.model.pagination.itemsPerPage);
+        }
+        collection.pagination.setSort(this.model.getCollectionSort());
+        collection.pagination.setParameters(this.model.parameters);
+
+        const liveCollection = new LiveCollection(collection, this.model, this.exchange, this.database, this.subscriptionHandler, this.writer);
+        collection.addTeardown(async () => {
+            await liveCollection.stopSync();
+        });
+        await liveCollection.startSync();
+
         return collection;
     }
-
-    // async find(): Promise<Collection<T>> {
-    //     const jsonCollection = new Collection<T>(this.classSchema.classType);
-    //
-    //     // if (options.isPaginationEnabled()) {
-    //     //     jsonCollection.pagination._activate();
-    //     //     if (options._page) {
-    //     //         jsonCollection.pagination.setPage(options._page);
-    //     //     }
-    //     //     if (options._itemsPerPage) {
-    //     //         jsonCollection.pagination.setItemsPerPage(options._itemsPerPage);
-    //     //     }
-    //     //     if (options.hasSort()) {
-    //     //         jsonCollection.pagination.setSort(options._sorts);
-    //     //     }
-    //     //
-    //     //     jsonCollection.pagination.setParameters(options._filterParameters);
-    //     // }
-    //
-    //     //todo, that doesnt work with parameters
-    //     const reactiveQuery = options._filter;
-    //     reactiveQuery.parameters = options._filterParameters;
-    //
-    //     const knownIDs: { [id: string]: boolean } = {};
-    //
-    //     await reactiveQuery.setupProviders(this);
-    //
-    //     const initialClassQuery = reactiveQuery.getClassQuery();
-    //
-    //     let currentQuery = initialClassQuery.query;
-    //
-    //     const getQuery = (fields?: (keyof T | string)[]): DatabaseQuery<T> => {
-    //         if (!fields) {
-    //             fields = options._fields;
-    //         }
-    //
-    //         if (fields && fields.length > 0) {
-    //             return this.database.query(this.classSchema)
-    //                 .filter(currentQuery)
-    //                 .select([...fields, 'id', 'version'] as string[]);
-    //         }
-    //
-    //         return this.database.query(this.classSchema).filter(currentQuery);
-    //     };
-    //
-    //     const getJsonItem = async (id: string) => {
-    //         return this.database.query(this.classSchema)
-    //             .filter({id: id})
-    //             .select((options.isPartial() ? [...options._fields, 'id', 'version'] : []) as string[])
-    //             .findOne();
-    //     };
-    //
-    //     const applyPagination = <T>(query: DatabaseQuery<T>) => {
-    //         if (jsonCollection.pagination.isActive()) {
-    //             query.limit(jsonCollection.pagination.getItemsPerPage());
-    //             query.skip((jsonCollection.pagination.getPage() * jsonCollection.pagination.getItemsPerPage()) - jsonCollection.pagination.getItemsPerPage());
-    //
-    //             if (jsonCollection.pagination.hasSort()) {
-    //                 const sort: { [path: string]: 'asc' | 'desc' } = {};
-    //                 for (const order of jsonCollection.pagination.getSort()) {
-    //                     sort[order.field] = order.direction;
-    //                 }
-    //                 query.sort(sort);
-    //             }
-    //         }
-    //     };
-    //
-    //     let updateCollectionPromise: Promise<void> | undefined;
-    //     let pagingHash = '';
-    //     let parametersHash = '';
-    //
-    //     //todo, throttle to max 1 times per second
-    //     const updateCollection = async (databaseChanged: boolean = false) => {
-    //         while (updateCollectionPromise) {
-    //             await sleep(0.01);
-    //             await updateCollectionPromise;
-    //         }
-    //
-    //         return updateCollectionPromise = new Promise<void>(async (resolve, reject) => {
-    //             try {
-    //
-    //                 //when database is changed during entityFeed events, we don't check that stuff
-    //                 if (databaseChanged) {
-    //                     pagingHash = jsonCollection.pagination.getPagingHash();
-    //                     parametersHash = jsonCollection.pagination.getParametersHash();
-    //                 } else {
-    //                     const newPagingHash = jsonCollection.pagination.getPagingHash();
-    //                     const newParametersHash = jsonCollection.pagination.getParametersHash();
-    //                     let needUpdate = false;
-    //
-    //                     if (pagingHash !== newPagingHash) {
-    //                         pagingHash = newPagingHash;
-    //                         needUpdate = true;
-    //                     }
-    //
-    //                     if (parametersHash !== newParametersHash) {
-    //                         parametersHash = newParametersHash;
-    //                         if (reactiveQuery.haveParametersChanged()) {
-    //                             needUpdate = true;
-    //                         }
-    //                     }
-    //
-    //                     if (!needUpdate) {
-    //                         // console.log('updateCollection needUpdate=false', getClassName(reactiveQuery.classType), newPagingHash, newParametersHash);
-    //                         return;
-    //                     }
-    //                 }
-    //
-    //                 currentQuery = reactiveQuery.getClassQuery().query;
-    //
-    //                 const cursor = await getQuery(['id']);
-    //                 const total = await cursor.clone().count();
-    //
-    //                 applyPagination(cursor);
-    //
-    //                 const items = await cursor.find();
-    //
-    //                 // console.log('updateCollection needUpdate=true', getClassName(reactiveQuery.classType), currentQuery, items);
-    //
-    //                 const copiedKnownIds = {...knownIDs};
-    //
-    //                 jsonCollection.batchStart();
-    //                 try {
-    //                     //todo, detect when whole page changed, so we can load&add all new items at once, instead of one-by-one.
-    //                     for (const item of items) {
-    //                         delete copiedKnownIds[item.id];
-    //
-    //                         if (!knownIDs[item.id]) {
-    //                             knownIDs[item.id] = true;
-    //                             if (options.isChangeFeedActive()) {
-    //                                 this.increaseUsage(this.classSchema, item.id);
-    //                             }
-    //
-    //                             const fullItem = await getJsonItem(item.id);
-    //
-    //                             //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
-    //                             if (fullItem) {
-    //                                 jsonCollection.add(fullItem);
-    //                             } else {
-    //                                 console.warn('ID not found anymore', item.id);
-    //                             }
-    //                         }
-    //                     }
-    //
-    //                     //items left in copiedKnownIds have been deleted or filter doesn't match anymore.
-    //                     for (const id of eachKey(copiedKnownIds)) {
-    //                         delete knownIDs[id];
-    //                         if (options.isChangeFeedActive()) {
-    //                             this.decreaseUsage(this.classSchema, id);
-    //                         }
-    //                     }
-    //
-    //                     const idsToRemove = Object.keys(copiedKnownIds);
-    //                     if (idsToRemove.length > 0) {
-    //                         jsonCollection.removeMany(idsToRemove);
-    //                     }
-    //
-    //                     //todo, call it only when really changed
-    //                     jsonCollection.setSort(items.map(v => v.id));
-    //
-    //                     if (jsonCollection.pagination.getTotal() !== total) {
-    //                         jsonCollection.pagination.setTotal(total);
-    //                         jsonCollection.pagination.event.next({type: 'internal_server_change'});
-    //                     }
-    //                 } finally {
-    //                     jsonCollection.batchEnd();
-    //                 }
-    //             } catch (error) {
-    //                 console.error('updateCollection error', getClassName(reactiveQuery.classType), error);
-    //                 updateCollectionPromise = undefined;
-    //                 reject(error);
-    //             } finally {
-    //                 updateCollectionPromise = undefined;
-    //                 resolve();
-    //             }
-    //         });
-    //     };
-    //
-    //     jsonCollection.pagination.event.subscribe(async (event) => {
-    //         if (event.type === 'client:apply' || event.type === 'apply') {
-    //             // console.log(event.type, getClassName(reactiveQuery.classType));
-    //
-    //             await reactiveQuery.setAndApplyParameters(jsonCollection.pagination.getParameters());
-    //
-    //             await updateCollection();
-    //
-    //             if (event.type === 'client:apply') {
-    //                 jsonCollection.pagination.event.next({type: 'server:apply/finished'});
-    //             }
-    //
-    //             if (event.type === 'apply') {
-    //                 jsonCollection.pagination._applyFinished();
-    //             }
-    //         }
-    //     });
-    //
-    //     //triggered when a sub query changed its values. It changed our parameters basically.
-    //     reactiveQuery.internalParameterChange.subscribe(async () => {
-    //         await updateCollection(true);
-    //     });
-    //
-    //     this.subscriptionHandler.subscribeEntity();
-    //
-    //     const fieldSub: AsyncSubscription = await this.exchange.subscribeEntityFields(this.classSchema, initialClassQuery.fieldNames);
-    //
-    //     const sub: Subscription = await this.exchange.subscribeEntity(this.classSchema, async (message: ExchangeEntity) => {
-    //         // console.log(
-    //         //     'subscribeEntity message', getEntityName(this.classSchema), (message as any)['id'],
-    //         //     {
-    //         //         known: knownIDs[(message as any)['id']],
-    //         //         querySatisfied: (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : 'no .item',
-    //         //         paginationActive: jsonCollection.pagination.isActive()
-    //         //     },
-    //         //     currentQuery,
-    //         //     message
-    //         // );
-    //
-    //         if (message.type === 'removeMany') {
-    //             if (jsonCollection.pagination.isActive()) {
-    //                 updateCollection(true);
-    //             } else {
-    //                 for (const id of message.ids) {
-    //                     delete knownIDs[id];
-    //
-    //                     if (options.isChangeFeedActive()) {
-    //                         this.decreaseUsage(this.classSchema, id);
-    //                     }
-    //                 }
-    //
-    //                 jsonCollection.removeMany(message.ids);
-    //             }
-    //
-    //             return;
-    //         }
-    //
-    //         if (!knownIDs[message.id] && message.type === 'add' && findQuerySatisfied(message.item, currentQuery)) {
-    //             if (jsonCollection.pagination.isActive()) {
-    //                 updateCollection(true);
-    //             } else {
-    //                 knownIDs[message.id] = true;
-    //                 if (options.isChangeFeedActive()) {
-    //                     this.increaseUsage(this.classSchema, message.id);
-    //                 }
-    //                 //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
-    //                 jsonCollection.add(message.item);
-    //             }
-    //         }
-    //
-    //         if ((message.type === 'update' || message.type === 'patch') && message.item) {
-    //             const querySatisfied = findQuerySatisfied(message.item, currentQuery);
-    //
-    //             if (knownIDs[message.id] && !querySatisfied) {
-    //                 if (jsonCollection.pagination.isActive()) {
-    //                     updateCollection(true);
-    //                 } else {
-    //                     //got invalid after updates?
-    //                     delete knownIDs[message.id];
-    //                     if (options.isChangeFeedActive()) {
-    //                         this.decreaseUsage(this.classSchema, message.id);
-    //                     }
-    //                     jsonCollection.remove(message.id);
-    //                 }
-    //             } else if (!knownIDs[message.id] && querySatisfied) {
-    //                 if (jsonCollection.pagination.isActive()) {
-    //                     updateCollection(true);
-    //                 } else {
-    //                     //got valid after updates?
-    //                     knownIDs[message.id] = true;
-    //                     if (options.isChangeFeedActive()) {
-    //                         this.increaseUsage(this.classSchema, message.id);
-    //                     }
-    //
-    //                     let itemToSend = message.item;
-    //                     if (message.type === 'patch') {
-    //                         //message.item is not complete when message.type === 'patch', so load it
-    //                         itemToSend = await getJsonItem(message.id);
-    //                     }
-    //
-    //                     //we send on purpose the item as JSON object, so we don't double convert it back in ConnectionMiddleware.actionMessageOut
-    //                     jsonCollection.add(itemToSend);
-    //                 }
-    //             }
-    //         }
-    //
-    //         if (message.type === 'remove' && knownIDs[message.id]) {
-    //             if (jsonCollection.pagination.isActive()) {
-    //                 //todo, we should probablt throttle that, so this is max every second called
-    //                 updateCollection(true);
-    //             } else {
-    //                 delete knownIDs[message.id];
-    //                 if (options.isChangeFeedActive()) {
-    //                     this.decreaseUsage(this.classSchema, message.id);
-    //                 }
-    //                 jsonCollection.remove(message.id);
-    //             }
-    //         }
-    //     });
-    //
-    //     jsonCollection.addTeardown(async () => {
-    //         reactiveQuery.unsubscribe();
-    //         for (const id of eachKey(knownIDs)) {
-    //             this.decreaseUsage(this.classSchema, id);
-    //         }
-    //         sub.unsubscribe();
-    //         await fieldSub.unsubscribe();
-    //     });
-    //
-    //     const cursor = await getQuery();
-    //     const total = await cursor.clone().count();
-    //     jsonCollection.pagination.setTotal(total);
-    //     applyPagination(cursor);
-    //
-    //     const items = await cursor.find();
-    //
-    //     for (const item of items) {
-    //         knownIDs[item.id] = true;
-    //         if (options.isChangeFeedActive()) {
-    //             this.increaseUsage(this.classSchema, item.id);
-    //         }
-    //     }
-    //
-    //     jsonCollection.set(items);
-    //
-    //     return jsonCollection;
-    // }
 
     /**
      * Returns a new Observable that resolves the id as soon as an item in the database of given filter criteria is found.
@@ -645,78 +702,118 @@ export class LiveDatabase {
     }
 
     protected setupListeners(classType: ClassType | ClassSchema) {
-        const schema = getClassSchema(classType);
         const database = this.databases.getDatabaseForEntity(classType);
+        const schema = getClassSchema(classType);
         if (this.entitySubscriptions.has(schema)) return;
 
         const subscriptions: AsyncEventSubscription[] = [];
 
-        subscriptions.push(database.unitOfWorkEvents.onInsertPost.subscribe((event) => {
-            console.log('shit inserted', event);
-        }));
+        subscriptions.push(database.unitOfWorkEvents.onInsertPost.subscribe((event: UnitOfWorkEvent<IdInterface>) => {
+            if (schema !== event.classSchema) return;
 
-        subscriptions.push(database.unitOfWorkEvents.onUpdatePre.subscribe((event) => {
-            for (const changeSet of event.changeSets) {
-                changeSet.changes.$inc = {version: 1};
+            const serialized = jsonSerializer.for(event.classSchema);
+
+            for (const item of event.items) {
+                this.exchange.publishEntity(event.classSchema, {
+                    type: 'add',
+                    id: item.id,
+                    version: item.version,
+                    item: serialized.serialize(item)
+                });
             }
         }));
 
-        subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe((event) => {
-            //publish
+        subscriptions.push(database.unitOfWorkEvents.onUpdatePre.subscribe((event: UnitOfWorkUpdateEvent<IdInterface>) => {
+            if (schema !== event.classSchema) return;
+
+            for (const changeSet of event.changeSets) {
+                changeSet.changes.increase('version', 1);
+            }
         }));
 
-        subscriptions.push(database.unitOfWorkEvents.onDeletePost.subscribe((event) => {
-            console.log('shit deleted', event);
+        subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe((event: UnitOfWorkUpdateEvent<IdInterface>) => {
+            if (schema !== event.classSchema) return;
+            const serialized = jsonSerializer.for(event.classSchema);
+
+            for (const changeSet of event.changeSets) {
+                const jsonPatch: EntityPatches = {
+                    $set: changeSet.changes.$set ? serialized.partialSerialize(changeSet.changes.$set) : undefined,
+                    $inc: changeSet.changes.$inc,
+                    $unset: changeSet.changes.$unset,
+                };
+
+                const fields: Partial<any> = {};
+
+                for (const field of this.exchange.getUsedEntityFields(event.classSchema).value) {
+                    fields[field] = (changeSet.item as any)[field];
+                }
+
+                this.exchange.publishEntity(event.classSchema, {
+                    type: 'patch',
+                    id: changeSet.item.id,
+                    version: changeSet.item.version,
+                    item: fields,
+                    patch: jsonPatch
+                });
+            }
         }));
 
-        subscriptions.push(database.queryEvents.onDeletePost.subscribe((event) => {
-            console.log('query shit deleted', event);
+        subscriptions.push(database.unitOfWorkEvents.onDeletePost.subscribe((event: UnitOfWorkEvent<IdInterface>) => {
+            if (schema !== event.classSchema) return;
+            const ids: (string | number)[] = [];
+            for (const item of event.items) ids.push(item.id);
+            this.exchange.publishEntity(event.classSchema, {
+                type: 'removeMany',
+                ids: ids
+            });
+        }));
+
+        subscriptions.push(database.queryEvents.onDeletePost.subscribe((event: QueryDatabaseDeleteEvent<IdInterface>) => {
+            if (schema !== event.classSchema) return;
+
+            this.exchange.publishEntity(event.classSchema, {
+                type: 'removeMany',
+                ids: event.deleteResult.primaryKeys
+            });
         }));
 
         subscriptions.push(database.queryEvents.onPatchPre.subscribe(async (event) => {
-            //insert version: {$inc: +1}}
-            // read result in post, and send to exchange
+            if (schema !== event.classSchema) return;
+            event.patch.increase('version', 1);
+            for (const field of this.exchange.getUsedEntityFields(event.classSchema).value) {
+                if (!event.returning.includes(field)) event.returning.push(field);
+            }
         }));
 
         subscriptions.push(database.queryEvents.onPatchPost.subscribe(async (event) => {
-            console.log('query shit patched', event);
-            const version = await this.exchange.version();
+            if (schema !== event.classSchema) return;
+            const serialized = jsonSerializer.for(event.classSchema);
+            const jsonPatch = {
+                $set: event.patch.$set ? serialized.partialSerialize(event.patch.$set) : undefined,
+                $inc: event.patch.$inc,
+                $unset: event.patch.$unset,
+            };
 
-            // for (const primaryKey of event.primaryKeys) {
-            //     const id = primaryKey[primaryKeyName];
-            //
-            //     this.exchange.publishEntity(schema, {
-            //         type: 'patch',
-            //         id: id,
-            //         version: version, //this is the new version in the db, which we end up having when `patch` is applied.
-            //         // item: scopedSerialized.serialize(),
-            //         item: {},
-            //         //todo rework: event.patch supports now $inc/$unset as well, which is not compatible with serializer.
-            //         patch: scopedSerialized.serialize(event.patch),
-            //     });
-            // }
+            for (let i = 0; i < event.patchResult.primaryKeys.length; i++) {
+                const fields: Partial<any> = {};
+
+                for (const field of this.exchange.getUsedEntityFields(event.classSchema).value) {
+                    if (!(event.patchResult.returning as any)[field]) continue;
+                    fields[field] = (event.patchResult.returning as any)[field][i];
+                }
+
+                this.exchange.publishEntity(event.classSchema, {
+                    type: 'patch',
+                    id: event.patchResult.primaryKeys[i],
+                    version: (event.patchResult.returning as any)['version'][i],
+                    item: fields,
+                    patch: jsonPatch,
+                });
+            }
         }));
-
-        // subscriptions.push(database.queryEvents.onUpdatePost.subscribe((event) => {
-        //     console.log('query shit updated', event);
-        // }));
 
         this.entitySubscriptions.set(schema, subscriptions);
     }
-
-    // public for<T extends IdInterface>(classType: ClassType<T> | ClassSchema<T>): Database {
-    //     const database = this.databases.getDatabaseForEntity(classType).fork();
-    //
-    //     database.unitOfWorkEvents.onInsertPost.subscribe((event) => {
-    //         console.log('shit inserted', event);
-    //     });
-    //
-    //     database.unitOfWorkEvents.onUpdatePost.subscribe((event) => {
-    //         console.log('shit updated', event);
-    //     });
-    //
-    //     return database;
-    // }
 
     public query<T extends IdInterface>(classType: ClassType<T> | ClassSchema<T>) {
         return new LiveQuery(

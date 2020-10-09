@@ -16,12 +16,18 @@ export class Databases {
     ) {
     }
 
+    public onShutDown() {
+        for (const database of this.databaseMap.values()) {
+            database.disconnect();
+        }
+    }
+
     public init() {
         for (const databaseType of this.databaseTypes) {
             const database = this.injector.get(databaseType);
 
             for (const classSchema of database.classSchemas.values()) {
-                classSchema.data['orm/database'] = database;
+                classSchema.data['orm.database'] = database;
             }
 
             if (this.databaseMap.has(database.name)) {
@@ -39,13 +45,13 @@ export class Databases {
             providers: [
                 ...databases,
                 {provide: 'orm.databases', useValue: databases},
-            ]
+            ],
         };
     }
 
     getDatabaseForEntity(entity: ClassSchema | ClassType): Database<any> {
         const schema = getClassSchema(entity);
-        const database = schema.data['orm/database'];
+        const database = schema.data['orm.database'];
         if (!database) throw new Error(`Class ${schema.getClassName()} is not assigned to a database`);
         return database;
     }

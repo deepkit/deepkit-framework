@@ -495,7 +495,6 @@ export class ConnectionMiddleware {
             };
 
             this.collectionSubscriptions[message.id].add = collection.pagination.event.subscribe((event) => {
-
                 if (event.type.startsWith('server:')) {
                     writer.write({type: 'next/collection', id: message.id, next: {type: 'pagination', event: event}});
                 }
@@ -510,7 +509,6 @@ export class ConnectionMiddleware {
                 if (event.type === 'apply') {
                     sendPagination();
                 }
-
             });
 
             this.collectionSubscriptions[message.id].add = collection.event.subscribe((event) => {

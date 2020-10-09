@@ -11,7 +11,6 @@ import {CountCommand} from './client/command/count';
 import {FindCommand} from './client/command/find';
 import {mongoSerializer} from './mongo-serializer';
 import {FindAndModifyCommand} from './client/command/find-and-modify';
-import {inspect} from 'util';
 
 export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema.classType, (model.filter || {}) as FilterQuery<T>, {}, {
@@ -82,14 +81,15 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         }
 
         const filter = getMongoFilter(this.classSchema, model) || {};
+        const serializer = mongoSerializer.for(this.classSchema);
 
         const u = {$set: changes.$set, $unset: changes.$unset, $inc: changes.$inc};
         if (u.$set) {
-            u.$set = mongoSerializer.for(this.classSchema).partialSerialize(u.$set);
+            u.$set = serializer.partialSerialize(u.$set);
         }
         const primaryKeyName = this.classSchema.getPrimaryField().name;
 
-        const returning = changes.getReturning();
+        const returning = new Set([...model.returning, ...changes.getReturning()]);
 
         if (model.limit === 1) {
             const command = new FindAndModifyCommand(
@@ -103,9 +103,10 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             patchResult.modified = res.value ? 1 : 0;
 
             if (res.value) {
-                patchResult.primaryKeys = [res.value[primaryKeyName]];
+                const converted = serializer.partialDeserialize(res.value) as any;
+                patchResult.primaryKeys = [converted[primaryKeyName]];
                 for (const name of returning) {
-                    patchResult.returning[name] = [res.value[name]];
+                    patchResult.returning[name] = [converted[name]];
                 }
             }
             return;
@@ -117,7 +118,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             multi: !model.limit
         }]));
 
-        if (!returning.length) return;
+        if (!returning.size) return;
 
         const projection: { [name: string]: 1 | 0 } = {};
         projection[primaryKeyName] = 1;
@@ -128,9 +129,10 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
         const items = await this.databaseSession.adapter.client.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit));
         for (const item of items) {
-            patchResult.primaryKeys.push(item[primaryKeyName]);
+            const converted = serializer.partialDeserialize(item);
+            patchResult.primaryKeys.push(converted[primaryKeyName]);
             for (const name of returning) {
-                patchResult.returning[name].push(item[name]);
+                patchResult.returning[name].push(converted[name]);
             }
         }
     }
@@ -145,8 +147,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             return await this.databaseSession.adapter.client.execute(new CountCommand(
                 this.classSchema,
                 getMongoFilter(this.classSchema, queryModel),
-                queryModel.skip,
                 queryModel.limit,
+                queryModel.skip,
             ));
         }
     }
@@ -312,7 +314,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 }
 
                 if (join.propertySchema.isArray) {
-                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation);
+                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation.exclude('json'));
 
                     if (join.type === 'inner') {
                         pipeline.push({
@@ -320,7 +322,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         });
                     }
                 } else {
-                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.type(foreignSchema).noValidation);
+                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.type(foreignSchema).noValidation.exclude('json'));
 
                     //for *toOne relations, since mongodb joins always as array
                     pipeline.push({

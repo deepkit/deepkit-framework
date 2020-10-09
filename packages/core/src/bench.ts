@@ -113,7 +113,6 @@ export class BenchSuite {
         await new Promise(async (resolve, reject) => {
             this.suite.run({async: true});
             this.suite.on('complete', () => {
-                console.log('done?');
                 resolve();
             });
         });

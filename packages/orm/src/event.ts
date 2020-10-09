@@ -66,6 +66,8 @@ export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
 }
 
 export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
+    public returning: (keyof T & string)[] = [];
+
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,

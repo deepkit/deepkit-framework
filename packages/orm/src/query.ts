@@ -1,6 +1,6 @@
 import {ClassSchema, PropertySchema, PrimaryKeyFields, ExtractPrimaryKeyType, ExtractReferences} from '@deepkit/type';
 import {Subject} from 'rxjs';
-import {ClassType} from '@deepkit/core';
+import {ClassType, empty} from '@deepkit/core';
 import {FieldName, FlattenIfArray} from './utils';
 import {DatabaseSession} from './database-session';
 import {DatabaseAdapter} from './database';
@@ -71,13 +71,15 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
     public parameters: { [name: string]: any } = {};
     public sort?: SORT;
     public readonly change = new Subject<void>();
+    public returning: (keyof T & string)[] = [];
 
     changed() {
         this.change.next();
     }
 
-    clone(parentQuery?: BaseQuery<T>): DatabaseQueryModel<T, FILTER, SORT> {
-        const m = new DatabaseQueryModel<T, FILTER, SORT>();
+    clone(parentQuery?: BaseQuery<T>): this {
+        const constructor = this.constructor as ClassType<this>;
+        const m = new constructor();
         m.filter = this.filter;
         m.withIdentityMap = this.withIdentityMap;
         m.select = new Set(this.select.values());
@@ -118,6 +120,10 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
 
     hasJoins() {
         return this.joins.length > 0;
+    }
+
+    hasParameters(): boolean {
+        return !empty(this.parameters);
     }
 }
 
@@ -223,6 +229,7 @@ export class BaseQuery<T extends Entity> {
         }
 
         const query = new JoinDatabaseQuery<ENTITY, this>(propertySchema.getResolvedClassSchema(), this);
+        query.model.parameters = this.model.parameters;
 
         this.model.joins.push({
             propertySchema, query, populate, type,
@@ -383,9 +390,9 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
             this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
             return deleteResult;
         }
+        const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, deleteResult);
 
         if (this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions()) {
-            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, deleteResult);
             await this.databaseSession.queryEmitter.onDeletePre.emit(event);
             if (event.stopped) return deleteResult;
         }
@@ -393,8 +400,7 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         await this.resolver.delete(model, deleteResult);
         this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
 
-        if (this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions()) {
-            const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, deleteResult);
+        if (deleteResult.primaryKeys.length && this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions()) {
             await this.databaseSession.queryEmitter.onDeletePost.emit(event);
             if (event.stopped) return deleteResult;
         }
@@ -437,11 +443,16 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
             return patchResult;
         }
 
+        const event = new QueryDatabasePatchEvent<T>(this.databaseSession, this.classSchema, changes, patchResult);
         if (this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions()) {
-            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, changes, patchResult);
             await this.databaseSession.queryEmitter.onPatchPre.emit(event);
             if (event.stopped) return patchResult;
         }
+
+        for (const field of event.returning) {
+            if (!model.returning.includes(field)) model.returning.push(field);
+        }
+        model.returning.push(...event.returning);
 
         await this.resolver.patch(model, changes, patchResult);
 
@@ -460,7 +471,6 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         }
 
         if (this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions()) {
-            const event = new QueryDatabasePatchEvent<any>(this.databaseSession, this.classSchema, changes, patchResult);
             await this.databaseSession.queryEmitter.onPatchPost.emit(event);
             if (event.stopped) return patchResult;
         }
@@ -507,19 +517,20 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
 export class JoinDatabaseQuery<T extends Entity, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
     constructor(
         public readonly foreignClassSchema: ClassSchema,
-        public readonly parentQuery: PARENT,
+        public readonly parentQuery?: PARENT,
     ) {
         super(foreignClassSchema);
-        this.model.change.subscribe(parentQuery.model.change);
+        if (parentQuery) this.model.change.subscribe(parentQuery.model.change);
     }
 
     clone(parentQuery?: PARENT): this {
-        const query: this = new (this['constructor'] as ClassType<this>)(this.foreignClassSchema, parentQuery!);
+        const query: this = new (this['constructor'] as ClassType<this>)(this.foreignClassSchema, parentQuery);
         query.model = this.model.clone(query);
         return query;
     }
 
     end(): PARENT {
+        if (!this.parentQuery) throw new Error('Join has no parent query');
         return this.parentQuery;
     }
 }

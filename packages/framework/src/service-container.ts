@@ -263,7 +263,7 @@ export class ServiceContainer {
         }
 
         providers.push(...additionalProviders);
-        imports.push(...additionalImports);
+        imports.unshift(...additionalImports);
 
         //we add the module to its own providers so it can depend on its module providers.
         //when we would add it to root it would have no access to its internal providers.

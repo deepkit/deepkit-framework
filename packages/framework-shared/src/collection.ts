@@ -378,6 +378,9 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
 
         this.batchNeedLoaded = false;
+        if (this.isStopped) {
+            throw new Error('Collection already unsubscribed');
+        }
         this.next(this.items);
 
         if (this.nextChange) {

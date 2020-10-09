@@ -3,14 +3,14 @@ const myGlobal = new Map()
 
 function getGlobal(): Map<any, any> {
     if ('undefined' !== typeof window) {
-        if (!(window as any)['__super_hornet']) (window as any)['__super_hornet'] = new Map();
+        if (!(window as any)['__deepkit_type']) (window as any)['__deepkit_type'] = new Map();
 
-        return (window as any)['__super_hornet'];
+        return (window as any)['__deepkit_type'];
     }
     if ('undefined' !== typeof globalThis) {
-        if (!(globalThis as any)['__super_hornet']) (globalThis as any)['__super_hornet'] = new Map();
+        if (!(globalThis as any)['__deepkit_type']) (globalThis as any)['__deepkit_type'] = new Map();
 
-        return (globalThis as any)['__super_hornet'];
+        return (globalThis as any)['__deepkit_type'];
     }
     return myGlobal;
 }

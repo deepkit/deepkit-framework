@@ -35,6 +35,7 @@
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
+    "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
@@ -50,7 +51,8 @@
     ],
     "testMatch": [
       "**/tests/**/controller-basic.spec.ts",
-      "**/tests/**/peer2peer.spec.ts"
+      "**/tests/**/peer2peer.spec.ts",
+      "**/tests/**/live-database.spec.ts"
     ]
   }
 }

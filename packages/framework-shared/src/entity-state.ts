@@ -1,6 +1,6 @@
 import {getClassSchemaByName, jsonSerializer} from '@deepkit/type';
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from '../index';
-import {delete as deleteByPath, set} from 'dot-prop';
+import {delete as deleteByPath, set, get} from 'dot-prop';
 import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@deepkit/core';
 import {skip} from 'rxjs/operators';
 import {ObjectUnsubscribedError, Subject} from 'rxjs';
@@ -191,16 +191,24 @@ export class EntityState {
                 //so we apply all incoming patches.
                 if (item) {
                     //todo rework: patch supports now $inc/$unset as well, which is not compatible with serializer.
-                    const patches = jsonSerializer.for(classType).partialDeserialize(stream.patch);
+                    const patches = jsonSerializer.for(classType).partialDeserialize(stream.patch.$set || {});
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(patches)) {
                         set(item, i, v);
                     }
 
-                    for (const path of Object.keys(stream.patch.unset)) {
-                        deleteByPath(item, path);
-                        set(patches, path, undefined);
+                    if (stream.patch.$unset) {
+                        for (const [path, value] of eachPair(stream.patch.$unset)) {
+                            deleteByPath(item, path);
+                        }
+                    }
+
+                    if (stream.patch.$inc) {
+                        for (const [path, value] of eachPair(stream.patch.$inc)) {
+                            const old: any = get(item, path) || 0;
+                            set(item, path, old + value);
+                        }
                     }
 
                     // item.version = toVersion;
@@ -249,8 +257,6 @@ export class EntityState {
     public handleCollectionNext<T extends IdInterface>(collection: Collection<T>, stream: CollectionStream) {
         const classType = collection.classType;
         const store = this.getStore(classType);
-
-        // console.log('collection next', stream);
 
         if (stream.type === 'set') {
             const setItems: T[] = [];

@@ -28,12 +28,6 @@ export class ApplicationServer {
                 this.masterWorker.close();
             }
         }
-
-        for (const module of this.serviceContainer.getRegisteredModules()) {
-            if (module.onShutDown) {
-                await module.onShutDown();
-            }
-        }
     }
 
     protected done() {

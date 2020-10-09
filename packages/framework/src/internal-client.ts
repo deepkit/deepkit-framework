@@ -13,7 +13,7 @@ import {
     ServerMessageResult
 } from '@deepkit/framework-shared';
 import {Subscription} from 'rxjs';
-import {each, eachKey, ProcessLocker} from '@deepkit/core';
+import {asyncOperation, each, eachKey, ProcessLocker} from '@deepkit/core';
 import {Exchange} from './exchange/exchange';
 import {injectable} from './injector/injector';
 
@@ -202,7 +202,7 @@ export class InternalClientConnection {
     }
 
     public async stream(controller: string, name: string, args: any[], timeoutInSeconds = 60): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
+        return asyncOperation<any>(async (resolve, reject) => {
             try {
                 const types = await this.getActionTypes(controller, name);
 

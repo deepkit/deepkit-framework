@@ -121,7 +121,7 @@ test('test save model', async () => {
         const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();
         expect(found === instance).toBe(true);
         expect(found).toBeInstanceOf(SimpleModel);
-        expect(found!.name).toBe('myName'); //we get the stuff from the identityMap where it didnt change.
+        expect(found!.name).toBe('myName2'); //although we get the stuff from the identityMap, those were also adjusted in GenericQuery.patch
     }
 
     {

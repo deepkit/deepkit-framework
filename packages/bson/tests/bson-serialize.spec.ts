@@ -6,6 +6,7 @@ import * as Moment from 'moment';
 import {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} from 'bson';
 import {getBSONDecoder} from '../src/bson-jit-parser';
 import {randomBytes} from 'crypto';
+import {parseObject, ParserV2} from '../src/bson-parser';
 
 test('hexToByte', () => {
     expect(hexToByte('00')).toBe(0);
@@ -428,6 +429,10 @@ test('basic uuid', () => {
 
     expect(getBSONSerializer(schema)(objectBinary).byteLength).toBe(expectedSize);
     expect(getBSONSerializer(schema)(objectBinary)).toEqual(serialize(objectBinary));
+
+    const bson = serialize(objectBinary);
+    const parsed = parseObject(new ParserV2(bson));
+    expect(parsed.uuid).toBe('75ed2328-89f2-4b89-9c49-1498891d616d');
 });
 
 test('basic objectId', () => {

@@ -4,13 +4,13 @@ import {PropertySchemaSerialized} from '@deepkit/type';
 
 export interface IdInterface {
     id: string | number;
-
-    // version: number;
+    version: number;
 }
 
 export interface EntityPatches {
-    [path: string]: any;
-    $inc?: {[path: string]: number};
+    $set?: {[path: string]: any};
+    $unset?: {[path: string]: 1 | 0 | undefined};
+    $inc?: {[path: string]: number | undefined};
 }
 
 export interface ExchangeEntityBase {
@@ -29,21 +29,16 @@ export interface ExchangeEntityRemove extends ExchangeEntityBase {
 
 export interface ExchangeEntityRemoveMany {
     type: 'removeMany';
-    ids: string[];
-}
-
-export interface ExchangeEntityUpdate extends ExchangeEntityBase {
-    type: 'update';
-    item: any;
+    ids: (string|number)[];
 }
 
 export interface ExchangeEntityPatch extends ExchangeEntityBase {
     type: 'patch';
     patch: EntityPatches;
-    item: any;
+    item: Partial<any>;
 }
 
-export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityUpdate | ExchangeEntityPatch | ExchangeEntityRemoveMany;
+export type ExchangeEntity = ExchangeEntityAdd | ExchangeEntityRemove | ExchangeEntityPatch | ExchangeEntityRemoveMany;
 
 export interface ClientPushMessage {
     name: 'push-message/reply';

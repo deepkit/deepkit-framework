@@ -48,8 +48,14 @@ import {LiveDatabase} from './exchange/live-database';
     ],
 })
 export class BaseModule {
-    constructor(protected databases: Databases) {
-        databases.init();
+    constructor(
+        protected databases: Databases,
+    ) {
+        this.databases.init();
+    }
+
+    onShutDown() {
+        this.databases.onShutDown();
     }
 
     static forRoot(): DynamicModule {

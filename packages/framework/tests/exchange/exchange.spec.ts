@@ -160,88 +160,109 @@ test('test get/set', async () => {
     expect((await client.get('myKey2', type))).toBeUndefined();
 });
 
-test('test get/set benchmark', async () => {
+// test('version benchmark', async () => {
+//     // this is slower than real-world benchmarks, since we
+//     // dont utilize the bandwidth and essentially only measure the tcp latency.
+//     const client = await createExchange();
+//
+//     const bench = new BenchSuite('exchange version');
+//     bench.addAsync('version', async () => {
+//         await client.version();
+//     });
+//     await bench.runAsync();
+// });
+//
+// test('test get/set benchmark', async () => {
+//     const client = await createExchange();
+//     const type = t.schema({nix: t.string});
+//
+//     const bench = new BenchSuite('exchange set/get');
+//     await client.set('peter', type, {nix: 'data'});
+//
+//     bench.addAsync('get', async () => {
+//         await client.get('peter', type);
+//     });
+//
+//     bench.addAsync('set', async () => {
+//         await client.set('peter', type, {nix: 'data'});
+//     });
+//
+//     await bench.runAsync();
+// });
+//
+// test('entity fields benchmark', async () => {
+//     const client = await createExchange();
+//     const type = t.schema({nix: t.string});
+//
+//     const bench = new BenchSuite('exchange entity-fields');
+//     const schema = t.schema({
+//         id: t.string,
+//         title: t.string,
+//         username: t.string,
+//         logins: t.number,
+//     }, {name: 'test'});
+//
+//     bench.addAsync('publishUsedEntityFields', async () => {
+//         await client.publishUsedEntityFields(schema, ['id', 'title']);
+//     });
+//
+//     await bench.runAsync();
+// });
+
+
+test('test subscribe entity fields', async () => {
     const client = await createExchange();
-    const count = 1_000;
-    const type = t.schema({nix: t.string});
 
-    // {
-    //     const start = performance.now();
-    //     const payload = encodePayloadAsJSONArrayBuffer({nix: 'data'});
-    //     for (let i = 0; i < count; i++) {
-    //         await client.set(String(i), payload);
-    //     }
-    //     console.log(count, 'client.set', performance.now() - start, 'ms', (performance.now() - start) / count);
-    // }
+    const schema = t.schema({
+        id: t.string,
+        title: t.string,
+        username: t.string,
+        logins: t.number,
+    }, {name: 'test'});
 
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            await client.set(String(i), type, {nix: 'data'});
-        }
-        console.log(count, 'client.set', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
+    const subject = client.getUsedEntityFields(schema);
 
-    {
-        const start = performance.now();
-        for (let i = 0; i < count; i++) {
-            await client.get(String(i), type);
-        }
-        console.log(count, 'client.get', performance.now() - start, 'ms', (performance.now() - start) / count);
-    }
+    const usageSub = await client.publishUsedEntityFields(schema, ['id', 'title']);
+    expect(subject.value).toEqual(['id', 'title']);
+
+    await usageSub.unsubscribe();
+    await subject.nextStateChange;
+    expect(subject.value).toEqual([]);
+
+    await client.disconnect();
 });
 
+test('test subscribe entity fields multi', async () => {
+    const client = await createExchange();
 
-// test('test subscribe entity fields', async () => {
-//     const exchange = new Exchange('localhost', 6379);
-//
-//     await exchange.clearEntityFields(GlutFile);
-//
-//     {
-//         const subscription = await exchange.subscribeEntityFields(GlutFile, ['iteration', 'batch']);
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['iteration', 'batch']);
-//
-//         await subscription.unsubscribe();
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual([]);
-//     }
-//
-//     {
-//         const subscription = await exchange.subscribeEntityFields(GlutFile, ['iteration', 'batch']);
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['iteration', 'batch']);
-//
-//         await subscription.unsubscribe();
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual([]);
-//     }
-//
-//     {
-//         const subscription = await exchange.subscribeEntityFields(GlutFile, ['iteration', 'batch']);
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['iteration', 'batch']);
-//
-//         const subscription2 = await exchange.subscribeEntityFields(GlutFile, ['iteration', 'batch', 'another']);
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['iteration', 'batch', 'another']);
-//
-//         await subscription2.unsubscribe();
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['iteration', 'batch']);
-//
-//         await subscription.unsubscribe();
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual([]);
-//     }
-//
-//     {
-//         const subscription = await exchange.subscribeEntityFields(GlutFile, ['iteration', 'batch']);
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['iteration', 'batch']);
-//
-//         const subscription2 = await exchange.subscribeEntityFields(GlutFile, ['another']);
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['iteration', 'batch', 'another']);
-//
-//         await subscription.unsubscribe();
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual(['another']);
-//
-//         await subscription2.unsubscribe();
-//         expect(await exchange.getSubscribedEntityFields(GlutFile)).toEqual([]);
-//     }
-//
-//
-//
-//     await exchange.disconnect();
-// });
+    const schema = t.schema({
+        id: t.string,
+        title: t.string,
+        username: t.string,
+        logins: t.number,
+    }, {name: 'test'});
+
+    const subject = client.getUsedEntityFields(schema);
+
+    const usageSub1 = await client.publishUsedEntityFields(schema, ['id', 'title']);
+    expect(subject.value).toEqual(['id', 'title']);
+
+    const usageSub2 = await client.publishUsedEntityFields(schema, ['id', 'title', 'username']);
+    expect(subject.value).toEqual(['id', 'title', 'username']);
+
+    await usageSub1.unsubscribe();
+    await subject.nextStateChange;
+    expect(subject.value).toEqual(['id', 'title', 'username']);
+
+    const usageSub3 = await client.publishUsedEntityFields(schema, ['logins']);
+
+    await usageSub2.unsubscribe();
+    await subject.nextStateChange;
+    expect(subject.value).toEqual(['logins']);
+
+    await usageSub3.unsubscribe();
+    await subject.nextStateChange;
+    expect(subject.value).toEqual([]);
+
+    await client.disconnect();
+});

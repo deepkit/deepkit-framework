@@ -1,5 +1,5 @@
 import {decodeMessage, encodeMessage} from './exchange-prot';
-import {ParsedHost, parseHost, ProcessLock, ProcessLocker} from '@deepkit/core';
+import {asyncOperation, ParsedHost, parseHost, ProcessLock, ProcessLocker} from '@deepkit/core';
 import {Subscriptions} from '@deepkit/core-rxjs';
 import {Subscription} from 'rxjs';
 import * as WebSocket from 'ws';
@@ -10,7 +10,9 @@ import {injectable} from '../injector/injector';
 interface StatePerConnection {
     subs: Subscriptions;
     locks: Map<string, ProcessLock>;
-    subscribedEntityFields: Map<number, Subscription>;
+    subscribedEntityFields: Map<number, { subscription: Subscription, entityName: string }>;
+
+    ackEntityFields?: () => void;
 }
 
 @injectable()
@@ -71,18 +73,18 @@ export class ExchangeServer {
     }
 
     async start() {
-        return new Promise((resolve, reject) => {
+        return asyncOperation((resolve, reject) => {
             this.server = createServer();
             this.wsServer = new WebSocket.Server({
                 server: this.server
             });
 
-            this.wsServer.on("listening", () => {
+            this.wsServer.on('listening', () => {
                 console.log('exchange listen on', this.host.toString());
                 resolve(true);
             });
 
-            this.wsServer.on("error", (err) => {
+            this.wsServer.on('error', (err) => {
                 reject(new Error('Could not start exchange server: ' + err));
             });
 
@@ -115,7 +117,7 @@ export class ExchangeServer {
                         lock.unlock();
                     }
                     for (const subscribedEntityField of statePerConnection.subscribedEntityFields.values()) {
-                        subscribedEntityField.unsubscribe();
+                        subscribedEntityField.subscription.unsubscribe();
                     }
 
                     this.statePerConnection.delete(ws);
@@ -194,15 +196,24 @@ export class ExchangeServer {
             return;
         }
 
-        if (m.type === 'entity-subscribe-fields') {
+        if (m.type === 'ack-entity-fields') {
+            if (state.ackEntityFields) {
+                state.ackEntityFields();
+            }
+            return;
+        }
+
+        if (m.type === 'used-entity-fields') {
             const [entityName, fields] = m.arg;
             if (!this.entityFields[entityName]) {
                 this.entityFields[entityName] = {};
             }
 
+            let fieldsChanged = false;
             for (const field of fields) {
                 if (!this.entityFields[entityName][field]) {
                     this.entityFields[entityName][field] = 0;
+                    fieldsChanged = true;
                 }
                 this.entityFields[entityName][field]++;
             }
@@ -217,15 +228,25 @@ export class ExchangeServer {
                     }
                 }
             });
-            state.subscribedEntityFields.set(m.id, reset);
+
+            state.subscribedEntityFields.set(m.id, {
+                subscription: reset,
+                entityName: entityName
+            });
+            if (fieldsChanged) {
+                await this.sendEntityFields(entityName);
+            }
+            ws.send(encodeMessage(m.id, 'ok', null), {binary: true});
             return;
         }
 
-        if (m.type === 'del-entity-subscribe-fields') {
+        if (m.type === 'del-used-entity-fields') {
             const forMessageId = m.arg as number;
-            if (state.subscribedEntityFields.has(forMessageId)) {
-                state.subscribedEntityFields.get(forMessageId)!.unsubscribe();
+            const sub = state.subscribedEntityFields.get(forMessageId);
+            if (sub) {
+                sub.subscription.unsubscribe();
                 state.subscribedEntityFields.delete(forMessageId);
+                this.sendEntityFields(sub.entityName).catch(console.error);
             }
             return;
         }
@@ -267,5 +288,20 @@ export class ExchangeServer {
             // const t = process.hrtime.bigint()
             ws.send(encodeMessage(m.id, m.type, ++this.version), {binary: true});
         }
+    }
+
+    protected async sendEntityFields(entityName: string) {
+        const fields = Object.keys(this.entityFields[entityName] || {});
+        const message = encodeMessage(0, 'entity-fields', [entityName, fields]);
+
+        const promises: Promise<void>[] = [];
+
+        for (const [ws, state] of this.statePerConnection.entries()) {
+            promises.push(new Promise((resolve) => {
+                state.ackEntityFields = resolve;
+            }));
+            ws.send(message, {binary: true});
+        }
+        await Promise.all(promises);
     }
 }

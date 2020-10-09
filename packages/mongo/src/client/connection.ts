@@ -1,4 +1,4 @@
-import {asyncOperation, ClassType} from '@deepkit/core';
+import {arrayRemoveItem, asyncOperation, ClassType, sleep} from '@deepkit/core';
 import {Host} from './host';
 import {createConnection, Socket} from 'net';
 import {connect as createTLSConnection, TLSSocket} from 'tls';
@@ -17,25 +17,172 @@ export enum MongoConnectionStatus {
     disconnected = 'disconnected',
 }
 
+interface ConnectionRequest {
+    writable?: boolean;
+    nearest?: boolean;
+}
+
+export class MongoConnectionPool {
+    protected connectionId: number = 0;
+    /**
+     * Connections, might be in any state, not necessarily connected.
+     */
+    protected connections: MongoConnection[] = [];
+
+    protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
+
+    constructor(protected config: MongoClientConfig) {
+    }
+
+    protected async waitForAllConnectionsToConnect(throws: boolean = false): Promise<void> {
+        const promises: Promise<any>[] = [];
+        for (const connection of this.connections) {
+            if (connection.connectingPromise) {
+                promises.push(connection.connectingPromise);
+            }
+        }
+
+        if (promises.length) {
+            if (throws) {
+                await Promise.all(promises);
+            } else {
+                await Promise.allSettled(promises);
+            }
+        }
+    }
+
+    public async connect() {
+        await this.ensureHostsConnected(true);
+    }
+
+    public close() {
+        //import to work on the copy, since Connection.onClose modifies this.connections.
+        const connections = this.connections.slice(0);
+        for (const connection of connections) {
+            connection.close();
+        }
+    }
+
+    public async ensureHostsConnected(throws: boolean = false) {
+        //make sure each host has at least one connection
+        //getHosts automatically updates hosts (mongodb-srv) and returns new one,
+        //so we don't need any interval to automatically update it.
+        const hosts = await this.config.getHosts();
+        for (const host of hosts) {
+            if (host.connections.length) continue;
+            this.newConnection(host);
+        }
+
+        await this.waitForAllConnectionsToConnect(throws);
+    }
+
+    protected findHostForRequest(hosts: Host[], request: ConnectionRequest): Host {
+        //todo, handle request.nearest
+        for (const host of hosts) {
+            if (request.writable && host.isWritable()) return host;
+            if (!request.writable && host.isReadable()) return host;
+        }
+
+        throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
+    }
+
+    protected async createAdditionalConnectionForRequest(request: ConnectionRequest) {
+        const hosts = await this.config.getHosts();
+        const host = this.findHostForRequest(hosts, request);
+        if (!host) throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
+
+        return this.newConnection(host);
+    }
+
+    protected newConnection(host: Host) {
+        const connection = new MongoConnection(this.connectionId++, host, this.config, (connection) => {
+            arrayRemoveItem(host.connections, connection);
+            arrayRemoveItem(this.connections, connection);
+            //onClose does not automatically reconnect. Only new commands re-establish connections.
+        }, (connection) => {
+            this.release(connection);
+        });
+        host.connections.push(connection);
+        this.connections.push(connection);
+        // console.log('newConnection', connection.id);
+        return connection;
+    }
+
+    protected release(connection: MongoConnection) {
+        connection.reserved = false;
+        // console.log('release', connection.id, JSON.stringify(this.config.options.maxIdleTimeMS));
+        connection.cleanupTimeout = setTimeout(() => {
+            if (this.connections.length <= this.config.options.minPoolSize) {
+                return;
+            }
+
+            connection.close();
+        }, this.config.options.maxIdleTimeMS);
+    }
+
+    /**
+     * Returns an existing or new connection, that needs to be released once done using it.
+     */
+    async getConnection(request: ConnectionRequest): Promise<MongoConnection> {
+        do {
+            for (const connection of this.connections) {
+                if (!connection.isConnected()) continue;
+                if (connection.reserved) continue;
+
+                if (request.nearest) throw new Error('Nearest not implemented yet');
+
+                if (request.writable && !connection.host.isWritable()) continue;
+
+                if (!request.writable) {
+                    if (connection.host.isSecondary() && !this.config.options.secondaryReadAllowed) continue;
+                    if (!connection.host.isReadable()) continue;
+                }
+
+                connection.reserved = true;
+                if (connection.cleanupTimeout) {
+                    clearTimeout(connection.cleanupTimeout);
+                    connection.cleanupTimeout = undefined;
+                }
+
+                return connection;
+            }
+
+            if (this.connections.length < this.config.options.maxPoolSize) {
+                const connection = await this.createAdditionalConnectionForRequest(request);
+                connection.reserved = true;
+                return connection;
+            }
+
+            await sleep(0.1);
+        } while (true);
+
+        throw new Error('No connection found');
+    }
+}
+
 export class MongoConnection {
     protected messageId: number = 0;
     status: MongoConnectionStatus = MongoConnectionStatus.pending;
 
     public connectingPromise?: Promise<void>;
-    public lastCommand?: { command: Command };
+    public lastCommand?: { command: Command, promise?: Promise<any> };
 
     public activeCommands: number = 0;
     public executedCommands: number = 0;
     public activeTransaction: boolean = false;
+    public reserved: boolean = false;
+    public cleanupTimeout: any;
 
     protected socket: Socket | TLSSocket;
 
     responseParser: ResponseParser;
 
     constructor(
+        public id: number,
         public readonly host: Host,
         protected config: MongoClientConfig,
-        protected onClose: (connection: MongoConnection) => void
+        protected onClose: (connection: MongoConnection) => void,
+        protected onRelease: (connection: MongoConnection) => void,
     ) {
         if (this.config.options.ssl === true) {
             const options: { [name: string]: any } = {
@@ -89,7 +236,12 @@ export class MongoConnection {
     }
 
     close() {
+        this.status = MongoConnectionStatus.disconnected;
         this.socket.end();
+    }
+
+    public release() {
+        this.onRelease(this);
     }
 
     /**
@@ -113,14 +265,23 @@ export class MongoConnection {
      * A promises is return that is resolved with the  when executed successfully, or rejected
      * when timed out, parser error, or any other error.
      */
-    // @singleStack()
     public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
+        if (this.status === MongoConnectionStatus.pending) await this.connect();
+        if (this.status === MongoConnectionStatus.disconnected) throw new Error('Disconnected');
+
+        if (this.lastCommand && this.lastCommand.promise) {
+            await this.lastCommand.promise;
+        }
+
         this.lastCommand = {command};
         this.activeCommands++;
+        this.executedCommands++;
         command.sender = this.sendMessage.bind(this);
         try {
-            return await command.execute(this.config, this.host);
+            this.lastCommand.promise = command.execute(this.config, this.host);
+            return await this.lastCommand.promise;
         } finally {
+            this.lastCommand = undefined;
             this.activeCommands--;
         }
     }
@@ -173,28 +334,32 @@ export class MongoConnection {
         //todo, increase idle timeout
     }
 
-    connect(): Promise<void> {
-        if (this.connectingPromise) return this.connectingPromise;
-
+    async connect(): Promise<void> {
         if (this.status === MongoConnectionStatus.disconnected) throw new Error('Connection disconnected');
+        if (this.status !== MongoConnectionStatus.pending) return;
 
         this.status = MongoConnectionStatus.connecting;
 
         this.connectingPromise = asyncOperation(async (resolve, reject) => {
             this.socket.on('error', (error) => {
+                this.connectingPromise = undefined;
+                this.status = MongoConnectionStatus.disconnected;
                 reject(error);
             });
 
-            if (!this.socket.destroyed) {
-                if (await this.execute(new HandshakeCommand())) {
-                    this.status = MongoConnectionStatus.connected;
-                    this.socket.setTimeout(this.config.options.socketTimeoutMS);
-                    resolve();
-                } else {
-                    reject(new MongoError('Could not complete handshake 🤷‍️'));
-                }
+            if (this.socket.destroyed) {
+                this.status = MongoConnectionStatus.disconnected;
+                resolve();
             }
-            this.connectingPromise = undefined;
+
+            if (await this.execute(new HandshakeCommand())) {
+                this.status = MongoConnectionStatus.connected;
+                this.socket.setTimeout(this.config.options.socketTimeoutMS);
+                resolve();
+            } else {
+                this.status = MongoConnectionStatus.disconnected;
+                reject(new MongoError('Could not complete handshake 🤷‍️'));
+            }
         });
 
         return this.connectingPromise;
@@ -250,13 +415,18 @@ export class ResponseParser {
                 //we have more messages in this buffer. read what is necessary and hop to next loop iteration
                 const message = currentBuffer.slice(0, currentSize);
                 this.onResponse(message);
-                currentBuffer = currentBuffer.slice(currentSize + 1);
+                currentBuffer = currentBuffer.slice(currentSize);
                 if (currentBuffer.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     this.currentMessage = currentBuffer;
                     return;
                 }
-                currentSize = new DataView(currentBuffer.buffer, currentBuffer.byteOffset).getInt32(0, true);
+                const nextCurrentSize = currentBuffer.readUInt32LE(0);
+                // const nextCurrentSize = new DataView(currentBuffer.buffer, currentBuffer.byteOffset).getUint32(0, true);
+                if (nextCurrentSize <= 0) {
+                    throw new Error('message size wrong');
+                }
+                currentSize = nextCurrentSize;
                 //buffer and size has been set. consume this message in the next loop iteration
             }
         }

@@ -1,4 +1,4 @@
-import {MongoConnection} from './connection';
+import {MongoConnection, MongoConnectionPool} from './connection';
 import {parse as parseUrl} from 'url';
 import {parse as parseQueryString} from 'querystring';
 import {ClassSchema, getClassSchema, jsonSerializer} from '@deepkit/type';
@@ -182,42 +182,18 @@ export class MongoClientConfig {
     }
 }
 
-interface ConnectionRequest {
-    writable?: boolean;
-    nearest?: boolean;
-}
-
 export class MongoClient {
-    /**
-     * Connections, might be in any state, not necessarily connected.
-     */
-    protected connections: MongoConnection[] = [];
-
     protected inCloseProcedure: boolean = false;
 
     public readonly config: MongoClientConfig;
+
+    protected connectionPool: MongoConnectionPool;
 
     constructor(
         connectionString: string
     ) {
         this.config = new MongoClientConfig(connectionString);
-    }
-
-    protected async waitForAllConnectionsToConnect(throws: boolean = false): Promise<void> {
-        const promises: Promise<any>[] = [];
-        for (const connection of this.connections) {
-            if (connection.connectingPromise) {
-                promises.push(connection.connectingPromise);
-            }
-        }
-
-        if (promises.length) {
-            if (throws) {
-                await Promise.all(promises);
-            } else {
-                await Promise.allSettled(promises);
-            }
-        }
+        this.connectionPool = new MongoConnectionPool(this.config)
     }
 
     public resolveCollectionName(schema: ClassSchema | ClassType): string {
@@ -233,72 +209,27 @@ export class MongoClient {
     //     }
     // }
 
-    protected async ensureHostsConnected(throws: boolean = false) {
-        //make sure each host has at least one connection
-        //getHosts automatically updates hosts (mongodb-srv) and returns new one,
-        //so we don't need any interval to automatically update it.
-        const hosts = await this.config.getHosts();
-        for (const host of hosts) {
-            if (host.connections.length) continue;
-            this.newConnection(host);
-        }
-
-        await this.waitForAllConnectionsToConnect(throws);
-    }
-
-    protected newConnection(host: Host) {
-        const connection = new MongoConnection(host, this.config, (connection) => {
-            arrayRemoveItem(host.connections, connection);
-            arrayRemoveItem(this.connections, connection);
-            //onClose does not automatically reconnect. Only new commands re-establish connections.
-        });
-        host.connections.push(connection);
-        this.connections.push(connection);
-    }
-
-    protected async createAdditionalConnectionForRequest(request: ConnectionRequest): Promise<void> {
-        if (this.connections.length >= this.config.options.maxPoolSize) return;
-
-        const hosts = await this.config.getHosts();
-        const host = this.findHostForRequest(hosts, request);
-        if (!host) throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
-
-        this.newConnection(host);
-    }
-
-    protected findHostForRequest(hosts: Host[], request: ConnectionRequest): Host {
-        //todo, handle request.nearest
-        for (const host of hosts) {
-            if (request.writable && host.isWritable()) return host;
-            if (!request.writable && host.isReadable()) return host;
-        }
-
-        throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
-    }
-
     public async connect() {
-        await this.ensureHostsConnected(true);
+        await this.connectionPool.connect();
     }
 
     public close() {
         this.inCloseProcedure = true;
-
-        //import to work on the copy, since Connection.onClose modifies this.connections.
-        const connections = this.connections.slice(0);
-        for (const connection of connections) {
-            connection.close();
-        }
+        this.connectionPool.close();
     }
 
+    //todo: we need to move that to MongoConnection, because the DatabaseAdapter requests a connection and holds onto it
+    // for work, and releases it when done.
     public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
         const maxRetries = 10;
         const request = {writable: command.needsWritableHost()};
-        await this.ensureHostsConnected(true);
+        await this.connectionPool.ensureHostsConnected(true);
 
         for (let i = 1; i <= maxRetries; i++) {
-            const connection = this.getConnectionFast(request);
+            const connection = await this.connectionPool.getConnection(request);
 
             try {
+                // console.log('execute', (command as any).constructor.name, connection.id);
                 return await connection.execute(command);
             } catch (error) {
                 if (command.needsWritableHost()) {
@@ -310,35 +241,14 @@ export class MongoClient {
                 if (i == maxRetries) {
                     throw error;
                 }
+                // console.log('retry!!!');
                 await sleep(0.25);
+            } finally {
+                // console.log('execute release', connection.id);
+                connection.release();
             }
         }
 
         throw new MongoError(`Could not execute command since no connection found: ${command}`);
-    }
-
-    /**
-     * A sync method to get a connection the fast way. This is for most common use-cases ideal.
-     */
-    getConnectionFast(request: ConnectionRequest): MongoConnection {
-        //todo: implement load-balancing
-        // extract to a ConnectionPool class, which we can better unit-test
-        for (const connection of this.connections) {
-            if (!connection.isConnected()) continue;
-            if (connection.activeCommands) continue;
-
-            if (request.nearest) throw new Error('Nearest not implemented yet');
-
-            if (request.writable && !connection.host.isWritable()) continue;
-
-            if (!request.writable) {
-                if (connection.host.isSecondary() && !this.config.options.secondaryReadAllowed) continue;
-                if (!connection.host.isReadable()) continue;
-            }
-
-            return connection;
-        }
-
-        throw new Error('No connection found. WIP');
     }
 }
