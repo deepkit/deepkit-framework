@@ -1,5 +1,5 @@
-import {BehaviorSubject, Observable, Subscriber, Subscription, TeardownLogic} from 'rxjs';
-import {arrayRemoveItem, createStack, mergePromiseStack, mergeStack} from '@deepkit/core';
+import {Observable, Subscriber, Subscription, TeardownLogic} from 'rxjs';
+import {arrayRemoveItem, createStack, isFunction, mergePromiseStack, mergeStack} from '@deepkit/core';
 import {first, skip} from 'rxjs/operators';
 
 export class AsyncSubscription {
@@ -69,7 +69,7 @@ export function subscriptionToPromise<T>(subscription: Subscription): Promise<vo
 }
 
 export function nextValue<T>(o: Observable<T>): Promise<T> {
-    if (o instanceof BehaviorSubject) {
+    if (isFunction((o as any).getValue)) { //BehaviorSubject
         return o.pipe(skip(1)).pipe(first()).toPromise();
     }
 

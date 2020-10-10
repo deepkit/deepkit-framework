@@ -377,97 +377,99 @@ test('test entity sync item undefined', async () => {
 });
 
 
-// test('test entity sync count', async () => {
-//     @Entity('user5')
-//     class User extends UserBase {
-//     }
-//
-//     @rpc.controller('test')
-//     class TestController {
-//         constructor(
-//             private connection: ClientConnection,
-//             private liveDatabase: LiveDatabase,
-//             private database: Database,
-//         ) {
-//             this.liveDatabase.enableChangeFeed(User);
-//         }
-//
-//         @rpc.action()
-//         async userCount(): Promise<Observable<number>> {
-//             await this.database.query(User).deleteMany();
-//             await this.database.persist(new User('Guschdl'));
-//             const peter1 = new User('Peter 1');
-//
-//             this.connection.setTimeout(async () => {
-//                 console.log('add peter1');
-//                 await this.database.persist(peter1);
-//             }, 100);
-//
-//             this.connection.setTimeout(async () => {
-//                 console.log('add peter2');
-//                 await this.database.persist(new User('Peter 2'));
-//             }, 150);
-//
-//             this.connection.setTimeout(async () => {
-//                 console.log('remove peter1');
-//                 await this.database.query(User).filter({id: peter1.id}).deleteOne();
-//             }, 200);
-//
-//             return await this.liveDatabase.query(User).filter({
-//                 name: {$regex: /Peter/}
-//             }).count();
-//         }
-//     }
-//
-//     const {client, close} = await createServerClientPair('test entity sync count', appModuleForControllers([TestController]));
-//     const test = client.controller<TestController>('test');
-//
-//     const result = await test.userCount();
-//
-//     let i: number = 0;
-//     result.subscribe((next: any) => {
-//         console.log('next', next);
-//         if (i === 0) {
-//             //first count is not found
-//             expect(next).toBe(0);
-//         }
-//         if (i === 1) {
-//             //we created peter 1
-//             expect(next).toBe(1);
-//         }
-//         if (i === 2) {
-//             //we created peter 2
-//             expect(next).toBe(2);
-//         }
-//         if (i === 3) {
-//             //we deleted peter 1
-//             expect(next).toBe(1);
-//         }
-//
-//         i++;
-//     });
-//
-//     const userCount = new BehaviorSubject<number>(0);
-//     expect(userCount.getValue()).toBe(0);
-//
-//     result.subscribe(userCount);
-//
-//     await nextValue(userCount);
-//     expect(userCount.getValue()).toBe(0);
-//
-//     await nextValue(userCount);
-//     expect(userCount.getValue()).toBe(1);
-//
-//     await nextValue(userCount);
-//     expect(userCount.getValue()).toBe(2);
-//
-//     await nextValue(userCount);
-//     expect(userCount.getValue()).toBe(1);
-//
-//     expect(i).toBe(4);
-//
-//     await close();
-// });
+test('test entity sync count', async () => {
+    @Entity('user5')
+    class User extends UserBase {
+    }
+
+    @rpc.controller('test')
+    class TestController {
+        constructor(
+            private connection: ClientConnection,
+            private liveDatabase: LiveDatabase,
+            private database: Database,
+        ) {
+            this.liveDatabase.enableChangeFeed(User);
+        }
+
+        @rpc.action()
+        async userCount(): Promise<Observable<number>> {
+            await this.database.query(User).deleteMany();
+            await this.database.persist(new User('Guschdl'));
+            const peter1 = new User('Peter 1');
+
+            this.connection.setTimeout(async () => {
+                console.log('add peter1');
+                await this.database.persist(peter1);
+            }, 100);
+
+            this.connection.setTimeout(async () => {
+                console.log('add peter2');
+                await this.database.persist(new User('Peter 2'));
+            }, 150);
+
+            this.connection.setTimeout(async () => {
+                console.log('remove peter1');
+                await this.database.query(User).filter({id: peter1.id}).deleteOne();
+            }, 200);
+
+            return await this.liveDatabase.query(User).filter({
+                name: {$regex: /Peter/}
+            }).count();
+        }
+    }
+
+    const {client, close} = await createServerClientPair('test entity sync count', appModuleForControllers([TestController], [User]));
+    const test = client.controller<TestController>('test');
+
+    const result = await test.userCount();
+
+    let i: number = 0;
+    result.subscribe((next: any) => {
+        console.log('next', i, next);
+        if (i === 0) {
+            //first count is not found
+            expect(next).toBe(0);
+        }
+        if (i === 1) {
+            //we created peter 1
+            expect(next).toBe(1);
+        }
+        if (i === 2) {
+            //we created peter 2
+            expect(next).toBe(2);
+        }
+        if (i === 3) {
+            //we deleted peter 1
+            expect(next).toBe(1);
+        }
+
+        i++;
+    });
+
+    const userCount = new BehaviorSubject<number>(0);
+    expect(userCount.getValue()).toBe(0);
+
+    result.subscribe((next) => {
+        userCount.next(next);
+    });
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(0);
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(1);
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(2);
+
+    await nextValue(userCount);
+    expect(userCount.getValue()).toBe(1);
+
+    expect(i).toBe(4);
+
+    await close();
+});
 
 
 test('test entity collection unsubscribe + findOne', async () => {

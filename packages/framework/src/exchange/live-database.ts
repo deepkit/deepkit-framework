@@ -6,8 +6,19 @@ import {Observable, Subscription} from 'rxjs';
 import {Exchange} from './exchange';
 import {findQuerySatisfied} from '../utils';
 import {Databases} from '../databases';
-import {BaseQuery, Database, DatabaseQueryModel, exportQueryFilterFieldNames, FilterQuery, GenericQuery, replaceQueryFilterParameter, Sort} from '@deepkit/orm';
-import {QueryDatabaseDeleteEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent} from '@deepkit/orm/dist/src/event';
+import {
+    BaseQuery,
+    Database,
+    DatabaseQueryModel,
+    exportQueryFilterFieldNames,
+    FilterQuery,
+    GenericQuery,
+    QueryDatabaseDeleteEvent,
+    replaceQueryFilterParameter,
+    Sort,
+    UnitOfWorkEvent,
+    UnitOfWorkUpdateEvent
+} from '@deepkit/orm';
 import {AsyncSubscription} from '@deepkit/core-rxjs';
 
 interface SentState {
@@ -203,14 +214,43 @@ class LiveDatabaseQueryModel<T> extends DatabaseQueryModel<T, FilterQuery<T>, So
     }
 }
 
+type JoinedClassSchemaInfo = {
+    classSchema: ClassSchema,
+    fields: string[],
+    filter: FilterQuery<any>,
+    usedEntityFieldsSubscription?: AsyncSubscription,
+    entitySubscription?: Subscription,
+};
+
+
+function extractModelData(classSchema: ClassSchema, model: DatabaseQueryModel<any>, result: JoinedClassSchemaInfo[]): void {
+    result.push({
+        classSchema,
+        filter: model.filter || {},
+        fields: model.filter ? exportQueryFilterFieldNames(classSchema, model.filter) : [],
+    });
+
+    extractJoinedClassSchemaInfos(model, result);
+}
+
+function extractJoinedClassSchemaInfos(model: DatabaseQueryModel<any>, result: JoinedClassSchemaInfo[]): void {
+    for (const join of model.joins) {
+        if (join.propertySchema.backReference && join.propertySchema.backReference.via) {
+            const schema = getClassSchema(resolveClassTypeOrForward(join.propertySchema.backReference.via));
+            result.push({
+                classSchema: schema,
+                filter: {},
+                fields: [],
+            });
+        }
+
+        extractModelData(join.query.classSchema, join.query.model, result);
+    }
+}
+
+
 class LiveCollection<T extends IdInterface> {
-    protected joinedClassSchemas: {
-        classSchema: ClassSchema,
-        fields: string[],
-        filter: FilterQuery<any>,
-        usedEntityFieldsSubscription?: AsyncSubscription,
-        entitySubscription?: Subscription,
-    }[] = [];
+    protected joinedClassSchemas: JoinedClassSchemaInfo[] = [];
 
     protected rootFields: string[] = [];
     protected rootUsedEntityFieldsSubscription?: AsyncSubscription;
@@ -230,32 +270,7 @@ class LiveCollection<T extends IdInterface> {
     ) {
         this.rootFields = exportQueryFilterFieldNames(this.classSchema, model.filter || {});
         // figure out what entities are involved (by going through all joins)
-        this.extractJoins(model);
-    }
-
-    protected extractJoins(model: DatabaseQueryModel<any>) {
-        for (const join of model.joins) {
-            if (join.propertySchema.backReference && join.propertySchema.backReference.via) {
-                const schema = getClassSchema(resolveClassTypeOrForward(join.propertySchema.backReference.via));
-                this.joinedClassSchemas.push({
-                    classSchema: schema,
-                    filter: {},
-                    fields: [],
-                });
-            }
-
-            this.extractModelData(join.query.classSchema, join.query.model);
-        }
-    }
-
-    protected extractModelData(classSchema: ClassSchema, model: DatabaseQueryModel<any>) {
-        this.joinedClassSchemas.push({
-            classSchema,
-            filter: model.filter || {},
-            fields: model.filter ? exportQueryFilterFieldNames(classSchema, model.filter) : [],
-        });
-
-        this.extractJoins(model);
+        extractJoinedClassSchemaInfos(this.model, this.joinedClassSchemas);
     }
 
     protected async publishUseEntityFields() {
@@ -339,7 +354,7 @@ class LiveCollection<T extends IdInterface> {
 
         //- query the database and put all items in our list
         const query = this.database.query(this.classSchema);
-        query.model = this.model.clone();
+        query.model = this.model.clone(query);
 
         query.model.limit = undefined;
         query.model.skip = undefined;
@@ -381,7 +396,7 @@ class LiveCollection<T extends IdInterface> {
 
     protected async getItem(id: string | number): Promise<T | undefined> {
         const query = this.database.query(this.classSchema);
-        query.model = this.model.clone();
+        query.model = this.model.clone(query);
         query.filter({id: id});
         return query.findOneOrUndefined();
     }
@@ -423,17 +438,6 @@ class LiveCollection<T extends IdInterface> {
 
         const scopedSerializer = jsonSerializer.for(this.classSchema);
         this.entitySubscription = this.exchange.subscribeEntity(this.classSchema, async (message) => {
-            // console.log(
-            //     'subscribeEntity message', this.classSchema.getName(), (message as any)['id'],
-            //     {
-            //         known: this.knownIDs.has((message as any)['id']),
-            //         querySatisfied: (message as any).item ? findQuerySatisfied((message as any).item, currentQuery) : 'no .item',
-            //         paginationActive: this.collection.pagination.isActive()
-            //     },
-            //     currentQuery,
-            //     message
-            // );
-
             if (message.type === 'removeMany') {
                 if (this.collection.pagination.isActive()) {
                     await this.updateCollection(true);
@@ -515,7 +519,6 @@ class LiveCollection<T extends IdInterface> {
                 if (event.type === 'apply') this.collection.pagination._applyFinished();
             }
         });
-
 
         const query = this.database.query(this.classSchema);
         query.model = this.model;
@@ -608,11 +611,95 @@ export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
         });
     }
 
-    count(): Observable<number> {
-        return new Observable<number>((observer) => {
-            observer.next(1);
+    public count<T extends IdInterface>(): Observable<number> {
+        const rootFields = exportQueryFilterFieldNames(this.classSchema, this.model.filter || {});
+        let currentQuery = replaceQueryFilterParameter(this.classSchema, this.model.filter || {}, this.model.parameters);
+
+        const joinedClassSchemas: JoinedClassSchemaInfo[] = [];
+        extractJoinedClassSchemaInfos(this.model, joinedClassSchemas);
+
+        return new Observable((observer) => {
+            let rootEntitySub: Subscription;
+            let usedEntityFieldsSub: AsyncSubscription;
+
+            (async () => {
+                usedEntityFieldsSub = await this.exchange.publishUsedEntityFields(this.classSchema, rootFields);
+
+                const knownIDs = new Set<string | number>();
+                let counter = 0;
+
+                rootEntitySub = await this.exchange.subscribeEntity(this.classSchema, (message) => {
+                    if (message.type === 'add') {
+                        if (!knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
+                            counter++;
+                            knownIDs.add(message.id);
+                            observer.next(counter);
+                        }
+                    }
+
+                    if (message.type === 'patch') {
+                        if (knownIDs.has(message.id) && !findQuerySatisfied(message.item, currentQuery)) {
+                            counter--;
+                            knownIDs.delete(message.id);
+                            observer.next(counter);
+                        } else if (!knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
+                            counter++;
+                            knownIDs.add(message.id);
+                            observer.next(counter);
+                        }
+                    }
+
+                    if (message.type === 'remove') {
+                        if (knownIDs.has(message.id)) {
+                            counter--;
+                            knownIDs.delete(message.id);
+                            observer.next(counter);
+                        }
+                    }
+
+                    if (message.type === 'removeMany') {
+                        for (const id of message.ids) {
+                            if (knownIDs.has(id)) {
+                                counter--;
+                                knownIDs.delete(id);
+                                observer.next(counter);
+                            }
+                        }
+                    }
+                });
+
+                const updateAll = async () => {
+                    const query = this.database.query(this.classSchema);
+                    query.model = this.model.clone(query);
+
+                    const items = await query.select('id').find();
+
+                    knownIDs.clear();
+                    counter = items.length;
+                    for (const item of items) knownIDs.add(item.id);
+                    console.log('updateAll', counter);
+                    observer.next(counter);
+                };
+
+                for (const info of joinedClassSchemas) {
+                    if (info.entitySubscription) continue;
+                    //if its part of our join filter, we reload the collection
+                    info.entitySubscription = this.exchange.subscribeEntity(info.classSchema, (message) => {
+                        //todo: check if item belongs to the join criteria
+                        updateAll();
+                    });
+                }
+
+                await updateAll();
+            })();
+
             return {
-                unsubscribe() {
+                unsubscribe: async () => {
+                    rootEntitySub.unsubscribe();
+                    await usedEntityFieldsSub.unsubscribe();
+                    for (const info of joinedClassSchemas) {
+                        if (info.entitySubscription) info.entitySubscription.unsubscribe();
+                    }
                 }
             };
         });
