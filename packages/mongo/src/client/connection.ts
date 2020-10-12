@@ -155,8 +155,6 @@ export class MongoConnectionPool {
 
             await sleep(0.1);
         } while (true);
-
-        throw new Error('No connection found');
     }
 }
 
@@ -423,9 +421,7 @@ export class ResponseParser {
                 }
                 const nextCurrentSize = currentBuffer.readUInt32LE(0);
                 // const nextCurrentSize = new DataView(currentBuffer.buffer, currentBuffer.byteOffset).getUint32(0, true);
-                if (nextCurrentSize <= 0) {
-                    throw new Error('message size wrong');
-                }
+                if (nextCurrentSize <= 0) throw new Error('message size wrong');
                 currentSize = nextCurrentSize;
                 //buffer and size has been set. consume this message in the next loop iteration
             }

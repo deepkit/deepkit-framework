@@ -1,4 +1,4 @@
-import {MongoConnection, MongoConnectionPool} from './connection';
+import {MongoConnectionPool} from './connection';
 import {parse as parseUrl} from 'url';
 import {parse as parseQueryString} from 'querystring';
 import {ClassSchema, getClassSchema, jsonSerializer} from '@deepkit/type';
@@ -200,15 +200,6 @@ export class MongoClient {
         return this.config.resolveCollectionName(schema);
     }
 
-    // protected async getConnectedForType(request: ConnectionRequest): Promise<MongoConnection | void> {
-    //     const hosts = await this.config.getHosts();
-    //     const host = this.findHostForRequest(hosts, request);
-    //
-    //     for (const connection of host.connections) {
-    //         if (connection.isConnected()) return connection;
-    //     }
-    // }
-
     public async connect() {
         await this.connectionPool.connect();
     }
@@ -218,8 +209,6 @@ export class MongoClient {
         this.connectionPool.close();
     }
 
-    //todo: we need to move that to MongoConnection, because the DatabaseAdapter requests a connection and holds onto it
-    // for work, and releases it when done.
     public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
         const maxRetries = 10;
         const request = {writable: command.needsWritableHost()};
@@ -229,7 +218,6 @@ export class MongoClient {
             const connection = await this.connectionPool.getConnection(request);
 
             try {
-                // console.log('execute', (command as any).constructor.name, connection.id);
                 return await connection.execute(command);
             } catch (error) {
                 if (command.needsWritableHost()) {
@@ -241,10 +229,8 @@ export class MongoClient {
                 if (i == maxRetries) {
                     throw error;
                 }
-                // console.log('retry!!!');
                 await sleep(0.25);
             } finally {
-                // console.log('execute release', connection.id);
                 connection.release();
             }
         }
