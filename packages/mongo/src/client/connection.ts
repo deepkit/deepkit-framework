@@ -17,7 +17,7 @@ export enum MongoConnectionStatus {
     disconnected = 'disconnected',
 }
 
-interface ConnectionRequest {
+export interface ConnectionRequest {
     writable?: boolean;
     nearest?: boolean;
 }
@@ -324,14 +324,6 @@ export class MongoConnection {
         this.socket.write(buffer);
     }
 
-    /**
-     * Indicates that this connection was picked for work. Extend the timeout + 1minute to make sure it
-     * doesnt immediately disconnect due to idle timeout issues.
-     */
-    youGotPicked() {
-        //todo, increase idle timeout
-    }
-
     async connect(): Promise<void> {
         if (this.status === MongoConnectionStatus.disconnected) throw new Error('Connection disconnected');
         if (this.status !== MongoConnectionStatus.pending) return;
@@ -347,15 +339,18 @@ export class MongoConnection {
 
             if (this.socket.destroyed) {
                 this.status = MongoConnectionStatus.disconnected;
+                this.connectingPromise = undefined;
                 resolve();
             }
 
             if (await this.execute(new HandshakeCommand())) {
                 this.status = MongoConnectionStatus.connected;
                 this.socket.setTimeout(this.config.options.socketTimeoutMS);
+                this.connectingPromise = undefined;
                 resolve();
             } else {
                 this.status = MongoConnectionStatus.disconnected;
+                this.connectingPromise = undefined;
                 reject(new MongoError('Could not complete handshake 🤷‍️'));
             }
         });

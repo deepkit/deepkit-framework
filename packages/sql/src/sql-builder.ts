@@ -19,7 +19,17 @@ export class SqlBuilder {
         return this.platform.createSqlFilterBuilder(schema, tableName).convert(filter);
     }
 
-    protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {
+    protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>) {
+        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
+
+        for (const property of properties) {
+            if (property.backReference) continue;
+
+            this.sqlSelect.push(this.platform.quoteIdentifier(property.name));
+        }
+    }
+
+    protected selectColumnsWithJoins(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {
         const result: { startIndex: number, fields: PropertySchema[] } = {startIndex: this.sqlSelect.length, fields: []};
 
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
@@ -52,7 +62,7 @@ export class SqlBuilder {
                 };
                 this.joins.push(joinMap);
 
-                const map = this.selectColumns(join.query.classSchema, join.query.model, refName + '__' + join.propertySchema.name);
+                const map = this.selectColumnsWithJoins(join.query.classSchema, join.query.model, refName + '__' + join.propertySchema.name);
                 joinMap.converter = this.buildConverter(map.startIndex, map.fields);
                 joinMap.startIndex = map.startIndex;
             }
@@ -63,6 +73,7 @@ export class SqlBuilder {
 
     public convertRows(schema: ClassSchema, model: SQLQueryModel<any>, rows: any[]): any[] {
         if (!this.rootConverter) throw new Error('No root converter set');
+        if (!this.joins.length) return rows.map(v => this.rootConverter!(v));
 
         const result: any[] = [];
 
@@ -239,8 +250,12 @@ export class SqlBuilder {
         const manualSelect = options.select && options.select.length ? options.select : undefined;
 
         if (!manualSelect) {
-            const map = this.selectColumns(schema, model);
-            this.rootConverter = this.buildConverter(map.startIndex, map.fields);
+            if (model.hasJoins()) {
+                const map = this.selectColumnsWithJoins(schema, model);
+                this.rootConverter = this.buildConverter(map.startIndex, map.fields);
+            } else {
+                this.selectColumns(schema, model);
+            }
         }
 
         const order: string[] = [];

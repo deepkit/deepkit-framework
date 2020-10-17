@@ -23,18 +23,47 @@ export class SerializerCompilers {
     constructor(public serializer: Serializer, public parent?: SerializerCompilers) {
     }
 
-    extend(type: CompilerTypes, compiler: TypeConverterCompiler) {
+    append(type: CompilerTypes, compiler: TypeConverterCompiler) {
         const old = this.get(type);
 
-        this.compilers.set(type, (setter, accessor, property, compilerInfo) => {
-            const res = compiler(setter, accessor, property, compilerInfo);
-            if (res) return res;
+        this.compilers.set(type, (property, compilerState) => {
+            if (compilerState.ended) return;
 
-            if (old) return old(setter, accessor, property, compilerInfo);
+            if (old) {
+                old(property, compilerState);
+                if (compilerState.ended) return;
+                compiler(property, compilerState);
+                return;
+            }
+
+            if (!this.parent) return;
+            const parent = this.parent.get(type);
+            if (!parent) return;
+
+            parent(property, compilerState);
+            if (compilerState.ended) return;
+            compiler(property, compilerState);
+        });
+    }
+
+    prepend(type: CompilerTypes, compiler: TypeConverterCompiler) {
+        const old = this.get(type);
+
+        this.compilers.set(type, (property, compilerState) => {
+            compiler(property, compilerState);
+            if (compilerState.ended) return;
+
+            if (old) {
+                old(property, compilerState);
+                return;
+            }
 
             if (this.parent) {
                 const parent = this.parent.get(type);
-                if (parent) return parent(setter, accessor, property, compilerInfo);
+                if (parent) {
+                    parent(property, compilerState);
+                    return;
+                }
             }
         });
     }
@@ -75,8 +104,8 @@ export class SerializerCompilers {
      * Sets a noop compiler, basically disabling serialization for this type.
      */
     noop(type: CompilerTypes) {
-        this.compilers.set(type, (setter, accessor) => {
-            return `${setter} = ${accessor};`;
+        this.compilers.set(type, (property, state) => {
+            state.addSetter(`${state.accessor}`);
         });
     }
 

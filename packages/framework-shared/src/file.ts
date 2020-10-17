@@ -1,5 +1,5 @@
 import {IdInterface} from './contract';
-import {Entity, t, uuid} from '@deepkit/type';
+import {ClassSchema, Entity, getClassSchema, t, uuid} from '@deepkit/type';
 import {ClassType, eachKey} from '@deepkit/core';
 
 export enum FileMode {
@@ -97,6 +97,8 @@ export class DeepkitFile implements IdInterface {
 }
 
 export class FileType<T extends DeepkitFile> {
+    public readonly classSchema: ClassSchema<T> = getClassSchema(this.classType);
+
     constructor(public readonly classType: ClassType<T>) {}
 
     static forDefault() {

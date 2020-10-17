@@ -1,4 +1,4 @@
-import {MongoConnectionPool} from './connection';
+import {ConnectionRequest, MongoConnection, MongoConnectionPool} from './connection';
 import {parse as parseUrl} from 'url';
 import {parse as parseQueryString} from 'querystring';
 import {ClassSchema, getClassSchema, jsonSerializer} from '@deepkit/type';
@@ -193,7 +193,7 @@ export class MongoClient {
         connectionString: string
     ) {
         this.config = new MongoClientConfig(connectionString);
-        this.connectionPool = new MongoConnectionPool(this.config)
+        this.connectionPool = new MongoConnectionPool(this.config);
     }
 
     public resolveCollectionName(schema: ClassSchema | ClassType): string {
@@ -207,6 +207,13 @@ export class MongoClient {
     public close() {
         this.inCloseProcedure = true;
         this.connectionPool.close();
+    }
+
+    /**
+     * Returns an existing or new connection, that needs to be released once done using it.
+     */
+    getConnection(request: ConnectionRequest = {}): Promise<MongoConnection> {
+        return this.connectionPool.getConnection(request);
     }
 
     public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {

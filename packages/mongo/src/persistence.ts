@@ -1,6 +1,6 @@
-import {DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState, getJitChangeDetector, getJITConverterForSnapshot} from '@deepkit/orm';
-import {ClassSchema, t} from '@deepkit/type';
-import {convertClassQueryToMongo, convertPlainQueryToMongo} from './mapping';
+import {DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState} from '@deepkit/orm';
+import {ClassSchema} from '@deepkit/type';
+import {convertClassQueryToMongo} from './mapping';
 import {ObjectId} from 'mongodb';
 import {FilterQuery} from './query.model';
 import {MongoClient} from './client/client';

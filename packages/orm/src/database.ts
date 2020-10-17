@@ -1,7 +1,7 @@
 import {ClassType} from '@deepkit/core';
 import {GenericQuery} from './query';
 import {getDatabaseSessionHydrator, isHydrated} from './formatter';
-import {ClassSchema, getClassSchema, PrimaryKeyFields, PropertySchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, PrimaryKeyFields} from '@deepkit/type';
 import {DatabaseSession} from './database-session';
 import {isActiveRecordType} from './active-record';
 import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';

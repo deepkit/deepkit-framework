@@ -37,7 +37,7 @@ const items = 10_000;
         console.log('round', j);
         session.identityMap.clear();
         await session.query(User).deleteMany();
-        await bench(1, 'deepkit/type insert', async () => {
+        await bench(1, 'deepkit/orm insert', async () => {
             for (let i = 1; i <= items; i++) {
                 const user = new User(i, 'Peter ' + i);
                 user.ready = true;
@@ -50,7 +50,7 @@ const items = 10_000;
         });
 
         const query = session.query(User).disableIdentityMap();
-        await bench(10, 'deepkit/type find', async () => {
+        await bench(10, 'deepkit/orm find', async () => {
             await query.find();
         });
 
@@ -64,7 +64,7 @@ const items = 10_000;
         // console.log('changed', buildChanges(dbItems[0]));
         // const converterPartial = createPartialXToXFunction(getClassSchema(User), 'class', 'mongo');
         // console.log('changed converted', converterPartial(buildChanges(dbItems[0])));
-        await bench(1, 'deepkit/type update', async () => {
+        await bench(1, 'deepkit/orm update', async () => {
             await session.commit();
         });
     }

@@ -9,13 +9,9 @@ import {FindCommand} from '../src/client/command/find';
 @Entity('user')
 export class User {
     @f.mongoId.primary public _id?: string;
-
     @f ready?: boolean;
-
     @f.array(f.string) tags: string[] = [];
-
     @f priority: number = 0;
-
     constructor(
         @f public id: number,
         @f public name: string

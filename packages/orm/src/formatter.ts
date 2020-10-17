@@ -144,6 +144,12 @@ export class Formatter {
     }
 
     protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
+        if (classSchema.references.size === 0) {
+            if (!this.identityMap) {
+                return model.isPartial() ? this.rootSerializer.partialDeserialize(dbRecord) : this.rootSerializer.deserialize(dbRecord);
+            }
+        }
+
         const pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
         const pool = this.getInstancePoolForClass(classSchema.classType);
 

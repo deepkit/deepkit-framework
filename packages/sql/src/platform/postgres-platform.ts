@@ -1,9 +1,8 @@
 import {DefaultPlatform, isSet} from './default-platform';
 import {postgresSerializer} from '../serializer/postgres-serializer';
 import {Column, Index, Table} from '../schema/table';
-import {ClassSchema, isArray, PropertySchema} from '@deepkit/type';
+import {ClassSchema, isArray, PostgresOptions, PropertySchema} from '@deepkit/type';
 import {parseType} from '../reverse/schema-parser';
-import {PostgresOptions} from '@deepkit/type';
 import {PostgresSchemaParser} from '../reverse/postgres-schema-parser';
 import {PostgreSQLFilterBuilder} from '../postgres/sql-filter-builder';
 import {isPlainObject} from '@deepkit/core';

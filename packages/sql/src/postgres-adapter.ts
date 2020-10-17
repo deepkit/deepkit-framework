@@ -15,6 +15,7 @@ import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
 import {Pool, PoolClient, PoolConfig, types} from 'pg';
 import {asyncOperation, ClassType, empty} from '@deepkit/core';
+import {SqlBuilder} from './sql-builder';
 
 types.setTypeParser(1700, parseFloat);
 types.setTypeParser(20, BigInt);
@@ -71,10 +72,10 @@ export class PostgresConnection extends SQLConnection {
         return new PostgresStatement(sql, this.connection);
     }
 
-    async run(sql: string) {
+    async run(sql: string, params: any[] = []) {
         await asyncOperation(async (resolve, reject) => {
             if (!this.connection) this.connection = await this.getConnection();
-            this.connection.query(sql).then((res) => {
+            this.connection.query(sql, params).then((res) => {
                 this.lastReturningRows = res.rows;
                 this.changes = res.rowCount;
                 resolve(undefined);
@@ -263,6 +264,17 @@ export class PostgresPersistence extends SQLPersistence {
 
         return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')}) VALUES (${values.join('), (')}) ${returning}`;
     }
+
+    protected placeholderPosition: number = 1;
+
+    protected resetPlaceholderSymbol() {
+        this.placeholderPosition = 1;
+    }
+
+    protected getPlaceholderSymbol() {
+        return '$' + this.placeholderPosition++;
+    }
+
 }
 
 export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
@@ -271,7 +283,8 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const pkName = this.classSchema.getPrimaryField().name;
         const pkField = this.platform.quoteIdentifier(pkName);
 
-        const select = this.sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
         const connection = this.connectionPool.getConnection();
@@ -347,7 +360,8 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             }
         }
 
-        const selectSQL = this.sqlBuilder.select(this.classSchema, model, {select});
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
         const sql = `
             WITH _b AS (${selectSQL})
             UPDATE

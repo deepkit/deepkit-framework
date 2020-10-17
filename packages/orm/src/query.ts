@@ -1,4 +1,4 @@
-import {ClassSchema, PropertySchema, PrimaryKeyFields, ExtractPrimaryKeyType, ExtractReferences} from '@deepkit/type';
+import {ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema} from '@deepkit/type';
 import {Subject} from 'rxjs';
 import {ClassType, empty} from '@deepkit/core';
 import {FieldName, FlattenIfArray} from './utils';

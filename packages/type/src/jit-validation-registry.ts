@@ -1,7 +1,7 @@
 import {PropertyCompilerSchema} from './decorators';
 import {reserveVariable} from './serializer-compiler';
 import {JitStack} from './jit';
-import { Types } from './models';
+import {Types} from './models';
 
 export type TypeCheckerCompilerContext = Map<string, any>;
 export type TypeCheckerCompiler = (

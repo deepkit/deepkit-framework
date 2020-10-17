@@ -1,7 +1,7 @@
 import {v4} from 'uuid';
 import {ClassType} from '@deepkit/core';
 import {ClassSchema} from './decorators';
-import { TypedArrays } from './models';
+import {TypedArrays} from './models';
 import {ExtractPrimaryKeyOrReferenceType} from './types';
 
 export function uuid(): string {

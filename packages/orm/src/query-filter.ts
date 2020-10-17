@@ -1,6 +1,6 @@
 import {ClassSchema, getClassSchema, isArray, PropertySchema} from '@deepkit/type';
 import {ClassType, isPlainObject} from '@deepkit/core';
-import { FilterQuery } from './query';
+import {FilterQuery} from './query';
 
 export type Converter = (convertClassType: ClassSchema, path: string, value: any) => any;
 export type QueryFieldNames = { [name: string]: boolean };

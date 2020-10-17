@@ -1,6 +1,6 @@
 import {getClassSchemaByName, jsonSerializer} from '@deepkit/type';
 import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from '../index';
-import {delete as deleteByPath, set, get} from 'dot-prop';
+import {delete as deleteByPath, get, set} from 'dot-prop';
 import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@deepkit/core';
 import {skip} from 'rxjs/operators';
 import {ObjectUnsubscribedError, Subject} from 'rxjs';

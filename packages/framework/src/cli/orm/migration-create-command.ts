@@ -3,7 +3,7 @@ import {dirname, join} from 'path';
 import {format} from 'date-fns';
 import {existsSync, mkdirSync, writeFileSync} from 'fs';
 import {indent} from '@deepkit/core';
-import {cli, flag, Command} from '../../command';
+import {cli, Command, flag} from '../../command';
 import {Logger} from '../../logger';
 import {MigrationProvider} from '../../migration-provider';
 import {Databases} from '../../databases';

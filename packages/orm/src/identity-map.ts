@@ -1,4 +1,4 @@
-import {ClassSchema, getClassSchema, JSONPartial, PartialEntity, jsonSerializer} from '@deepkit/type';
+import {ClassSchema, getClassSchema, JSONPartial, jsonSerializer, PartialEntity} from '@deepkit/type';
 import {Entity} from './type';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator} from './converter';
 import {isObject, toFastProperties} from '@deepkit/core';

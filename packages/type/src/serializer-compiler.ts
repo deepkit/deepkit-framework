@@ -5,19 +5,84 @@ import {SerializerCompilers} from './serializer';
 export type TypeConverterCompilerContext = Map<string, any>;
 export type ReserveVariable = (name?: string) => string;
 
-export type TypeConverterCompiler = (
-    setter: string,
-    accessor: string,
-    property: PropertyCompilerSchema,
-    compiler: {
-        reserveVariable: ReserveVariable,
-        rootContext: TypeConverterCompilerContext,
-        jitStack: JitStack,
-        serializerCompilers: SerializerCompilers
+// export class CompilerResult {
+//     constructor(public readonly template: string = '', public readonly context: { [name: string]: any } = {}) {
+//     }
+//
+//     static from(v: string | void | {
+//         template: string, context: { [name: string]: any }
+//     } | CompilerResult): CompilerResult {
+//         if (!v) return new CompilerResult();
+//         if ('string' === typeof v) return new CompilerResult(v);
+//         if (v instanceof CompilerResult) return v;
+//         return new CompilerResult(v.template, v.context);
+//     }
+// }
+
+export class CompilerState {
+    public template = '';
+
+    public ended = false;
+    public setter = '';
+    public accessor = '';
+
+    constructor(
+        public originalSetter: string,
+        public originalAccessor: string,
+        public readonly rootContext: TypeConverterCompilerContext,
+        public readonly jitStack: JitStack,
+        public readonly serializerCompilers: SerializerCompilers,
+    ) {
+        this.setter = originalSetter;
+        this.accessor = originalAccessor;
     }
-) => string | void | {
-    template: string, context: { [name: string]: any }
-};
+
+    /**
+     * Adds template code for setting the `this.setter` variable. The expression evaluated in `code` is assigned to `this.setter`.
+     * `this.accessor` will point now to `this.setter`.
+     */
+    addSetter(code: string) {
+        this.template += `\n${this.setter} = ${code};`;
+        this.accessor = this.setter;
+    }
+
+    forceEnd() {
+        this.ended = true;
+    }
+
+    public setVariable(name?: string, value?: any): string {
+        name = reserveVariable(this.rootContext, name);
+        if (value !== undefined) {
+            this.rootContext.set(name, value);
+        }
+        return name;
+    }
+
+    setContext(values: {[name: string]: any}) {
+        for (const i in values) {
+            if (!values.hasOwnProperty(i)) continue;
+            this.rootContext.set(i, values[i]);
+        }
+    }
+
+    /**
+     * Adds template code for setting the `this.setter` variable manually, so use `${this.setter} = value`.
+     * `this.accessor` will point now to `this.setter`.
+     */
+    addCodeForSetter(code: string) {
+        this.template += '\n' + code;
+        this.accessor = this.setter;
+    }
+
+    hasSetterCode(): boolean {
+        return !!this.template;
+    }
+}
+
+export type TypeConverterCompiler = (
+    property: PropertyCompilerSchema,
+    compiler: CompilerState
+) => void;
 
 export function reserveVariable(
     rootContext: TypeConverterCompilerContext,
@@ -42,25 +107,9 @@ export function executeCompiler(
     property: PropertyCompilerSchema,
     serializerCompilers: SerializerCompilers
 ): string {
-    let template = '';
-
-    const res = compiler(setter, getter, property, {
-        reserveVariable: (name?: string) => reserveVariable(rootContext, name),
-        rootContext,
-        jitStack,
-        serializerCompilers,
-    });
-    if ('string' === typeof res) {
-        template += res;
-    } else if (res) {
-        for (const i in res.context) {
-            if (!res.context.hasOwnProperty(i)) continue;
-            rootContext.set(i, res.context[i]);
-        }
-        template += res.template;
-    }
-
-    return template;
+    const state = new CompilerState(setter, getter, rootContext, jitStack, serializerCompilers);
+    compiler(property, state);
+    return state.template;
 }
 
 export function getDataConverterJS(

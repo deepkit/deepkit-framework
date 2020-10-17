@@ -52,7 +52,7 @@ export abstract class SQLConnection {
     /**
      * Runs a single SQL query.
      */
-    abstract run(sql: string): Promise<any>;
+    abstract run(sql: string, params?: any[]): Promise<any>;
 
     abstract getChanges(): Promise<number>;
 
@@ -123,7 +123,6 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     protected tableId = this.platform.getTableIdentifier.bind(this.platform);
     protected quoteIdentifier = this.platform.quoteIdentifier.bind(this.platform);
     protected quote = this.platform.quoteValue.bind(this.platform);
-    protected sqlBuilder = new SqlBuilder(this.platform);
 
     constructor(
         protected connectionPool: SQLConnectionPool,
@@ -148,7 +147,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 
     async count(model: SQLQueryModel<T>): Promise<number> {
-        const sql = this.sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
         const connection = this.connectionPool.getConnection();
         try {
             const row = await connection.execAndReturnSingle(sql);
@@ -161,7 +161,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
 
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
-        const sql = this.sqlBuilder.build(this.classSchema, model, 'DELETE');
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
         const connection = this.connectionPool.getConnection();
         try {
             await connection.run(sql);
@@ -173,29 +174,41 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
-        const sql = this.sqlBuilder.select(this.classSchema, model);
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const sql = sqlBuilder.select(this.classSchema, model);
         const connection = this.connectionPool.getConnection();
         try {
             const rows = await connection.execAndReturnAll(sql);
-            const converted = this.sqlBuilder.convertRows(this.classSchema, model, rows);
             const formatter = this.createFormatter(model.withIdentityMap);
-            return converted.map(v => formatter.hydrate(model, v));
+            const results: T[] = [];
+            if (model.hasJoins()) {
+                const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
+                for (const row of converted) results.push(formatter.hydrate(model, row));
+            } else {
+                for (const row of rows) results.push(formatter.hydrate(model, row));
+            }
+            return results;
         } finally {
             connection.release();
         }
     }
 
     async findOneOrUndefined(model: SQLQueryModel<T>): Promise<T | undefined> {
-        const sql = this.sqlBuilder.select(this.classSchema, model);
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const sql = sqlBuilder.select(this.classSchema, model);
 
         const connection = this.connectionPool.getConnection();
         try {
             const row = await connection.execAndReturnSingle(sql);
             if (!row) return;
 
-            const converted = this.sqlBuilder.convertRows(this.classSchema, model, [row]);
             const formatter = this.createFormatter(model.withIdentityMap);
-            return formatter.hydrate(model, converted[0]);
+            if (model.hasJoins()) {
+                const [converted] = sqlBuilder.convertRows(this.classSchema, model, [row]);
+                return formatter.hydrate(model, converted);
+            } else {
+                return formatter.hydrate(model, row);
+            }
         } finally {
             connection.release();
         }
@@ -208,7 +221,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         //this is the default SQL implementation that does not support RETURNING functionality (e.g. returning values from changes.$inc)
         const set = buildSetFromChanges(this.platform, this.classSchema, changes);
-        const sql = this.sqlBuilder.update(this.classSchema, model, set);
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const sql = sqlBuilder.update(this.classSchema, model, set);
         const connection = this.connectionPool.getConnection();
         try {
             await connection.run(sql);
@@ -381,18 +395,30 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
-        const quoteValue = this.platform.quoteValue.bind(this.platform);
         const scopeSerializer = this.platform.serializer.for(classSchema);
         const fields = this.platform.getEntityFields(classSchema).filter(v => !v.isAutoIncrement).map(v => v.name);
         const insert: string[] = [];
+        const params: any[] = [];
+        this.resetPlaceholderSymbol();
 
         for (const item of items) {
             const converted = scopeSerializer.serialize(item);
-            insert.push(fields.map(v => quoteValue(converted[v])).join(', '));
+
+            insert.push(fields.map(v => {
+                params.push(converted[v]);
+                return this.getPlaceholderSymbol();
+            }).join(', '));
         }
 
         const sql = this.getInsertSQL(classSchema, fields.map(v => this.platform.quoteIdentifier(v)), insert);
-        await this.connection.run(sql);
+        await this.connection.run(sql, params);
+    }
+
+    protected resetPlaceholderSymbol() {
+    }
+
+    protected getPlaceholderSymbol() {
+        return '?';
     }
 
     protected getInsertSQL(classSchema: ClassSchema, fields: string[], values: string[]): string {

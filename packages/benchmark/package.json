@@ -30,9 +30,10 @@
     "ajv": "^6.12.4",
     "quartet": "^10.1.0",
     "fast-glob": "^3.2.4",
-    "mikro-orm": "^4.0.7",
-    "@mikro-orm/mongodb": "^4.0.7",
-    "@mikro-orm/sqlite": "^4.0.7",
+    "mikro-orm": "^4.1.0",
+    "@mikro-orm/mongodb": "^4.1.0",
+    "@mikro-orm/sqlite": "^4.1.0",
+    "@mikro-orm/mysql": "^4.1.0",
     "sqlite3": "^5.0.0",
     "typeorm": "^0.2.26",
     "ts-node": "^8.10.2"

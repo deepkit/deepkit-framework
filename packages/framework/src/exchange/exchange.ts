@@ -216,7 +216,7 @@ export class Exchange {
         return this.subscribe(channelName, cb);
     }
 
-    public subscribeFile<T>(fileId: string, cb: Callback<StreamFileResult>): Subscription {
+    public subscribeFile<T>(fileId: string | number, cb: Callback<StreamFileResult>): Subscription {
         const channelName = 'deepkit/file/' + fileId;
         return this.subscribe(channelName, cb);
     }

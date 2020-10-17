@@ -2,7 +2,7 @@ import {applyDefaults, ClassType} from '@deepkit/core';
 import {WebWorker} from './worker';
 import {BaseModule} from './base.module';
 import {ProviderWithScope, ServiceContainer} from './service-container';
-import {DynamicModule, deepkit, ModuleOptions} from './decorator';
+import {deepkit, DynamicModule, ModuleOptions} from './decorator';
 import {Command, Config, Options} from '@oclif/config';
 import {basename, relative} from 'path';
 import {Main} from '@oclif/command';

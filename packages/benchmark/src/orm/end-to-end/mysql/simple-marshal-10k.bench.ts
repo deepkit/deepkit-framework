@@ -6,7 +6,7 @@ import {MySQLDatabaseAdapter} from '@deepkit/sql';
 
 @Entity('deepkit')
 export class DeepkitModel {
-    @t.primary.autoIncrement public id?: number;
+    @t.primary public id?: number;
 
     @t ready?: boolean;
 
@@ -35,6 +35,7 @@ export async function main() {
         await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {
                 const user = new DeepkitModel('Peter ' + i);
+                user.id = i;
                 user.ready = true;
                 user.priority = 5;
                 // user.tags = ['a', 'b', 'c'];

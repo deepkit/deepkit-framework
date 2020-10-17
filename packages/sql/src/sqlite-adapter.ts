@@ -15,6 +15,7 @@ import {SQLitePlatform} from './platform/sqlite-platform';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {ClassType, empty} from '@deepkit/core';
 import {DefaultPlatform} from './platform/default-platform';
+import {SqlBuilder} from './sql-builder';
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected stmt: sqlite3.Statement) {
@@ -45,8 +46,9 @@ export class SQLiteConnection extends SQLConnection {
         return new SQLiteStatement(this.db.prepare(sql));
     }
 
-    async run(sql: string) {
-        const result = this.db.prepare(sql).run();
+    async run(sql: string, params: any[] = []) {
+        const stmt = this.db.prepare(sql);
+        const result = stmt.run(...params);
         this.changes = result.changes;
     }
 
@@ -241,7 +243,8 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         // if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const pkName = this.classSchema.getPrimaryField().name;
         const pkField = this.platform.quoteIdentifier(this.classSchema.getPrimaryField().name);
-        const select = this.sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
 
         const connection = this.connectionPool.getConnection();
         try {
@@ -289,7 +292,8 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
         }
 
-        const selectSQL = this.sqlBuilder.select(this.classSchema, model, {select});
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
 
         const sql = `
               UPDATE 

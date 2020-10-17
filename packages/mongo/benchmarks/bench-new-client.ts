@@ -5,6 +5,8 @@ import {IsMasterCommand} from '../src/client/command/ismaster';
 import {FindCommand} from '../src/client/command/find';
 import {EmptyCommand} from '../src/client/command/empty';
 import {Entity, f} from '@deepkit/type';
+import {DeleteCommand} from '../src/client/command/delete';
+import {InsertCommand} from '../src/client/command/insert';
 
 @Entity('user')
 export class User {
@@ -20,6 +22,15 @@ export class User {
 }
 
 async function main() {
+    const items: User[] = [];
+    const count = 10_000;
+    for (let i = 1; i <= count; i++) {
+        const user = new User(i, 'Peter ' + i);
+        user.ready = true;
+        user.priority = 5;
+        user.tags = ['a', 'b', 'c'];
+        items.push(user);
+    }
 
     const mongoClient = await OriMongoClient.connect(`mongodb://127.0.0.1/benchmark-a`, {
         useUnifiedTopology: true,
@@ -31,17 +42,31 @@ async function main() {
     const client = new MongoClient('mongodb://127.0.0.1/benchmark-a');
     await client.connect();
 
+    await collection.deleteMany({});
+    await bench(1, 'native mongodb insert 10k', async () => {
+        await collection.insertMany(items);
+    });
+
+    for (const item of items) {
+        item._id = undefined;
+    }
+
+    await client.execute(new DeleteCommand(User, {}));
+    await bench(1, 'new client: insert 10k', async () => {
+        await client.execute(new InsertCommand(User, items));
+    });
+
     await bench(2000, 'reference', async () => {
         await new Promise((resolve) => {
             resolve();
         });
     });
 
-    await bench(10_000, 'EmptyCommand', async () => {
+    await bench(10_000, 'new client: EmptyCommand', async () => {
         const response = await client.execute(new EmptyCommand);
     });
 
-    await bench(10_000, 'IsMasterCommand', async () => {
+    await bench(10_000, 'new client: IsMasterCommand', async () => {
         const response = await client.execute(new IsMasterCommand);
     });
 
@@ -49,7 +74,7 @@ async function main() {
         const item = await collection.find({}).limit(1).toArray();
     });
 
-    await bench(10_000, 'FindCommand 1', async () => {
+    await bench(10_000, 'new client: FindCommand 1', async () => {
         const cmd = new FindCommand(User);
         cmd.limit = 1;
         const response = await client.execute(cmd);
@@ -59,7 +84,7 @@ async function main() {
         const item = await collection.find({}).limit(10).toArray();
     });
 
-    await bench(10_000, 'FindCommand 10', async () => {
+    await bench(10_000, 'new client: FindCommand 10', async () => {
         const cmd = new FindCommand(User);
         cmd.limit = 10;
         const response = await client.execute(cmd);
@@ -77,7 +102,7 @@ async function main() {
         const items = await client.execute(new FindCommand(User));
         if (items.length !== 10000) throw new Error(`Invalid, got ${items.length}`);
     }
-    await bench(100, 'FindCommand 10k', async () => {
+    await bench(100, 'new client: FindCommand 10k', async () => {
         const response = await client.execute(new FindCommand(User));
     });
 

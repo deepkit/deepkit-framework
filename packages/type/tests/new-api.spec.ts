@@ -1,6 +1,6 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, PropertyCompilerSchema, t} from '../src/decorators';
+import {getClassSchema, t} from '../src/decorators';
 import {
     emptySerializer,
     getClassToXFunction,
@@ -75,12 +75,12 @@ test('different origin', async () => {
     const mySerializer = new class extends emptySerializer.fork('myFormat') {
     };
 
-    mySerializer.fromClass.register('date', (setter, accessor) => {
-        return `${setter} = 'my:' + ${accessor}.toJSON();`;
+    mySerializer.fromClass.register('date', (property, state) => {
+        state.addSetter(`'my:' + ${state.accessor}.toJSON()`);
     });
 
-    mySerializer.toClass.register('date', (setter, accessor) => {
-        return `${setter} = new Date(${accessor}.substr('my:'.length));`;
+    mySerializer.toClass.register('date', (property, state) => {
+        state.addSetter(`new Date(${state.accessor}.substr('my:'.length))`);
     });
 
     {
@@ -115,12 +115,12 @@ test('custom serialization formats', async () => {
         serializedType: any;
     };
 
-    mySerializer.fromClass.register('string', (setter, accessor) => {
-        return {template: `${setter} = 'string:' + ${accessor}`, context: {}};
+    mySerializer.fromClass.register('string', (property, state) => {
+        state.addSetter(`'string:' + ${state.accessor}`);
     });
 
-    mySerializer.toClass.register('string', (setter, accessor) => {
-        return {template: `${setter} = (''+${accessor}).substr(${'string'.length + 1})`, context: {}};
+    mySerializer.toClass.register('string', (property, state) => {
+        state.addSetter(`(''+${state.accessor}).substr(${'string'.length + 1})`);
     });
     const scopedSerializer = mySerializer.for(Test);
 
@@ -163,20 +163,20 @@ test('custom serialization formats', async () => {
 test('multi level extend', async () => {
     const base = new JSONSerializer();
     let baseCalled = 0;
-    base.fromClass.register('number', (setter, accessor) => {
+    base.fromClass.register('number', (property, state) => {
         baseCalled++;
-        return `${setter} = ${accessor}`;
+        state.addSetter(`${state.accessor}`);
     });
 
     const middle = new (base.fork('middle'));
     let middleCalled = 0;
 
-    middle.fromClass.extend('number', (setter, accessor, property) => {
+    middle.fromClass.prepend('number', (property, state) => {
         middleCalled++;
         if (property.name === 'id') {
-            return `${setter} = 100;`;
+            state.addSetter(`100`);
+            state.forceEnd();
         }
-        return;
     });
 
     const end = new (middle.fork('end'));
@@ -200,23 +200,16 @@ test('multi level extend', async () => {
 test('inheritance', () => {
     const baseSerializer = new Serializer('base');
 
-    baseSerializer.fromClass.register('date', (setter, accessor, property, compiler) => {
+    baseSerializer.fromClass.register('date', (property, state) => {
         // expect(compiler.serializerCompilers).toBe(noDateSerializer.fromClass);
-        return `${setter} = ${accessor}.toJSON();`;
+        state.addSetter(`${state.accessor}.toJSON()`);
     });
 
-    baseSerializer.fromClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
-        const classSchemaVar = reserveVariable('classSchema');
+    baseSerializer.fromClass.register('class', (property, state) => {
         const classSchema = getClassSchema(property.resolveClassType!);
-        const classToX = reserveVariable('classToX');
+        const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
 
-        return {
-            template: `${setter} = ${classToX}.fn(${accessor}, _options);`,
-            context: {
-                [classSchemaVar]: classSchema,
-                [classToX]: jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, serializerCompilers.serializer, jitStack))
-            }
-        };
+        state.addSetter(`${classToX}.fn(${state.accessor}, _options);`);
     });
 
     const noDateSerializer = new (baseSerializer.fork('noDate'));

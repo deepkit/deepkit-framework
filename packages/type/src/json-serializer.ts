@@ -2,7 +2,7 @@ import {getClassSchema, PropertyCompilerSchema} from './decorators';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction} from './jit';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
-import {getDataConverterJS} from './serializer-compiler';
+import {CompilerState, getDataConverterJS} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';
 import {moment} from './moment';
@@ -16,184 +16,146 @@ export class JSONSerializer extends Serializer {
 
 export const jsonSerializer = new JSONSerializer();
 
-export function compilerToString(setter: string, accessor: string, property: PropertyCompilerSchema) {
-    return `${setter} = typeof ${accessor} === 'string' ? ${accessor} : ''+${accessor};`;
+export function compilerToString(property: PropertyCompilerSchema, state: CompilerState) {
+    state.addSetter(`typeof ${state.accessor} === 'string' ? ${state.accessor} : ''+${state.accessor};`);
 }
 
 jsonSerializer.toClass.register('string', compilerToString);
 
-export function compilerToNumber(setter: string, accessor: string, property: PropertyCompilerSchema) {
-    return `${setter} = typeof ${accessor} === 'number' ? ${accessor} : +${accessor};`;
+export function compilerToNumber(property: PropertyCompilerSchema, state: CompilerState) {
+    state.addSetter(`typeof ${state.accessor} === 'number' ? ${state.accessor} : +${state.accessor};`);
 }
 
 jsonSerializer.toClass.register('number', compilerToNumber);
 jsonSerializer.fromClass.register('number', compilerToNumber);
 
-jsonSerializer.toClass.register('literal', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    const literalValue = '_literal_value_' + property.name;
-
-    return {
-        template: `${setter} = ${literalValue};`,
-        context: {[literalValue]: property.literalValue}
-    };
+jsonSerializer.toClass.register('literal', (property: PropertyCompilerSchema, state: CompilerState) => {
+    const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
+    state.addSetter(literalValue);
 });
 
-jsonSerializer.toClass.extend('undefined', (setter: string, accessor: string, property: PropertyCompilerSchema, compiler) => {
+jsonSerializer.toClass.prepend('undefined', (property, state: CompilerState) => {
     if (property.type === 'literal' && !property.isOptional) {
-        const literalValue = '_literal_value_' + property.name;
-        return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
+        const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
+        state.addSetter(literalValue);
     }
     return;
 });
 
-jsonSerializer.toClass.extend('null', (setter: string, accessor: string, property: PropertyCompilerSchema, compiler) => {
+jsonSerializer.toClass.prepend('null', (property: PropertyCompilerSchema, state: CompilerState) => {
     if (property.type === 'literal' && !property.isNullable) {
-        const literalValue = '_literal_value_' + property.name;
-        return {template: `${setter} = ${literalValue};`, context: {[literalValue]: property.literalValue}};
+        const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
+        state.addSetter(literalValue);
     }
-    return;
 });
 
-jsonSerializer.toClass.register('date', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `${setter} = new Date(${accessor});`;
+jsonSerializer.toClass.register('date', (property: PropertyCompilerSchema, state: CompilerState) => {
+    state.addSetter(`new Date(${state.accessor});`);
 });
 
-jsonSerializer.toClass.register('moment', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return {
-        template: `${setter} = moment(${accessor});`,
-        context: {moment}
-    };
+jsonSerializer.toClass.register('moment', (property: PropertyCompilerSchema, state: CompilerState) => {
+    state.setContext({moment});
+    state.addSetter(`moment(${state.accessor});`);
 });
 
-jsonSerializer.toClass.register('boolean', (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `
-    if ('boolean' === typeof ${accessor}) {
-        ${setter} = ${accessor};
+jsonSerializer.toClass.register('boolean', (property: PropertyCompilerSchema, state: CompilerState) => {
+    state.addCodeForSetter(`
+    if ('boolean' === typeof ${state.accessor}) {
+        ${state.setter} = ${state.accessor};
     } else {
-        if ('true' === ${accessor} || '1' === ${accessor} || 1 === ${accessor}) ${setter} = true;
-        if ('false' === ${accessor} || '0' === ${accessor} || 0 === ${accessor}) ${setter} = false;
+        if ('true' === ${state.accessor} || '1' === ${state.accessor} || 1 === ${state.accessor}) ${state.setter} = true;
+        if ('false' === ${state.accessor} || '0' === ${state.accessor} || 0 === ${state.accessor}) ${state.setter} = false;
     }
-    `;
+    `);
 });
 
-jsonSerializer.toClass.register('enum', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable}) => {
+jsonSerializer.toClass.register('enum', (property: PropertyCompilerSchema, state: CompilerState) => {
     //this a candidate where we can extract ENUM information during build time and check very fast during
     //runtime, so we don't need a call to getResolvedClassTypeForValidType(), isValidEnumValue(), etc in runtime anymore.
     const allowLabelsAsValue = property.allowLabelsAsValue;
-    const typeValue = reserveVariable();
-    return {
-        template: `
+    const typeValue = state.setVariable('typeValue', property.resolveClassType);
+
+    state.setContext({
+        isValidEnumValue,
+        getEnumValues,
+        getEnumLabels,
+        getValidEnumValue
+    });
+
+    state.addCodeForSetter(`
         var typeValue = ${typeValue};
-        if (undefined !== ${accessor} && !isValidEnumValue(typeValue, ${accessor}, ${allowLabelsAsValue})) {
+        if (undefined !== ${state.accessor} && !isValidEnumValue(typeValue, ${state.accessor}, ${allowLabelsAsValue})) {
             const valids = getEnumValues(typeValue);
             if (${allowLabelsAsValue}) {
                 for (const label of getEnumLabels(typeValue)) {
                     valids.push(label);
                 }
             }
-            throw new Error('Invalid ENUM given in property ${property.name}: ' + ${accessor} + ', valid: ' + valids.join(','));
+            throw new Error('Invalid ENUM given in property ${property.name}: ' + ${state.accessor} + ', valid: ' + valids.join(','));
         }
-        ${setter} = getValidEnumValue(typeValue, ${accessor}, ${allowLabelsAsValue});
-    `,
-        context: {
-            [typeValue]: property.resolveClassType,
-            isValidEnumValue: isValidEnumValue,
-            getEnumValues: getEnumValues,
-            getEnumLabels: getEnumLabels,
-            getValidEnumValue: getValidEnumValue
-        }
-    };
+        ${state.setter} = getValidEnumValue(typeValue, ${state.accessor}, ${allowLabelsAsValue});
+    `);
 });
 
-jsonSerializer.toClass.registerForBinary((setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return {
-        template: `${setter} = base64ToTypedArray(${accessor}, typedArrayNamesMap.get('${property.type}'));`,
-        context: {
-            base64ToTypedArray,
-            typedArrayNamesMap
-        }
-    };
+jsonSerializer.toClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
+    state.setContext({base64ToTypedArray, typedArrayNamesMap});
+    state.addSetter(`base64ToTypedArray(${state.accessor}, typedArrayNamesMap.get('${property.type}'))`);
 });
 
-jsonSerializer.toClass.register('arrayBuffer', (setter, getter) => {
-    return {
-        template: `${setter} = base64ToArrayBuffer(${getter});`,
-        context: {base64ToArrayBuffer}
-    };
+jsonSerializer.toClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+    state.setContext({base64ToArrayBuffer});
+    state.addSetter(`base64ToArrayBuffer(${state.accessor})`);
 });
 
-jsonSerializer.fromClass.registerForBinary((setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return {
-        template: `${setter} = typedArrayToBase64(${accessor});`,
-        context: {
-            typedArrayToBase64
-        }
-    };
+jsonSerializer.fromClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
+    state.setContext({typedArrayToBase64});
+    state.addSetter(`typedArrayToBase64(${state.accessor});`);
 });
 
-jsonSerializer.fromClass.register('arrayBuffer', (setter: string, getter: string) => {
-    return {
-        template: `${setter} = arrayBufferToBase64(${getter});`,
-        context: {arrayBufferToBase64}
-    };
+jsonSerializer.fromClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+    state.setContext({arrayBufferToBase64});
+    state.addSetter(`arrayBufferToBase64(${state.accessor})`);
 });
 
-const convertToPlainUsingToJson = (setter: string, accessor: string, property: PropertyCompilerSchema) => {
-    return `${setter} = ${accessor}.toJSON();`;
+const convertToPlainUsingToJson = (property: PropertyCompilerSchema, state: CompilerState) => {
+    state.addSetter(`${state.accessor}.toJSON();`);
 };
 
 jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
 jsonSerializer.fromClass.register('moment', convertToPlainUsingToJson);
 
-jsonSerializer.fromClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
-    const classSchemaVar = reserveVariable('classSchema');
+jsonSerializer.fromClass.register('class', (property: PropertyCompilerSchema, state: CompilerState) => {
     const classSchema = getClassSchema(property.resolveClassType!);
-    const classToX = reserveVariable('classToX');
+    const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
 
-    return {
-        template: `${setter} = ${classToX}.fn(${accessor}, _options);`,
-        context: {
-            [classSchemaVar]: classSchema,
-            [classToX]: jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, serializerCompilers.serializer, jitStack))
-        }
-    };
+    state.addSetter(`${classToX}.fn(${state.accessor}, _options)`);
 });
 
-jsonSerializer.toClass.register('class', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, serializerCompilers, jitStack}) => {
-    const classSchemaVar = reserveVariable('classSchema');
+jsonSerializer.toClass.register('class', (property: PropertyCompilerSchema, state) => {
     const classSchema = getClassSchema(property.resolveClassType!);
-    const xToClass = reserveVariable('xToClass');
-    const context = {
-        [classSchemaVar]: classSchema,
-        [xToClass]: jitStack.getOrCreate(classSchema, () => getXToClassFunction(classSchema, serializerCompilers.serializer, jitStack))
-    };
+    const xToClass = state.setVariable('xToClass', state.jitStack.getOrCreate(classSchema, () => getXToClassFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
 
     const foreignSchema = getClassSchema(property.resolveClassType!);
     if (foreignSchema.decorator) {
         //the actual type checking happens within getXToClassFunction()'s constructor param
         //so we dont check here for object.
-
-        return {
-            template: `${setter} = ${xToClass}.fn(${accessor}, _options, getParents(), _state);`,
-            context
-        };
+        state.addSetter(`${xToClass}.fn(${state.accessor}, _options, getParents(), _state)`);
+        return;
     }
 
-    return {
-        template: `
-            //object and not an array
-            if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                ${setter} = ${xToClass}.fn(${accessor}, _options, getParents(), _state);
-            } else if (${!property.isReference} && 'string' === typeof ${accessor}) {
-                try {
-                    ${setter} = ${xToClass}.fn(JSON.parse(${accessor}), _options, getParents(), _state);
-                } catch (e) {}
-            }
-        `, context
-    };
+    state.addCodeForSetter(`
+        //object and not an array
+        if ('object' === typeof ${state.accessor} && 'function' !== typeof ${state.accessor}.slice) {
+            ${state.setter} = ${xToClass}.fn(${state.accessor}, _options, getParents(), _state);
+        } else if (${!property.isReference} && 'string' === typeof ${state.accessor}) {
+            try {
+                ${state.setter} = ${xToClass}.fn(JSON.parse(${state.accessor}), _options, getParents(), _state);
+            } catch (e) {}
+        }
+    `);
 });
 
-jsonSerializer.toClass.register('union', (setter: string, accessor: string, property: PropertyCompilerSchema, {reserveVariable, rootContext, jitStack, serializerCompilers}) => {
+jsonSerializer.toClass.register('union', (property: PropertyCompilerSchema, state) => {
 
     let discriminator: string[] = [`if (false) { }`];
     const discriminants: string[] = [];
@@ -202,56 +164,43 @@ jsonSerializer.toClass.register('union', (setter: string, accessor: string, prop
     if (property.isOptional) {
         elseBranch = '';
     } else if (property.isNullable) {
-        elseBranch = `${setter} = null;`;
+        elseBranch = `${state.setter} = null;`;
     } else if (property.hasManualDefaultValue()) {
-        const defaultVar = reserveVariable();
-        rootContext.set(defaultVar, property.defaultValue);
-        elseBranch = `${setter} = ${defaultVar};`;
+        const defaultVar = state.setVariable('default', property.defaultValue);
+        elseBranch = `${state.setter} = ${defaultVar};`;
     }
 
     for (const unionType of getSortedUnionTypes(property)) {
-        const guardVar = reserveVariable('guard_' + unionType.property.type);
-        rootContext.set(guardVar, unionType.guard);
-
+        const guardVar = state.setVariable('guard_' + unionType.property.type, unionType.guard);
         discriminants.push(unionType.property.type);
 
         discriminator.push(`
                 //guard:${unionType.property.type}
-                else if (${guardVar}(${accessor})) {
-                    ${getDataConverterJS(setter, accessor, unionType.property, serializerCompilers, rootContext, jitStack)}
+                else if (${guardVar}(${state.accessor})) {
+                    ${getDataConverterJS(state.setter, state.accessor, unionType.property, state.serializerCompilers, state.rootContext, state.jitStack)}
                 }
             `);
     }
 
-    return `
-            ${discriminator.join('\n')}
-            else {
-                ${elseBranch}
-                
-            }
-        `;
+    state.addCodeForSetter(`
+        ${discriminator.join('\n')}
+        else {
+            ${elseBranch}
+            
+        }
+    `);
 });
 
-jsonSerializer.toClass.register('partial', (setter, accessor, property, compiler) => {
-    const partialXToClass = compiler.reserveVariable('partialXToClass');
+jsonSerializer.toClass.register('partial', (property, state) => {
     const classSchema = getClassSchema(property.getSubType().resolveClassType!);
+    const partialXToClass = state.setVariable('partialXToClass', state.jitStack.getOrCreate(classSchema, () => getPartialXToClassFunction(classSchema, state.serializerCompilers.serializer)));
 
-    return {
-        template: `${setter} = ${partialXToClass}.fn(${accessor}, _options, getParents(), _state);`,
-        context: {
-            [partialXToClass]: compiler.jitStack.getOrCreate(classSchema, () => getPartialXToClassFunction(classSchema, compiler.serializerCompilers.serializer))
-        }
-    };
+    state.addSetter(`${partialXToClass}.fn(${state.accessor}, _options, getParents(), _state);`);
 });
 
-jsonSerializer.fromClass.register('partial', (setter, accessor, property, compiler) => {
-    const partialClassToX = compiler.reserveVariable('partialClassToX');
+jsonSerializer.fromClass.register('partial', (property, state) => {
     const classSchema = getClassSchema(property.getSubType().resolveClassType!);
+    const partialClassToX = state.setVariable('partialClassToX', state.jitStack.getOrCreate(classSchema, () => getPartialClassToXFunction(classSchema, state.serializerCompilers.serializer)));
 
-    return {
-        template: `${setter} = ${partialClassToX}.fn(${accessor}, _options);`,
-        context: {
-            [partialClassToX]: compiler.jitStack.getOrCreate(classSchema, () => getPartialClassToXFunction(classSchema, compiler.serializerCompilers.serializer))
-        }
-    };
+    state.addSetter(`${partialClassToX}.fn(${state.accessor}, _options)`);
 });

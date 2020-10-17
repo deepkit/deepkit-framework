@@ -15,6 +15,7 @@ import {MySQLPlatform} from './platform/mysql-platform';
 import {ClassSchema, getClassSchema, isArray} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
 import {asyncOperation, ClassType, empty} from '@deepkit/core';
+import {SqlBuilder} from './sql-builder';
 
 export class MySQLStatement extends SQLStatement {
     constructor(protected sql: string, protected connection: PoolConnection) {
@@ -67,10 +68,10 @@ export class MySQLConnection extends SQLConnection {
         return new MySQLStatement(sql, this.connection);
     }
 
-    async run(sql: string) {
+    async run(sql: string, params: any[] = []) {
         if (!this.connection) this.connection = await this.getConnection();
         //batch returns in reality a single UpsertResult if only one query is given
-        const res = (await this.connection.query(sql, [])) as UpsertResult[] | UpsertResult;
+        const res = (await this.connection.query(sql, params)) as UpsertResult[] | UpsertResult;
         if (isArray(res)) this.lastExecResult = res;
         else this.lastExecResult = [res];
     }
@@ -271,7 +272,8 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const pkName = this.classSchema.getPrimaryField().name;
         const pkField = this.platform.quoteIdentifier(pkName);
 
-        const select = this.sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
         const connection = this.connectionPool.getConnection();
@@ -336,7 +338,8 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             `;
         const selectVarsSQL = `SELECT ${selectVars.join(', ')};`;
 
-        const selectSQL = this.sqlBuilder.select(this.classSchema, model, {select});
+        const sqlBuilder = new SqlBuilder(this.platform);
+        const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
         const sql = `
             WITH _tmp AS (${selectSQL})
             UPDATE
