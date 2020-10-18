@@ -325,32 +325,31 @@ class LiveCollection<T extends IdInterface> {
         let pagingHash = '';
         let parametersHash = '';
 
-        //when database is changed during entityFeed events, we don't check that stuff
-        if (databaseChanged) {
-            pagingHash = this.collection.pagination.getPagingHash();
-            parametersHash = this.collection.pagination.getParametersHash();
-        } else {
-            const newPagingHash = this.collection.pagination.getPagingHash();
-            const newParametersHash = this.collection.pagination.getParametersHash();
-            let needUpdate = false;
-
-            if (pagingHash !== newPagingHash) {
-                pagingHash = newPagingHash;
-                needUpdate = true;
-            }
-
-            if (parametersHash !== newParametersHash) {
-                parametersHash = newParametersHash;
-                // if (reactiveQuery.haveParametersChanged()) {
-                //     needUpdate = true;
-                // }
-            }
-
-            if (!needUpdate) {
-                console.log('updateCollection needUpdate=false', newPagingHash, newParametersHash);
-                return;
-            }
-        }
+        // //when database is changed during entityFeed events, we don't check that stuff
+        // if (databaseChanged) {
+        //     pagingHash = this.collection.pagination.getPagingHash();
+        //     parametersHash = this.collection.pagination.getParametersHash();
+        // } else {
+        //     const newPagingHash = this.collection.pagination.getPagingHash();
+        //     const newParametersHash = this.collection.pagination.getParametersHash();
+        //     let needUpdate = false;
+        //
+        //     if (pagingHash !== newPagingHash) {
+        //         pagingHash = newPagingHash;
+        //         needUpdate = true;
+        //     }
+        //
+        //     if (parametersHash !== newParametersHash) {
+        //         parametersHash = newParametersHash;
+        //         // if (reactiveQuery.haveParametersChanged()) {
+        //         //     needUpdate = true;
+        //         // }
+        //     }
+        //
+        //     if (!needUpdate) {
+        //         return;
+        //     }
+        // }
 
         //- query the database and put all items in our list
         const query = this.database.query(this.classSchema);

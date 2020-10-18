@@ -116,7 +116,7 @@ export class Exchange {
         }
 
         if (m.type === 'publish') {
-            const [channelName, ttl] = m.arg;
+            const [channelName] = m.arg;
 
             if (this.subscriptions[channelName]) {
                 let decodedJson: any;

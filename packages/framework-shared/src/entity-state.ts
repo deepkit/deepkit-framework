@@ -199,7 +199,7 @@ export class EntityState {
                     }
 
                     if (stream.patch.$unset) {
-                        for (const [path, value] of eachPair(stream.patch.$unset)) {
+                        for (const [path] of eachPair(stream.patch.$unset)) {
                             deleteByPath(item, path);
                         }
                     }
@@ -211,7 +211,7 @@ export class EntityState {
                         }
                     }
 
-                    // item.version = toVersion;
+                    item.version = toVersion;
 
                     try {
                         store.notifyForksAboutPatches(stream.id, patches);
