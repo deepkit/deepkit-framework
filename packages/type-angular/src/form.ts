@@ -1,3 +1,7 @@
+import {AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn} from '@angular/forms';
+import {ClassType} from '@deepkit/core';
+import {Subscription} from 'rxjs';
+import {getClassSchema, jitValidateProperty, ValidationFailedItem} from '@deepkit/type';
 
 export function requiredIfValidator(predicate: () => boolean, validator: ValidatorFn) {
     return (formControl: AbstractControl) => {
@@ -20,6 +24,7 @@ export class TypedFormGroup<T> extends FormGroup {
     public typedValue?: T;
     protected lastSyncSub?: Subscription;
 
+    // @ts-ignore
     get value(): T {
         return this.typedValue!;
     }
@@ -36,7 +41,7 @@ export class TypedFormGroup<T> extends FormGroup {
                 this.lastSyncSub.unsubscribe();
             }
 
-            for (const [i, fieldValue] of eachPair(v as any)) {
+            for (const [i, fieldValue] of Object.entries(v as any)) {
                 if (this.controls[i]) {
                     this.controls[i].setValue(fieldValue);
                 }
@@ -67,7 +72,7 @@ export class TypedFormGroup<T> extends FormGroup {
 
         const entitySchema = getClassSchema(classType);
 
-        for (const [name, prop] of entitySchema.classProperties.entries()) {
+        for (const [name, prop] of entitySchema.getClassProperties().entries()) {
             const propPath = path ? path + '.' + name : name;
 
             const validator = (control: AbstractControl): ValidationErrors | null => {
@@ -78,11 +83,10 @@ export class TypedFormGroup<T> extends FormGroup {
                     return null;
                 }
 
-                const errors: ValidationError[] = [];
+                const errors: ValidationFailedItem[] = [];
                 if (conditionalValidators && conditionalValidators[propPath]) {
                     const res = conditionalValidators[propPath](rootFormGroup.value);
                     if (res) {
-                        console.log('errors', propPath, rootFormGroup.value, res);
                         const validators: ValidatorFn[] = Array.isArray(res) ? res : [res];
                         for (const val of validators) {
                             const errors = val(control);
@@ -162,7 +166,7 @@ export class TypedFormGroup<T> extends FormGroup {
      * Saves the current values from this form into the given entity.
      */
     public updateEntity(entity: T) {
-        for (const [name, c] of eachPair(this.controls)) {
+        for (const [name, c] of Object.entries(this.controls)) {
             if (c.touched || c.dirty) {
                 if (c instanceof TypedFormGroup) {
                     if ((entity as any)[name]) {
