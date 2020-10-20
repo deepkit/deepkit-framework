@@ -1,9 +1,10 @@
 {
   "name": "@deepkit/framework-integration",
   "version": "1.0.0-alpha.0",
+  "description": "Integration tests",
   "main": "src",
   "module": "src",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "private": true,

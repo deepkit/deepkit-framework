@@ -5,7 +5,7 @@
   "types": "dist/index.d.ts",
   "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "publishConfig": {
     "access": "public"
   },

@@ -13,7 +13,6 @@ export * from './src/jit';
 export * from './src/jit-validation';
 export * from './src/jit-validation-registry';
 export * from './src/union';
-//it's important to have this at the end
 export * from './src/serializer';
 export * from './src/json-typeguards';
 export * from './src/json-serializer';

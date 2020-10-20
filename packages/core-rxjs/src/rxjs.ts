@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2020 Deepkit UG
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 import {Observable, Subscriber, Subscription, TeardownLogic} from 'rxjs';
 import {arrayRemoveItem, createStack, isFunction, mergePromiseStack, mergeStack} from '@deepkit/core';
 import {first, skip} from 'rxjs/operators';

@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2020 Deepkit UG
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 import {getClassSchema, PropertyCompilerSchema} from './decorators';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction} from './jit';

@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2020 Deepkit UG
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 //sort by type group (literal, type, generic primitive, any)
 import {PropertyCompilerSchema} from './decorators';
 import {JSONTypeGuard, jsonTypeGuards} from './json-typeguards';

@@ -2,7 +2,7 @@
   "name": "root",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "test": "jest --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
