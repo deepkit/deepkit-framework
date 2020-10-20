@@ -322,9 +322,8 @@ class LiveCollection<T extends IdInterface> {
     protected async _updateCollection(databaseChanged: boolean = false) {
         if (!this.entitySubscription) return;
 
-        let pagingHash = '';
-        let parametersHash = '';
-
+        // let pagingHash = '';
+        // let parametersHash = '';
         // //when database is changed during entityFeed events, we don't check that stuff
         // if (databaseChanged) {
         //     pagingHash = this.collection.pagination.getPagingHash();

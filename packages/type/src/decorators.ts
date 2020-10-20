@@ -610,7 +610,7 @@ export class ClassSchema<T = any> {
         if (!originCode.includes('constructor(')) return;
 
         const constructorCode = extractMethod(originCode, 'constructor');
-        const findAssignment = RegExp(`this\\.([^ \t\.=]+)[^=]*=([^ \n\t;]+)?`, 'g');
+        const findAssignment = RegExp(String.raw`this\.([^ \t\.=]+)[^=]*=([^ \n\t;]+)?`, 'g');
         let match: any;
 
         while ((match = findAssignment.exec(constructorCode)) !== null) {
