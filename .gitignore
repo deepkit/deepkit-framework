@@ -5,3 +5,8 @@ coverage
 Dockerfile
 packages/node
 packages/network
+packages/*/dist
+packages/*/package-lock.json
+packages/benchmark/src/orm/end-to-end/sqlite/prisma.sqlite
+packages/benchmark/src/orm/end-to-end/sqlite/prisma.sqlite-journal
+packages/benchmark/results
