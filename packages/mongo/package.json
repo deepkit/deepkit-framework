@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mongo",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "description": "Deepkit ORM MongoDB adapter",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,16 +13,14 @@
   "repository": "https://github.com/deepkit/framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
-  "peerDependencies": {
-  },
   "dependencies": {
-    "@deepkit/core": "^1.0.0-alpha.0",
-    "@deepkit/type": "^1.0.0-alpha.0",
-    "@deepkit/bson": "^1.0.0-alpha.0",
-    "@deepkit/orm": "^1.0.0-alpha.0",
+    "@deepkit/bson": "^1.0.0-alpha.1",
+    "@deepkit/core": "^1.0.0-alpha.1",
+    "@deepkit/orm": "^1.0.0-alpha.1",
+    "@deepkit/type": "^1.0.0-alpha.1",
     "bson": "^4.0.4",
-    "saslprep": "^1.0.3",
-    "mongo-uuid": "^1.0.0"
+    "mongo-uuid": "^1.0.0",
+    "saslprep": "^1.0.3"
   },
   "devDependencies": {
     "@types/jest": "^26.0.4",
