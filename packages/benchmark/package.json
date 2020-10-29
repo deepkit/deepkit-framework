@@ -9,7 +9,7 @@
     "benchmark": "ts-node .",
     "setup": "sh setup.sh"
   },
-  "repository": "https://github.com/deepkit/framework",
+  "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {

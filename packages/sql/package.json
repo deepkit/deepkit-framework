@@ -5,12 +5,15 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "jest --coverage",
     "tsc": "tsc --build",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
-  "repository": "https://github.com/deepkit/framework",
+  "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {

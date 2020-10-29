@@ -4,12 +4,13 @@
   "description": "Super Hornet core rxjs library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "repository": "https://github.com/deepkit/framework",
-  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
-  "license": "MIT",
+  "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
   "scripts": {
     "test": "jest --coverage",
     "tsc": "rm -rf dist && tsc",

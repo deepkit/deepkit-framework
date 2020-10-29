@@ -3,7 +3,7 @@
   "version": "1.0.0-alpha.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "repository": "https://github.com/deepkit/framework",
+  "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "publishConfig": {
