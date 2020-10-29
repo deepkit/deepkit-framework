@@ -11,7 +11,7 @@
     "clean": "rm -rf packages/*/dist",
     "clean-modules": "rm -rf packages/*/node_modules",
     "docs": "rm -rf docs && typedoc",
-    "publish": "npm run tsc && lerna publish",
+    "publish": "npm run tsc && lerna publish --no-private",
     "publish-website": "heroku container:push web && heroku container:release web"
   },
   "peerDependencies": {},
