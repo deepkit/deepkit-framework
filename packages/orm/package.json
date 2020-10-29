@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Deepkit ORM, the fastest JIT-based ORM for Typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,9 +14,9 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "@deepkit/core": "^1.0.0-alpha.1",
-    "@deepkit/topsort": "^1.0.0-alpha.1",
-    "@deepkit/type": "^1.0.0-alpha.1",
+    "@deepkit/core": "^1.0.0-alpha.2",
+    "@deepkit/topsort": "^1.0.0-alpha.2",
+    "@deepkit/type": "^1.0.0-alpha.2",
     "sqlstring": "^2.3.2"
   },
   "devDependencies": {
