@@ -370,9 +370,9 @@ test('nullable', () => {
 
     class ConstructorClass {
         constructor(
-            @(t.type(ExampleClass).nullable)
+            @t.type(ExampleClass).nullable
             public klass1: ExampleClass | null,
-            @(t.type(ExampleClass).optional.nullable)
+            @t.type(ExampleClass).nullable
             public klass2: ExampleClass | null
         ) {
         }
@@ -390,5 +390,19 @@ test('nullable', () => {
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBe(null);
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
+    }
+
+    {
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: undefined, klass2: {label: '2'}});
+        expect(clazz).toBeInstanceOf(ConstructorClass);
+        expect(clazz.klass1).toBe(undefined); //since we have no default value set
+        expect(clazz.klass2).toBeInstanceOf(ExampleClass);
+    }
+
+    {
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: null, klass2: null});
+        expect(clazz).toBeInstanceOf(ConstructorClass);
+        expect(clazz.klass1).toBe(null);
+        expect(clazz.klass2).toBe(null);
     }
 });
