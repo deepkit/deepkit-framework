@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,
+  "private": true,
   "scripts": {
     "benchmark": "ts-node .",
     "setup": "sh setup.sh"
