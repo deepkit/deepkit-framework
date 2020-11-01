@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-shared",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": "https://github.com/deepkit/deepkit-framework",
@@ -20,13 +20,13 @@
     "rxjs": "~6.5.3"
   },
   "dependencies": {
-    "@deepkit/core": "^1.0.0-alpha.3",
-    "@deepkit/core-rxjs": "^1.0.0-alpha.3",
+    "@deepkit/core": "^1.0.0-alpha.4",
+    "@deepkit/core-rxjs": "^1.0.0-alpha.4",
     "dot-prop": "^5.1.1",
     "fast-json-patch": "^2.1.0"
   },
   "devDependencies": {
-    "@deepkit/type": "^1.0.0-alpha.3",
+    "@deepkit/type": "^1.0.0-alpha.4",
     "@types/dot-prop": "^5.0.1",
     "@types/fs-extra": "^9.0.1",
     "buffer": "^5.2.1",

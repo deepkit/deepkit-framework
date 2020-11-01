@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/core",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "description": "Super Hornet core library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
