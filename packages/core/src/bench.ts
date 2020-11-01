@@ -12,7 +12,6 @@ const Benchmark = require('benchmark');
 const Reset = '\x1b[0m';
 const FgGreen = '\x1b[32m';
 const FgYellow = '\x1b[33m';
-const {performance} = require('perf_hooks');
 
 declare var process: any;
 
@@ -133,6 +132,8 @@ export class BenchSuite {
  * Executes given exec() method 3 times and averages the consumed time.
  */
 export async function bench(times: number, title: string, exec: () => void | Promise<void>): Promise<number> {
+    const {performance} = module.require('perf_hooks');
+
     const start = performance.now();
     for (let i = 0; i < times; i++) {
         await exec();
