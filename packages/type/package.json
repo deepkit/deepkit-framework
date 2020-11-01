@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-y.0",
   "description": "@deepkit/type, the fastest universal TypeScript serializer and validator with JIT engine for frontend, backend, http-transport, RPC, and database, with built-in validations, for Browser/NodeJS.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,7 +23,7 @@
     "moment": "^2.0.0"
   },
   "dependencies": {
-    "@deepkit/core": "^1.0.0-alpha.4",
+    "@deepkit/core": "^1.0.0-y.0",
     "buffer": "^5.2.1",
     "clone": "^2.1.1",
     "get-parameter-names": "^0.3.0",
