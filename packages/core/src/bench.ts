@@ -132,7 +132,13 @@ export class BenchSuite {
  * Executes given exec() method 3 times and averages the consumed time.
  */
 export async function bench(times: number, title: string, exec: () => void | Promise<void>): Promise<number> {
-    const {performance} = module.require('perf_hooks');
+    let performance: { now: () => number };
+
+    try {
+        performance = module.require('perf_hooks').performance;
+    } catch (e) {
+        throw new Error('bench() is only runnable in Node. Could not import perf_hooks: ' + e.toString());
+    }
 
     const start = performance.now();
     for (let i = 0; i < times; i++) {
