@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType} from '@deepkit/core';
+import {ClassType, CustomError} from '@deepkit/core';
 import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator,} from './decorators';
 import {jitValidate, jitValidateProperty} from './jit-validation';
 import {ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
@@ -52,8 +52,9 @@ export class ValidationFailedItem {
 /**
  *
  */
-export class ValidationFailed {
+export class ValidationFailed extends CustomError {
     constructor(public readonly errors: ValidationFailedItem[]) {
+        super('Validation failed: ' + (errors.map(e => e.toString()).join(', ')));
     }
 }
 
