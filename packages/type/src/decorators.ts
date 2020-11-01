@@ -1403,13 +1403,40 @@ export interface FieldDecoratorResult<T> {
 
     /**
      * Marks this type as optional (allow to set as undefined). Per default the type is required, this makes it optional.
+     * TypeScript has in general its own convention that it most of the times works with optional values as undefined.
+     * Some use-cases require to use optional values as null. Use then @t.nullable.
+     *
+     * Don't mix both .optional and .nullable, as this is most of the time not what you want.
+     *
+     * @example
+     * ```typescript
+     *     class Test {
+     *         @t.optional label?: string;
+     *
+     *         @t.optional label2: string | undefined = undefined;
+     *     }
+     * ```
+     *
+     * @example
+     * ```typescript
+     *     class Test {
+     *         @t.optional.nullable veryRare: string | undefined | null = null;
+     *     }
+     * ```
      */
     optional: FieldDecoratorResult<T | undefined>;
 
     /**
-     * Marks this type as NULL'able (allow to set as NULL). Per default `undefined` and `null` are treated both as `undefined`,
+     * Marks this type as nullable (allow to set as null). Per default `undefined` and `null` are treated both as `undefined`,
      * basically ignoring `null` values. Null values fall back per default to the default property value. Using `nullable` keeps
      * the `null` value intact.
+     *
+     * @example
+     * ```typescript
+     *     class Test {
+     *         @t.nullable label: string | null = null;
+     *     }
+     * ```
      */
     nullable: FieldDecoratorResult<T | null>;
 
@@ -2354,7 +2381,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
             && typeof type !== 'string'
             && !isFunction(type);
 
-        if (type && !isArray(type) && !property.isMap && !property.isPartial && isCustomObject && returnType === Object) {
+        if (type && !isArray(type) && !property.isMap && !property.isPartial && isCustomObject && returnType === Object && !property.isNullable) {
             throw new Error(`${id} type mismatch. Given ${property}, but declared is Object or undefined. ` +
                 `The actual type is an object, but you specified a class in @t.type(T).\n` +
                 `Please declare a type or use @t.map(${getClassName(type)}) for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);

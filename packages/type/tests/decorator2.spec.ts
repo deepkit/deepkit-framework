@@ -361,3 +361,34 @@ test('test invalid @f', () => {
         }
     }
 });
+
+
+test('nullable', () => {
+    class ExampleClass {
+        @t label: string = '';
+    }
+
+    class ConstructorClass {
+        constructor(
+            @(t.type(ExampleClass).nullable)
+            public klass1: ExampleClass | null,
+            @(t.type(ExampleClass).optional.nullable)
+            public klass2: ExampleClass | null
+        ) {
+        }
+    }
+
+    {
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: {label: '1'}, klass2: {label: '2'}});
+        expect(clazz).toBeInstanceOf(ConstructorClass);
+        expect(clazz.klass1).toBeInstanceOf(ExampleClass);
+        expect(clazz.klass2).toBeInstanceOf(ExampleClass);
+    }
+
+    {
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: null, klass2: {label: '2'}});
+        expect(clazz).toBeInstanceOf(ConstructorClass);
+        expect(clazz.klass1).toBe(null);
+        expect(clazz.klass2).toBeInstanceOf(ExampleClass);
+    }
+});
