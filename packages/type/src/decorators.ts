@@ -2375,17 +2375,6 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
                 );
             }
         }
-
-        const isCustomObject = !typedArrayMap.has(type)
-            && type !== Object
-            && typeof type !== 'string'
-            && !isFunction(type);
-
-        if (type && !isArray(type) && !property.isMap && !property.isPartial && isCustomObject && returnType === Object && !property.isNullable) {
-            throw new Error(`${id} type mismatch. Given ${property}, but declared is Object or undefined. ` +
-                `The actual type is an object, but you specified a class in @t.type(T).\n` +
-                `Please declare a type or use @t.map(${getClassName(type)}) for '${propertyName}: {[k: string]: ${getClassName(type)}}'.`);
-        }
     }, true);
 }
 

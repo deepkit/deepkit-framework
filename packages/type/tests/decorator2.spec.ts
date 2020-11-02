@@ -300,13 +300,6 @@ test('test invalid @f', () => {
     }).toThrowError('User5::config type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
-        class User6 {
-            @t.type(Config)
-            config: { [k: string]: Config } = {};
-        }
-    }).toThrowError('User6::config type mismatch. Given Config, but declared is Object or undefined');
-
-    expect(() => {
         class Model {
             @t.array(t.type(() => Config))
             sub?: Config;
@@ -413,7 +406,8 @@ test('null as default value', () => {
         constructor(
             @t.type(Number).optional.nullable.default(1.0)
             public v1?: number | null
-        ) {}
+        ) {
+        }
     }
 
     const testClassSerializer = jsonSerializer.for(TestClass);
@@ -433,4 +427,19 @@ test('null as default value', () => {
     expect(testClassDbSerializer.validatedDeserialize({v1: undefined})).toEqual({v1: 1.0});
     expect(testClassDbSerializer.validatedDeserialize({v1: null})).toEqual({v1: 1.0});
     expect(testClassDbSerializer.validatedDeserialize({v1: 3.14})).toEqual({v1: 3.14});
+});
+
+test('verbose undefined type', () => {
+    class Class1 {
+    }
+
+    class TestClass {
+        constructor(
+            @t.type(Class1).optional
+            public v1: Class1 | undefined,
+            @t.type(Number)
+            public v2: number
+        ) {
+        }
+    }
 });
