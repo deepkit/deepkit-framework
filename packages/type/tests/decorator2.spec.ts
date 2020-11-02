@@ -406,3 +406,31 @@ test('nullable', () => {
         expect(clazz.klass2).toBe(null);
     }
 });
+
+
+test('null as default value', () => {
+    class TestClass {
+        constructor(
+            @t.type(Number).optional.nullable.default(1.0)
+            public v1?: number | null
+        ) {}
+    }
+
+    const testClassSerializer = jsonSerializer.for(TestClass);
+
+    expect(testClassSerializer.validatedDeserialize({v1: undefined})).toEqual({v1: 1.0});
+    expect(testClassSerializer.validatedDeserialize({v1: null})).toEqual({v1: null});
+    expect(testClassSerializer.validatedDeserialize({v1: 3.14})).toEqual({v1: 3.14});
+
+    const myDbSerializer = new class extends jsonSerializer.fork('my-db-serializer') {
+    };
+    myDbSerializer.toClass.register('null', (property, compiler) => {
+        compiler.addSetter(compiler.setVariable('value', property.defaultValue));
+    });
+
+    const testClassDbSerializer = myDbSerializer.for(TestClass);
+
+    expect(testClassDbSerializer.validatedDeserialize({v1: undefined})).toEqual({v1: 1.0});
+    expect(testClassDbSerializer.validatedDeserialize({v1: null})).toEqual({v1: 1.0});
+    expect(testClassDbSerializer.validatedDeserialize({v1: 3.14})).toEqual({v1: 3.14});
+});
