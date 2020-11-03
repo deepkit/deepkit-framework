@@ -21,17 +21,17 @@
     "@deepkit/orm": "^1.0.0-alpha.8",
     "@deepkit/type": "^1.0.0-alpha.8",
     "sqlstring": "^2.3.2",
-    "sqlstring-sqlite": "^0.1.1"
+    "sqlstring-sqlite": "^0.1.1",
+    "better-sqlite3": "^7.1.1",
+    "mariadb": "^2.4.2",
+    "pg": "^8.3.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^5.4.0",
     "@types/jest": "^26.0.4",
     "@types/pg": "^7.14.4",
     "@types/sqlstring": "^2.2.1",
-    "better-sqlite3": "^7.1.1",
     "jest-serial-runner": "^1.1.0",
-    "mariadb": "^2.4.2",
-    "pg": "^8.3.3",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
