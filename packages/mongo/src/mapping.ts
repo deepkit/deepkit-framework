@@ -20,9 +20,9 @@ import {ClassSchema, getClassSchema, JSONEntity, jsonSerializer, resolveProperty
 import {ClassType} from '@deepkit/core';
 import './mongo-serializer';
 import {Binary} from 'bson';
-import {FilterQuery} from 'mongodb';
 import {mongoSerializer} from './mongo-serializer';
 import {convertQueryFilter, QueryCustomFields, QueryFieldNames} from '@deepkit/orm';
+import {FilterQuery} from './query.model';
 
 export type MongoTypeSingle<T> = T extends Date ? Date :
     T extends Array<infer K> ? Array<MongoTypeSingle<K>> :

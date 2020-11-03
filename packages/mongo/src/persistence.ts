@@ -19,7 +19,6 @@
 import {DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState} from '@deepkit/orm';
 import {ClassSchema} from '@deepkit/type';
 import {convertClassQueryToMongo} from './mapping';
-import {ObjectId} from 'mongodb';
 import {FilterQuery} from './query.model';
 import {MongoClient} from './client/client';
 import {InsertCommand} from './client/command/insert';
@@ -29,7 +28,7 @@ import {mongoSerializer} from './mongo-serializer';
 import {FindAndModifyCommand} from './client/command/find-and-modify';
 import {empty} from '@deepkit/core';
 import {FindCommand} from './client/command/find';
-
+import {ObjectId} from 'bson';
 
 export class MongoPersistence extends DatabasePersistence {
 
@@ -103,7 +102,7 @@ export class MongoPersistence extends DatabasePersistence {
         let hasAtomic = false;
         const primaryKeyName = classSchema.getPrimaryField().name;
         const pks: any[] = [];
-        const projection: {[name: string]: 1} = {};
+        const projection: { [name: string]: 1 } = {};
         projection[primaryKeyName] = 1;
         const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
 

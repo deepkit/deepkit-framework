@@ -18,9 +18,8 @@
 
 import {Changes, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult} from '@deepkit/orm';
 import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@deepkit/type';
-import {DEEP_SORT, MongoQueryModel} from './query.model';
+import {DEEP_SORT, FilterQuery, MongoQueryModel} from './query.model';
 import {convertClassQueryToMongo,} from './mapping';
-import {FilterQuery} from 'mongodb';
 import {MongoDatabaseAdapter} from './adapter';
 import {DeleteCommand} from './client/command/delete';
 import {UpdateCommand} from './client/command/update';
