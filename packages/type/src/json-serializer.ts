@@ -166,7 +166,6 @@ jsonSerializer.toClass.register('class', (property: PropertyCompilerSchema, stat
 });
 
 jsonSerializer.toClass.register('union', (property: PropertyCompilerSchema, state) => {
-
     let discriminator: string[] = [`if (false) { }`];
     const discriminants: string[] = [];
     let elseBranch = `throw new Error('No valid discriminant was found, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
@@ -196,7 +195,40 @@ jsonSerializer.toClass.register('union', (property: PropertyCompilerSchema, stat
         ${discriminator.join('\n')}
         else {
             ${elseBranch}
-            
+        }
+    `);
+});
+
+jsonSerializer.fromClass.register('union', (property: PropertyCompilerSchema, state) => {
+    let discriminator: string[] = [`if (false) { }`];
+    const discriminants: string[] = [];
+    let elseBranch = `throw new Error('No valid discriminant was found, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
+
+    if (property.isOptional) {
+        elseBranch = '';
+    } else if (property.isNullable) {
+        elseBranch = `${state.setter} = null;`;
+    } else if (property.hasManualDefaultValue()) {
+        const defaultVar = state.setVariable('default', property.defaultValue);
+        elseBranch = `${state.setter} = ${defaultVar};`;
+    }
+
+    for (const unionType of getSortedUnionTypes(property)) {
+        const guardVar = state.setVariable('guard_' + unionType.property.type, unionType.guard);
+        discriminants.push(unionType.property.type);
+
+        discriminator.push(`
+                //guard:${unionType.property.type}
+                else if (${guardVar}(${state.accessor})) {
+                    ${getDataConverterJS(state.setter, state.accessor, unionType.property, state.serializerCompilers, state.rootContext, state.jitStack)}
+                }
+            `);
+    }
+
+    state.addCodeForSetter(`
+        ${discriminator.join('\n')}
+        else {
+            ${elseBranch}
         }
     `);
 });

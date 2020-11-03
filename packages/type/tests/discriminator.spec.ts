@@ -67,6 +67,7 @@ test('test discriminator class to plain', () => {
         const user = new User();
         user.config = new ConfigB();
         const plain = jsonSerializer.for(User).serialize(user);
+        expect(plain.config).not.toBeInstanceOf(ConfigB);
         expect(plain.config.kind).toBe('b');
     }
 });
@@ -205,12 +206,56 @@ test('test discriminator no default value', () => {
     {
         const user = new User();
         user.config = new ConfigB();
-        const plain = jsonSerializer.for(User).serialize(user);
         expect(() => {
-            jsonSerializer.for(User).deserialize(plain);
+            jsonSerializer.for(User).serialize(user);
         }).toThrow('Discriminant ConfigB.kind has no default value');
+
         expect(() => {
-            validate(User, plain);
+            jsonSerializer.for(User).deserialize({});
+        }).toThrow('Discriminant ConfigB.kind has no default value');
+
+        expect(() => {
+            validate(User, {});
         }).toThrow('Discriminant ConfigB.kind has no default value');
     }
+});
+
+test('correct serialization', () => {
+    class C1 {
+        @t.literal('c1-block').discriminant
+        public type: 'c1-block' = 'c1-block';
+
+        constructor(
+            @t public id1: Date,
+        ) {
+        }
+    }
+
+    class C2 {
+        @t.literal('c2-block').discriminant
+        public type: 'c2-block' = 'c2-block';
+
+        constructor(
+            @t public id2: Date,
+        ) {
+        }
+    }
+
+    class UnionClass {
+        @t.union(C1, C2)
+        public value?: C1 | C2;
+    }
+
+    const klass = jsonSerializer.for(UnionClass).validatedDeserialize({
+        value: {
+            type: 'c2-block',
+            id2: '2020-11-03T09:10:38.392Z',
+        }
+    });
+    expect(klass.value!.type).toBe('c2-block');
+    expect((klass.value! as C2).id2).toEqual(new Date('2020-11-03T09:10:38.392Z'));
+
+    const plain = jsonSerializer.for(UnionClass).serialize(klass);
+    expect(plain.value.type).toBe('c2-block');
+    expect(plain.value.id2).toBe('2020-11-03T09:10:38.392Z');
 });

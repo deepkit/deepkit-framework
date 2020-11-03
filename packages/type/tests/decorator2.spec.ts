@@ -443,3 +443,18 @@ test('verbose undefined type', () => {
         }
     }
 });
+
+
+test('date default', () => {
+    class DateClass {
+        @t.optional
+        public value: Date = new Date('2019-11-03T09:10:38.392Z');
+    }
+
+    expect(jsonSerializer.for(DateClass).validatedDeserialize({
+        value: '2020-11-03T09:10:39.392Z',
+    })).toEqual({value: new Date('2020-11-03T09:10:39.392Z')});
+
+    expect(jsonSerializer.for(DateClass).validatedDeserialize({
+    })).toEqual({value: new Date('2019-11-03T09:10:38.392Z')});
+});
