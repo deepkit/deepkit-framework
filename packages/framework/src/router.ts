@@ -22,6 +22,7 @@ import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSe
 import {ValidationError} from '@deepkit/framework-shared';
 import {httpClass} from './decorator';
 import {injectable} from './injector/injector';
+import {IncomingMessage, OutgoingMessage, ServerResponse} from 'http';
 
 type ResolvedController = { controller: ClassType, parameters: string[], method: string };
 
@@ -57,7 +58,6 @@ export class Router {
         for (const action of data.actions) {
             const methodArgumentProperties = schema.getMethodProperties(action.methodName);
 
-
             let path = data.baseUrl ? join(data.baseUrl, action.path) : action.path;
             if (!path.startsWith('/')) path = '/' + path;
 
@@ -71,8 +71,17 @@ export class Router {
                 names.push(name);
                 if (!methodArgumentProperties[argumentIndex]) throw new Error(`Method ${schema.getClassPropertyName(action.methodName)} has no argument defined at #${argumentIndex}`);
 
-                validators.push(jitValidateProperty(methodArgumentProperties[argumentIndex]));
-                converter.push(getPropertyXtoClassFunction(methodArgumentProperties[argumentIndex], jsonSerializer));
+                const property = methodArgumentProperties[argumentIndex];
+                if (property.type === 'any' || (property.type === 'class' && (!property.classType
+                    || property.classType === IncomingMessage
+                    || property.classType === ServerResponse
+                    || property.classType === OutgoingMessage))) {
+                    validators.push((v: any) => undefined);
+                    converter.push((v: any) => v);
+                } else {
+                    validators.push(jitValidateProperty(property));
+                    converter.push(getPropertyXtoClassFunction(methodArgumentProperties[argumentIndex], jsonSerializer));
+                }
                 argumentIndex++;
                 return action.parameterRegularExpressions[name] ? '(' + action.parameterRegularExpressions[name] + ')' : String.raw`([^/]+)`;
             });

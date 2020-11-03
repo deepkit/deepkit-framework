@@ -5,6 +5,7 @@ import {HttpHandler} from '../src/http';
 import {http} from '../src/decorator';
 import {Application} from '../src/application';
 import {ServiceContainer} from '../src/service-container';
+import {IncomingMessage} from 'http';
 
 test('router', () => {
     class Controller {
@@ -65,6 +66,11 @@ test('router parameters', async () => {
         any(path: string) {
             return path;
         }
+
+        @http.GET('req/:path').regexp('path', '.*')
+        anyReq(req: IncomingMessage) {
+            return req.url;
+        }
     }
 
     const app = Application.root({controllers: [Controller]});
@@ -79,4 +85,5 @@ test('router parameters', async () => {
 
     expect(await httpHandler.handleRequestFor('GET', '/any')).toBe('any');
     expect(await httpHandler.handleRequestFor('GET', '/any/path')).toBe('any/path');
+    expect(await httpHandler.handleRequestFor('GET', '/req/any/path')).toBe('req/any/path');
 });
