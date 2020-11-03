@@ -67,14 +67,14 @@ export class Router {
             const prefix = path.substr(0, path.indexOf(':'));
             let argumentIndex = 0;
 
-            path = path.replace(/(:\w+)/, function (a, b, c, name) {
+            path = path.replace(/:(\w+)/, function (a, name) {
                 names.push(name);
                 if (!methodArgumentProperties[argumentIndex]) throw new Error(`Method ${schema.getClassPropertyName(action.methodName)} has no argument defined at #${argumentIndex}`);
 
                 validators.push(jitValidateProperty(methodArgumentProperties[argumentIndex]));
                 converter.push(getPropertyXtoClassFunction(methodArgumentProperties[argumentIndex], jsonSerializer));
                 argumentIndex++;
-                return action.parameterRegularExpressions[name] || String.raw`([^/]+)`;
+                return action.parameterRegularExpressions[name] ? '(' + action.parameterRegularExpressions[name] + ')' : String.raw`([^/]+)`;
             });
 
             const methodNameVar = compiler.reserveVariable('methodName', action.methodName);

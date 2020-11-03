@@ -38,6 +38,10 @@ export class ValidationErrorItem {
         @t.name('code') public readonly code: string,
     ) {
     }
+
+    toString() {
+        return `${this.path}(${this.code}): ${this.message}`;
+    }
 }
 
 @Entity('@error:validation')
@@ -45,7 +49,7 @@ export class ValidationError extends CustomError {
     constructor(
         @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
     ) {
-        super('Validation error');
+        super('Validation error: ' + errors.map(e => e.toString()).join(','));
     }
 
     static from(errors: { path: string, message: string, code?: string }[]) {

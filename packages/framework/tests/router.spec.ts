@@ -60,6 +60,11 @@ test('router parameters', async () => {
         boolean(yes: boolean) {
             return yes;
         }
+
+        @http.GET(':path').regexp('path', '.*')
+        any(path: string) {
+            return path;
+        }
     }
 
     const app = Application.root({controllers: [Controller]});
@@ -71,4 +76,7 @@ test('router parameters', async () => {
     await expect(httpHandler.handleRequestFor('GET', '/user-id/asd')).rejects.toThrow('Validation error');
     expect(await httpHandler.handleRequestFor('GET', '/boolean/1')).toBe(true);
     expect(await httpHandler.handleRequestFor('GET', '/boolean/false')).toBe(false);
+
+    expect(await httpHandler.handleRequestFor('GET', '/any')).toBe('any');
+    expect(await httpHandler.handleRequestFor('GET', '/any/path')).toBe('any/path');
 });
