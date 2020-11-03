@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-alpha.8",
   "description": "deepkit/type SQL adapter.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,9 +17,9 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "@deepkit/core": "^1.0.0-alpha.7",
-    "@deepkit/orm": "^1.0.0-alpha.7",
-    "@deepkit/type": "^1.0.0-alpha.7",
+    "@deepkit/core": "^1.0.0-alpha.8",
+    "@deepkit/orm": "^1.0.0-alpha.8",
+    "@deepkit/type": "^1.0.0-alpha.8",
     "sqlstring": "^2.3.2",
     "sqlstring-sqlite": "^0.1.1"
   },
