@@ -54,9 +54,9 @@ export function stack() {
             (this as any)[name] = (orig as any).apply(this, args);
 
             try {
-                return await (this as any)[name][propertyKey];
+                return await (this as any)[name];
             } finally {
-                (this as any)[name][propertyKey] = null;
+                (this as any)[name] = null;
             }
         };
     };

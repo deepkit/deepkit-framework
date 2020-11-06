@@ -73,6 +73,7 @@ export class ColorFormatter implements Formatter {
         }
         if (message.includes('<')) {
             message = message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
+                if (!(style as any)[color]) return a;
                 if (end === '/') return (style as any)[color].close;
                 return (style as any)[color].open;
             });

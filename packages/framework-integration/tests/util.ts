@@ -49,7 +49,7 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
             {provide: Database, useClass: database},
         ],
         imports: [
-            Databases.for(database)
+            Databases.for([database])
         ]
     })
     class AppModule {
@@ -75,7 +75,7 @@ export async function createServerClientPair(
     const server = createServer();
     await new Promise((resolve) => {
         server.listen(socketPath, function () {
-            resolve();
+            resolve(undefined);
         });
     });
 

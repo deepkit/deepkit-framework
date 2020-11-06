@@ -20,7 +20,7 @@ import {applyDefaults, ClassType} from '@deepkit/core';
 import {WebWorker} from './worker';
 import {BaseModule} from './base.module';
 import {ProviderWithScope, ServiceContainer} from './service-container';
-import {deepkit, DynamicModule, ModuleOptions} from './decorator';
+import {deepkit, DeepkitModule, DynamicModule, ModuleOptions} from './decorator';
 import {Command, Config, Options} from '@oclif/config';
 import {basename, relative} from 'path';
 import {Main} from '@oclif/command';
@@ -35,7 +35,7 @@ export class Application {
     protected serviceContainer = new ServiceContainer;
 
     constructor(
-        appModule: ClassType,
+        appModule: ClassType<DeepkitModule>,
         config: Partial<ApplicationConfig> = {},
         providers: ProviderWithScope[] = [],
         imports: (ClassType | DynamicModule)[] = [],
@@ -80,6 +80,10 @@ export class Application {
 
     static async run(module: ModuleOptions, config: Partial<ApplicationConfig> = {}) {
         return this.root(module, config).execute(process.argv.slice(2));
+    }
+
+    async run(argv?: any[]) {
+        await this.execute(argv ?? process.argv.slice(2));
     }
 
     public async shutdown() {

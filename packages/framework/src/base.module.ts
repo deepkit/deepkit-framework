@@ -23,9 +23,9 @@ import {ClientConnection} from './client-connection';
 import {ConnectionMiddleware} from '@deepkit/framework-shared';
 import {SecurityStrategy} from './security';
 import {Router} from './router';
-import {HttpHandler} from './http';
+import {HttpKernel, HttpListener, onHttpRequest} from './http';
 import {ServerListenController} from './cli/server-listen';
-import {deepkit, DynamicModule} from './decorator';
+import {deepkit, DynamicModule, eventDispatcher, EventOfEventToken} from './decorator';
 import {ExchangeModule} from './exchange/exchange.module';
 import {ApplicationServer} from './application-server';
 import {ConsoleTransport, Logger} from './logger';
@@ -36,6 +36,17 @@ import {MigrationPendingCommand} from './cli/orm/migration-pending-command';
 import {MigrationDownCommand} from './cli/orm/migration-down-command';
 import {Databases} from './databases';
 import {LiveDatabase} from './exchange/live-database';
+import {inject} from './injector/injector';
+
+class HttpLogger {
+    constructor(@inject() private logger: Logger) {
+    }
+
+    @eventDispatcher.listen(onHttpRequest)
+    onHttpRequest(event: EventOfEventToken<typeof onHttpRequest>) {
+        this.logger.log('request', event.request.method, event.request.url);
+    }
+}
 
 @deepkit.module({
     providers: [
@@ -44,7 +55,7 @@ import {LiveDatabase} from './exchange/live-database';
         SecurityStrategy,
         ApplicationServer,
         Router,
-        HttpHandler,
+        HttpKernel,
         MigrationProvider,
         Databases,
         {provide: 'orm.databases', useValue: []},
@@ -53,6 +64,10 @@ import {LiveDatabase} from './exchange/live-database';
         {provide: ClientConnection, scope: 'session'},
         {provide: ConnectionMiddleware, scope: 'session'},
         {provide: LiveDatabase, scope: 'session'},
+    ],
+    listeners: [
+        HttpListener,
+        HttpLogger,
     ],
     controllers: [
         ServerListenController,
@@ -66,16 +81,6 @@ import {LiveDatabase} from './exchange/live-database';
     ],
 })
 export class BaseModule {
-    constructor(
-        protected databases: Databases,
-    ) {
-        this.databases.init();
-    }
-
-    onShutDown() {
-        this.databases.onShutDown();
-    }
-
     static forRoot(): DynamicModule {
         const imports: any[] = [];
 

@@ -5,7 +5,7 @@ import {InMemoryApplicationServer} from '../src/inmemory-application-server';
 import {rpc} from '@deepkit/framework-shared';
 import {deepkit} from '../src/decorator';
 import {Application} from '../src/application';
-import {ControllerContainer} from '../src/service-container';
+import {RpcControllerContainer} from '../src/service-container';
 
 test('basic bootstrap', async () => {
     @deepkit.module({})
@@ -42,7 +42,7 @@ test('basic controller', async () => {
     const applicationServer = app.get(InMemoryApplicationServer);
     expect(createdControllers).toBe(0);
 
-    const container = new ControllerContainer(new Map([['test', MyController]]));
+    const container = new RpcControllerContainer(new Map([['test', MyController]]));
     const controllerInstance = container.createController(MyController);
     expect(controllerInstance.foo()).toBe('bar');
     expect(createdControllers).toBe(1);

@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {inject, Injector} from './injector/injector';
+import {inject, injectable, Injector} from './injector/injector';
 import {Database} from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
-import {DynamicModule} from './decorator';
+import {DeepkitModule, DynamicModule} from './decorator';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 
 /**
@@ -55,11 +55,32 @@ export class Databases {
         }
     }
 
-    static for(...databases: ClassType<Database<any>>[]): DynamicModule {
+    static for(databases: ClassType<Database<any>>[], options?: {migrateOnStartup?: boolean}): DynamicModule {
+        @injectable()
+        class Module implements DeepkitModule{
+            constructor(
+                protected databases: Databases,
+            ) {
+                this.databases.init();
+            }
+
+            onBootstrap(): void {
+                if (options && options.migrateOnStartup) {
+                    for (const database of this.databases.getDatabases()) {
+                        database.migrate();
+                    }
+                }
+            }
+
+            onShutDown() {
+                this.databases.onShutDown();
+            }
+
+        }
+
         return {
             root: true,
-            module: class {
-            },
+            module: Module,
             providers: [
                 ...databases,
                 {provide: 'orm.databases', useValue: databases},

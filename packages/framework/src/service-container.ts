@@ -16,8 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {arrayRemoveItem, ClassType, getClassName, isClass} from '@deepkit/core';
-import {deepkit, DynamicModule, httpClass, isDynamicModuleObject, isModuleToken, SuperHornetModule,} from './decorator';
+import {arrayRemoveItem, ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
+import {
+    deepkit,
+    DeepkitModule,
+    DynamicModule,
+    eventClass,
+    EventListenerCallback,
+    EventOfEventToken,
+    EventToken,
+    httpClass,
+    isDynamicModuleObject,
+    isModuleToken,
+} from './decorator';
 import {Injector, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, tokenLabel} from './injector/injector';
 import {Provider, ProviderProvide, TypeProvider} from './injector/provider';
 import {rpcClass} from '@deepkit/framework-shared';
@@ -142,7 +153,7 @@ export type SuperHornetController = {
 /**
  * Per connection we have a own ControllerContainer
  */
-export class ControllerContainer {
+export class RpcControllerContainer {
     constructor(protected controllers: Map<string, ClassType>, protected sessionRootInjector?: Injector) {
     }
 
@@ -164,9 +175,74 @@ export class ControllerContainer {
     }
 }
 
+export type EventListenerContainerEntryCallback = { priority: number, fn: EventListenerCallback<any> };
+export type EventListenerContainerEntryService = { context: Context, priority: number, classType: ClassType, methodName: string };
+export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
+
+function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
+    return obj && isFunction(obj.fn);
+}
+
+function isEventListenerContainerEntryService(obj: any): obj is EventListenerContainerEntryService {
+    return obj && isClass(obj.classType);
+}
+
+export class EventListenerContainer {
+    protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
+
+    public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {
+        this.getListeners(eventToken).push(listener);
+    }
+
+    getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
+        let listeners = this.listenerMap.get(eventToken);
+        if (!listeners) {
+            listeners = [];
+            this.listenerMap.set(eventToken, listeners);
+        }
+
+        return listeners;
+    }
+
+    public finalize() {
+        for (const listeners of this.listenerMap.values()) {
+            listeners.sort((a, b) => {
+                if (a.priority > b.priority) return +1;
+                if (a.priority < b.priority) return -1;
+                return 0;
+            });
+        }
+    }
+
+    getCaller<T extends EventToken<any>>(eventToken: T): (event: EventOfEventToken<T>) => Promise<void> {
+        const listeners = this.getListeners(eventToken);
+
+        return async (event) => {
+            for (const listener of listeners) {
+                if (isEventListenerContainerEntryCallback(listener)) {
+                    await listener.fn(event);
+                } else if (isEventListenerContainerEntryService(listener)) {
+                    const injector = new Injector([], [listener.context.getInjector(), listener.context.getRequestInjector().fork()]);
+                    await injector.get(listener.classType)[listener.methodName](event);
+                }
+                if (event.isStopped()) {
+                    return;
+                }
+            }
+        };
+    }
+}
+
+export function getClassTypeContext(classType: ClassType): Context {
+    const context = (classType as any)[ServiceContainer.contextSymbol] as Context | undefined;
+    if (!context) throw new Error(`Class ${getClassName(classType)} is not registered as provider.`);
+    return context;
+}
+
 export class ServiceContainer {
     public readonly rpcControllers = new Map<string, ClassType>();
     public readonly cliControllers = new Map<string, ClassType>();
+    public readonly eventListenerContainer = new EventListenerContainer;
 
     public readonly routerControllers = new RouterControllers([]);
 
@@ -202,10 +278,12 @@ export class ServiceContainer {
         providers: ProviderWithScope[] = [],
         imports: (ClassType | DynamicModule)[] = []
     ) {
+        providers.push({provide: EventListenerContainer, useValue: this.eventListenerContainer});
         providers.push({provide: ServiceContainer, useValue: this});
         providers.push({provide: RouterControllers, useValue: this.routerControllers});
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
+        this.eventListenerContainer.finalize();
     }
 
     public getRootContext(): Context {
@@ -213,8 +291,8 @@ export class ServiceContainer {
         return this.rootContext;
     }
 
-    getRegisteredModules(): SuperHornetModule[] {
-        const result: SuperHornetModule[] = [];
+    getRegisteredModules(): DeepkitModule[] {
+        const result: DeepkitModule[] = [];
         for (const [module, contexts] of this.moduleContexts.entries()) {
             for (const context of contexts) {
                 result.push(context.getInjector().get(module));
@@ -309,6 +387,22 @@ export class ServiceContainer {
         for (const imp of imports) {
             if (!imp) continue;
             this.processModule(imp, context);
+        }
+
+        if (options && options.listeners) {
+            for (const listener of options.listeners) {
+                if (isClass(listener)) {
+                    const config = eventClass._fetch(listener);
+                    if (config) {
+                        for (const entry of config.listeners) {
+                            providers.unshift({provide: listener});
+                            this.eventListenerContainer.add(entry.eventToken, {context, classType: listener, methodName: entry.methodName, priority: entry.priority});
+                        }
+                    }
+                } else {
+                    this.eventListenerContainer.add(listener.eventToken, {fn: listener.callback, priority: listener.priority});
+                }
+            }
         }
 
         if (options && options.controllers) {

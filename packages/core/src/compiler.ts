@@ -33,4 +33,13 @@ export class CompilerContext {
         `;
         return new Function(...this.context.keys(), functionCode)(...this.context.values());
     }
+
+    buildAsync(functionCode: string, ...args: string[]): Function {
+        functionCode = `
+            return async function(${args.join(', ')}){ 
+                ${functionCode}
+            };
+        `;
+        return new Function(...this.context.keys(), functionCode)(...this.context.values());
+    }
 }

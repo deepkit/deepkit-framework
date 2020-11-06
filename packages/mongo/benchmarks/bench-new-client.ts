@@ -58,7 +58,7 @@ async function main() {
 
     await bench(2000, 'reference', async () => {
         await new Promise((resolve) => {
-            resolve();
+            resolve(undefined);
         });
     });
 

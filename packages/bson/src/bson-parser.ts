@@ -121,7 +121,7 @@ export class BaseParser {
 
         const b = this.buffer.slice(this.offset, this.offset + size);
         this.seek(size);
-        if (property?.type === 'arrayBuffer') {
+        if (property && property.type === 'arrayBuffer') {
             return nodeBufferToArrayBuffer(b);
         }
         if (property && property.isTypedArray) {

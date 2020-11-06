@@ -21,16 +21,13 @@ import {ClassType, CustomError, getClassName} from '@deepkit/core';
 import {injectable, Injector} from './injector/injector';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
-import {Context, ServiceContainer} from './service-container';
+import {Context, EventListenerContainer, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
 import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
 import {ApplicationConfig} from './application-config';
-import {join} from 'path';
-import {pathExists, stat} from 'fs-extra';
-import {createReadStream} from 'fs';
-
-const mime = require('mime-types');
+import {Logger} from './logger';
+import {BaseEvent, eventDispatcher, EventOfEventToken, EventToken} from './decorator';
 
 export interface HttpError<T> {
     new(...args: any[]): Error;
@@ -56,33 +53,33 @@ export class HttpNotFoundError extends HttpError(404, 'Not found') {
 export class HttpBadRequestError extends HttpError(400, 'Bad request') {
 }
 
+export class HttpRequestEvent extends BaseEvent {
+    constructor(
+        public readonly request: IncomingMessage,
+        public readonly response: ServerResponse,
+    ) {
+        super();
+    }
+}
+
+export const onHttpRequest = new EventToken<HttpRequestEvent>('http.request');
+
+export class HtmlResponse {
+    constructor(public html: string) {
+    }
+}
+
 @injectable()
-export class HttpHandler {
+export class HttpListener {
     constructor(
         protected router: Router,
+        protected middlewareContainer: EventListenerContainer,
         protected config: ApplicationConfig,
+        protected logger: Logger,
     ) {
     }
 
-    async handleRequestFor(method: string, url: string): Promise<any> {
-        const req = new IncomingMessage(new Socket());
-        req.method = method;
-        req.url = url;
-        const res = new ServerResponse(req);
-        const resolved = this.router.resolve(req.method || 'GET', req.url || '/');
-        if (!resolved) throw new Error('Route not found');
-
-        const injector = this.createInjector(resolved.controller, [
-            {provide: IncomingMessage, useValue: req},
-            {provide: ServerResponse, useValue: res},
-        ]);
-        injector.allowUnknown = true;
-
-        const controllerInstance = injector.get(resolved.controller);
-        return await controllerInstance[resolved.method](...resolved.parameters);
-    }
-
-    createInjector(classType: ClassType, providers: Provider[] = []) {
+    protected createInjector(classType: ClassType, providers: Provider[] = []) {
         const context = (classType as any)[ServiceContainer.contextSymbol] as Context;
         if (!context) {
             throw new Error(`Controller ${getClassName(classType)} has no injector context assigned.`);
@@ -91,76 +88,119 @@ export class HttpHandler {
         return new Injector(providers, [context.getInjector(), context.getRequestInjector().fork()]);
     }
 
-    async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
-        // //- resolve controller
-        const resolved = this.router.resolve(req.method || 'GET', req.url || '/');
+    @eventDispatcher.listen(onHttpRequest)
+    async http(event: EventOfEventToken<typeof onHttpRequest>): Promise<void> {
+        if (event.response.finished) return;
+
+        const resolved = await this.router.resolveRequest(event.request);
+
         if (!resolved) {
-            //check if file exists in public
-            if (req.url) {
-                const path = join(this.config.publicDir, join('/', req.url || ''));
-                if (await pathExists(path)) {
-                    const info = await stat(path);
-                    const mimeType = mime.lookup(path);
-
-                    const header: { [name: string]: string } = {
-                        'Content-Type': mimeType || 'application/octet-stream',
-                        'Content-Length': info.size.toString(),
-                    };
-
-                    res.writeHead(200, header);
-                    createReadStream(path).pipe(res);
-                    return;
-                }
-            }
-
-
-            res.writeHead(404, {
-                'Content-Type': 'text/html; charset=utf-8'
-            });
-            res.end('Not found');
             return;
         }
 
         const injector = this.createInjector(resolved.controller, [
-            {provide: IncomingMessage, useValue: req},
-            {provide: ServerResponse, useValue: res},
+            {provide: IncomingMessage, useValue: event.request},
+            {provide: ServerResponse, useValue: event.response},
         ]);
         injector.allowUnknown = true;
 
-        //- call PRE_REQUEST listener
-
-        //- call controller
         const controllerInstance = injector.get(resolved.controller);
-        const response = await controllerInstance[resolved.method](...resolved.parameters);
+        try {
+            const response = await controllerInstance[resolved.method](...resolved.parameters(injector));
 
-        //- call POST_REQUEST listener
-
-        if (response === null || response === undefined) {
-            res.writeHead(200, {
-                'Content-Type': 'text/html; charset=utf-8'
+            if (response === null || response === undefined) {
+                event.response.writeHead(200, {
+                    'Content-Type': 'text/html; charset=utf-8'
+                });
+                event.response.end(response);
+            } else if (response instanceof ServerResponse) {
+                return;
+            } else if (response instanceof HtmlResponse) {
+                event.response.writeHead(200, {
+                    'Content-Type': 'text/html; charset=utf-8'
+                });
+                event.response.end(response.html);
+            } else if (isElementStruct(response)) {
+                event.response.writeHead(200, {
+                    'Content-Type': 'text/html; charset=utf-8'
+                });
+                event.response.end(await render(injector, response));
+            } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
+                event.response.writeHead(200, {
+                    'Content-Type': 'application/json; charset=utf-8'
+                });
+                event.response.end(JSON.stringify(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response)));
+            } else {
+                event.response.writeHead(200, {
+                    'Content-Type': 'application/json; charset=utf-8'
+                });
+                event.response.end(JSON.stringify(response));
+            }
+        } catch (error) {
+            this.logger.error(`Server error, controller ${getClassName(resolved.controller)} method ${resolved.method}`, error);
+            event.response.writeHead(500, {
+                'Content-Type': 'text/plain; charset=utf-8'
             });
-            res.end();
-            return;
+            event.response.end('Server error');
         }
-        if (response instanceof ServerResponse) return;
+    }
+}
 
-        if ('string' === typeof response) {
-            res.writeHead(200, {
-                'Content-Type': 'text/html; charset=utf-8'
-            });
-            res.end(response);
-        } else if (isElementStruct(response)) {
-            res.writeHead(200, {
-                'Content-Type': 'text/html; charset=utf-8'
-            });
-            res.end(await render(injector, response));
-        } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
-            res.writeHead(200, {
-                'Content-Type': 'application/json; charset=utf-8'
-            });
-            res.end(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response));
-        }
+@injectable()
+export class HttpKernel {
+    protected httpRequestEventCaller = this.eventListenerContainer.getCaller(onHttpRequest);
 
-        //- call RESPONSE listener
+    constructor(
+        protected router: Router,
+        protected eventListenerContainer: EventListenerContainer,
+        protected config: ApplicationConfig,
+        protected logger: Logger,
+    ) {
+    }
+
+    async handleRequestFor(method: string, url: string, jsonBody?: any): Promise<any> {
+        const body = Buffer.from(jsonBody ? JSON.stringify(jsonBody) : '');
+
+        const request = new (class extends IncomingMessage {
+            url = url;
+            method = method;
+            position = 0;
+
+            headers = {
+                'content-type': 'application/json',
+                'content-length': String(body.byteLength),
+            };
+
+            done = false;
+
+            _read(size: number) {
+                if (this.done) {
+                    this.push(null);
+                } else {
+                    this.push(body);
+                    this.done = true;
+                }
+            }
+        })(new Socket());
+
+        let result: any = {};
+        const response = new (class extends ServerResponse {
+            end(chunk: any) {
+                result = chunk.toString();
+            }
+
+            write(chunk: any): boolean {
+                result = chunk.toString();
+                return true;
+            }
+        })(request);
+
+        await this.handleRequest(request, response);
+        return JSON.parse(result);
+    }
+
+    async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+        const httpRequestEvent = new HttpRequestEvent(req, res);
+        await this.httpRequestEventCaller(httpRequestEvent);
     }
 }

@@ -1,5 +1,3 @@
-import {template} from '../../src/template/template';
-
 function Test() {
     return <div>Yes</div>
 }

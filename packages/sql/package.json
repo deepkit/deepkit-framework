@@ -22,7 +22,8 @@
     "@deepkit/type": "^1.0.0-alpha.12",
     "better-sqlite3": "^7.1.1",
     "mariadb": "^2.4.2",
-    "pg": "^8.3.3",
+    "pg": "^8.4.2",
+    "pg-native": "^3.0.0",
     "sqlstring": "^2.3.2",
     "sqlstring-sqlite": "^0.1.1"
   },

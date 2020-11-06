@@ -33,7 +33,7 @@ export class SqlBuilder {
     }
 
     protected getWhereSQL(schema: ClassSchema, filter: any, tableName?: string) {
-        tableName = tableName ?? this.platform.getTableIdentifier(schema);
+        tableName = tableName || this.platform.getTableIdentifier(schema);
         return this.platform.createSqlFilterBuilder(schema, tableName).convert(filter);
     }
 

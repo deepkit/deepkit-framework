@@ -1,13 +1,14 @@
 import 'jest';
 import 'reflect-metadata';
 import {Router} from '../src/router';
-import {HttpHandler} from '../src/http';
+import {HttpKernel} from '../src/http';
 import {http} from '../src/decorator';
 import {Application} from '../src/application';
 import {ServiceContainer} from '../src/service-container';
 import {IncomingMessage} from 'http';
+import {t} from '@deepkit/type';
 
-test('router', () => {
+test('router', async () => {
     class Controller {
         @http.GET()
         helloWorld() {
@@ -40,9 +41,11 @@ test('router', () => {
 
     const router = Router.forControllers([Controller]);
 
-    expect(router.resolve('GET', '/')).toEqual({controller: Controller, parameters: [], method: 'helloWorld'});
-    expect(router.resolve('GET', '/peter')).toEqual({controller: Controller, parameters: ['peter'], method: 'hello'});
-    expect(router.resolve('GET', '/user/1233/static')).toEqual({controller: Controller, parameters: ['1233'], method: 'userStatic'});
+    expect(await router.resolve('GET', '/')).toMatchObject({controller: Controller, method: 'helloWorld'});
+    expect(await router.resolve('GET', '/peter')).toMatchObject({controller: Controller, method: 'hello'});
+    expect((await router.resolve('GET', '/peter'))?.parameters!(undefined as any)).toEqual(['peter']);
+    expect(await router.resolve('GET', '/user/1233/static')).toMatchObject({controller: Controller, method: 'userStatic'});
+    expect((await router.resolve('GET', '/user/1233/static'))?.parameters!(undefined as any)).toEqual(['1233']);
 });
 
 test('router parameters', async () => {
@@ -66,16 +69,10 @@ test('router parameters', async () => {
         any(path: string) {
             return path;
         }
-
-        @http.GET('req/:path').regexp('path', '.*')
-        anyReq(req: IncomingMessage) {
-            return req.url;
-        }
     }
 
     const app = Application.root({controllers: [Controller]});
-    ServiceContainer.assignStandaloneInjector([Controller]);
-    const httpHandler = app.get(HttpHandler);
+    const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toBe('peter');
     expect(await httpHandler.handleRequestFor('GET', '/user-id/123')).toBe(123);
@@ -85,5 +82,38 @@ test('router parameters', async () => {
 
     expect(await httpHandler.handleRequestFor('GET', '/any')).toBe('any');
     expect(await httpHandler.handleRequestFor('GET', '/any/path')).toBe('any/path');
-    expect(await httpHandler.handleRequestFor('GET', '/req/any/path')).toBe('req/any/path');
+});
+
+
+test('router IncomingMessage', async () => {
+    class Controller {
+        @http.GET(':path').regexp('path', '.*')
+        anyReq(req: IncomingMessage, path: string) {
+            return [req.url, path];
+        }
+    }
+
+    const app = Application.root({controllers: [Controller]});
+    const httpHandler = app.get(HttpKernel);
+
+    expect(await httpHandler.handleRequestFor('GET', '/req/any/path')).toEqual(['/req/any/path', 'req/any/path']);
+});
+
+
+test('router body', async () => {
+    class Body {
+        @t username!: string;
+    }
+
+    class Controller {
+        @http.POST()
+        anyReq(body: Body, req: IncomingMessage) {
+            return [body.username, body instanceof Body, req.url];
+        }
+    }
+
+    const app = Application.root({controllers: [Controller]});
+    const httpHandler = app.get(HttpKernel);
+
+    expect(await httpHandler.handleRequestFor('POST', '/', {username: 'Peter'})).toEqual(['Peter', true, '/']);
 });

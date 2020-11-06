@@ -410,7 +410,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         this.setFromJSType(value.constructor);
     }
 
-    setFromJSType(type: any) {
+    setFromJSType(type: any, detectForwardRef = true) {
         if (type === undefined || type === null) return;
 
         this.type = PropertySchema.getTypeFromJSType(type);
@@ -435,7 +435,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             this.type = 'class';
             this.classType = type as ClassType;
 
-            if (isFunction(type)) {
+            if (detectForwardRef && isFunction(type)) {
                 this.classTypeForwardRef = type;
                 delete this.classType;
             }
@@ -888,7 +888,7 @@ export class ClassSchema<T = any> {
                 if (!properties[i]) {
                     properties[i] = new PropertySchema(names[i] || String(i));
                     if (paramtypes[i] !== Object) {
-                        properties[i].setFromJSType(t);
+                        properties[i].setFromJSType(t, false);
                     }
                 }
             }
@@ -1294,7 +1294,7 @@ class EntityApi {
     t = new ClassSchema(class {
     });
 
-    onDecorator(target: object) {
+    constructor(target: object) {
         this.t = getClassSchema(target);
     }
 

@@ -333,17 +333,17 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
     ) {
     }
 
-    abstract async count(model: MODEL): Promise<number>;
+    abstract count(model: MODEL): Promise<number>;
 
-    abstract async find(model: MODEL): Promise<T[]>;
+    abstract find(model: MODEL): Promise<T[]>;
 
-    abstract async findOneOrUndefined(model: MODEL): Promise<T | undefined>;
+    abstract findOneOrUndefined(model: MODEL): Promise<T | undefined>;
 
-    abstract async delete(model: MODEL, deleteResult: DeleteResult<T>): Promise<void>;
+    abstract delete(model: MODEL, deleteResult: DeleteResult<T>): Promise<void>;
 
-    abstract async patch(model: MODEL, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
+    abstract patch(model: MODEL, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
 
-    abstract async has(model: MODEL): Promise<boolean>;
+    abstract has(model: MODEL): Promise<boolean>;
 }
 
 /**

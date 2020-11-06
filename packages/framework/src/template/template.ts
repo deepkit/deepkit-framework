@@ -16,23 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import './elements';
 import {ClassType, isClass} from '@deepkit/core';
 import {Injector} from '../injector/injector';
-import {addHook} from 'pirates';
-import {optimize} from './optimize-tsx';
 import {isArray} from '@deepkit/type';
-
-function transform(code: string, filename: string) {
-    if (code.indexOf('template.createElement(') === -1) return code;
-    return optimize(code);
-}
-
-addHook(transform, {exts: ['.js', '.tsx']});
+import './optimize-tsx';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
-}
+} & {children?: (ElementStruct | string)[] | ElementStruct | string};
 
 export abstract class ElementClass {
     constructor(protected attributes: Attributes) {
@@ -45,7 +36,7 @@ export interface ElementFn {
     (attributes: Attributes, children: string[]): Element;
 }
 
-export type Element = undefined | string | ElementFn | ClassType<ElementClass> | Element[];
+export type Element = string | ElementFn | ClassType<ElementClass> | Element[];
 
 const voidElements: { [name: string]: true } = {
     area: true,
@@ -66,7 +57,7 @@ const voidElements: { [name: string]: true } = {
     wbr: true,
 };
 
-type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, contents: (ElementStruct | string | ElementStruct[])[] };
+export type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, children: (ElementStruct | string | ElementStruct[])[] };
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
@@ -97,7 +88,20 @@ export async function render(injector: Injector, struct: ElementStruct | string)
         return struct;
     }
 
-    let children = await renderChildren(injector, struct.contents);
+    let children = '';
+    if (struct.children) {
+        if (isArray(struct.children)) {
+            children = await renderChildren(injector, struct.children);
+        } else {
+            children = await renderChildren(injector, [struct.children]);
+        }
+    } else if (struct.attributes && 'string' !== typeof struct.attributes && struct.attributes?.children) {
+        if (isArray(struct.attributes.children)) {
+            children = await renderChildren(injector, struct.attributes.children);
+        } else {
+            children = await renderChildren(injector, [struct.attributes.children]);
+        }
+    }
     //this is 3x faster than contents.join('')
     // for (const content of struct.contents) {
 
@@ -106,9 +110,10 @@ export async function render(injector: Injector, struct: ElementStruct | string)
         let res = '<' + tag;
         if (struct.attributes === null) {
         } else if ('string' === typeof struct.attributes) {
-            res += struct.attributes;
+            res += ' ' + struct.attributes;
         } else {
             for (const i in struct.attributes) {
+                if (i === 'children') continue;
                 res += ' ' + i + '="' + struct.attributes[i] + '"';
             }
         }
@@ -145,8 +150,8 @@ export async function render(injector: Injector, struct: ElementStruct | string)
     return '';
 }
 
-export function createElement(element: Element, attributes?: Attributes | null, ...contents: (string | ElementStruct)[]) {
-    return {render: element, attributes, contents};
+export function createElement(element: Element, attributes?: Attributes | null, ...children: (string | ElementStruct)[]) {
+    return {render: element, attributes, children};
 }
 
 export const template = {createElement: createElement};

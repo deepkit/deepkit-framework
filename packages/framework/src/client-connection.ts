@@ -23,7 +23,7 @@ import {arrayRemoveItem, each, ProcessLock, ProcessLocker} from '@deepkit/core';
 import {PropertySchema, uuid} from '@deepkit/type';
 import {SecurityStrategy} from './security';
 import {Exchange} from './exchange/exchange';
-import {ControllerContainer, SuperHornetController} from './service-container';
+import {RpcControllerContainer, SuperHornetController} from './service-container';
 import {inject, injectable} from './injector/injector';
 
 @injectable()
@@ -50,7 +50,7 @@ export class ClientConnection {
         protected security: SecurityStrategy,
         protected locker: ProcessLocker,
         protected exchange: Exchange,
-        protected rpcControllerContainer: ControllerContainer,
+        protected rpcControllerContainer: RpcControllerContainer,
         protected connectionMiddleware: ConnectionMiddleware,
         protected writer: ConnectionWriter,
         @inject('remoteAddress') public readonly remoteAddress: string,

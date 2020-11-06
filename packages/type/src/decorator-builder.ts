@@ -108,9 +108,7 @@ export function createClassDecoratorContext<API extends APIClass<any>, T = Extra
     const map = new Map<object, ApiTypeInterface<any>>();
 
     function collapse(modifier: { name: string, args?: any }[], target: object) {
-        const api: ApiTypeInterface<any> = map.get(target) ?? new apiType;
-
-        if (api.onDecorator) api.onDecorator(target);
+        const api: ApiTypeInterface<any> = map.get(target) ?? new apiType(target);
 
         for (const fn of modifier) {
             if (fn.args) {
@@ -120,6 +118,8 @@ export function createClassDecoratorContext<API extends APIClass<any>, T = Extra
                 (api as any)[fn.name];
             }
         }
+
+        if (api.onDecorator) api.onDecorator(target);
 
         map.set(target, api);
     }
@@ -158,9 +158,7 @@ export function createPropertyDecoratorContext<API extends APIClass<any>, T = Ex
             targetMap.set(target, map);
         }
         const index = property + '$$' + parameterIndexOrDescriptor;
-        const api: ApiTypeInterface<any> = map.get(index) ?? new apiType;
-
-        if (api.onDecorator) api.onDecorator(target, property, parameterIndexOrDescriptor);
+        const api: ApiTypeInterface<any> = map.get(index) ?? new apiType(target, property);
 
         for (const fn of modifier) {
             if (fn.args) {
@@ -170,6 +168,8 @@ export function createPropertyDecoratorContext<API extends APIClass<any>, T = Ex
                 (api as any)[fn.name];
             }
         }
+
+        if (api.onDecorator) api.onDecorator(target, property, parameterIndexOrDescriptor);
 
         map.set(index, api);
     }

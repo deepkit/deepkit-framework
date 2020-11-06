@@ -48,11 +48,11 @@ export interface DatabasePersistenceChangeSet<T> {
 }
 
 export abstract class DatabasePersistence {
-    abstract async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+    abstract remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
 
-    abstract async insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+    abstract insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
 
-    abstract async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
+    abstract update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
 
     /**
      * When DatabasePersistence instance is not used anymore, this function will be called.

@@ -20,7 +20,7 @@ import {ExchangeServer, ExchangeServerFactory} from './exchange-server';
 import {Exchange} from './exchange';
 import {AppLocker} from './app-locker';
 import {ExchangeConfig} from './exchange.config';
-import {deepkit, SuperHornetModule} from '../decorator';
+import {deepkit, DeepkitModule} from '../decorator';
 
 @deepkit.module({
     providers: [
@@ -36,7 +36,7 @@ import {deepkit, SuperHornetModule} from '../decorator';
         ExchangeConfig,
     ]
 })
-export class ExchangeModule implements SuperHornetModule {
+export class ExchangeModule implements DeepkitModule {
     protected exchangeServer?: ExchangeServer;
 
     constructor(

@@ -1,3 +1,4 @@
+import 'jest';
 import 'jest-extended';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer, str2ab} from '../../src/exchange/exchange-prot';
 import {closeCreatedExchange, createExchange} from './utils';

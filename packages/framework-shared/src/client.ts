@@ -73,11 +73,11 @@ export class MessageSubject<T> extends Subject<T> {
             return undefined;
         }
 
-        return new Promise<T>((resolve) => {
+        return new Promise<T | undefined>((resolve) => {
             this.pipe(first()).subscribe((next) => {
                 resolve(next);
             }, (error) => {
-                resolve();
+                resolve(undefined);
             }, () => {
                 //complete
             }).add(() => {

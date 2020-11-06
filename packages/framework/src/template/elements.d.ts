@@ -34,6 +34,7 @@ declare namespace JSX {
         [P in Extract<NoFunctions<T>, WritableKeysOf<T>>]?: T[P] extends string | number | Date | boolean ? T[P] : never;
     } & {[name: string]: any; class?: string};
 
+
     interface IntrinsicElements {
         'a': ExtractProps<HTMLAnchorElement>;
         'abbr': ExtractProps<HTMLElement>;

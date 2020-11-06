@@ -9,21 +9,35 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2020",
+    "target": "es2018",
     "module": "CommonJS",
 
     "baseUrl": ".",
     "outDir": "./dist",
     "declaration": true,
     "composite": true,
-    "jsx": "react",
-    "jsxFactory": "template.createElement"
+    "typeRoots": [
+      "node_modules/@types",
+      "types"
+    ],
+    "types": [
+      "formidable"
+    ],
+
+    "jsx": "react-jsx",
+    "jsxImportSource": "@deepkit/framework",
+    "paths": {
+      "@deepkit/framework/*": ["./*"]
+    }
   },
   "include": [
     "src",
+    "jsx",
     "tests",
     "benchmark",
-    "index.ts"
+    "index.ts",
+    "jsx-runtime",
+    "jsx-runtime.ts"
   ],
   "references": [
     {

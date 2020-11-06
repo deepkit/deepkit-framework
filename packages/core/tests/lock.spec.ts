@@ -98,7 +98,7 @@ test('test tryLock', async () => {
                 expect(lock5).toBeInstanceOf(ProcessLock);
                 expect(await locker.isLocked('trylock')).toBeTrue();
                 await lock5.unlock();
-                resolve();
+                resolve(undefined);
             }, 1000);
         }, 1000);
     });

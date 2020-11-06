@@ -22,11 +22,82 @@ import {ProviderWithScope} from './service-container';
 import {ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult} from '@deepkit/type';
 import {join} from 'path';
 
+export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
+
+export interface EventListener<T> {
+    eventToken: EventToken<any>;
+    callback: EventListenerCallback<T>;
+    priority: number;
+}
+
+export type EventOfEventToken<T> = T extends EventToken<infer E> ? E : unknown;
+
+export class EventToken<T extends BaseEvent> {
+    constructor(
+        public readonly id: string,
+    ) {
+    }
+
+    listen(callback: (event: T) => void, priority: number = 0): EventListener<T> {
+        return {eventToken: this, callback, priority};
+    }
+}
+
+export class BaseEvent {
+    protected stopped = false;
+
+    stopPropagation() {
+        this.stopped = true;
+    }
+
+    isStopped() {
+        return this.stopped;
+    }
+}
+
+class EventStore {
+    token?: EventToken<any>;
+    priority: number = 0;
+}
+
+class EventClassStore {
+    listeners: { eventToken: EventToken<any>, methodName: string, priority: number }[] = [];
+}
+
+export const eventClass = createClassDecoratorContext(
+    class {
+        t = new EventClassStore;
+
+        addListener(eventToken: EventToken<any>, methodName: string, priority: number) {
+            this.t.listeners.push({eventToken, methodName, priority});
+        }
+    }
+);
+export const eventDispatcher = createPropertyDecoratorContext(
+    class {
+        t = new EventStore;
+
+        onDecorator(target: object, property?: string) {
+            if (!this.t.token) throw new Error('@eventDispatcher.listen(eventToken) is the correct syntax.');
+            if (!property) throw new Error('@eventDispatcher.listen(eventToken) works only on class properties.');
+
+            eventClass.addListener(this.t.token, property, this.t.priority)(target);
+        }
+
+        listen(eventToken: EventToken<any>, priority: number = 0) {
+            if (!eventToken) new Error('@eventDispatcher.listen() No event token given');
+            this.t.token = eventToken;
+            this.t.priority = priority;
+        }
+    }
+);
+
 export interface ModuleOptions {
     /**
      * Providers.
      */
     providers?: ProviderWithScope[];
+
     /**
      * Export providers (its token `provide` value) or modules you imported first.
      */
@@ -36,6 +107,37 @@ export interface ModuleOptions {
      * RPC controllers.
      */
     controllers?: ClassType[];
+
+    /**
+     * Event listeners.
+     *
+     * @example with simple functions
+     * ```typescript
+     * {
+     *     listeners: [
+     *         onEvent.listen((event: MyEvent) => {console.log('event triggered', event);}),
+     *     ]
+     * }
+     * ```
+     *
+     * @example with services
+     * ```typescript
+     *
+     * class MyListener {
+     *     @event.listen(onEvent)
+     *     onEvent(event: typeof onEvent['type']) {
+     *         console.log('event triggered', event);
+     *     }
+     * }
+     *
+     * {
+     *     listeners: [
+     *         MyListener,
+     *     ]
+     * }
+     * ```
+     */
+    listeners?: (EventListener<any> | ClassType)[];
 
     /**
      * Import another module.
@@ -60,7 +162,7 @@ export function isModuleToken(obj: any): obj is (ClassType | DynamicModule) {
     return (isClass(obj) && undefined !== deepkit._fetch(obj)) || isDynamicModuleObject(obj);
 }
 
-export interface SuperHornetModule {
+export interface DeepkitModule {
     /**
      * Called when the application bootstraps (for cli commands, rpc/http server, tests, ...)
      *

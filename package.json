@@ -24,7 +24,7 @@
     "jest-extended": "^0.11.5",
     "lerna": "^3.22.1",
     "ts-jest": "^26.1.1",
-    "typescript": "^4.0.2",
+    "typescript": "^4.1.1-rc",
     "typedoc": "^0.16.8",
     "typedoc-plugin-lerna-packages": "^0.3.0"
   },
@@ -32,11 +32,16 @@
     "node": ">= 8.9.0"
   },
   "jest": {
-    "testPathIgnorePatterns": ["packages/*/dist"],
+    "testPathIgnorePatterns": [
+      "packages/*/dist"
+    ],
     "projects": [
+      "packages/core",
+      "packages/core-rxjs",
       "packages/type",
       "packages/orm",
       "packages/orm-integration",
+      "packages/bson",
       "packages/mongo",
       "packages/sql",
       "packages/framework-integration",

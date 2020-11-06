@@ -23,8 +23,8 @@ import * as http from 'http';
 import {IncomingMessage, ServerResponse} from 'http';
 import * as https from 'https';
 import {ApplicationConfig} from './application-config';
-import {HttpHandler} from './http';
-import {ControllerContainer, ServiceContainer} from './service-container';
+import {HttpKernel} from './http';
+import {RpcControllerContainer, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
 import {Injector} from './injector/injector';
 
@@ -54,12 +54,12 @@ export class BaseWorker {
     }
 
     createRpcConnection(writer: ConnectionWriterStream, remoteAddress: string = '127.0.0.1'): WorkerConnection {
-        let rpcControllerContainer: ControllerContainer;
+        let rpcControllerContainer: RpcControllerContainer;
 
         const providers: Provider[] = [
             {provide: 'remoteAddress', useValue: remoteAddress},
             {
-                provide: ControllerContainer, useFactory: () => {
+                provide: RpcControllerContainer, useFactory: () => {
                     return rpcControllerContainer;
                 }
             },
@@ -73,7 +73,7 @@ export class BaseWorker {
 
         //this sessionInjector MUST be used as new root for all controller context session injectors
         const sessionInjector = new Injector(providers, [this.serviceContainer.getRootContext().getSessionInjector().fork()]);
-        rpcControllerContainer = new ControllerContainer(this.serviceContainer.rpcControllers, sessionInjector);
+        rpcControllerContainer = new RpcControllerContainer(this.serviceContainer.rpcControllers, sessionInjector);
 
         const injector = new Injector([], [this.serviceContainer.getRootContext().getInjector(), sessionInjector]);
         const clientConnection = injector.get(ClientConnection);
@@ -87,7 +87,7 @@ export class BaseWorker {
 export class WebWorker extends BaseWorker {
     protected wsServer?: WebSocket.Server;
     protected server?: http.Server | https.Server;
-    protected httpHandler: HttpHandler;
+    protected httpHandler: HttpKernel;
     protected rootRequestInjector = this.serviceContainer.getRootContext().getRequestInjector();
 
     constructor(
@@ -96,7 +96,7 @@ export class WebWorker extends BaseWorker {
         options: ApplicationConfig,
     ) {
         super(serviceContainer);
-        this.httpHandler = serviceContainer.getRootContext().getInjector().get(HttpHandler);
+        this.httpHandler = serviceContainer.getRootContext().getInjector().get(HttpKernel);
 
         if (options.server) {
             this.server = options.server;

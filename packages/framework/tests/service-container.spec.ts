@@ -1,8 +1,8 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {DynamicModule, deepkit, SuperHornetModule} from '../src/decorator';
-import {ControllerContainer, ServiceContainer} from '../src/service-container';
+import {DynamicModule, deepkit, DeepkitModule} from '../src/decorator';
+import {RpcControllerContainer, ServiceContainer} from '../src/service-container';
 import {injectable, Injector} from '../src/injector/injector';
 import {rpc} from '@deepkit/framework-shared';
 
@@ -37,7 +37,7 @@ test('controller', () => {
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
-        const controllerContainer = new ControllerContainer(serviceContainer.rpcControllers);
+        const controllerContainer = new RpcControllerContainer(serviceContainer.rpcControllers);
         const controller = controllerContainer.createController(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
@@ -83,7 +83,7 @@ test('controller in module and overwrite service', () => {
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
-        const controllerContainer = new ControllerContainer(serviceContainer.rpcControllers);
+        const controllerContainer = new RpcControllerContainer(serviceContainer.rpcControllers);
         const controller = controllerContainer.createController(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
@@ -101,7 +101,7 @@ test('controller in module and overwrite service', () => {
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
-        const controllerContainer = new ControllerContainer(serviceContainer.rpcControllers);
+        const controllerContainer = new RpcControllerContainer(serviceContainer.rpcControllers);
         const controller = controllerContainer.createController(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('different');
@@ -317,7 +317,7 @@ test('module with config object', () => {
             ExchangeConfig,
         ]
     })
-    class ExchangeModule implements SuperHornetModule {
+    class ExchangeModule implements DeepkitModule {
         constructor(protected config: ExchangeConfig) {
         }
 
