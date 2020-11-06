@@ -124,7 +124,7 @@ export interface ModuleOptions {
      * ```typescript
      *
      * class MyListener {
-     *     @event.listen(onEvent)
+     *     @eventDispatcher.listen(onEvent)
      *     onEvent(event: typeof onEvent['type']) {
      *         console.log('event triggered', event);
      *     }

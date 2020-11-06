@@ -14,7 +14,7 @@
     "test": "jest --coverage",
     "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
     "tsc-watch": "rm -rf dist && tsc --watch",
-    "preinstall": "rm node_modules/@deepkit/framework",
+    "preinstall": "rm -f node_modules/@deepkit/framework",
     "postinstall": "ln -s ../../ node_modules/@deepkit/framework"
   },
   "dependencies": {
