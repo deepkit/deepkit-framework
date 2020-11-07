@@ -250,6 +250,7 @@ export class ScopedSerializer<T extends ClassSchema> {
 
     /**
      * Serializes given class instance to the serialization format.
+     * -> class to serializer.
      */
     serialize(instance: ExtractClassType<T>, options?: JitConverterOptions): any {
         if (!this._serialize) this._serialize = getClassToXFunction(this.schema, this.serializer);
@@ -257,11 +258,11 @@ export class ScopedSerializer<T extends ClassSchema> {
     }
 
     /**
-     * Same as `deserialize` but with validation before creating the class instance.
+     * Same as `deserialize` but with validation after creating the class instance.
      *
      * ```typescript
      * try {
-     *     const entity = painSerializer.for(MyEntity).validatedDeserialize({field1: 'value'});
+     *     const entity = jsonSerializer.for(MyEntity).validatedDeserialize({field1: 'value'});
      *     entity instanceof MyEntity; //true
      * } catch (error) {
      *     if (error instanceof ValidationFailed) {
@@ -269,20 +270,22 @@ export class ScopedSerializer<T extends ClassSchema> {
      *     }
      * }
      * ```
+     * @throws ValidationFailed
      */
     validatedDeserialize(
         data: PlainOrFullEntityFromClassTypeOrSchema<T>,
         options?: JitConverterOptions
     ): ExtractClassType<T> {
-        const errors = validate(this.schema, data);
-        if (errors.length) throw new ValidationFailed(errors);
-
         if (!this._deserialize) this._deserialize = getXToClassFunction(this.schema, this.serializer);
-        return this._deserialize(data, options);
+        const item = this._deserialize(data, options);
+        const errors = validate(this.schema, item);
+        if (errors.length) throw new ValidationFailed(errors);
+        return item;
     }
 
     /**
      * Converts given data in form of this serialization format to the target (default JS primitive/class) type.
+     * -> serializer to class.
      */
     deserialize(
         data: PlainOrFullEntityFromClassTypeOrSchema<T>,

@@ -6,6 +6,7 @@ export * from './src/decorators';
 export * from './src/mapper';
 export * from './src/utils';
 export * from './src/validation';
+export * from './src/validation-decorator';
 export * from './src/serializer-compiler';
 export * from './src/applyPatch';
 export * from './src/moment';

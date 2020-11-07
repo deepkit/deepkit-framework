@@ -4,7 +4,7 @@ import {Configuration, injectable} from '@deepkit/framework';
 export class Website {
     constructor(
         protected props: { title?: string },
-        protected children: string[],
+        protected children: string,
         protected config: Configuration
     ) {
     }
@@ -18,6 +18,8 @@ export class Website {
         <body style="display: flex; justify-content: center">
         <div style="max-width: 800px; border: 1px solid silver;">
             Hi {this.config.get('TEST')}
+
+            <div class="subline">Subline</div>
 
             <div class="content">
                 {this.children}

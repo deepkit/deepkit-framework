@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+import 'reflect-metadata';
 import {BenchSuite} from '@deepkit/core';
 import {Router, http} from '@deepkit/framework';
 
@@ -43,24 +43,24 @@ export async function main() {
 
     const bench = new BenchSuite('router-resolve');
 
-    bench.add('root', () => {
-        router.resolve('GET', '/');
+    bench.addAsync('root', async () => {
+        await router.resolve('GET', '/');
     });
 
-    bench.add('static', () => {
-        router.resolve('GET', '/peter');
+    bench.addAsync('static', async () => {
+        await router.resolve('GET', '/peter');
     });
 
-    bench.add('one_parameter', () => {
-        router.resolve('GET', '/user/21313');
+    bench.addAsync('one_parameter', async () => {
+        await router.resolve('GET', '/user/21313');
     });
 
-    bench.add('two_parameter', () => {
-        router.resolve('GET', '/user/21313/article/2');
+    bench.addAsync('two_parameter', async () => {
+        await router.resolve('GET', '/user/21313/article/2');
     });
 
-    bench.add('not_found', () => {
-        router.resolve('GET', '/not-available');
+    bench.addAsync('not_found', async () => {
+        await router.resolve('GET', '/not-available');
     });
 
     bench.run();

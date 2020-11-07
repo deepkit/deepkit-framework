@@ -1,5 +1,5 @@
 import 'jest';
-import {createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, mergeDecorator} from '../src/decorator-builder';
+import {createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, isDecoratorContext, mergeDecorator} from '../src/decorator-builder';
 import {entity, getClassSchema, t} from '../index';
 
 test('without host', () => {
@@ -16,6 +16,10 @@ test('without host', () => {
             };
         }
     );
+
+    expect(isDecoratorContext(dec1, dec1)).toBe(true);
+    expect(isDecoratorContext(dec1, dec1.name('Peter'))).toBe(true);
+    expect(isDecoratorContext(dec1, () => true)).toBe(false);
 
     {
         const c2 = dec1.name('Peter')();
@@ -51,6 +55,12 @@ test('collapsing correcly', () => {
 
         }
     );
+
+    expect(isDecoratorContext(dec1, dec1)).toBe(true);
+    expect(isDecoratorContext(dec1, dec1.default('Peter'))).toBe(true);
+    expect(isDecoratorContext(dec1, dec1.default('Peter').optional)).toBe(true);
+    expect(isDecoratorContext(dec1, dec1.optional)).toBe(true);
+    expect(isDecoratorContext(dec1, () => true)).toBe(false);
 
     {
         const c2 = dec1.optional.default('Peter')();

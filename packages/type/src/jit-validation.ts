@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType} from '@deepkit/core';
+import {ClassType, isPlainObject} from '@deepkit/core';
 import {handleCustomValidator, ValidationFailedItem} from './validation';
 import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol} from './decorators';
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
@@ -174,10 +174,10 @@ export function jitValidateProperty(property: PropertyCompilerSchema, classType?
         return function(_data, _path, _errors, _overwritePath) {
             const _oldPopulatedCheck = _globalStore.unpopulatedCheck; 
             _globalStore.unpopulatedCheck = ReturnSymbol;
-            _path = _path || '';
+            _path = _path === undefined ? undefined : _path;
             _errors = _errors ? _errors : [];
             const _stack = [];
-            ${getDataCheckerJS(`(_overwritePath || _path  || '${property.name}')`, `_data`, property, context, jitStack)}
+            ${getDataCheckerJS(`(_overwritePath || (_path === undefined ? '${property.name}' : _path))`, `_data`, property, context, jitStack)}
             _globalStore.unpopulatedCheck = _oldPopulatedCheck;
             return _errors;
         }
@@ -204,12 +204,6 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
 
     const context = new Map<any, any>();
     const prepared = jitStack.prepare(schema);
-
-    context.set('_classType', schema.classType);
-    context.set('ValidationError', ValidationFailedItem);
-    context.set('_globalStore', getGlobalStore());
-    context.set('ReturnSymbol', UnpopulatedCheck.ReturnSymbol);
-    context.set('unpopulatedSymbol', unpopulatedSymbol);
 
     const checks: string[] = [];
 
@@ -238,6 +232,13 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
             ${getDataCheckerJS(`_path + '${originProperty.name}'`, `value`, property, context, jitStack)}
         `);
     }
+
+    context.set('_classType', schema.classType);
+    context.set('ValidationError', ValidationFailedItem);
+    context.set('_globalStore', getGlobalStore());
+    context.set('ReturnSymbol', UnpopulatedCheck.ReturnSymbol);
+    context.set('unpopulatedSymbol', unpopulatedSymbol);
+    context.set('isPlainObject', isPlainObject);
 
     const functionCode = `
         return function(_data, _path, _errors, _stack) {

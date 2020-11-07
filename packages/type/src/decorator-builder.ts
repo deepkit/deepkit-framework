@@ -22,7 +22,8 @@ export function createFluidDecorator<API extends APIClass<any>>
     api: API,
     modifier: { name: string, args?: any }[],
     collapse: (modifier: { name: string, args?: any }[], target: object, property?: string, parameterIndexOrDescriptor?: any) => void,
-    returnCollapse: boolean = false
+    returnCollapse: boolean = false,
+    fluidFunctionSymbol?: symbol
 ): FluidDecorator<ExtractClass<API>> {
     const fn = function (target: object, property?: string, parameterIndexOrDescriptor?: any) {
         const res = collapse(modifier, target, property, parameterIndexOrDescriptor);
@@ -31,6 +32,7 @@ export function createFluidDecorator<API extends APIClass<any>>
 
     const methods: string[] = [];
     Object.defineProperty(fn, '_methods', {value: methods});
+    if (fluidFunctionSymbol) Object.defineProperty(fn, fluidFunctionSymbol, {value: true});
 
     let current = api;
     while (current.prototype) {
@@ -47,7 +49,7 @@ export function createFluidDecorator<API extends APIClass<any>>
                     configurable: true,
                     enumerable: false,
                     get: () => {
-                        return createFluidDecorator(api, [...modifier, {name}], collapse, returnCollapse);
+                        return createFluidDecorator(api, [...modifier, {name}], collapse, returnCollapse, fluidFunctionSymbol);
                     }
                 });
             } else {
@@ -57,7 +59,7 @@ export function createFluidDecorator<API extends APIClass<any>>
                     enumerable: false,
                     get: () => {
                         return (...args: any[]) => {
-                            return createFluidDecorator(api, [...modifier, {name, args}], collapse, returnCollapse);
+                            return createFluidDecorator(api, [...modifier, {name, args}], collapse, returnCollapse, fluidFunctionSymbol);
                         };
                     }
                 });
@@ -200,7 +202,7 @@ export type FreeFluidDecorator<API> = {
         : FreeFluidDecorator<API>
 } & FreeDecoratorFn<API>;
 
-export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<API>
+export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<API> & {_fluidFunctionSymbol: symbol};
 
 export function createFreeDecoratorContext<API extends APIClass<any>, T = ExtractApiDataType<API>>(
     apiType: API
@@ -220,7 +222,23 @@ export function createFreeDecoratorContext<API extends APIClass<any>, T = Extrac
         return api.t;
     }
 
-    const fn = createFluidDecorator(apiType, [], collapse, true);
+    const fluidFunctionSymbol = Symbol('fluidFunctionSymbol');
+
+    const fn = createFluidDecorator(apiType, [], collapse, true, fluidFunctionSymbol);
+
+    Object.defineProperty(fn, '_fluidFunctionSymbol', {
+        configurable: true,
+        enumerable: false,
+        value: fluidFunctionSymbol
+    });
 
     return fn as any;
+}
+
+export function isDecoratorContext<API extends APIClass<any>>(context: FreeDecoratorResult<API>, fn: Function): fn is FreeFluidDecorator<API> {
+    const symbol = context._fluidFunctionSymbol;
+
+    if (Object.getOwnPropertyDescriptor(fn, symbol)) return true;
+
+    return false;
 }

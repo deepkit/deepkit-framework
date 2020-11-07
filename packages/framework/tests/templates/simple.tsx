@@ -1,3 +1,5 @@
+import {html} from '../../src/template/template';
+
 export function simpleOnlyAttributes() {
     return <div id="123"></div>
 }
@@ -39,4 +41,14 @@ export function simple5(name: string) {
         <h1>Hi</h1>
         <p>How are you, {name}?</p>
     </Website>
+}
+
+export function simpleHtmlInjected() {
+    const myHtml = '<strong>MyHTML</strong>';
+    return <div>{myHtml}</div>
+}
+
+export function simpleHtmlInjectedValid() {
+    const myHtml = '<strong>MyHTML</strong>';
+    return <div>{html(myHtml)}</div>
 }

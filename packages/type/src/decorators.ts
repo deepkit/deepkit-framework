@@ -12,11 +12,12 @@ import {PropertyValidatorError} from './validation';
 import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isNumber, isObject, isPlainObject, toFastProperties,} from '@deepkit/core';
 import getParameterNames from 'get-parameter-names';
 import {FlattenIfArray, isArray, JSONEntity} from './utils';
-import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
+import {ClassDecoratorResult, createClassDecoratorContext, FreeFluidDecorator, isDecoratorContext} from './decorator-builder';
 import {jsonSerializer} from './json-serializer';
 import {PartialField, typedArrayMap, typedArrayNamesMap, Types} from './models';
 import {BackReference, isPrimaryKey, Reference} from './types';
 import {extractMethod} from './code-parser';
+import {FreeValidationContext, validation} from './validation-decorator';
 
 export enum UnpopulatedCheck {
     None,
@@ -1259,7 +1260,7 @@ export function isClassInstance(target: any): boolean {
 }
 
 /**
- * Returns true if given class has an @Entity() or @f defined, and thus became
+ * Returns true if given class has an @entity() or @t defined, and thus became
  * a deepkit/type entity.
  */
 export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
@@ -1659,7 +1660,7 @@ export interface FieldDecoratorResult<T> {
      * ```
      */
     validator(
-        ...validators: (ClassType<PropertyValidator> | ValidatorFn)[]
+        ...validators: (ClassType<PropertyValidator> | FreeFluidDecorator<ClassType<FreeValidationContext>> | ValidatorFn)[]
     ): this;
 
     /**
@@ -2071,7 +2072,7 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    function createValidator(validator: ValidatorFn) {
+    function createValidatorFromFunction(validator: ValidatorFn) {
         return class implements PropertyValidator {
             validate<T>(value: any, propertyName: string, classType?: ClassType): PropertyValidatorError | undefined | void {
                 return validator(value, propertyName, classType);
@@ -2108,13 +2109,25 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn)[]) => {
+    fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn | FreeFluidDecorator<ClassType<FreeValidationContext>>)[]) => {
         resetIfNecessary();
         const validatorClasses: ClassType<PropertyValidator>[] = [];
 
         for (const validator of validators) {
-            const validatorClass: ClassType<PropertyValidator> = isPropertyValidator(validator) ? validator : createValidator(validator);
-            validatorClasses.push(validatorClass);
+            if (isDecoratorContext(validation, validator)) {
+                const t = validator();
+                for (const validator of t.validators) {
+                    if (isPropertyValidator(validator)) {
+                        validatorClasses.push(validator);
+                    } else {
+                        validatorClasses.push(createValidatorFromFunction(validator));
+                    }
+                }
+            } else if (isPropertyValidator(validator)) {
+                validatorClasses.push(validator);
+            } else {
+                validatorClasses.push(createValidatorFromFunction(validator));
+            }
         }
 
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {

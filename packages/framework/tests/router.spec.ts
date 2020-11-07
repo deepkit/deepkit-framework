@@ -4,7 +4,6 @@ import {Router} from '../src/router';
 import {HttpKernel} from '../src/http';
 import {http} from '../src/decorator';
 import {Application} from '../src/application';
-import {ServiceContainer} from '../src/service-container';
 import {IncomingMessage} from 'http';
 import {t} from '@deepkit/type';
 
@@ -22,16 +21,8 @@ test('router', async () => {
         userStatic(id: string) {
         }
 
-        @http.GET('/user/:id/static2')
-        userStatic2(id: string) {
-        }
-
-        @http.GET('/user/:id/static3')
-        userStatic3(id: string) {
-        }
-
-        @http.GET('/user2/:id/static3')
-        user2Static3(id: string) {
+        @http.GET('/user2/:id/static/:id2')
+        userStatic2(id: string, id2: string) {
         }
 
         @http.GET('/static')
@@ -44,8 +35,14 @@ test('router', async () => {
     expect(await router.resolve('GET', '/')).toMatchObject({controller: Controller, method: 'helloWorld'});
     expect(await router.resolve('GET', '/peter')).toMatchObject({controller: Controller, method: 'hello'});
     expect((await router.resolve('GET', '/peter'))?.parameters!(undefined as any)).toEqual(['peter']);
-    expect(await router.resolve('GET', '/user/1233/static')).toMatchObject({controller: Controller, method: 'userStatic'});
-    expect((await router.resolve('GET', '/user/1233/static'))?.parameters!(undefined as any)).toEqual(['1233']);
+
+    const userStatic = await router.resolve('GET', '/user/1233/static');
+    expect(userStatic).toMatchObject({controller: Controller, method: 'userStatic'});
+    expect(userStatic?.parameters!(undefined as any)).toEqual(['1233']);
+
+    const userStatic2 = await router.resolve('GET', '/user2/1233/static/123');
+    expect(userStatic2).toMatchObject({controller: Controller, method: 'userStatic2'});
+    expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
 });
 
 test('router parameters', async () => {

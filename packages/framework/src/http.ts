@@ -64,6 +64,18 @@ export class HttpRequestEvent extends BaseEvent {
 
 export const onHttpRequest = new EventToken<HttpRequestEvent>('http.request');
 
+export class HttpRouteNotFoundEvent extends BaseEvent {
+    constructor(
+        public readonly request: IncomingMessage,
+        public readonly response: ServerResponse,
+        // public readonly route: Route,
+    ) {
+        super();
+    }
+}
+
+export const onHttpRouteNotFound = new EventToken<HttpRouteNotFoundEvent>('http.route.notFound');
+
 export class HtmlResponse {
     constructor(public html: string) {
     }
@@ -71,9 +83,12 @@ export class HtmlResponse {
 
 @injectable()
 export class HttpListener {
+    protected httpRouteNotFoundEventCaller = this.eventListenerContainer.getCaller(onHttpRouteNotFound);
+
     constructor(
         protected router: Router,
         protected middlewareContainer: EventListenerContainer,
+        protected eventListenerContainer: EventListenerContainer,
         protected config: ApplicationConfig,
         protected logger: Logger,
     ) {
@@ -95,6 +110,7 @@ export class HttpListener {
         const resolved = await this.router.resolveRequest(event.request);
 
         if (!resolved) {
+            await this.httpRouteNotFoundEventCaller(new HttpRouteNotFoundEvent(event.request, event.response));
             return;
         }
 

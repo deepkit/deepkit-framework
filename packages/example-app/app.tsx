@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import {Application, Databases, http} from '@deepkit/framework';
-import {entity, t} from '@deepkit/type';
+import {Application, Databases, http, BodyValidation} from '@deepkit/framework';
+import {entity, t, v} from '@deepkit/type';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
@@ -24,31 +24,40 @@ class SQLiteDatabase extends Database.createClass(
 }
 
 class AddUserDto {
-    @t username!: string;
+    @t.validator(v.minLength(3)) username!: string;
+}
+
+async function UserList({error}: {error?: string} = {}) {
+    const users = await User.query<User>().find();
+    return <Website title="Users">
+        <h1>Users</h1>
+
+        <img src="/lara.jpeg" style="max-width: 100%" />
+        <div style="margin: 25px 0;">
+            {users.map(user => <div>#{user.id} <strong>{user.username}</strong>, created {user.created}</div>)}
+        </div>
+
+        <form action="/add" method="post">
+            <input type="text" name="username" /><br/>
+            {error ? <div style="color: red">Error: {error}</div> : ''}
+            <button>Send</button>
+        </form>
+    </Website>;
 }
 
 @http.controller()
 class HelloWorldController {
     @http.GET('/')
     async startPage() {
-        const users = await User.query<User>().find();
-        return <Website title="Users">
-            <h1>Users</h1>
-            <div>
-                {users.map(user => <div>#{user.id} <strong>{user.username}</strong>, created {user.created}</div>)}
-            </div>
-
-            <form action="/add" method="POST">
-                <input type="text" name="username"></input><br/>
-                <button>Send</button>
-            </form>
-        </Website>;
+        return UserList();
     }
 
     @http.POST('/add')
-    async add(body: AddUserDto) {
+    async add(body: AddUserDto, bodyValidation: BodyValidation) {
+        if (bodyValidation.hasErrors()) return UserList({error: bodyValidation.getErrorMessageForPath('username')});
+
         await new User(body.username).save();
-        return this.startPage();
+        return UserList();
     }
 }
 

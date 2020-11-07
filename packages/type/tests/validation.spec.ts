@@ -1,3 +1,4 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {jsonSerializer, PropertyValidator, PropertyValidatorError, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem} from '../index';
@@ -373,7 +374,7 @@ test('test Date', async () => {
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
-        expect(error.errors[0].message).toBe('No valid Date string given');
+        expect(error.errors[0].message).toBe('No valid Date given');
     }
 
     try {
@@ -381,7 +382,7 @@ test('test Date', async () => {
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
-        expect(error.errors[0].message).toBe('No Date string given');
+        expect(error.errors[0].message).toBe('No valid Date given');
     }
 
     try {
@@ -389,7 +390,7 @@ test('test Date', async () => {
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
-        expect(error.errors[0].message).toBe('Required value is null');
+        expect(error.errors[0].message).toBe('Required value is undefined'); //because not nullable, converts automatically to undefined
     }
 
     try {

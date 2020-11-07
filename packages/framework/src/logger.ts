@@ -95,7 +95,7 @@ export class RemoveColorFormatter implements Formatter {
 
 export class TimestampFormatter implements Formatter {
     format(message: string, level: LoggerLevel): string {
-        return `<yellow>${new Date().toISOString()}</yellow> ${message}`;
+        return `<yellow>${new Date().toISOString()}</yellow> [${String(LoggerLevel[level]).toUpperCase()}] ${message}`;
     }
 }
 

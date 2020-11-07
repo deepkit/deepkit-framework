@@ -37,8 +37,6 @@ test('check freezed objects work with classToPlain', () => {
         expect(plain).not.toBeInstanceOf(PersistentState);
         expect(plain.goal).not.toBeInstanceOf(StateGoal);
         expect(plain.goal).not.toBe(state.goal);
-        console.log('class', state);
-        console.log('plain', plain);
     }
 
     {

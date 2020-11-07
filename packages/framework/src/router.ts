@@ -18,14 +18,13 @@
 
 import {arrayRemoveItem, asyncOperation, ClassType, CompilerContext, toFastProperties} from '@deepkit/core';
 import {join} from 'path';
-import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema} from '@deepkit/type';
-import {ValidationError} from '@deepkit/framework-shared';
+import {getClassSchema, getPropertyXtoClassFunction, isRegisteredEntity, jitValidateProperty, jsonSerializer, PropertySchema} from '@deepkit/type';
+import {ValidationError, ValidationErrorItem} from '@deepkit/framework-shared';
 import {httpClass} from './decorator';
 import {injectable, Injector} from './injector/injector';
 import {Logger} from './logger';
 import {IncomingMessage, ServerResponse} from 'http';
 import * as formidable from 'formidable';
-import {Socket} from 'net';
 
 type ResolvedController = { controller: ClassType, parameters: (injector: Injector) => any[], method: string };
 
@@ -48,6 +47,37 @@ function parseBody(form: any, req: IncomingMessage) {
             }
         });
     });
+}
+
+/**
+ * When this class is injected into a route, then validation errors are not automatically thrown (using onHttpControllerValidationError event),
+ * but injected to the route itself. The user is then responsible to handle the errors.
+ *
+ * Note: The body parameter is still passed, however it might contain now invalid data. The BodyValidation tells what data is invalid.
+ */
+export class BodyValidation {
+    constructor(
+        public readonly errors: ValidationErrorItem[] = []
+    ) {
+    }
+
+    hasErrors(prefix?: string): boolean {
+        return this.getErrors(prefix).length > 0;
+    }
+
+    getErrors(prefix?: string): ValidationErrorItem[] {
+        if (prefix) return this.errors.filter(v => v.path.startsWith(prefix));
+
+        return this.errors;
+    }
+
+    getErrorsForPath(path: string): ValidationErrorItem[] {
+        return this.errors.filter(v => v.path === path);
+    }
+
+    getErrorMessageForPath(path: string): string {
+        return this.getErrorsForPath(path).map(v => v.message).join(', ');
+    }
 }
 
 @injectable()
@@ -77,7 +107,7 @@ export class Router {
         const controllerVar = compiler.reserveVariable('controller', controller);
         const schema = getClassSchema(controller);
 
-        const excludedClassTypesForBody: any[] = [IncomingMessage, ServerResponse];
+        const excludedClassTypesForBody: any[] = [IncomingMessage, ServerResponse, BodyValidation];
 
         const code: string[] = [];
         for (const action of data.actions) {
@@ -87,11 +117,15 @@ export class Router {
             const parameterConverter: { [name: string]: (v: any) => any } = {};
             const manualInjection: string[] = [];
             let requiresBodyParser: PropertySchema | undefined = undefined;
+            let customValidationErrorHandling: PropertySchema | undefined = undefined;
 
             for (const property of methodArgumentProperties) {
                 methodArgumentPropertiesByName[property.name] = property;
                 manualInjection.push(property.name);
-                if (property.type === 'class' && !excludedClassTypesForBody.includes(property.getResolvedClassType())) {
+
+                if (property.type === 'class' && property.classType === BodyValidation) {
+                    customValidationErrorHandling = property;
+                } else if (property.type === 'class' && !excludedClassTypesForBody.includes(property.getResolvedClassType()) && isRegisteredEntity(property.getResolvedClassType())) {
                     requiresBodyParser = property;
                     parameterValidators[property.name] = jitValidateProperty(property);
                     parameterConverter[property.name] = getPropertyXtoClassFunction(property, jsonSerializer);
@@ -105,7 +139,7 @@ export class Router {
             const prefix = path.substr(0, path.indexOf(':'));
 
             let argumentIndex = 0;
-            path = path.replace(/:(\w+)/, (a, name) => {
+            path = path.replace(/:(\w+)/g, (a, name) => {
                 if (!methodArgumentPropertiesByName[name]) {
                     this.logger.warning(`Method ${schema.getClassPropertyName(action.methodName)} has no function argument defined named ${name}.`);
                 } else {
@@ -133,6 +167,7 @@ export class Router {
                 const regexVar = compiler.reserveVariable('regex', new RegExp('^' + path + '$'));
                 const setParameters: string[] = [];
                 const parameterValidator: string[] = [];
+                let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
 
                 for (const property of methodArgumentProperties) {
                     if (parameterRegExIndex[property.name] !== undefined) {
@@ -141,19 +176,23 @@ export class Router {
                         const validatorVar = compiler.reserveVariable('argumentValidator', parameterValidators[property.name]);
                         parameterValidator.push(`${validatorVar}(_match[1 + ${parameterRegExIndex[property.name]}], ${JSON.stringify(property.name)}, validationErrors);`);
                     } else {
-                        if (requiresBodyParser === property) {
+                        if (customValidationErrorHandling === property) {
+                            compiler.context.set('BodyValidation', BodyValidation);
+                            bodyValidationErrorHandling = '';
+                            setParameters.push(`new BodyValidation(bodyErrors)`);
+                        } else if (requiresBodyParser === property) {
                             const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
                             const formVar = compiler.reserveVariable('form', this.form);
+                            const bodyVar = compiler.reserveVariable('body');
                             const validatorVar = compiler.reserveVariable('argumentValidator', parameterValidators[property.name]);
 
-                            parameterValidator.push(`
-                            const body = await ${parseBodyVar}(${formVar}, request);
-                            ${validatorVar}(body.fields, ${JSON.stringify(property.name)}, validationErrors);
-                            `);
-
                             const converterVar = compiler.reserveVariable('argumentConverter', parameterConverter[property.name]);
-                            setParameters.push(`${converterVar}(body.fields)`);
-                        } else {
+                            parameterValidator.push(`
+                            ${bodyVar} = ${converterVar}((await ${parseBodyVar}(${formVar}, request)).fields);
+                            ${validatorVar}(${bodyVar}, '', bodyErrors);
+                            `);
+                            setParameters.push(bodyVar);
+                        } else if (property.type === 'class') {
                             const classType = compiler.reserveVariable('classType', property.getResolvedClassType());
                             setParameters.push(`_injector.get(${classType})`);
                         }
@@ -164,7 +203,9 @@ export class Router {
                     //=> ${path}
                     if (request.method === '${action.httpMethod}' && request.url.startsWith(${JSON.stringify(prefix)}) && (_match = request.url.match(${regexVar}))) {
                         const validationErrors = [];
+                        const bodyErrors = [];
                         ${parameterValidator.join('\n')}
+                        ${bodyValidationErrorHandling}
                         if (validationErrors.length) throw ValidationError.from(validationErrors);
                         return {controller: ${controllerVar}, parameters: (_injector) => [${setParameters.join(',')}], method: ${methodNameVar}};
                     }
@@ -206,12 +247,9 @@ export class Router {
     }
 
     async resolve(method: string, url: string): Promise<ResolvedController | undefined> {
-        const request = new (class extends IncomingMessage {
-            url = url;
-            method = method;
-            position = 0;
-        })(new Socket());
-
-        return this.fn(request);
+        return this.fn({
+            method,
+            url
+        } as IncomingMessage);
     }
 }

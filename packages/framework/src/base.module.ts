@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ProcessLocker} from '@deepkit/core';
+import {asyncOperation, ProcessLocker} from '@deepkit/core';
 import {InternalClient} from './internal-client';
 import {SessionStack} from './session';
 import {ClientConnection} from './client-connection';
 import {ConnectionMiddleware} from '@deepkit/framework-shared';
 import {SecurityStrategy} from './security';
 import {Router} from './router';
-import {HttpKernel, HttpListener, onHttpRequest} from './http';
+import {HttpKernel, HttpListener, onHttpRequest, onHttpRouteNotFound} from './http';
 import {ServerListenController} from './cli/server-listen';
 import {deepkit, DynamicModule, eventDispatcher, EventOfEventToken} from './decorator';
 import {ExchangeModule} from './exchange/exchange.module';
@@ -36,15 +36,51 @@ import {MigrationPendingCommand} from './cli/orm/migration-pending-command';
 import {MigrationDownCommand} from './cli/orm/migration-down-command';
 import {Databases} from './databases';
 import {LiveDatabase} from './exchange/live-database';
-import {inject} from './injector/injector';
+import {inject, injectable} from './injector/injector';
+import * as serveStatic from 'serve-static';
+import {ApplicationConfig} from './application-config';
 
 class HttpLogger {
     constructor(@inject() private logger: Logger) {
     }
 
-    @eventDispatcher.listen(onHttpRequest)
+    @eventDispatcher.listen(onHttpRequest, -100)
     onHttpRequest(event: EventOfEventToken<typeof onHttpRequest>) {
-        this.logger.log('request', event.request.method, event.request.url);
+        this.logger.log(
+            event.request.connection.remoteAddress, '-',
+            event.request.method,
+            `"${event.request.url}"`,
+            event.response.statusCode,
+            `"${event.request.headers.referer || ''}"`,
+            `"${event.request.headers['user-agent']}"`,
+        );
+    }
+}
+
+class HttpRouteNotFoundListener {
+    @eventDispatcher.listen(onHttpRouteNotFound, -10)
+    on(event: EventOfEventToken<typeof onHttpRouteNotFound>) {
+        if (event.response.finished) return;
+
+        event.response.writeHead(404);
+        event.response.end('Not found');
+    }
+}
+
+@injectable()
+class HttpRequestStaticServingListener {
+    protected serveStatic = serveStatic(this.config.publicDir);
+
+    constructor(private config: ApplicationConfig) {
+    }
+
+    @eventDispatcher.listen(onHttpRequest, -1)
+    onHttpRequest(event: EventOfEventToken<typeof onHttpRequest>) {
+        return asyncOperation(resolve => {
+            this.serveStatic(event.request, event.response, () => {
+                resolve(undefined);
+            });
+        });
     }
 }
 
@@ -68,6 +104,8 @@ class HttpLogger {
     listeners: [
         HttpListener,
         HttpLogger,
+        HttpRouteNotFoundListener,
+        HttpRequestStaticServingListener,
     ],
     controllers: [
         ServerListenController,

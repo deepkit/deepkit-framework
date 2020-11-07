@@ -35,7 +35,7 @@ registerCheckerCompiler('string', (accessor: string, property: PropertyCompilerS
 });
 
 registerCheckerCompiler('enum', (accessor: string, property: PropertyCompilerSchema, utils) => {
-    //this a candidate where we can extract ENUM information during build time and check very fast during
+    //this is a candidate where we can extract ENUM information during build time and check very fast during
     //runtime, so we don't need a call to getResolvedClassTypeForValidType(), isValidEnumValue(), etc in runtime anymore.
     const allowLabelsAsValue = property.allowLabelsAsValue;
     const typeValue = utils.reserveVariable();

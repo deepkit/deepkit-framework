@@ -17,7 +17,7 @@
  */
 
 import {addHook} from 'pirates';
-import {Expression, Literal, Property, SpreadElement} from 'estree';
+import {CallExpression, Expression, Literal, ObjectExpression, Property, SpreadElement, UnaryExpression} from 'estree';
 
 function transform(code: string, filename: string) {
     if (code.indexOf('.jsx(') === -1 && code.indexOf('.jsxs(') === -1) return code;
@@ -33,7 +33,7 @@ const {parse, generate, replace} = require('abstract-syntax-tree');
 class NotSerializable {
 }
 
-function serializeValue(node: any): any {
+function serializeValue(node: Literal | UnaryExpression): any {
     if (node.type === 'Literal') {
         return node.value;
     }
@@ -45,16 +45,17 @@ function serializeValue(node: any): any {
     return NotSerializable;
 }
 
-function optimizeAttributes(node: any) {
+function optimizeAttributes(node: ObjectExpression): any {
     let value: string[] = [];
+    for (const p of node.properties) {
+        if (p.type === 'SpreadElement') return node;
 
-    for (const prop of node.properties) {
-        const canOptimized = (prop.key.type === 'Identifier' || prop.key.type === 'Literal');
-        const serializedValue = serializeValue(prop.value);
-        if (!canOptimized || serializedValue === NotSerializable) {
-            return node;
-        }
-        value.push(prop.key.name + '="' + serializedValue + '"');
+        const keyName = p.key.type === 'Literal' ? p.key.value : (p.key.type === 'Identifier' ? p.key.name : '');
+        if (!keyName) return node;
+
+        if (p.value.type !== 'Literal' && p.value.type !== 'UnaryExpression') return node;
+
+        value.push(keyName + '="' + serializeValue(p.value) + '"');
     }
 
     return {type: 'Literal', value: value.join(' ')};
@@ -93,42 +94,52 @@ function optimizeNode(node: Expression): any {
     //can we serialize/optimize attributes?
     //we only optimize attributes when we have createElement(string)
     if (node.arguments[0].type !== 'Literal') return node;
+    const tag = node.arguments[0].value;
 
     if (node.arguments[1] && node.arguments[1].type === 'ObjectExpression') {
-        node.arguments[1] = optimizeAttributes(node.arguments[1]);
+        const ori = node.arguments[1];
+        node.arguments[1] = optimizeAttributes(ori);
+        if (ori === node.arguments[1]) {
+            //we did not change the attributes to a better option, so we stop optimizing further.
+            return;
+        }
     }
 
     //check if we can consolidate arguments to one big string
-    //todo: consolidate all possible groups instead of 'all-or-nothing'.
     let canBeReplaced = true;
-    for (let i = 2; i < node.arguments.length; i++) {
-        if (node.arguments[i] && node.arguments[i].type !== 'Literal') {
+    for (let i = 1; i < node.arguments.length; i++) {
+        if (node.arguments[i] && (node.arguments[i].type !== 'Literal' && !isHtmlCall(node.arguments[i]))) {
             canBeReplaced = false;
             break;
         }
     }
 
     if (canBeReplaced) {
-        const args = node.arguments as Literal[];
+        const args = node.arguments as (Literal | CallExpression)[];
+        const attributeLiteral = extractLiteralValue(args[1]);
 
-        const tag = args[0].value;
-        let value = '<' + tag + (args[1] && args[1].value ? (' ' + args[1].value) : '') + '>';
+        let value = '<' + tag + (attributeLiteral ? (' ' + attributeLiteral) : '') + '>';
 
         for (let i = 2; i < node.arguments.length; i++) {
             if (node.arguments[i] === undefined || node.arguments[i] === null) {
                 value += node.arguments[i];
             } else {
-                value += args[i].value;
-                if (args[i].value === undefined) {
-                    // console.error('Shit', node.arguments[i]);
-                }
+                value += extractLiteralValue(args[i]);
             }
         }
         value += '</' + tag + '>';
-        return {type: 'Literal', value: value};
+        return {type: 'CallExpression', callee: {type: 'Identifier', name: 'html'}, arguments: [{type: 'Literal', value: value}]};
     }
 
     return node;
+}
+
+function extractLiteralValue(object: Literal | CallExpression) {
+    return object.type === 'Literal' ? object.value : (object.arguments[0] && object.arguments[0].type === 'Literal' ? object.arguments[0].value : '');
+}
+
+function isHtmlCall(object: Expression | SpreadElement) {
+    return object.type === 'CallExpression' && object.callee.type === 'Identifier' && object.callee.name === 'html' && object.arguments[0] && object.arguments[0].type === 'Literal';
 }
 
 function extractChildrenFromObjectExpressionProperties(props: Array<Property | SpreadElement>): Expression | undefined {
@@ -161,6 +172,10 @@ function extractChildrenFromObjectExpressionProperties(props: Array<Property | S
  */
 function convertNodeToCreateElement(node: Expression): Expression {
     if (node.type !== 'CallExpression') return node;
+    if (node.callee.type !== 'MemberExpression') return node;
+
+    const isValid = node.callee.property.type === 'Identifier' && (node.callee.property.name === 'jsx' || node.callee.property.name === 'jsxs');
+    if (!isValid) return node;
 
     if (node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier') node.callee.property.name = 'createElement';
 
