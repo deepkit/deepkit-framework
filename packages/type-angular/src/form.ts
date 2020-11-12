@@ -97,7 +97,7 @@ function createControl<T>(
         } else if (prop.isMap) {
             throw new Error('Map not supported');
         } else {
-            control = TypedFormGroup.fromEntityClass(prop.getSubType().getResolvedClassType(), limitControls, undefined, conditionalValidatorsForProp, propPath);
+            control = TypedFormGroup.fromEntityClass(prop.getResolvedClassType(), limitControls, undefined, conditionalValidatorsForProp, propPath);
         }
     } else {
         control = new FormControl(undefined, validator);
