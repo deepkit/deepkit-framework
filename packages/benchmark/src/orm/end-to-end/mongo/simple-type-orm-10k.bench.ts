@@ -17,8 +17,8 @@
  */
 
 import 'reflect-metadata';
-import {BenchSuite} from '@deepkit/core';
 import {Column, createConnection, Entity as TypeOrmEntity, ObjectIdColumn} from 'typeorm';
+import {BenchSuite} from '../../../bench';
 
 @TypeOrmEntity()
 export class TypeOrmModel {

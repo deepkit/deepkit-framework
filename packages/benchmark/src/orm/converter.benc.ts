@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BenchSuite} from '@deepkit/core';
 import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '@deepkit/orm';
+import {BenchSuite} from '../bench';
 
 class Image {
     @t title: string = '';

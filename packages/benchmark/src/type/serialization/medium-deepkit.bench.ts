@@ -17,7 +17,7 @@
  */
 
 import {Entity, f, jsonSerializer} from '@deepkit/type';
-import {BenchSuite} from '@deepkit/core';
+import {BenchSuite} from '../../bench';
 
 
 @Entity('sub')

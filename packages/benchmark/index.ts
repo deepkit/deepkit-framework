@@ -32,7 +32,7 @@ async function main() {
             delete require.cache[key];
         }
         getGlobalStore().RegisteredEntities = {};
-        const script = new vm.Script(`require('@deepkit/core').BenchSuite.onComplete = onComplete; (require(benchmarkPath).main())`);
+        const script = new vm.Script(`require('./src/bench').BenchSuite.onComplete = onComplete; (require(benchmarkPath).main())`);
         await script.runInNewContext({benchmarkPath, require, onComplete});
     }
 

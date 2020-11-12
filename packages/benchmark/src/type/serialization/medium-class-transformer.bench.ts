@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BenchSuite} from '@deepkit/core';
 import {classToPlain, Exclude as ctExclude, plainToClass, Transform, Type} from 'class-transformer';
+import {BenchSuite} from '../../bench';
 
 export class SubModel {
     label: string;

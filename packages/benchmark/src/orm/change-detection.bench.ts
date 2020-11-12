@@ -17,8 +17,8 @@
  */
 
 import {t} from '@deepkit/type';
-import {BenchSuite} from '@deepkit/core';
 import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@deepkit/orm';
+import {BenchSuite} from '../bench';
 
 export async function main() {
     const schema = t.schema({

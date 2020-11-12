@@ -17,9 +17,8 @@
  */
 
 import 'reflect-metadata';
-import {BenchSuite} from '@deepkit/core';
-
 import {PrismaClient} from '@prisma/client';
+import {BenchSuite} from '../../../bench';
 
 const prisma = new PrismaClient();
 

@@ -16,12 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BenchSuite} from '@deepkit/core';
-import {jsonSerializer} from '@deepkit/type';
 import {
     classToPlain,
     plainToClass
 } from "class-transformer";
+import {BenchSuite} from '../../bench';
 
 export class Model {
     public id?: number;

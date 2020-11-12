@@ -18,9 +18,9 @@
 
 import 'reflect-metadata';
 import {Entity, t} from '@deepkit/type';
-import {BenchSuite} from '@deepkit/core';
 import {Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
+import {BenchSuite} from '../../../bench';
 
 @Entity('deepkit')
 export class DeepkitModel {

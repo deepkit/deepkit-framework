@@ -17,8 +17,8 @@
  */
 
 import 'reflect-metadata';
-import {BenchSuite} from '@deepkit/core';
 import {Entity as MikroEntity, MikroORM, PrimaryKey, Property, ReflectMetadataProvider} from 'mikro-orm';
+import {BenchSuite} from '../../../bench';
 
 @MikroEntity({collection: 'mikro'})
 export class MikroModel {

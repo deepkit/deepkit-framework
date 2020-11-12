@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 import 'reflect-metadata';
-import {BenchSuite} from '@deepkit/core';
 import {Router, http} from '@deepkit/framework';
+import {BenchSuite} from '../../bench';
 
 export async function main() {
 

@@ -17,7 +17,7 @@
  */
 
 import {f, jsonSerializer} from '@deepkit/type';
-import {BenchSuite} from '@deepkit/core';
+import {BenchSuite} from '../../bench';
 
 class Model {
     @f ready?: boolean;

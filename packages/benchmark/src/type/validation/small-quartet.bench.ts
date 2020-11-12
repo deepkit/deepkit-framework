@@ -16,11 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {validate} from '@deepkit/type';
-import {BenchSuite} from '@deepkit/core';
 import {good} from './validation';
 //we use `e` and not `v` because deepkit/type supports out of the box error explanations, which quartet does only with `e`.
 import {e} from 'quartet';
+import {BenchSuite} from '../../bench';
 
 const QuartetModelChecker = e<any>({
     number: e.number,
