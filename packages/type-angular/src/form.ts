@@ -90,14 +90,15 @@ function createControl<T>(
 
     let control: AbstractControl;
 
-    const t = prop.name ? conditionalValidators[prop.name] : conditionalValidators;
-    const conditionalValidatorsForProp = isConditionalValidatorFn(t) ? {} : t;
     if (prop.isArray) {
-        control = new TypedFormArray(propPath, prop.getSubType(), limitControls, conditionalValidatorsForProp);
+        conditionalValidators[prop.name + '_0'] = conditionalValidators[prop.name];
+        control = new TypedFormArray(propPath, prop.getSubType(), limitControls, conditionalValidators);
     } else if (prop.isMap) {
         throw new Error('Map not supported');
     } else {
         if (prop.type === 'class') {
+            const t = prop.name ? conditionalValidators[prop.name] : conditionalValidators;
+            const conditionalValidatorsForProp = isConditionalValidatorFn(t) ? {} : t;
             control = TypedFormGroup.fromEntityClass(prop.getResolvedClassType(), limitControls, undefined, conditionalValidatorsForProp, propPath);
         } else {
             control = new FormControl(undefined, validator);
