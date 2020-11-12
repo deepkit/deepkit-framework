@@ -97,9 +97,8 @@ jsonSerializer.toClass.register('enum', (property: PropertyCompilerSchema, state
         if (undefined !== ${state.accessor} && !isValidEnumValue(typeValue, ${state.accessor}, ${allowLabelsAsValue})) {
             const valids = getEnumValues(typeValue);
             if (${allowLabelsAsValue}) {
-                for (const label of getEnumLabels(typeValue)) {
-                    valids.push(label);
-                }
+                //IE11 compatible way
+                getEnumLabels(typeValue).forEach(function(label){valids.push(label);});
             }
             throw new Error('Invalid ENUM given in property ${property.name}: ' + ${state.accessor} + ', valid: ' + valids.join(','));
         }

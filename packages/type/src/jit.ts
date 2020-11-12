@@ -443,7 +443,8 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
         fullLoadHookPost = `
             if (!hadState && _state.onFullLoadCallbacks.length) {
                 //we are at the end, so call fullLoad hooks
-                for (const cb of _state.onFullLoadCallbacks) cb();
+                //IE11 compatible way
+                _state.onFullLoadCallbacks.forEach(function(cb){cb();});
             }
         `;
     }
