@@ -89,18 +89,19 @@ function createControl<T>(
     };
 
     let control: AbstractControl;
-    if (prop.type === 'class') {
-        const t = prop.name ? conditionalValidators[prop.name] : conditionalValidators;
-        const conditionalValidatorsForProp = isConditionalValidatorFn(t) ? {} : t;
-        if (prop.isArray) {
-            control = new TypedFormArray(propPath, prop.getSubType(), limitControls, conditionalValidatorsForProp);
-        } else if (prop.isMap) {
-            throw new Error('Map not supported');
-        } else {
-            control = TypedFormGroup.fromEntityClass(prop.getResolvedClassType(), limitControls, undefined, conditionalValidatorsForProp, propPath);
-        }
+
+    const t = prop.name ? conditionalValidators[prop.name] : conditionalValidators;
+    const conditionalValidatorsForProp = isConditionalValidatorFn(t) ? {} : t;
+    if (prop.isArray) {
+        control = new TypedFormArray(propPath, prop.getSubType(), limitControls, conditionalValidatorsForProp);
+    } else if (prop.isMap) {
+        throw new Error('Map not supported');
     } else {
-        control = new FormControl(undefined, validator);
+        if (prop.type === 'class') {
+            control = TypedFormGroup.fromEntityClass(prop.getResolvedClassType(), limitControls, undefined, conditionalValidatorsForProp, propPath);
+        } else {
+            control = new FormControl(undefined, validator);
+        }
     }
 
     if (parent && conditionalValidators[prop.name]) {
@@ -165,7 +166,6 @@ export class TypedFormArray<T> extends FormArray {
 
     protected createControl(value?: T) {
         const prop = this.prop.clone();
-        prop.name = '';
         let control: AbstractControl;
         control = createControl(() => getPropPath(this.propPath, this.controls.indexOf(control)), prop, this, this.conditionalValidators, this.limitControls);
         (control.value as any) = value;
