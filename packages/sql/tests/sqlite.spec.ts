@@ -1,32 +1,8 @@
 import 'jest';
 import 'reflect-metadata';
 import {SQLiteDatabaseAdapter} from '../index';
-import {Entity, jsonSerializer, t} from '@deepkit/type';
-import {bench} from '@deepkit/core';
+import {Entity, t} from '@deepkit/type';
 import {createSetup} from './setup';
-
-test('sqlite 10k bench', async () => {
-    class User extends t.class({
-        id: t.number.primary,
-        name: t.string,
-        created: t.date,
-    }, {name: 'user'}) {
-    }
-
-    const database = await createSetup(new SQLiteDatabaseAdapter(':memory:'), [User]);
-    const session = database.createSession();
-
-    expect(await session.query(User).count()).toBe(0);
-
-    for (let i = 0; i < 10_000; i++) {
-        session.add(jsonSerializer.for(User).deserialize({id: i, name: 'Peter' + i, created: new Date()}));
-    }
-    await bench(1, 'insert', async () => {
-        await session.commit();
-    });
-
-    expect(await session.query(User).count()).toBe(10_000);
-});
 
 test('sqlite basic', async () => {
     const User = t.schema({

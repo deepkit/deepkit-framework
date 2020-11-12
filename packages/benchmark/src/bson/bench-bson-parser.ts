@@ -1,10 +1,27 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2020 Deepkit UG
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 import 'reflect-metadata';
 import {deserialize, ObjectId, serialize} from 'bson';
 import * as BSON from 'bson-ext';
-import {BaseParser, parseObject, ParserV2, ParserV3} from '../src/bson-parser';
-import {BenchSuite} from '@deepkit/core';
+import {BenchSuite} from '../bench';
 import {t} from '@deepkit/type';
-import {getBSONDecoder} from '../src/bson-jit-parser';
+import {getBSONDecoder, ParserV3, parseObject, ParserV2, BaseParser} from '@deepkit/bson';
 
 // buildStringIndex(Buffer.from('abcdefgh!'));
 // process.exit(1);

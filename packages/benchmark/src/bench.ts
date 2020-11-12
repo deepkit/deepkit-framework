@@ -3,10 +3,20 @@
  * Copyright (C) 2020 Deepkit UG
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the MIT License.
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * You should have received a copy of the MIT License along with this program.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+import {performance} from 'perf_hooks';
 
 const Benchmark = require('benchmark');
 const Reset = '\x1b[0m';
@@ -132,14 +142,6 @@ export class BenchSuite {
  * Executes given exec() method 3 times and averages the consumed time.
  */
 export async function bench(times: number, title: string, exec: () => void | Promise<void>): Promise<number> {
-    let performance: { now: () => number };
-
-    try {
-        performance = module.require('perf_hooks').performance;
-    } catch (e) {
-        throw new Error('bench() is only runnable in Node. Could not import perf_hooks: ' + e.toString());
-    }
-
     const start = performance.now();
     for (let i = 0; i < times; i++) {
         await exec();

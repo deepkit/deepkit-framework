@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import {bench} from '@deepkit/core';
 import {Database} from '@deepkit/orm';
 import {MongoDatabaseAdapter} from '../src/adapter';
 import {Entity, f} from '@deepkit/type';
+import {bench} from './utils';
 
 @Entity('user')
 export class User {

@@ -1,10 +1,10 @@
 import {MongoClient as OriMongoClient} from 'mongodb';
-import {bench} from '@deepkit/core';
 import {Entity, f} from '@deepkit/type';
 import {MongoClient} from '../src/client/client';
 import {DeleteCommand} from '../src/client/command/delete';
 import {InsertCommand} from '../src/client/command/insert';
 import {FindCommand} from '../src/client/command/find';
+import {bench} from './utils';
 
 @Entity('user')
 export class User {
@@ -12,6 +12,7 @@ export class User {
     @f ready?: boolean;
     @f.array(f.string) tags: string[] = [];
     @f priority: number = 0;
+
     constructor(
         @f public id: number,
         @f public name: string

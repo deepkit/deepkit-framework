@@ -1,12 +1,12 @@
 import {MongoClient as OriMongoClient, MongoClientOptions} from 'mongodb';
 import {MongoClient} from '../src/client/client';
-import {bench} from '@deepkit/core';
 import {IsMasterCommand} from '../src/client/command/ismaster';
 import {FindCommand} from '../src/client/command/find';
 import {EmptyCommand} from '../src/client/command/empty';
 import {Entity, f} from '@deepkit/type';
 import {DeleteCommand} from '../src/client/command/delete';
 import {InsertCommand} from '../src/client/command/insert';
+import {bench} from './utils';
 
 @Entity('user')
 export class User {
@@ -14,6 +14,7 @@ export class User {
     @f ready?: boolean;
     @f.array(f.string) tags: string[] = [];
     @f priority: number = 0;
+
     constructor(
         @f public id: number,
         @f public name: string
@@ -91,7 +92,7 @@ async function main() {
     });
 
     {
-        const items = await collection.find({}).toArray()
+        const items = await collection.find({}).toArray();
         if (items.length !== 10000) throw new Error(`Invalid, got ${items.length}`);
     }
     await bench(100, 'ori Mongodb find 10k', async () => {
