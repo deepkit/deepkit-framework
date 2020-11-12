@@ -23,6 +23,7 @@ export class FreeValidationContext {
 
     isAlpha(locale: validator.AlphaLocale = 'en-US') {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isAlpha(value, locale)) return;
             return new PropertyValidatorError('isAlpha', 'Not alpha');
         });
@@ -30,6 +31,7 @@ export class FreeValidationContext {
 
     isAlphanumeric(locale: validator.AlphanumericLocale = 'en-US') {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isAlphanumeric(value, locale)) return;
             return new PropertyValidatorError('isAlphanumeric', 'Not alphanumeric');
         });
@@ -37,6 +39,7 @@ export class FreeValidationContext {
 
     isAscii() {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isAscii(value)) return;
             return new PropertyValidatorError('isAscii', 'Not ASCII');
         });
@@ -44,6 +47,7 @@ export class FreeValidationContext {
 
     isBIC() {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isBIC(value)) return;
             return new PropertyValidatorError('isBIC', 'Not BIC');
         });
@@ -51,6 +55,7 @@ export class FreeValidationContext {
 
     isBase32() {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isBase32(value)) return;
             return new PropertyValidatorError('isBase32', 'Not Base32');
         });
@@ -58,6 +63,7 @@ export class FreeValidationContext {
 
     isBase64() {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isBase64(value)) return;
             return new PropertyValidatorError('isBase58', 'Not Base64');
         });
@@ -65,6 +71,7 @@ export class FreeValidationContext {
 
     isBtcAddress() {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isBtcAddress(value)) return;
             return new PropertyValidatorError('isBtcAddress', 'Not a BTC address');
         });
@@ -72,6 +79,7 @@ export class FreeValidationContext {
 
     isCreditCard() {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isCreditCard(value)) return;
             return new PropertyValidatorError('isCreditCard', 'Not a credit card');
         });
@@ -79,6 +87,7 @@ export class FreeValidationContext {
 
     isDataURI() {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isDataURI(value)) return;
             return new PropertyValidatorError('isDataURI', 'Not a data URI');
         });
@@ -86,6 +95,7 @@ export class FreeValidationContext {
 
     isDecimal(options?: validator.IsDecimalOptions) {
         this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
             if (validator.isDecimal(value, options)) return;
             return new PropertyValidatorError('isDecimal', 'Not a decimal');
         });
@@ -93,6 +103,7 @@ export class FreeValidationContext {
 
     isDivisibleBy(num: any) {
         this.t.validators.push((value: any) => {
+            if ('number' !== typeof value) return;
             if (value % num === 0) return;
             return new PropertyValidatorError('isDivisibleBy', 'Not divisible by ' + num);
         });

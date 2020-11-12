@@ -81,9 +81,9 @@ test('string[] minLength deep', () => {
     });
 
     expect(validate(schema, {value: ['a', 'b']})).toEqual([
-        {code: 'minLength', message: 'Min length is 3', path: 'value'},
         {code: 'minLength', message: 'Min length is 3', path: 'value.1'},
         {code: 'minLength', message: 'Min length is 3', path: 'value.0'},
+        {code: 'minLength', message: 'Min length is 3', path: 'value'},
     ]);
     expect(validate(schema, {value: ['a', 'b', 'c']})).toEqual([
         {code: 'minLength', message: 'Min length is 3', path: 'value.2'},

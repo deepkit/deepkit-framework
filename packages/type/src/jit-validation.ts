@@ -65,43 +65,46 @@ export function getDataCheckerJS(
     if (property.isArray) {
         //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
         // const checkItem = compiler ? executeCheckerCompiler(`${path} + '.' + l`, rootContext, compiler, `${accessor}[l]`, property.getArrayOrMapType()) : '';
-
         return `
             //property ${property.name}, ${property.type} ${property.isUndefinedAllowed()}
             if (${accessor} === unpopulatedSymbol) {
-            } else if (${accessor} === undefined) {
-                ${notOptionalCheckThrow}
-            } else if (${accessor} === null) {
-                ${notNullableCheckThrow}
-            } else if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
-                _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an array'));
             } else {
+                if (${accessor} === undefined) {
+                    ${notOptionalCheckThrow}
+                } else if (${accessor} === null) {
+                    ${notNullableCheckThrow}
+                } else if (${accessor}.length !== undefined && 'string' !== typeof ${accessor} && 'function' === typeof ${accessor}.slice) {
+                    ${i} = ${accessor}.length;
+                    while (${i}--) {
+                        //make sure all elements have the correct type
+                        ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext, jitStack)}
+                    }
+                } else {
+                    _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an array'));
+                }
+                
                 ${getCustomValidatorCode(`${accessor}`, `${path}`)}
-
-                 ${i} = ${accessor}.length;
-                 while (${i}--) {
-                    //make sure all elements have the correct type
-                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext, jitStack)}
-                 } 
             }
         `;
     } else if (property.isMap) {
         return `
             //property ${property.name}, ${property.type}
             if (${accessor} === unpopulatedSymbol) {
-            } else if (${accessor} === undefined) {
-                ${notOptionalCheckThrow}
-            } else if (${accessor} === null) {
-                ${notNullableCheckThrow}
-            } else if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                ${getCustomValidatorCode(`${accessor}`, `${path}`)}
-
-                for (${i} in ${accessor}) {
-                    if (!${accessor}.hasOwnProperty(${i})) continue;
-                    ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext, jitStack)}
-                }
             } else {
-                _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
+                if (${accessor} === undefined) {
+                    ${notOptionalCheckThrow}
+                } else if (${accessor} === null) {
+                    ${notNullableCheckThrow}
+                } else if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
+                    for (${i} in ${accessor}) {
+                        if (!${accessor}.hasOwnProperty(${i})) continue;
+                        ${getDataCheckerJS(`${path} + '.' + ${i}`, `${accessor}[${i}]`, property.getSubType(), rootContext, jitStack)}
+                    }
+                } else {
+                    _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
+                }
+                
+                ${getCustomValidatorCode(`${accessor}`, `${path}`)}
             }
         `;
     } else if (property.isPartial) {
@@ -111,27 +114,33 @@ export function getDataCheckerJS(
         return `
         //property ${property.name}, ${property.type}
         if (${accessor} === unpopulatedSymbol) {
-        } else if (${accessor} === undefined) {
-            ${notOptionalCheckThrow}
-        } else if (${accessor} === null) {
-            ${notNullableCheckThrow}
-        } else if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-            ${getCustomValidatorCode(`${accessor}`, `${path}`)}
-            jitValidatePartial(${varClassType}, ${accessor}, _path, _errors);
         } else {
-            _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
+            if (${accessor} === undefined) {
+                ${notOptionalCheckThrow}
+            } else if (${accessor} === null) {
+                ${notNullableCheckThrow}
+            } else if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
+                jitValidatePartial(${varClassType}, ${accessor}, _path, _errors);
+            } else {
+                _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
+            }
+            
+            ${getCustomValidatorCode(`${accessor}`, `${path}`)};
         }
         `;
     } else if (compiler) {
         return `
+        //property ${property.name}, ${property.type}
         if (${accessor} === unpopulatedSymbol) {
-        } else if (${accessor} === undefined) {
-            ${notOptionalCheckThrow}
-        } else if (${accessor} === null) {
-            ${notNullableCheckThrow}
         } else {
-            //property ${property.name}, ${property.type}
-            ${executeCheckerCompiler(path, rootContext, jitStack, compiler, accessor, property)}
+            if (${accessor} === undefined) {
+                ${notOptionalCheckThrow}
+            } else if (${accessor} === null) {
+                ${notNullableCheckThrow}
+            } else {
+                ${executeCheckerCompiler(path, rootContext, jitStack, compiler, accessor, property)}
+            }
+            
             ${getCustomValidatorCode(accessor, path)}
         }
         `;
@@ -142,9 +151,9 @@ export function getDataCheckerJS(
             ${notOptionalCheckThrow}
         } else if (${accessor} === null) {
             ${notNullableCheckThrow}
-        } else {
-            ${getCustomValidatorCode(accessor, path)}
         }
+
+        ${getCustomValidatorCode(accessor, path)}
         `;
     }
 }

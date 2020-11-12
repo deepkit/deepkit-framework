@@ -773,3 +773,47 @@ test('nullable', () => {
     expect(validate(s, {username: 'asd', password: null, optional: null})).toEqual([{'message': 'Required value is null', code: 'required', 'path': 'optional'},]);
     expect(validate(s, {username: 'asd', password: null, optional: 'null'})).toEqual([]);
 });
+
+test('custom isRequired', () => {
+    enum MyEnum {
+        first, second
+    }
+
+    function isRequired() {
+        return (value: any) => {
+            if (value === undefined) return new PropertyValidatorError('no', 'Sollte angegeben werden');
+            return undefined;
+        }
+    }
+
+    class MyModel {
+        @t.enum(MyEnum).optional.validator(isRequired()) enum?: MyEnum;
+    }
+
+    expect(validate(MyModel, {enum: MyEnum.second})).toEqual([]);
+    expect(validate(MyModel, {})).toEqual([{code: 'no', message: 'Sollte angegeben werden', path: 'enum'}]);
+    expect(validate(MyModel, {enum: undefined})).toEqual([{code: 'no', message: 'Sollte angegeben werden', path: 'enum'}]);
+    expect(validate(MyModel, {enum: null})).toEqual([{code: 'required', message: 'Required value is null', path: 'enum'}]);
+});
+
+test('custom isRequired null', () => {
+    enum MyEnum {
+        first, second
+    }
+
+    function isRequired() {
+        return (value: any) => {
+            if (value === null) return new PropertyValidatorError('no', 'Sollte angegeben werden');
+            return undefined;
+        }
+    }
+
+    class MyModel {
+        @t.enum(MyEnum).nullable.validator(isRequired()) enum?: MyEnum;
+    }
+
+    expect(validate(MyModel, {enum: MyEnum.second})).toEqual([]);
+    expect(validate(MyModel, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'enum'}]);
+    expect(validate(MyModel, {enum: undefined})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'enum'}]);
+    expect(validate(MyModel, {enum: null})).toEqual([{code: 'no', message: 'Sollte angegeben werden', path: 'enum'}]);
+});
