@@ -627,17 +627,9 @@ export class ClassSchema<T = any> {
      */
     protected loadDefaults() {
         const originCode = this.classType.toString();
-        if (!originCode.startsWith('class')) {
-            if (!nonEs2015ClassesWarned) {
-                console.warn('@deepkit/type: Non-ES2015 fake-classes are not supported. Could not read default property values. You have to provide each default value as .default(x).');
-                nonEs2015ClassesWarned = true;
-            }
-            return;
-        }
 
-        if (!originCode.includes('constructor(')) return;
+        const constructorCode = originCode.startsWith('class') ? extractMethod(originCode, 'constructor') : originCode;
 
-        const constructorCode = extractMethod(originCode, 'constructor');
         const findAssignment = RegExp(String.raw`this\.([^ \t\.=]+)[^=]*=([^ \n\t;]+)?`, 'g');
         let match: any;
 
