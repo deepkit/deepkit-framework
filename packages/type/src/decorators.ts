@@ -302,6 +302,8 @@ export class PropertySchema extends PropertyCompilerSchema {
 
     templateArgs: PropertySchema[] = [];
 
+    description: string = '';
+
     constructor(name: string) {
         super(name);
     }
@@ -1465,6 +1467,11 @@ export interface FieldDecoratorResult<T> {
     default(v: T): FieldDecoratorResult<T>;
 
     /**
+     * Sets a description.
+     */
+    description(description: string): this;
+
+    /**
      * Marks this field as discriminant for the discriminator in union types.
      * See @t.union()
      */
@@ -1926,6 +1933,13 @@ function createFieldDecoratorResult<T>(
     fn.default = (v: any) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Default(v)]);
+    };
+
+    fn.description = (v: string) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.description = v;
+        }]);
     };
 
     fn.exclude = (target: 'all' | 'mongo' | 'plain' | string = 'all') => {

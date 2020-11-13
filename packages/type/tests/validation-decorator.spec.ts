@@ -16,6 +16,28 @@ test('string includes', () => {
     expect(validate(schema, {value: 'peter'})).toEqual([]);
 });
 
+test('string match', () => {
+    const schema = t.schema({
+        value: t.string.validator(v.match(/peter/)),
+    });
+
+    expect(validate(schema, {value: ''})).toEqual([{code: 'match', message: 'Pattern peter does not match', path: 'value'}]);
+    expect(validate(schema, {value: 'poetr'})).toEqual([{code: 'match', message: 'Pattern peter does not match', path: 'value'}]);
+    expect(validate(schema, {value: 'asdadpeterasdads'})).toEqual([]);
+    expect(validate(schema, {value: 'peter'})).toEqual([]);
+});
+
+test('string match alphanumeric', () => {
+    const schema = t.schema({
+        value: t.string.validator(v.match(/^[a-z]+$/)),
+    });
+
+    expect(validate(schema, {value: ''})).toEqual([{code: 'match', message: 'Pattern ^[a-z]+$ does not match', path: 'value'}]);
+    expect(validate(schema, {value: 'poet2r'})).toEqual([{code: 'match', message: 'Pattern ^[a-z]+$ does not match', path: 'value'}]);
+    expect(validate(schema, {value: 'asdadpeterasdads'})).toEqual([]);
+    expect(validate(schema, {value: 'peter'})).toEqual([]);
+});
+
 test('string excludes', () => {
     const schema = t.schema({
         value: t.string.validator(v.excludes('peter')),

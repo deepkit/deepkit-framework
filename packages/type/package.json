@@ -28,13 +28,13 @@
     "clone": "^2.1.1",
     "get-parameter-names": "^0.3.0",
     "uuid": "^3.2.1",
-    "validator": "^13.1.17"
+    "validator": "^13.1.17",
+    "@types/validator": "^13.1.0"
   },
   "devDependencies": {
     "@types/clone": "^0.1.30",
     "@types/jest": "^26.0.3",
     "@types/moment": "^2.0.0",
-    "@types/validator": "^13.1.0",
     "moment": "^2.0.0",
     "reflect-metadata": "^0.1.13"
   },

@@ -134,7 +134,7 @@ export function validateFactory<T extends ClassType | ClassSchema>(classType: T,
  *
  * @example
  * ```
- * if (validates(SimpleMode, data)) {
+ * if (validates(SimpleMode, item)) {
  *     //data is now typeof SimpleMode
  * }
  * ```
@@ -149,13 +149,13 @@ export function validates<T extends ClassType | ClassSchema>(classType: T, item:
  * Note: Methods are not type guarded.
  *
  * Warning: If `item` is a plain object this does not check if `item` is exactly of type T, but if it can safely be
- * converted to one using plainToClass. For example `t.string` allows numbers because it can be safely converted to string.
+ * converted to one using deserialize. For example `t.string` allows numbers because it can be safely converted to string.
  *
  * @example
  * ```
  * const simpleModelValidates = validatesFactory(SimpleMode);
- * if (simpleModelValidates(data)) {
- *     //data is now typeof SimpleMode
+ * if (simpleModelValidates(item)) {
+ *     //item is now typeof SimpleMode
  * }
  * ```
  */

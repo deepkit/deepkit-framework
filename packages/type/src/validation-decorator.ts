@@ -21,6 +21,14 @@ export class ValidationContextType {
 export class FreeValidationContext {
     t = new ValidationContextType();
 
+    match(regex: RegExp) {
+        this.t.validators.push((value: any) => {
+            if ('string' !== typeof value) return;
+            if (regex.exec(value)) return;
+            return new PropertyValidatorError('match', `Pattern ${regex.source} does not match`);
+        });
+    }
+
     isAlpha(locale: validator.AlphaLocale = 'en-US') {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
