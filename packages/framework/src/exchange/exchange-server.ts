@@ -98,7 +98,7 @@ export class ExchangeServer {
             });
 
             this.wsServer.on('listening', () => {
-                console.log('exchange listen on', this.host.toString());
+                // console.log('exchange listen on', this.host.toString());
                 resolve(true);
             });
 

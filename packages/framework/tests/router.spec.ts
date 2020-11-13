@@ -32,16 +32,17 @@ test('router', async () => {
 
     const router = Router.forControllers([Controller]);
 
-    expect(await router.resolve('GET', '/')).toMatchObject({controller: Controller, method: 'helloWorld'});
-    expect(await router.resolve('GET', '/peter')).toMatchObject({controller: Controller, method: 'hello'});
+    console.log('(await router.resolve(\'GET\', \'/\'))', (await router.resolve('GET', '/')));
+    expect((await router.resolve('GET', '/'))?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'helloWorld'});
+    expect((await router.resolve('GET', '/peter'))?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'hello'});
     expect((await router.resolve('GET', '/peter'))?.parameters!(undefined as any)).toEqual(['peter']);
 
     const userStatic = await router.resolve('GET', '/user/1233/static');
-    expect(userStatic).toMatchObject({controller: Controller, method: 'userStatic'});
+    expect(userStatic?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'userStatic'});
     expect(userStatic?.parameters!(undefined as any)).toEqual(['1233']);
 
     const userStatic2 = await router.resolve('GET', '/user2/1233/static/123');
-    expect(userStatic2).toMatchObject({controller: Controller, method: 'userStatic2'});
+    expect(userStatic2?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'userStatic2'});
     expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
 });
 
@@ -68,7 +69,7 @@ test('router parameters', async () => {
         }
     }
 
-    const app = Application.root({controllers: [Controller]});
+    const app = Application.create({controllers: [Controller]});
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toBe('peter');
@@ -90,7 +91,7 @@ test('router IncomingMessage', async () => {
         }
     }
 
-    const app = Application.root({controllers: [Controller]});
+    const app = Application.create({controllers: [Controller]});
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/req/any/path')).toEqual(['/req/any/path', 'req/any/path']);
@@ -109,7 +110,7 @@ test('router body', async () => {
         }
     }
 
-    const app = Application.root({controllers: [Controller]});
+    const app = Application.create({controllers: [Controller]});
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('POST', '/', {username: 'Peter'})).toEqual(['Peter', true, '/']);

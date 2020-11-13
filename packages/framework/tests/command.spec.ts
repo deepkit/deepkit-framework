@@ -2,8 +2,8 @@ import 'jest';
 import 'reflect-metadata';
 import {arg, cli, Command} from '../src/command';
 import {Application} from '../src/application';
-import {deepkit} from '../src/decorator';
 import {ServiceContainer} from '../src/service-container';
+import {createModule} from '../src/module';
 
 @cli.controller('my')
 class MyCli implements Command {
@@ -25,11 +25,9 @@ test('command simple', () => {
 });
 
 test('command execute', async () => {
-
-    @deepkit.module({
+    const MyModule = createModule({
         controllers: [MyCli]
-    })
-    class MyModule {}
+    });
 
     const app = new Application(MyModule);
     const serviceContainer = app.get(ServiceContainer);

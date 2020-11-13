@@ -9,3 +9,4 @@ export * from './src/observer';
 export * from './src/batcher';
 export * from './src/connection';
 export * from './src/entity-state';
+export * from './src/rpc';

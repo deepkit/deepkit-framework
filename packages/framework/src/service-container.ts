@@ -17,23 +17,13 @@
  */
 
 import {arrayRemoveItem, ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
-import {
-    deepkit,
-    DeepkitModule,
-    DynamicModule,
-    eventClass,
-    EventListenerCallback,
-    EventOfEventToken,
-    EventToken,
-    httpClass,
-    isDynamicModuleObject,
-    isModuleToken,
-} from './decorator';
+import {eventClass, EventListenerCallback, EventOfEventToken, EventToken, httpClass, ModuleBootstrap,} from './decorator';
 import {Injector, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, tokenLabel} from './injector/injector';
 import {Provider, ProviderProvide, TypeProvider} from './injector/provider';
 import {rpcClass} from '@deepkit/framework-shared';
 import {cli} from './command';
 import {RouterControllers} from './router';
+import {Module} from './module';
 
 export interface ProviderScope {
     scope?: 'module' | 'session' | 'request' | 'cli';
@@ -121,19 +111,19 @@ export class Context {
     }
 
     getRequestInjector(): Injector {
-        if (!this.sessionInjector) {
-            this.sessionInjector = new Injector(getProviders(this.providers, 'request'), this.parent ? [this.parent.getRequestInjector()] : undefined);
+        if (!this.requestInjector) {
+            this.requestInjector = new Injector(getProviders(this.providers, 'request'), this.parent ? [this.parent.getRequestInjector()] : undefined);
         }
 
-        return this.sessionInjector;
+        return this.requestInjector;
     }
 
     getCliInjector(): Injector {
-        if (!this.sessionInjector) {
-            this.sessionInjector = new Injector(getProviders(this.providers, 'cli'), this.parent ? [this.parent.getCliInjector()] : undefined);
+        if (!this.cliInjector) {
+            this.cliInjector = new Injector(getProviders(this.providers, 'cli'), this.parent ? [this.parent.getCliInjector()] : undefined);
         }
 
-        return this.sessionInjector;
+        return this.cliInjector;
     }
 }
 
@@ -187,14 +177,30 @@ function isEventListenerContainerEntryService(obj: any): obj is EventListenerCon
     return obj && isClass(obj.classType);
 }
 
-export class EventListenerContainer {
+export class EventDispatcher {
     protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
+    public rootContext?: Context;
+    protected needsSort: boolean = false;
+
+    public registerListener(listener: ClassType, context?: Context) {
+        if (!context) {
+            if (!this.rootContext) throw new Error('No root context created yet.');
+            this.rootContext.getInjector().addProvider(listener);
+            context = this.rootContext;
+        }
+        const config = eventClass._fetch(listener);
+        if (!config) return;
+        for (const entry of config.listeners) {
+            this.add(entry.eventToken, {context, classType: listener, methodName: entry.methodName, priority: entry.priority});
+        }
+    }
 
     public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {
         this.getListeners(eventToken).push(listener);
+        this.needsSort = true;
     }
 
-    getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
+    protected getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
         let listeners = this.listenerMap.get(eventToken);
         if (!listeners) {
             listeners = [];
@@ -204,7 +210,9 @@ export class EventListenerContainer {
         return listeners;
     }
 
-    public finalize() {
+    protected sort() {
+        if (!this.needsSort) return;
+
         for (const listeners of this.listenerMap.values()) {
             listeners.sort((a, b) => {
                 if (a.priority > b.priority) return +1;
@@ -212,12 +220,19 @@ export class EventListenerContainer {
                 return 0;
             });
         }
+
+        this.needsSort = false;
     }
 
-    getCaller<T extends EventToken<any>>(eventToken: T): (event: EventOfEventToken<T>) => Promise<void> {
+    public dispatch<T extends EventToken<any>>(eventToken: T, event: EventOfEventToken<T>): Promise<void> {
+        return this.getCaller(eventToken)(event);
+    }
+
+    public getCaller<T extends EventToken<any>>(eventToken: T): (event: EventOfEventToken<T>) => Promise<void> {
         const listeners = this.getListeners(eventToken);
 
         return async (event) => {
+            this.sort();
             for (const listener of listeners) {
                 if (isEventListenerContainerEntryCallback(listener)) {
                     await listener.fn(event);
@@ -242,7 +257,7 @@ export function getClassTypeContext(classType: ClassType): Context {
 export class ServiceContainer {
     public readonly rpcControllers = new Map<string, ClassType>();
     public readonly cliControllers = new Map<string, ClassType>();
-    public readonly eventListenerContainer = new EventListenerContainer;
+    public readonly eventListenerContainer = new EventDispatcher();
 
     public readonly routerControllers = new RouterControllers([]);
 
@@ -253,7 +268,7 @@ export class ServiceContainer {
     protected contexts = new Map<number, Context>();
 
     protected rootContext?: Context;
-    protected moduleContexts = new Map<ClassType, Context[]>();
+    protected moduleContexts = new Map<Module<any>, Context[]>();
 
     static getControllerContext(classType: ClassType) {
         const context = (classType as any)[ServiceContainer.contextSymbol] as Context;
@@ -274,16 +289,16 @@ export class ServiceContainer {
     }
 
     public processRootModule(
-        appModule: ClassType | DynamicModule,
+        appModule: Module<any>,
         providers: ProviderWithScope[] = [],
-        imports: (ClassType | DynamicModule)[] = []
+        imports: Module<any>[] = []
     ) {
-        providers.push({provide: EventListenerContainer, useValue: this.eventListenerContainer});
+        providers.push({provide: EventDispatcher, useValue: this.eventListenerContainer});
         providers.push({provide: ServiceContainer, useValue: this});
         providers.push({provide: RouterControllers, useValue: this.routerControllers});
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
-        this.eventListenerContainer.finalize();
+        this.eventListenerContainer.rootContext = this.rootContext;
     }
 
     public getRootContext(): Context {
@@ -291,17 +306,19 @@ export class ServiceContainer {
         return this.rootContext;
     }
 
-    getRegisteredModules(): DeepkitModule[] {
-        const result: DeepkitModule[] = [];
+    getRegisteredModules(): ModuleBootstrap[] {
+        const result: ModuleBootstrap[] = [];
         for (const [module, contexts] of this.moduleContexts.entries()) {
             for (const context of contexts) {
-                result.push(context.getInjector().get(module));
+                if (module.options.bootstrap) {
+                    result.push(context.getInjector().get(module.options.bootstrap));
+                }
             }
         }
         return result;
     }
 
-    public getContextsForModule(module: ClassType): Context[] {
+    public getContextsForModule(module: Module<any>): Context[] {
         return this.moduleContexts.get(module) || [];
     }
 
@@ -312,7 +329,7 @@ export class ServiceContainer {
         return context;
     }
 
-    protected getNewContext(module: ClassType, parent?: Context): Context {
+    protected getNewContext(module: Module<any>, parent?: Context): Context {
         const newId = this.currentIndexId++;
         const context = new Context(newId);
         this.contexts.set(newId, context);
@@ -332,40 +349,31 @@ export class ServiceContainer {
         return context;
     }
 
-    /**
-     * Fill `moduleHierarchy` correctly and recursively.
-     */
     protected processModule(
-        appModule: ClassType | DynamicModule,
+        module: Module,
         parentContext?: Context,
         additionalProviders: ProviderWithScope[] = [],
-        additionalImports: (ClassType | DynamicModule)[] = []
+        additionalImports: Module<any>[] = []
     ): Context {
-        let module = isDynamicModuleObject(appModule) ? appModule.module : appModule;
-        const decorator = deepkit._fetch(module);
-        const options = decorator && decorator.config ? decorator.config : undefined;
-
-        const exports = options && options.exports ? options.exports.slice(0) : [];
-        const providers = options && options.providers ? options.providers.slice(0) : [];
-        const controllers = options && options.controllers ? options.controllers.slice(0) : [];
-        const imports = options && options.imports ? options.imports.slice(0) : [];
-
-        //if the module is a DynamicModule, its providers/exports/controllers are added to the base
-        if (isDynamicModuleObject(appModule)) {
-            if (appModule.providers) providers.push(...appModule.providers);
-            if (appModule.exports) exports.push(...appModule.exports);
-            if (appModule.controllers) controllers.push(...appModule.controllers);
-            if (appModule.imports) imports.push(...appModule.imports);
-        }
+        const exports = module.options.exports ? module.options.exports.slice(0) : [];
+        const providers = module.options.providers ? module.options.providers.slice(0) : [];
+        const controllers = module.options.controllers ? module.options.controllers.slice(0) : [];
+        const imports = module.options.imports ? module.options.imports.slice(0) : [];
+        const listeners = module.options.listeners ? module.options.listeners.slice(0) : [];
 
         providers.push(...additionalProviders);
         imports.unshift(...additionalImports);
 
         //we add the module to its own providers so it can depend on its module providers.
         //when we would add it to root it would have no access to its internal providers.
-        providers.push(module);
+        if (module.options.bootstrap) providers.push(module.options.bootstrap);
 
-        const forRootContext = isDynamicModuleObject(appModule) && appModule.root === true;
+        for (const [name, value] of Object.entries(module.configValues)) {
+            const path = module.getName() ? module.getName() + '.' + name : name;
+            providers.push({provide: 'config.' + path, useValue: value});
+        }
+
+        const forRootContext = module.root;
 
         //we have to call getNewContext() either way to store this module in this.contexts.
         let context = this.getNewContext(module, parentContext);
@@ -374,7 +382,8 @@ export class ServiceContainer {
         }
 
         for (const token of exports.slice(0)) {
-            if (isModuleToken(token)) {
+            // if (isModuleToken(token)) {
+            if (token instanceof Module) {
                 //exported modules will be removed from `imports`, so that
                 //the target context (root or parent) imports it
                 arrayRemoveItem(exports, token);
@@ -389,57 +398,48 @@ export class ServiceContainer {
             this.processModule(imp, context);
         }
 
-        if (options && options.listeners) {
-            for (const listener of options.listeners) {
-                if (isClass(listener)) {
-                    const config = eventClass._fetch(listener);
-                    if (config) {
-                        for (const entry of config.listeners) {
-                            providers.unshift({provide: listener});
-                            this.eventListenerContainer.add(entry.eventToken, {context, classType: listener, methodName: entry.methodName, priority: entry.priority});
-                        }
-                    }
-                } else {
-                    this.eventListenerContainer.add(listener.eventToken, {fn: listener.callback, priority: listener.priority});
-                }
+        for (const listener of listeners) {
+            if (isClass(listener)) {
+                providers.unshift({provide: listener});
+                this.eventListenerContainer.registerListener(listener, context);
+            } else {
+                this.eventListenerContainer.add(listener.eventToken, {fn: listener.callback, priority: listener.priority});
             }
         }
 
-        if (options && options.controllers) {
-            for (const controller of options.controllers) {
-                const rpcConfig = rpcClass._fetch(controller);
-                if (rpcConfig) {
-                    providers.unshift({provide: controller, scope: 'session'});
-                    (controller as any)[ServiceContainer.contextSymbol] = context;
-                    this.rpcControllers.set(rpcConfig.name, controller);
-                    continue;
-                }
-
-                const httpConfig = httpClass._fetch(controller);
-                if (httpConfig) {
-                    providers.unshift(controller);
-                    (controller as any)[ServiceContainer.contextSymbol] = context;
-                    this.routerControllers.add(controller);
-                    continue;
-                }
-
-                const cliConfig = cli._fetch(controller);
-                if (cliConfig) {
-                    providers.unshift({provide: controller, scope: 'cli'});
-                    (controller as any)[ServiceContainer.contextSymbol] = context;
-                    this.cliControllers.set(cliConfig.name, controller);
-                    continue;
-                }
-
-                throw new Error(`Controller ${getClassName(controller)} has no @http.controller() or @rpc.controller() decorator`);
+        for (const controller of controllers) {
+            const rpcConfig = rpcClass._fetch(controller);
+            if (rpcConfig) {
+                providers.unshift({provide: controller, scope: 'session'});
+                (controller as any)[ServiceContainer.contextSymbol] = context;
+                this.rpcControllers.set(rpcConfig.getPath(), controller);
+                continue;
             }
+
+            const httpConfig = httpClass._fetch(controller);
+            if (httpConfig) {
+                providers.unshift(controller);
+                (controller as any)[ServiceContainer.contextSymbol] = context;
+                this.routerControllers.add(controller);
+                continue;
+            }
+
+            const cliConfig = cli._fetch(controller);
+            if (cliConfig) {
+                providers.unshift({provide: controller, scope: 'cli'});
+                (controller as any)[ServiceContainer.contextSymbol] = context;
+                this.cliControllers.set(cliConfig.name, controller);
+                continue;
+            }
+
+            throw new Error(`Controller ${getClassName(controller)} has no @http.controller() or @rpc.controller() decorator`);
         }
 
         //if there are exported tokens, their providers will be added to the parent or root context
         //and removed from module providers.
         const exportedProviders = forRootContext ? this.getContext(0).providers : (parentContext ? parentContext.providers : []);
         for (const token of exports) {
-            if (isModuleToken(token)) throw new Error('Should already be handled');
+            if (token instanceof Module) throw new Error('Should already be handled');
 
             const provider = providers.findIndex(v => token === (isClass(v) ? v : v.provide));
             if (provider === -1) {

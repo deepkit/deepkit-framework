@@ -185,21 +185,29 @@ function convertNodeToCreateElement(node: Expression): Expression {
 
     if (node.arguments[1].type === 'CallExpression' && node.arguments[1].callee.type === 'MemberExpression' && node.arguments[1].callee.object.type === 'Identifier' && node.arguments[1].callee.object.name === 'Object') {
         //Object.assign(), means we have 2 entries, one with attributes, and second with `children`
+        // Object.assign({id: 123}, {children: "Test"}) or
+        // Object.assign({}, props, { id: "123" }, { children: "Test" })
         const objectAssignsArgs = node.arguments[1].arguments;
+        const lastArgument = objectAssignsArgs[objectAssignsArgs.length - 1];
 
-        if (objectAssignsArgs[1].type === 'ObjectExpression') {
-            const children = extractChildrenFromObjectExpressionProperties(objectAssignsArgs[1].properties);
-            if (children) {
-                if (children.type === 'ArrayExpression') {
-                    node.arguments.push(...children.elements.map(v => convertNodeToCreateElement(v as Expression)));
-                } else {
-                    node.arguments.push(convertNodeToCreateElement(children));
-                }
+        if (lastArgument.type !== 'ObjectExpression') throw new Error(`Expect ObjectExpression, got ${JSON.stringify(lastArgument)}`);
+
+        const children = extractChildrenFromObjectExpressionProperties(lastArgument.properties);
+        if (children) {
+            if (children.type === 'ArrayExpression') {
+                node.arguments.push(...children.elements.map(v => convertNodeToCreateElement(v as Expression)));
+            } else {
+                node.arguments.push(convertNodeToCreateElement(children));
             }
         }
 
-        if (objectAssignsArgs[0].type === 'ObjectExpression') {
-            node.arguments[1] = {type: 'ObjectExpression', properties: objectAssignsArgs[0].properties};
+        if (objectAssignsArgs.length > 2) {
+            //remove last
+            objectAssignsArgs.splice(objectAssignsArgs.length - 1, 1);
+        } else {
+            if (objectAssignsArgs[0].type === 'ObjectExpression') {
+                node.arguments[1] = {type: 'ObjectExpression', properties: objectAssignsArgs[0].properties};
+            }
         }
     } else if (node.arguments[1].type === 'ObjectExpression') {
         //simple {}

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {arrayRemoveItem, asyncOperation, ClassType, CompilerContext, toFastProperties} from '@deepkit/core';
+import {arrayRemoveItem, asyncOperation, ClassType, CompilerContext} from '@deepkit/core';
 import {join} from 'path';
 import {getClassSchema, getPropertyXtoClassFunction, isRegisteredEntity, jitValidateProperty, jsonSerializer, PropertySchema} from '@deepkit/type';
 import {ValidationError, ValidationErrorItem} from '@deepkit/framework-shared';
@@ -26,7 +26,7 @@ import {Logger} from './logger';
 import {IncomingMessage, ServerResponse} from 'http';
 import * as formidable from 'formidable';
 
-type ResolvedController = { controller: ClassType, parameters: (injector: Injector) => any[], method: string };
+type ResolvedController = { parameters: (injector: Injector) => any[], routeConfig: RouteConfig };
 
 export class RouterControllers {
     constructor(public readonly controllers: ClassType[]) {
@@ -47,6 +47,26 @@ function parseBody(form: any, req: IncomingMessage) {
             }
         });
     });
+}
+
+export interface RouteControllerAction {
+    controller: ClassType;
+    methodName: string;
+}
+
+export class RouteConfig {
+    public baseUrl: string = '';
+    public parameterRegularExpressions: { [name: string]: any } = {};
+    public throws: { errorType: ClassType, message?: string }[] = [];
+
+    constructor(
+        public readonly name: string,
+        public readonly httpMethod: string,
+        public readonly path: string,
+        public readonly action: RouteControllerAction,
+    ) {
+        this.httpMethod = this.httpMethod.toLowerCase();
+    }
 }
 
 /**
@@ -82,7 +102,10 @@ export class BodyValidation {
 
 @injectable()
 export class Router {
-    protected fn: (request: IncomingMessage) => Promise<ResolvedController | undefined>;
+    protected fn?: (request: IncomingMessage) => Promise<ResolvedController | undefined>;
+    protected excludedClassTypesForBody: any[] = [IncomingMessage, ServerResponse, BodyValidation];
+
+    protected routes: RouteConfig[] = [];
 
     //todo, move some settings to ApplicationConfig
     protected form = formidable({
@@ -92,162 +115,158 @@ export class Router {
     });
 
     constructor(controllers: RouterControllers, private logger: Logger) {
-        this.fn = this.build(controllers.controllers);
-        // console.log('router', this.fn!.toString());
+        for (const controller of controllers.controllers) this.addRouteForController(controller);
     }
 
     static forControllers(controllers: ClassType[]): Router {
         return new this(new RouterControllers(controllers), new Logger([], []));
     }
 
-    protected getControllerCode(compiler: CompilerContext, controller: ClassType): string {
-        const data = httpClass._fetch(controller);
-        if (!data) return '';
-        const staticRules = compiler.context.get('_static') as any;
-        const controllerVar = compiler.reserveVariable('controller', controller);
-        const schema = getClassSchema(controller);
+    protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {
+        const routeConfigVar = compiler.reserveVariable('routeConfigVar', routeConfig);
+        const schema = getClassSchema(routeConfig.action.controller);
 
-        const excludedClassTypesForBody: any[] = [IncomingMessage, ServerResponse, BodyValidation];
+        const methodArgumentProperties = schema.getMethodProperties(routeConfig.action.methodName);
+        const methodArgumentPropertiesByName: { [name: string]: PropertySchema } = {};
+        const parameterValidators: { [name: string]: (v: any) => any } = {};
+        const parameterConverter: { [name: string]: (v: any) => any } = {};
+        const manualInjection: string[] = [];
+        let requiresBodyParser: PropertySchema | undefined = undefined;
+        let customValidationErrorHandling: PropertySchema | undefined = undefined;
 
-        const code: string[] = [];
-        for (const action of data.actions) {
-            const methodArgumentProperties = schema.getMethodProperties(action.methodName);
-            const methodArgumentPropertiesByName: { [name: string]: PropertySchema } = {};
-            const parameterValidators: { [name: string]: (v: any) => any } = {};
-            const parameterConverter: { [name: string]: (v: any) => any } = {};
-            const manualInjection: string[] = [];
-            let requiresBodyParser: PropertySchema | undefined = undefined;
-            let customValidationErrorHandling: PropertySchema | undefined = undefined;
+        for (const property of methodArgumentProperties) {
+            methodArgumentPropertiesByName[property.name] = property;
+            manualInjection.push(property.name);
 
-            for (const property of methodArgumentProperties) {
-                methodArgumentPropertiesByName[property.name] = property;
-                manualInjection.push(property.name);
+            if (property.type === 'class' && property.classType === BodyValidation) {
+                customValidationErrorHandling = property;
+            } else if (property.type === 'class' && !this.excludedClassTypesForBody.includes(property.getResolvedClassType()) && isRegisteredEntity(property.getResolvedClassType())) {
+                requiresBodyParser = property;
+                parameterValidators[property.name] = jitValidateProperty(property);
+                parameterConverter[property.name] = getPropertyXtoClassFunction(property, jsonSerializer);
+            }
+        }
+        const parameterRegExIndex: { [name: string]: number } = {};
 
-                if (property.type === 'class' && property.classType === BodyValidation) {
-                    customValidationErrorHandling = property;
-                } else if (property.type === 'class' && !excludedClassTypesForBody.includes(property.getResolvedClassType()) && isRegisteredEntity(property.getResolvedClassType())) {
-                    requiresBodyParser = property;
-                    parameterValidators[property.name] = jitValidateProperty(property);
-                    parameterConverter[property.name] = getPropertyXtoClassFunction(property, jsonSerializer);
+        let path = routeConfig.baseUrl ? join(routeConfig.baseUrl, routeConfig.path) : routeConfig.path;
+        if (!path.startsWith('/')) path = '/' + path;
+
+        const prefix = path.substr(0, path.indexOf(':'));
+
+        let argumentIndex = 0;
+        path = path.replace(/:(\w+)/g, (a, name) => {
+            if (!methodArgumentPropertiesByName[name]) {
+                this.logger.warning(`Method ${schema.getClassPropertyName(routeConfig.action.methodName)} has no function argument defined named ${name}.`);
+            } else {
+                parameterRegExIndex[name] = argumentIndex;
+                arrayRemoveItem(manualInjection, name);
+                const property = methodArgumentPropertiesByName[name];
+                if (property.type === 'any') {
+                    parameterValidators[name] = (v: any) => undefined;
+                    parameterConverter[name] = (v: any) => v;
+                } else {
+                    parameterValidators[name] = jitValidateProperty(property);
+                    parameterConverter[name] = getPropertyXtoClassFunction(methodArgumentPropertiesByName[name], jsonSerializer);
                 }
             }
-            const parameterRegExIndex: { [name: string]: number } = {};
 
-            let path = data.baseUrl ? join(data.baseUrl, action.path) : action.path;
-            if (!path.startsWith('/')) path = '/' + path;
+            argumentIndex++;
+            return routeConfig.parameterRegularExpressions[name] ? '(' + routeConfig.parameterRegularExpressions[name] + ')' : String.raw`([^/]+)`;
+        });
 
-            const prefix = path.substr(0, path.indexOf(':'));
+        const regexVar = compiler.reserveVariable('regex', new RegExp('^' + path + '$'));
+        const setParameters: string[] = [];
+        const parameterValidator: string[] = [];
+        let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
 
-            let argumentIndex = 0;
-            path = path.replace(/:(\w+)/g, (a, name) => {
-                if (!methodArgumentPropertiesByName[name]) {
-                    this.logger.warning(`Method ${schema.getClassPropertyName(action.methodName)} has no function argument defined named ${name}.`);
-                } else {
-                    parameterRegExIndex[name] = argumentIndex;
-                    arrayRemoveItem(manualInjection, name);
-                    const property = methodArgumentPropertiesByName[name];
-                    if (property.type === 'any') {
-                        parameterValidators[name] = (v: any) => undefined;
-                        parameterConverter[name] = (v: any) => v;
-                    } else {
-                        parameterValidators[name] = jitValidateProperty(property);
-                        parameterConverter[name] = getPropertyXtoClassFunction(methodArgumentPropertiesByName[name], jsonSerializer);
-                    }
-                }
-
-                argumentIndex++;
-                return action.parameterRegularExpressions[name] ? '(' + action.parameterRegularExpressions[name] + ')' : String.raw`([^/]+)`;
-            });
-
-            const methodNameVar = compiler.reserveVariable('methodName', action.methodName);
-            if (path.length === 0) {
-                //static rule
-                staticRules[action.httpMethod + path] = {controller, method: action.methodName, parameters: () => []};
+        for (const property of methodArgumentProperties) {
+            if (parameterRegExIndex[property.name] !== undefined) {
+                const converterVar = compiler.reserveVariable('argumentConverter', parameterConverter[property.name]);
+                setParameters.push(`${converterVar}(_match[1 + ${parameterRegExIndex[property.name]}])`);
+                const validatorVar = compiler.reserveVariable('argumentValidator', parameterValidators[property.name]);
+                parameterValidator.push(`${validatorVar}(_match[1 + ${parameterRegExIndex[property.name]}], ${JSON.stringify(property.name)}, validationErrors);`);
             } else {
-                const regexVar = compiler.reserveVariable('regex', new RegExp('^' + path + '$'));
-                const setParameters: string[] = [];
-                const parameterValidator: string[] = [];
-                let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
+                if (customValidationErrorHandling === property) {
+                    compiler.context.set('BodyValidation', BodyValidation);
+                    bodyValidationErrorHandling = '';
+                    setParameters.push(`new BodyValidation(bodyErrors)`);
+                } else if (requiresBodyParser === property) {
+                    const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
+                    const formVar = compiler.reserveVariable('form', this.form);
+                    const bodyVar = compiler.reserveVariable('body');
+                    const validatorVar = compiler.reserveVariable('argumentValidator', parameterValidators[property.name]);
 
-                for (const property of methodArgumentProperties) {
-                    if (parameterRegExIndex[property.name] !== undefined) {
-                        const converterVar = compiler.reserveVariable('argumentConverter', parameterConverter[property.name]);
-                        setParameters.push(`${converterVar}(_match[1 + ${parameterRegExIndex[property.name]}])`);
-                        const validatorVar = compiler.reserveVariable('argumentValidator', parameterValidators[property.name]);
-                        parameterValidator.push(`${validatorVar}(_match[1 + ${parameterRegExIndex[property.name]}], ${JSON.stringify(property.name)}, validationErrors);`);
-                    } else {
-                        if (customValidationErrorHandling === property) {
-                            compiler.context.set('BodyValidation', BodyValidation);
-                            bodyValidationErrorHandling = '';
-                            setParameters.push(`new BodyValidation(bodyErrors)`);
-                        } else if (requiresBodyParser === property) {
-                            const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
-                            const formVar = compiler.reserveVariable('form', this.form);
-                            const bodyVar = compiler.reserveVariable('body');
-                            const validatorVar = compiler.reserveVariable('argumentValidator', parameterValidators[property.name]);
-
-                            const converterVar = compiler.reserveVariable('argumentConverter', parameterConverter[property.name]);
-                            parameterValidator.push(`
-                            ${bodyVar} = ${converterVar}((await ${parseBodyVar}(${formVar}, request)).fields);
-                            ${validatorVar}(${bodyVar}, '', bodyErrors);
-                            `);
-                            setParameters.push(bodyVar);
-                        } else if (property.type === 'class') {
-                            const classType = compiler.reserveVariable('classType', property.getResolvedClassType());
-                            setParameters.push(`_injector.get(${classType})`);
-                        }
-                    }
+                    const converterVar = compiler.reserveVariable('argumentConverter', parameterConverter[property.name]);
+                    parameterValidator.push(`
+                    ${bodyVar} = ${converterVar}((await ${parseBodyVar}(${formVar}, request)).fields);
+                    ${validatorVar}(${bodyVar}, '', bodyErrors);
+                    `);
+                    setParameters.push(bodyVar);
+                } else if (property.type === 'class') {
+                    const classType = compiler.reserveVariable('classType', property.getResolvedClassType());
+                    setParameters.push(`_injector.get(${classType})`);
                 }
-
-                const actionCode = `
-                    //=> ${path}
-                    if (request.method === '${action.httpMethod}' && request.url.startsWith(${JSON.stringify(prefix)}) && (_match = request.url.match(${regexVar}))) {
-                        const validationErrors = [];
-                        const bodyErrors = [];
-                        ${parameterValidator.join('\n')}
-                        ${bodyValidationErrorHandling}
-                        if (validationErrors.length) throw ValidationError.from(validationErrors);
-                        return {controller: ${controllerVar}, parameters: (_injector) => [${setParameters.join(',')}], method: ${methodNameVar}};
-                    }
-                `;
-
-                code.push(actionCode);
             }
         }
 
-        return code.join('\n');
+        return `
+            //=> ${path}
+            if (_method === '${routeConfig.httpMethod}' && request.url.startsWith(${JSON.stringify(prefix)}) && (_match = request.url.match(${regexVar}))) {
+                const validationErrors = [];
+                const bodyErrors = [];
+                ${parameterValidator.join('\n')}
+                ${bodyValidationErrorHandling}
+                if (validationErrors.length) throw ValidationError.from(validationErrors);
+                return {routeConfig: ${routeConfigVar}, parameters: (_injector) => [${setParameters.join(',')}]};
+            }
+        `;
     }
 
-    protected build(controllers: ClassType[]): any {
+    public addRoute(routeConfig: RouteConfig) {
+        this.routes.push(routeConfig);
+        this.fn = undefined;
+    }
+
+    public addRouteForController(controller: ClassType) {
+        const data = httpClass._fetch(controller);
+        if (!data) return;
+
+        for (const action of data.actions) {
+            const routeConfig = new RouteConfig(action.name, action.httpMethod, action.path, {controller, methodName: action.methodName});
+            routeConfig.parameterRegularExpressions = action.parameterRegularExpressions;
+            routeConfig.throws = action.throws;
+            routeConfig.baseUrl = data.baseUrl;
+            this.addRoute(routeConfig);
+        }
+    }
+
+    protected build(): any {
         const compiler = new CompilerContext;
         compiler.context.set('_match', null);
-        const staticRules = {};
-        compiler.context.set('_static', staticRules);
         compiler.context.set('ValidationError', ValidationError);
 
         const code: string[] = [];
 
-        for (const controller of controllers) {
-            code.push(this.getControllerCode(compiler, controller));
+        for (const route of this.routes) {
+            code.push(this.getRouteCode(compiler, route));
         }
 
-        toFastProperties(staticRules);
         return compiler.buildAsync(`
-            if (_static.hasOwnProperty(request.method + request.url)) return _static[request.method + request.url];
+            const _method = request.method.toLowerCase();
             ${code.join('\n')}
         `, 'request') as any;
     }
 
-    public isBuilt() {
-        return !!this.fn;
-    }
-
     async resolveRequest(request: IncomingMessage): Promise<ResolvedController | undefined> {
-        return this.fn(request);
+        if (!this.fn) {
+            this.fn = this.build();
+        }
+
+        return this.fn!(request);
     }
 
     async resolve(method: string, url: string): Promise<ResolvedController | undefined> {
-        return this.fn({
+        return this.resolveRequest({
             method,
             url
         } as IncomingMessage);

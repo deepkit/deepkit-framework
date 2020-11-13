@@ -20,23 +20,12 @@ import {ExchangeServer, ExchangeServerFactory} from './exchange-server';
 import {Exchange} from './exchange';
 import {AppLocker} from './app-locker';
 import {ExchangeConfig} from './exchange.config';
-import {deepkit, DeepkitModule} from '../decorator';
+import {ModuleBootstrap} from '../decorator';
+import {injectable} from '../injector/injector';
+import {createModule} from '../module';
 
-@deepkit.module({
-    providers: [
-        ExchangeServerFactory,
-        Exchange,
-        AppLocker,
-        ExchangeConfig,
-    ],
-    exports: [
-        ExchangeServerFactory,
-        Exchange,
-        AppLocker,
-        ExchangeConfig,
-    ]
-})
-export class ExchangeModule implements DeepkitModule {
+@injectable()
+export class ExchangeModuleBootstrap implements ModuleBootstrap {
     protected exchangeServer?: ExchangeServer;
 
     constructor(
@@ -59,3 +48,20 @@ export class ExchangeModule implements DeepkitModule {
         }
     }
 }
+
+export const ExchangeModule = createModule({
+    name: 'exchange',
+    bootstrap: ExchangeModuleBootstrap,
+    providers: [
+        ExchangeServerFactory,
+        Exchange,
+        AppLocker,
+        ExchangeConfig,
+    ],
+    exports: [
+        ExchangeServerFactory,
+        Exchange,
+        AppLocker,
+        ExchangeConfig,
+    ]
+});

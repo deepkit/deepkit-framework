@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2018",
+    "module": "CommonJS",
+
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true
+  },
+  "include": [
+    "src",
+    "jsx",
+    "tests",
+    "benchmark",
+    "index.ts",
+    "jsx-runtime",
+    "jsx-runtime.ts"
+  ],
+  "references": [
+    {
+      "path": "../framework-shared/tsconfig.json"
+    },
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.dist.json"
+    }
+  ]
+}

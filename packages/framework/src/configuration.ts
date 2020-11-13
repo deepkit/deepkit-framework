@@ -37,7 +37,6 @@ function findFileUntilPackageRoot(fileName: string): string | undefined {
     }
 }
 
-
 export class Configuration {
     protected container: { [name: string]: any } = {};
 
@@ -79,6 +78,10 @@ export class Configuration {
 
     public getKeys(): string[] {
         return Object.keys(this.container);
+    }
+
+    public getAll(): { [name: string]: any } {
+        return this.container;
     }
 
     /**

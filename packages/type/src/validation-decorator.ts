@@ -25,7 +25,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (regex.exec(value)) return;
-            return new PropertyValidatorError('match', `Pattern ${regex.source} does not match`);
+            throw new PropertyValidatorError('match', `Pattern ${regex.source} does not match`);
         });
     }
 
@@ -33,7 +33,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isAlpha(value, locale)) return;
-            return new PropertyValidatorError('isAlpha', 'Not alpha');
+            throw new PropertyValidatorError('isAlpha', 'Not alpha');
         });
     }
 
@@ -41,7 +41,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isAlphanumeric(value, locale)) return;
-            return new PropertyValidatorError('isAlphanumeric', 'Not alphanumeric');
+            throw new PropertyValidatorError('isAlphanumeric', 'Not alphanumeric');
         });
     }
 
@@ -49,7 +49,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isAscii(value)) return;
-            return new PropertyValidatorError('isAscii', 'Not ASCII');
+            throw new PropertyValidatorError('isAscii', 'Not ASCII');
         });
     }
 
@@ -57,7 +57,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isBIC(value)) return;
-            return new PropertyValidatorError('isBIC', 'Not BIC');
+            throw new PropertyValidatorError('isBIC', 'Not BIC');
         });
     }
 
@@ -65,7 +65,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isBase32(value)) return;
-            return new PropertyValidatorError('isBase32', 'Not Base32');
+            throw new PropertyValidatorError('isBase32', 'Not Base32');
         });
     }
 
@@ -73,7 +73,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isBase64(value)) return;
-            return new PropertyValidatorError('isBase58', 'Not Base64');
+            throw new PropertyValidatorError('isBase58', 'Not Base64');
         });
     }
 
@@ -81,7 +81,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isBtcAddress(value)) return;
-            return new PropertyValidatorError('isBtcAddress', 'Not a BTC address');
+            throw new PropertyValidatorError('isBtcAddress', 'Not a BTC address');
         });
     }
 
@@ -89,7 +89,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isCreditCard(value)) return;
-            return new PropertyValidatorError('isCreditCard', 'Not a credit card');
+            throw new PropertyValidatorError('isCreditCard', 'Not a credit card');
         });
     }
 
@@ -97,7 +97,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isDataURI(value)) return;
-            return new PropertyValidatorError('isDataURI', 'Not a data URI');
+            throw new PropertyValidatorError('isDataURI', 'Not a data URI');
         });
     }
 
@@ -105,7 +105,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('string' !== typeof value) return;
             if (validator.isDecimal(value, options)) return;
-            return new PropertyValidatorError('isDecimal', 'Not a decimal');
+            throw new PropertyValidatorError('isDecimal', 'Not a decimal');
         });
     }
 
@@ -113,7 +113,7 @@ export class FreeValidationContext {
         this.t.validators.push((value: any) => {
             if ('number' !== typeof value) return;
             if (value % num === 0) return;
-            return new PropertyValidatorError('isDivisibleBy', 'Not divisible by ' + num);
+            throw new PropertyValidatorError('isDivisibleBy', 'Not divisible by ' + num);
         });
     }
 
@@ -122,7 +122,7 @@ export class FreeValidationContext {
             if ('string' !== typeof value && !isArray(value)) return;
             if (value.length >= length) return;
 
-            return new PropertyValidatorError('minLength', 'Min length is ' + length);
+            throw new PropertyValidatorError('minLength', 'Min length is ' + length);
         });
     }
 
@@ -131,7 +131,7 @@ export class FreeValidationContext {
             if ('string' !== typeof value && !isArray(value)) return;
             if (value.length <= length) return;
 
-            return new PropertyValidatorError('maxLength', 'Max length is ' + length);
+            throw new PropertyValidatorError('maxLength', 'Max length is ' + length);
         });
     }
 
@@ -140,7 +140,7 @@ export class FreeValidationContext {
             if ('string' !== typeof value && !isArray(value)) return;
             if (value.includes(include)) return;
 
-            return new PropertyValidatorError('includes', `Needs to include '${include}'`);
+            throw new PropertyValidatorError('includes', `Needs to include '${include}'`);
         });
     }
 
@@ -149,15 +149,15 @@ export class FreeValidationContext {
             if ('string' !== typeof value && !isArray(value)) return;
             if (!value.includes(excludes)) return;
 
-            return new PropertyValidatorError('excludes', `Needs to exclude '${excludes}'`);
+            throw new PropertyValidatorError('excludes', `Needs to exclude '${excludes}'`);
         });
     }
 
     min(min: number, excluding: boolean = false) {
         this.t.validators.push((value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (excluding && value <= min) return new PropertyValidatorError('min', 'Number needs to be greater than ' + min);
-            if (!excluding && value < min) return new PropertyValidatorError('min', 'Number needs to be greater than or equal to ' + min);
+            if (excluding && value <= min) throw new PropertyValidatorError('min', 'Number needs to be greater than ' + min);
+            if (!excluding && value < min) throw new PropertyValidatorError('min', 'Number needs to be greater than or equal to ' + min);
             return;
         });
     }
@@ -165,8 +165,8 @@ export class FreeValidationContext {
     max(max: number, excluding: boolean = false) {
         this.t.validators.push((value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (excluding && value >= max) return new PropertyValidatorError('max', 'Number needs to be smaller than ' + max);
-            if (!excluding && value > max) return new PropertyValidatorError('max', 'Number needs to be smaller than or equal to ' + max);
+            if (excluding && value >= max) throw new PropertyValidatorError('max', 'Number needs to be smaller than ' + max);
+            if (!excluding && value > max) throw new PropertyValidatorError('max', 'Number needs to be smaller than or equal to ' + max);
             return;
         });
     }
@@ -177,7 +177,7 @@ export class FreeValidationContext {
             if (value > 0) return;
             if (includingZero && value === 0) return;
 
-            return new PropertyValidatorError('positive', 'Number needs to be positive');
+            throw new PropertyValidatorError('positive', 'Number needs to be positive');
         });
     }
 
@@ -187,7 +187,7 @@ export class FreeValidationContext {
             if (value < 0) return;
             if (includingZero && value === 0) return;
 
-            return new PropertyValidatorError('negative', 'Number needs to be negative');
+            throw new PropertyValidatorError('negative', 'Number needs to be negative');
         });
     }
 }

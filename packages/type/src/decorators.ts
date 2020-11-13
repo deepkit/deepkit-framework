@@ -58,7 +58,10 @@ export function getGlobalStore(): GlobalStore {
 }
 
 export interface PropertyValidator {
-    validate<T>(value: any, propertyName: string, classType?: ClassType,): PropertyValidatorError | undefined | void;
+    /**
+     * @throws PropertyValidatorError when validation invalid
+     */
+    validate<T>(value: any, propertyName: string, classType?: ClassType,): void;
 }
 
 export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
@@ -1370,7 +1373,10 @@ export function resolveClassTypeOrForward(type: ClassType | ForwardRefFn<ClassTy
 }
 
 
-export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType) => PropertyValidatorError | undefined | void;
+/**
+ * @throws PropertyValidatorError when validation invalid
+ */
+export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType) => void;
 
 export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
 
@@ -2458,6 +2464,10 @@ fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cl
     });
 
     const schema = createClassSchema(clazz, options.name);
+
+    if (!props) {
+        throw new Error('No props given');
+    }
 
     for (const [name, prop] of Object.entries(props!)) {
         if ('string' === typeof prop || 'number' === typeof prop || 'boolean' === typeof prop) {

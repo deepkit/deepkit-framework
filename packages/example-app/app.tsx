@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import {Application, Databases, http, BodyValidation} from '@deepkit/framework';
+import {Application, BodyValidation, Databases, http} from '@deepkit/framework';
 import {entity, t, v} from '@deepkit/type';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
@@ -11,14 +11,14 @@ class User extends ActiveRecord {
     @t created: Date = new Date;
 
     constructor(
-        @t public username: string
+        @t.validator(v.minLength(3)) public username: string
     ) {
         super();
     }
 }
 
 class SQLiteDatabase extends Database.createClass(
-    'sqlite',
+    'default',
     new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'),
     [User]) {
 }
@@ -65,6 +65,7 @@ Application.run({
     providers: [],
     controllers: [HelloWorldController],
     imports: [
+
         Databases.for([SQLiteDatabase], {migrateOnStartup: true})
     ]
-});
+}, {debug: true});

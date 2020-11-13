@@ -1,0 +1,31 @@
+{
+  "name": "@deepkit/framework-debug-shared",
+  "version": "1.0.1-alpha.0",
+  "main": "dist/",
+  "types": "dist/index.d.ts",
+  "license": "AGPL-3.0-only",
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+  },
+  "dependencies": {
+    "@deepkit/framework-shared": "^1.0.1-alpha.0",
+    "@deepkit/type": "^1.0.1-alpha.0"
+  },
+  "devDependencies": {
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts",
+      "**/tests/**/*.spec.tsx"
+    ]
+  }
+}

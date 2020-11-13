@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {applyDefaults, ClassType} from '@deepkit/core';
+import {applyDefaults, ClassType, isPlainObject} from '@deepkit/core';
 import {WebWorker} from './worker';
-import {BaseModule} from './base.module';
+import {KernelModule} from './kernel';
 import {ProviderWithScope, ServiceContainer} from './service-container';
-import {deepkit, DeepkitModule, DynamicModule, ModuleOptions} from './decorator';
+import {ModuleOptions} from './decorator';
 import {Command, Config, Options} from '@oclif/config';
 import {basename, relative} from 'path';
 import {Main} from '@oclif/command';
@@ -28,24 +28,33 @@ import {ExitError} from '@oclif/errors';
 import {buildOclifCommand} from './command';
 import {ApplicationConfig} from './application-config';
 import {Configuration} from './configuration';
+import {createModule, Module, ModuleConfigOfOptions} from './module';
 
-export class Application {
+function isModule(module: any): module is Module<any> {
+    return module instanceof Module;
+}
+function isModuleOptions(module: any): module is ModuleOptions {
+    return isPlainObject(module);
+}
+
+export class Application<T extends ModuleOptions> {
     protected config: ApplicationConfig;
     protected masterWorker?: WebWorker;
     protected serviceContainer = new ServiceContainer;
 
     constructor(
-        appModule: ClassType<DeepkitModule>,
+        appModule: Module<T>,
         config: Partial<ApplicationConfig> = {},
         providers: ProviderWithScope[] = [],
-        imports: (ClassType | DynamicModule)[] = [],
+        imports: Module<any>[] = [],
     ) {
         this.config = applyDefaults(ApplicationConfig, config);
         providers.push(
             {provide: ApplicationConfig, useValue: this.config},
         );
 
-        imports.unshift(BaseModule.forRoot());
+        imports = imports.slice(0);
+        imports.unshift(KernelModule.forRoot());
 
         const configuration = new Configuration();
         configuration.loadEnvFile('.env');
@@ -69,17 +78,34 @@ export class Application {
         }
     }
 
-    static root(module: ModuleOptions, config: Partial<ApplicationConfig> = {}) {
-        @deepkit.module(module)
-        class MyModule {
-
+    static create<T extends Module<any> | ModuleOptions>(module: T): Application<T extends Module<infer K> ? K : T> {
+        if (module instanceof Module){
+            return new Application(module);
+        } else {
+            //see: https://github.com/microsoft/TypeScript/issues/13995
+            const mod = module as any as ModuleOptions;
+            if (!mod.name) mod.name = 'app';
+            return new Application(createModule(mod));
         }
-
-        return new Application(MyModule, config);
     }
 
-    static async run(module: ModuleOptions, config: Partial<ApplicationConfig> = {}) {
-        return this.root(module, config).execute(process.argv.slice(2));
+    configure(config: Partial<ModuleConfigOfOptions<T>>): this {
+        return this;
+    }
+
+    loadConfigFromEnvFile(path: string | string[]): this {
+        throw new Error('Not implemented yet.');
+        return this;
+    }
+
+    loadConfigFromEnvVariables(prefix: string = ''): this {
+        throw new Error('Not implemented yet.');
+        return this;
+    }
+
+    loadConfigFromEnvVariable(variableName: string): this {
+        throw new Error('Not implemented yet.');
+        return this;
     }
 
     async run(argv?: any[]) {

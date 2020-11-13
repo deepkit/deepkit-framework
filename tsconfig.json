@@ -14,6 +14,9 @@
       "path": "packages/framework-client/tsconfig.json"
     },
     {
+      "path": "packages/framework-debug-shared/tsconfig.json"
+    },
+    {
       "path": "packages/framework/tsconfig.json"
     },
     {

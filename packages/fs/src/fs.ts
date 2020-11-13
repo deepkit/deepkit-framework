@@ -197,7 +197,7 @@ export class FS<T extends DeepkitFile> {
                     resolve(data);
                 });
             } else {
-                resolve();
+                resolve(undefined);
             }
         });
     }

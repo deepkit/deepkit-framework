@@ -23,8 +23,8 @@ import {existsSync, mkdirSync, writeFileSync} from 'fs';
 import {indent} from '@deepkit/core';
 import {cli, Command, flag} from '../../command';
 import {Logger} from '../../logger';
-import {MigrationProvider} from '../../migration-provider';
-import {Databases} from '../../databases';
+import {MigrationProvider} from '../migration-provider';
+import {Databases} from '../databases';
 import {inject} from '../../injector/injector';
 
 

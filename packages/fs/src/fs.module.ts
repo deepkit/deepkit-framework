@@ -16,12 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {deepkit} from '@deepkit/framework';
 import {FsConfig} from './fs.config';
 import {Database, DatabaseAdapter} from '@deepkit/orm';
-import {HornetFile} from '@deepkit/framework-shared';
+import {createModule, injectable} from '@deepkit/framework';
+import {DeepkitFile} from '@deepkit/framework-shared';
 
-@deepkit.module({
+@injectable()
+export class FsModuleBootstrap {
+    constructor(database: Database<DatabaseAdapter>) {
+        database.registerEntity(DeepkitFile);
+    }
+}
+
+export const FSModule = createModule({
+    name: 'fs',
+    bootstrap: FsModuleBootstrap,
     providers: [
         FsConfig,
         Database,
@@ -30,9 +39,4 @@ import {HornetFile} from '@deepkit/framework-shared';
         FsConfig,
         Database,
     ]
-})
-export class FSModule {
-    constructor(database: Database<DatabaseAdapter>) {
-        database.registerEntity(HornetFile);
-    }
-}
+});

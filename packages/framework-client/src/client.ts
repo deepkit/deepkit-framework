@@ -41,6 +41,7 @@ import {
     ServerMessageResult,
     SimpleConnectionWriter,
     StreamBehaviorSubject,
+    ControllerDefinition,
 } from '@deepkit/framework-shared';
 import {asyncOperation, ClassType, eachKey, sleep} from '@deepkit/core';
 import {AsyncSubscription} from '@deepkit/core-rxjs';
@@ -334,7 +335,7 @@ export class Client {
         return (o as any) as RemoteController<T>;
     }
 
-    public controller<T>(name: string, timeoutInSeconds = 60): RemoteController<T> {
+    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, timeoutInSeconds = 60): RemoteController<T> {
         const t = this;
 
         const o = new Proxy(this, {
@@ -343,7 +344,8 @@ export class Client {
                     const actionName = String(propertyName);
                     const args = Array.prototype.slice.call(arguments);
 
-                    return t.stream(name, actionName, args, {timeoutInSeconds: timeoutInSeconds});
+                    const path = 'string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path;
+                    return t.stream(path, actionName, args, {timeoutInSeconds: timeoutInSeconds});
                 };
             }
         });

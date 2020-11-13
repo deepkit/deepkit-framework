@@ -22,8 +22,7 @@
     "@deepkit/sql": "^1.0.1-alpha.0",
     "better-sqlite3": "^7.1.1",
     "mariadb": "^2.4.2",
-    "postgres": "^2.0.0-beta.0",
-    "jest": "^26.1.0"
+    "postgres": "^2.0.0-beta.0"
   },
   "devDependencies": {
     "reflect-metadata": "^0.1.13",

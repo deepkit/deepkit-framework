@@ -20,10 +20,10 @@
     "@types/jest": "^26.0.3",
     "@types/node": "^12.12.6",
     "coveralls": "^3.0.3",
-    "jest": "^26.1.0",
+    "jest": "^26.6.3",
     "jest-extended": "^0.11.5",
     "lerna": "^3.22.1",
-    "ts-jest": "^26.1.1",
+    "ts-jest": "^26.4.3",
     "typescript": "^4.1.1-rc",
     "typedoc": "^0.16.8",
     "typedoc-plugin-lerna-packages": "^0.3.0"

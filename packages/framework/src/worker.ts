@@ -57,6 +57,7 @@ export class BaseWorker {
         let rpcControllerContainer: RpcControllerContainer;
 
         const providers: Provider[] = [
+            ClientConnection,
             {provide: 'remoteAddress', useValue: remoteAddress},
             {
                 provide: RpcControllerContainer, useFactory: () => {

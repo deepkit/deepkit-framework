@@ -22,7 +22,7 @@ import * as glob from 'fast-glob';
 import {basename, join} from 'path';
 import {Migration} from './migration';
 import {Databases} from './databases';
-import {inject} from './injector/injector';
+import {inject} from '../injector/injector';
 
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();

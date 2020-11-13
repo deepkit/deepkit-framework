@@ -3,14 +3,12 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {InMemoryApplicationServer} from '../src/inmemory-application-server';
 import {rpc} from '@deepkit/framework-shared';
-import {deepkit} from '../src/decorator';
 import {Application} from '../src/application';
 import {RpcControllerContainer} from '../src/service-container';
+import { createModule } from '../src/module';
 
 test('basic bootstrap', async () => {
-    @deepkit.module({})
-    class AppModule {
-    }
+    const AppModule = createModule({})
 
     const app = new Application(AppModule, {}, [InMemoryApplicationServer]);
     const applicationServer = app.getInjector().get(InMemoryApplicationServer);
@@ -20,6 +18,7 @@ test('basic bootstrap', async () => {
 
 test('basic controller', async () => {
     let createdControllers = 0;
+
     @rpc.controller('test')
     class MyController {
         constructor() {
@@ -32,11 +31,9 @@ test('basic controller', async () => {
         }
     }
 
-    @deepkit.module({
+    const AppModule = createModule({
         controllers: [MyController],
     })
-    class AppModule {
-    }
 
     const app = new Application(AppModule, {}, [InMemoryApplicationServer]);
     const applicationServer = app.get(InMemoryApplicationServer);

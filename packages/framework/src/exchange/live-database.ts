@@ -23,7 +23,7 @@ import {ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward} 
 import {Observable, Subscription} from 'rxjs';
 import {Exchange} from './exchange';
 import {findQuerySatisfied} from '../utils';
-import {Databases} from '../databases';
+import {Databases} from '../database/databases';
 import {
     BaseQuery,
     Database,

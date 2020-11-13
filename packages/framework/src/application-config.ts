@@ -33,5 +33,7 @@ export class ApplicationConfig {
 
     publicDir: string = 'public/';
 
+    debug: boolean = false;
+
     migrationDir: string = 'migration/';
 }

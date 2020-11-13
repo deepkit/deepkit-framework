@@ -17,10 +17,12 @@
  */
 
 import {ClassType, isClass} from '@deepkit/core';
-import {InjectToken} from './injector/injector';
+import {ConfigDefinition, InjectToken} from './injector/injector';
 import {ProviderWithScope} from './service-container';
 import {ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult} from '@deepkit/type';
 import {join} from 'path';
+import {Module} from './module';
+import {PlainSchemaProps} from '../../type/dist';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
 
@@ -94,6 +96,12 @@ export const eventDispatcher = createPropertyDecoratorContext(
 
 export interface ModuleOptions {
     /**
+     * The lowercase alphanumeric module name. This is used in the configuration system for example.
+     * Choose a short unique name for best usability.
+     */
+    name?: string;
+
+    /**
      * Providers.
      */
     providers?: ProviderWithScope[];
@@ -101,10 +109,31 @@ export interface ModuleOptions {
     /**
      * Export providers (its token `provide` value) or modules you imported first.
      */
-    exports?: (ClassType | InjectToken | string | DynamicModule)[];
+    exports?: (ClassType | InjectToken | string | Module<any>)[];
 
     /**
-     * RPC controllers.
+     * Module bootstrap class.
+     */
+    bootstrap?: ClassType<ModuleBootstrap>;
+
+    /**
+     * Configuration definition.
+     *
+     * @example
+     * ```typescript
+     * import {t} from '@deepkit/type';
+     *
+     * const MyModule = createModule({
+     *     config: {
+     *         debug: t.boolean.default(false),
+     *     }
+     * });
+     * ```
+     */
+    config?: ConfigDefinition<any>;
+
+    /**
+     * RPC/HTTP/CLI controllers.
      */
     controllers?: ClassType[];
 
@@ -142,27 +171,10 @@ export interface ModuleOptions {
     /**
      * Import another module.
      */
-    imports?: (ClassType | DynamicModule)[];
+    imports?: Module<any>[];
 }
 
-export interface DynamicModule extends ModuleOptions {
-    /**
-     * Imports this module as if the root AppModule has imported it
-     */
-    root?: boolean;
-
-    module: ClassType;
-}
-
-export function isDynamicModuleObject(obj: any): obj is DynamicModule {
-    return obj.module;
-}
-
-export function isModuleToken(obj: any): obj is (ClassType | DynamicModule) {
-    return (isClass(obj) && undefined !== deepkit._fetch(obj)) || isDynamicModuleObject(obj);
-}
-
-export interface DeepkitModule {
+export interface ModuleBootstrap {
     /**
      * Called when the application bootstraps (for cli commands, rpc/http server, tests, ...)
      *
@@ -191,20 +203,6 @@ export interface DeepkitModule {
 export interface ControllerOptions {
     name: string;
 }
-
-class Hornet {
-    config?: ModuleOptions;
-}
-
-export const deepkit = createClassDecoratorContext(
-    class {
-        t = new Hornet;
-
-        module(config: ModuleOptions) {
-            this.t.config = config;
-        }
-    }
-);
 
 class HttpController {
     baseUrl: string = '';

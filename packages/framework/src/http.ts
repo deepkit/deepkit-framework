@@ -17,17 +17,18 @@
  */
 
 import {Router} from './router';
-import {ClassType, CustomError, getClassName} from '@deepkit/core';
+import {asyncOperation, ClassType, CustomError, getClassName} from '@deepkit/core';
 import {injectable, Injector} from './injector/injector';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
-import {Context, EventListenerContainer, ServiceContainer} from './service-container';
+import {Context, EventDispatcher, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
 import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
 import {ApplicationConfig} from './application-config';
 import {Logger} from './logger';
 import {BaseEvent, eventDispatcher, EventOfEventToken, EventToken} from './decorator';
+import * as serveStatic from 'serve-static';
 
 export interface HttpError<T> {
     new(...args: any[]): Error;
@@ -45,6 +46,24 @@ export function HttpError<T extends number>(code: T, defaultMessage: string = ''
             return code;
         }
     };
+}
+
+export function serveStaticListener(path: string): ClassType {
+    @injectable()
+    class HttpRequestStaticServingListener {
+        protected serveStatic = serveStatic(path);
+
+        @eventDispatcher.listen(onHttpRequest, -1)
+        onHttpRequest(event: EventOfEventToken<typeof onHttpRequest>) {
+            return asyncOperation(resolve => {
+                this.serveStatic(event.request, event.response, () => {
+                    resolve(undefined);
+                });
+            });
+        }
+    }
+
+    return HttpRequestStaticServingListener;
 }
 
 export class HttpNotFoundError extends HttpError(404, 'Not found') {
@@ -68,7 +87,6 @@ export class HttpRouteNotFoundEvent extends BaseEvent {
     constructor(
         public readonly request: IncomingMessage,
         public readonly response: ServerResponse,
-        // public readonly route: Route,
     ) {
         super();
     }
@@ -82,13 +100,13 @@ export class HtmlResponse {
 }
 
 @injectable()
-export class HttpListener {
+export class HttpRouteListener {
     protected httpRouteNotFoundEventCaller = this.eventListenerContainer.getCaller(onHttpRouteNotFound);
 
     constructor(
         protected router: Router,
-        protected middlewareContainer: EventListenerContainer,
-        protected eventListenerContainer: EventListenerContainer,
+        protected middlewareContainer: EventDispatcher,
+        protected eventListenerContainer: EventDispatcher,
         protected config: ApplicationConfig,
         protected logger: Logger,
     ) {
@@ -114,15 +132,15 @@ export class HttpListener {
             return;
         }
 
-        const injector = this.createInjector(resolved.controller, [
+        const injector = this.createInjector(resolved.routeConfig.action.controller, [
             {provide: IncomingMessage, useValue: event.request},
             {provide: ServerResponse, useValue: event.response},
         ]);
         injector.allowUnknown = true;
 
-        const controllerInstance = injector.get(resolved.controller);
+        const controllerInstance = injector.get(resolved.routeConfig.action.controller);
         try {
-            const response = await controllerInstance[resolved.method](...resolved.parameters(injector));
+            const response = await controllerInstance[resolved.routeConfig.action.methodName](...resolved.parameters(injector));
 
             if (response === null || response === undefined) {
                 event.response.writeHead(200, {
@@ -153,7 +171,7 @@ export class HttpListener {
                 event.response.end(JSON.stringify(response));
             }
         } catch (error) {
-            this.logger.error(`Server error, controller ${getClassName(resolved.controller)} method ${resolved.method}`, error);
+            this.logger.error(`Server error, controller action ${getClassName(resolved.routeConfig.action.controller)}.${resolved.routeConfig.action.methodName}`, error);
             event.response.writeHead(500, {
                 'Content-Type': 'text/plain; charset=utf-8'
             });
@@ -168,7 +186,7 @@ export class HttpKernel {
 
     constructor(
         protected router: Router,
-        protected eventListenerContainer: EventListenerContainer,
+        protected eventListenerContainer: EventDispatcher,
         protected config: ApplicationConfig,
         protected logger: Logger,
     ) {
@@ -212,7 +230,12 @@ export class HttpKernel {
         })(request);
 
         await this.handleRequest(request, response);
-        return JSON.parse(result);
+        try {
+            return JSON.parse(result);
+        } catch (error) {
+            console.error('Could not parse JSON:' + result);
+            return undefined;
+        }
     }
 
     async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {

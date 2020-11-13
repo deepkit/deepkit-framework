@@ -67,10 +67,7 @@ export function handleCustomValidator<T>(
     classType?: ClassType,
 ) {
     try {
-        const result = validator.validate(value, propSchema.name, classType);
-        if (result instanceof PropertyValidatorError) {
-            errors.push(new ValidationFailedItem(propertyPath, result.code, result.message));
-        }
+        validator.validate(value, propSchema.name, classType);
     } catch (error) {
         if (error instanceof PropertyValidatorError) {
             errors.push(new ValidationFailedItem(propertyPath, error.code, error.message || String(error)));

@@ -26,11 +26,18 @@ import {
     PropertyDecoratorResult,
     PropertySchema,
 } from '@deepkit/type';
+import {ControllerDefinition} from './rpc';
 
 class RpcController {
-    name: string = '';
+    name?: string;
+
+    definition?: ControllerDefinition<any>;
 
     actions = new Map;
+
+    getPath(): string {
+        return this.definition ? this.definition.path : this.name || '';
+    }
 }
 
 class RpcAction {
@@ -39,8 +46,12 @@ class RpcAction {
 class RpcClass {
     t = new RpcController;
 
-    controller(name: string) {
-        this.t.name = name;
+    controller(nameOrDefinition: string | ControllerDefinition<any>) {
+        if ('string' === typeof nameOrDefinition) {
+            this.t.name = nameOrDefinition;
+        } else {
+            this.t.definition = nameOrDefinition;
+        }
     }
 
     addAction(name: string, action: RpcAction) {

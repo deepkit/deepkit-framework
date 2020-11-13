@@ -1,7 +1,8 @@
+import {t} from '@deepkit/type';
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {CircularDependencyError, inject, injectable, Injector} from '../src/injector/injector';
+import {CircularDependencyError, createConfig, inject, injectable, Injector} from '../src/injector/injector';
 
 test('injector', () => {
     class Connection {
@@ -67,7 +68,7 @@ test('injector unmet dependency', () => {
     {
         const injector = new Injector([MyServer]);
         expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
-        expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument no 1 of MyServer(?). Make sure 'Connection' is provided`);
+        expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument at 1 of MyServer(?). Make sure 'Connection' is provided`);
     }
 });
 
@@ -182,4 +183,24 @@ test('injector stack parent', () => {
 
     expect(() => i2.get('level2')).toThrow('Could not resolve injector token deep2');
     expect(i3.get('level2')).toBe(3);
+});
+
+
+test('injector config', () => {
+    const FullConfig = createConfig({
+        debug: t.boolean.default(false)
+    });
+
+    class ServiceConfig extends FullConfig.slice('debug') {
+    }
+
+    @injectable()
+    class MyService {
+        constructor(private config: ServiceConfig) {
+        }
+    }
+
+    const i1 = new Injector([
+        MyService
+    ]);
 });

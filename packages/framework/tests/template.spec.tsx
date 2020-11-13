@@ -71,9 +71,14 @@ test('template jsx convert to createElement', async () => {
 
 const {parse} = require('abstract-syntax-tree');
 
+function test1(props: {[name: string]: any} = {}) {
+    return <div {...props} id="123">Test</div>
+}
+
 test('template test', async () => {
     // console.log(parse(`'one' + i + 'two'`).body);
-    console.log(parse(`html('asd')`).body[0].expression);
+    console.log(test1.toString());
+    // console.log(parse(`html('asd')`).body[0].expression);
 });
 
 test('template jsx optimize', async () => {
@@ -95,6 +100,10 @@ test('template jsx optimize', async () => {
 
     expect(normalize(optimize(`jsx_runtime_1.jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0);`))).toBe(
         `html("<div id=\\"123\\">Test</div>");`
+    );
+
+    expect(normalize(optimize(`jsx_runtime_1.jsx("div", Object.assign({}, props, { id: "123" }, { children: "Test" }), void 0);`))).toBe(
+        `jsx_runtime_1.createElement("div", Object.assign({}, props, {id: "123"}), "Test");`
     );
 
     expect(normalize(optimize(`jsx_runtime_1.jsxs("div", Object.assign({ id: "123" }, { children: [jsx_runtime_1.jsx("b", { children: "strong" }, void 0), jsx_runtime_1.jsx("b", { children: "strong2" }, void 0)] }), void 0);`))).toBe(

@@ -16,29 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {asyncOperation, ProcessLocker} from '@deepkit/core';
+import {ProcessLocker} from '@deepkit/core';
 import {InternalClient} from './internal-client';
 import {SessionStack} from './session';
 import {ClientConnection} from './client-connection';
 import {ConnectionMiddleware} from '@deepkit/framework-shared';
 import {SecurityStrategy} from './security';
 import {Router} from './router';
-import {HttpKernel, HttpListener, onHttpRequest, onHttpRouteNotFound} from './http';
+import {HttpKernel, HttpRouteListener, onHttpRequest, onHttpRouteNotFound, serveStaticListener} from './http';
 import {ServerListenController} from './cli/server-listen';
-import {deepkit, DynamicModule, eventDispatcher, EventOfEventToken} from './decorator';
-import {ExchangeModule} from './exchange/exchange.module';
+import {eventDispatcher, EventOfEventToken} from './decorator';
 import {ApplicationServer} from './application-server';
 import {ConsoleTransport, Logger} from './logger';
-import {MigrationProvider} from './migration-provider';
-import {MigrationCreateController} from './cli/orm/migration-create-command';
-import {MigrationUpCommand} from './cli/orm/migration-up-command';
-import {MigrationPendingCommand} from './cli/orm/migration-pending-command';
-import {MigrationDownCommand} from './cli/orm/migration-down-command';
-import {Databases} from './databases';
 import {LiveDatabase} from './exchange/live-database';
 import {inject, injectable} from './injector/injector';
-import * as serveStatic from 'serve-static';
 import {ApplicationConfig} from './application-config';
+import {EventDispatcher} from './service-container';
+import {DebugController} from './controller/debug.controller';
+import {createModule} from './module';
+import {ExchangeModule} from './exchange/exchange.module';
 
 class HttpLogger {
     constructor(@inject() private logger: Logger) {
@@ -68,23 +64,15 @@ class HttpRouteNotFoundListener {
 }
 
 @injectable()
-class HttpRequestStaticServingListener {
-    protected serveStatic = serveStatic(this.config.publicDir);
-
-    constructor(private config: ApplicationConfig) {
-    }
-
-    @eventDispatcher.listen(onHttpRequest, -1)
-    onHttpRequest(event: EventOfEventToken<typeof onHttpRequest>) {
-        return asyncOperation(resolve => {
-            this.serveStatic(event.request, event.response, () => {
-                resolve(undefined);
-            });
-        });
+export class BaseModuleBootstrap {
+    constructor(config: ApplicationConfig, eventListenerContainer: EventDispatcher) {
+        if (config.publicDir) eventListenerContainer.registerListener(serveStaticListener(config.publicDir));
     }
 }
 
-@deepkit.module({
+export const KernelModule = createModule({
+    name: 'kernel',
+    bootstrap: BaseModuleBootstrap,
     providers: [
         ProcessLocker,
         InternalClient,
@@ -92,8 +80,6 @@ class HttpRequestStaticServingListener {
         ApplicationServer,
         Router,
         HttpKernel,
-        MigrationProvider,
-        Databases,
         {provide: 'orm.databases', useValue: []},
         {provide: Logger, useFactory: () => new Logger([new ConsoleTransport()], [])},
         {provide: SessionStack, scope: 'session'},
@@ -102,30 +88,15 @@ class HttpRequestStaticServingListener {
         {provide: LiveDatabase, scope: 'session'},
     ],
     listeners: [
-        HttpListener,
+        HttpRouteListener,
         HttpLogger,
         HttpRouteNotFoundListener,
-        HttpRequestStaticServingListener,
     ],
     controllers: [
+        DebugController,
         ServerListenController,
-        MigrationCreateController,
-        MigrationUpCommand,
-        MigrationPendingCommand,
-        MigrationDownCommand
     ],
     imports: [
         ExchangeModule,
     ],
-})
-export class BaseModule {
-    static forRoot(): DynamicModule {
-        const imports: any[] = [];
-
-        return {
-            root: true,
-            module: BaseModule,
-            imports: imports,
-        };
-    }
-}
+});

@@ -1,11 +1,10 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {DynamicModule, deepkit, DeepkitModule} from '../src/decorator';
 import {RpcControllerContainer, ServiceContainer} from '../src/service-container';
 import {injectable, Injector} from '../src/injector/injector';
 import {rpc} from '@deepkit/framework-shared';
-
+import {createModule} from '../src/module';
 
 test('controller', () => {
     class MyService {
@@ -28,12 +27,10 @@ test('controller', () => {
     }
 
     {
-        @deepkit.module({
+        const MyModule = createModule({
             providers: [MyService],
             controllers: [MyController],
-        })
-        class MyModule {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
@@ -64,22 +61,18 @@ test('controller in module and overwrite service', () => {
         }
     }
 
-    @deepkit.module({
+    const ControllerModule = createModule({
         providers: [MyService],
         controllers: [MyController],
         exports: [
             MyService
         ]
-    })
-    class ControllerModule {
-    }
+    });
 
     {
-        @deepkit.module({
+        const MyModule = createModule({
             imports: [ControllerModule],
-        })
-        class MyModule {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
@@ -90,14 +83,12 @@ test('controller in module and overwrite service', () => {
     }
 
     {
-        @deepkit.module({
+        const MyModule = createModule({
             providers: [
                 {provide: MyService, useValue: new MyService('different')}
             ],
             imports: [ControllerModule],
-        })
-        class MyModule {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
@@ -118,22 +109,18 @@ test('simple setup with import and overwrite', () => {
         }
     }
 
-    @deepkit.module({
+    const DatabaseModule = createModule({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection]
-    })
-    class DatabaseModule {
-    }
+    });
 
     class MyService {
     }
 
-    @deepkit.module({
+    const MyModule = createModule({
         providers: [MyService],
         imports: [DatabaseModule]
-    })
-    class MyModule {
-    }
+    });
 
     {
         const serviceContainer = new ServiceContainer();
@@ -159,12 +146,10 @@ test('simple setup with import and overwrite', () => {
         class OverwrittenConnection {
         }
 
-        @deepkit.module({
+        const MyModuleOverwritten = createModule({
             providers: [MyService, {provide: Connection, useClass: OverwrittenConnection}],
             imports: [DatabaseModule]
-        })
-        class MyModuleOverwritten {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModuleOverwritten);
@@ -183,11 +168,9 @@ test('deep', () => {
     class DeepService {
     }
 
-    @deepkit.module({
+    const DeepModule = createModule({
         providers: [DeepService]
-    })
-    class DeepModule {
-    }
+    });
 
     class Connection {
     }
@@ -195,23 +178,19 @@ test('deep', () => {
     class HiddenDatabaseService {
     }
 
-    @deepkit.module({
+    const DatabaseModule = createModule({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection],
         imports: [DeepModule]
-    })
-    class DatabaseModule {
-    }
+    });
 
     class MyService {
     }
 
-    @deepkit.module({
+    const MyModule = createModule({
         providers: [MyService],
         imports: [DatabaseModule]
-    })
-    class MyModule {
-    }
+    });
 
     const serviceContainer = new ServiceContainer();
     serviceContainer.processRootModule(MyModule);
@@ -233,11 +212,9 @@ test('scopes', () => {
     class SessionHandler {
     }
 
-    @deepkit.module({
+    const MyModule = createModule({
         providers: [MyService, {provide: SessionHandler, scope: 'session'}],
-    })
-    class MyModule {
-    }
+    });
 
     const serviceContainer = new ServiceContainer();
     serviceContainer.processRootModule(MyModule);
@@ -257,12 +234,10 @@ test('for root with exported module', () => {
     class SharedService {
     }
 
-    @deepkit.module({
+    const SharedModule = createModule({
         providers: [SharedService],
         exports: [SharedService]
-    })
-    class SharedModule {
-    }
+    });
 
     @injectable()
     class BaseHandler {
@@ -271,28 +246,18 @@ test('for root with exported module', () => {
         }
     }
 
-    @deepkit.module({
+    const MyBaseModule = createModule({
         providers: [
             BaseHandler
         ],
         imports: [SharedModule],
-    })
-    class MyBaseModule {
-        static forRoot(): DynamicModule {
-            return {
-                root: true,
-                module: MyBaseModule
-            };
-        }
-    }
+    });
 
-    @deepkit.module({
+    const MyModule = createModule({
         imports: [
             MyBaseModule.forRoot()
         ]
-    })
-    class MyModule {
-    }
+    });
 
     const serviceContainer = new ServiceContainer();
     serviceContainer.processRootModule(MyModule);
@@ -309,15 +274,8 @@ test('module with config object', () => {
 
     let bootstrapMainCalledConfig: any;
 
-    @deepkit.module({
-        providers: [
-            ExchangeConfig,
-        ],
-        exports: [
-            ExchangeConfig,
-        ]
-    })
-    class ExchangeModule implements DeepkitModule {
+    @injectable()
+    class ExchangeModuleBootstrap {
         constructor(protected config: ExchangeConfig) {
         }
 
@@ -327,26 +285,26 @@ test('module with config object', () => {
         }
     }
 
-    @deepkit.module({
+    const ExchangeModule = createModule({
+        bootstrap: ExchangeModuleBootstrap,
+        providers: [
+            ExchangeConfig,
+        ],
+        exports: [
+            ExchangeConfig,
+        ]
+    });
+
+    const MyBaseModule = createModule({
         imports: [ExchangeModule]
-    })
-    class MyBaseModule {
-        static forRoot(): DynamicModule {
-            return {
-                root: true,
-                module: MyBaseModule
-            };
-        }
-    }
+    });
 
     {
         bootstrapMainCalledConfig = undefined;
 
-        @deepkit.module({
+        const MyModule = createModule({
             imports: [MyBaseModule.forRoot()]
-        })
-        class MyModule {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
@@ -361,9 +319,7 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        @deepkit.module({})
-        class MyModule {
-        }
+        const MyModule = createModule({});
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule, [], [MyBaseModule.forRoot()]);
@@ -378,11 +334,9 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        @deepkit.module({
+        const MyModule = createModule({
             imports: [ExchangeModule]
-        })
-        class MyModule {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
@@ -399,14 +353,12 @@ test('module with config object', () => {
         const changedConfig = new ExchangeConfig();
         changedConfig.startOnBootstrap = false;
 
-        @deepkit.module({
+        const MyModule = createModule({
             providers: [
                 {provide: ExchangeConfig, useValue: changedConfig}
             ],
             imports: [ExchangeModule]
-        })
-        class MyModule {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
@@ -424,34 +376,28 @@ test('exported module', () => {
     class DatabaseConnection {
     }
 
-    @deepkit.module({
+    const DatabaseModule = createModule({
         providers: [DatabaseConnection],
         exports: [
             DatabaseConnection
         ]
-    })
-    class DatabaseModule {
-    }
+    });
 
     class FSService {
     }
 
-    @deepkit.module({
+    const FSModule = createModule({
         providers: [FSService],
         imports: [DatabaseModule],
         exports: [
             DatabaseModule
         ]
-    })
-    class FSModule {
-    }
+    });
 
     {
-        @deepkit.module({
+        const MyModule = createModule({
             imports: [FSModule]
-        })
-        class MyModule {
-        }
+        });
 
         const serviceContainer = new ServiceContainer();
         serviceContainer.processRootModule(MyModule);
