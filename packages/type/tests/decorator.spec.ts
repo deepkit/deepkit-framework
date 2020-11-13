@@ -4,11 +4,11 @@ import {
     ClassSchema,
     DatabaseName,
     Entity,
-    ExtractPrimaryKeyType,
     getClassSchema,
     getClassSchemaByName,
     getDatabaseName,
     getEntityName,
+    getGlobalStore,
     getKnownClassSchemasNames,
     hasClassSchemaByName,
     isArrayType,
@@ -24,7 +24,7 @@ import {SimpleModel} from './entities';
 import {PageClass} from './document-scenario/PageClass';
 import {DocumentClass} from './document-scenario/DocumentClass';
 import {PageCollection} from './document-scenario/PageCollection';
-import {getClassTypeFromInstance} from '../src/decorators';
+import {forwardRef, getClassTypeFromInstance} from '../src/decorators';
 import {resolvePropertyCompilerSchema} from '../src/jit';
 
 
@@ -708,4 +708,72 @@ test('external schema', () => {
     }, {classType: Peter});
 
     expect(getClassSchema(Peter).getProperty('id').type).toBe('number');
+});
+
+test('old forwardRef struct for IE11', () => {
+    var Children = /** @class */ (function () {
+        function Children() {
+            // @ts-ignore
+            this.name = '';
+            // @ts-ignore
+            this.birthdate = new Date;
+        }
+        Children.prototype.go = function () {
+        };
+        return Children;
+    }());
+
+    {
+        const schema = t.schema({
+            children: t.type(Children)
+        });
+
+        expect(() => {
+            schema.getProperty('children').resolveClassType;
+        }).toThrow('Cannot set property \'name\' of undefined');
+    }
+
+    {
+        const schema = t.schema({
+            children: t.type(() => Children)
+        });
+
+        expect(schema.getProperty('children').resolveClassType).toBe(Children);
+    }
+
+    {
+        const schema = t.schema({
+            children: t.type(forwardRef(() => Children))
+        });
+
+        expect(schema.getProperty('children').resolveClassType).toBe(Children);
+    }
+
+
+    getGlobalStore().enableForwardRefDetection = false;
+
+    {
+        const schema = t.schema({
+            children: t.type(Children)
+        });
+
+        expect(schema.getProperty('children').resolveClassType).toBe(Children);
+    }
+
+    {
+        const schema = t.schema({
+            children: t.type(forwardRef(() => Children))
+        });
+
+        expect(schema.getProperty('children').resolveClassType).toBe(Children);
+    }
+
+    {
+        const schema = t.schema({
+            children: t.type(() => Children)
+        });
+
+        expect(schema.getProperty('children').resolveClassType).toBeFunction();
+        expect(schema.getProperty('children').resolveClassType).not.toBe(Children);
+    }
 });

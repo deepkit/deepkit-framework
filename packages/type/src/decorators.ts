@@ -30,6 +30,12 @@ export const unpopulatedSymbol = Symbol('unpopulated');
 export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType | ClassSchema };
     unpopulatedCheck: UnpopulatedCheck;
+    /**
+     * Per default, @deepkit/types tries to detect forward-ref by checking the type in the metadata or given in @t.type(x) to be a function.
+     * If so, we treat it as a forwardRef. This does not work for ES5 fake-classes, since everything there is a function.
+     * Disable this feature flag to support IE11.
+     */
+    enableForwardRefDetection: boolean;
 }
 
 function getGlobal(): any {
@@ -44,6 +50,7 @@ export function getGlobalStore(): GlobalStore {
         global.DeepkitStore = {
             RegisteredEntities: {},
             unpopulatedCheck: UnpopulatedCheck.Throw,
+            enableForwardRefDetection: true,
         } as GlobalStore;
     }
 
@@ -306,7 +313,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
         if (this.type === 'class') {
             if (this.classTypeForwardRef) {
-                const resolved = this.classTypeForwardRef();
+                const resolved = resolveForwardRef(this.classTypeForwardRef);
                 if (resolved) return getClassName(resolved);
                 return 'ForwardedRef';
             } else {
@@ -411,7 +418,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         this.setFromJSType(value.constructor);
     }
 
-    setFromJSType(type: any, detectForwardRef = true) {
+    setFromJSType(type: any, detectForwardRef = getGlobalStore().enableForwardRefDetection) {
         if (type === undefined || type === null) return;
 
         this.type = PropertySchema.getTypeFromJSType(type);
@@ -437,6 +444,11 @@ export class PropertySchema extends PropertyCompilerSchema {
             this.classType = type as ClassType;
 
             if (detectForwardRef && isFunction(type)) {
+                this.classTypeForwardRef = type;
+                delete this.classType;
+            }
+
+            if (type instanceof ForwardRef) {
                 this.classTypeForwardRef = type;
                 delete this.classType;
             }
@@ -501,7 +513,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         }
 
         if (this.classTypeForwardRef) {
-            this.classTypeResolved = this.classTypeForwardRef();
+            this.classTypeResolved = resolveForwardRef(this.classTypeForwardRef);
             if (this.classTypeResolved) {
                 return this.classTypeResolved;
             }
@@ -2311,7 +2323,25 @@ function Exclude(t: 'all' | string = 'all') {
 
 type FieldTypes<T> = string | ClassType | ForwardRefFn<T>;
 
-type ForwardRefFn<T> = () => T;
+type ForwardRefFn<T> = ForwardRef<T> | (() => T);
+
+class ForwardRef<T> {
+    constructor(public forwardRef: () => T) {
+    }
+}
+
+export function forwardRef<T>(forwardRef: () => T): ForwardRef<T> {
+    return new ForwardRef(forwardRef);
+}
+
+
+function resolveForwardRef<T>(forwardRef: ForwardRefFn<T>): T {
+    if (forwardRef instanceof ForwardRef) {
+        return forwardRef.forwardRef();
+    } else {
+        return forwardRef();
+    }
+}
 
 /**
  * Decorator to define a field for an entity.
