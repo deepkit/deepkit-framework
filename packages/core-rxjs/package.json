@@ -17,7 +17,7 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.0-alpha.0",
+    "@deepkit/core": "^1.0.1-alpha.0",
     "rxjs": "~6.5.3"
   },
   "devDependencies": {
