@@ -223,6 +223,11 @@ export class PropertyCompilerSchema {
         return this.classType;
     }
 
+    /**
+     * Returns true when `undefined` or a missing value is allowed.
+     * This is now only true when `optional` is set, but alos when type is `any`,
+     * or when the property has an actual default value (then a undefined value sets the default value instead).
+     */
     public isUndefinedAllowed(): boolean {
         return this.isOptional || this.type === 'any' || this.hasManualDefaultValue() || this.hasDefaultValue;
     }
@@ -533,8 +538,6 @@ export interface EntityIndex {
     options: IndexOptions
 }
 
-let nonEs2015ClassesWarned = false;
-
 export class ClassSchema<T = any> {
     /**
      * The build id. When a property is added, this buildId changes, so JIT compiler knows when to refresh
@@ -544,6 +547,7 @@ export class ClassSchema<T = any> {
 
     classType: ClassType<T>;
     name?: string;
+    description?: string;
     collectionName?: string;
     databaseSchemaName?: string;
 
@@ -766,6 +770,7 @@ export class ClassSchema<T = any> {
 
     protected resetCache() {
         this.jit = {};
+        this.getClassProperties()
         this.primaryKeys = undefined;
         this.autoIncrements = undefined;
         this.buildId++;
@@ -1319,6 +1324,10 @@ class EntityApi {
 
         getGlobalStore().RegisteredEntities[name] = this.t;
         this.t.name = name;
+    }
+
+    description(description: string) {
+        this.t.description = description;
     }
 
     collectionName(name: string) {
