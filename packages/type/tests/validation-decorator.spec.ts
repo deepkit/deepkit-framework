@@ -2,12 +2,11 @@ import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {t} from '../src/decorators';
-import {v} from '../src/validation-decorator';
 import {validate} from '../src/validation';
 
 test('string includes', () => {
     const schema = t.schema({
-        value: t.string.validator(v.includes('peter')),
+        value: t.string.includes('peter')
     });
 
     expect(validate(schema, {value: ''})).toEqual([{code: 'includes', message: 'Needs to include \'peter\'', path: 'value'}]);
@@ -18,7 +17,7 @@ test('string includes', () => {
 
 test('string match', () => {
     const schema = t.schema({
-        value: t.string.validator(v.match(/peter/)),
+        value: t.string.match(/peter/),
     });
 
     expect(validate(schema, {value: ''})).toEqual([{code: 'match', message: 'Pattern peter does not match', path: 'value'}]);
@@ -29,7 +28,7 @@ test('string match', () => {
 
 test('string match alphanumeric', () => {
     const schema = t.schema({
-        value: t.string.validator(v.match(/^[a-z]+$/)),
+        value: t.string.match(/^[a-z]+$/),
     });
 
     expect(validate(schema, {value: ''})).toEqual([{code: 'match', message: 'Pattern ^[a-z]+$ does not match', path: 'value'}]);
@@ -40,7 +39,7 @@ test('string match alphanumeric', () => {
 
 test('string excludes', () => {
     const schema = t.schema({
-        value: t.string.validator(v.excludes('peter')),
+        value: t.string.excludes('peter'),
     });
 
     expect(validate(schema, {value: 'peter'})).toEqual([{code: 'excludes', message: 'Needs to exclude \'peter\'', path: 'value'}]);
@@ -51,7 +50,7 @@ test('string excludes', () => {
 
 test('string minLength', () => {
     const schema = t.schema({
-        value: t.string.validator(v.minLength(3)),
+        value: t.string.minLength(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
@@ -64,7 +63,7 @@ test('string minLength', () => {
 
 test('string maxLength', () => {
     const schema = t.schema({
-        value: t.string.validator(v.maxLength(3)),
+        value: t.string.maxLength(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
@@ -79,7 +78,7 @@ test('string maxLength', () => {
 
 test('string[] maxLength', () => {
     const schema = t.schema({
-        value: t.array(t.string).validator(v.maxLength(3)),
+        value: t.array(t.string).maxLength(3),
     });
 
     expect(validate(schema, {value: ['a', 'b']})).toEqual([]);
@@ -89,7 +88,7 @@ test('string[] maxLength', () => {
 
 test('string[] minLength', () => {
     const schema = t.schema({
-        value: t.array(t.string).validator(v.minLength(3)),
+        value: t.array(t.string).minLength(3),
     });
 
     expect(validate(schema, {value: ['a', 'b']})).toEqual([{code: 'minLength', message: 'Min length is 3', path: 'value'}]);
@@ -99,7 +98,7 @@ test('string[] minLength', () => {
 
 test('string[] minLength deep', () => {
     const schema = t.schema({
-        value: t.array(t.string.validator(v.minLength(3))).validator(v.minLength(3)),
+        value: t.array(t.string.minLength(3)).minLength(3),
     });
 
     expect(validate(schema, {value: ['a', 'b']})).toEqual([
@@ -118,7 +117,7 @@ test('string[] minLength deep', () => {
 
 test('number max', () => {
     const schema = t.schema({
-        value: t.number.validator(v.max(3)),
+        value: t.number.max(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
@@ -133,7 +132,7 @@ test('number max', () => {
 
 test('number max excluding', () => {
     const schema = t.schema({
-        value: t.number.validator(v.max(3, true)),
+        value: t.number.max(3, true),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
@@ -148,7 +147,7 @@ test('number max excluding', () => {
 
 test('number min', () => {
     const schema = t.schema({
-        value: t.number.validator(v.min(3)),
+        value: t.number.min(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
@@ -163,7 +162,7 @@ test('number min', () => {
 
 test('number min excluding', () => {
     const schema = t.schema({
-        value: t.number.validator(v.min(3, true)),
+        value: t.number.min(3, true),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
@@ -177,7 +176,7 @@ test('number min excluding', () => {
 
 test('number min/max', () => {
     const schema = t.schema({
-        value: t.number.validator(v.min(3).max(10)),
+        value: t.number.min(3).max(10),
     });
 
     expect(validate(schema, {value: 1})).toEqual([{code: 'min', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
@@ -192,7 +191,7 @@ test('number min/max', () => {
 
 test('number positive', () => {
     const schema = t.schema({
-        value: t.number.validator(v.positive()),
+        value: t.number.positive(),
     });
 
     expect(validate(schema, {value: -1})).toEqual([{code: 'positive', message: 'Number needs to be positive', path: 'value'}]);
@@ -204,7 +203,7 @@ test('number positive', () => {
 
 test('number positive includingZero', () => {
     const schema = t.schema({
-        value: t.number.validator(v.positive(false)),
+        value: t.number.positive(false),
     });
 
     expect(validate(schema, {value: -1})).toEqual([{code: 'positive', message: 'Number needs to be positive', path: 'value'}]);
@@ -217,7 +216,7 @@ test('number positive includingZero', () => {
 
 test('number negative', () => {
     const schema = t.schema({
-        value: t.number.validator(v.negative()),
+        value: t.number.negative(),
     });
 
     expect(validate(schema, {value: 1})).toEqual([{code: 'negative', message: 'Number needs to be negative', path: 'value'}]);
@@ -229,7 +228,7 @@ test('number negative', () => {
 
 test('number negative includingZero', () => {
     const schema = t.schema({
-        value: t.number.validator(v.negative(false)),
+        value: t.number.negative(false),
     });
 
     expect(validate(schema, {value: 1})).toEqual([{code: 'negative', message: 'Number needs to be negative', path: 'value'}]);

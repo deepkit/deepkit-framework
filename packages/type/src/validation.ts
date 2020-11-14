@@ -12,6 +12,7 @@ import {ClassType, CustomError} from '@deepkit/core';
 import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator,} from './model';
 import {jitValidate, jitValidateProperty} from './jit-validation';
 import {ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
+import {ValidatorFn} from './decorators';
 
 export class PropertyValidatorError {
     constructor(
@@ -95,6 +96,14 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
     }
 
     return errors;
+}
+
+export function createValidatorFromFunction(validator: ValidatorFn) {
+    return class implements PropertyValidator {
+        validate<T>(value: any, propertyName: string, classType?: ClassType): PropertyValidatorError | undefined | void {
+            return validator(value, propertyName, classType);
+        }
+    };
 }
 
 /**
