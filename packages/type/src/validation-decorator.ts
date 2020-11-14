@@ -9,7 +9,8 @@
  */
 
 import {createFreeDecoratorContext} from './decorator-builder';
-import {PropertyValidator, ValidatorFn} from './decorators';
+import {ValidatorFn} from './decorators';
+import {PropertyValidator} from './model';
 import {ClassType, isArray} from '@deepkit/core';
 import {PropertyValidatorError} from './validation';
 import validator from 'validator';

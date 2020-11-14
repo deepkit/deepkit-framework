@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, PropertyCompilerSchema} from './decorators';
+import {getClassSchema, PropertyCompilerSchema} from './model';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction} from './jit';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
@@ -16,7 +16,7 @@ import {CompilerState, getDataConverterJS} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';
 import {moment} from './moment';
-import {typedArrayNamesMap} from './models';
+import {typedArrayNamesMap} from './types';
 
 export class JSONSerializer extends Serializer {
     constructor() {

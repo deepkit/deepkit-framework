@@ -1,6 +1,6 @@
 import 'jest';
 import {uuid} from '../src/utils';
-import {getClassSchema, t} from '../src/decorators';
+import {getClassSchema, t} from '../index';
 
 test('simple', () => {
     class User {

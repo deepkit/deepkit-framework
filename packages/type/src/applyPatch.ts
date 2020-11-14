@@ -8,8 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, getClassTypeFromInstance, isClassInstance} from './decorators';
+import {getClassTypeFromInstance, isClassInstance} from './model';
 import {isArray, isObject} from '@deepkit/core';
+import {getClassSchema} from './model';
 
 type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 
@@ -118,7 +119,7 @@ export class Patcher<T extends object> {
             const parent = dereferenceOriginalItemAndCache();
             parent[path] = ref;
             return ref;
-        }
+        };
 
         const dereferenceArray = (path: string | number | symbol = '') => {
             let ref = dereferencedArrays.get(path);
@@ -131,7 +132,7 @@ export class Patcher<T extends object> {
             const parent = dereferenceOriginalItemAndCache();
             parent[path] = ref;
             return ref;
-        }
+        };
 
         const state: any = {};
         let parentDereferenced = false;

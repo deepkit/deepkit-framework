@@ -1,9 +1,19 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {jsonSerializer, PropertyValidator, PropertyValidatorError, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem} from '../index';
+import {
+    getClassSchema,
+    jsonSerializer,
+    PropertyValidator,
+    PropertyValidatorError,
+    t,
+    validate,
+    validates,
+    validatesFactory,
+    ValidationFailed,
+    ValidationFailedItem
+} from '../index';
 import {CustomError, isPlainObject} from '@deepkit/core';
-import {getClassSchema, t} from '../src/decorators';
 
 test('test simple', async () => {
     class Page {
@@ -138,9 +148,9 @@ test('test deep', async () => {
 
 test('test AddValidator', async () => {
     class MyValidator implements PropertyValidator {
-        validate<T>(value: any): PropertyValidatorError | void {
+        validate<T>(value: any) {
             if (value.length > 5) {
-                return new PropertyValidatorError('too_long', 'Too long');
+                throw new PropertyValidatorError('too_long', 'Too long');
             }
         }
     }
@@ -781,8 +791,7 @@ test('custom isRequired', () => {
 
     function isRequired() {
         return (value: any) => {
-            if (value === undefined) return new PropertyValidatorError('no', 'Sollte angegeben werden');
-            return undefined;
+            if (value === undefined) throw new PropertyValidatorError('no', 'Sollte angegeben werden');
         }
     }
 
@@ -803,7 +812,7 @@ test('custom isRequired null', () => {
 
     function isRequired() {
         return (value: any) => {
-            if (value === null) return new PropertyValidatorError('no', 'Sollte angegeben werden');
+            if (value === null) throw new PropertyValidatorError('no', 'Sollte angegeben werden');
             return undefined;
         }
     }

@@ -9,7 +9,7 @@
  */
 
 import {ClassType, CustomError} from '@deepkit/core';
-import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator,} from './decorators';
+import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator,} from './model';
 import {jitValidate, jitValidateProperty} from './jit-validation';
 import {ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 

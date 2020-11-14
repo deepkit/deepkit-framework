@@ -4,8 +4,10 @@ import {
     ClassSchema,
     DatabaseName,
     Entity,
+    forwardRef,
     getClassSchema,
     getClassSchemaByName,
+    getClassTypeFromInstance,
     getDatabaseName,
     getEntityName,
     getGlobalStore,
@@ -24,7 +26,6 @@ import {SimpleModel} from './entities';
 import {PageClass} from './document-scenario/PageClass';
 import {DocumentClass} from './document-scenario/DocumentClass';
 import {PageCollection} from './document-scenario/PageCollection';
-import {forwardRef, getClassTypeFromInstance} from '../src/decorators';
 import {resolvePropertyCompilerSchema} from '../src/jit';
 
 

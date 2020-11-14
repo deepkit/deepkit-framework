@@ -10,7 +10,8 @@
 
 import {ClassType, isPlainObject} from '@deepkit/core';
 import {handleCustomValidator, ValidationFailedItem} from './validation';
-import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol} from './decorators';
+import {getGlobalStore} from './global';
+import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol} from './model';
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
 import './jit-validation-templates';
 import {reserveVariable} from './serializer-compiler';

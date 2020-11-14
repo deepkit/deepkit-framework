@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, PropertyCompilerSchema} from './decorators';
+import {ClassSchema, getClassSchema, PropertyCompilerSchema} from './model';
 import {TypeConverterCompiler} from './serializer-compiler';
 import {ClassType} from '@deepkit/core';
 import {
@@ -23,7 +23,7 @@ import {
 } from './jit';
 import {AnyEntity, ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 import {validate, ValidationFailed} from './validation';
-import {binaryTypes, Types} from './models';
+import {binaryTypes, Types} from './types';
 
 type CompilerTypes = Types | 'undefined' | 'null';
 

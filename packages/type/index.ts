@@ -1,5 +1,6 @@
 export * from './src/types';
-export * from './src/models';
+export * from './src/global';
+export * from './src/model';
 export * from './src/core';
 export * from './src/decorator-builder';
 export * from './src/decorators';

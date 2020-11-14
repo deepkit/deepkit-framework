@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from './decorators';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance} from './model';
 import {ClassType, getClassName} from '@deepkit/core';
 import {JitConverterOptions} from './jit';
 import {jsonSerializer} from './json-serializer';

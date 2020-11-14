@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {PropertyCompilerSchema} from './decorators';
+import {PropertyCompilerSchema} from './model';
+import {Types} from './types';
 import {reserveVariable} from './serializer-compiler';
 import {JitStack} from './jit';
-import {Types} from './models';
 
 export type TypeCheckerCompilerContext = Map<string, any>;
 export type TypeCheckerCompiler = (

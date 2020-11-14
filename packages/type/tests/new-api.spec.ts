@@ -1,8 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, t} from '../src/decorators';
 import {
     emptySerializer,
+    getClassSchema,
     getClassToXFunction,
     getGeneratedJitFunctionFromClass,
     getJitFunctionXToClass,
@@ -10,6 +10,7 @@ import {
     JSONSerializer,
     jsonSerializer,
     Serializer,
+    t,
     uuid
 } from '../index';
 

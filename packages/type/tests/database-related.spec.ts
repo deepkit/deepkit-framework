@@ -1,6 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {Entity, getClassSchema, MultiIndex, t} from '../src/decorators';
+import {Entity, MultiIndex, t} from '../src/decorators';
+import {getClassSchema} from '../index';
 import {uuid} from '../src/utils';
 import {getCollectionName} from '../src/mapper';
 

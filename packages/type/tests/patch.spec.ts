@@ -4,7 +4,7 @@ import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from 
 import {DocumentClass} from './document-scenario/DocumentClass';
 import {PageCollection} from './document-scenario/PageCollection';
 import {resolvePropertyCompilerSchema} from '../src/jit';
-import {getClassSchema} from '../src/decorators';
+import {getClassSchema} from '../index';
 import {jsonSerializer} from '../src/json-serializer';
 
 

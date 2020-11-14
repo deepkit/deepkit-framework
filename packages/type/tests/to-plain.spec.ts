@@ -1,8 +1,7 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {jsonSerializer, t} from '../index';
+import {getClassSchema, jsonSerializer, t} from '../index';
 import {Plan, SimpleModel, SubModel} from './entities';
-import {getClassSchema} from '../src/decorators';
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');

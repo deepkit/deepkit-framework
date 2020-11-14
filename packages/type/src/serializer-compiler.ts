@@ -8,26 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {PropertyCompilerSchema} from './decorators';
+import {PropertyCompilerSchema} from './model';
 import {JitStack} from './jit';
 import {SerializerCompilers} from './serializer';
 
 export type TypeConverterCompilerContext = Map<string, any>;
 export type ReserveVariable = (name?: string) => string;
-
-// export class CompilerResult {
-//     constructor(public readonly template: string = '', public readonly context: { [name: string]: any } = {}) {
-//     }
-//
-//     static from(v: string | void | {
-//         template: string, context: { [name: string]: any }
-//     } | CompilerResult): CompilerResult {
-//         if (!v) return new CompilerResult();
-//         if ('string' === typeof v) return new CompilerResult(v);
-//         if (v instanceof CompilerResult) return v;
-//         return new CompilerResult(v.template, v.context);
-//     }
-// }
 
 export class CompilerState {
     public template = '';

@@ -10,9 +10,8 @@
 
 import {v4} from 'uuid';
 import {ClassType} from '@deepkit/core';
-import {ClassSchema} from './decorators';
-import {TypedArrays} from './models';
-import {ExtractPrimaryKeyOrReferenceType} from './types';
+import {ClassSchema} from './model';
+import {ExtractPrimaryKeyOrReferenceType, TypedArrays} from './types';
 
 export function uuid(): string {
     return v4();
@@ -61,4 +60,4 @@ export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
 export type ExtractClassType<T, A = never> = T extends ClassType<infer K> ? K :
     T extends ClassSchema<infer K> ? K : A;
 
-export type PlainOrFullEntityFromClassTypeOrSchema<T> = {[name: string]: any} | JSONPartial<ExtractClassType<T>> | ExtractClassType<T>;
+export type PlainOrFullEntityFromClassTypeOrSchema<T> = { [name: string]: any } | JSONPartial<ExtractClassType<T>> | ExtractClassType<T>;

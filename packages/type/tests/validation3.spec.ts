@@ -1,10 +1,9 @@
 import 'jest-extended';
 import 'reflect-metadata';
-import {getClassSchema, PropertyValidator, t} from '../src/decorators';
+import {getClassSchema, jsonSerializer, PropertyValidator, t, uuid} from '../index';
 import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from './big-entity';
 import {jitValidateProperty} from '../src/jit-validation';
-import {jsonSerializer, uuid} from '../index';
 
 test('test any deep array', async () => {
     class Peter {
@@ -133,7 +132,7 @@ test('test custom validator on array items', async () => {
     class MyCustomValidator implements PropertyValidator {
         validate<T>(value: any): PropertyValidatorError | void {
             if (value.length > 10) {
-                return new PropertyValidatorError('too_long', 'Too long :()');
+                throw new PropertyValidatorError('too_long', 'Too long :()');
             }
         };
     }

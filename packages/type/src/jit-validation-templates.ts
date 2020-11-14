@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, PropertyCompilerSchema} from './decorators';
+import {getClassSchema, PropertyCompilerSchema} from './model';
 import {registerCheckerCompiler} from './jit-validation-registry';
 import {getDataCheckerJS, jitValidate} from './jit-validation';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
