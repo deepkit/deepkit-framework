@@ -15,24 +15,24 @@ test('string includes', () => {
     expect(validate(schema, {value: 'peter'})).toEqual([]);
 });
 
-test('string match', () => {
+test('string pattern', () => {
     const schema = t.schema({
-        value: t.string.match(/peter/),
+        value: t.string.pattern(/peter/),
     });
 
-    expect(validate(schema, {value: ''})).toEqual([{code: 'match', message: 'Pattern peter does not match', path: 'value'}]);
-    expect(validate(schema, {value: 'poetr'})).toEqual([{code: 'match', message: 'Pattern peter does not match', path: 'value'}]);
+    expect(validate(schema, {value: ''})).toEqual([{code: 'pattern', message: 'Pattern peter does not match', path: 'value'}]);
+    expect(validate(schema, {value: 'poetr'})).toEqual([{code: 'pattern', message: 'Pattern peter does not match', path: 'value'}]);
     expect(validate(schema, {value: 'asdadpeterasdads'})).toEqual([]);
     expect(validate(schema, {value: 'peter'})).toEqual([]);
 });
 
-test('string match alphanumeric', () => {
+test('string pattern alphanumeric', () => {
     const schema = t.schema({
-        value: t.string.match(/^[a-z]+$/),
+        value: t.string.pattern(/^[a-z]+$/),
     });
 
-    expect(validate(schema, {value: ''})).toEqual([{code: 'match', message: 'Pattern ^[a-z]+$ does not match', path: 'value'}]);
-    expect(validate(schema, {value: 'poet2r'})).toEqual([{code: 'match', message: 'Pattern ^[a-z]+$ does not match', path: 'value'}]);
+    expect(validate(schema, {value: ''})).toEqual([{code: 'pattern', message: 'Pattern ^[a-z]+$ does not match', path: 'value'}]);
+    expect(validate(schema, {value: 'poet2r'})).toEqual([{code: 'pattern', message: 'Pattern ^[a-z]+$ does not match', path: 'value'}]);
     expect(validate(schema, {value: 'asdadpeterasdads'})).toEqual([]);
     expect(validate(schema, {value: 'peter'})).toEqual([]);
 });
@@ -117,7 +117,7 @@ test('string[] minLength deep', () => {
 
 test('number max', () => {
     const schema = t.schema({
-        value: t.number.max(3),
+        value: t.number.maximum(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
@@ -125,67 +125,67 @@ test('number max', () => {
     expect(validate(schema, {value: 1})).toEqual([]);
     expect(validate(schema, {value: 2})).toEqual([]);
     expect(validate(schema, {value: 3})).toEqual([]);
-    expect(validate(schema, {value: 4})).toEqual([{code: 'max', message: 'Number needs to be smaller than or equal to 3', path: 'value'}]);
-    expect(validate(schema, {value: 123123123})).toEqual([{code: 'max', message: 'Number needs to be smaller than or equal to 3', path: 'value'}]);
+    expect(validate(schema, {value: 4})).toEqual([{code: 'maximum', message: 'Number needs to be smaller than or equal to 3', path: 'value'}]);
+    expect(validate(schema, {value: 123123123})).toEqual([{code: 'maximum', message: 'Number needs to be smaller than or equal to 3', path: 'value'}]);
 });
 
 
-test('number max excluding', () => {
+test('number max exclusive', () => {
     const schema = t.schema({
-        value: t.number.max(3, true),
+        value: t.number.exclusiveMaximum(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
     expect(validate(schema, {value: ''})).toEqual([{code: 'invalid_number', message: 'No number given', path: 'value'}]);
     expect(validate(schema, {value: 1})).toEqual([]);
     expect(validate(schema, {value: 2})).toEqual([]);
-    expect(validate(schema, {value: 3})).toEqual([{code: 'max', message: 'Number needs to be smaller than 3', path: 'value'}]);
-    expect(validate(schema, {value: 4})).toEqual([{code: 'max', message: 'Number needs to be smaller than 3', path: 'value'}]);
-    expect(validate(schema, {value: 123123123})).toEqual([{code: 'max', message: 'Number needs to be smaller than 3', path: 'value'}]);
+    expect(validate(schema, {value: 3})).toEqual([{code: 'maximum', message: 'Number needs to be smaller than 3', path: 'value'}]);
+    expect(validate(schema, {value: 4})).toEqual([{code: 'maximum', message: 'Number needs to be smaller than 3', path: 'value'}]);
+    expect(validate(schema, {value: 123123123})).toEqual([{code: 'maximum', message: 'Number needs to be smaller than 3', path: 'value'}]);
 });
 
 
 test('number min', () => {
     const schema = t.schema({
-        value: t.number.min(3),
+        value: t.number.minimum(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
     expect(validate(schema, {value: ''})).toEqual([{code: 'invalid_number', message: 'No number given', path: 'value'}]);
-    expect(validate(schema, {value: 1})).toEqual([{code: 'min', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
-    expect(validate(schema, {value: 2})).toEqual([{code: 'min', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
+    expect(validate(schema, {value: 1})).toEqual([{code: 'minimum', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
+    expect(validate(schema, {value: 2})).toEqual([{code: 'minimum', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
     expect(validate(schema, {value: 3})).toEqual([]);
     expect(validate(schema, {value: 4})).toEqual([]);
     expect(validate(schema, {value: 123123123})).toEqual([]);
 });
 
 
-test('number min excluding', () => {
+test('number min exclusive', () => {
     const schema = t.schema({
-        value: t.number.min(3, true),
+        value: t.number.exclusiveMinimum(3),
     });
 
     expect(validate(schema, {})).toEqual([{code: 'required', message: 'Required value is undefined', path: 'value'}]);
     expect(validate(schema, {value: ''})).toEqual([{code: 'invalid_number', message: 'No number given', path: 'value'}]);
-    expect(validate(schema, {value: 1})).toEqual([{code: 'min', message: 'Number needs to be greater than 3', path: 'value'}]);
-    expect(validate(schema, {value: 2})).toEqual([{code: 'min', message: 'Number needs to be greater than 3', path: 'value'}]);
-    expect(validate(schema, {value: 3})).toEqual([{code: 'min', message: 'Number needs to be greater than 3', path: 'value'}]);
+    expect(validate(schema, {value: 1})).toEqual([{code: 'minimum', message: 'Number needs to be greater than 3', path: 'value'}]);
+    expect(validate(schema, {value: 2})).toEqual([{code: 'minimum', message: 'Number needs to be greater than 3', path: 'value'}]);
+    expect(validate(schema, {value: 3})).toEqual([{code: 'minimum', message: 'Number needs to be greater than 3', path: 'value'}]);
     expect(validate(schema, {value: 4})).toEqual([]);
     expect(validate(schema, {value: 123123123})).toEqual([]);
 });
 
 test('number min/max', () => {
     const schema = t.schema({
-        value: t.number.min(3).max(10),
+        value: t.number.minimum(3).maximum(10),
     });
 
-    expect(validate(schema, {value: 1})).toEqual([{code: 'min', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
-    expect(validate(schema, {value: 2})).toEqual([{code: 'min', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
+    expect(validate(schema, {value: 1})).toEqual([{code: 'minimum', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
+    expect(validate(schema, {value: 2})).toEqual([{code: 'minimum', message: 'Number needs to be greater than or equal to 3', path: 'value'}]);
     expect(validate(schema, {value: 3})).toEqual([]);
     expect(validate(schema, {value: 4})).toEqual([]);
     expect(validate(schema, {value: 9})).toEqual([]);
     expect(validate(schema, {value: 10})).toEqual([]);
-    expect(validate(schema, {value: 11})).toEqual([{code: 'max', message: 'Number needs to be smaller than or equal to 10', path: 'value'}]);
+    expect(validate(schema, {value: 11})).toEqual([{code: 'maximum', message: 'Number needs to be smaller than or equal to 10', path: 'value'}]);
 });
 
 
@@ -235,4 +235,17 @@ test('number negative includingZero', () => {
     expect(validate(schema, {value: 0})).toEqual([{code: 'negative', message: 'Number needs to be negative', path: 'value'}]);
     expect(validate(schema, {value: -1})).toEqual([]);
     expect(validate(schema, {value: -2})).toEqual([]);
+});
+
+
+test('number multipleOf', () => {
+    const schema = t.schema({
+        value: t.number.multipleOf(10),
+    });
+
+    expect(validate(schema, {value: -10})).toEqual([]);
+    expect(validate(schema, {value: 0})).toEqual([]);
+    expect(validate(schema, {value: 10})).toEqual([]);
+    expect(validate(schema, {value: 1})).toEqual([{code: 'multipleOf', message: 'Not a multiple of 10', path: 'value'}]);
+    expect(validate(schema, {value: 22})).toEqual([{code: 'multipleOf', message: 'Not a multiple of 10', path: 'value'}]);
 });
