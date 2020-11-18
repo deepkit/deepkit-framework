@@ -27,7 +27,7 @@
     "rxjs": "~6.6.0",
     "tslib": "^2.0.0",
     "@angular/cdk": "^10.2.7",
-    "@marcj/angular-desktop-ui": "^0.3.25",
+    "@marcj/angular-desktop-ui": "^0.4.2",
     "zone.js": "~0.10.2"
   },
   "devDependencies": {
