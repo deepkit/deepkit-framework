@@ -31,7 +31,7 @@ test('command execute', async () => {
 
     const app = new Application(MyModule);
     const serviceContainer = app.get(ServiceContainer);
-    expect(serviceContainer.cliControllers.get('my')).toBe(MyCli);
+    expect(serviceContainer.cliControllers.controllers.get('my')).toBe(MyCli);
 
     expect(await app.execute(['my', 'bar'])).toBe('bar');
 });

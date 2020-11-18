@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import '../src/template/optimize-tsx';
 import {html, render} from '../src/template/template';
 import {Injector} from '../src/injector/injector';
-import {simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid} from './templates/simple';
+import {simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid} from './simple';
 import {convertJsxCodeToCreateElement, optimize} from '../src/template/optimize-tsx';
 
 test('template simple', async () => {

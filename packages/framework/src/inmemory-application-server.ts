@@ -28,12 +28,16 @@ export class InMemoryApplicationServer extends ApplicationServer {
         await this.bootstrap();
     }
 
+    async close(): Promise<void> {
+        await this.shutdown();
+    }
+
     public createClient() {
-        const serviceContainer = this.serviceContainer;
+        const factory = this.webWorkerFactory;
 
         return new Client({
             connect(connectionHooks: TransportConnectionHooks) {
-                const worker = new BaseWorker(serviceContainer);
+                const worker = factory.createBase();
 
                 const connection = worker.createRpcConnection({
                     async send(json: string): Promise<boolean> {

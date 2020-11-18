@@ -16,52 +16,56 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ExchangeServer, ExchangeServerFactory} from './exchange-server';
+import {ExchangeServer} from './exchange-server';
 import {Exchange} from './exchange';
 import {AppLocker} from './app-locker';
-import {ExchangeConfig} from './exchange.config';
-import {ModuleBootstrap} from '../decorator';
-import {injectable} from '../injector/injector';
 import {createModule} from '../module';
+import {inject, injectable} from '../injector/injector';
+import {eventDispatcher} from '../decorator';
+import {onServerBootstrap, onServerShutdown} from '../application-server';
+import {exchangeConfig} from './exchange.config';
 
 @injectable()
-export class ExchangeModuleBootstrap implements ModuleBootstrap {
+export class ExchangeListener {
     protected exchangeServer?: ExchangeServer;
 
     constructor(
-        protected config: ExchangeConfig,
-        protected exchangeServerFactory: ExchangeServerFactory,
+        protected exchange: Exchange,
+        @inject(exchangeConfig.token('listen')) protected listen: string,
+        @inject(exchangeConfig.token('startOnBootstrap')) protected startOnBootstrap: boolean,
     ) {
     }
 
-    async onBootstrapServer(): Promise<void> {
-        if (this.config.startOnBootstrap) {
-            this.exchangeServer = this.exchangeServerFactory.create(this.config.hostOrUnixPath);
+    @eventDispatcher.listen(onServerBootstrap)
+    async onBootstrap() {
+        if (this.startOnBootstrap) {
+            this.exchangeServer = new ExchangeServer(this.listen);
             await this.exchangeServer.start();
         }
     }
 
-    onShutDown(): Promise<void> | void {
-        if (this.config.startOnBootstrap && this.exchangeServer) {
+    @eventDispatcher.listen(onServerShutdown)
+    async onShutdown() {
+        if (this.startOnBootstrap && this.exchangeServer) {
             this.exchangeServer.close();
             this.exchangeServer = undefined;
         }
+        await this.exchange.disconnect();
     }
 }
 
 export const ExchangeModule = createModule({
     name: 'exchange',
-    bootstrap: ExchangeModuleBootstrap,
+    listeners: [
+        ExchangeListener
+    ],
+    config: exchangeConfig,
     providers: [
-        ExchangeServerFactory,
         Exchange,
         AppLocker,
-        ExchangeConfig,
     ],
     exports: [
-        ExchangeServerFactory,
         Exchange,
         AppLocker,
-        ExchangeConfig,
     ]
 });

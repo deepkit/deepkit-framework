@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import {Application, BodyValidation, Databases, http} from '@deepkit/framework';
-import {entity, t, v} from '@deepkit/type';
+import {Application, BodyValidation, DatabaseModule, http} from '@deepkit/framework';
+import {entity, t} from '@deepkit/type';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
@@ -11,20 +11,20 @@ class User extends ActiveRecord {
     @t created: Date = new Date;
 
     constructor(
-        @t.validator(v.minLength(3)) public username: string
+        @t.minLength(3) public username: string
     ) {
         super();
     }
 }
 
-class SQLiteDatabase extends Database.createClass(
-    'default',
-    new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'),
-    [User]) {
+class SQLiteDatabase extends Database {
+    constructor() {
+        super(new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [User]);
+    }
 }
 
 class AddUserDto {
-    @t.validator(v.minLength(3)) username!: string;
+    @t.minLength(3) username!: string;
 }
 
 async function UserList({error}: {error?: string} = {}) {
@@ -49,23 +49,22 @@ async function UserList({error}: {error?: string} = {}) {
 class HelloWorldController {
     @http.GET('/')
     async startPage() {
-        return UserList();
+        return <UserList/>;
     }
 
     @http.POST('/add')
     async add(body: AddUserDto, bodyValidation: BodyValidation) {
-        if (bodyValidation.hasErrors()) return UserList({error: bodyValidation.getErrorMessageForPath('username')});
+        if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')}/>;
 
         await new User(body.username).save();
-        return UserList();
+        return <UserList/>;
     }
 }
 
-Application.run({
+Application.create({
     providers: [],
     controllers: [HelloWorldController],
     imports: [
-
-        Databases.for([SQLiteDatabase], {migrateOnStartup: true})
+        DatabaseModule.configure({databases: [SQLiteDatabase], migrateOnStartup: true})
     ]
-}, {debug: true});
+}).run();

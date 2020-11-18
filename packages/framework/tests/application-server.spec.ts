@@ -10,7 +10,7 @@ import { createModule } from '../src/module';
 test('basic bootstrap', async () => {
     const AppModule = createModule({})
 
-    const app = new Application(AppModule, {}, [InMemoryApplicationServer]);
+    const app = new Application(AppModule, [InMemoryApplicationServer]);
     const applicationServer = app.getInjector().get(InMemoryApplicationServer);
 
     await applicationServer.start();
@@ -35,7 +35,7 @@ test('basic controller', async () => {
         controllers: [MyController],
     })
 
-    const app = new Application(AppModule, {}, [InMemoryApplicationServer]);
+    const app = new Application(AppModule, [InMemoryApplicationServer]);
     const applicationServer = app.get(InMemoryApplicationServer);
     expect(createdControllers).toBe(0);
 

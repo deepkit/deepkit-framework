@@ -23,9 +23,9 @@ import {asyncOperation, ClassType, ParsedHost, parseHost, sleep} from '@deepkit/
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
 import {AsyncSubscription} from '@deepkit/core-rxjs';
 import * as WebSocket from 'ws';
-import {ExchangeConfig} from './exchange.config';
-import {injectable} from '../injector/injector';
+import {inject, injectable} from '../injector/injector';
 import {getBSONDecoder, getBSONSerializer} from '@deepkit/bson';
+import {exchangeConfig} from './exchange.config';
 
 type Callback<T> = (message: T) => void;
 
@@ -49,12 +49,12 @@ export class Exchange {
 
     protected rawSubscriber = new WeakMap<Function, boolean>();
 
-    protected host: ParsedHost = parseHost(this.config.hostOrUnixPath);
+    protected host: ParsedHost = parseHost(this.listen);
 
     protected usedEntityFieldsSubjects = new Map<string, StreamBehaviorSubject<string[]>>();
 
     constructor(
-        protected config: ExchangeConfig
+        @inject(exchangeConfig.token('listen')) protected listen: string,
     ) {
     }
 
@@ -99,7 +99,7 @@ export class Exchange {
 
             this.socket.onerror = (error: any) => {
                 this.socket = undefined;
-                reject(new Error(`Could not connect to ${url}: ${error}`));
+                reject(new Error(`Could not connect to ${url}: ${error.toString()}`));
             };
 
             this.socket.onclose = () => {

@@ -1,6 +1,5 @@
 import {Exchange} from '../../src/exchange/exchange';
 import {ExchangeServer} from '../../src/exchange/exchange-server';
-import {ExchangeConfig} from '../../src/exchange/exchange.config';
 
 const closers: Function[] = [];
 
@@ -18,7 +17,7 @@ export async function createExchange(): Promise<Exchange> {
     closers.push(() => {
         server.close();
     });
-    const client = new Exchange(ExchangeConfig.forUrl(socketPath));
+    const client = new Exchange(socketPath);
     await client.connect();
     return client;
 }

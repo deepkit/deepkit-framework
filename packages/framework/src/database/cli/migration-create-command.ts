@@ -26,6 +26,7 @@ import {Logger} from '../../logger';
 import {MigrationProvider} from '../migration-provider';
 import {Databases} from '../databases';
 import {inject} from '../../injector/injector';
+import {databaseConfig} from '../database.config';
 
 
 function serializeSQLLine(sql: string): string {
@@ -40,7 +41,7 @@ export class MigrationCreateController implements Command {
         protected logger: Logger,
         protected databases: Databases,
         protected databaseProvider: MigrationProvider,
-        @inject().config('migrationDir') protected migrationDir: string,
+        @inject(databaseConfig.token('migrationDir')) protected migrationDir: string,
     ) {
     }
 

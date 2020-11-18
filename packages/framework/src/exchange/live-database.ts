@@ -693,7 +693,6 @@ export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
                     knownIDs.clear();
                     counter = items.length;
                     for (const item of items) knownIDs.add(item.id);
-                    console.log('updateAll', counter);
                     observer.next(counter);
                 };
 

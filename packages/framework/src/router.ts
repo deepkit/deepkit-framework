@@ -28,7 +28,7 @@ import * as formidable from 'formidable';
 
 type ResolvedController = { parameters: (injector: Injector) => any[], routeConfig: RouteConfig };
 
-export class RouterControllers {
+export class HttpControllers {
     constructor(public readonly controllers: ClassType[]) {
     }
 
@@ -114,12 +114,12 @@ export class Router {
         enabledPlugins: ['octetstream', 'querystring', 'json'],
     });
 
-    constructor(controllers: RouterControllers, private logger: Logger) {
+    constructor(controllers: HttpControllers, private logger: Logger) {
         for (const controller of controllers.controllers) this.addRouteForController(controller);
     }
 
     static forControllers(controllers: ClassType[]): Router {
-        return new this(new RouterControllers(controllers), new Logger([], []));
+        return new this(new HttpControllers(controllers), new Logger([], []));
     }
 
     protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {

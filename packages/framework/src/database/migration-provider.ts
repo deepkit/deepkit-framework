@@ -23,13 +23,14 @@ import {basename, join} from 'path';
 import {Migration} from './migration';
 import {Databases} from './databases';
 import {inject} from '../injector/injector';
+import { databaseConfig } from './database.config';
 
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
 
     constructor(
         @inject().root() protected databases: Databases,
-        @inject().config('migrationDir') protected migrationDir: string,
+        @inject(databaseConfig.token('migrationDir')) protected migrationDir: string,
     ) {
     }
 

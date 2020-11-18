@@ -21,45 +21,48 @@ import {MigrationCreateController} from './cli/migration-create-command';
 import {MigrationUpCommand} from './cli/migration-up-command';
 import {MigrationPendingCommand} from './cli/migration-pending-command';
 import {MigrationDownCommand} from './cli/migration-down-command';
-import {injectable} from '../injector/injector';
+import {inject, injectable} from '../injector/injector';
 import {Databases} from './databases';
-import {ModuleBootstrap} from '../decorator';
 import {MigrationProvider} from './migration-provider';
-import {createConfig} from '../injector/injector';
-import {t} from '@deepkit/type';
-
-export const DatabaseConfig = createConfig({
-    databases: t.array(t.any),
-    migrateOnStartup: t.boolean.default(false),
-});
+import {databaseConfig} from './database.config';
+import {eventDispatcher} from '../decorator';
+import {onServerBootstrap, onServerShutdown} from '../application-server';
+import {Logger} from '../logger';
 
 @injectable()
-export class DatabaseBootstrap implements ModuleBootstrap {
+export class DatabaseListener {
     constructor(
         protected databases: Databases,
+        protected logger: Logger,
+        @inject(databaseConfig.token('migrateOnStartup')) protected migrateOnStartup: boolean,
     ) {
         this.databases.init();
     }
 
-    onBootstrap(): void {
-        // if (options && options.migrateOnStartup) {
-        //     for (const database of this.databases.getDatabases()) {
-        //         database.migrate();
-        //     }
-        // }
+    @eventDispatcher.listen(onServerBootstrap)
+    async onBootstrap() {
+        if (this.migrateOnStartup) {
+            for (const database of this.databases.getDatabases()) {
+                this.logger.log(`Migrate database <yellow>${database.name}</yellow>`);
+                await database.migrate();
+            }
+        }
     }
 
-    onShutDown() {
+    @eventDispatcher.listen(onServerShutdown)
+    onShutdown() {
         this.databases.onShutDown();
     }
 }
 
 export const DatabaseModule = createModule({
     name: 'database',
-    bootstrap: DatabaseBootstrap,
     providers: [
         Databases,
         MigrationProvider,
+    ],
+    listeners: [
+        DatabaseListener,
     ],
     controllers: [
         MigrationCreateController,
@@ -67,5 +70,7 @@ export const DatabaseModule = createModule({
         MigrationPendingCommand,
         MigrationDownCommand
     ],
-    config: DatabaseConfig
+    config: databaseConfig
+}).setup((module, config) => {
+    module.options.providers.push(...config.databases);
 }).forRoot();

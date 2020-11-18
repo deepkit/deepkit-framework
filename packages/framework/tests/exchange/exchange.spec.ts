@@ -128,20 +128,20 @@ test('test str2ab performance', async () => {
     }
 });
 
-test('test version', async () => {
-    const client = await createExchange();
-    const start = performance.now();
-
-    const count = 10_000;
-    const all: Promise<any>[] = [];
-    for (let i = 0; i < count; i++) {
-        all.push(client.version());
-    }
-    await Promise.all(all);
-
-    //20000 version took 768.7665319 ms
-    console.log(count, 'version took', performance.now() - start, 'ms', (performance.now() - start) / count);
-});
+// test('test version', async () => {
+//     const client = await createExchange();
+//     const start = performance.now();
+//
+//     const count = 10_000;
+//     const all: Promise<any>[] = [];
+//     for (let i = 0; i < count; i++) {
+//         all.push(client.version());
+//     }
+//     await Promise.all(all);
+//
+//     //20000 version took 768.7665319 ms
+//     console.log(count, 'version took', performance.now() - start, 'ms', (performance.now() - start) / count);
+// });
 
 
 test('test get/set', async () => {

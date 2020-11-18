@@ -15,7 +15,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import {ClassType} from '@deepkit/core';
+import {ClassType, isClass} from '@deepkit/core';
+import {isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider} from './injector';
 
 /**
  * @whatItDoes Configures the {@link Injector} to return an instance of `Type` when `Type' is used
@@ -215,3 +216,57 @@ export interface FactoryProvider {
 export declare type Provider = TypeProvider | ValueProvider | ClassProvider | ExistingProvider | FactoryProvider;
 
 export declare type ProviderProvide = ValueProvider | ClassProvider | ExistingProvider | FactoryProvider;
+
+
+
+export interface ProviderScope {
+    scope?: 'module' | 'session' | 'request' | 'cli';
+}
+
+export interface ProviderSingleScope extends ProviderScope {
+    provide: any;
+}
+
+export type ProviderWithScope = TypeProvider | (ProviderProvide & ProviderScope) | ProviderSingleScope;
+
+export function isInjectionProvider(obj: any): obj is Provider {
+    return isValueProvider(obj) || isClassProvider(obj) || isExistingProvider(obj) || isFactoryProvider(obj);
+}
+
+export function isProviderSingleScope(obj: any): obj is ProviderSingleScope {
+    return obj.provide !== undefined && !isInjectionProvider(obj);
+}
+
+
+export function getProviders(
+    providers: ProviderWithScope[],
+    requestScope: 'module' | 'session' | 'request' | string,
+) {
+    const result: Provider[] = [];
+
+    function normalize(provider: ProviderWithScope): Provider {
+        if (isClass(provider)) {
+            return provider;
+        }
+
+        if (isProviderSingleScope(provider)) {
+            return {provide: provider.provide, useClass: provider.provide};
+        }
+
+        return provider;
+    }
+
+    for (const provider of providers) {
+        if (isClass(provider)) {
+            if (requestScope === 'module') result.push(provider);
+            continue;
+        }
+
+        const scope = provider.scope || 'module';
+        if (scope === requestScope) {
+            result.push(normalize(provider));
+        }
+    }
+
+    return result;
+}

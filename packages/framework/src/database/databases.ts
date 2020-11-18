@@ -20,6 +20,7 @@ import {inject, Injector} from '../injector/injector';
 import {Database} from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
+import {databaseConfig} from './database.config';
 
 /**
  * Class to register a new database and resolve a schema/type to a database.
@@ -29,7 +30,7 @@ export class Databases {
 
     constructor(
         @inject().root() protected injector: Injector,
-        @inject('orm.databases') public databaseTypes: ClassType<Database<any>>[]
+        @inject(databaseConfig.token('databases')) public databaseTypes: ClassType<Database<any>>[]
     ) {
     }
 

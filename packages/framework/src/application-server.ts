@@ -16,21 +16,67 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {WebWorker} from './worker';
-import {ServiceContainer} from './service-container';
 import {each, getClassName} from '@deepkit/core';
-import {httpClass} from './decorator';
+import {WebWorker, WebWorkerFactory} from './worker';
+import {EventDispatcher, RpcControllers} from './service-container';
+import {BaseEvent, eventDispatcher, EventToken, httpClass} from './decorator';
 import * as cluster from 'cluster';
-import {ApplicationConfig} from './application-config';
 import {injectable} from './injector/injector';
+import { Logger } from './logger';
+import {kernelConfig} from './kernel.config';
+import { HttpControllers } from './router';
+
+export class ServerBootstrapEvent extends BaseEvent {}
+export const onServerBootstrap = new EventToken('server.bootstrap', ServerBootstrapEvent);
+export const onServerBootstrapDone = new EventToken('server.bootstrap-done', ServerBootstrapEvent);
+
+export class ServerShutdownEvent extends BaseEvent {}
+export const onServerShutdown = new EventToken('server.shutdown', ServerBootstrapEvent);
+
+class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) {}
+
+@injectable()
+export class ApplicationServerListener {
+    constructor(
+        protected logger: Logger,
+        protected rpcControllers: RpcControllers,
+        protected httpControllers: HttpControllers,
+        protected config: ApplicationServerConfig,
+    ) {
+    }
+
+    @eventDispatcher.listen(onServerBootstrapDone)
+    onBootstrapDone() {
+        for (const [name, controller] of this.rpcControllers.controllers.entries()) {
+            this.logger.log('RPC controller', name, getClassName(controller));
+        }
+
+        for (const controller of this.httpControllers.controllers.values()) {
+            const httpConfig = httpClass._fetch(controller)!;
+            this.logger.log('HTTP controller', httpConfig.baseUrl || '/', getClassName(controller));
+
+            for (const action of httpConfig.actions) {
+                this.logger.log(`    ${action.httpMethod} ${httpConfig.getUrl(action)} ${action.methodName}`);
+            }
+        }
+
+        if (this.config.server) {
+            this.logger.log(`Server up and running`);
+        } else {
+            this.logger.log(`Server up and running at http://${this.config.host}:${this.config.port}/`);
+        }
+    }
+}
 
 @injectable()
 export class ApplicationServer {
     protected masterWorker?: WebWorker;
 
     constructor(
-        protected config: ApplicationConfig,
-        protected serviceContainer: ServiceContainer,
+        protected logger: Logger,
+        protected webWorkerFactory: WebWorkerFactory,
+        protected eventDispatcher: EventDispatcher,
+        protected config: ApplicationServerConfig,
     ) {
     }
 
@@ -42,60 +88,47 @@ export class ApplicationServer {
                 }
             }
         } else {
+            await this.shutdown();
             if (this.masterWorker) {
                 this.masterWorker.close();
             }
         }
     }
 
-    protected done() {
-        for (const [name, controller] of this.serviceContainer.rpcControllers.entries()) {
-            console.log('RPC controller', name, getClassName(controller));
-        }
-
-        for (const controller of this.serviceContainer.routerControllers.controllers) {
-            const httpConfig = httpClass._fetch(controller)!;
-            console.log('HTTP controller', httpConfig.baseUrl || '/', getClassName(controller));
-
-            for (const action of httpConfig.actions) {
-                console.log(`    ${action.httpMethod} ${httpConfig.getUrl(action)} ${action.methodName}`);
-            }
-        }
-
-        console.log(`Server up and running at http://${this.config.host}:${this.config.port}/`);
+    public async shutdown() {
+        await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
     }
 
     protected async bootstrap() {
-        for (const module of this.serviceContainer.getRegisteredModules()) {
-            if (module.onBootstrapServer) {
-                await module.onBootstrapServer();
-            }
-        }
+        await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
+    }
+
+    protected async bootstrapDone() {
+        await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
     }
 
     public async start() {
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
                 await this.bootstrap();
-
                 for (let i = 0; i < this.config.workers; i++) {
                     cluster.fork();
                 }
 
-                this.done();
+                await this.bootstrapDone();
             } else {
-                new WebWorker(cluster.worker.id, this.serviceContainer, this.config);
+                this.webWorkerFactory.create(cluster.worker.id, this.config);
 
                 cluster.on('exit', (w) => {
-                    console.log('mayday! mayday! worker', w.id, ' is no more!');
+                    this.logger.warning('mayday! mayday! worker', w.id, ' is no more!');
                     cluster.fork();
                 });
             }
         } else {
             await this.bootstrap();
 
-            this.masterWorker = new WebWorker(1, this.serviceContainer, this.config);
-            this.done();
+            this.masterWorker = this.webWorkerFactory.create(1, this.config);
+            await this.bootstrapDone();
         }
     }
 }

@@ -25,7 +25,6 @@ import {Context, EventDispatcher, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
 import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
-import {ApplicationConfig} from './application-config';
 import {Logger} from './logger';
 import {BaseEvent, eventDispatcher, EventOfEventToken, EventToken} from './decorator';
 import * as serveStatic from 'serve-static';
@@ -81,7 +80,7 @@ export class HttpRequestEvent extends BaseEvent {
     }
 }
 
-export const onHttpRequest = new EventToken<HttpRequestEvent>('http.request');
+export const onHttpRequest = new EventToken('http.request', HttpRequestEvent);
 
 export class HttpRouteNotFoundEvent extends BaseEvent {
     constructor(
@@ -92,7 +91,7 @@ export class HttpRouteNotFoundEvent extends BaseEvent {
     }
 }
 
-export const onHttpRouteNotFound = new EventToken<HttpRouteNotFoundEvent>('http.route.notFound');
+export const onHttpRouteNotFound = new EventToken('http.route.notFound', HttpRouteNotFoundEvent);
 
 export class HtmlResponse {
     constructor(public html: string) {
@@ -107,7 +106,6 @@ export class HttpRouteListener {
         protected router: Router,
         protected middlewareContainer: EventDispatcher,
         protected eventListenerContainer: EventDispatcher,
-        protected config: ApplicationConfig,
         protected logger: Logger,
     ) {
     }
@@ -187,7 +185,6 @@ export class HttpKernel {
     constructor(
         protected router: Router,
         protected eventListenerContainer: EventDispatcher,
-        protected config: ApplicationConfig,
         protected logger: Logger,
     ) {
     }

@@ -25,10 +25,7 @@
     ],
 
     "jsx": "react-jsx",
-    "jsxImportSource": "@deepkit/framework",
-    "paths": {
-      "@deepkit/framework/*": ["./*"]
-    }
+    "jsxImportSource": ".."
   },
   "include": [
     "src",

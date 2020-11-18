@@ -16,13 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType, isClass} from '@deepkit/core';
-import {ConfigDefinition, InjectToken} from './injector/injector';
-import {ProviderWithScope} from './service-container';
+import {ClassType} from '@deepkit/core';
 import {ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult} from '@deepkit/type';
 import {join} from 'path';
-import {Module} from './module';
-import {PlainSchemaProps} from '../../type/dist';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
 
@@ -35,8 +31,15 @@ export interface EventListener<T> {
 export type EventOfEventToken<T> = T extends EventToken<infer E> ? E : unknown;
 
 export class EventToken<T extends BaseEvent> {
+    /**
+     * This is only for easy event-type retrievable.
+     * e.g. `onHttpRequest(event: typeof onHttpRequest.event) {`
+     */
+    public readonly event!: T;
+
     constructor(
         public readonly id: string,
+        event: ClassType<T>,
     ) {
     }
 
@@ -94,111 +97,6 @@ export const eventDispatcher = createPropertyDecoratorContext(
     }
 );
 
-export interface ModuleOptions {
-    /**
-     * The lowercase alphanumeric module name. This is used in the configuration system for example.
-     * Choose a short unique name for best usability.
-     */
-    name?: string;
-
-    /**
-     * Providers.
-     */
-    providers?: ProviderWithScope[];
-
-    /**
-     * Export providers (its token `provide` value) or modules you imported first.
-     */
-    exports?: (ClassType | InjectToken | string | Module<any>)[];
-
-    /**
-     * Module bootstrap class.
-     */
-    bootstrap?: ClassType<ModuleBootstrap>;
-
-    /**
-     * Configuration definition.
-     *
-     * @example
-     * ```typescript
-     * import {t} from '@deepkit/type';
-     *
-     * const MyModule = createModule({
-     *     config: {
-     *         debug: t.boolean.default(false),
-     *     }
-     * });
-     * ```
-     */
-    config?: ConfigDefinition<any>;
-
-    /**
-     * RPC/HTTP/CLI controllers.
-     */
-    controllers?: ClassType[];
-
-    /**
-     * Event listeners.
-     *
-     * @example with simple functions
-     * ```typescript
-     * {
-     *     listeners: [
-     *         onEvent.listen((event: MyEvent) => {console.log('event triggered', event);}),
-     *     ]
-     * }
-     * ```
-     *
-     * @example with services
-     * ```typescript
-     *
-     * class MyListener {
-     *     @eventDispatcher.listen(onEvent)
-     *     onEvent(event: typeof onEvent['type']) {
-     *         console.log('event triggered', event);
-     *     }
-     * }
-     *
-     * {
-     *     listeners: [
-     *         MyListener,
-     *     ]
-     * }
-     * ```
-     */
-    listeners?: (EventListener<any> | ClassType)[];
-
-    /**
-     * Import another module.
-     */
-    imports?: Module<any>[];
-}
-
-export interface ModuleBootstrap {
-    /**
-     * Called when the application bootstraps (for cli commands, rpc/http server, tests, ...)
-     *
-     * Use onBootstrapServer when you want to execute code only when the rpc/http server starts.
-     */
-    onBootstrap?: () => void;
-
-    /**
-     * Called when the application http server bootstraps.
-     * The applications waits for the promise to resolve before bootstrapping completely.
-     *
-     * Note this is called once per machine.
-     *
-     * If you want to bootstrap something only once for your entire distributed
-     * stack, consider using AppLock.
-     */
-    onBootstrapServer?: () => Promise<void> | void;
-
-    /**
-     * When the applications is shut down. Clean up open resources to not leak memory in unit tests.
-     * The applications waits for the promise to resolve before shutting down completely.
-     */
-    onShutDown?: () => Promise<void> | void;
-}
 
 export interface ControllerOptions {
     name: string;

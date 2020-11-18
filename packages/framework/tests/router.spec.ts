@@ -32,7 +32,6 @@ test('router', async () => {
 
     const router = Router.forControllers([Controller]);
 
-    console.log('(await router.resolve(\'GET\', \'/\'))', (await router.resolve('GET', '/')));
     expect((await router.resolve('GET', '/'))?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'helloWorld'});
     expect((await router.resolve('GET', '/peter'))?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'hello'});
     expect((await router.resolve('GET', '/peter'))?.parameters!(undefined as any)).toEqual(['peter']);

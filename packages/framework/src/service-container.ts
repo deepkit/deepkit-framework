@@ -17,66 +17,13 @@
  */
 
 import {arrayRemoveItem, ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
-import {eventClass, EventListenerCallback, EventOfEventToken, EventToken, httpClass, ModuleBootstrap,} from './decorator';
-import {Injector, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, tokenLabel} from './injector/injector';
-import {Provider, ProviderProvide, TypeProvider} from './injector/provider';
+import {eventClass, EventListenerCallback, EventOfEventToken, EventToken, httpClass} from './decorator';
+import {Module, ModuleOptions} from './module';
+import {Injector, tokenLabel} from './injector/injector';
+import {getProviders, ProviderWithScope} from './injector/provider';
 import {rpcClass} from '@deepkit/framework-shared';
 import {cli} from './command';
-import {RouterControllers} from './router';
-import {Module} from './module';
-
-export interface ProviderScope {
-    scope?: 'module' | 'session' | 'request' | 'cli';
-}
-
-export interface ProviderSingleScope extends ProviderScope {
-    provide: any;
-}
-
-export type ProviderWithScope = TypeProvider | (ProviderProvide & ProviderScope) | ProviderSingleScope;
-
-
-export function isInjectionProvider(obj: any): obj is Provider {
-    return isValueProvider(obj) || isClassProvider(obj) || isExistingProvider(obj) || isFactoryProvider(obj);
-}
-
-export function isProviderSingleScope(obj: any): obj is ProviderSingleScope {
-    return obj.provide !== undefined && !isInjectionProvider(obj);
-}
-
-
-function getProviders(
-    providers: ProviderWithScope[],
-    requestScope: 'module' | 'session' | 'request' | string,
-) {
-    const result: Provider[] = [];
-
-    function normalize(provider: ProviderWithScope): Provider {
-        if (isClass(provider)) {
-            return provider;
-        }
-
-        if (isProviderSingleScope(provider)) {
-            return {provide: provider.provide, useClass: provider.provide};
-        }
-
-        return provider;
-    }
-
-    for (const provider of providers) {
-        if (isClass(provider)) {
-            if (requestScope === 'module') result.push(provider);
-            continue;
-        }
-
-        const scope = provider.scope || 'module';
-        if (scope === requestScope) {
-            result.push(normalize(provider));
-        }
-    }
-
-    return result;
-}
+import {HttpControllers} from './router';
 
 export class Context {
     providers: ProviderWithScope[] = [];
@@ -254,12 +201,20 @@ export function getClassTypeContext(classType: ClassType): Context {
     return context;
 }
 
-export class ServiceContainer {
-    public readonly rpcControllers = new Map<string, ClassType>();
-    public readonly cliControllers = new Map<string, ClassType>();
-    public readonly eventListenerContainer = new EventDispatcher();
+export class RpcControllers {
+    public readonly controllers = new Map<string, ClassType>();
+}
 
-    public readonly routerControllers = new RouterControllers([]);
+export class CliControllers {
+    public readonly controllers = new Map<string, ClassType>();
+}
+
+export class ServiceContainer {
+    public readonly cliControllers = new CliControllers;
+    public readonly rpcControllers = new RpcControllers;
+    public readonly httpControllers = new HttpControllers([]);
+
+    public readonly eventListenerContainer = new EventDispatcher();
 
     public static contextSymbol = Symbol('context');
 
@@ -269,6 +224,15 @@ export class ServiceContainer {
 
     protected rootContext?: Context;
     protected moduleContexts = new Map<Module<any>, Context[]>();
+
+    constructor(
+        public readonly appModule: Module<any>,
+        providers: ProviderWithScope[] = [],
+        imports: Module<any>[] = [],
+    ) {
+        this.processRootModule(appModule, providers, imports);
+        this.bootstrapModules();
+    }
 
     static getControllerContext(classType: ClassType) {
         const context = (classType as any)[ServiceContainer.contextSymbol] as Context;
@@ -288,17 +252,27 @@ export class ServiceContainer {
         }
     }
 
-    public processRootModule(
+    protected processRootModule(
         appModule: Module<any>,
         providers: ProviderWithScope[] = [],
         imports: Module<any>[] = []
     ) {
-        providers.push({provide: EventDispatcher, useValue: this.eventListenerContainer});
+        this.setupHook(appModule);
+
         providers.push({provide: ServiceContainer, useValue: this});
-        providers.push({provide: RouterControllers, useValue: this.routerControllers});
+        providers.push({provide: EventDispatcher, useValue: this.eventListenerContainer});
+        providers.push({provide: HttpControllers, useValue: this.httpControllers});
+        providers.push({provide: CliControllers, useValue: this.cliControllers});
+        providers.push({provide: RpcControllers, useValue: this.rpcControllers});
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
         this.eventListenerContainer.rootContext = this.rootContext;
+    }
+
+    private setupHook(module: Module<any>) {
+        const config = module.getConfig();
+        for (const setup of module.setups) setup(module, config);
+        for (const importModule of module.getImports()) this.setupHook(importModule);
     }
 
     public getRootContext(): Context {
@@ -306,16 +280,14 @@ export class ServiceContainer {
         return this.rootContext;
     }
 
-    getRegisteredModules(): ModuleBootstrap[] {
-        const result: ModuleBootstrap[] = [];
+    bootstrapModules(): void {
         for (const [module, contexts] of this.moduleContexts.entries()) {
             for (const context of contexts) {
                 if (module.options.bootstrap) {
-                    result.push(context.getInjector().get(module.options.bootstrap));
+                    context.getInjector().get(module.options.bootstrap);
                 }
             }
         }
-        return result;
     }
 
     public getContextsForModule(module: Module<any>): Context[] {
@@ -350,7 +322,7 @@ export class ServiceContainer {
     }
 
     protected processModule(
-        module: Module,
+        module: Module<ModuleOptions<any>>,
         parentContext?: Context,
         additionalProviders: ProviderWithScope[] = [],
         additionalImports: Module<any>[] = []
@@ -367,11 +339,6 @@ export class ServiceContainer {
         //we add the module to its own providers so it can depend on its module providers.
         //when we would add it to root it would have no access to its internal providers.
         if (module.options.bootstrap) providers.push(module.options.bootstrap);
-
-        for (const [name, value] of Object.entries(module.configValues)) {
-            const path = module.getName() ? module.getName() + '.' + name : name;
-            providers.push({provide: 'config.' + path, useValue: value});
-        }
 
         const forRootContext = module.root;
 
@@ -412,7 +379,7 @@ export class ServiceContainer {
             if (rpcConfig) {
                 providers.unshift({provide: controller, scope: 'session'});
                 (controller as any)[ServiceContainer.contextSymbol] = context;
-                this.rpcControllers.set(rpcConfig.getPath(), controller);
+                this.rpcControllers.controllers.set(rpcConfig.getPath(), controller);
                 continue;
             }
 
@@ -420,7 +387,7 @@ export class ServiceContainer {
             if (httpConfig) {
                 providers.unshift(controller);
                 (controller as any)[ServiceContainer.contextSymbol] = context;
-                this.routerControllers.add(controller);
+                this.httpControllers.add(controller);
                 continue;
             }
 
@@ -428,7 +395,7 @@ export class ServiceContainer {
             if (cliConfig) {
                 providers.unshift({provide: controller, scope: 'cli'});
                 (controller as any)[ServiceContainer.contextSymbol] = context;
-                this.cliControllers.set(cliConfig.name, controller);
+                this.cliControllers.controllers.set(cliConfig.name, controller);
                 continue;
             }
 

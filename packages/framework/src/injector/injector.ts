@@ -16,39 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {
-    ClassSchema,
-    ExtractClassDefinition,
-    ExtractClassType,
-    FieldDecoratorWrapper,
-    getClassSchema,
-    jsonSerializer,
-    PlainSchemaProps,
-    t,
-    validate,
-    ValidationFailed,
-    ValidationFailedItem
-} from '@deepkit/type';
+import {ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, PlainSchemaProps, t} from '@deepkit/type';
 import {ClassProvider, ExistingProvider, FactoryProvider, Provider, ValueProvider,} from './provider';
 import {ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
-import {Module} from '../module';
+import {Module, ModuleOptions} from '../module';
 
-export class ConfigToken<T extends ClassSchema> {
-    constructor(public config: ConfigDefinition<T>, public name: keyof ExtractClassType<T> & string) {
-    }
 
-    getConfigPath(): string {
-        const moduleName = this.config.getModule().getName();
-        return moduleName ? moduleName + '.' + this.name : this.name;
+export class ConfigToken<T extends {}> {
+    constructor(public config: ConfigDefinition<T>, public name: keyof T & string) {
     }
 }
 
-export class ConfigSlice<T extends ClassSchema> {
+export class ConfigSlice<T extends {}> {
     public bag?: { [name: string]: any };
+    public config!: ConfigDefinition<T>;
+    public names!: (keyof T & string)[];
 
-    constructor(public config: ConfigDefinition<T>, public names: (keyof ExtractClassType<T> & string)[]) {
+    constructor(config: ConfigDefinition<T>, names: (keyof T & string)[]) {
+        //we want that ConfigSlice acts as a regular plain object, which can be serialized at wish.
+        Object.defineProperties(this, {
+            config: {enumerable: false, value: config},
+            names: {enumerable: false, value: names},
+            bag: {enumerable: false, writable: true},
+        });
+
         for (const name of names) {
             Object.defineProperty(this, name, {
+                enumerable: true,
                 get: () => {
                     return this.bag ? this.bag[name] : undefined;
                 }
@@ -57,25 +51,34 @@ export class ConfigSlice<T extends ClassSchema> {
     }
 }
 
-export class ConfigDefinition<T extends ClassSchema> {
-    protected module?: Module;
+export class ConfigDefinition<T extends {}> {
+    protected module?: Module<any>;
 
     constructor(
-        public readonly schema: T
+        public readonly schema: ClassSchema<T>
     ) {
     }
 
-    setModule(module: Module) {
+    setModule(module: Module<any>) {
         this.module = module;
     }
 
-    getModule(): Module {
+    getModule(): Module<ModuleOptions<any>> {
         if (!this.module) throw new Error('ConfigDefinition module not set. Make sure your config is actually assigned to a single module. See createModule({config: x}).');
 
         return this.module;
     }
 
-    slice<N extends (keyof ExtractClassType<T> & string)[], C = ExtractClassType<T>>(...names: N): ClassType<Pick<ExtractClassType<T>, N[number]>> {
+    all(): ClassType<T> {
+        const self = this;
+        return class extends ConfigSlice<T> {
+            constructor() {
+                super(self, [...self.schema.getClassProperties().values()].map(v => v.name) as any);
+            }
+        } as any;
+    }
+
+    slice<N extends (keyof T & string)[]>(names: N): ClassType<Pick<T, N[number]>> {
         const self = this;
         return class extends ConfigSlice<T> {
             constructor() {
@@ -84,12 +87,12 @@ export class ConfigDefinition<T extends ClassSchema> {
         } as any;
     }
 
-    token<N extends keyof ExtractClassType<T> & string>(name: N): ConfigToken<T> {
+    token<N extends (keyof T & string)>(name: N): ConfigToken<T> {
         return new ConfigToken(this, name);
     }
 }
 
-export function createConfig<T extends PlainSchemaProps>(config: T): ConfigDefinition<ClassSchema<ExtractClassDefinition<T>>> {
+export function createConfig<T extends PlainSchemaProps>(config: T): ConfigDefinition<ExtractClassDefinition<T>> {
     return new ConfigDefinition(t.schema(config));
 }
 
@@ -105,27 +108,21 @@ export interface InjectDecorator {
      * Resolves the dependency token from the root injector.
      */
     root(): this;
-
-    /**
-     * Resolves a dependency value from a path, defined in the Configuration (.env file)
-     */
-    config(path: string): this;
 }
 
 type InjectOptions = {
     token: any | ForwardRef<any>;
     optional: boolean;
-    config?: string;
     root: boolean;
 };
 
 type ForwardRef<T> = () => T;
 
-export function inject(type?: any | ForwardRef<any>): InjectDecorator {
+export function inject(token?: any | ForwardRef<any>): InjectDecorator {
     const injectOptions: InjectOptions = {
         optional: false,
         root: false,
-        token: type,
+        token: token,
     };
 
     const fn = (target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any) => {
@@ -142,11 +139,6 @@ export function inject(type?: any | ForwardRef<any>): InjectDecorator {
 
     fn.root = () => {
         injectOptions.root = true;
-        return fn;
-    };
-
-    fn.config = (path: string) => {
-        injectOptions.config = path;
         return fn;
     };
 
@@ -195,9 +187,6 @@ export class TokenNotFoundError extends Error {
 export class DependenciesUnmetError extends Error {
 }
 
-export class ConfigurationInvalidError extends Error {
-}
-
 export function tokenLabel(token: any): string {
     if (token === null) return 'null';
     if (token === undefined) return 'undefined';
@@ -216,8 +205,6 @@ export class Injector {
     protected resolved = new Map<any, any>();
     public circularCheck: boolean = true;
     public allowUnknown: boolean = false;
-
-    public configContainer?: ConfigContainer;
 
     constructor(
         protected providers: Provider[] = [],
@@ -250,6 +237,12 @@ export class Injector {
 
     public isRoot() {
         return this.parents.length === 0;
+    }
+
+    protected getRoot(): Injector {
+        if (this.parents.length) return this.parents[0].getRoot();
+
+        return this;
     }
 
     public addProvider(provider: Provider) {
@@ -303,58 +296,24 @@ export class Injector {
                 token = isFunction(options.token) ? options.token() : options.token;
             }
 
-            //todo: root vs front injector. Root means something different: means we need the latest parent.
-            // const injectorToUse = options && options.root ? frontInjector || this : this;
-            const injectorToUse = frontInjector || this;
-
-            if (options && options.config) {
-                token = 'config.' + options.config;
-            }
+            const injectorToUse = options?.root ? this.getRoot() : (frontInjector || this);
 
             try {
                 if (token instanceof ConfigToken) {
-                    try {
-                        const value = injectorToUse.get('config.' + token.getConfigPath(), frontInjector);
-                        args.push(value);
-                    } catch (e) {
-                        argsCheck.push('x');
-                        throw new DependenciesUnmetError(
-                            `Unmet configuration dependency ${token.getConfigPath()} for argument ${argsCheck.length} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
-                            `Make sure configuration value '${token.getConfigPath()}' is set. ` + e
-                        );
-                    }
+                    const config = token.config.getModule().getConfig();
+                    args.push(config[token.name]);
                 } else if (isClass(token) && Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice) {
                     const value: ConfigSlice<any> = new token;
 
                     if (!value.bag) {
                         const bag: { [name: string]: any } = {};
-                        const moduleName = value.config.getModule().getName();
+                        const config = value.config.getModule().getConfig();
+                        // console.log('module config', value.config.getModule().getName(), config);
                         for (const name of value.names) {
-                            const path = moduleName ? moduleName + '.' + name : name;
-                            try {
-                                bag[name] = injectorToUse.get('config.' + path, frontInjector);
-                            } catch (e) {
-                                if (e instanceof TokenNotFoundError) {
-                                    argsCheck.push('x');
-                                    throw new DependenciesUnmetError(
-                                        `Unmet configuration dependency ${path} for argument ${argsCheck.length} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
-                                        `Make sure configuration value '${path}' is set. ` + e
-                                    );
-                                }
-                                throw e;
-                            }
+                            bag[name] = config[name];
                         }
-
-                        try {
-                            value.bag = jsonSerializer.for(value.config.schema).validatedDeserialize(bag) as any;
-                            args.push(value);
-                        } catch (e) {
-                            if (e instanceof ValidationFailed) {
-                                const errorsMessage = e.errors.map(v => v.toString()).join(', ');
-                                throw new ConfigurationInvalidError(`Configuration for module ${value.config.getModule().getName()} is invalid: ` + errorsMessage);
-                            }
-                            throw e;
-                        }
+                        value.bag = bag;
+                        args.push(value);
                     }
                 } else {
                     const value = injectorToUse.get(token, frontInjector);
@@ -369,17 +328,10 @@ export class Injector {
                         args.push(undefined);
                     } else {
                         argsCheck.push('?');
-                        if (options && options.config) {
-                            throw new DependenciesUnmetError(
-                                `Undefined configuration value at argument ${argsCheck.length} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
-                                `Make sure '${tokenLabel(token)}' is defined either via .env files or Application.run().`
-                            );
-                        } else {
-                            throw new DependenciesUnmetError(
-                                `Unknown constructor argument ${argsCheck.length} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
-                                `Make sure '${tokenLabel(token)}' is provided. ` + e
-                            );
-                        }
+                        throw new DependenciesUnmetError(
+                            `Unknown constructor argument ${property.name} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
+                            `Make sure '${tokenLabel(token)}' is provided. ` + e
+                        );
                     }
                 } else {
                     throw e;

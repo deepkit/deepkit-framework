@@ -34,13 +34,6 @@ interface StatePerConnection {
 }
 
 @injectable()
-export class ExchangeServerFactory {
-    create(hostOrUnix: string) {
-        return new ExchangeServer(hostOrUnix);
-    }
-}
-
-@injectable()
 export class ExchangeServer {
     protected locker = new ProcessLocker;
     protected locks: { [name: string]: ProcessLock } = {};
@@ -98,7 +91,7 @@ export class ExchangeServer {
             });
 
             this.wsServer.on('listening', () => {
-                // console.log('exchange listen on', this.host.toString());
+                console.log('exchange listen on', this.host.toString());
                 resolve(true);
             });
 

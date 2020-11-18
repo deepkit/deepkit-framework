@@ -17,20 +17,20 @@
  */
 import {Config, DebugControllerInterface, DebugControllerSymbol} from '@deepkit/framework-debug-shared';
 import {rpc} from '@deepkit/framework-shared';
-import {ApplicationConfig} from '../application-config';
-import { Configuration } from '../configuration';
+import {ServiceContainer} from '../service-container';
 
 
 @rpc.controller(DebugControllerSymbol)
 export class DebugController implements DebugControllerInterface {
-    constructor(private applicationConfig: ApplicationConfig, private config: Configuration) {
+    constructor(protected serviceContainer: ServiceContainer) {
     }
 
     @rpc.action()
     configuration(): Config {
+        //todo
         return {
-            applicationConfig: this.applicationConfig,
-            configuration: this.config.getAll(),
-        };
+            // applicationConfig: this.applicationConfig,
+            // configuration: this.config.getAll(),
+        } as any;
     }
 }

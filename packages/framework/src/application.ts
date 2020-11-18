@@ -16,80 +16,48 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {applyDefaults, ClassType, isPlainObject} from '@deepkit/core';
+import {ClassType} from '@deepkit/core';
 import {WebWorker} from './worker';
 import {KernelModule} from './kernel';
-import {ProviderWithScope, ServiceContainer} from './service-container';
-import {ModuleOptions} from './decorator';
+import {ServiceContainer} from './service-container';
+import {ProviderWithScope} from './injector/provider';
+import {createModule, Module, ModuleConfigOfOptions, ModuleOptions} from './module';
 import {Command, Config, Options} from '@oclif/config';
 import {basename, relative} from 'path';
 import {Main} from '@oclif/command';
 import {ExitError} from '@oclif/errors';
 import {buildOclifCommand} from './command';
-import {ApplicationConfig} from './application-config';
-import {Configuration} from './configuration';
-import {createModule, Module, ModuleConfigOfOptions} from './module';
 
-function isModule(module: any): module is Module<any> {
-    return module instanceof Module;
-}
-function isModuleOptions(module: any): module is ModuleOptions {
-    return isPlainObject(module);
-}
-
-export class Application<T extends ModuleOptions> {
-    protected config: ApplicationConfig;
+export class Application<T extends ModuleOptions<any>> {
     protected masterWorker?: WebWorker;
-    protected serviceContainer = new ServiceContainer;
+    protected serviceContainer: ServiceContainer;
 
     constructor(
         appModule: Module<T>,
-        config: Partial<ApplicationConfig> = {},
         providers: ProviderWithScope[] = [],
         imports: Module<any>[] = [],
     ) {
-        this.config = applyDefaults(ApplicationConfig, config);
-        providers.push(
-            {provide: ApplicationConfig, useValue: this.config},
-        );
-
         imports = imports.slice(0);
-        imports.unshift(KernelModule.forRoot());
 
-        const configuration = new Configuration();
-        configuration.loadEnvFile('.env');
-
-        for (const name of configuration.getKeys()) {
-            providers.push({provide: 'config.' + name, useValue: configuration.get(name)});
+        if (!appModule.hasImport(KernelModule)) {
+            imports.unshift(KernelModule.forRoot());
         }
 
-        for (const name of Object.keys(this.config)) {
-            providers.push({provide: 'config.' + name, useValue: (this.config as any)[name]});
-        }
-
-        providers.push({provide: Configuration, useValue: configuration});
-
-        this.serviceContainer.processRootModule(appModule, providers, imports);
-
-        for (const module of this.serviceContainer.getRegisteredModules()) {
-            if (module.onBootstrap) {
-                module.onBootstrap();
-            }
-        }
+        this.serviceContainer = new ServiceContainer(appModule, providers, imports);
     }
 
-    static create<T extends Module<any> | ModuleOptions>(module: T): Application<T extends Module<infer K> ? K : T> {
+    static create<T extends Module<any> | ModuleOptions<any>>(module: T): Application<T extends Module<infer K> ? K : T> {
         if (module instanceof Module){
-            return new Application(module);
+            return new Application(module as any);
         } else {
             //see: https://github.com/microsoft/TypeScript/issues/13995
-            const mod = module as any as ModuleOptions;
-            if (!mod.name) mod.name = 'app';
+            const mod = module as any as ModuleOptions<any>;
             return new Application(createModule(mod));
         }
     }
 
-    configure(config: Partial<ModuleConfigOfOptions<T>>): this {
+    configure(config: ModuleConfigOfOptions<T>): this {
+        throw new Error('Not implemented yet.');
         return this;
     }
 
@@ -110,14 +78,6 @@ export class Application<T extends ModuleOptions> {
 
     async run(argv?: any[]) {
         await this.execute(argv ?? process.argv.slice(2));
-    }
-
-    public async shutdown() {
-        for (const module of this.serviceContainer.getRegisteredModules()) {
-            if (module.onShutDown) {
-                await module.onShutDown();
-            }
-        }
     }
 
     getInjector() {
@@ -178,7 +138,7 @@ export class Application<T extends ModuleOptions> {
 
         const config = new MyConfig({root: __dirname});
 
-        for (const [name, controller] of this.serviceContainer.cliControllers.entries()) {
+        for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
             config.commandsMap[name] = buildOclifCommand(controller);
         }
 

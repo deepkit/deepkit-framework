@@ -37,7 +37,7 @@ function findFileUntilPackageRoot(fileName: string): string | undefined {
     }
 }
 
-export class Configuration {
+export class EnvConfiguration {
     protected container: { [name: string]: any } = {};
 
     /**

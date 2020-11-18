@@ -1,6 +1,6 @@
 import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
-import {Application, ApplicationServer, Databases, deepkit, ExchangeConfig} from '@deepkit/framework';
+import {KernelModule, Application, ApplicationServer, createModule, DatabaseModule, Module} from '@deepkit/framework';
 import {RemoteController} from '@deepkit/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
@@ -40,36 +40,31 @@ export async function closeAllCreatedServers() {
     }
 }
 
-export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): ClassType {
+export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): Module<any> {
     const database = Database.createClass('default', new MongoDatabaseAdapter('mongodb://localhost'), entities);
-
-    @deepkit.module({
+    return createModule({
         controllers: controllers,
         providers: [
             {provide: Database, useClass: database},
         ],
         imports: [
-            Databases.for([database])
+            DatabaseModule.configure({databases: [database]})
         ]
-    })
-    class AppModule {
-    }
-
-    return AppModule;
+    });
 }
 
 export async function createServerClientPair(
-    dbTestName: string,
-    AppModule: ClassType
+    name: string,
+    AppModule: Module<any>
 ): Promise<{
-    app: Application,
+    app: Application<any>,
     server: ApplicationServer,
     client: DeepkitClient,
     close: () => Promise<void>,
     createClient: () => DeepkitClient,
     createControllerClient: <T>(controllerName: string) => RemoteController<T>
 }> {
-    const socketPath = '/tmp/ws_socket_' + new Date().getTime() + '.' + Math.floor(Math.random() * 1000);
+    const socketPath = '/tmp/ws_socket_' + performance.now() + '.' + Math.floor(Math.random() * 1000);
     const exchangeSocketPath = socketPath + '_exchange';
 
     const server = createServer();
@@ -79,16 +74,12 @@ export async function createServerClientPair(
         });
     });
 
-    @deepkit.module({})
-    class ConfigModule {
-        constructor(exchangeConfig: ExchangeConfig) {
-            exchangeConfig.hostOrUnixPath = exchangeSocketPath;
-        }
-    }
-
-    const app = new Application(AppModule, {
-        server: server,
-    }, [], [ConfigModule]);
+    const app = Application.create(
+        AppModule.addImport(KernelModule.configure({
+            server: server,
+            exchange: {listen: exchangeSocketPath},
+        }))
+    );
 
     const appServer = app.get(ApplicationServer);
     await appServer.start();
@@ -122,7 +113,6 @@ export async function createServerClientPair(
         await sleep(0.1); //let the server read the disconnect
         const start = performance.now();
         await appServer.close();
-        await app.shutdown();
         console.log('server closed', performance.now() - start);
     };
 

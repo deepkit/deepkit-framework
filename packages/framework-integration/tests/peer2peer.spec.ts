@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Entity, f} from '@deepkit/type';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {deepkit, InternalClient, SecurityStrategy, Session} from '@deepkit/framework';
+import {createModule, InternalClient, SecurityStrategy, Session} from '@deepkit/framework';
 import {Observable} from 'rxjs';
 import {sleep} from '@deepkit/core';
 import {rpc} from '@deepkit/framework-shared';
@@ -50,7 +50,7 @@ test('test peer2peer', async () => {
         }
     }
 
-    @deepkit.module({
+   const AppModule = createModule({
         controllers: [TestController],
         providers: [
             {
@@ -67,9 +67,7 @@ test('test peer2peer', async () => {
                 }
             }
         ]
-    })
-    class AppModule  {
-    }
+    });
 
     const {client, server, createClient, close} = await createServerClientPair('test peer2peer', AppModule);
 
@@ -184,7 +182,7 @@ test('test peer2peer internal client', async () => {
 
     internalClientConnection.destroy();
 
-    close();
+    await close();
 });
 
 test('test peer2peer offline', async () => {

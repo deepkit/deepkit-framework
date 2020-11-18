@@ -45,8 +45,8 @@ export class ValidationFailedItem {
     ) {
     }
 
-    toString() {
-        return `${this.path}(${this.code}): ${this.message}`;
+    toString(prefix: string = '') {
+        return `${(prefix ? prefix + '.' : '') + this.path}(${this.code}): ${this.message}`;
     }
 }
 

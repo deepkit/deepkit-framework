@@ -16,10 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { t } from '@deepkit/type';
 import {createConfig} from '../injector/injector';
+import {t} from '@deepkit/type';
 
-export const exchangeConfig = createConfig({
-    listen: t.string.default('/tmp/deepkit-exchange.sock').description('Unix socket path or host:port combination'),
-    startOnBootstrap: t.boolean.default(true),
+export const databaseConfig = createConfig({
+    databases: t.array(t.any),
+    migrateOnStartup: t.boolean.default(false),
+    migrationDir: t.string.default('migrations'),
 });

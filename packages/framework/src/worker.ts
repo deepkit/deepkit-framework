@@ -20,13 +20,12 @@ import {ClientConnection} from './client-connection';
 import {ClientMessageAll, ConnectionWriter, ConnectionWriterStream} from '@deepkit/framework-shared';
 import * as WebSocket from 'ws';
 import * as http from 'http';
-import {IncomingMessage, ServerResponse} from 'http';
+import {IncomingMessage, Server, ServerResponse} from 'http';
 import * as https from 'https';
-import {ApplicationConfig} from './application-config';
 import {HttpKernel} from './http';
 import {RpcControllerContainer, ServiceContainer} from './service-container';
 import {Provider} from './injector/provider';
-import {Injector} from './injector/injector';
+import {injectable, Injector} from './injector/injector';
 
 export class WorkerConnection {
     constructor(
@@ -74,7 +73,7 @@ export class BaseWorker {
 
         //this sessionInjector MUST be used as new root for all controller context session injectors
         const sessionInjector = new Injector(providers, [this.serviceContainer.getRootContext().getSessionInjector().fork()]);
-        rpcControllerContainer = new RpcControllerContainer(this.serviceContainer.rpcControllers, sessionInjector);
+        rpcControllerContainer = new RpcControllerContainer(this.serviceContainer.rpcControllers.controllers, sessionInjector);
 
         const injector = new Injector([], [this.serviceContainer.getRootContext().getInjector(), sessionInjector]);
         const clientConnection = injector.get(ClientConnection);
@@ -85,22 +84,36 @@ export class BaseWorker {
     }
 }
 
+@injectable()
+export class WebWorkerFactory {
+    constructor(protected httpKernel: HttpKernel, protected serviceContainer: ServiceContainer) {
+    }
+
+    create(id: number, options: { server?: Server, host: string, port: number }) {
+        return new WebWorker(id, this.httpKernel, this.serviceContainer, options);
+    }
+
+    createBase() {
+        return new BaseWorker(this.serviceContainer);
+    }
+}
+
+@injectable()
 export class WebWorker extends BaseWorker {
     protected wsServer?: WebSocket.Server;
     protected server?: http.Server | https.Server;
-    protected httpHandler: HttpKernel;
     protected rootRequestInjector = this.serviceContainer.getRootContext().getRequestInjector();
 
     constructor(
         public readonly id: number,
+        protected httpKernel: HttpKernel,
         protected serviceContainer: ServiceContainer,
-        options: ApplicationConfig,
+        options: { server?: Server, host: string, port: number },
     ) {
         super(serviceContainer);
-        this.httpHandler = serviceContainer.getRootContext().getInjector().get(HttpKernel);
 
         if (options.server) {
-            this.server = options.server;
+            this.server = options.server as Server;
             this.server.on('request', this.onHttpRequest.bind(this));
         } else {
             this.server = new http.Server(this.onHttpRequest.bind(this));
@@ -121,7 +134,7 @@ export class WebWorker extends BaseWorker {
     }
 
     async onHttpRequest(req: IncomingMessage, res: ServerResponse) {
-        await this.httpHandler.handleRequest(req, res);
+        await this.httpKernel.handleRequest(req, res);
     }
 
     onWsConnection(ws: WebSocket, req: IncomingMessage) {
