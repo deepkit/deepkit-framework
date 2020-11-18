@@ -12,11 +12,11 @@
 import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isObject, isPlainObject, toFastProperties} from '@deepkit/core';
 import {isArray, JSONEntity} from './utils';
 import {extractMethod} from './code-parser';
-import getParameterNames from "get-parameter-names";
+import getParameterNames from 'get-parameter-names';
 import {jsonSerializer} from './json-serializer';
 import {BackReferenceOptions, FieldDecoratorResult, ReferenceActions, resolveClassTypeOrForward} from './decorators';
-import {typedArrayMap, typedArrayNamesMap, Types } from './types';
-import { getGlobalStore } from './global';
+import {typedArrayMap, typedArrayNamesMap, Types} from './types';
+import {getGlobalStore} from './global';
 
 export type IndexOptions = Partial<{
     //index size. Necessary for blob/longtext, etc.

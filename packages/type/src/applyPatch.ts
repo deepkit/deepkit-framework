@@ -8,9 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassTypeFromInstance, isClassInstance} from './model';
+import {getClassSchema, getClassTypeFromInstance, isClassInstance} from './model';
 import {isArray, isObject} from '@deepkit/core';
-import {getClassSchema} from './model';
 
 type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 

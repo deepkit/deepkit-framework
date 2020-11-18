@@ -12,7 +12,7 @@ import {createValidatorFromFunction, PropertyValidatorError} from './validation'
 import {ClassType, eachPair, getClassName, isFunction, isNumber, isPlainObject,} from '@deepkit/core';
 import getParameterNames from 'get-parameter-names';
 import {FlattenIfArray, isArray} from './utils';
-import {ClassDecoratorResult, createClassDecoratorContext, FreeFluidDecorator, isDecoratorContext} from './decorator-builder';
+import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
 import {
     ClassSchema,
     createClassSchema,

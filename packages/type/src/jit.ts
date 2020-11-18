@@ -8,9 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {UnpopulatedCheck} from './model';
+import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertySchema, UnpopulatedCheck} from './model';
 import {getGlobalStore} from './global';
-import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertySchema} from './model';
 import {isExcluded} from './mapper';
 import {ClassType, toFastProperties} from '@deepkit/core';
 import {getDataConverterJS, reserveVariable} from './serializer-compiler';
