@@ -51,6 +51,7 @@ export interface PropertySchemaSerialized {
     groupNames?: string[];
     templateArgs?: PropertySchemaSerialized[];
     classType?: string;
+    classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
     noValidation?: boolean;
 }
 
@@ -201,6 +202,12 @@ export class PropertyCompilerSchema {
 
     templateArgs: PropertyCompilerSchema[] = [];
 
+    /**
+     * The getClassName() when the given classType is not registered using a @entity.name
+     * Only used when PropertySchema.toJSON/PropertySchema.fromJSON operating on a classType that has no name.
+     */
+    classTypeName?: string;
+
     constructor(
         public name: string,
         public classType?: ClassType
@@ -215,23 +222,27 @@ export class PropertyCompilerSchema {
     }
 
     toString(): string {
+        let affix = this.isOptional ? '?' : '';
+        if (this.isNullable) affix + '|null';
+
         if (this.type === 'array') {
-            return `Array<${this.templateArgs[0]}}>`;
+            return `Array<${this.templateArgs[0]}}>${affix}`;
         }
         if (this.type === 'map') {
-            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>`;
+            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
         }
         if (this.type === 'partial') {
-            return `Partial<${this.templateArgs[0]}>`;
+            return `Partial<${this.templateArgs[0]}>${affix}`;
         }
         if (this.type === 'union') {
-            return this.templateArgs.map(v => v.toString()).join(' | ');
+            return this.templateArgs.map(v => v.toString()).join(' | ')+affix;
         }
         if (this.type === 'class') {
+            if (this.classTypeName) return this.classTypeName+affix;
             return getClassName(this.resolveClassType || class {
-            });
+            })+affix;
         }
-        return `${this.type}`;
+        return `${this.type}${affix}`;
     }
 
     getSubType(): PropertyCompilerSchema {
@@ -336,17 +347,19 @@ export class PropertySchema extends PropertyCompilerSchema {
     }
 
     toString() {
+        const affix = this.isOptional ? '?' : '';
         if (!this.typeSet) return 'undefined';
         if (this.type === 'array') {
-            return `${this.templateArgs[0]}[]`;
+            return `${this.templateArgs[0]}[]${affix}`;
         }
         if (this.type === 'class') {
+            if (this.classTypeName) return this.classTypeName+affix;
             if (this.classTypeForwardRef) {
                 const resolved = resolveForwardRef(this.classTypeForwardRef);
-                if (resolved) return getClassName(resolved);
-                return 'ForwardedRef';
+                if (resolved) return getClassName(resolved) + affix;
+                return 'ForwardedRef' + affix;
             } else {
-                return getClassName(this.getResolvedClassType());
+                return getClassName(this.getResolvedClassType()) + affix;
             }
         }
         return super.toString();
@@ -392,10 +405,11 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (resolved) {
             const name = getClassSchema(resolved).name;
             if (!name) {
-                throw new Error(`Could not serialize type information for ${this.methodName ? this.methodName + ':' : ''}${this.name}, got type ${getClassName(resolved)}. ` +
-                    `Either further specify the type using the @f decorator or use @Entity() decorator at the ${getClassName(resolved)} class.`);
+                props['classTypeName'] = getClassName(resolved);
+            } else {
+                props['classType'] = name;
+
             }
-            props['classType'] = name;
         }
 
         return props;
@@ -429,6 +443,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             }
             p.classType = getClassSchema(entity).classType;
         }
+        p.classTypeName = props['classTypeName'];
 
         return p;
     }

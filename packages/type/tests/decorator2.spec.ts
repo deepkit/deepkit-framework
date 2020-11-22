@@ -59,7 +59,7 @@ test('test @f', () => {
 });
 
 
-test('test propertySchema serialization wrong', () => {
+test('test propertySchema serialization classTypeName', () => {
     class Config {
         @t created: Date = new Date;
     }
@@ -71,9 +71,8 @@ test('test propertySchema serialization wrong', () => {
 
     const schema = getClassSchema(Page);
     const p1 = schema.getProperty('config');
-    expect(() => {
-        p1.toJSON();
-    }).toThrow('Could not serialize type information for');
+    const j = p1.toJSON();
+    expect(j.classTypeName).toBe('Config');
 });
 
 test('test propertySchema serialization', () => {
