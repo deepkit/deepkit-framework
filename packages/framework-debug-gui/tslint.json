@@ -83,10 +83,7 @@
         "named": "never"
       }
     },
-    "typedef": [
-      true,
-      "call-signature"
-    ],
+    "typedef": false,
     "typedef-whitespace": {
       "options": [
         {

@@ -33,7 +33,7 @@ class RpcController {
 
     definition?: ControllerDefinition<any>;
 
-    actions = new Map;
+    actions = new Map<string, RpcAction>();
 
     getPath(): string {
         return this.definition ? this.definition.path : this.name || '';
@@ -41,6 +41,7 @@ class RpcController {
 }
 
 class RpcAction {
+    name?: string;
 }
 
 class RpcClass {
@@ -63,8 +64,9 @@ export const rpcClass: ClassDecoratorResult<typeof RpcClass> = createClassDecora
 class RpcProperty {
     t = new RpcAction;
 
-    onDecorator(target: object, property?: string) {
-        rpcClass.addAction(property!, this.t)(target);
+    onDecorator(classType: ClassType, property: string) {
+        this.t.name = property;
+        rpcClass.addAction(property!, this.t)(classType);
     }
 
     action() {

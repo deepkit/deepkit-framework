@@ -79,11 +79,11 @@ test('loadConfig', () => {
 });
 
 test('import', () => {
-    {
-        expect(() => getMyServiceFor(AppModule, ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(required): Required value is undefined, myModule.param2(required): Required value is undefined'
-        );
-    }
+    // {
+    //     expect(() => getMyServiceFor(AppModule, ModuleService)).toThrow(
+    //         'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(required): Required value is undefined, myModule.param2(required): Required value is undefined'
+    //     );
+    // }
 
     {
         expect(() => getMyServiceFor(AppModule.configure({myModule: {param1: '23'}}), ModuleService)).toThrow(
@@ -125,34 +125,36 @@ test('basic configured', () => {
     expect(new MyService({debug: true}).isDebug()).toBe(true);
     expect(new MyService({debug: false}).isDebug()).toBe(false);
 
+    const myConfiguredApp = AppModule.configure({myModule: {param1: '12345', param2: '100'}});
+
     {
-        const myService = getMyServiceFor(AppModule, MyService);
+        const myService = getMyServiceFor(myConfiguredApp, MyService);
         expect(myService.isDebug()).toBe(false);
     }
 
     {
-        const myService = getMyServiceFor(AppModule.configure({
+        const myService = getMyServiceFor(myConfiguredApp.configure({
             debug: false
         }), MyService);
         expect(myService.isDebug()).toBe(false);
     }
 
     {
-        const myService = getMyServiceFor(AppModule.configure({
+        const myService = getMyServiceFor(myConfiguredApp.configure({
             debug: true
         }), MyService);
         expect(myService.isDebug()).toBe(true);
     }
 
     {
-        const myService2 = getMyServiceFor(AppModule.configure({
+        const myService2 = getMyServiceFor(myConfiguredApp.configure({
             debug: false
         }), MyService2);
         expect(myService2.debug).toBe(false);
     }
 
     {
-        const myService2 = getMyServiceFor(AppModule.configure({
+        const myService2 = getMyServiceFor(myConfiguredApp.configure({
             debug: true
         }), MyService2);
         expect(myService2.debug).toBe(true);

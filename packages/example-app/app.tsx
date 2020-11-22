@@ -47,17 +47,22 @@ async function UserList({error}: {error?: string} = {}) {
 
 @http.controller()
 class HelloWorldController {
-    @http.GET('/')
+    @http.GET('/').description('List all users')
     async startPage() {
         return <UserList/>;
     }
 
-    @http.POST('/add')
-    async add(body: AddUserDto, bodyValidation: BodyValidation) {
+    @http.POST('/add').description('Adds a new user')
+    async add(@http.body() body: AddUserDto, bodyValidation: BodyValidation) {
         if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')}/>;
 
         await new User(body.username).save();
         return <UserList/>;
+    }
+
+    @http.GET('/my-getter')
+    async get2(@http.query() peter: string) {
+        return peter;
     }
 }
 

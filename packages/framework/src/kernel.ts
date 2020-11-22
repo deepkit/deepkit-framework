@@ -93,7 +93,6 @@ export const KernelModule = createModule({
     ],
     listeners: [
         HttpRouteListener,
-        HttpLogger,
         HttpRouteNotFoundListener,
         ApplicationServerListener,
     ],
@@ -104,4 +103,8 @@ export const KernelModule = createModule({
     imports: [
         ExchangeModule,
     ],
+}).setup((module, config) => {
+    if (config.httpLog) {
+        module.addListener(HttpLogger);
+    }
 }).forRoot();

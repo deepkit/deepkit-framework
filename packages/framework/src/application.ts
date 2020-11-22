@@ -30,7 +30,7 @@ import {buildOclifCommand} from './command';
 
 export class Application<T extends ModuleOptions<any>> {
     protected masterWorker?: WebWorker;
-    protected serviceContainer: ServiceContainer;
+    protected serviceContainer: ServiceContainer<T>;
 
     constructor(
         appModule: Module<T>,
@@ -40,19 +40,19 @@ export class Application<T extends ModuleOptions<any>> {
         imports = imports.slice(0);
 
         if (!appModule.hasImport(KernelModule)) {
-            imports.unshift(KernelModule.forRoot());
+            appModule.addImport(KernelModule);
         }
 
         this.serviceContainer = new ServiceContainer(appModule, providers, imports);
     }
 
-    static create<T extends Module<any> | ModuleOptions<any>>(module: T): Application<T extends Module<infer K> ? K : T> {
+    static create<T extends Module<any> | ModuleOptions<any>, C = T extends Module<infer K> ? K : T>(module: T): Application<C> {
         if (module instanceof Module){
             return new Application(module as any);
         } else {
             //see: https://github.com/microsoft/TypeScript/issues/13995
             const mod = module as any as ModuleOptions<any>;
-            return new Application(createModule(mod));
+            return new Application<C>(createModule(mod) as any);
         }
     }
 

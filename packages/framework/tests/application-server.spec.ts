@@ -31,6 +31,8 @@ test('basic controller', async () => {
         }
     }
 
+
+
     const AppModule = createModule({
         controllers: [MyController],
     })

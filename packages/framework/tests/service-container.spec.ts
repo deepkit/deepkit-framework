@@ -129,7 +129,7 @@ test('simple setup with import and overwrite', () => {
         expect(() => injector.get(HiddenDatabaseService)).toThrow('Could not resolve injector token HiddenDatabaseService');
         expect(injector.get(MyService)).toBeInstanceOf(MyService);
 
-        const [databaseModuleContext] = serviceContainer.getContextsForModule(DatabaseModule);
+        const [databaseModuleContext] = serviceContainer.getContextsForModuleId(DatabaseModule);
         expect(databaseModuleContext.getInjector().get(HiddenDatabaseService)).toBeInstanceOf(HiddenDatabaseService);
         expect(databaseModuleContext.getInjector().get(Connection)).toBe(injector.get(Connection));
 
@@ -152,7 +152,7 @@ test('simple setup with import and overwrite', () => {
 
         expect(injector.get(Connection)).toBeInstanceOf(OverwrittenConnection);
 
-        const [databaseModuleContext] = serviceContainer.getContextsForModule(DatabaseModule);
+        const [databaseModuleContext] = serviceContainer.getContextsForModuleId(DatabaseModule);
         const hiddenService = databaseModuleContext.getInjector().get(HiddenDatabaseService);
         expect(hiddenService.connection).toBeInstanceOf(OverwrittenConnection);
         expect(databaseModuleContext.getInjector().get(Connection)).toBeInstanceOf(OverwrittenConnection);
@@ -346,6 +346,7 @@ test('exported module', () => {
     }
 
     const DatabaseModule = createModule({
+        name: 'database',
         providers: [DatabaseConnection],
         exports: [
             DatabaseConnection
@@ -356,6 +357,7 @@ test('exported module', () => {
     }
 
     const FSModule = createModule({
+        name: 'fs',
         providers: [FSService],
         imports: [DatabaseModule],
         exports: [
@@ -365,15 +367,20 @@ test('exported module', () => {
 
     {
         const MyModule = createModule({
+            name: 'myModule',
             imports: [FSModule]
         });
+
+        const copy = MyModule.clone();
+        expect(copy.id).toBe(MyModule.id);
+        expect(copy.getImports()[0].id).toBe(FSModule.id);
 
         const serviceContainer = new ServiceContainer(MyModule);
         const rootInjector = serviceContainer.getRootContext().getInjector();
 
         expect(rootInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
 
-        const databaseModuleInjector = serviceContainer.getContextsForModule(DatabaseModule)[0].getInjector();
+        const databaseModuleInjector = serviceContainer.getContextsForModuleId(DatabaseModule)[0].getInjector();
         expect(databaseModuleInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
         expect(databaseModuleInjector.get(DatabaseConnection)).toBe(rootInjector.get(DatabaseConnection));
     }

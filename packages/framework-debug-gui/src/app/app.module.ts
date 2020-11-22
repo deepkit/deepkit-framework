@@ -23,12 +23,14 @@ import {ConfigurationComponent} from './views/configuration/configuration.compon
 import {HttpComponent} from './views/http/http.component';
 import {ControllerClient} from './client';
 import {FormsModule} from '@angular/forms';
+import {RpcComponent} from './views/rpc/rpc.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     ConfigurationComponent,
     HttpComponent,
+    RpcComponent,
   ],
   imports: [
     BrowserModule,

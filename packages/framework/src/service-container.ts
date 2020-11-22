@@ -176,10 +176,10 @@ export class EventDispatcher {
     }
 
     public getCaller<T extends EventToken<any>>(eventToken: T): (event: EventOfEventToken<T>) => Promise<void> {
+        this.sort();
         const listeners = this.getListeners(eventToken);
 
         return async (event) => {
-            this.sort();
             for (const listener of listeners) {
                 if (isEventListenerContainerEntryCallback(listener)) {
                     await listener.fn(event);
@@ -209,7 +209,7 @@ export class CliControllers {
     public readonly controllers = new Map<string, ClassType>();
 }
 
-export class ServiceContainer {
+export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>> {
     public readonly cliControllers = new CliControllers;
     public readonly rpcControllers = new RpcControllers;
     public readonly httpControllers = new HttpControllers([]);
@@ -223,14 +223,17 @@ export class ServiceContainer {
     protected contexts = new Map<number, Context>();
 
     protected rootContext?: Context;
-    protected moduleContexts = new Map<Module<any>, Context[]>();
+    protected moduleContexts = new Map<Module<ModuleOptions<any>>, Context[]>();
+    protected moduleIdContexts = new Map<number, Context[]>();
+
+    public readonly appModule: Module<C>;
 
     constructor(
-        public readonly appModule: Module<any>,
+        appModule: Module<C>,
         providers: ProviderWithScope[] = [],
         imports: Module<any>[] = [],
     ) {
-        this.processRootModule(appModule, providers, imports);
+        this.appModule = this.processRootModule(appModule.clone(), providers, imports);
         this.bootstrapModules();
     }
 
@@ -267,12 +270,17 @@ export class ServiceContainer {
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
         this.eventListenerContainer.rootContext = this.rootContext;
+        return appModule;
     }
 
     private setupHook(module: Module<any>) {
         const config = module.getConfig();
         for (const setup of module.setups) setup(module, config);
-        for (const importModule of module.getImports()) this.setupHook(importModule);
+
+        for (const importModule of module.getImports()) {
+            this.setupHook(importModule);
+        }
+        return module;
     }
 
     public getRootContext(): Context {
@@ -290,8 +298,8 @@ export class ServiceContainer {
         }
     }
 
-    public getContextsForModule(module: Module<any>): Context[] {
-        return this.moduleContexts.get(module) || [];
+    public getContextsForModuleId(module: Module<any>): Context[] {
+        return this.moduleIdContexts.get(module.id) || [];
     }
 
     public getContext(id: number): Context {
@@ -315,6 +323,7 @@ export class ServiceContainer {
         if (!contexts) {
             contexts = [];
             this.moduleContexts.set(module, contexts);
+            this.moduleIdContexts.set(module.id, contexts);
         }
 
         contexts.push(context);
@@ -354,6 +363,9 @@ export class ServiceContainer {
                 //exported modules will be removed from `imports`, so that
                 //the target context (root or parent) imports it
                 arrayRemoveItem(exports, token);
+
+                //we remove it from imports as well, so we don't have two module instances
+                arrayRemoveItem(imports, token);
 
                 //exported a module. We handle it as if the parent would have imported it.
                 this.processModule(token, parentContext);

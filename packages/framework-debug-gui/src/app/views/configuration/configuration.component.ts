@@ -1,6 +1,6 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
 import {ControllerClient} from '../../client';
-import {Config} from '@deepkit/framework-debug-shared';
+import {ConfigOption} from '@deepkit/framework-debug-shared';
 
 @Component({
   template: `
@@ -12,23 +12,29 @@ import {Config} from '@deepkit/framework-debug-shared';
       <p>
         Application config values from your root application module.
       </p>
-      <dui-table [items]="filter(applicationConfig, applicationConfigFilter)" noFocusOutline>
+      <dui-table [items]="filter(applicationConfig, applicationConfigFilter)" defaultSort="name" noFocusOutline>
         <dui-table-column class="text-selection" name="name"></dui-table-column>
-        <dui-table-column class="text-selection" width="80%" name="value"></dui-table-column>
+        <dui-table-column class="text-selection" name="value"></dui-table-column>
+        <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>
+        <dui-table-column class="text-selection" name="type"></dui-table-column>
+        <dui-table-column class="text-selection" name="description"></dui-table-column>
       </dui-table>
     </div>
 
     <div class="section">
       <div class="header">
-        <h4>Custom configuration</h4>
+        <h4>Module configuration</h4>
         <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="configFilter"></dui-input>
       </div>
       <p>
-        Config values from your <code>.env</code> file or manual setting via <code>Configuration</code> service.
+        Config values from core modules and your imported modules.
       </p>
-      <dui-table [items]="filter(config, configFilter)" noFocusOutline>
-        <dui-table-column class="text-selection" name="name"></dui-table-column>
-        <dui-table-column class="text-selection" width="80%" name="value"></dui-table-column>
+      <dui-table [items]="filter(config, configFilter)" defaultSort="name" noFocusOutline>
+        <dui-table-column class="text-selection" [width]="220" name="name"></dui-table-column>
+        <dui-table-column class="text-selection" name="value"></dui-table-column>
+        <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>
+        <dui-table-column class="text-selection" name="type"></dui-table-column>
+        <dui-table-column class="text-selection" name="description"></dui-table-column>
       </dui-table>
     </div>
   `,
@@ -36,6 +42,7 @@ import {Config} from '@deepkit/framework-debug-shared';
     :host {
       display: flex;
       height: 100%;
+      max-width: 100%;
     }
 
     .section {
@@ -44,6 +51,7 @@ import {Config} from '@deepkit/framework-debug-shared';
       display: flex;
       margin: 5px;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .header {
@@ -67,8 +75,8 @@ export class ConfigurationComponent implements OnInit {
   public applicationConfigFilter: string = '';
   public configFilter: string = '';
 
-  public applicationConfig: { name: string, value: any }[] = [];
-  public config: { name: string, value: any }[] = [];
+  public applicationConfig: ConfigOption[] = [];
+  public config: ConfigOption[] = [];
 
   constructor(
     private controllerClient: ControllerClient,
@@ -76,7 +84,7 @@ export class ConfigurationComponent implements OnInit {
   ) {
   }
 
-  filter(items: { name: string }[], filter: string): any[] {
+  filter(items: ConfigOption[], filter: string): any[] {
     if (!filter) return items;
 
     return items.filter(v => v.name.includes(filter));
@@ -84,15 +92,9 @@ export class ConfigurationComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     const configuration = await this.controllerClient.debug.configuration();
-    this.applicationConfig = [];
-    for (const [name, value] of Object.entries(configuration.applicationConfig)) {
-      this.applicationConfig.push({name, value});
-    }
 
-    this.config = [];
-    for (const [name, value] of Object.entries(configuration.configuration)) {
-      this.config.push({name, value});
-    }
+    this.applicationConfig = configuration.appConfig;
+    this.config = configuration.modulesConfig;
 
     this.cd.detectChanges();
   }

@@ -144,8 +144,12 @@ export class Module<T extends ModuleOptions<any>> {
         }
     }
 
-    getImports(): Module<any>[] {
+    getImports(): Module<ModuleOptions<any>>[] {
         return this.options.imports || [];
+    }
+
+    getExports() {
+        return this.options.exports || [];
     }
 
     hasImport(module: Module<any>): boolean {
@@ -165,6 +169,12 @@ export class Module<T extends ModuleOptions<any>> {
             this.options.imports.push(module);
         }
         return this;
+    }
+
+    addListener(listener: ClassType) {
+        if(!this.options.listeners) this.options.listeners = [];
+
+        this.options.listeners.push(listener);
     }
 
     private hasConfigOption(path: string): boolean {
@@ -211,6 +221,16 @@ export class Module<T extends ModuleOptions<any>> {
     clone(): Module<T> {
         const m = new Module(cloneOptions(this.options), {...this.configValues}, this.setups.slice(0), this.id);
         m.root = this.root;
+        m.parent = this.parent;
+
+        const imports = m.getImports();
+        const exports = m.getExports();
+        for (let i = 0; i < imports.length; i++) {
+            const old = imports[i];
+            imports[i] = old.clone();
+            const index = exports.indexOf(old);
+            if (index !== -1) exports[index] = imports[i];
+        }
         return m;
     }
 

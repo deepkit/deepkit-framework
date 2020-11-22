@@ -2,7 +2,7 @@ import 'jest';
 import 'reflect-metadata';
 import {Router} from '../src/router';
 import {HttpKernel} from '../src/http';
-import {http} from '../src/decorator';
+import {http, httpClass} from '../src/decorator';
 import {Application} from '../src/application';
 import {IncomingMessage} from 'http';
 import {t} from '@deepkit/type';
@@ -104,7 +104,7 @@ test('router body', async () => {
 
     class Controller {
         @http.POST()
-        anyReq(body: Body, req: IncomingMessage) {
+        anyReq(@http.body() body: Body, req: IncomingMessage) {
             return [body.username, body instanceof Body, req.url];
         }
     }
@@ -113,4 +113,79 @@ test('router body', async () => {
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('POST', '/', {username: 'Peter'})).toEqual(['Peter', true, '/']);
+});
+
+
+test('router body double', async () => {
+    class Body {
+        @t username!: string;
+    }
+
+    class Controller {
+        @http.POST()
+        anyReq(@http.body() body: Body, @http.body() body2: Body, req: IncomingMessage) {
+            return [body2.username, body2 instanceof Body && body instanceof Body, req.url];
+        }
+    }
+
+    const httpData = httpClass._fetch(Controller);
+    if (!httpData) throw new Error('httpClass undefined');
+    const action = [...httpData.actions][0];
+    expect(action.methodName).toBe('anyReq');
+    expect(action.httpMethod).toBe('POST');
+    expect(action.parameters['body']).not.toBeUndefined();
+    expect(action.parameters['body'].name).toBe('body');
+    expect(action.parameters['body2']).not.toBeUndefined();
+    expect(action.parameters['body2'].name).toBe('body2');
+
+    const app = Application.create({controllers: [Controller]});
+    const httpHandler = app.get(HttpKernel);
+
+    expect(await httpHandler.handleRequestFor('POST', '/', {username: 'Peter'})).toEqual(['Peter', true, '/']);
+});
+
+test('router query', async () => {
+    class Controller {
+        @http.GET('my-action')
+        anyReq(@http.query().optional test?: number) {
+            return test;
+        }
+    }
+
+    const httpData = httpClass._fetch(Controller);
+    if (!httpData) throw new Error('httpClass undefined');
+    const action = [...httpData.actions][0];
+    expect(action.methodName).toBe('anyReq');
+    expect(action.httpMethod).toBe('GET');
+    expect(action.parameters['test']).not.toBeUndefined();
+    expect(action.parameters['test'].name).toBe('test');
+    expect(action.parameters['test'].type).toBe('query');
+
+    const app = Application.create({controllers: [Controller]});
+    const httpHandler = app.get(HttpKernel);
+
+    expect(await httpHandler.handleRequestFor('GET', '/my-action?test=123')).toEqual(123);
+    expect(await httpHandler.handleRequestFor('GET', '/my-action')).toEqual(undefined);
+});
+
+test('router query all', async () => {
+    class AnyReqQuery {
+        @t.optional test?: string;
+        @t.optional filter?: string;
+        @t.optional page?: number;
+    }
+
+    class Controller {
+        @http.GET('my-action')
+        anyReq(@http.queries() anyReqQuery: AnyReqQuery) {
+            return anyReqQuery;
+        }
+    }
+
+    const app = Application.create({controllers: [Controller]});
+    const httpHandler = app.get(HttpKernel);
+
+    expect(await httpHandler.handleRequestFor('GET', '/my-action?test=123')).toEqual({test: '123'});
+    expect(await httpHandler.handleRequestFor('GET', '/my-action')).toEqual({});
+    expect(await httpHandler.handleRequestFor('GET', '/my-action?filter=page&page=5')).toEqual({filter: 'page', page: 5});
 });

@@ -28,6 +28,7 @@ export const kernelConfig = createConfig({
     maxPayload: t.number.optional,
     publicDir: t.string.default('public/'),
     debug: t.boolean.default(false),
+    httpLog: t.boolean.default(true),
 });
 
 export class KernelConfigAll extends kernelConfig.all() {}

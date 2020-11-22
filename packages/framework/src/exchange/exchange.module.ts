@@ -68,4 +68,4 @@ export const ExchangeModule = createModule({
         Exchange,
         AppLocker,
     ]
-});
+}).forRoot();

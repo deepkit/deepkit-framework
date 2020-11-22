@@ -18,12 +18,12 @@
 
 import {args, flags} from '@oclif/parser';
 import {
-    ApiTypeInterface,
     ClassDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     FreeFluidDecorator,
     getClassSchema,
+    PropertyApiTypeInterface,
     PropertySchema
 } from '@deepkit/type';
 import {IBooleanFlag, IOptionFlag} from '@oclif/parser/lib/flags';
@@ -68,21 +68,21 @@ class ArgDefinition {
     default: any;
 }
 
-export class ArgDecorator implements ApiTypeInterface<ArgDefinition> {
+export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
     t = new ArgDefinition;
 
-    onDecorator(target: object, property: string | undefined, parameterIndex?: number): void {
+    onDecorator(classType: ClassType, property: string | undefined, parameterIndex?: number): void {
         //property is `execute` always since we use decorators on the method's arguments
         if (!property) throw new Error('arg|flag needs to be on a method argument, .e.g execute(@arg hostname: string) {}');
         if (parameterIndex === undefined) throw new Error('arg|flag needs to be on a method argument, .e.g execute(@arg hostname: string) {}');
 
-        const properties = getClassSchema(target).getMethodProperties(property);
+        const properties = getClassSchema(classType).getMethodProperties(property);
         const propertySchema = properties[parameterIndex];
 
         this.t.name = propertySchema.name;
         this.t.propertySchema = propertySchema;
 
-        cli.addArg(this.t)(target);
+        cli.addArg(this.t)(classType);
     }
 
     description(description: string) {
@@ -115,9 +115,9 @@ export class ArgDecorator implements ApiTypeInterface<ArgDefinition> {
 }
 
 export class ArgFlagDecorator extends ArgDecorator {
-    onDecorator(target: object, property: string | undefined, parameterIndex?: number): void {
+    onDecorator(classType: ClassType, property: string | undefined, parameterIndex?: number): void {
         this.t.isFlag = true;
-        super.onDecorator(target, property, parameterIndex);
+        super.onDecorator(classType, property, parameterIndex);
     }
 }
 

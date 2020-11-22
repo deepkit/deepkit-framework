@@ -217,16 +217,17 @@ export class HttpKernel {
         let result: any = {};
         const response = new (class extends ServerResponse {
             end(chunk: any) {
-                result = chunk.toString();
+                result = chunk ? chunk.toString() : chunk;
             }
 
             write(chunk: any): boolean {
-                result = chunk.toString();
+                result = chunk ? chunk.toString() : chunk;
                 return true;
             }
         })(request);
 
         await this.handleRequest(request, response);
+        if (result === '' || result === undefined || result === null) return result;
         try {
             return JSON.parse(result);
         } catch (error) {

@@ -44,6 +44,9 @@
       "path": "../framework-shared/tsconfig.json"
     },
     {
+      "path": "../framework-debug-shared/tsconfig.json"
+    },
+    {
       "path": "../orm/tsconfig.json"
     },
     {

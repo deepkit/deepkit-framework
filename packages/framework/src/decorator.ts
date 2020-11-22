@@ -17,7 +17,14 @@
  */
 
 import {ClassType} from '@deepkit/core';
-import {ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult} from '@deepkit/type';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    getClassSchema,
+    mergeDecorator,
+    PropertyDecoratorResult,
+} from '@deepkit/type';
 import {join} from 'path';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
@@ -82,7 +89,7 @@ export const eventDispatcher = createPropertyDecoratorContext(
     class {
         t = new EventStore;
 
-        onDecorator(target: object, property?: string) {
+        onDecorator(target: ClassType, property?: string) {
             if (!this.t.token) throw new Error('@eventDispatcher.listen(eventToken) is the correct syntax.');
             if (!property) throw new Error('@eventDispatcher.listen(eventToken) works only on class properties.');
 
@@ -104,20 +111,38 @@ export interface ControllerOptions {
 
 class HttpController {
     baseUrl: string = '';
-    actions: HttpAction[] = [];
+    actions = new Set<HttpAction>();
 
     getUrl(action: HttpAction): string {
         return join('/', this.baseUrl, action.path);
     }
 }
 
+class HttpActionParameter {
+    name: string = '';
+    type?: 'body' | 'query';
+
+    /**
+     * undefined = propertyName, '' === root, else given path
+     */
+    typePath?: string;
+    optional: boolean = false;
+}
+
 class HttpAction {
     name: string = '';
+    description: string = '';
+    category: string = '';
     path: string = '';
     httpMethod: string = 'GET';
     methodName: string = '';
 
     parameterRegularExpressions: { [name: string]: any } = {};
+
+    /**
+     * This is only filled when the user used @http.body() for example on an method argument.
+     */
+    parameters: { [name: string]: HttpActionParameter } = {};
 
     throws: { errorType: ClassType, message?: string }[] = [];
 }
@@ -129,8 +154,8 @@ class HttpDecorator {
         this.t.baseUrl = baseUrl;
     }
 
-    addAction(action: HttpAction) {
-        this.t.actions.push(action);
+    setAction(action: HttpAction) {
+        this.t.actions.add(action);
     }
 }
 
@@ -139,13 +164,25 @@ export const httpClass: ClassDecoratorResult<typeof HttpDecorator> = createClass
 class HttpActionDecorator {
     t = new HttpAction;
 
-    onDecorator(target: object, property?: string) {
-        this.t.methodName = property || '';
-        httpClass.addAction(this.t)(target);
+    onDecorator(target: ClassType, property: string) {
+        this.t.methodName = property;
+        httpClass.setAction(this.t)(target);
     }
 
     name(name: string) {
         this.t.name = name;
+    }
+
+    setParameter(name: string, parameter: HttpActionParameter) {
+        this.t.parameters[name] = parameter;
+    }
+
+    description(description: string) {
+        this.t.description = description;
+    }
+
+    category(category: string) {
+        this.t.category = category;
     }
 
     GET(path: string = '') {
@@ -182,6 +219,91 @@ class HttpActionDecorator {
     }
 }
 
+class HttpActionParameterDecorator {
+    t = new HttpActionParameter();
+
+    onDecorator(target: ClassType, propertyName?: string, parameterIndex?: number) {
+        if (!propertyName) throw new Error('@http action parameter decorator can only be used on method arguments.');
+        if (parameterIndex === undefined) throw new Error('@http action parameter decorator can only be used on method arguments.');
+        const schema = getClassSchema(target);
+        const property = schema.getMethodProperties(propertyName)[parameterIndex];
+        this.t.name = property.name;
+        if (this.t.typePath === undefined) {
+            this.t.typePath = property.name;
+        }
+        httpAction.setParameter(property.name, this.t)(target.prototype, propertyName);
+    }
+
+    /**
+     * Marks the argument as body parameter. Data from the client sent in the body
+     * will be tried to parsed (JSON/form data) and deserialized to the defined type.
+     * Make sure the class type as a schema assigned.
+     *
+     * @example
+     * ```typescript
+     * class MyActionBody {
+     *     @t name!: string;
+     * }
+     *
+     * class Controller {
+     *     @http.GET()
+     *     myAction(@http.body() body: MyActionBody) {
+     *         console.log('body', body.name);
+     *     }
+     * }
+     * ```
+     */
+    body() {
+        this.t.type = 'body';
+        this.t.typePath = ''; //root
+    }
+
+    query(path?: string) {
+        this.t.typePath = path; //undefined === propertyName
+        this.t.type = 'query';
+    }
+
+    get optional() {
+        this.t.optional = true;
+        return;
+    }
+
+    /**
+     * Marks the argument as query parameter. Data from the query string is parsed
+     * and deserialized to the defined type.
+     * Define a `path` if you want to parse a subset of the query string only.
+     *
+     * Note: Make sure the defined parameter type has optional properties,
+     * otherwise it's always required to pass a query string.
+     *
+     * @example
+     * ```typescript
+     * class MyActionQueries {
+     *     @t.optional name?: string;
+     * }
+     *
+     * class Controller {
+     *     @http.GET('my-action')
+     *     myAction(@http.queries() query: MyActionQueries) {
+     *         console.log('query', query.name);
+     *     }
+     * }
+     *
+     * // Open via, e.g.
+     * // -> /my-action?name=Peter
+     * ```
+     *
+     */
+    queries(path: string = '') {
+        this.t.typePath = path; //'' === root
+        this.t.type = 'query';
+    }
+}
+
+createPropertyDecoratorContext(HttpActionDecorator);
+
 export const httpAction: PropertyDecoratorResult<typeof HttpActionDecorator> = createPropertyDecoratorContext(HttpActionDecorator);
 
-export const http = mergeDecorator(httpClass, httpAction);
+export const httpActionParameter: PropertyDecoratorResult<typeof HttpActionParameterDecorator> = createPropertyDecoratorContext(HttpActionParameterDecorator);
+
+export const http = mergeDecorator(httpClass, httpAction, httpActionParameter);
