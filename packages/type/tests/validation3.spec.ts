@@ -1,9 +1,9 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {getClassSchema, jsonSerializer, PropertyValidator, t, uuid} from '../index';
-import {PropertyValidatorError, validate, ValidationFailed} from '../src/validation';
+import {validate, ValidationFailed} from '../src/validation';
 import {Channel, Job} from './big-entity';
-import {jitValidateProperty} from '../src/jit-validation';
+import {jitValidateProperty, PropertyValidatorError} from '../src/jit-validation';
 
 test('test any deep array', async () => {
     class Peter {

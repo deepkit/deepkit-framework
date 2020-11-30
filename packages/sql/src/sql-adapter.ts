@@ -32,7 +32,7 @@ import {
     SORT_ORDER
 } from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
-import {ClassSchema, getClassSchema, t} from '@deepkit/type';
+import {ClassSchema, getClassSchema, plainToClass, t} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
 import {SqlBuilder} from './sql-builder';
 import {SqlFormatter} from './sql-formatter';
@@ -297,7 +297,7 @@ export class SqlMigrationHandler {
 
     public async setLatestMigrationVersion(version: number): Promise<void> {
         const session = this.database.createSession();
-        session.add(this.migrationEntity.create({
+        session.add(plainToClass(this.migrationEntity, {
             version: version,
             created: new Date,
         }));

@@ -8,15 +8,64 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-//note: Not all options are supported in all databases.
 import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isObject, isPlainObject, toFastProperties} from '@deepkit/core';
-import {isArray, JSONEntity} from './utils';
+import {isArray} from './utils';
 import {extractMethod} from './code-parser';
 import getParameterNames from 'get-parameter-names';
-import {jsonSerializer} from './json-serializer';
-import {BackReferenceOptions, FieldDecoratorResult, ReferenceActions, resolveClassTypeOrForward} from './decorators';
 import {typedArrayMap, typedArrayNamesMap, Types} from './types';
-import {getGlobalStore} from './global';
+import {FieldDecoratorResult} from './field-decorator';
+
+export interface GlobalStore {
+    RegisteredEntities: { [name: string]: ClassType | ClassSchema };
+    unpopulatedCheck: UnpopulatedCheck;
+    /**
+     * Per default, @deepkit/types tries to detect forward-ref by checking the type in the metadata or given in @t.type(x) to be a function.
+     * If so, we treat it as a forwardRef. This does not work for ES5 fake-classes, since everything there is a function.
+     * Disable this feature flag to support IE11.
+     */
+    enableForwardRefDetection: boolean;
+}
+
+function getGlobal(): any {
+    if ('undefined' !== typeof globalThis) return globalThis;
+    if ('undefined' !== typeof window) return window;
+    throw Error('No global');
+}
+
+export function getGlobalStore(): GlobalStore {
+    const global = getGlobal();
+    if (!global.DeepkitStore) {
+        global.DeepkitStore = {
+            RegisteredEntities: {},
+            unpopulatedCheck: UnpopulatedCheck.Throw,
+            enableForwardRefDetection: true,
+        } as GlobalStore;
+    }
+
+    return global.DeepkitStore;
+}
+
+
+export function resolveClassTypeOrForward(type: ClassType | ForwardRefFn<ClassType>): ClassType {
+    return isFunction(type) ? (type as Function)() : type;
+}
+
+export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
+
+export interface BackReferenceOptions<T> {
+    /**
+     * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
+     */
+    via?: ClassType | ForwardRefFn<ClassType>,
+
+    /**
+     * A reference/backReference can define which reference on the other side
+     * reference back. This is necessary when multiple outgoing references
+     * to the same
+     */
+    mappedBy?: keyof T & string,
+}
+
 
 export type IndexOptions = Partial<{
     //index size. Necessary for blob/longtext, etc.
@@ -235,12 +284,12 @@ export class PropertyCompilerSchema {
             return `Partial<${this.templateArgs[0]}>${affix}`;
         }
         if (this.type === 'union') {
-            return this.templateArgs.map(v => v.toString()).join(' | ')+affix;
+            return this.templateArgs.map(v => v.toString()).join(' | ') + affix;
         }
         if (this.type === 'class') {
-            if (this.classTypeName) return this.classTypeName+affix;
+            if (this.classTypeName) return this.classTypeName + affix;
             return getClassName(this.resolveClassType || class {
-            })+affix;
+            }) + affix;
         }
         return `${this.type}${affix}`;
     }
@@ -353,7 +402,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             return `${this.templateArgs[0]}[]${affix}`;
         }
         if (this.type === 'class') {
-            if (this.classTypeName) return this.classTypeName+affix;
+            if (this.classTypeName) return this.classTypeName + affix;
             if (this.classTypeForwardRef) {
                 const resolved = resolveForwardRef(this.classTypeForwardRef);
                 if (resolved) return getClassName(resolved) + affix;
@@ -790,7 +839,7 @@ export class ClassSchema<T = any> {
      * //or
      * const schema = createClassSchema(MyClass);
      *
-     * schema.addProperty('anotherOne', f.type(String));
+     * schema.addProperty('fieldName', f.string);
      * ```
      */
     public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
@@ -809,7 +858,7 @@ export class ClassSchema<T = any> {
 
     protected resetCache() {
         this.jit = {};
-        this.getClassProperties()
+        this.getClassProperties();
         this.primaryKeys = undefined;
         this.autoIncrements = undefined;
         this.buildId++;
@@ -1132,10 +1181,6 @@ export class ClassSchema<T = any> {
         }
 
         return this.classProperties.get(name)!;
-    }
-
-    public create(propertyValues: JSONEntity<T>): T {
-        return jsonSerializer.for(this).deserialize(propertyValues);
     }
 }
 

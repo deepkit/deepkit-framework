@@ -8,19 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from './model';
+import {ClassSchema, getClassSchema} from './model';
 import {ClassType, getClassName} from '@deepkit/core';
-import {JitConverterOptions} from './jit';
-import {jsonSerializer} from './json-serializer';
-
-
-/**
- * Clones a class instance deeply.
- */
-export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
-    const s = jsonSerializer.for(getClassTypeFromInstance(target));
-    return s.deserialize(s.serialize(target, options), options, options?.parents);
-}
 
 /**
  * @hidden

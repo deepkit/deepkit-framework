@@ -9,46 +9,9 @@
  */
 
 import {ClassType, CustomError} from '@deepkit/core';
-import {ClassSchema, getClassSchema, PropertyCompilerSchema, PropertyValidator,} from './model';
-import {jitValidate, jitValidateProperty} from './jit-validation';
+import {ClassSchema, getClassSchema,} from './model';
+import {jitValidate, jitValidateProperty, ValidationFailedItem} from './jit-validation';
 import {ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
-import {ValidatorFn} from './decorators';
-
-export class PropertyValidatorError {
-    constructor(
-        public readonly code: string,
-        public readonly message: string,
-    ) {
-    }
-}
-
-/**
- * The structure of a validation error.
- *
- * Path defines the shallow or deep path (using dots).
- * Message is an arbitrary message in english.
- */
-export class ValidationFailedItem {
-    constructor(
-        /**
-         * The path to the property. May be a deep path separated by dot.
-         */
-        public readonly path: string,
-        /**
-         * A lower cased error code that can be used to identify this error and translate.
-         */
-        public readonly code: string,
-        /**
-         * Free text of the error.
-         */
-        public readonly message: string,
-    ) {
-    }
-
-    toString(prefix: string = '') {
-        return `${(prefix ? prefix + '.' : '') + this.path}(${this.code}): ${this.message}`;
-    }
-}
 
 /**
  *
@@ -59,24 +22,6 @@ export class ValidationFailed extends CustomError {
     }
 }
 
-export function handleCustomValidator<T>(
-    propSchema: PropertyCompilerSchema,
-    validator: PropertyValidator,
-    value: any,
-    propertyPath: string,
-    errors: ValidationFailedItem[],
-    classType?: ClassType,
-) {
-    try {
-        validator.validate(value, propSchema.name, classType);
-    } catch (error) {
-        if (error instanceof PropertyValidatorError) {
-            errors.push(new ValidationFailedItem(propertyPath, error.code, error.message || String(error)));
-        } else {
-            errors.push(new ValidationFailedItem(propertyPath, 'error', error.message || String(error)));
-        }
-    }
-}
 
 /**
  * Validates a set of method arguments and returns the number of errors found.
@@ -96,14 +41,6 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
     }
 
     return errors;
-}
-
-export function createValidatorFromFunction(validator: ValidatorFn) {
-    return class implements PropertyValidator {
-        validate<T>(value: any, propertyName: string, classType?: ClassType): PropertyValidatorError | undefined | void {
-            return validator(value, propertyName, classType);
-        }
-    };
 }
 
 /**

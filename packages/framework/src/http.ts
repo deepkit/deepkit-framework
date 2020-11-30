@@ -50,7 +50,7 @@ export function HttpError<T extends number>(code: T, defaultMessage: string = ''
 export function serveStaticListener(path: string): ClassType {
     @injectable()
     class HttpRequestStaticServingListener {
-        protected serveStatic = serveStatic(path);
+        protected serveStatic = serveStatic(path, {index: false});
 
         @eventDispatcher.listen(onHttpRequest, -1)
         onHttpRequest(event: EventOfEventToken<typeof onHttpRequest>) {

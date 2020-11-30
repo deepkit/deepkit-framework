@@ -1,8 +1,8 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
-import {cloneClass, isExcluded} from '../src/mapper';
-import {getClassSchema, OnLoad, jsonSerializer, resolvePropertyCompilerSchema, t, uuid, validate} from '../index';
+import {isExcluded} from '../src/mapper';
+import {getClassSchema, OnLoad, jsonSerializer, resolvePropertyCompilerSchema, t, uuid, validate, cloneClass} from '../index';
 import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from './document-scenario/DocumentClass';
 import {PageClass} from './document-scenario/PageClass';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';

@@ -1,8 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {t} from '../src/decorators';
-import {validate} from '../src/validation';
+import {validate, t} from '../index';
 
 test('string includes', () => {
     const schema = t.schema({

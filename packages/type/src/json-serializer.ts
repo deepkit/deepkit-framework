@@ -8,15 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, PropertyCompilerSchema} from './model';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertyCompilerSchema} from './model';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
-import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction} from './jit';
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
+import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions} from './jit';
+import {ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
 import {CompilerState, getDataConverterJS} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';
 import {moment} from './moment';
 import {typedArrayNamesMap} from './types';
+import {ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
+import {validate, ValidationFailed } from './validation';
 
 export class JSONSerializer extends Serializer {
     constructor() {
@@ -29,6 +31,70 @@ export const jsonSerializer = new JSONSerializer();
 export function compilerToString(property: PropertyCompilerSchema, state: CompilerState) {
     state.addSetter(`typeof ${state.accessor} === 'string' ? ${state.accessor} : ''+${state.accessor};`);
 }
+
+
+/**
+ * Converts a class instance into a plain object, which can be used with JSON.stringify() to convert it into a JSON string.
+ */
+export function classToPlain<T extends ClassType | ClassSchema>(classTypeOrSchema: T, target: ExtractClassType<T>, options?: JitConverterOptions): JSONEntity<ExtractClassType<T>> {
+    return getClassToXFunction(getClassSchema(classTypeOrSchema), jsonSerializer)(target, options);
+}
+
+/**
+ * Take a regular object literal and returns an instance of classType.
+ * Missing data is either replaced by the default value of that property or undefined.
+ *
+ * This method does not validate the given data. Use either [[validatedPlainToClass]] to validate beforehand
+ * or use [[validate]] on your newly created instance.
+ *
+ * ```typescript
+ * const entity = plainToClass(MyEntity, {field1: 'value'});
+ * entity instanceof MyEntity; //true
+ * ```
+ */
+export function plainToClass<T extends ClassType | ClassSchema>(
+    classTypeOrSchema: T,
+    data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
+    options?: JitConverterOptions
+): ExtractClassType<T> {
+    return getXToClassFunction(getClassSchema(classTypeOrSchema), jsonSerializer)(data, options);
+}
+
+/**
+ * Same as [plainToClass] but with validation before creating the class instance.
+ *
+ * ```typescript
+ * try {
+ *     const entity = await validatedPlainToClass(MyEntity, {field1: 'value'});
+ *     entity instanceof MyEntity; //true
+ * } catch (error) {
+ *     if (error instanceof ValidationFailed) {
+ *         //handle that case.
+ *     }
+ * }
+ * ```
+ */
+export function validatedPlainToClass<T extends ClassType | ClassSchema>(
+    classType: T,
+    data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
+    options?: JitConverterOptions
+): ExtractClassType<T> {
+    const errors = validate(classType, data);
+    if (errors.length) {
+        throw new ValidationFailed(errors);
+    }
+
+    return plainToClass(classType, data, options);
+}
+
+/**
+ * Clones a class instance deeply.
+ */
+export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
+    const s = jsonSerializer.for(getClassTypeFromInstance(target));
+    return s.deserialize(s.serialize(target, options), options, options?.parents);
+}
+
 
 jsonSerializer.toClass.register('string', compilerToString);
 

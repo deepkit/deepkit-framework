@@ -9,7 +9,7 @@
  */
 
 import {isArray} from '@deepkit/core';
-import {PropertyValidatorError} from './validation';
+import {PropertyValidatorError} from './jit-validation';
 import validator from 'validator';
 
 export const validators = {

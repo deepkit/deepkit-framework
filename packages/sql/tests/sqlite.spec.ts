@@ -1,7 +1,7 @@
 import 'jest';
 import 'reflect-metadata';
 import {SQLiteDatabaseAdapter} from '../index';
-import {Entity, t} from '@deepkit/type';
+import {Entity, plainToClass, t} from '@deepkit/type';
 import {createSetup} from './setup';
 
 test('sqlite basic', async () => {
@@ -13,9 +13,9 @@ test('sqlite basic', async () => {
 
     const database = await createSetup(new SQLiteDatabaseAdapter(':memory:'), [User]);
 
-    const user1 = User.create({id: 1, name: 'Yes', created: new Date()});
-    const user2 = User.create({id: 2, name: 'Wow', created: new Date()});
-    const user3 = User.create({id: 3, name: 'asdadasd', created: new Date()});
+    const user1 = plainToClass(User, {id: 1, name: 'Yes', created: new Date()});
+    const user2 = plainToClass(User, {id: 2, name: 'Wow', created: new Date()});
+    const user3 = plainToClass(User, {id: 3, name: 'asdadasd', created: new Date()});
 
     {
         const session = database.createSession();
