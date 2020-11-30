@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.1-alpha.0",
+  "version": "1.0.1-alpha.1",
   "description": "deepkit/type SQL adapter.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,9 +17,9 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.0",
-    "@deepkit/orm": "^1.0.1-alpha.0",
-    "@deepkit/type": "^1.0.1-alpha.0",
+    "@deepkit/core": "^1.0.1-alpha.1",
+    "@deepkit/orm": "^1.0.1-alpha.1",
+    "@deepkit/type": "^1.0.1-alpha.1",
     "better-sqlite3": "^7.1.1",
     "mariadb": "^2.4.2",
     "pg": "^8.4.2",

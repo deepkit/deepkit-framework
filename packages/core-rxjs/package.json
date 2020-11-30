@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/core-rxjs",
-  "version": "1.0.1-alpha.0",
+  "version": "1.0.1-alpha.1",
   "description": "Super Hornet core rxjs library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,7 +21,7 @@
     "rxjs": "~6.5.3"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.0",
+    "@deepkit/core": "^1.0.1-alpha.1",
     "rxjs": "~6.5.3"
   },
   "jest": {

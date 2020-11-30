@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-client",
-  "version": "1.0.1-alpha.0",
+  "version": "1.0.1-alpha.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": "https://github.com/deepkit/deepkit-framework",
@@ -15,10 +15,10 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.0",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.0",
-    "@deepkit/framework-shared": "^1.0.1-alpha.0",
-    "@deepkit/type": "^1.0.1-alpha.0",
+    "@deepkit/core": "^1.0.1-alpha.1",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.1",
+    "@deepkit/framework-shared": "^1.0.1-alpha.1",
+    "@deepkit/type": "^1.0.1-alpha.1",
     "dot-prop": "^5.1.1",
     "rxjs": "~6.5.3",
     "ws": "^7.2.1"

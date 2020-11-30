@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-shared",
-  "version": "1.0.1-alpha.0",
+  "version": "1.0.1-alpha.1",
   "main": "dist/",
   "types": "dist/index.d.ts",
   "license": "AGPL-3.0-only",
@@ -10,13 +10,10 @@
   "publishConfig": {
     "access": "public"
   },
-  "scripts": {
-  },
+  "scripts": {},
   "dependencies": {
-    "@deepkit/framework-shared": "^1.0.1-alpha.0",
-    "@deepkit/type": "^1.0.1-alpha.0"
-  },
-  "devDependencies": {
+    "@deepkit/framework-shared": "^1.0.1-alpha.1",
+    "@deepkit/type": "^1.0.1-alpha.1"
   },
   "jest": {
     "testEnvironment": "node",
