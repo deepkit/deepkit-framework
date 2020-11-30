@@ -1,6 +1,6 @@
 #!/bin/sh
 
-JEST=../node_modules/.bin/jest
+JEST=../../node_modules/.bin/jest
 
 ADAPTER_DRIVER=sqlite $JEST --forceExit;
 ADAPTER_DRIVER=mongo $JEST --forceExit;
