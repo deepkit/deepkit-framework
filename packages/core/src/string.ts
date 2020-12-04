@@ -13,3 +13,7 @@ export function indent(indentation: number) {
         return ' '.repeat(indentation) + str.replace(/\n/g, '\n' + (' '.repeat(indentation)));
     };
 }
+
+export function capitalize(string: string): string {
+    return string.charAt(0).toUpperCase() + string.slice(1)
+}

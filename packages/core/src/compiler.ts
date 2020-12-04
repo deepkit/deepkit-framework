@@ -25,13 +25,20 @@ export class CompilerContext {
         throw new Error(`Too many context variables (max ${this.maxReservedVariable})`);
     }
 
-    build(functionCode: string, ...args: string[]): Function {
+    builder(functionCode: string, ...args: string[]): Function {
         functionCode = `
             return function(${args.join(', ')}){ 
                 ${functionCode}
             };
         `;
-        return new Function(...this.context.keys(), functionCode)(...this.context.values());
+        const fn = new Function(...this.context.keys(), functionCode);
+        return () => {
+            return fn(...this.context.values());
+        }
+    }
+
+    build(functionCode: string, ...args: string[]): Function {
+        return this.builder(functionCode, ...args)();
     }
 
     buildAsync(functionCode: string, ...args: string[]): Function {

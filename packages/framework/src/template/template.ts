@@ -17,9 +17,9 @@
  */
 
 import {ClassType, isClass} from '@deepkit/core';
-import {Injector} from '../injector/injector';
 import {isArray} from '@deepkit/type';
 import './optimize-tsx';
+import {BasicInjector} from '../injector/injector';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
@@ -88,7 +88,7 @@ export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
 }
 
-async function renderChildren(injector: Injector, contents: ElementStructChildren[]): Promise<string> {
+async function renderChildren(injector: BasicInjector, contents: ElementStructChildren[]): Promise<string> {
     let children = '';
     //this is 3x faster than contents.join('')
     // for (const content of struct.contents) {
@@ -112,7 +112,7 @@ async function renderChildren(injector: Injector, contents: ElementStructChildre
     return children;
 }
 
-export async function render(injector: Injector, struct: ElementStruct | string): Promise<any> {
+export async function render(injector: BasicInjector, struct: ElementStruct | string): Promise<any> {
     if ('string' === typeof struct) {
         return struct;
     }

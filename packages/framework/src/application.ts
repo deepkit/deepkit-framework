@@ -17,7 +17,6 @@
  */
 
 import {ClassType} from '@deepkit/core';
-import {WebWorker} from './worker';
 import {KernelModule} from './kernel';
 import {ServiceContainer} from './service-container';
 import {ProviderWithScope} from './injector/provider';
@@ -29,8 +28,7 @@ import {ExitError} from '@oclif/errors';
 import {buildOclifCommand} from './command';
 
 export class Application<T extends ModuleOptions<any>> {
-    protected masterWorker?: WebWorker;
-    protected serviceContainer: ServiceContainer<T>;
+    public readonly serviceContainer: ServiceContainer<T>;
 
     constructor(
         appModule: Module<T>,
@@ -80,12 +78,8 @@ export class Application<T extends ModuleOptions<any>> {
         await this.execute(argv ?? process.argv.slice(2));
     }
 
-    getInjector() {
-        return this.serviceContainer.getRootContext().getInjector();
-    }
-
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T): R {
-        return this.serviceContainer.getRootContext().getInjector().get(token);
+        return this.serviceContainer.rootScopedContext.getInjector(0).get(token);
     }
 
     public async execute(argv: string[]) {
@@ -139,7 +133,7 @@ export class Application<T extends ModuleOptions<any>> {
         const config = new MyConfig({root: __dirname});
 
         for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
-            config.commandsMap[name] = buildOclifCommand(controller);
+            config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.rootScopedContext);
         }
 
         try {

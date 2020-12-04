@@ -121,7 +121,7 @@ export function isFunction(obj: any): obj is Function {
  *
  * @public
  */
-export function isPromise(obj: any): obj is Promise<any> {
+export function isPromise<T>(obj: any | Promise<T>): obj is Promise<T> {
     return obj !== null && typeof obj === "object" && typeof obj.then === "function"
         && typeof obj.catch === "function" && typeof obj.finally === "function";
 }

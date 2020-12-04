@@ -115,7 +115,10 @@ export interface ClientTransportAdapter {
     connect(connection: TransportConnectionHooks): Promise<void> | void;
 }
 
+let clientId = 0;
+
 export class Client {
+    protected id = clientId++;
     /**
      * True when the connection established (without authentication)
      */
@@ -368,6 +371,8 @@ export class Client {
         } else {
             if (this.replies[decoded.id]) {
                 this.replies[decoded.id](decoded);
+            } else {
+                console.warn(this.id, 'Got message from server without listener', decoded);
             }
         }
     }

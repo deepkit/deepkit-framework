@@ -220,7 +220,7 @@ export declare type ProviderProvide = ValueProvider | ClassProvider | ExistingPr
 
 
 export interface ProviderScope {
-    scope?: 'module' | 'session' | 'request' | 'cli';
+    scope?: 'module' | 'rpc' | 'http' | 'cli' | string;
 }
 
 export interface ProviderSingleScope extends ProviderScope {

@@ -16,63 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {arrayRemoveItem, ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
-import {eventClass, EventListenerCallback, EventOfEventToken, EventToken, httpClass} from './decorator';
+import {arrayRemoveItem, ClassType, getClassName, isClass} from '@deepkit/core';
+import {httpClass} from './decorator';
+import {EventDispatcher} from './event';
 import {Module, ModuleOptions} from './module';
 import {Injector, tokenLabel} from './injector/injector';
-import {getProviders, ProviderWithScope} from './injector/provider';
+import {ProviderWithScope} from './injector/provider';
 import {rpcClass} from '@deepkit/framework-shared';
 import {cli} from './command';
 import {HttpControllers} from './router';
-
-export class Context {
-    providers: ProviderWithScope[] = [];
-    children: Context[] = [];
-    parent?: Context;
-    injector?: Injector;
-    sessionInjector?: Injector;
-    requestInjector?: Injector;
-    cliInjector?: Injector;
-
-    constructor(public readonly id: number) {
-    }
-
-    isRoot(): boolean {
-        return this.id === 0;
-    }
-
-    getInjector(): Injector {
-        if (!this.injector) {
-            this.injector = new Injector(getProviders(this.providers, 'module'), this.parent ? [this.parent.getInjector()] : undefined);
-        }
-
-        return this.injector;
-    }
-
-    getSessionInjector(): Injector {
-        if (!this.sessionInjector) {
-            this.sessionInjector = new Injector(getProviders(this.providers, 'session'), this.parent ? [this.parent.getSessionInjector()] : undefined);
-        }
-
-        return this.sessionInjector;
-    }
-
-    getRequestInjector(): Injector {
-        if (!this.requestInjector) {
-            this.requestInjector = new Injector(getProviders(this.providers, 'request'), this.parent ? [this.parent.getRequestInjector()] : undefined);
-        }
-
-        return this.requestInjector;
-    }
-
-    getCliInjector(): Injector {
-        if (!this.cliInjector) {
-            this.cliInjector = new Injector(getProviders(this.providers, 'cli'), this.parent ? [this.parent.getCliInjector()] : undefined);
-        }
-
-        return this.cliInjector;
-    }
-}
+import {InjectorContext, Context, ContextRegistry} from './injector/injector';
 
 export interface OnInit {
     onInit: () => Promise<void>;
@@ -82,27 +35,13 @@ export interface onDestroy {
     onDestroy: () => Promise<void>;
 }
 
-export type SuperHornetController = {
+export type RpcController = {
     onDestroy?: () => Promise<void>;
     onInit?: () => Promise<void>;
 }
 
-/**
- * Per connection we have a own ControllerContainer
- */
-export class RpcControllerContainer {
-    constructor(protected controllers: Map<string, ClassType>, protected sessionRootInjector?: Injector) {
-    }
-
-    public createController<T>(classType: ClassType<T>): T {
-        const context = (classType as any)[ServiceContainer.contextSymbol] as Context;
-        if (!context) throw new Error(`Controller ${getClassName(classType)} has no injector context assigned`);
-
-        const contextSessionInjector = context.getSessionInjector().fork(this.sessionRootInjector);
-        const injector = new Injector([], [context.getInjector(), contextSessionInjector]);
-
-        return injector.get(classType);
-    }
+export class RpcControllers {
+    public readonly controllers = new Map<string, ClassType>();
 
     public resolveController(name: string): ClassType {
         const classType = this.controllers.get(name);
@@ -110,99 +49,6 @@ export class RpcControllerContainer {
 
         return classType;
     }
-}
-
-export type EventListenerContainerEntryCallback = { priority: number, fn: EventListenerCallback<any> };
-export type EventListenerContainerEntryService = { context: Context, priority: number, classType: ClassType, methodName: string };
-export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
-
-function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
-    return obj && isFunction(obj.fn);
-}
-
-function isEventListenerContainerEntryService(obj: any): obj is EventListenerContainerEntryService {
-    return obj && isClass(obj.classType);
-}
-
-export class EventDispatcher {
-    protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
-    public rootContext?: Context;
-    protected needsSort: boolean = false;
-
-    public registerListener(listener: ClassType, context?: Context) {
-        if (!context) {
-            if (!this.rootContext) throw new Error('No root context created yet.');
-            this.rootContext.getInjector().addProvider(listener);
-            context = this.rootContext;
-        }
-        const config = eventClass._fetch(listener);
-        if (!config) return;
-        for (const entry of config.listeners) {
-            this.add(entry.eventToken, {context, classType: listener, methodName: entry.methodName, priority: entry.priority});
-        }
-    }
-
-    public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {
-        this.getListeners(eventToken).push(listener);
-        this.needsSort = true;
-    }
-
-    protected getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
-        let listeners = this.listenerMap.get(eventToken);
-        if (!listeners) {
-            listeners = [];
-            this.listenerMap.set(eventToken, listeners);
-        }
-
-        return listeners;
-    }
-
-    protected sort() {
-        if (!this.needsSort) return;
-
-        for (const listeners of this.listenerMap.values()) {
-            listeners.sort((a, b) => {
-                if (a.priority > b.priority) return +1;
-                if (a.priority < b.priority) return -1;
-                return 0;
-            });
-        }
-
-        this.needsSort = false;
-    }
-
-    public dispatch<T extends EventToken<any>>(eventToken: T, event: EventOfEventToken<T>): Promise<void> {
-        return this.getCaller(eventToken)(event);
-    }
-
-    public getCaller<T extends EventToken<any>>(eventToken: T): (event: EventOfEventToken<T>) => Promise<void> {
-        this.sort();
-        const listeners = this.getListeners(eventToken);
-
-        return async (event) => {
-            for (const listener of listeners) {
-                if (isEventListenerContainerEntryCallback(listener)) {
-                    await listener.fn(event);
-                } else if (isEventListenerContainerEntryService(listener)) {
-                    const injector = new Injector([], [listener.context.getInjector(), listener.context.getRequestInjector().fork()]);
-                    await injector.get(listener.classType)[listener.methodName](event);
-                }
-                if (event.isStopped()) {
-                    return;
-                }
-            }
-        };
-    }
-}
-
-export function getClassTypeContext(classType: ClassType): Context {
-    const context = (classType as any)[ServiceContainer.contextSymbol] as Context | undefined;
-    if (!context) throw new Error(`Class ${getClassName(classType)} is not registered as provider.`);
-    return context;
-}
-
-export class RpcControllers {
-    public readonly controllers = new Map<string, ClassType>();
 }
 
 export class CliControllers {
@@ -214,13 +60,11 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     public readonly rpcControllers = new RpcControllers;
     public readonly httpControllers = new HttpControllers([]);
 
-    public readonly eventListenerContainer = new EventDispatcher();
-
-    public static contextSymbol = Symbol('context');
-
     protected currentIndexId = 0;
 
-    protected contexts = new Map<number, Context>();
+    protected contextManager = new ContextRegistry();
+    public rootScopedContext = new InjectorContext(this.contextManager, 'module');
+    protected eventListenerContainer = new EventDispatcher(this.rootScopedContext);
 
     protected rootContext?: Context;
     protected moduleContexts = new Map<Module<ModuleOptions<any>>, Context[]>();
@@ -237,24 +81,6 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         this.bootstrapModules();
     }
 
-    static getControllerContext(classType: ClassType) {
-        const context = (classType as any)[ServiceContainer.contextSymbol] as Context;
-        if (!context) throw new Error(`Controller ${getClassName(classType)} has no injector context assigned`);
-        return context;
-    }
-
-    static assignStandaloneInjector(classTypes: ClassType[]) {
-        const injector = new Injector();
-        const context = new Context(0);
-        context.injector = injector;
-
-        for (const classType of classTypes) {
-            if (!(classType as any)[ServiceContainer.contextSymbol]) {
-                (classType as any)[ServiceContainer.contextSymbol] = context;
-            }
-        }
-    }
-
     protected processRootModule(
         appModule: Module<any>,
         providers: ProviderWithScope[] = [],
@@ -267,9 +93,9 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         providers.push({provide: HttpControllers, useValue: this.httpControllers});
         providers.push({provide: CliControllers, useValue: this.cliControllers});
         providers.push({provide: RpcControllers, useValue: this.rpcControllers});
+        providers.push({provide: InjectorContext, useValue: this.rootScopedContext});
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
-        this.eventListenerContainer.rootContext = this.rootContext;
         return appModule;
     }
 
@@ -283,27 +109,24 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         return module;
     }
 
-    public getRootContext(): Context {
-        if (!this.rootContext) throw new Error(`No root context created yet.`);
-        return this.rootContext;
-    }
-
     bootstrapModules(): void {
         for (const [module, contexts] of this.moduleContexts.entries()) {
             for (const context of contexts) {
                 if (module.options.bootstrap) {
-                    context.getInjector().get(module.options.bootstrap);
+                    this.getInjectorFor(module).get(module.options.bootstrap);
                 }
             }
         }
     }
 
-    public getContextsForModuleId(module: Module<any>): Context[] {
-        return this.moduleIdContexts.get(module.id) || [];
+    public getInjectorFor(module: Module<any>): Injector {
+        const contexts = this.moduleIdContexts.get(module.id) || [];
+        if (!contexts.length) throw new Error('Module not registered.');
+        return this.rootScopedContext.getInjector(contexts[0].id);
     }
 
-    public getContext(id: number): Context {
-        const context = this.contexts.get(id);
+    protected getContext(id: number): Context {
+        const context = this.contextManager.get(id);
         if (!context) throw new Error(`No context for ${id} found`);
 
         return context;
@@ -311,13 +134,8 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
 
     protected getNewContext(module: Module<any>, parent?: Context): Context {
         const newId = this.currentIndexId++;
-        const context = new Context(newId);
-        this.contexts.set(newId, context);
-
-        if (parent) {
-            parent.children.push(context);
-            context.parent = parent;
-        }
+        const context = new Context(newId, parent);
+        this.contextManager.set(newId, context);
 
         let contexts = this.moduleContexts.get(module);
         if (!contexts) {
@@ -389,16 +207,16 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         for (const controller of controllers) {
             const rpcConfig = rpcClass._fetch(controller);
             if (rpcConfig) {
-                providers.unshift({provide: controller, scope: 'session'});
-                (controller as any)[ServiceContainer.contextSymbol] = context;
+                providers.unshift({provide: controller, scope: 'rpc'});
+                (controller as any)[InjectorContext.contextSymbol] = context;
                 this.rpcControllers.controllers.set(rpcConfig.getPath(), controller);
                 continue;
             }
 
             const httpConfig = httpClass._fetch(controller);
             if (httpConfig) {
-                providers.unshift(controller);
-                (controller as any)[ServiceContainer.contextSymbol] = context;
+                providers.unshift({provide: controller, scope: 'http'});
+                (controller as any)[InjectorContext.contextSymbol] = context;
                 this.httpControllers.add(controller);
                 continue;
             }
@@ -406,7 +224,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
             const cliConfig = cli._fetch(controller);
             if (cliConfig) {
                 providers.unshift({provide: controller, scope: 'cli'});
-                (controller as any)[ServiceContainer.contextSymbol] = context;
+                (controller as any)[InjectorContext.contextSymbol] = context;
                 this.cliControllers.controllers.set(cliConfig.name, controller);
                 continue;
             }

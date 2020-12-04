@@ -18,13 +18,14 @@
 
 import {each, getClassName} from '@deepkit/core';
 import {WebWorker, WebWorkerFactory} from './worker';
-import {EventDispatcher, RpcControllers} from './service-container';
-import {BaseEvent, eventDispatcher, EventToken, httpClass} from './decorator';
+import {RpcControllers} from './service-container';
+import {EventDispatcher, BaseEvent, eventDispatcher, EventToken} from './event';
 import * as cluster from 'cluster';
 import {injectable} from './injector/injector';
-import { Logger } from './logger';
+import {Logger} from './logger';
 import {kernelConfig} from './kernel.config';
-import { HttpControllers } from './router';
+import {HttpControllers} from './router';
+import {httpClass} from './decorator';
 
 export class ServerBootstrapEvent extends BaseEvent {}
 export const onServerBootstrap = new EventToken('server.bootstrap', ServerBootstrapEvent);
@@ -108,6 +109,12 @@ export class ApplicationServer {
     }
 
     public async start() {
+        //listening to this signal is required to make ts-node-dev working with its reload feature.
+        process.on('SIGTERM', () => {
+            console.log('Received SIGTERM.');
+            process.exit(0);
+        });
+
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
                 await this.bootstrap();
@@ -120,7 +127,7 @@ export class ApplicationServer {
                 this.webWorkerFactory.create(cluster.worker.id, this.config);
 
                 cluster.on('exit', (w) => {
-                    this.logger.warning('mayday! mayday! worker', w.id, ' is no more!');
+                    this.logger.warning(`Worker ${w.id} died.`);
                     cluster.fork();
                 });
             }

@@ -16,11 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {EntityStorage} from './entity-storage';
-import {createModule} from '../module';
+import {createWorkflow, WorkflowEvent} from './workflow';
+import {InjectorContext} from './injector/injector';
 
-export const AutoSyncModule = createModule({
-    providers: [
-        {provide: EntityStorage, scope: 'rpc'}
-    ]
+export const rpcWorkflow = createWorkflow('rpc', {
+    start: WorkflowEvent,
+    connect: WorkflowEvent,
+    auth: WorkflowEvent,
+    action: WorkflowEvent,
+    actionException: WorkflowEvent,
+    actionResult: WorkflowEvent,
+    disconnect: WorkflowEvent,
+    end: WorkflowEvent,
+}, {
+    start: 'connect',
+    connect: ['auth', 'action', 'disconnect'],
+    action: 'actionException',
+    actionException: 'disconnect',
+    actionResult: 'disconnect',
+    disconnect: 'end'
 });
+
+export class RpcInjectorContext extends InjectorContext {}

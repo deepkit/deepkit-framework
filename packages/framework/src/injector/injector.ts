@@ -17,8 +17,8 @@
  */
 
 import {ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, PlainSchemaProps, t} from '@deepkit/type';
-import {ClassProvider, ExistingProvider, FactoryProvider, Provider, ValueProvider,} from './provider';
-import {ClassType, getClassName, isClass, isFunction} from '@deepkit/core';
+import {ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provider, ProviderWithScope, ValueProvider} from './provider';
+import {ClassType, CompilerContext, getClassName, isClass, isFunction} from '@deepkit/core';
 import {Module, ModuleOptions} from '../module';
 
 
@@ -176,7 +176,6 @@ export function isFactoryProvider(obj: any): obj is FactoryProvider {
     return obj.provide && obj.hasOwnProperty('useFactory');
 }
 
-const CircularDetector = new Set();
 
 export class CircularDependencyError extends Error {
 }
@@ -200,38 +199,52 @@ export interface ConfigContainer {
     get(path: string): any;
 }
 
+let CircularDetector: any[] = [];
+
+export interface BasicInjector {
+    get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R;
+}
+
 export class Injector {
-    protected fetcher = new Map<any, (rootInjector?: Injector) => any>();
-    protected resolved = new Map<any, any>();
     public circularCheck: boolean = true;
     public allowUnknown: boolean = false;
 
-    constructor(
-        protected providers: Provider[] = [],
-        protected parents: Injector[] = [],
-    ) {
-        this.addProviders(providers);
-        this.addProvider({provide: Injector, useValue: this});
+    protected resolved: any[] = [];
+
+    protected retriever(injector: Injector, token: any, frontInjector?: Injector): any {
+        for (const parent of injector.parents) {
+            const v = parent.retriever(parent, token, frontInjector);
+            if (v !== undefined) return v;
+        }
+        return undefined;
     }
 
-    addProviders(providers: Provider[] = []) {
-        for (const provider of providers) this.addProvider(provider);
+    constructor(
+        protected providers: Provider[] = [],
+        public parents: Injector[] = [],
+        protected factories = new Map<any, (rootInjector?: Injector) => any>(),
+        protected injectorContext?: InjectorContext
+    ) {
+        if (providers.length) {
+            this.addProviders(providers);
+        }
+    }
+
+    addProviders(providers: Provider[] = [], withBuild = true) {
+        for (const provider of providers) this.addProvider(provider, false);
+        if (withBuild) {
+            this.retriever = this.buildRetriever();
+        }
     }
 
     /**
-     * Creates clone of this instance, maintains the provider structure, but drops provider instances.
+     * Creates a clone of this instance, maintains the provider structure, but drops provider instances.
      * Note: addProviders() in the new fork changes the origin, since providers array is not cloned.
      */
-    public fork(newRoot?: Injector) {
-        const injector = new Injector();
-        if (newRoot && (this.parents.length === 0 || (this.parents.length === 1 && this.parents[0].isRoot()))) {
-            injector.parents = [newRoot];
-        } else {
-            injector.parents = this.parents.map(v => v.fork(newRoot));
-        }
-
-        injector.fetcher = this.fetcher;
+    public fork(parents?: Injector[], injectorContext?: InjectorContext) {
+        const injector = new Injector(undefined, parents || this.parents, this.factories, injectorContext);
         injector.providers = this.providers;
+        injector.retriever = this.retriever;
         return injector;
     }
 
@@ -245,41 +258,38 @@ export class Injector {
         return this;
     }
 
-    public addProvider(provider: Provider) {
+    public addProvider(provider: Provider, withBuild = true) {
+        if (this.factories.size === 0) {
+            this.factories.set(Injector, (frontInjector?: Injector) => {
+                return this;
+            });
+        }
+
         if (isValueProvider(provider)) {
-            this.fetcher.set(provider.provide, (frontInjector?: Injector) => {
+            this.factories.set(provider.provide, function (frontInjector?: Injector) {
                 return provider.useValue;
             });
         } else if (isClassProvider(provider)) {
-            this.fetcher.set(provider.provide, (frontInjector?: Injector) => {
-                const resolved = this.resolved.get(provider.useClass);
-                if (resolved) return resolved;
+            this.factories.set(provider.provide, (frontInjector?: Injector) => {
                 return this.create(provider.useClass, frontInjector);
             });
         } else if (isExistingProvider(provider)) {
-            this.fetcher.set(provider.provide, (frontInjector?: Injector) => {
-                return this.fetcher.get(provider.useExisting)!(frontInjector);
+            this.factories.set(provider.provide, (frontInjector?: Injector) => {
+                return (frontInjector || this).get(provider.useExisting, frontInjector);
             });
         } else if (isFactoryProvider(provider)) {
-            this.fetcher.set(provider.provide, (frontInjector?: Injector) => {
-                const deps: any[] = (provider.deps || []).map(v => this.get(v, frontInjector));
+            this.factories.set(provider.provide, (frontInjector?: Injector) => {
+                const deps: any[] = (provider.deps || []).map(v => (frontInjector || this).get(v, frontInjector));
                 return provider.useFactory(...deps);
             });
         } else if (isClass(provider)) {
-            this.fetcher.set(provider, (frontInjector?: Injector) => {
+            this.factories.set(provider, (frontInjector?: Injector) => {
                 return this.create(provider, frontInjector);
             });
         }
-    }
-
-    public isDefined(token: any) {
-        if (this.fetcher.has(token)) return true;
-
-        for (const parent of this.parents) {
-            if (parent.isDefined(token)) return true;
+        if (withBuild) {
+            this.retriever = this.buildRetriever();
         }
-
-        return false;
     }
 
     protected create<T>(classType: ClassType<T>, frontInjector?: Injector): T {
@@ -342,46 +352,217 @@ export class Injector {
         return new classType(...args);
     }
 
-    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
-        const root = CircularDetector.size === 0;
+    protected buildRetriever(): (injector: Injector, token: any, frontInjector?: Injector) => any {
+        const compiler = new CompilerContext();
+        const lines: string[] = [];
+        this.resolved = [];
 
-        try {
-            let resolved = this.resolved.get(token);
-            if (resolved !== undefined) return resolved;
+        const injectorContextClassType = compiler.reserveVariable('injectorContextClassType', InjectorContext);
+        lines.push(`
+            case ${injectorContextClassType}: return injector.injectorContext;
+        `);
 
-            const builder = this.fetcher.get(token);
-            if (builder) {
-                if (this.circularCheck) {
-                    if (CircularDetector.has(token)) {
-                        const path = [...CircularDetector.values(), token].map(tokenLabel).join(' -> ');
-                        throw new CircularDependencyError(`Circular dependency found ${path}`);
-                    }
-
-                    CircularDetector.add(token);
+        let resolvedIds = 0;
+        for (const [provide, factory] of this.factories.entries()) {
+            const resolvedId = resolvedIds++;
+            this.resolved.push(undefined);
+            const tokenVar = compiler.reserveVariable('token', provide);
+            const resolvedIdVar = compiler.reserveVariable('resolvedId', resolvedId);
+            const factoryVar = compiler.reserveVariable('factory', factory);
+            lines.push(`
+                case ${tokenVar}: {
+                    const r = injector.resolved[${resolvedIdVar}];
+                    if (r !== undefined) return r;
+                    return injector.resolved[${resolvedIdVar}] = ${factoryVar}(frontInjector);
                 }
+            `);
+        }
 
-                resolved = builder(frontInjector);
-                this.resolved.set(token, resolved);
-                return resolved;
+        const parents: string[] = [];
+        for (let i = 0; i < this.parents.length; i++) {
+            parents.push(`
+                {
+                    const v = injector.parents[${i}].retriever(injector.parents[${i}], token, frontInjector);
+                    if (v !== undefined) return v;
+                }
+            `);
+        }
+
+        return compiler.build(`
+        switch (token) {
+            ${lines.join('\n')}
+        }
+        
+        ${parents.join('\n')}
+
+        return undefined;
+        `, 'injector', 'token', 'frontInjector') as any;
+    }
+
+    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
+        try {
+            if (this.circularCheck && -1 !== CircularDetector.indexOf(token)) {
+                const path = [...CircularDetector, token].map(tokenLabel).join(' -> ');
+                throw new CircularDependencyError(`Circular dependency found ${path}`);
             }
 
-            //check first parents before we simply create the class instance
-            for (const parent of this.parents) {
-                if (parent.isDefined(token)) return parent.get(token, frontInjector ?? this);
-            }
+            CircularDetector.push(token);
 
-            if (frontInjector?.isDefined(token)) return frontInjector.get(token);
-
-            if (this.allowUnknown && isClass(token)) {
-                resolved = this.create(token, frontInjector);
-                this.resolved.set(token, resolved);
-                return resolved;
-            }
+            const v = this.retriever(this, token, frontInjector || this);
+            if (v !== undefined) return v;
 
             throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
         } finally {
-            CircularDetector.delete(token);
-            if (root) CircularDetector.clear();
+            CircularDetector.pop();
         }
+    }
+}
+
+export class MemoryInjector extends Injector {
+
+    constructor(protected providers: { provide: any, useValue: any }[]) {
+        super();
+    }
+
+    fork(parents?: Injector[]): Injector {
+        return this;
+    }
+
+    protected retriever(injector: Injector, token: any) {
+        return injector.get(token);
+    }
+
+    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
+        for (const p of this.providers) {
+            if (p.provide === token) return p.useValue;
+        }
+        throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
+    }
+}
+
+export class ContextRegistry {
+    public contexts: Context[] = [];
+
+    get size(): number {
+        return this.contexts.length;
+    }
+
+    get(id: number): Context {
+        return this.contexts[id];
+    }
+
+    set(id: number, value: Context) {
+        this.contexts[id] = value;
+    }
+}
+
+export class ScopedContextScopeCaches {
+    protected caches: { [name: string]: ScopedContextCache } = {};
+
+    constructor(protected size: number) {
+    }
+
+
+    getCache(scope: string): ScopedContextCache {
+        let cache = this.caches[scope];
+
+        if (!cache) {
+            cache = new ScopedContextCache(this.size);
+            this.caches[scope] = cache;
+        }
+
+        return cache;
+    }
+}
+
+export class ScopedContextCache {
+    protected injectors: (Injector | undefined)[] = new Array(this.size);
+
+    constructor(protected size: number) {
+    }
+
+    get(contextId: number): Injector | undefined {
+        return this.injectors[contextId];
+    }
+
+    set(contextId: number, injector: Injector) {
+        this.injectors[contextId] = injector;
+    }
+}
+
+export class Context {
+    providers: ProviderWithScope[] = [];
+
+    constructor(
+        public readonly id: number,
+        public readonly parent?: Context,
+    ) {
+    }
+}
+
+export class InjectorContext {
+    protected injectors: (Injector | undefined)[] = new Array(this.contextManager.contexts.length);
+    public readonly scopeCaches: ScopedContextScopeCaches;
+    protected cache: ScopedContextCache;
+
+    public static contextSymbol = Symbol('context');
+
+    constructor(
+        public readonly contextManager: ContextRegistry = new ContextRegistry,
+        public readonly scope: string = 'module',
+        public readonly parent?: InjectorContext,
+        public readonly additionalInjectorParent?: Injector,
+        scopeCaches?: ScopedContextScopeCaches,
+    ) {
+        this.scopeCaches = scopeCaches || new ScopedContextScopeCaches(this.contextManager.size);
+        this.cache = this.scopeCaches.getCache(this.scope);
+    }
+
+    static forProviders(providers: ProviderWithScope[]) {
+        const registry = new ContextRegistry();
+        const context = new Context(0);
+        registry.set(0, context);
+        context.providers.push(...providers);
+        return new InjectorContext(registry);
+    }
+
+    public getInjector(contextId: number): Injector {
+        let injector = this.injectors[contextId];
+        if (injector) return injector;
+
+        // injector = this.cache.get(contextId);
+        // if (injector) return injector;
+
+        const parents: Injector[] = [];
+        parents.push(this.parent ? this.parent.getInjector(contextId) : new Injector());
+        if (this.additionalInjectorParent) parents.push(this.additionalInjectorParent.fork(undefined, this));
+
+        const context = this.contextManager.get(contextId);
+        if (context.parent) parents.push(this.getInjector(context.parent.id));
+
+        injector = this.cache.get(contextId);
+        if (injector) {
+            //we have one from cache. Clear it, and return
+            injector = injector.fork(parents, this);
+            return this.injectors[contextId] = injector;
+        }
+
+        const providers = getProviders(context.providers, this.scope);
+
+        injector = new Injector(providers, parents, undefined, this);
+        this.injectors[contextId] = injector;
+        this.cache.set(contextId, injector);
+
+        return injector;
+    }
+
+    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
+        const context = token ? (token as any)[InjectorContext.contextSymbol] as Context : undefined;
+        const injector = this.getInjector(context ? context.id : 0);
+        return injector.get(token, frontInjector);
+    }
+
+    public createChildScope(scope: string, additionalInjectorParent?: Injector): InjectorContext {
+        return new InjectorContext(this.contextManager, scope, this, additionalInjectorParent, this.scopeCaches);
     }
 }

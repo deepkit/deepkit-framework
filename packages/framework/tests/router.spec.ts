@@ -1,7 +1,7 @@
 import 'jest';
 import 'reflect-metadata';
 import {Router} from '../src/router';
-import {HttpKernel} from '../src/http';
+import {HttpKernel, JSONResponse} from '../src/http';
 import {http, httpClass} from '../src/decorator';
 import {Application} from '../src/application';
 import {IncomingMessage} from 'http';
@@ -49,22 +49,22 @@ test('router parameters', async () => {
     class Controller {
         @http.GET('/user/:name')
         string(name: string) {
-            return name;
+            return new JSONResponse(name);
         }
 
         @http.GET('/user-id/:id')
         number(id: number) {
-            return id;
+            return new JSONResponse(id);
         }
 
         @http.GET('/boolean/:yes')
         boolean(yes: boolean) {
-            return yes;
+            return new JSONResponse(yes);
         }
 
         @http.GET(':path').regexp('path', '.*')
         any(path: string) {
-            return path;
+            return new JSONResponse(path);
         }
     }
 

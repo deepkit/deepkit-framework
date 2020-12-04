@@ -16,11 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {inject, Injector} from '../injector/injector';
+import {inject} from '../injector/injector';
 import {Database} from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
 import {ClassSchema, getClassSchema} from '@deepkit/type';
 import {databaseConfig} from './database.config';
+import {InjectorContext} from '../injector/injector';
 
 /**
  * Class to register a new database and resolve a schema/type to a database.
@@ -29,7 +30,7 @@ export class Databases {
     protected databaseMap = new Map<string, Database<any>>();
 
     constructor(
-        @inject().root() protected injector: Injector,
+        protected scopedContext: InjectorContext,
         @inject(databaseConfig.token('databases')) public databaseTypes: ClassType<Database<any>>[]
     ) {
     }
@@ -42,7 +43,7 @@ export class Databases {
 
     public init() {
         for (const databaseType of this.databaseTypes) {
-            const database = this.injector.get(databaseType);
+            const database = this.scopedContext.get(databaseType);
 
             for (const classSchema of database.classSchemas.values()) {
                 classSchema.data['orm.database'] = database;

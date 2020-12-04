@@ -21,7 +21,7 @@ import {Logger, TimestampFormatter} from '../logger';
 import {kernelConfig} from '../kernel.config';
 import {ApplicationServer} from '../application-server';
 import {WebWorkerFactory} from '../worker';
-import {EventDispatcher} from '../service-container';
+import {EventDispatcher} from '../event';
 
 class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) {}
 

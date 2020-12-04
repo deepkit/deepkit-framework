@@ -17,7 +17,7 @@ async function main() {
     const filterRegex = filter ? new RegExp(filter.replace(/\*/, '.*')) : undefined;
 
     for (const benchmarkPath of benchmarkPaths) {
-        const id = benchmarkPath.substring('./src/'.length, benchmarkPath.length - 3);
+        const id = benchmarkPath.substring('./src/'.length, benchmarkPath.length - '.ts'.length - '.bench'.length);
 
         if (filterRegex && !filterRegex.exec(id)) continue;
 

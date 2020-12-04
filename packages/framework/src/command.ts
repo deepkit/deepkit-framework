@@ -30,8 +30,7 @@ import {IBooleanFlag, IOptionFlag} from '@oclif/parser/lib/flags';
 import {ClassType} from '@deepkit/core';
 import {Command as OclifCommand} from '@oclif/config';
 import {Command as OclifCommandBase} from '@oclif/command';
-import {ServiceContainer} from './service-container';
-import {Injector} from './injector/injector';
+import {InjectorContext} from './injector/injector';
 
 class ArgDefinitions {
     name: string = '';
@@ -134,7 +133,7 @@ export function isCommand(classType: ClassType<Command>) {
     return !!cli._fetch(classType);
 }
 
-export function buildOclifCommand(classType: ClassType<Command>): OclifCommand.Plugin {
+export function buildOclifCommand(classType: ClassType<Command>, rootScopedContext: InjectorContext): OclifCommand.Plugin {
     const oclifArgs: args.Input = [];
     const oclifFlags: { [name: string]: IBooleanFlag<any> | IOptionFlag<any> } = {};
     const argDefinitions = cli._fetch(classType);
@@ -175,9 +174,8 @@ export function buildOclifCommand(classType: ClassType<Command>): OclifCommand.P
 
                 async run() {
                     const {flags, args} = this.parse(Clazz);
-                    const context = ServiceContainer.getControllerContext(classType);
-                    const injector = new Injector([], [context.getInjector(), context.getCliInjector().fork()]);
-                    const instance = injector.get(classType);
+                    const cliScopedContext = rootScopedContext.createChildScope('cli');
+                    const instance = cliScopedContext.get(classType);
                     const methodArgs: any[] = [];
 
                     for (const property of properties) {

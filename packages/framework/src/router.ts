@@ -21,13 +21,13 @@ import {join} from 'path';
 import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema} from '@deepkit/type';
 import {ValidationError, ValidationErrorItem} from '@deepkit/framework-shared';
 import {httpClass} from './decorator';
-import {injectable, Injector} from './injector/injector';
+import {BasicInjector, injectable} from './injector/injector';
 import {Logger} from './logger';
 import {IncomingMessage, ServerResponse} from 'http';
 import * as formidable from 'formidable';
 import * as querystring from 'querystring';
 
-type ResolvedController = { parameters: (injector: Injector) => any[], routeConfig: RouteConfig };
+type ResolvedController = { parameters: (injector: BasicInjector) => any[], routeConfig: RouteConfig };
 
 export class HttpControllers {
     constructor(public readonly controllers: ClassType[]) {

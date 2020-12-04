@@ -185,6 +185,22 @@ test('injector stack parent', () => {
     expect(i3.get('level2')).toBe(3);
 });
 
+test('injector stack parent fork', () => {
+    const i1 = new Injector([
+        {provide: 'level', deps: ['deep1'], useFactory: (d: any) => d},
+        {provide: 'level2', deps: ['deep2'], useFactory: (d: any) => d},
+    ]);
+
+    const i2 = new Injector([{provide: 'deep1', useValue: 2}], [i1]).fork();
+    const i3 = new Injector([{provide: 'deep2', useValue: 3}], [i2]).fork();
+
+    expect(i2.get('level')).toBe(2);
+    expect(i3.get('level')).toBe(2);
+
+    expect(() => i2.get('level2')).toThrow('Could not resolve injector token deep2');
+    expect(i3.get('level2')).toBe(3);
+});
+
 
 test('injector config', () => {
     const FullConfig = createConfig({
@@ -202,4 +218,18 @@ test('injector config', () => {
     const i1 = new Injector([
         MyService
     ]);
+});
+
+test('injector fork', () => {
+    class MyService {
+    }
+
+    const i1 = new Injector([MyService]);
+    const s1 = i1.get(MyService);
+    expect(s1).toBeInstanceOf(MyService);
+
+    const i2 = i1.fork();
+    const s2 = i2.get(MyService);
+    expect(s2).toBeInstanceOf(MyService);
+    expect(s2).not.toBe(s1);
 });

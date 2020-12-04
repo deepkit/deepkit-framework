@@ -23,7 +23,8 @@ import {arrayRemoveItem, each, ProcessLock, ProcessLocker} from '@deepkit/core';
 import {PropertySchema, uuid} from '@deepkit/type';
 import {SecurityStrategy} from './security';
 import {Exchange} from './exchange/exchange';
-import {RpcControllerContainer, SuperHornetController} from './service-container';
+import {RpcControllers, RpcController} from './service-container';
+import {RpcInjectorContext} from './rpc';
 import {inject, injectable} from './injector/injector';
 
 @injectable()
@@ -32,7 +33,7 @@ export class ClientConnection {
 
     protected timeoutTimers: any[] = [];
     protected destroyed = false;
-    protected usedControllers: { [path: string]: { i: SuperHornetController, p: Promise<any> } } = {};
+    protected usedControllers: { [path: string]: { i: RpcController, p: Promise<any> } } = {};
 
     private cachedActionsTypes: {
         [controllerName: string]: { [actionName: string]: ActionTypes }
@@ -50,8 +51,9 @@ export class ClientConnection {
         protected security: SecurityStrategy,
         protected locker: ProcessLocker,
         protected exchange: Exchange,
-        protected rpcControllerContainer: RpcControllerContainer,
         protected connectionMiddleware: ConnectionMiddleware,
+        protected scopedContext: RpcInjectorContext,
+        protected rpcControllers: RpcControllers,
         protected writer: ConnectionWriter,
         @inject('remoteAddress') public readonly remoteAddress: string,
     ) {
@@ -248,7 +250,7 @@ export class ClientConnection {
                         type: 'actionTypes/result',
                         id: message.id,
                         parameters: parameters.map(v => v.toJSON()),
-                    });
+                    }).catch(console.error);
                 }
             } catch (error) {
                 this.writer.sendError(message.id, error);
@@ -267,7 +269,7 @@ export class ClientConnection {
                 type: 'authenticate/result',
                 id: message.id,
                 result: this.sessionStack.isSet(),
-            });
+            }).catch(console.error);
             return;
         }
 
@@ -348,7 +350,7 @@ export class ClientConnection {
         }
 
         if (!this.cachedActionsTypes[controller][action]) {
-            const classType = await this.rpcControllerContainer.resolveController(controller);
+            const classType = await this.rpcControllers.resolveController(controller);
 
             const access = await this.security.hasAccess(this.sessionStack.getSessionOrUndefined(), classType, action);
             if (!access) {
@@ -371,14 +373,14 @@ export class ClientConnection {
     }
 
     public async action(controller: string, action: string, args: any[]): Promise<{ value: any, encoding: PropertySchema }> {
-        const classType = await this.rpcControllerContainer.resolveController(controller);
+        const classType = await this.rpcControllers.resolveController(controller);
 
         const access = await this.security.hasAccess(this.sessionStack.getSessionOrUndefined(), classType, action);
         if (!access) {
             throw new Error(`Access denied to action ` + action);
         }
 
-        const controllerInstance = this.rpcControllerContainer.createController(classType);
+        const controllerInstance = this.scopedContext.get(classType);
 
         if (!this.usedControllers[controller]) {
             this.usedControllers[controller] = {

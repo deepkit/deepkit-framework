@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {EventListener} from './decorator';
+import {EventListener} from './event';
 import {JSONPartial, jsonSerializer, ValidationFailed} from '@deepkit/type';
 import {ConfigDefinition, InjectToken} from './injector/injector';
 import {ProviderWithScope} from './injector/provider';
@@ -171,10 +171,22 @@ export class Module<T extends ModuleOptions<any>> {
         return this;
     }
 
-    addListener(listener: ClassType) {
+    addController(...controller: ClassType[]) {
+        if(!this.options.controllers) this.options.controllers = [];
+
+        this.options.controllers.push(...controller);
+    }
+
+    addProvider(...provider: ProviderWithScope[]) {
+        if(!this.options.providers) this.options.providers = [];
+
+        this.options.providers.push(...provider);
+    }
+
+    addListener(...listener: ClassType[]) {
         if(!this.options.listeners) this.options.listeners = [];
 
-        this.options.listeners.push(listener);
+        this.options.listeners.push(...listener);
     }
 
     private hasConfigOption(path: string): boolean {

@@ -25,7 +25,7 @@ import {inject, injectable} from '../injector/injector';
 import {Databases} from './databases';
 import {MigrationProvider} from './migration-provider';
 import {databaseConfig} from './database.config';
-import {eventDispatcher} from '../decorator';
+import {eventDispatcher} from '../event';
 import {onServerBootstrap, onServerShutdown} from '../application-server';
 import {Logger} from '../logger';
 

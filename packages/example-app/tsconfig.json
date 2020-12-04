@@ -8,6 +8,9 @@
     "moduleResolution": "node",
     "target": "es2018",
     "module": "CommonJS",
+    "lib": [
+      "es6"
+    ],
 
     "baseUrl": ".",
     "outDir": "./dist",

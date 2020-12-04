@@ -17,17 +17,17 @@
  */
 
 import {Router} from './router';
-import {asyncOperation, ClassType, CustomError, getClassName} from '@deepkit/core';
-import {injectable, Injector} from './injector/injector';
+import {ClassType, CustomError, getClassName} from '@deepkit/core';
+import {injectable, MemoryInjector} from './injector/injector';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
-import {Context, EventDispatcher, ServiceContainer} from './service-container';
-import {Provider} from './injector/provider';
+import {InjectorContext} from './injector/injector';
 import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
 import {Logger} from './logger';
-import {BaseEvent, eventDispatcher, EventOfEventToken, EventToken} from './decorator';
 import * as serveStatic from 'serve-static';
+import {EventDispatcher, eventDispatcher,} from './event';
+import {createWorkflow, WorkflowEvent} from './workflow';
 
 export interface HttpError<T> {
     new(...args: any[]): Error;
@@ -47,31 +47,13 @@ export function HttpError<T extends number>(code: T, defaultMessage: string = ''
     };
 }
 
-export function serveStaticListener(path: string): ClassType {
-    @injectable()
-    class HttpRequestStaticServingListener {
-        protected serveStatic = serveStatic(path, {index: false});
-
-        @eventDispatcher.listen(onHttpRequest, -1)
-        onHttpRequest(event: EventOfEventToken<typeof onHttpRequest>) {
-            return asyncOperation(resolve => {
-                this.serveStatic(event.request, event.response, () => {
-                    resolve(undefined);
-                });
-            });
-        }
-    }
-
-    return HttpRequestStaticServingListener;
-}
-
 export class HttpNotFoundError extends HttpError(404, 'Not found') {
 }
 
 export class HttpBadRequestError extends HttpError(400, 'Bad request') {
 }
 
-export class HttpRequestEvent extends BaseEvent {
+export class HttpRequestEvent extends WorkflowEvent {
     constructor(
         public readonly request: IncomingMessage,
         public readonly response: ServerResponse,
@@ -80,9 +62,7 @@ export class HttpRequestEvent extends BaseEvent {
     }
 }
 
-export const onHttpRequest = new EventToken('http.request', HttpRequestEvent);
-
-export class HttpRouteNotFoundEvent extends BaseEvent {
+export class HttpResponseEvent extends WorkflowEvent {
     constructor(
         public readonly request: IncomingMessage,
         public readonly response: ServerResponse,
@@ -91,58 +71,150 @@ export class HttpRouteNotFoundEvent extends BaseEvent {
     }
 }
 
-export const onHttpRouteNotFound = new EventToken('http.route.notFound', HttpRouteNotFoundEvent);
+export class HttpRouteNotFoundEvent extends WorkflowEvent {
+    constructor(
+        public readonly request: IncomingMessage,
+        public readonly response: ServerResponse,
+    ) {
+        super();
+    }
+}
+
+export const httpWorkflow = createWorkflow('http', {
+    start: WorkflowEvent,
+    request: HttpRequestEvent,
+    route: WorkflowEvent,
+    routeNotFound: HttpRouteNotFoundEvent,
+    auth: WorkflowEvent,
+    accessDenied: WorkflowEvent,
+    controller: WorkflowEvent,
+    controllerResponse: WorkflowEvent,
+    controllerException: WorkflowEvent,
+    static: WorkflowEvent,
+    response: HttpResponseEvent,
+});
+
+httpWorkflow.addTransition('start', 'request');
+httpWorkflow.addTransition('request', 'route');
+
+httpWorkflow.addTransition('route', 'auth');
+httpWorkflow.addTransition('route', 'routeNotFound');
+httpWorkflow.addTransition('routeNotFound', 'static');
+
+httpWorkflow.addTransition('auth', 'controller');
+httpWorkflow.addTransition('auth', 'accessDenied');
+
+httpWorkflow.addTransition('controller', 'controllerResponse');
+httpWorkflow.addTransition('controller', 'controllerException');
+
+httpWorkflow.addTransition('controllerResponse', 'response');
+httpWorkflow.addTransition('controllerException', 'response');
+httpWorkflow.addTransition('static', 'response');
+
 
 export class HtmlResponse {
     constructor(public html: string) {
     }
 }
 
-@injectable()
-export class HttpRouteListener {
-    protected httpRouteNotFoundEventCaller = this.eventListenerContainer.getCaller(onHttpRouteNotFound);
+export class JSONResponse {
+    constructor(public json: any) {
+    }
+}
 
+export function serveStaticListener(path: string): ClassType {
+    @injectable()
+    class HttpRequestStaticServingListener {
+        protected serveStatic = serveStatic(path, {index: false});
+
+        @eventDispatcher.listen(httpWorkflow.onRequest, -1)
+        async onRequest(event: typeof httpWorkflow.onRequest.event) {
+            // await asyncOperation(resolve => {
+            //     this.serveStatic(event.request, event.response, () => {
+            //         resolve(undefined);
+            //     });
+            // });
+        }
+    }
+
+    return HttpRequestStaticServingListener;
+}
+
+
+@injectable()
+export class HttpListener {
     constructor(
         protected router: Router,
-        protected middlewareContainer: EventDispatcher,
-        protected eventListenerContainer: EventDispatcher,
+        protected scopedContext: InjectorContext,
         protected logger: Logger,
     ) {
     }
 
-    protected createInjector(classType: ClassType, providers: Provider[] = []) {
-        const context = (classType as any)[ServiceContainer.contextSymbol] as Context;
-        if (!context) {
-            throw new Error(`Controller ${getClassName(classType)} has no injector context assigned.`);
-        }
+    @eventDispatcher.listen(httpWorkflow.onRoute)
+    async onRoute(event: typeof httpWorkflow.onRoute.event): Promise<void> {
 
-        return new Injector(providers, [context.getInjector(), context.getRequestInjector().fork()]);
     }
 
-    @eventDispatcher.listen(onHttpRequest)
-    async http(event: EventOfEventToken<typeof onHttpRequest>): Promise<void> {
+    @eventDispatcher.listen(httpWorkflow.onRouteNotFound)
+    async routeNotFound(event: typeof httpWorkflow.onRouteNotFound.event): Promise<void> {
+        event.next('routeNotFound', new HttpRouteNotFoundEvent(event.request, event.response));
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onAuth)
+    async onAuth(event: typeof httpWorkflow.onAuth.event): Promise<void> {
+
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onAccessDenied)
+    async onAccessDenied(event: typeof httpWorkflow.onAccessDenied.event): Promise<void> {
+
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onController)
+    async onController(event: typeof httpWorkflow.onController.event): Promise<void> {
+
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onControllerException)
+    async onControllerException(event: typeof httpWorkflow.onControllerException.event): Promise<void> {
+
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onControllerResponse)
+    async onControllerResponse(event: typeof httpWorkflow.onControllerResponse.event): Promise<void> {
+
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onRequest)
+    async onRequest( event: typeof httpWorkflow.onRequest.event): Promise<void> {
         if (event.response.finished) return;
 
         const resolved = await this.router.resolveRequest(event.request);
 
         if (!resolved) {
-            await this.httpRouteNotFoundEventCaller(new HttpRouteNotFoundEvent(event.request, event.response));
+            event.next('routeNotFound', new HttpRouteNotFoundEvent(event.request, event.response));
             return;
         }
 
-        const injector = this.createInjector(resolved.routeConfig.action.controller, [
-            {provide: IncomingMessage, useValue: event.request},
-            {provide: ServerResponse, useValue: event.response},
-        ]);
-        injector.allowUnknown = true;
+        const controllerInstance = this.scopedContext.get(resolved.routeConfig.action.controller);
 
-        const controllerInstance = injector.get(resolved.routeConfig.action.controller);
+        // event.response.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
+        // event.response.end('Early exit');
+
         try {
-            const response = await controllerInstance[resolved.routeConfig.action.methodName](...resolved.parameters(injector));
+            const args = resolved.parameters(this.scopedContext);
+            const method = controllerInstance[resolved.routeConfig.action.methodName];
+            let response = method.apply(controllerInstance, args);
+            if (response instanceof Promise) response = await response;
 
             if (response === null || response === undefined) {
                 event.response.writeHead(200, {
                     'Content-Type': 'text/html; charset=utf-8'
+                });
+                event.response.end(response);
+            } else if ('string' === typeof response) {
+                event.response.writeHead(200, {
+                    'Content-Type': 'text/plain; charset=utf-8'
                 });
                 event.response.end(response);
             } else if (response instanceof ServerResponse) {
@@ -156,12 +228,21 @@ export class HttpRouteListener {
                 event.response.writeHead(200, {
                     'Content-Type': 'text/html; charset=utf-8'
                 });
-                event.response.end(await render(injector, response));
+                event.response.end(await render(this.scopedContext, response));
             } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
                 event.response.writeHead(200, {
                     'Content-Type': 'application/json; charset=utf-8'
                 });
                 event.response.end(JSON.stringify(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response)));
+            } else if (response instanceof Buffer) {
+                event.response.writeHead(200, {
+                });
+                event.response.end(response);
+            } else if (response instanceof JSONResponse) {
+                event.response.writeHead(200, {
+                    'Content-Type': 'application/json; charset=utf-8'
+                });
+                event.response.end(JSON.stringify(response.json));
             } else {
                 event.response.writeHead(200, {
                     'Content-Type': 'application/json; charset=utf-8'
@@ -180,11 +261,10 @@ export class HttpRouteListener {
 
 @injectable()
 export class HttpKernel {
-    protected httpRequestEventCaller = this.eventListenerContainer.getCaller(onHttpRequest);
-
     constructor(
         protected router: Router,
-        protected eventListenerContainer: EventDispatcher,
+        protected eventDispatcher: EventDispatcher,
+        protected scopedContext: InjectorContext,
         protected logger: Logger,
     ) {
     }
@@ -214,7 +294,7 @@ export class HttpKernel {
             }
         })(new Socket());
 
-        let result: any = {};
+        let result: any = 'nothing';
         const response = new (class extends ServerResponse {
             end(chunk: any) {
                 result = chunk ? chunk.toString() : chunk;
@@ -236,8 +316,20 @@ export class HttpKernel {
         }
     }
 
-    async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    handleRequest(req: IncomingMessage, res: ServerResponse) {
+        const httpScopedContext = this.scopedContext.createChildScope('http', new MemoryInjector([
+            {provide: IncomingMessage, useValue: req},
+            {provide: ServerResponse, useValue: res},
+        ]));
+        const eventDispatcher = this.eventDispatcher.for(httpScopedContext);
+
         const httpRequestEvent = new HttpRequestEvent(req, res);
-        await this.httpRequestEventCaller(httpRequestEvent);
+
+        const workflow = httpWorkflow.create('start', eventDispatcher);
+
+        // const httpListener = httpScopedContext.get(HttpListener);
+        // httpListener.onRequest(httpRequestEvent);
+
+        return workflow.apply('request', httpRequestEvent);
     }
 }

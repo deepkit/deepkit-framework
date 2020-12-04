@@ -4,14 +4,15 @@ import 'reflect-metadata';
 import {InMemoryApplicationServer} from '../src/inmemory-application-server';
 import {rpc} from '@deepkit/framework-shared';
 import {Application} from '../src/application';
-import {RpcControllerContainer} from '../src/service-container';
 import { createModule } from '../src/module';
+
+jest.setTimeout(123123123);
 
 test('basic bootstrap', async () => {
     const AppModule = createModule({})
 
     const app = new Application(AppModule, [InMemoryApplicationServer]);
-    const applicationServer = app.getInjector().get(InMemoryApplicationServer);
+    const applicationServer = app.get(InMemoryApplicationServer);
 
     await applicationServer.start();
 });
@@ -31,8 +32,6 @@ test('basic controller', async () => {
         }
     }
 
-
-
     const AppModule = createModule({
         controllers: [MyController],
     })
@@ -41,19 +40,15 @@ test('basic controller', async () => {
     const applicationServer = app.get(InMemoryApplicationServer);
     expect(createdControllers).toBe(0);
 
-    const container = new RpcControllerContainer(new Map([['test', MyController]]));
-    const controllerInstance = container.createController(MyController);
-    expect(controllerInstance.foo()).toBe('bar');
-    expect(createdControllers).toBe(1);
-
     await applicationServer.start();
+
     {
         const client = applicationServer.createClient();
 
         const controller = client.controller<MyController>('test');
         const a = await controller.foo();
         expect(a).toBe('bar');
-        expect(createdControllers).toBe(2);
+        expect(createdControllers).toBe(1);
         client.disconnect();
     }
 
@@ -63,7 +58,7 @@ test('basic controller', async () => {
         const controller = client.controller<MyController>('test');
         const a = await controller.foo();
         expect(a).toBe('bar');
-        expect(createdControllers).toBe(3);
+        expect(createdControllers).toBe(2);
         client.disconnect();
     }
 

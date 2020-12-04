@@ -23,14 +23,13 @@ import {ClientConnection} from './client-connection';
 import {ConnectionMiddleware} from '@deepkit/framework-shared';
 import {SecurityStrategy} from './security';
 import {Router} from './router';
-import {HttpKernel, HttpRouteListener, onHttpRequest, onHttpRouteNotFound, serveStaticListener} from './http';
+import {HttpKernel, HttpListener, httpWorkflow, serveStaticListener} from './http';
 import {ServerListenController} from './cli/server-listen';
-import {eventDispatcher} from './decorator';
+import {EventDispatcher, eventDispatcher} from './event';
 import {ApplicationServer, ApplicationServerListener} from './application-server';
 import {ConsoleTransport, Logger} from './logger';
 import {LiveDatabase} from './exchange/live-database';
 import {inject, injectable} from './injector/injector';
-import {EventDispatcher} from './service-container';
 import {DebugController} from './controller/debug.controller';
 import {createModule} from './module';
 import {ExchangeModule} from './exchange/exchange.module';
@@ -42,8 +41,8 @@ class HttpLogger {
     constructor(@inject() private logger: Logger) {
     }
 
-    @eventDispatcher.listen(onHttpRequest, -100)
-    onHttpRequest(event: typeof onHttpRequest.event) {
+    @eventDispatcher.listen(httpWorkflow.onResponse)
+    onHttpRequest(event: typeof httpWorkflow.onResponse.event) {
         this.logger.log(
             event.request.connection.remoteAddress, '-',
             event.request.method,
@@ -56,8 +55,8 @@ class HttpLogger {
 }
 
 class HttpRouteNotFoundListener {
-    @eventDispatcher.listen(onHttpRouteNotFound, -10)
-    on(event: typeof onHttpRequest.event) {
+    @eventDispatcher.listen(httpWorkflow.onRouteNotFound)
+    on(event: typeof httpWorkflow.onRouteNotFound.event) {
         if (event.response.finished) return;
 
         event.response.writeHead(404);
@@ -65,16 +64,8 @@ class HttpRouteNotFoundListener {
     }
 }
 
-@injectable()
-export class BaseModuleBootstrap {
-    constructor(@inject(kernelConfig.token('publicDir')) publicDir: string, eventListenerContainer: EventDispatcher) {
-        if (publicDir) eventListenerContainer.registerListener(serveStaticListener(publicDir));
-    }
-}
-
 export const KernelModule = createModule({
     name: 'kernel',
-    bootstrap: BaseModuleBootstrap,
     config: kernelConfig,
     providers: [
         ProcessLocker,
@@ -86,18 +77,17 @@ export const KernelModule = createModule({
         EnvConfiguration,
         WebWorkerFactory,
         {provide: Logger, useFactory: () => new Logger([new ConsoleTransport()], [])},
-        {provide: SessionStack, scope: 'session'},
-        {provide: ClientConnection, scope: 'session'},
-        {provide: ConnectionMiddleware, scope: 'session'},
-        {provide: LiveDatabase, scope: 'session'},
+        {provide: SessionStack, scope: 'rpc'},
+        {provide: ClientConnection, scope: 'rpc'},
+        {provide: ConnectionMiddleware, scope: 'rpc'},
+        {provide: LiveDatabase, scope: 'rpc'},
     ],
     listeners: [
-        HttpRouteListener,
+        HttpListener,
         HttpRouteNotFoundListener,
         ApplicationServerListener,
     ],
     controllers: [
-        DebugController,
         ServerListenController,
     ],
     imports: [
@@ -106,5 +96,13 @@ export const KernelModule = createModule({
 }).setup((module, config) => {
     if (config.httpLog) {
         module.addListener(HttpLogger);
+    }
+
+    if (config.publicDir) {
+        module.addListener(serveStaticListener(config.publicDir));
+    }
+
+    if (config.debug) {
+        module.addController(DebugController);
     }
 }).forRoot();

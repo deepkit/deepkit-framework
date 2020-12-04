@@ -69,7 +69,7 @@ const AppModule = createModule({
 
 function getMyServiceFor<T>(module: Module<any>, service: ClassType<T>): T {
     const serviceContainer = new ServiceContainer(module);
-    return serviceContainer.getRootContext().getInjector().get(service);
+    return serviceContainer.rootScopedContext.get(service);
 }
 
 test('loadConfig', () => {
