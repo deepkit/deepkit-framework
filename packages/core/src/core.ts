@@ -54,6 +54,7 @@ export interface ClassType<T = any> {
  * @public
  */
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
+    if (!classTypeOrInstance) return 'undefined';
     const proto = (classTypeOrInstance as any)['prototype'] ? (classTypeOrInstance as any)['prototype'] : classTypeOrInstance;
     return proto.constructor.name;
 }

@@ -24,7 +24,7 @@ const workflow1 = createWorkflow('myFlow', {
 test('workflow', async () => {
     expect(workflow1.onDoIt).toBeInstanceOf(EventToken);
 
-    const w = workflow1.create('start');
+    const w = workflow1.create('start', new EventDispatcher());
     expect(w.state.get()).toBe('start');
     expect(w.isDone()).toBe(false);
 
@@ -33,7 +33,7 @@ test('workflow', async () => {
     expect(w.can('success')).toBe(false);
     expect(w.can('end')).toBe(false);
 
-    await expect(w.apply('success')).rejects.toThrow('Can not apply state success');
+    await expect(w.apply('success')).rejects.toThrow('Can not apply state change from start->success');
 
     await w.apply('doIt');
     expect(w.state.get()).toBe('doIt');
@@ -46,7 +46,7 @@ test('workflow', async () => {
     expect(w.isDone()).toBe(false);
 
     await w.apply('success');
-    await expect(w.apply('end')).rejects.toThrow('State end requires a custom WorkflowEvent EndEvent');
+    await expect(w.apply('end')).rejects.toThrow('State end got the wrong event. Expected EndEvent, got WorkflowEvent');
     await w.apply('end', new EndEvent());
 
     expect(w.isDone()).toBe(true);
@@ -121,7 +121,7 @@ test('workflow events apply next invalid', async () => {
         event.next('end');
     });
 
-    await expect(w.apply('doIt')).rejects.toThrow('Can not apply state end');
+    await expect(w.apply('doIt')).rejects.toThrow('Can not apply state change from doIt->end');
 });
 
 test('workflow events apply injector', async () => {

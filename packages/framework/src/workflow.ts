@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {capitalize, ClassType, CustomError, getClassName, isArray, toFastProperties} from '@deepkit/core';
+import {capitalize, ClassType, CompilerContext, CustomError, getClassName, isArray, toFastProperties} from '@deepkit/core';
 import {ExtractClassType} from '@deepkit/type';
-import {BaseEvent, EventDispatcher, EventToken} from './event';
+import {BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService} from './event';
+import {InjectorContext} from './injector/injector';
 
 interface WorkflowTransition<T> {
     from: keyof T,
@@ -36,6 +37,10 @@ export class WorkflowEvent extends BaseEvent {
     next(nextState: string, event?: any) {
         this.nextState = nextState;
         this.nextStateEvent = event;
+    }
+
+    hasNext(): boolean {
+        return !!this.nextState;
     }
 }
 
@@ -55,9 +60,11 @@ export type WorkflowDefinitionEvents<T extends WorkflowPlaces> = {
 }
 
 export class WorkflowDefinition<T extends WorkflowPlaces> {
-    protected transitions: WorkflowTransition<T>[] = [];
-    protected tokens: { [name in keyof T]?: EventToken<any> } = {};
-    protected next: {[name in keyof T]?: (keyof T)[]} = {};
+    public transitions: WorkflowTransition<T>[] = [];
+    public tokens: { [name in keyof T]?: EventToken<any> } = {};
+    public next: { [name in keyof T]?: (keyof T & string)[] } = {};
+
+    public symbol = Symbol('workflow');
 
     constructor(
         public readonly name: string,
@@ -87,18 +94,104 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         return this.tokens[name]!;
     }
 
-    addTransition(from: keyof T, to: keyof T, label?: string) {
+    addTransition(from: keyof T & string, to: keyof T & string, label?: string) {
         this.transitions.push({from, to, label});
         if (!this.next[from]) this.next[from] = [];
         this.next[from]!.push(to);
     }
 
-    create(state: keyof T, eventDispatcher?: EventDispatcher): Workflow<T> {
-        return new Workflow(this, new WorkflowStateSubject(state), eventDispatcher);
+    public create(state: keyof T & string, eventDispatcher: EventDispatcher, injectorContext?: InjectorContext): Workflow<T> {
+        return new Workflow(this, new WorkflowStateSubject(state), eventDispatcher, injectorContext || eventDispatcher.scopedContext);
     }
 
-    getTransitionsFrom(state: keyof T): (keyof T)[] {
+    getTransitionsFrom(state: keyof T & string): (keyof T & string)[] {
         return this.next[state]! || [];
+    }
+
+    public buildApplier(eventDispatcher: EventDispatcher) {
+        const compiler = new CompilerContext();
+        compiler.context.set('WorkflowError', WorkflowError);
+        compiler.context.set('WorkflowEvent', WorkflowEvent);
+        compiler.context.set('getClassName', getClassName);
+
+        const lines: string[] = [];
+        const varName = new Map<any, string>();
+
+        for (const [place, eventType] of Object.entries(this.places)) {
+            const stateString = JSON.stringify(place);
+            const eventTypeVar = compiler.reserveVariable('eventType', eventType);
+            const allowedFrom = this.transitions.filter(v => v.to === place);
+            const allowedFromCondition = allowedFrom.map(v => `currentState === ${JSON.stringify(v.from)}`).join(' || ');
+            const checkFrom = `if (!(${allowedFromCondition})) throw new WorkflowError(\`Can not apply state change from \${currentState}->\${nextState}. There's no transition between them or it was blocked.\`);`;
+
+            const eventToken = this.tokens[place]!;
+            const listeners = eventDispatcher.getListeners(eventToken);
+            listeners.sort((a, b) => {
+                if (a.priority > b.priority) return +1;
+                if (a.priority < b.priority) return -1;
+                return 0;
+            });
+
+            const listenerCode: string[] = [];
+            for (const listener of listeners) {
+                if (isEventListenerContainerEntryCallback(listener)) {
+                    const fnVar = compiler.reserveVariable('fn', listener.fn);
+                    listenerCode.push(`
+                        await ${fnVar}(event);
+                        if (event.isStopped()) return;
+                    `);
+                } else if (isEventListenerContainerEntryService(listener)) {
+                    let classTypeVar = varName.get(listener.classType);
+                    if (!classTypeVar) {
+                        classTypeVar = compiler.reserveVariable('classType', listener.classType);
+                        varName.set(listener.classType, classTypeVar);
+                    }
+                    const resolvedVar = classTypeVar + '_resolved';
+
+                    listenerCode.push(`
+                    //${getClassName(listener.classType)}.${listener.methodName}
+                    if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar});
+                    await ${resolvedVar}.${listener.methodName}(event);
+                    if (event.isStopped()) return;
+                `);
+                }
+            }
+
+            lines.push(`
+            case ${stateString}: {
+                ${allowedFrom.length ? checkFrom : ''}
+                if (!(event instanceof ${eventTypeVar})) {
+                    throw new Error(\`State ${place} got the wrong event. Expected ${getClassName(eventType)}, got \${getClassName(event)}\`);
+                }
+            
+                ${listenerCode.join('\n')}
+                
+                state.set(${stateString});
+                break;
+            }
+        `);
+        }
+
+        const pre: string[] = [];
+        for (const name of varName.values()) pre.push(`let ${name}_resolved;`);
+
+        return compiler.buildAsync(`
+            ${pre.join('\n')}
+            
+            while (true) {
+                const currentState = state.get(); 
+                switch (nextState) {
+                    ${lines.join('\n')}
+                }
+                
+                if (event.nextState) {
+                    nextState = event.nextState;
+                    event = event.nextStateEvent || new WorkflowEvent();
+                    continue;
+                }
+                return;
+            }
+        `, 'scopedContext', 'state', 'nextState', 'event');
     }
 }
 
@@ -113,20 +206,20 @@ export function createWorkflow<T extends WorkflowPlaces>(
 }
 
 export interface WorkflowState<T> {
-    get(): keyof T;
+    get(): keyof T & string;
 
-    set(v: keyof T): void;
+    set(v: keyof T & string): void;
 }
 
-export class WorkflowStateSubject<T> implements WorkflowState<T> {
-    constructor(public value: keyof T) {
+export class WorkflowStateSubject<T extends WorkflowPlaces> implements WorkflowState<T> {
+    constructor(public value: keyof T & string) {
     }
 
     get() {
         return this.value;
     }
 
-    set(v: keyof T) {
+    set(v: keyof T & string) {
         this.value = v;
     }
 }
@@ -134,57 +227,34 @@ export class WorkflowStateSubject<T> implements WorkflowState<T> {
 export class WorkflowError extends CustomError {}
 
 export class Workflow<T extends WorkflowPlaces> {
-    protected events: {[name in keyof T]?: Function} = {};
+    protected events: { [name in keyof T]?: Function } = {};
 
     constructor(
         public definition: WorkflowDefinition<T>,
         public state: WorkflowState<T>,
-        private eventDispatcher?: EventDispatcher,
+        private eventDispatcher: EventDispatcher,
+        private injectorContext: InjectorContext
     ) {
 
     }
 
-    can(nextState: keyof T): boolean {
+    can(nextState: keyof T & string): boolean {
         return this.definition.getTransitionsFrom(this.state.get()).includes(nextState);
     }
 
     /**
      * @throws WorkflowError when next state is not possible to apply.
      */
-    async apply<K extends keyof T>(
+    apply<K extends keyof T>(
         nextState: K,
         event?: ExtractClassType<T[K]>,
     ): Promise<void> {
-        if (!this.can(nextState)) throw new WorkflowError(`Can not apply state ${nextState} from state ${this.state.get()}. There's no transition between them or it was blocked.`);
-
-        const placeEventClassType = this.definition.places[nextState];
-        if (!event && placeEventClassType !== WorkflowEvent) {
-            throw new Error(`State ${nextState} requires a custom WorkflowEvent ${getClassName(placeEventClassType)}`);
+        let fn = (this.eventDispatcher as any)[this.definition.symbol];
+        if (!fn) {
+            fn = (this.eventDispatcher as any)[this.definition.symbol] = this.definition.buildApplier(this.eventDispatcher);
         }
 
-        if (this.eventDispatcher) {
-            const usedEvent = event || new WorkflowEvent() as ExtractClassType<T[K]>;
-            if (event && !(event instanceof this.definition.places[nextState])) {
-                throw new Error(`State ${nextState} got the wrong event. Expected ${getClassName(this.definition.places[nextState])}, got ${getClassName(event)}`);
-            }
-
-            const token = this.definition.getEventToken(nextState);
-            // let caller = this.events[nextState];
-            // if (!caller) {
-            //     caller = this.eventDispatcher
-            // }
-
-            await this.eventDispatcher.dispatch(token, usedEvent);
-            if (usedEvent.isStopped()) return;
-
-            if (usedEvent.nextState) {
-                this.state.set(nextState);
-                await this.apply(usedEvent.nextState, usedEvent.nextStateEvent);
-                return;
-            }
-        }
-
-        this.state.set(nextState);
+        return fn(this.injectorContext, this.state, nextState, event || new WorkflowEvent() as ExtractClassType<T[K]>);
     }
 
     isDone(): boolean {

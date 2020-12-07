@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType, isClass, isFunction} from '@deepkit/core';
+import {ClassType, CompilerContext, isClass, isFunction} from '@deepkit/core';
 import {Context, InjectorContext} from './injector/injector';
 import {createClassDecoratorContext, createPropertyDecoratorContext} from '@deepkit/type';
 
@@ -104,28 +104,26 @@ export type EventListenerContainerEntryCallback = { priority: number, fn: EventL
 export type EventListenerContainerEntryService = { context?: Context, priority: number, classType: ClassType, methodName: string };
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
-function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
+export function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
     return obj && isFunction(obj.fn);
 }
 
-function isEventListenerContainerEntryService(obj: any): obj is EventListenerContainerEntryService {
+export function isEventListenerContainerEntryService(obj: any): obj is EventListenerContainerEntryService {
     return obj && isClass(obj.classType);
+}
+
+interface EventDispatcherFn {
+    (instances: any[], scopedContext: InjectorContext, eventToken: EventToken<any>, event: BaseEvent): Promise<void>;
 }
 
 export class EventDispatcher {
     protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
-    protected needsSort: boolean = false;
+    protected fn: EventDispatcherFn | undefined = undefined;
+    protected instances: any[] = [];
 
     constructor(
-        protected scopedContext: InjectorContext,
+        public scopedContext: InjectorContext = InjectorContext.forProviders([]),
     ) {
-    }
-
-    for(scopedContext: InjectorContext) {
-        const ed = new EventDispatcher(scopedContext);
-        ed.listenerMap = this.listenerMap;
-        ed.needsSort = this.needsSort;
-        return ed;
     }
 
     public registerListener(listener: ClassType, context?: Context) {
@@ -142,10 +140,11 @@ export class EventDispatcher {
 
     public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {
         this.getListeners(eventToken).push(listener);
-        this.needsSort = true;
+        (eventToken as any)[this.symbol] = this.buildFor(eventToken);
+        this.fn = undefined;
     }
 
-    protected getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
+    public getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
         let listeners = this.listenerMap.get(eventToken);
         if (!listeners) {
             listeners = [];
@@ -155,39 +154,77 @@ export class EventDispatcher {
         return listeners;
     }
 
-    protected sort() {
-        if (!this.needsSort) return;
+    protected build(): EventDispatcherFn {
+        const compiler = new CompilerContext();
 
-        for (const listeners of this.listenerMap.values()) {
+        const code: string[] = [];
+
+        for (const [eventToken, listeners] of this.listenerMap.entries()) {
             listeners.sort((a, b) => {
                 if (a.priority > b.priority) return +1;
                 if (a.priority < b.priority) return -1;
                 return 0;
             });
+
+            const lines: string[] = [];
+
+            for (const listener of listeners) {
+                if (isEventListenerContainerEntryCallback(listener)) {
+                    const fnVar = compiler.reserveVariable('fn', listener.fn);
+                    lines.push(`
+                        r = ${fnVar}(event);
+                        if (r instanceof Promise) await r;
+                        if (event.isStopped()) return;
+                    `);
+                } else if (isEventListenerContainerEntryService(listener)) {
+                    const classTypeVar = compiler.reserveVariable('classType', listener.classType);
+                    lines.push(`
+                        await scopedContext.get(${classTypeVar}).${listener.methodName}(event);
+                    `);
+                }
+            }
+
+            const eventTokenVar = compiler.reserveVariable('eventToken', eventToken);
+            code.push(`
+            //${eventToken.id}
+            else if (eventToken === ${eventTokenVar}) {
+                ${lines.join('\n')}
+            }
+            `);
         }
 
-        this.needsSort = false;
+        return compiler.buildAsync(`
+        if (false) {
+        }
+            ${code.join('\n')}
+        `, 'instances', 'scopedContext', 'eventToken', 'event') as EventDispatcherFn;
+    }
+
+    protected symbol = Symbol('eventDispatcher');
+
+    protected buildFor(eventToken: EventToken<any>) {
+        const compiler = new CompilerContext();
+        const lines: string[] = [];
+        for (const listener of this.listenerMap.get(eventToken) || []) {
+            if (isEventListenerContainerEntryCallback(listener)) {
+                const fnVar = compiler.reserveVariable('fn', listener.fn);
+                lines.push(`
+                    r = ${fnVar}(event);
+                    if (r instanceof Promise) await r;
+                    if (event.isStopped()) return;
+                `);
+            } else if (isEventListenerContainerEntryService(listener)) {
+                const classTypeVar = compiler.reserveVariable('classType', listener.classType);
+                lines.push(`
+                    await scopedContext.get(${classTypeVar}).${listener.methodName}(event);
+                `);
+            }
+        }
+        return compiler.buildAsync(lines.join('\n'), 'scopedContext', 'event');
     }
 
     public dispatch<T extends EventToken<any>>(eventToken: T, event: EventOfEventToken<T>): Promise<void> {
-        return this.getCaller(eventToken)(event);
-    }
-
-    public getCaller<T extends EventToken<any>>(eventToken: T): (event: EventOfEventToken<T>) => Promise<void> {
-        this.sort();
-        const listeners = this.getListeners(eventToken);
-
-        return async (event) => {
-            for (const listener of listeners) {
-                if (isEventListenerContainerEntryCallback(listener)) {
-                    await listener.fn(event);
-                } else if (isEventListenerContainerEntryService(listener)) {
-                    await this.scopedContext.get(listener.classType)[listener.methodName](event);
-                }
-                if (event.isStopped()) {
-                    return;
-                }
-            }
-        };
+        let fn = (eventToken as any)[this.symbol];
+        return fn(this.scopedContext, event);
     }
 }

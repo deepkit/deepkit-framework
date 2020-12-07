@@ -103,7 +103,10 @@ export class Logger {
     protected colorFormatter = new ColorFormatter;
     protected removeColorFormatter = new RemoveColorFormatter;
 
-    constructor(protected transport: Transport[], protected formatter: Formatter[] = []) {
+    constructor(
+        protected transport: Transport[] = [],
+        protected formatter: Formatter[] = [],
+    ) {
     }
 
     addTransport(transport: Transport) {

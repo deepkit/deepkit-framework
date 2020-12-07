@@ -13,6 +13,8 @@ export class CompilerContext {
 
     public maxReservedVariable: number = 10_000;
 
+    public preCode: string = '';
+
     reserveVariable(name: string = 'var', value?: any): string {
         for (let i = 0; i < this.maxReservedVariable; i++) {
             const candidate = name + '_' + i;
@@ -25,28 +27,35 @@ export class CompilerContext {
         throw new Error(`Too many context variables (max ${this.maxReservedVariable})`);
     }
 
-    builder(functionCode: string, ...args: string[]): Function {
-        functionCode = `
-            return function(${args.join(', ')}){ 
-                ${functionCode}
-            };
-        `;
-        const fn = new Function(...this.context.keys(), functionCode);
-        return () => {
-            return fn(...this.context.values());
-        }
+    raw(functionCode: string): Function {
+        return new Function(...this.context.keys(), functionCode)(...this.context.values());
     }
 
     build(functionCode: string, ...args: string[]): Function {
-        return this.builder(functionCode, ...args)();
+        functionCode = `
+            ${this.preCode}
+            return function self(${args.join(', ')}){ 
+                ${functionCode}
+            };
+        `;
+        try {
+            return new Function(...this.context.keys(), functionCode)(...this.context.values());
+        } catch (error) {
+            throw new Error('Could not build function: ' + error + functionCode);
+        }
     }
 
     buildAsync(functionCode: string, ...args: string[]): Function {
         functionCode = `
-            return async function(${args.join(', ')}){ 
+            ${this.preCode}
+            return async function self(${args.join(', ')}){ 
                 ${functionCode}
             };
         `;
-        return new Function(...this.context.keys(), functionCode)(...this.context.values());
+        try {
+            return new Function(...this.context.keys(), functionCode)(...this.context.values());
+        } catch (error) {
+            throw new Error('Could not build function: ' + error + functionCode);
+        }
     }
 }

@@ -5,6 +5,7 @@ export * from './src/client-connection';
 export * from './src/worker';
 export * from './src/security';
 export * from './src/internal-client';
+export * from './src/event';
 export * from './src/decorator';
 export * from './src/injector/injector';
 export * from './src/injector/provider';

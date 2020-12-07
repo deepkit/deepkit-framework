@@ -104,9 +104,9 @@ export class WebWorker extends BaseWorker {
 
         if (options.server) {
             this.server = options.server as Server;
-            this.server.on('request', this.onHttpRequest.bind(this));
+            this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
         } else {
-            this.server = new http.Server(this.onHttpRequest.bind(this));
+            this.server = new http.Server(this.httpKernel.handleRequest.bind(this.httpKernel));
             this.server.keepAliveTimeout = 5000;
             this.server.listen(options.port, options.host, () => {
                 // console.log(`Worker #${id} listening on ${options.host}:${options.port}.`);
@@ -121,10 +121,6 @@ export class WebWorker extends BaseWorker {
         if (this.server) {
             this.server.close();
         }
-    }
-
-    onHttpRequest(req: IncomingMessage, res: ServerResponse) {
-        this.httpKernel.handleRequest(req, res);
     }
 
     onWsConnection(ws: WebSocket, req: IncomingMessage) {
