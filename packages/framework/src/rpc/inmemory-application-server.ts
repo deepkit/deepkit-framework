@@ -18,9 +18,8 @@
 
 import {Client, TransportConnectionHooks} from '@deepkit/framework-client';
 import {ClientMessageAll} from '@deepkit/framework-shared';
-import {BaseWorker} from './worker';
-import {ApplicationServer} from './application-server';
-import {injectable} from './injector/injector';
+import {ApplicationServer} from '../application-server';
+import {injectable} from '../injector/injector';
 
 @injectable()
 export class InMemoryApplicationServer extends ApplicationServer {

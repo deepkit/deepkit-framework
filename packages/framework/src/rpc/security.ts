@@ -17,9 +17,9 @@
  */
 
 import {ClassType} from '@deepkit/core';
-import {Session} from './session';
+import {Session} from '../session';
 
-export class SecurityStrategy {
+export class RpcSecurityStrategy {
     /**
      * Method to check whether given session (created by authenticate) has access to controller::action.
      */

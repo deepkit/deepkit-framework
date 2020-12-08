@@ -1,7 +1,7 @@
 import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {InMemoryApplicationServer} from '../src/inmemory-application-server';
+import {InMemoryApplicationServer} from '../src/rpc/inmemory-application-server';
 import {rpc} from '@deepkit/framework-shared';
 import {Application} from '../src/application';
 import { createModule } from '../src/module';

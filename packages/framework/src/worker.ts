@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClientConnection} from './client-connection';
+import {ClientConnection} from './rpc/client-connection';
 import {ClientMessageAll, ConnectionWriter, ConnectionWriterStream} from '@deepkit/framework-shared';
 import * as WebSocket from 'ws';
 import * as http from 'http';
-import {IncomingMessage, Server, ServerResponse} from 'http';
+import {IncomingMessage, Server} from 'http';
 import * as https from 'https';
 import {HttpKernel} from './http';
-import {RpcInjectorContext} from './rpc';
+import {RpcInjectorContext} from './rpc/rpc';
 import {InjectorContext} from './injector/injector';
 import {Provider} from './injector/provider';
 import {injectable, Injector} from './injector/injector';

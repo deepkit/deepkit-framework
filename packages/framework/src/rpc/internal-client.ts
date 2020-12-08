@@ -32,8 +32,8 @@ import {
 } from '@deepkit/framework-shared';
 import {Subscription} from 'rxjs';
 import {asyncOperation, each, eachKey, ProcessLocker} from '@deepkit/core';
-import {Exchange} from './exchange/exchange';
-import {injectable} from './injector/injector';
+import {Exchange} from '../exchange/exchange';
+import {injectable} from '../injector/injector';
 
 /**
  * Internal client for communication with registered peer controllers of connected clients.

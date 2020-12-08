@@ -25,7 +25,7 @@ export class Session {
     ) {
     }
 
-    public isAnonymouse(): boolean {
+    public isAnonymous(): boolean {
         return undefined === this.token;
     }
 }
@@ -48,7 +48,7 @@ export class SessionStack {
 
     public getSession(): Session {
         if (!this.session) {
-            throw new Error('No session given.');
+            throw new Error('No session given');
         }
 
         return this.session;

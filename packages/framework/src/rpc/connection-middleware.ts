@@ -17,8 +17,8 @@
  */
 
 import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from '@deepkit/framework-shared';
-import {injectable} from './injector/injector';
-import {EntityStorage} from './autosync/entity-storage';
+import {injectable} from '../injector/injector';
+import {EntityStorage} from '../autosync/entity-storage';
 
 /**
  * Extends the ConnectionMiddleware to make sure entityStorage decrease the usage of EntitySubject when it got unsubscribed.

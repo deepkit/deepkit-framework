@@ -17,11 +17,11 @@
  */
 
 import {ProcessLocker} from '@deepkit/core';
-import {InternalClient} from './internal-client';
+import {InternalClient} from './rpc/internal-client';
 import {SessionStack} from './session';
-import {ClientConnection} from './client-connection';
+import {ClientConnection} from './rpc/client-connection';
 import {ConnectionMiddleware} from '@deepkit/framework-shared';
-import {SecurityStrategy} from './security';
+import {RpcSecurityStrategy} from './rpc/security';
 import {Router} from './router';
 import {HttpKernel, HttpListener, httpWorkflow, serveStaticListener} from './http';
 import {ServerListenController} from './cli/server-listen';
@@ -70,7 +70,7 @@ export const KernelModule = createModule({
     providers: [
         ProcessLocker,
         InternalClient,
-        SecurityStrategy,
+        RpcSecurityStrategy,
         ApplicationServer,
         Router,
         HttpKernel,

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createWorkflow, WorkflowEvent} from './workflow';
-import {InjectorContext} from './injector/injector';
+import {createWorkflow, WorkflowEvent} from '../workflow';
+import {InjectorContext} from '../injector/injector';
 
 export const rpcWorkflow = createWorkflow('rpc', {
     start: WorkflowEvent,

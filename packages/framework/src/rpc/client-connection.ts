@@ -17,15 +17,15 @@
  */
 
 import {Subscription} from 'rxjs';
-import {SessionStack} from './session';
+import {SessionStack} from '../session';
 import {ActionTypes, ClientMessageAll, ConnectionMiddleware, ConnectionWriter, executeAction, getActionParameters, getActions} from '@deepkit/framework-shared';
 import {arrayRemoveItem, each, ProcessLock, ProcessLocker} from '@deepkit/core';
 import {PropertySchema, uuid} from '@deepkit/type';
-import {SecurityStrategy} from './security';
-import {Exchange} from './exchange/exchange';
-import {RpcControllers, RpcController} from './service-container';
+import {RpcSecurityStrategy} from './security';
+import {Exchange} from '../exchange/exchange';
+import {RpcControllers, RpcController} from '../service-container';
 import {RpcInjectorContext} from './rpc';
-import {inject, injectable} from './injector/injector';
+import {inject, injectable} from '../injector/injector';
 
 @injectable()
 export class ClientConnection {
@@ -48,7 +48,7 @@ export class ClientConnection {
 
     constructor(
         protected sessionStack: SessionStack,
-        protected security: SecurityStrategy,
+        protected security: RpcSecurityStrategy,
         protected locker: ProcessLocker,
         protected exchange: Exchange,
         protected connectionMiddleware: ConnectionMiddleware,
