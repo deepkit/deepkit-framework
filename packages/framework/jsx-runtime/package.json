@@ -2,6 +2,6 @@
   "name": "@deepkit/framework/jsx-runtime",
   "version": "1.0.0",
   "type": "module",
-  "main": "./dist/jsx-runtime",
-  "types": "./dist/jsx-runtime/index.d.ts"
+  "main": "../dist/jsx-runtime.js",
+  "types": "../dist/jsx-runtime.d.ts"
 }

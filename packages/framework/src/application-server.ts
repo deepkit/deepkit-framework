@@ -115,6 +115,10 @@ export class ApplicationServer {
             process.exit(0);
         });
 
+        if (cluster.isMaster) {
+            this.logger.log(`Start HTTP server, using ${this.config.workers} workers.`);
+        }
+
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
                 await this.bootstrap();
