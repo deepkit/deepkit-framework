@@ -92,7 +92,8 @@ export function getDataCheckerJS(
 
         const propertySchemaVar = reserveVariable(rootContext, 'schema_' + property.name);
         rootContext.set(propertySchemaVar, property);
-        rootContext.set('handleCustomValidator', handleCustomValidator);
+        rootContext.set('PropertyValidatorError', PropertyValidatorError);
+        rootContext.set('ValidationFailedItem', ValidationFailedItem);
 
         const checks: string[] = [];
 
@@ -105,7 +106,16 @@ export function getDataCheckerJS(
 
             const validatorsVar = reserveVariable(rootContext, 'validator');
             rootContext.set(validatorsVar, instance);
-            checks.push(`handleCustomValidator(${propertySchemaVar}, ${validatorsVar}, ${accessor}, ${path}, _errors, _classType);`);
+            checks.push(`
+            try {
+                ${validatorsVar}.validate(${accessor}, ${propertySchemaVar}.name, _classType);
+            } catch (error) {
+                if (error instanceof PropertyValidatorError) {
+                    _errors.push(new ValidationFailedItem(${path}, error.code, error.message || String(error)));
+                } else {
+                    _errors.push(new ValidationFailedItem(${path}, 'error', error.message || String(error)));
+                }
+            }`);
         }
 
         return checks.join('\n');
@@ -303,14 +313,15 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
     context.set('unpopulatedSymbol', unpopulatedSymbol);
     context.set('isPlainObject', isPlainObject);
 
+    const assignStack = schema.hasCircularDependency() ? '_stack = _stack || []; _stack.push(_data);' : '';
+
     const functionCode = `
         return function(_data, _path, _errors, _stack) {
             const _oldPopulatedCheck = _globalStore.unpopulatedCheck; 
             _globalStore.unpopulatedCheck = ReturnSymbol;
             _path = _path ? _path + '.' : '';
             _errors = _errors || [];
-            _stack = _stack || [];
-            _stack.push(_data);
+            ${assignStack}
             ${checks.join('\n')}
             _globalStore.unpopulatedCheck = _oldPopulatedCheck;
             return _errors;

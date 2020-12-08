@@ -28,21 +28,32 @@ const schema = {
     "properties": {
         "number": {"type": "integer"},
         "negNumber": {"type": "integer", "maximum": 0},
-        "maxNumber": {"type": "integer"},
+        "maxNumber": {"type": "integer", "maximum": 550},
         "strings": {"type": "array", "items": { "type": "string" }},
-        "longString": {
-            "type": "string",
-            "minLength": 100
-        },
+        "longString": {"type": "string"},
         "boolean": {"type": "boolean"},
+        "deeplyNested": {
+            "type": "object",
+            "properties": {
+                "foo": {"type": "string"},
+                "num": {"type": "integer"},
+                "bool": {"type": "boolean"},
+            },
+            "required": ["foo", "num", "bool"],
+        },
     },
-    "required": ["number", "negNumber", "maxNumber", "strings", "longString", "boolean"],
+    "required": ["number", "negNumber", "maxNumber", "strings", "longString", "boolean", "deeplyNested"],
 };
 const ajv = new Ajv();
 const validate = ajv.compile(schema);
 
 export async function main() {
     const suite = new BenchSuite('avj');
+
+    // console.log('validate', validate.toString());
+    // console.log('validate(good)', validate(good));
+
+    if (!validate(good)) throw new Error('Should be valid');
 
     suite.add('validate', () => {
         validate(good);

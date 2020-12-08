@@ -8,6 +8,7 @@
   "private": true,
   "scripts": {
     "benchmark": "ts-node .",
+    "benchmark-prof": "node -r ts-node/register --prof .",
     "setup": "sh setup.sh"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",

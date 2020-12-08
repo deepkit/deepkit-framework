@@ -294,6 +294,24 @@ export class PropertyCompilerSchema {
         return `${this.type}${affix}`;
     }
 
+    hasCircularDependency(lookingFor: ClassSchema, classSchemaStack: ClassSchema[] = [], propertyStack: PropertyCompilerSchema[] = []): boolean {
+        if (this.isParentReference) return false;
+
+        if (this.type === 'class') {
+            const s = getClassSchema(this.resolveClassType!);
+            return s === lookingFor || s.hasCircularDependency(lookingFor, classSchemaStack);
+        }
+
+        if (propertyStack.includes(this)) return true;
+        propertyStack.push(this);
+
+        for (const arg of this.templateArgs) {
+            if (arg.hasCircularDependency(lookingFor, classSchemaStack, propertyStack)) return true;
+        }
+
+        return false;
+    }
+
     getSubType(): PropertyCompilerSchema {
         if (this.type === 'partial') return this.templateArgs[0]!;
         if (this.type === 'array') return this.templateArgs[0]!;
@@ -599,7 +617,7 @@ export class PropertySchema extends PropertyCompilerSchema {
     }
 
     getResolvedClassType(): ClassType {
-        if (this.isArray || this.isMap) return this.getSubType().getResolvedClassType();
+        if (this.isArray || this.isMap || this.isPartial) return this.getSubType().getResolvedClassType();
 
         if (this.classTypeResolved) {
             return this.classTypeResolved;
@@ -778,6 +796,24 @@ export class ClassSchema<T = any> {
         this.hasFullLoadHooksCheck = false;
 
         return !!this.onLoad.find(v => !!v.options.fullLoad);
+    }
+
+
+    /**
+     * Whether a (deep) property references this schema again. Some validation/serialization code
+     * needs to add additional check to avoid an call stack overflow.
+     */
+    public hasCircularDependency(lookingFor?: ClassSchema, stack: ClassSchema[] = []): boolean {
+        lookingFor = lookingFor || this;
+        if (stack.includes(this)) return true;
+        stack.push(this);
+
+        for (const property of this.getClassProperties().values()) {
+            if (property.isParentReference) continue;
+            if (property.hasCircularDependency(lookingFor, stack)) return true;
+        }
+
+        return false;
     }
 
     public addIndex(fieldNames: (keyof T & string)[], name?: string, options?: IndexOptions) {

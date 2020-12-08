@@ -22,9 +22,9 @@ import {BenchSuite} from '../../bench';
 
 const Model = t.schema({
     number: t.number,
-    negNumber: t.number,
-    maxNumber: t.number,
-    string: t.string,
+    negNumber: t.number.negative(),
+    maxNumber: t.number.maximum(500),
+    strings: t.array(t.string),
     longString: t.string,
     boolean: t.boolean,
     deeplyNested: t.type({
@@ -33,13 +33,15 @@ const Model = t.schema({
         bool: t.boolean
     })
 });
-const ModelValidator = validateFactory(Model);
+const validate = validateFactory(Model);
 
 export async function main() {
     const suite = new BenchSuite('deepkit');
 
+    if (!validate(good)) throw new Error('Should be valid');
+
     suite.add('validate', () => {
-        ModelValidator(good);
+        validate(good);
     });
 
     suite.run();

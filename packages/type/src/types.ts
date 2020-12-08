@@ -67,7 +67,7 @@ export type Types =
     | 'arrayBuffer';
 
 /**
- * Type for @f.partial().
+ * Type for @t.partial().
  *
  * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths (like mongoDB)
  */

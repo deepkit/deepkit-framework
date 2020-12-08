@@ -24,7 +24,7 @@ registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerS
         } else {
             ${utils.raise('invalid_number', 'No number given')}
         }
-    } else if (!Number.isFinite(${accessor})) {
+    } else if (${accessor} !== ${accessor}) {
         ${utils.raise('invalid_number', 'No valid number given, got NaN')}
     }
     `;
@@ -120,7 +120,7 @@ registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSc
     return {
         template: `
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                if (!_stack.includes(${accessor})) {
+                if (!_stack || _stack.length === 0 || !_stack.includes(${accessor})) {
                     ${jitValidateThis}.fn(${accessor}, ${utils.path}, _errors, _stack);
                 }
             } else {

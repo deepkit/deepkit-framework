@@ -34,6 +34,8 @@ test('getClassSchemaByName', async () => {
     class Test {
     }
 
+
+    expect(getClassSchema(Test).hasCircularDependency()).toBe(false);
     expect(getKnownClassSchemasNames()).toContain('getClassSchemaByName');
     expect(hasClassSchemaByName('getClassSchemaByName')).toBe(true);
     expect(hasClassSchemaByName('getClassSchemaByName_NOTEXISTS')).toBe(false);
@@ -107,6 +109,8 @@ test('test invalid usage', async () => {
 test('test circular', async () => {
     expect(getClassSchema(PageClass).getProperty('children').getResolvedClassType()).toBe(PageCollection);
     expect(getClassSchema(PageClass).getProperty('parent').getResolvedClassType()).toBe(PageClass);
+    expect(getClassSchema(PageClass).hasCircularDependency()).toBe(true);
+    expect(getClassSchema(DocumentClass).hasCircularDependency()).toBe(true);
     expect(getClassSchema(PageClass).getProperty('document').getResolvedClassType()).toBe(DocumentClass);
 });
 
@@ -134,6 +138,10 @@ test('test entity database', async () => {
     @Entity('DifferentDataBase3')
     class Child3 extends DifferentDataBase {
     }
+
+    expect(getClassSchema(Child).hasCircularDependency()).toBe(false);
+    expect(getClassSchema(Child2).hasCircularDependency()).toBe(false);
+    expect(getClassSchema(Child3).hasCircularDependency()).toBe(false);
 
     expect(getDatabaseName(DifferentDataBase)).toBe('testing1');
     expect(getEntityName(DifferentDataBase)).toBe('DifferentDataBase');
@@ -232,6 +240,7 @@ test('test decorator circular', () => {
             sub?: Sub;
         }
 
+        expect(getClassSchema(Model).hasCircularDependency()).toBe(false);
         const schema = resolvePropertyCompilerSchema(getClassSchema(Model), 'sub');
         expect(schema.type).toBe('class');
         expect(schema.resolveClassType).toBe(Sub);

@@ -63,7 +63,7 @@ export function validate<T extends ClassType | ClassSchema>(classType: T, item: 
 /**
  * Same as `validate` but as prepared JIT function.
  */
-export function validateFactory<T extends ClassType | ClassSchema>(classType: T,) {
+export function validateFactory<T extends ClassType | ClassSchema>(classType: T) {
     return jitValidate(classType);
 }
 
