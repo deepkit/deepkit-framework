@@ -22,7 +22,7 @@ import {AppLocker} from './app-locker';
 import {createModule} from '../module';
 import {inject, injectable} from '../injector/injector';
 import {eventDispatcher} from '../event';
-import {onServerBootstrap, onServerShutdown} from '../application-server';
+import {onServerMainBootstrap, onServerMainShutdown} from '../application-server';
 import {exchangeConfig} from './exchange.config';
 
 @injectable()
@@ -36,7 +36,7 @@ export class ExchangeListener {
     ) {
     }
 
-    @eventDispatcher.listen(onServerBootstrap)
+    @eventDispatcher.listen(onServerMainBootstrap)
     async onBootstrap() {
         if (this.startOnBootstrap) {
             this.exchangeServer = new ExchangeServer(this.listen);
@@ -44,7 +44,7 @@ export class ExchangeListener {
         }
     }
 
-    @eventDispatcher.listen(onServerShutdown)
+    @eventDispatcher.listen(onServerMainShutdown)
     async onShutdown() {
         if (this.startOnBootstrap && this.exchangeServer) {
             this.exchangeServer.close();

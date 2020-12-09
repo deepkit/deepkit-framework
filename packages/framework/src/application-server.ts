@@ -28,11 +28,30 @@ import {HttpControllers} from './router';
 import {httpClass} from './decorator';
 
 export class ServerBootstrapEvent extends BaseEvent {}
+
+/**
+ * Called only once for application server bootstrap (in the cluster main process)
+ * as soon as the application server starts.
+ */
+export const onServerMainBootstrap = new EventToken('server.main.bootstrap', ServerBootstrapEvent);
+
+/**
+ * Called only once for application server bootstrap (in the cluster main process)
+ * as soon as the application server has started.
+ */
+export const onServerMainBootstrapDone = new EventToken('server.main.bootstrapDone', ServerBootstrapEvent);
+
+/**
+ * Called for each worker as soon as the worker bootstraps.
+ */
 export const onServerBootstrap = new EventToken('server.bootstrap', ServerBootstrapEvent);
-export const onServerBootstrapDone = new EventToken('server.bootstrap-done', ServerBootstrapEvent);
 
 export class ServerShutdownEvent extends BaseEvent {}
-export const onServerShutdown = new EventToken('server.shutdown', ServerBootstrapEvent);
+
+/**
+ * Called when application server shuts down in the main process.
+ */
+export const onServerMainShutdown = new EventToken('server.main.shutdown', ServerBootstrapEvent);
 
 class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) {}
 
@@ -46,7 +65,7 @@ export class ApplicationServerListener {
     ) {
     }
 
-    @eventDispatcher.listen(onServerBootstrapDone)
+    @eventDispatcher.listen(onServerMainBootstrapDone)
     onBootstrapDone() {
         for (const [name, controller] of this.rpcControllers.controllers.entries()) {
             this.logger.log('RPC controller', name, getClassName(controller));
@@ -97,15 +116,15 @@ export class ApplicationServer {
     }
 
     public async shutdown() {
-        await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
+        await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
     }
 
     protected async bootstrap() {
-        await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
+        await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
     }
 
     protected async bootstrapDone() {
-        await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
+        await this.eventDispatcher.dispatch(onServerMainBootstrapDone, new ServerBootstrapEvent());
     }
 
     public async start() {
@@ -119,15 +138,18 @@ export class ApplicationServer {
             this.logger.log(`Start HTTP server, using ${this.config.workers} workers.`);
         }
 
+
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
                 await this.bootstrap();
+
                 for (let i = 0; i < this.config.workers; i++) {
                     cluster.fork();
                 }
 
                 await this.bootstrapDone();
             } else {
+                await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
                 this.webWorkerFactory.create(cluster.worker.id, this.config);
 
                 cluster.on('exit', (w) => {
@@ -137,7 +159,7 @@ export class ApplicationServer {
             }
         } else {
             await this.bootstrap();
-
+            await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
             this.masterWorker = this.webWorkerFactory.create(1, this.config);
             await this.bootstrapDone();
         }

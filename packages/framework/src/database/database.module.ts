@@ -26,7 +26,7 @@ import {DatabaseRegistry} from './database-registry';
 import {MigrationProvider} from './migration-provider';
 import {databaseConfig} from './database.config';
 import {eventDispatcher} from '../event';
-import {onServerBootstrap, onServerShutdown} from '../application-server';
+import {onServerBootstrap, onServerMainBootstrap, onServerMainShutdown} from '../application-server';
 import {Logger} from '../logger';
 
 @injectable()
@@ -40,6 +40,11 @@ export class DatabaseListener {
 
     @eventDispatcher.listen(onServerBootstrap)
     async onBootstrap() {
+        this.databases.init();
+    }
+
+    @eventDispatcher.listen(onServerMainBootstrap)
+    async onMainBootstrap() {
         if (this.migrateOnStartup) {
             for (const database of this.databases.getDatabases()) {
                 this.logger.log(`Migrate database <yellow>${database.name}</yellow>`);
@@ -48,7 +53,7 @@ export class DatabaseListener {
         }
     }
 
-    @eventDispatcher.listen(onServerShutdown)
+    @eventDispatcher.listen(onServerMainShutdown)
     onShutdown() {
         this.databases.onShutDown();
     }

@@ -42,17 +42,15 @@ export class DatabaseRegistry {
         }
     }
 
-    protected init() {
+    public init() {
         for (const databaseType of this.databaseTypes) {
             const database = this.scopedContext.get(databaseType);
+            if (this.databaseMap.has(database.name)) continue;
 
-            for (const classSchema of database.entities.values()) {
+            for (const classSchema of database.entities) {
                 classSchema.data['orm.database'] = database;
             }
 
-            if (this.databaseMap.has(database.name)) {
-                throw new Error(`Database with name ${database.name} already registered`);
-            }
             this.databaseMap.set(database.name, database);
         }
     }

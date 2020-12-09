@@ -118,7 +118,6 @@ interface EventDispatcherFn {
 
 export class EventDispatcher {
     protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
-    protected fn: EventDispatcherFn | undefined = undefined;
     protected instances: any[] = [];
 
     constructor(
@@ -141,7 +140,6 @@ export class EventDispatcher {
     public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {
         this.getListeners(eventToken).push(listener);
         (eventToken as any)[this.symbol] = this.buildFor(eventToken);
-        this.fn = undefined;
     }
 
     public getTokens(): EventToken<any>[] {
@@ -229,6 +227,9 @@ export class EventDispatcher {
 
     public dispatch<T extends EventToken<any>>(eventToken: T, event: EventOfEventToken<T>): Promise<void> {
         let fn = (eventToken as any)[this.symbol];
+        if (!fn) {
+            fn = (eventToken as any)[this.symbol] = this.buildFor(eventToken);
+        }
         return fn(this.scopedContext, event);
     }
 }
