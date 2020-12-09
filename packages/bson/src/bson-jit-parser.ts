@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, PropertySchema, reserveVariable} from '@deepkit/type';
 import {BSON_BINARY_SUBTYPE_UUID, BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_DATE, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize, moment} from './utils';
 import {ClassType} from '@deepkit/core';
 import {BaseParser, ParserV2} from './bson-parser';
@@ -79,6 +79,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
             `;
     } else if (property.isArray) {
         context.set('digitByteSize', digitByteSize);
+        const v = reserveVariable(context, 'v');
 
         return `
         if (elementType === ${BSON_DATA_ARRAY}) {
@@ -91,16 +92,17 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
                 //arrays are represented as objects, so we skip the key name
                 parser.seek(digitByteSize(i));
         
-                let v = undefined;
-                ${createPropertyConverter(`v`, property.getSubType(), context, property)}
-                ${setter}.push(v);
+                let ${v} = undefined;
+                ${createPropertyConverter(v, property.getSubType(), context, property)}
+                ${setter}.push(${v});
             }
-            continue;
         } else {
             ${nullOrSeek}
         }
         `;
     } else if (property.isMap) {
+        const name = reserveVariable(context, 'propertyName');
+
         return `
         if (elementType === ${BSON_DATA_OBJECT}) {
             ${setter} = {};
@@ -109,11 +111,10 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
                 const elementType = parser.eatByte();
                 if (elementType === 0) break;
 
-                const name = parser.eatObjectPropertyName();
+                ${name} = parser.eatObjectPropertyName();
 
-                ${createPropertyConverter(`${setter}[name]`, property.getSubType(), context)}
+                ${createPropertyConverter(`${setter}[${name}]`, property.getSubType(), context)}
             }
-            continue;
         } else {
             ${nullOrSeek}
         }

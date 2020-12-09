@@ -993,3 +993,39 @@ test('typed any and undefined', () => {
     expect(back.data.$set).toEqual({});
     expect(back.data.$inc).toEqual(undefined);
 });
+
+test('test map map', () => {
+    const schema = t.schema({
+        data: t.map(t.map(t.string)),
+    });
+
+    const message = jsonSerializer.for(schema).deserialize({
+        data: {foo: {bar: 'abc'}},
+    });
+
+    const size = getBSONSizer(schema)(message);
+    expect(size).toBe(calculateObjectSize(message));
+
+    const bson = getBSONSerializer(schema)(message);
+    expect(bson).toEqual(serialize(message));
+
+    expect(getBSONDecoder(schema)(bson)).toEqual(message);
+});
+
+test('test array array', () => {
+    const schema = t.schema({
+        data: t.array(t.array(t.string)),
+    });
+
+    const message = jsonSerializer.for(schema).deserialize({
+        data: [['abc']],
+    });
+
+    const size = getBSONSizer(schema)(message);
+    expect(size).toBe(calculateObjectSize(message));
+
+    const bson = getBSONSerializer(schema)(message);
+
+    expect(bson).toEqual(serialize(message));
+    expect(getBSONDecoder(schema)(bson)).toEqual(message);
+});

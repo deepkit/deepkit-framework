@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, getGlobalStore, JitStack, PropertySchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getGlobalStore, JitStack, PropertySchema, reserveVariable} from '@deepkit/type';
 import {ClassType, isArray, isObject, toFastProperties} from '@deepkit/core';
 import {seekElementSize} from './continuation';
 import {
@@ -167,24 +167,26 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
 
     if (property.type === 'array') {
         context.set('digitByteSize', digitByteSize);
+        const i = reserveVariable(context, 'i');
         code = `
         size += 4; //array size
-        for (let i = 0; i < ${accessor}.length; i++) {
+        for (let ${i} = 0; ${i} < ${accessor}.length; ${i}++) {
             size += 1; //element type
-            size += digitByteSize(i); //element name
-            ${getPropertySizer(context, property.getSubType(), `${accessor}[i]`, jitStack)}
+            size += digitByteSize(${i}); //element name
+            ${getPropertySizer(context, property.getSubType(), `${accessor}[${i}]`, jitStack)}
         }
         size += 1; //null
         `;
     } else if (property.type === 'map') {
         context.set('stringByteLength', stringByteLength);
+        const i = reserveVariable(context, 'i');
         code = `
         size += 4; //object size
-        for (let i in ${accessor}) {
-            if (!${accessor}.hasOwnProperty(i)) continue;
+        for (${i} in ${accessor}) {
+            if (!${accessor}.hasOwnProperty(${i})) continue;
             size += 1; //element type
-            size += stringByteLength(i) + 1; //element name + null
-            ${getPropertySizer(context, property.getSubType(), `${accessor}[i]`, jitStack)}
+            size += stringByteLength(${i}) + 1; //element name + null;
+            ${getPropertySizer(context, property.getSubType(), `${accessor}[${i}]`, jitStack)}
         }
         size += 1; //null
         `;
@@ -249,10 +251,15 @@ export function createBSONSizer(classSchema: ClassSchema, jitStack: JitStack = n
         }
     `;
 
-    const compiled = new Function('Buffer', 'seekElementSize', ...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, Buffer, seekElementSize, ...context.values())();
-    prepared(fn);
-    return fn;
+    try {
+        const compiled = new Function('Buffer', 'seekElementSize', ...context.keys(), functionCode);
+        const fn = compiled.bind(undefined, Buffer, seekElementSize, ...context.values())();
+        prepared(fn);
+        return fn;
+    } catch (error) {
+        console.log('Error compiling BSON sizer', functionCode);
+        throw error;
+    }
 }
 
 export class Writer {
@@ -667,30 +674,32 @@ function getPropertySerializerCode(
     } else if (property.type === 'number') {
         code = numberSerializer();
     } else if (property.type === 'array') {
+        const i = reserveVariable(context, 'i');
         code = `
             writer.writeByte(${BSON_DATA_ARRAY});
             ${nameWriter}
             const start = writer.offset;
             writer.offset += 4; //size
             
-            for (let i = 0; i < ${accessor}.length; i++) {
+            for (let ${i} = 0; ${i} < ${accessor}.length; ${i}++) {
                 //${property.getSubType().type}
-                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, jitStack, `''+i`)}
+                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[${i}]`, jitStack, `''+${i}`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
         `;
     } else if (property.type === 'map') {
+        const i = reserveVariable(context, 'i');
         code = `
             writer.writeByte(${BSON_DATA_OBJECT});
             ${nameWriter}
             const start = writer.offset;
             writer.offset += 4; //size
             
-            for (let i in ${accessor}) {
-                if (!${accessor}.hasOwnProperty(i)) continue;
+            for (let ${i} in ${accessor}) {
+                if (!${accessor}.hasOwnProperty(${i})) continue;
                 //${property.getSubType().type}
-                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[i]`, jitStack, `i`)}
+                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[${i}]`, jitStack, `${i}`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
