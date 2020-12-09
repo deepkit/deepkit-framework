@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {t} from '@deepkit/type';
+import {plainToClass, t} from '@deepkit/type';
 import {buildChanges, getInstanceState, getJITConverterForSnapshot} from '@deepkit/orm';
 import {BenchSuite} from '../bench';
 
@@ -29,7 +29,7 @@ export async function main() {
         ready: t.boolean
     });
 
-    const item = schema.create({id: 0, name: 'Peter', priority: 4, tags: ['a', 'b', 'c'], ready: true});
+    const item = plainToClass(schema, {id: 0, name: 'Peter', priority: 4, tags: ['a', 'b', 'c'], ready: true});
 
     const bench = new BenchSuite('change-detection');
     const createSnapshot = getJITConverterForSnapshot(schema);

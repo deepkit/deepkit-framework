@@ -2,7 +2,7 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {Entity, f} from '@deepkit/type';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {createModule, InternalClient, SecurityStrategy, Session} from '@deepkit/framework';
+import {createModule, InternalClient, RpcSecurityStrategy, Session} from '@deepkit/framework';
 import {Observable} from 'rxjs';
 import {sleep} from '@deepkit/core';
 import {rpc} from '@deepkit/framework-shared';
@@ -54,7 +54,7 @@ test('test peer2peer', async () => {
         controllers: [TestController],
         providers: [
             {
-                provide: SecurityStrategy, useValue: new class extends SecurityStrategy {
+                provide: RpcSecurityStrategy, useValue: new class extends RpcSecurityStrategy {
                     async isAllowedToRegisterPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
                         if (controllerName === 'forbiddenToRegister') return false;
                         return true;

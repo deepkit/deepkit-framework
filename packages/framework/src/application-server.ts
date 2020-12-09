@@ -75,7 +75,7 @@ export class ApplicationServerListener {
             const httpConfig = httpClass._fetch(controller)!;
             this.logger.log('HTTP controller', httpConfig.baseUrl || '/', getClassName(controller));
 
-            for (const action of httpConfig.actions) {
+            for (const action of httpConfig.getActions()) {
                 this.logger.log(`    ${action.httpMethod} ${httpConfig.getUrl(action)} <grey>${action.methodName}</grey>`);
             }
         }

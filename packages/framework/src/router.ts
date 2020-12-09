@@ -125,8 +125,6 @@ export class BodyValidation {
     }
 }
 
-const excludedClassTypesForBody: any[] = [IncomingMessage, ServerResponse, BodyValidation];
-
 class ParsedRoute {
     public regex?: string;
     public customValidationErrorHandling?: ParsedRouteParameter;
@@ -334,7 +332,7 @@ export class Router {
         const data = httpClass._fetch(controller);
         if (!data) return;
 
-        for (const action of data.actions) {
+        for (const action of data.getActions()) {
             const routeConfig = new RouteConfig(action.name, action.httpMethod, action.path, {controller, methodName: action.methodName});
             routeConfig.parameterRegularExpressions = action.parameterRegularExpressions;
             routeConfig.throws = action.throws;

@@ -33,10 +33,32 @@ export interface ControllerOptions {
 
 class HttpController {
     baseUrl: string = '';
-    actions = new Set<HttpAction>();
+    protected actions = new Set<HttpAction>();
+    groups: string[] = [];
 
     getUrl(action: HttpAction): string {
         return join('/', this.baseUrl, action.path);
+    }
+
+    addAction(action: HttpAction) {
+        this.actions.add(action);
+    }
+
+    getActions(): Set<HttpAction> {
+        for (const a of this.actions) {
+            for (const g of this.groups) {
+                if (!a.groups.includes(g)) a.groups.push(g);
+            }
+        }
+
+        return this.actions;
+    }
+
+    getAction(methodName: string): HttpAction {
+        for (const a of this.getActions()) {
+            if (a.methodName === methodName) return a;
+        }
+        throw new Error(`No action with methodName ${methodName} found`);
     }
 }
 
@@ -77,8 +99,12 @@ class HttpDecorator {
         this.t.baseUrl = baseUrl;
     }
 
+    groupAll(...group: string[]) {
+        this.t.groups.push(...group);
+    }
+
     setAction(action: HttpAction) {
-        this.t.actions.add(action);
+        this.t.addAction(action);
     }
 }
 

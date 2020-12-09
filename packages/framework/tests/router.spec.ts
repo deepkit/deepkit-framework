@@ -130,7 +130,7 @@ test('router body double', async () => {
 
     const httpData = httpClass._fetch(Controller);
     if (!httpData) throw new Error('httpClass undefined');
-    const action = [...httpData.actions][0];
+    const action = [...httpData.getActions()][0];
     expect(action.methodName).toBe('anyReq');
     expect(action.httpMethod).toBe('POST');
     expect(action.parameters['body']).not.toBeUndefined();
@@ -144,6 +144,56 @@ test('router body double', async () => {
     expect(await httpHandler.handleRequestFor('POST', '/', {username: 'Peter'})).toEqual(['Peter', true, '/']);
 });
 
+test('router groups', async () => {
+    {
+        class Controller {
+            @http.GET('a').group('a')
+            a() {
+            }
+
+            @http.GET('b')
+            b() {
+            }
+
+            @http.GET('c').group('c')
+            c() {
+            }
+        }
+        const httpData = httpClass._fetch(Controller);
+        if (!httpData) throw new Error('httpClass undefined');
+        expect(httpData.getAction('a').groups).toEqual(['a']);
+        expect(httpData.getAction('b').groups).toEqual([]);
+        expect(httpData.getAction('c').groups).toEqual(['c']);
+    }
+
+    {
+        @http.groupAll('all')
+        class Controller {
+            @http.GET('a').group('a')
+            a() {
+            }
+
+            @http.GET('b')
+            b() {
+            }
+
+            @http.GET('c').group('c')
+            c() {
+            }
+        }
+        const httpData = httpClass._fetch(Controller);
+        if (!httpData) throw new Error('httpClass undefined');
+        expect(httpData.getAction('a').groups).toEqual(['a', 'all']);
+        expect(httpData.getAction('b').groups).toEqual(['all']);
+        expect(httpData.getAction('c').groups).toEqual(['c', 'all']);
+    }
+
+    expect(() => {
+        @http.group('all')
+        class ControllerC {}
+    }).toThrow('Property decorators can only be used on class properties');
+});
+
 test('router query', async () => {
     class Controller {
         @http.GET('my-action')
@@ -154,7 +204,7 @@ test('router query', async () => {
 
     const httpData = httpClass._fetch(Controller);
     if (!httpData) throw new Error('httpClass undefined');
-    const action = [...httpData.actions][0];
+    const action = [...httpData.getActions()][0];
     expect(action.methodName).toBe('anyReq');
     expect(action.httpMethod).toBe('GET');
     expect(action.parameters['test']).not.toBeUndefined();
