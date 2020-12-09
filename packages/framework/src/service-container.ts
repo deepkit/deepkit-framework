@@ -26,6 +26,7 @@ import {rpcClass} from '@deepkit/framework-shared';
 import {cli} from './command';
 import {HttpControllers} from './router';
 import {InjectorContext, Context, ContextRegistry} from './injector/injector';
+import {WorkflowDefinition} from './workflow';
 
 export interface OnInit {
     onInit: () => Promise<void>;
@@ -55,10 +56,28 @@ export class CliControllers {
     public readonly controllers = new Map<string, ClassType>();
 }
 
+export class WorkflowRegistry {
+    constructor(public readonly workflows: WorkflowDefinition<any>[]) {
+    }
+
+    public get(name: string): WorkflowDefinition<any> {
+        for (const w of this.workflows) {
+            if (w.name === name) return w;
+        }
+
+        throw new Error(`Workflow with name ${name} does not exist`);
+    }
+
+    public add(workflow: WorkflowDefinition<any>) {
+        this.workflows.push(workflow);
+    }
+}
+
 export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>> {
     public readonly cliControllers = new CliControllers;
     public readonly rpcControllers = new RpcControllers;
     public readonly httpControllers = new HttpControllers([]);
+    public readonly workflowRegistry = new WorkflowRegistry([]);
 
     protected currentIndexId = 0;
 
@@ -168,6 +187,10 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         if (module.options.bootstrap) providers.push(module.options.bootstrap);
 
         const forRootContext = module.root;
+
+        if (module.options.workflows) {
+            for (const w of module.options.workflows) this.workflowRegistry.add(w);
+        }
 
         //we have to call getNewContext() either way to store this module in this.contexts.
         let context = this.getNewContext(module, parentContext);

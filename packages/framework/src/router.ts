@@ -71,6 +71,8 @@ export class RouteConfig {
     public parameterRegularExpressions: { [name: string]: any } = {};
     public throws: { errorType: ClassType, message?: string }[] = [];
     public description: string = '';
+    public groups: string[] = [];
+    public category: string = '';
 
     public parameters: {
         [name: string]: RouteParameterConfig
@@ -337,6 +339,8 @@ export class Router {
             routeConfig.parameterRegularExpressions = action.parameterRegularExpressions;
             routeConfig.throws = action.throws;
             routeConfig.description = action.description;
+            routeConfig.category = action.category;
+            routeConfig.groups = action.groups;
             routeConfig.baseUrl = data.baseUrl;
             routeConfig.parameters = {...action.parameters};
             this.addRoute(routeConfig);

@@ -58,6 +58,7 @@ class HttpAction {
     path: string = '';
     httpMethod: string = 'GET';
     methodName: string = '';
+    groups: string[] = [];
 
     parameterRegularExpressions: { [name: string]: any } = {};
 
@@ -105,6 +106,10 @@ class HttpActionDecorator {
 
     category(category: string) {
         this.t.category = category;
+    }
+
+    group(...group: string[]) {
+        this.t.groups.push(...group);
     }
 
     GET(path: string = '') {

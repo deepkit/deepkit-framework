@@ -10,7 +10,7 @@ export * from './src/decorator';
 export * from './src/injector/injector';
 export * from './src/injector/provider';
 export * from './src/service-container';
-export * from './src/database/databases';
+export * from './src/database/database-registry';
 export * from './src/database/database.config';
 export * from './src/database/database.module';
 export * from './src/database/migration';

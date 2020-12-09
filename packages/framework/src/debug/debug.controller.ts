@@ -15,20 +15,64 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import {Config, ConfigOption, DebugControllerInterface, DebugControllerSymbol, Route, RpcAction, RpcActionParameter} from '@deepkit/framework-debug-shared';
+import {Config, ConfigOption, DebugControllerInterface, Route, RpcAction, RpcActionParameter, Workflow, Event, Database, DatabaseEntity} from '@deepkit/framework-debug-shared';
 import {rpc, rpcClass} from '@deepkit/framework-shared';
 import {getClassSchema, t} from '@deepkit/type';
 import {ServiceContainer} from '../service-container';
 import {parseRouteControllerAction, Router} from '../router';
 import {getClassName} from '@deepkit/core';
+import {EventDispatcher, isEventListenerContainerEntryService} from '../event';
+import {DatabaseRegistry} from '../database/database-registry';
+import {inject} from '../injector/injector';
+import {DatabaseAdapter} from '@deepkit/orm';
 
 
-@rpc.controller(DebugControllerSymbol)
+@rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
     constructor(
         protected serviceContainer: ServiceContainer,
+        protected eventDispatcher: EventDispatcher,
         protected router: Router,
+        @inject().optional protected databaseRegistry?: DatabaseRegistry,
     ) {
+    }
+
+    @rpc.action()
+    @t.array(Database)
+    databases(): Database[] {
+        if (!this.databaseRegistry) return [];
+
+        const databases: Database[] = [];
+
+        for (const db of this.databaseRegistry.getDatabases()) {
+            const entities: DatabaseEntity[] = [];
+            for (const classSchema of db.entities) {
+                entities.push({name: classSchema.name, className: classSchema.getClassName()});
+            }
+            databases.push({name: db.name, entities, adapter: (db.adapter as DatabaseAdapter).getName()});
+        }
+
+        return databases;
+    }
+
+    @rpc.action()
+    @t.array(Event)
+    events(): Event[] {
+        const events: Event[] = [];
+        for (const token of this.eventDispatcher.getTokens()) {
+            const listeners = this.eventDispatcher.getListeners(token);
+            for (const listener of listeners) {
+                if (isEventListenerContainerEntryService(listener)) {
+                    events.push({
+                        event: token.id,
+                        controller: getClassName(listener.classType),
+                        methodName: listener.methodName,
+                        priority: listener.priority,
+                    });
+                }
+            }
+        }
+        return events;
     }
 
     @rpc.action()
@@ -41,7 +85,10 @@ export class DebugController implements DebugControllerInterface {
                 path: route.getFullPath(),
                 httpMethod: route.httpMethod,
                 parameters: [],
+                groups: route.groups,
+                category: route.category,
                 controller: getClassName(route.action.controller) + '.' + route.action.methodName,
+
                 description: route.description,
             };
             const parsedRoute = parseRouteControllerAction(route);
@@ -144,5 +191,15 @@ export class DebugController implements DebugControllerInterface {
         }
 
         return result;
+    }
+
+    @rpc.action()
+    getWorkflow(name: string): Workflow {
+        const w = this.serviceContainer.workflowRegistry.get(name);
+
+        return {
+            places: Object.keys(w.places),
+            transitions: w.transitions,
+        };
     }
 }

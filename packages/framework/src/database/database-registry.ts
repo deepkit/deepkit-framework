@@ -26,13 +26,14 @@ import {InjectorContext} from '../injector/injector';
 /**
  * Class to register a new database and resolve a schema/type to a database.
  */
-export class Databases {
+export class DatabaseRegistry {
     protected databaseMap = new Map<string, Database<any>>();
 
     constructor(
         protected scopedContext: InjectorContext,
         @inject(databaseConfig.token('databases')) public databaseTypes: ClassType<Database<any>>[]
     ) {
+        this.init();
     }
 
     public onShutDown() {
@@ -41,11 +42,11 @@ export class Databases {
         }
     }
 
-    public init() {
+    protected init() {
         for (const databaseType of this.databaseTypes) {
             const database = this.scopedContext.get(databaseType);
 
-            for (const classSchema of database.classSchemas.values()) {
+            for (const classSchema of database.entities.values()) {
                 classSchema.data['orm.database'] = database;
             }
 

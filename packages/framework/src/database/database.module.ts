@@ -22,7 +22,7 @@ import {MigrationUpCommand} from './cli/migration-up-command';
 import {MigrationPendingCommand} from './cli/migration-pending-command';
 import {MigrationDownCommand} from './cli/migration-down-command';
 import {inject, injectable} from '../injector/injector';
-import {Databases} from './databases';
+import {DatabaseRegistry} from './database-registry';
 import {MigrationProvider} from './migration-provider';
 import {databaseConfig} from './database.config';
 import {eventDispatcher} from '../event';
@@ -32,11 +32,10 @@ import {Logger} from '../logger';
 @injectable()
 export class DatabaseListener {
     constructor(
-        protected databases: Databases,
+        protected databases: DatabaseRegistry,
         protected logger: Logger,
         @inject(databaseConfig.token('migrateOnStartup')) protected migrateOnStartup: boolean,
     ) {
-        this.databases.init();
     }
 
     @eventDispatcher.listen(onServerBootstrap)
@@ -58,7 +57,7 @@ export class DatabaseListener {
 export const DatabaseModule = createModule({
     name: 'database',
     providers: [
-        Databases,
+        DatabaseRegistry,
         MigrationProvider,
     ],
     listeners: [

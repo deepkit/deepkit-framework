@@ -95,7 +95,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     /**
      * The entity schema registry.
      */
-    public readonly classSchemas = new Set<ClassSchema>();
+    public readonly entities = new Set<ClassSchema>();
 
     /**
      * Event API for DatabaseQuery events.
@@ -210,7 +210,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         for (const entity of entities) {
             const schema = getClassSchema(entity);
 
-            this.classSchemas.add(schema);
+            this.entities.add(schema);
 
             schema.data['orm.database'] = this;
             if (isActiveRecordType(entity)) entity.registerDatabase(this);
@@ -224,7 +224,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * SEE THE MIGRATION DOCUMENTATION TO UNDERSTAND ITS IMPLICATIONS.
      */
     async migrate() {
-        await this.adapter.migrate([...this.classSchemas.values()]);
+        await this.adapter.migrate([...this.entities.values()]);
     }
 
     /**

@@ -22,8 +22,8 @@ import {BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCal
 import {InjectorContext} from './injector/injector';
 
 interface WorkflowTransition<T> {
-    from: keyof T,
-    to: keyof T,
+    from: keyof T & string,
+    to: keyof T & string,
     label?: string;
 }
 
@@ -71,11 +71,11 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         public readonly places: T,
         transitions: WorkflowTransitions<T> = {}
     ) {
-        for (const name in this.places) {
-            if (!this.places.hasOwnProperty(name)) continue;
-            const token = new EventToken(name, this.places[name]);
-            this.tokens[name] = token;
-            (this as any)['on' + capitalize(name)] = token;
+        for (const placeName in this.places) {
+            if (!this.places.hasOwnProperty(placeName)) continue;
+            const token = new EventToken(name + '.' + placeName, this.places[placeName]);
+            this.tokens[placeName] = token;
+            (this as any)['on' + capitalize(placeName)] = token;
         }
         for (const [i, value] of Object.entries(transitions)) {
             if (isArray(value)) {

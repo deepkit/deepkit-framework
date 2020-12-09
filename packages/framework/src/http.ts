@@ -163,26 +163,18 @@ export const httpWorkflow = createWorkflow('http', {
     controllerError: HttpControllerErrorEvent,
     static: WorkflowEvent,
     response: HttpResponseEvent,
+}, {
+    start: 'request',
+    request: 'route',
+    route: ['auth', 'routeNotFound'],
+    auth: ['controller', 'accessDenied'],
+    controller: ['accessDenied', 'controllerResponse', 'controllerError'],
+    accessDenied: 'response',
+    controllerResponse: 'response',
+    controllerError: 'response',
+    routeNotFound: ['static'],
+    static: 'response',
 });
-
-httpWorkflow.addTransition('start', 'request');
-httpWorkflow.addTransition('request', 'route');
-
-httpWorkflow.addTransition('route', 'auth');
-httpWorkflow.addTransition('route', 'routeNotFound');
-httpWorkflow.addTransition('routeNotFound', 'static');
-
-httpWorkflow.addTransition('auth', 'controller');
-httpWorkflow.addTransition('auth', 'accessDenied');
-
-httpWorkflow.addTransition('controller', 'controllerResponse');
-httpWorkflow.addTransition('controller', 'controllerError');
-
-httpWorkflow.addTransition('accessDenied', 'response');
-httpWorkflow.addTransition('controllerResponse', 'response');
-httpWorkflow.addTransition('controllerError', 'response');
-httpWorkflow.addTransition('static', 'response');
-
 
 export class HtmlResponse {
     constructor(public html: string) {

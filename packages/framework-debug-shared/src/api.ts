@@ -9,6 +9,26 @@ export class ConfigOption {
     @t.optional description?: string;
 }
 
+@entity.name('debug/workflow')
+export class Workflow {
+    @t.array(t.string) places!: string[];
+    @t.array(t.schema({from: t.string, to: t.string, label: t.string.optional})) transitions!: { from: string, to: string, label?: string; }[];
+}
+
+@entity.name('debug/database/entity')
+export class DatabaseEntity {
+    @t.optional name?: string;
+    @t className!: string;
+}
+
+@entity.name('debug/database')
+export class Database {
+    @t name!: string;
+    @t adapter!: string;
+
+    @t.array(DatabaseEntity) entities: DatabaseEntity[] = [];
+}
+
 @entity.name('debug/config')
 export class Config {
     @t.array(ConfigOption) appConfig!: ConfigOption[];
@@ -26,12 +46,13 @@ export class Route {
     public bodyPropertySchema?: PropertySchema;
 
     constructor(
-        // @t public path: string,
         @t public path: string,
         @t public httpMethod: string,
         @t public controller: string,
         @t public description: string,
         @t.array(RouteParameter) public parameters: RouteParameter[],
+        @t.array(t.string) public groups: string[],
+        @t.string public category: string,
         @t.any public bodySchema?: any,
     ) {
         if (bodySchema) {
@@ -52,7 +73,6 @@ export class RpcActionParameter {
     }
 }
 
-
 @entity.name('rpc/action')
 export class RpcAction {
     @t path!: string;
@@ -61,12 +81,25 @@ export class RpcAction {
     @t.array(RpcActionParameter) parameters!: RpcActionParameter[];
 }
 
-export const DebugControllerSymbol = ControllerSymbol<DebugControllerInterface>('debug/controller');
+@entity.name('rpc/event')
+export class Event {
+    @t event!: string;
+    @t controller!: string;
+    @t methodName!: string;
+    @t priority!: number;
+}
 
+export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('debug/controller');
 export interface DebugControllerInterface {
     configuration(): Config;
+
+    databases(): Database[];
 
     routes(): Route[];
 
     actions(): RpcAction[];
+
+    getWorkflow(name: string): Workflow;
+
+    events(): Event[];
 }

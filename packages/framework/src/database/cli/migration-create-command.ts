@@ -24,7 +24,7 @@ import {indent} from '@deepkit/core';
 import {cli, Command, flag} from '../../command';
 import {Logger} from '../../logger';
 import {MigrationProvider} from '../migration-provider';
-import {Databases} from '../databases';
+import {DatabaseRegistry} from '../database-registry';
 import {inject} from '../../injector/injector';
 import {databaseConfig} from '../database.config';
 
@@ -39,7 +39,7 @@ function serializeSQLLine(sql: string): string {
 export class MigrationCreateController implements Command {
     constructor(
         protected logger: Logger,
-        protected databases: Databases,
+        protected databases: DatabaseRegistry,
         protected databaseProvider: MigrationProvider,
         @inject(databaseConfig.token('migrationDir')) protected migrationDir: string,
     ) {
@@ -56,7 +56,7 @@ export class MigrationCreateController implements Command {
             if (db.adapter instanceof SQLDatabaseAdapter) {
                 const databaseModel = new DatabaseModel();
                 databaseModel.schemaName = db.adapter.getSchemaName();
-                db.adapter.platform.createTables([...db.classSchemas], databaseModel);
+                db.adapter.platform.createTables([...db.entities], databaseModel);
 
                 const connection = await db.adapter.connectionPool.getConnection();
                 const schemaParser = new db.adapter.platform.schemaParserType(connection, db.adapter.platform);

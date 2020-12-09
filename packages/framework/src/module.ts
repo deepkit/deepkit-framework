@@ -21,6 +21,7 @@ import {JSONPartial, jsonSerializer, ValidationFailed} from '@deepkit/type';
 import {ConfigDefinition, InjectToken} from './injector/injector';
 import {ProviderWithScope} from './injector/provider';
 import {ClassType, CustomError} from '@deepkit/core';
+import {WorkflowDefinition} from './workflow';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
 export type ExtractImportConfigs<T extends Array<Module<any>> | undefined> = T extends Array<any> ? { [M in T[number] as (ExtractModuleOptions<M>['name'] & string)]?: ExtractPartialConfigOfDefinition<DefaultObject<ExtractModuleOptions<M>['config']>> } : {};
@@ -71,6 +72,12 @@ export interface ModuleOptions<NAME extends string | undefined> {
      * RPC/HTTP/CLI controllers.
      */
     controllers?: ClassType[];
+
+    /**
+     * Register created workflows. This allows the Framework Debugger to collect
+     * debug information and display the graph of your workflow.
+     */
+    workflows?: WorkflowDefinition<any>[];
 
     /**
      * Event listeners.

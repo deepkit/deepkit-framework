@@ -144,6 +144,10 @@ export class EventDispatcher {
         this.fn = undefined;
     }
 
+    public getTokens(): EventToken<any>[] {
+        return [...this.listenerMap.keys()];
+    }
+
     public getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
         let listeners = this.listenerMap.get(eventToken);
         if (!listeners) {

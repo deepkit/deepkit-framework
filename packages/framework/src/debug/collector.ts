@@ -16,16 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import sift from 'sift';
-import {FilterQuery} from '@deepkit/framework-shared';
+import {injectable} from '../injector/injector';
 
-export function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: FilterQuery<T>): boolean {
-    //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."
-    return sift(query as any, [target] as any[]).length > 0;
-}
-
-export function normalizeDirectory(path: string): string {
-    if (path[0] !== '/') path = '/' + path;
-    if (path[path.length] !== '/') path = path + '/';
-    return path;
+@injectable()
+export class DebugCollector {
 }

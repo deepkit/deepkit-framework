@@ -1,9 +1,15 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
 import {ControllerClient} from '../../client';
-import {Route} from '@deepkit/framework-debug-shared';
+import {Route, Workflow} from '@deepkit/framework-debug-shared';
 
 @Component({
   template: `
+    <div class="header">
+      <h4>HTTP Workflow</h4>
+    </div>
+    <div style="height: 250px; margin-bottom: 10px; overflow: auto" class="overlay-scrollbar-small">
+      <app-workflow [workflow]="workflow"></app-workflow>
+    </div>
     <div class="header">
       <h4>HTTP Routes</h4>
       <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="filterQuery"></dui-input>
@@ -23,7 +29,13 @@ import {Route} from '@deepkit/framework-debug-shared';
           {{row.bodyPropertySchema ? row.bodyPropertySchema.toString() : ''}}
         </ng-container>
       </dui-table-column>
+      <dui-table-column [width]="220" name="groups">
+        <ng-container *duiTableCell="let row">
+          {{row.groups.join(', ')}}
+        </ng-container>
+      </dui-table-column>
       <dui-table-column [width]="220" name="description"></dui-table-column>
+      <dui-table-column [width]="220" name="category"></dui-table-column>
     </dui-table>
     <!--    <div>-->
     <!--      <div class="center" *ngIf="!route">No route selected</div>-->
@@ -47,26 +59,15 @@ import {Route} from '@deepkit/framework-debug-shared';
     .header dui-input {
       margin-left: auto;
     }
-
-
-    /*:host > * {*/
-    /*  flex: 0 0 100%;*/
-    /*}*/
-
-    .center {
-      display: flex;
-      height: 100%;
-      align-items: center;
-      justify-content: center;
-    }
   `]
 })
 export class HttpComponent implements OnInit {
   public routes: Route[] = [];
   public selected: Route[] = [];
 
-  public filterQuery: string = '';
+  public workflow?: Workflow;
 
+  public filterQuery: string = '';
   constructor(
     private controllerClient: ControllerClient,
     public cd: ChangeDetectorRef,
@@ -84,8 +85,11 @@ export class HttpComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.routes = await this.controllerClient.debug.routes();
-    console.log('this.routes', this.routes);
+    [this.routes, this.workflow] = await Promise.all([
+      this.controllerClient.debug.routes(),
+      this.controllerClient.debug.getWorkflow('http')
+    ]);
+
     this.cd.detectChanges();
   }
 

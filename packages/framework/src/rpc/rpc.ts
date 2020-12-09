@@ -22,19 +22,24 @@ import {InjectorContext} from '../injector/injector';
 export const rpcWorkflow = createWorkflow('rpc', {
     start: WorkflowEvent,
     connect: WorkflowEvent,
-    auth: WorkflowEvent,
+    authentication: WorkflowEvent,
+    authorization: WorkflowEvent,
+    accessDenied: WorkflowEvent,
+    peerRegistration: WorkflowEvent,
     action: WorkflowEvent,
+    actionCall: WorkflowEvent,
     actionException: WorkflowEvent,
     actionResult: WorkflowEvent,
-    disconnect: WorkflowEvent,
-    end: WorkflowEvent,
+    // disconnect: WorkflowEvent
 }, {
     start: 'connect',
-    connect: ['auth', 'action', 'disconnect'],
-    action: 'actionException',
-    actionException: 'disconnect',
-    actionResult: 'disconnect',
-    disconnect: 'end'
+    connect: ['authentication', 'action', 'peerRegistration'],
+    action: 'authorization',
+    authorization: ['actionCall', 'accessDenied'],
+    actionCall: ['actionException', 'actionResult'],
+    // actionException: ['disconnect'],
+    // actionResult: ['disconnect'],
+    // accessDenied: ['disconnect']
 });
 
 export class RpcInjectorContext extends InjectorContext {}

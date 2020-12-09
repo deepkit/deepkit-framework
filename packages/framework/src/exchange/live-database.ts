@@ -23,7 +23,7 @@ import {ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward} 
 import {Observable, Subscription} from 'rxjs';
 import {Exchange} from './exchange';
 import {findQuerySatisfied} from '../utils';
-import {Databases} from '../database/databases';
+import {DatabaseRegistry} from '../database/database-registry';
 import {
     BaseQuery,
     Database,
@@ -185,7 +185,7 @@ class SubscriptionHandlers {
 
     constructor(
         protected writer: ConnectionWriter,
-        protected databases: Databases,
+        protected databases: DatabaseRegistry,
         protected exchange: Exchange,
     ) {
     }
@@ -783,7 +783,7 @@ export class LiveDatabase {
     protected entitySubscriptions = new Map<ClassSchema, AsyncEventSubscription[]>();
 
     constructor(
-        protected databases: Databases,
+        protected databases: DatabaseRegistry,
         protected exchange: Exchange,
         protected writer: ConnectionWriter,
     ) {

@@ -102,12 +102,12 @@ export interface InjectDecorator {
     /**
      * Mark as optional.
      */
-    optional(): this;
+    readonly optional: this;
 
     /**
      * Resolves the dependency token from the root injector.
      */
-    root(): this;
+    readonly root: this;
 }
 
 type InjectOptions = {
@@ -132,17 +132,21 @@ export function inject(token?: any | ForwardRef<any>): InjectDecorator {
         })(target, propertyOrMethodName, parameterIndexOrDescriptor);
     };
 
-    fn.optional = () => {
-        injectOptions.optional = true;
-        return fn;
-    };
+    Object.defineProperty(fn, 'optional', {
+        get() {
+            injectOptions.optional = true;
+            return fn;
+        }
+    });
 
-    fn.root = () => {
-        injectOptions.root = true;
-        return fn;
-    };
+    Object.defineProperty(fn, 'root', {
+        get() {
+            injectOptions.optional = true;
+            return fn;
+        }
+    });
 
-    return fn;
+    return fn as InjectDecorator;
 }
 
 export class InjectToken {

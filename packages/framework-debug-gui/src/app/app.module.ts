@@ -24,6 +24,8 @@ import {HttpComponent} from './views/http/http.component';
 import {ControllerClient} from './client';
 import {FormsModule} from '@angular/forms';
 import {RpcComponent} from './views/rpc/rpc.component';
+import {WorkflowComponent} from './components/workflow.component';
+import {EventsComponent} from './views/events/events.component';
 
 @NgModule({
   declarations: [
@@ -31,6 +33,8 @@ import {RpcComponent} from './views/rpc/rpc.component';
     ConfigurationComponent,
     HttpComponent,
     RpcComponent,
+    WorkflowComponent,
+    EventsComponent,
   ],
   imports: [
     BrowserModule,

@@ -78,7 +78,7 @@ test('injector optional dependency', () => {
 
     @injectable()
     class MyServer {
-        constructor(@inject().optional() private connection?: Connection) {
+        constructor(@inject().optional private connection?: Connection) {
             expect(connection).toBeUndefined();
         }
     }

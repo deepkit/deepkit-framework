@@ -30,12 +30,14 @@ import {ApplicationServer, ApplicationServerListener} from './application-server
 import {ConsoleTransport, Logger} from './logger';
 import {LiveDatabase} from './exchange/live-database';
 import {inject, injectable} from './injector/injector';
-import {DebugController} from './controller/debug.controller';
+import {DebugController} from './debug/debug.controller';
 import {createModule} from './module';
 import {ExchangeModule} from './exchange/exchange.module';
 import {kernelConfig} from './kernel.config';
 import {EnvConfiguration} from './configuration';
 import {WebWorkerFactory} from './worker';
+import {rpcWorkflow} from './rpc/rpc';
+import {registerDebugHttpController} from './debug/http-debug.controller';
 
 class HttpLogger {
     constructor(@inject() private logger: Logger) {
@@ -82,6 +84,10 @@ export const KernelModule = createModule({
         {provide: ConnectionMiddleware, scope: 'rpc'},
         {provide: LiveDatabase, scope: 'rpc'},
     ],
+    workflows: [
+        httpWorkflow,
+        rpcWorkflow,
+    ],
     listeners: [
         HttpListener,
         HttpRouteNotFoundListener,
@@ -104,5 +110,6 @@ export const KernelModule = createModule({
 
     if (config.debug) {
         module.addController(DebugController);
+        registerDebugHttpController(module, config.debugUrl);
     }
 }).forRoot();
