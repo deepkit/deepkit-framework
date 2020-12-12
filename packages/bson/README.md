@@ -3,7 +3,7 @@
 `@deepkit/bson` is a high-performance TS implementation of a parser and serializer for BSON,
  the MongoDB Binary JSON format. It's the fastest JS BSON parser, even faster than native JSON.parse/stringify.
  
-Super Hornet has reimplemented it because its a high-performane framework and both the official JS (js-bson) and C++ (bson-ext) packages are too slow. 
+Deepkit has reimplemented it because its a high-performane framework and both the official JS (js-bson) and C++ (bson-ext) packages are too slow. 
 How slow? When converting 10k elements in an array, js-bson takes 25ms, bson-ext takes 31ms, whiles JSON.parse takes only 5ms. 
 This makes the official BSON parser 5x slower than native JSON.parse. deepkit/type-bson on the other hand takes only 2ms and is therefore 13x faster.
 

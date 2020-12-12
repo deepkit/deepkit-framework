@@ -17,11 +17,13 @@
  */
 
 import {getClassSchemaByName, jsonSerializer} from '@deepkit/type';
-import {Collection, CollectionStream, EntitySubject, IdInterface, JSONEntity, ServerMessageEntity} from '../index';
-import {delete as deleteByPath, get, set} from 'dot-prop';
+import dotProp from 'dot-prop';
 import {ClassType, eachPair, getClassName, getObjectKeysSize} from '@deepkit/core';
 import {skip} from 'rxjs/operators';
 import {ObjectUnsubscribedError, Subject} from 'rxjs';
+import {CollectionStream, IdInterface, ServerMessageEntity} from './contract';
+import {EntitySubject, JSONEntity} from './core';
+import {Collection} from './collection';
 
 class EntitySubjectStore<T extends IdInterface> {
     subjects: { [id: string]: EntitySubject<T> } = {};
@@ -213,19 +215,19 @@ export class EntityState {
 
                     //it's important to not patch old versions
                     for (const [i, v] of eachPair(patches)) {
-                        set(item, i, v);
+                        dotProp.set(item, i, v);
                     }
 
                     if (stream.patch.$unset) {
                         for (const [path] of eachPair(stream.patch.$unset)) {
-                            deleteByPath(item, path);
+                            dotProp.delete(item, path);
                         }
                     }
 
                     if (stream.patch.$inc) {
                         for (const [path, value] of eachPair(stream.patch.$inc)) {
-                            const old: any = get(item, path) || 0;
-                            set(item, path, old + value);
+                            const old: any = dotProp.get(item, path) || 0;
+                            dotProp.set(item, path, old + value);
                         }
                     }
 

@@ -28,7 +28,7 @@ import {mongoSerializer} from './mongo-serializer';
 import {FindAndModifyCommand} from './client/command/find-and-modify';
 import {empty} from '@deepkit/core';
 import {FindCommand} from './client/command/find';
-import {ObjectId} from 'bson';
+import bson from 'bson';
 
 export class MongoPersistence extends DatabasePersistence {
 
@@ -87,7 +87,7 @@ export class MongoPersistence extends DatabasePersistence {
             const converted = scopeSerializer.serialize(item);
 
             if (has_Id && !item['_id']) {
-                converted['_id'] = new ObjectId();
+                converted['_id'] = new bson.ObjectId();
                 item['_id'] = converted['_id'].toHexString();
             }
             insert.push(converted);

@@ -1,8 +1,11 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {f, getClassSchema, jsonSerializer} from '@deepkit/type';
-import {Binary} from 'bson';
+import bson from 'bson';
 import {mongoSerializer} from '../src/mongo-serializer';
+
+const {Binary} = bson;
 
 test('Int8Array', async () => {
     class Clazz {
@@ -31,7 +34,7 @@ test('Int8Array', async () => {
 
     const mongo2 = mongoSerializer.for(Clazz).from(jsonSerializer, plain);
     expect(mongo2.ints).toBeInstanceOf(Binary);
-    expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'))
+    expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'));
 });
 
 test('arrayBuffer', async () => {
@@ -65,7 +68,7 @@ test('arrayBuffer', async () => {
 
     const mongo2 = mongoSerializer.for(Clazz).from(jsonSerializer, plain);
     expect(mongo2.ints).toBeInstanceOf(Binary);
-    expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'))
+    expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'));
 });
 
 test('arrayBuffer 2', async () => {
@@ -98,5 +101,5 @@ test('arrayBuffer 2', async () => {
 
     const mongo2 = mongoSerializer.for(Clazz).from(jsonSerializer, plain);
     expect(mongo2.ints).toBeInstanceOf(Binary);
-    expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'))
+    expect(mongo2.ints.toString('base64')).toBe(mongo.ints.toString('base64'));
 });

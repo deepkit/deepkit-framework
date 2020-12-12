@@ -1,6 +1,7 @@
 import {entity, PrimaryKey, Reference, t} from '@deepkit/type';
 import {UserCredentials} from './user-credentials';
 import {Group} from './group';
+import {Forward} from '@deepkit/core';
 
 @entity.name('user')
 export class User {
@@ -17,7 +18,7 @@ export class User {
     @t version: number = 0;
 
     @t.type(() => UserCredentials).optional.backReference()
-    credentials?: UserCredentials;
+    credentials?: Forward<UserCredentials>;
 
     @t.array(() => Group).backReference({via: () => UserGroup})
     groups: Group[] = [];

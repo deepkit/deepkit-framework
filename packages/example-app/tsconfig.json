@@ -7,7 +7,9 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2018",
-    "module": "CommonJS",
+    "module": "es2020",
+    "esModuleInterop": true,
+
     "lib": [
       "es6",
       "dom"

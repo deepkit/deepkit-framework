@@ -9,7 +9,7 @@
  */
 
 import {eachPair} from './iterators';
-import * as dotProp from 'dot-prop';
+import dotProp from 'dot-prop';
 
 /**
  * Makes sure the error once printed using console.log contains the actual class name.
@@ -36,6 +36,12 @@ export class CustomError extends Error {
 export interface ClassType<T = any> {
     new(...args: any[]): T;
 }
+
+/**
+ * This type maintains the actual type, but erases the decoratorMetadata, which is requires in a circular reference for ECMAScript modules.
+ * Basically fixes like "ReferenceError: Cannot access 'MyClass' before initialization"
+ */
+export type Forward<T> = T & {__forward?: true};
 
 /**
  * Returns the class name either of the class definition or of the class of an instance.

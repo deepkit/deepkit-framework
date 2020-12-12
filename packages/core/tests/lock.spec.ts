@@ -1,3 +1,5 @@
+import 'jest';
+import {jest} from '@jest/globals'
 import 'jest-extended';
 import {ProcessLock, ProcessLocker} from '../src/process-locker';
 
@@ -56,19 +58,19 @@ test('test lock timeout accum', async () => {
     expect((Date.now() - start) / 1000).toBeGreaterThan(1.9);
 });
 
-test('test performance', async () => {
-    const start = performance.now();
-
-    const count = 2000;
-    for (let i = 0; i < count; i++) {
-        const lock1 = await locker.acquireLock('test-perf');
-        await lock1.unlock();
-    }
-
-    console.log(count, 'locks took', performance.now() - start, (performance.now() - start) / count);
-
-    // expect(performance.now() - start).toBeLessThan(100);
-});
+// test('test performance', async () => {
+//     const start = performance.now();
+//
+//     const count = 2000;
+//     for (let i = 0; i < count; i++) {
+//         const lock1 = await locker.acquireLock('test-perf');
+//         await lock1.unlock();
+//     }
+//
+//     console.log(count, 'locks took', performance.now() - start, (performance.now() - start) / count);
+//
+//     // expect(performance.now() - start).toBeLessThan(100);
+// });
 
 test('test tryLock', async () => {
     const lock1 = await locker.acquireLock('trylock', 1);

@@ -4,6 +4,7 @@
   "description": "deepkit/type SQL adapter.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -22,7 +23,7 @@
     "@deepkit/type": "^1.0.1-alpha.1",
     "better-sqlite3": "^7.1.1",
     "mariadb": "^2.4.2",
-    "pg": "^8.4.2",
+    "pg": "^8.5.1",
     "pg-native": "^3.0.0",
     "sqlstring": "^2.3.2",
     "sqlstring-sqlite": "^0.1.1"
@@ -30,17 +31,18 @@
   "devDependencies": {
     "@types/better-sqlite3": "^5.4.0",
     "@types/jest": "^26.0.4",
-    "@types/pg": "^7.14.4",
+    "@types/pg": "^7.14.7",
     "@types/sqlstring": "^2.2.1",
-    "jest-serial-runner": "^1.1.0",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "runner": "jest-serial-runner",
+    "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "testTimeout": 50000,
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

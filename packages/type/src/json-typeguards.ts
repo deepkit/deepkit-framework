@@ -84,11 +84,6 @@ for (const name of typedArrayNamesMap.keys()) {
 }
 
 const date = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$/;
-registerJSONTypeGuard('moment', (property: PropertyCompilerSchema) => {
-    return (v: any) => {
-        return 'string' === typeof v && date.exec(v) !== null;
-    };
-});
 
 registerJSONTypeGuard('date', (property: PropertyCompilerSchema) => {
     return (v: any) => {

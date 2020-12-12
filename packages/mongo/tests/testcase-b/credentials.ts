@@ -1,5 +1,6 @@
-import {Entity, t, uuid} from "@deepkit/type";
-import {User} from "./user";
+import {Entity, t, uuid} from '@deepkit/type';
+import {User} from './user';
+import {ClassType} from '@deepkit/core';
 
 @Entity('b-user-credentials')
 export class UserCredentials {

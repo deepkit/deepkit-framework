@@ -23,15 +23,20 @@ import {HtmlResponse, httpWorkflow} from '../http';
 import {Module} from '../module';
 import {injectable} from '../injector/injector';
 import {eventDispatcher} from '../event';
-import * as serveStatic from 'serve-static';
+import serveStatic from 'serve-static';
 import {normalizeDirectory} from '../utils';
 
 export function registerDebugHttpController(module: Module<any>, path: string): void {
     path = normalizeDirectory(path);
-    const localPathPrefix = __dirname.includes('framework/dist/') ? '../../../' : '../../';
-    const localPath = join(__dirname, localPathPrefix, 'node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui');
-    let indexHtml = readFileSync(join(localPath, 'index.html')).toString('utf8');
-    indexHtml = indexHtml.replace('<base href="/">', `<base href="${path}">`);
+    const localPathPrefix = import.meta.url.replace('file://', '').includes('framework/dist/') ? '../../../' : '../../';
+    const localPath = join(import.meta.url.replace('file://', ''), localPathPrefix, 'node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui');
+
+    let indexHtml = '';
+    try {
+        indexHtml = readFileSync(join(localPath, 'index.html')).toString('utf8');
+        indexHtml = indexHtml.replace('<base href="/">', `<base href="${path}">`);
+    } catch (error) {
+    }
 
     @http.controller(path)
     class HttpDebugController {

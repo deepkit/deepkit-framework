@@ -11,7 +11,7 @@
 import {ClassType} from '@deepkit/core';
 import {validators} from './validation-decorator';
 import {BackReferenceOptions, ClassSchema, ForwardRefFn, IndexOptions, PropertySchema, PropertyValidator, ReferenceActions} from './model';
-import {BackReference, isPrimaryKey, Reference} from './types';
+import {BackReference, PrimaryKey, Reference} from './types';
 import {FlattenIfArray} from './utils';
 import {PlainSchemaProps} from './decorators';
 
@@ -142,7 +142,7 @@ export interface FieldDecoratorResultBase<T> {
      *
      * Only one field in a class can be the ID.
      */
-    primary: FieldDecoratorResult<T & { [isPrimaryKey]?: T }>;
+    primary: FieldDecoratorResult<PrimaryKey<T>>;
 
     /**
      * Marks this field as auto increment.
@@ -238,7 +238,7 @@ export interface FieldDecoratorResultBase<T> {
     uuid: FieldDecoratorResult<string>;
 
     /**
-     *
+     * @deprecated
      */
     parentReference: this;
 

@@ -127,8 +127,8 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
             const eventToken = this.tokens[place]!;
             const listeners = eventDispatcher.getListeners(eventToken);
             listeners.sort((a, b) => {
-                if (a.priority > b.priority) return +1;
-                if (a.priority < b.priority) return -1;
+                if (a.order > b.order) return +1;
+                if (a.order < b.order) return -1;
                 return 0;
             });
 

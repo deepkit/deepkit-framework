@@ -26,6 +26,7 @@ import {FormsModule} from '@angular/forms';
 import {RpcComponent} from './views/rpc/rpc.component';
 import {WorkflowComponent} from './components/workflow.component';
 import {EventsComponent} from './views/events/events.component';
+import {DeepkitClient} from '@deepkit/framework-client';
 
 @NgModule({
   declarations: [
@@ -53,13 +54,10 @@ import {EventsComponent} from './views/events/events.component';
     DuiIconModule,
     DuiListModule,
     DuiTableModule,
-    DuiButtonModule,
-    DuiDialogModule,
-    DuiEmojiModule,
-    DuiSliderModule,
   ],
   providers: [
     ControllerClient,
+    {provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + location.host)},
   ],
   bootstrap: [AppComponent]
 })

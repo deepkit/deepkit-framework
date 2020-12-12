@@ -26,7 +26,7 @@ import {getBSONSerializer, getBSONSizer, Writer} from '@deepkit/bson';
 import {HandshakeCommand} from './command/handshake';
 import {MongoClientConfig} from './client';
 import {MongoError} from './error';
-import {calculateObjectSize, serialize} from 'bson';
+import bson from 'bson';
 
 export enum MongoConnectionStatus {
     pending = 'pending',
@@ -303,8 +303,8 @@ export class MongoConnection {
     }
 
     protected sendMessage<T>(schema: ClassType<T> | ClassSchema<T> | undefined, message: T) {
-        const messageSerializer = schema === undefined ? serialize : getBSONSerializer(schema);
-        const messageSizer = schema === undefined ? calculateObjectSize : getBSONSizer(schema);
+        const messageSerializer = schema === undefined ? bson.serialize : getBSONSerializer(schema);
+        const messageSizer = schema === undefined ? bson.calculateObjectSize : getBSONSizer(schema);
 
         const buffer = Buffer.alloc(16 + 4 + 1 + messageSizer(message));
         // const buffer = Buffer.alloc(16 + 4 + 10 + 1 + 4 + 4 + calculateObjectSize(message));

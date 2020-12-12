@@ -1,14 +1,14 @@
 import 'jest';
-import {Pool, types} from 'pg';
+import pg from 'pg';
 
 test('count', async () => {
-    const pool = new Pool({
+    const pool = new pg.Pool({
         host: 'localhost',
         database: 'postgres',
     });
 
-    types.setTypeParser(1700, parseFloat);
-    types.setTypeParser(20, BigInt);
+    pg.types.setTypeParser(1700, parseFloat);
+    pg.types.setTypeParser(20, BigInt);
 
     (BigInt.prototype as any).toJSON = function() {
         return this.toString();

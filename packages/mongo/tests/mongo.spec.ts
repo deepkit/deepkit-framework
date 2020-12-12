@@ -1,34 +1,14 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {arrayBufferFrom, Entity, getClassSchema, getEntityName, jsonSerializer, t, uuid,} from '@deepkit/type';
-import {Binary, ObjectID} from 'bson';
+import bson from 'bson';
 import {getInstanceState} from '@deepkit/orm';
-import * as moment from 'moment';
 import {SimpleModel, SuperSimple} from './entities';
 import {createDatabase} from './utils';
 import {mongoSerializer} from '../src/mongo-serializer';
 
-jest.setTimeout(12312313);
-test('test moment db', async () => {
-    @Entity('model-moment')
-    class Model {
-        @t.primary.mongoId _id?: string;
-
-        @t.moment
-        created: moment.Moment = moment();
-    }
-
-    const db = await createDatabase('test moment db');
-
-    const m = new Model;
-    m.created = moment(new Date('2018-10-13T12:17:35.000Z'));
-
-    await db.persist(m);
-    const m2 = await db.query(Model).findOne();
-    expect(m2).toBeInstanceOf(Model);
-    expect(moment.isMoment(m2!.created)).toBe(true);
-    expect(m2!.created.toJSON()).toBe('2018-10-13T12:17:35.000Z');
-});
+const {Binary, ObjectID} = bson;
 
 test('test save undefined values', async () => {
     const session = await createDatabase('test save undefined values');

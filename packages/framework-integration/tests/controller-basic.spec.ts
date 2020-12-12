@@ -1,3 +1,4 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@deepkit/framework-shared';
@@ -13,9 +14,6 @@ import {rpc} from '@deepkit/framework-shared';
 afterAll(async () => {
     await closeAllCreatedServers();
 });
-
-// @ts-ignore
-global['WebSocket'] = require('ws');
 
 @Entity('controller-basic/user')
 class User {

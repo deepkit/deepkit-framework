@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import * as sqlite3 from 'better-sqlite3';
+import sqlite3 from 'better-sqlite3';
 import {
     SQLConnection,
     SQLConnectionPool,

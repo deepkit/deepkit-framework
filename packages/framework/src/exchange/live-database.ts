@@ -803,6 +803,10 @@ export class LiveDatabase {
         }
     }
 
+    public getSubscriptionHandler(classType: ClassType) {
+        return this.subscriptionHandler.get(getClassSchema(classType));
+    }
+
     protected setupListeners(classType: ClassType | ClassSchema) {
         const database = this.databases.getDatabaseForEntity(classType);
         const schema = getClassSchema(classType);

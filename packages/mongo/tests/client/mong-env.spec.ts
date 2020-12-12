@@ -1,7 +1,7 @@
 import 'jest';
 import {MongoEnv} from './env-setup';
 
-jest.setTimeout(213123);
+// jest.setTimeout(213123);
 
 test('nix', () => {});
 

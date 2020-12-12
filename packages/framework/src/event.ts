@@ -26,7 +26,7 @@ export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
 export interface EventListener<T> {
     eventToken: EventToken<any>;
     callback: EventListenerCallback<T>;
-    priority: number;
+    order: number;
 }
 
 export type EventOfEventToken<T> = T extends EventToken<infer E> ? E : unknown;
@@ -44,8 +44,8 @@ export class EventToken<T extends BaseEvent> {
     ) {
     }
 
-    listen(callback: (event: T) => void, priority: number = 0): EventListener<T> {
-        return {eventToken: this, callback, priority};
+    listen(callback: (event: T) => void, order: number = 0): EventListener<T> {
+        return {eventToken: this, callback, order: order};
     }
 }
 
@@ -63,19 +63,19 @@ export class BaseEvent {
 
 class EventStore {
     token?: EventToken<any>;
-    priority: number = 0;
+    order: number = 0;
 }
 
 class EventClassStore {
-    listeners: { eventToken: EventToken<any>, methodName: string, priority: number }[] = [];
+    listeners: { eventToken: EventToken<any>, methodName: string, order: number }[] = [];
 }
 
 export const eventClass = createClassDecoratorContext(
     class {
         t = new EventClassStore;
 
-        addListener(eventToken: EventToken<any>, methodName: string, priority: number) {
-            this.t.listeners.push({eventToken, methodName, priority});
+        addListener(eventToken: EventToken<any>, methodName: string, order: number) {
+            this.t.listeners.push({eventToken, methodName, order: order});
         }
     }
 );
@@ -88,20 +88,20 @@ export const eventDispatcher = createPropertyDecoratorContext(
             if (!this.t.token) throw new Error('@eventDispatcher.listen(eventToken) is the correct syntax.');
             if (!property) throw new Error('@eventDispatcher.listen(eventToken) works only on class properties.');
 
-            eventClass.addListener(this.t.token, property, this.t.priority)(target);
+            eventClass.addListener(this.t.token, property, this.t.order)(target);
         }
 
-        listen(eventToken: EventToken<any>, priority: number = 0) {
+        listen(eventToken: EventToken<any>, order: number = 0) {
             if (!eventToken) new Error('@eventDispatcher.listen() No event token given');
             this.t.token = eventToken;
-            this.t.priority = priority;
+            this.t.order = order;
         }
     }
 );
 
 
-export type EventListenerContainerEntryCallback = { priority: number, fn: EventListenerCallback<any> };
-export type EventListenerContainerEntryService = { context?: Context, priority: number, classType: ClassType, methodName: string };
+export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any> };
+export type EventListenerContainerEntryService = { context?: Context, order: number, classType: ClassType, methodName: string };
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
 export function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
@@ -129,12 +129,12 @@ export class EventDispatcher {
         const config = eventClass._fetch(listener);
         if (!config) return;
         for (const entry of config.listeners) {
-            this.add(entry.eventToken, {context, classType: listener, methodName: entry.methodName, priority: entry.priority});
+            this.add(entry.eventToken, {context, classType: listener, methodName: entry.methodName, order: entry.order});
         }
     }
 
-    public registerCallback<E extends BaseEvent>(eventToken: EventToken<E>, callback: (event: E) => Promise<void> | void, priority: number = 0) {
-        this.add(eventToken, {fn: callback, priority: priority});
+    public registerCallback<E extends BaseEvent>(eventToken: EventToken<E>, callback: (event: E) => Promise<void> | void, order: number = 0) {
+        this.add(eventToken, {fn: callback, order: order});
     }
 
     public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {
@@ -163,8 +163,8 @@ export class EventDispatcher {
 
         for (const [eventToken, listeners] of this.listenerMap.entries()) {
             listeners.sort((a, b) => {
-                if (a.priority > b.priority) return +1;
-                if (a.priority < b.priority) return -1;
+                if (a.order > b.order) return +1;
+                if (a.order < b.order) return -1;
                 return 0;
             });
 
@@ -227,9 +227,7 @@ export class EventDispatcher {
 
     public dispatch<T extends EventToken<any>>(eventToken: T, event: EventOfEventToken<T>): Promise<void> {
         let fn = (eventToken as any)[this.symbol];
-        if (!fn) {
-            fn = (eventToken as any)[this.symbol] = this.buildFor(eventToken);
-        }
-        return fn(this.scopedContext, event);
+        //no fn means for this token does no listener exist
+        return fn ? fn(this.scopedContext, event) : undefined;
     }
 }

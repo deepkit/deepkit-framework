@@ -24,11 +24,11 @@ import {parseType} from '../reverse/schema-parser';
 import {PostgresSchemaParser} from '../reverse/postgres-schema-parser';
 import {PostgreSQLFilterBuilder} from '../postgres/sql-filter-builder';
 import {isPlainObject} from '@deepkit/core';
-import {escape} from 'sqlstring';
+import sqlstring from 'sqlstring';
 
 function escapeLiteral(value: any): string {
     if (value === null || value === undefined) return 'null';
-    if (value instanceof Date) return escape(value);
+    if (value instanceof Date) return sqlstring.escape(value);
     if ('number' === typeof value || 'bigint' === typeof value) return String(value);
     if ('string' !== typeof value) return escapeLiteral(String(value));
 
@@ -66,7 +66,6 @@ export class PostgresPlatform extends DefaultPlatform {
 
         this.addType('number', 'double precision');
         this.addType('date', 'timestamp');
-        this.addType('moment', 'timestamp');
         this.addType('boolean', 'boolean');
 
         this.addType('class', 'jsonb');

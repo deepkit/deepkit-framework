@@ -17,8 +17,8 @@
  */
 
 import {performance} from 'perf_hooks';
+import Benchmark from 'benchmark';
 
-const Benchmark = require('benchmark');
 const Reset = '\x1b[0m';
 const FgGreen = '\x1b[32m';
 const FgYellow = '\x1b[33m';

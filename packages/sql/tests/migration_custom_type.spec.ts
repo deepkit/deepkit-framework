@@ -1,11 +1,11 @@
-import 'reflect-metadata';
 import 'jest';
+import {jest} from '@jest/globals'
+import 'reflect-metadata';
 import {t} from '@deepkit/type';
 import {schemaMigrationRoundTrip} from './setup';
 import {MySQLDatabaseAdapter} from '../src/mysql-adapter';
 import {PostgresDatabaseAdapter} from '../src/postgres-adapter';
 import {SQLiteDatabaseAdapter} from '../src/sqlite-adapter';
-
 
 test('mysql custom type', async () => {
     const post = t.schema({
@@ -22,7 +22,6 @@ test('mysql custom type', async () => {
     await schemaMigrationRoundTrip([post], adapter);
 });
 
-
 test('postgres custom type', async () => {
     const post = t.schema({
         id: t.number.autoIncrement.primary,
@@ -30,7 +29,7 @@ test('postgres custom type', async () => {
         content: t.string.postgres({type: 'text'}),
     }, {name: 'post'});
 
-    const adapter = new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres'});
+    const adapter = new PostgresDatabaseAdapter({host: '127.0.0.1', database: 'postgres'});
     const [postTable] = adapter.platform.createTables([post]);
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
@@ -39,7 +38,6 @@ test('postgres custom type', async () => {
 
     await schemaMigrationRoundTrip([post], adapter);
 });
-
 
 test('sqlite custom type', async () => {
     const post = t.schema({

@@ -30,6 +30,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

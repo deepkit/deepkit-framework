@@ -54,6 +54,8 @@ export class ConfigSlice<T extends {}> {
 export class ConfigDefinition<T extends {}> {
     protected module?: Module<any>;
 
+    public type!: T;
+
     constructor(
         public readonly schema: ClassSchema<T>
     ) {
@@ -313,7 +315,9 @@ export class Injector {
             const injectorToUse = options?.root ? this.getRoot() : (frontInjector || this);
 
             try {
-                if (token instanceof ConfigToken) {
+                if (token instanceof ConfigDefinition) {
+                    args.push(token.getModule().getConfig());
+                } else if (token instanceof ConfigToken) {
                     const config = token.config.getModule().getConfig();
                     args.push(config[token.name]);
                 } else if (isClass(token) && Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice) {

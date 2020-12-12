@@ -4,6 +4,7 @@
   "description": "@deepkit/type, the fastest universal TypeScript serializer and validator with JIT engine for frontend, backend, http-transport, RPC, and database, with built-in validations, for Browser/NodeJS.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -16,12 +17,6 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "peerDependencies": {
-    "moment": "^2.0.0"
-  },
-  "optionalDependencies": {
-    "moment": "^2.0.0"
-  },
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.1",
     "@types/validator": "^13.1.0",
@@ -34,8 +29,6 @@
   "devDependencies": {
     "@types/clone": "^0.1.30",
     "@types/jest": "^26.0.3",
-    "@types/moment": "^2.0.0",
-    "moment": "^2.0.0",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
@@ -43,6 +36,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

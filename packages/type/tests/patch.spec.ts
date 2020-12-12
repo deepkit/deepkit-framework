@@ -2,10 +2,10 @@ import 'jest';
 import 'reflect-metadata';
 import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
 import {DocumentClass} from './document-scenario/DocumentClass';
-import {PageCollection} from './document-scenario/PageCollection';
 import {resolvePropertyCompilerSchema} from '../src/jit';
 import {getClassSchema} from '../index';
 import {jsonSerializer} from '../src/json-serializer';
+import {PageClass} from './document-scenario/PageClass';
 
 
 test('partial 2', () => {
@@ -62,10 +62,9 @@ test('partial document', () => {
         'pages.0.children': [{name: 7}],
     }, {parents: [docParent]});
 
-    console.log('document', document);
     expect(document['pages.0.name']).toBe('5');
     expect(document['pages.0.children.0.name']).toBe('6');
-    expect(document['pages.0.children']).toBeInstanceOf(PageCollection);
+    expect(document['pages.0.children']).toBeInstanceOf(PageClass.PageCollection);
     expect(document['pages.0.children'].get(0).name).toBe('7');
 
     {
@@ -80,7 +79,7 @@ test('partial document', () => {
     {
         const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children');
         expect(prop.type).toBe('class');
-        expect(prop.resolveClassType).toBe(PageCollection);
+        expect(prop.resolveClassType).toBe(PageClass.PageCollection);
         expect(prop.isPartial).toBe(false);
         expect(prop.isArray).toBe(false);
         expect(prop.isMap).toBe(false);

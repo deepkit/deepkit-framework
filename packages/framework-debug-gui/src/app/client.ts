@@ -4,7 +4,8 @@ import {DebugControllerInterface} from '@deepkit/framework-debug-shared';
 
 @Injectable()
 export class ControllerClient {
-  public readonly client = new DeepkitClient('ws://' + location.host);
+  constructor(protected client: DeepkitClient) {
+  }
 
   public readonly debug = this.client.controller(DebugControllerInterface);
 }

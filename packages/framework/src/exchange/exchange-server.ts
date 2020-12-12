@@ -20,9 +20,9 @@ import {decodeMessage, encodeMessage} from './exchange-prot';
 import {asyncOperation, ParsedHost, parseHost, ProcessLock, ProcessLocker} from '@deepkit/core';
 import {Subscriptions} from '@deepkit/core-rxjs';
 import {Subscription} from 'rxjs';
-import * as WebSocket from 'ws';
+import WebSocket from 'ws';
 import {createServer, Server} from 'http';
-import {existsSync, removeSync} from 'fs-extra';
+import fsExtra from 'fs-extra';
 import {injectable} from '../injector/injector';
 
 interface StatePerConnection {
@@ -58,8 +58,8 @@ export class ExchangeServer {
     constructor(
         protected hostOrUnix: string
     ) {
-        if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
-            removeSync(this.host.unixSocket);
+        if (this.host.isUnixSocket && fsExtra.existsSync(this.host.unixSocket)) {
+            fsExtra.removeSync(this.host.unixSocket);
         }
     }
 
@@ -75,11 +75,11 @@ export class ExchangeServer {
         }
 
         if (this.autoPath) {
-            removeSync(this.autoPath);
+            fsExtra.removeSync(this.autoPath);
         }
 
-        if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
-            removeSync(this.host.unixSocket);
+        if (this.host.isUnixSocket && fsExtra.existsSync(this.host.unixSocket)) {
+            fsExtra.removeSync(this.host.unixSocket);
         }
     }
 

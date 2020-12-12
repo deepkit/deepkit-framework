@@ -17,7 +17,7 @@
  */
 
 import {ClassSchema, getClassSchema, PropertySchema, reserveVariable} from '@deepkit/type';
-import {BSON_BINARY_SUBTYPE_UUID, BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_DATE, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize, moment} from './utils';
+import {BSON_BINARY_SUBTYPE_UUID, BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_DATE, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize} from './utils';
 import {ClassType} from '@deepkit/core';
 import {BaseParser, ParserV2} from './bson-parser';
 import {seekElementSize} from './continuation';
@@ -39,16 +39,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
     const propertyVar = '_property_' + property.name;
     context.set(propertyVar, property);
 
-    if (property.type === 'moment') {
-        context.set('Moment', moment);
-        return `
-            if (elementType === ${BSON_DATA_DATE}) {
-                ${setter} = Moment(parser.parse(elementType));
-            } else {
-                ${nullOrSeek}
-            }
-            `;
-    } else if (property.type === 'uuid') {
+    if (property.type === 'uuid') {
         return `
             if (elementType === ${BSON_DATA_BINARY}) {
                 parser.eatUInt32(); //size

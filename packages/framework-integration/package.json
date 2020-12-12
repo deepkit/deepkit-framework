@@ -2,8 +2,7 @@
   "name": "@deepkit/framework-integration",
   "version": "1.0.1-alpha.0",
   "description": "Integration tests",
-  "main": "src",
-  "module": "src",
+  "type": "module",
   "license": "AGPL-3.0-only",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -25,8 +24,6 @@
     "fs-extra": "^9.0.1",
     "rxjs": "~6.5.3",
     "sift": "^7.0.1",
-    "source-map": "^0.7.3",
-    "source-map-support": "^0.5.9",
     "tmp": "^0.0.33"
   },
   "devDependencies": {
@@ -44,12 +41,7 @@
     "collectCoverageFrom": [
       "node_modules/@deepkit/framework-shared/**/*.ts"
     ],
-    "transformIgnorePatterns": [
-      "NIX"
-    ],
-    "coveragePathIgnorePatterns": [
-      "NIX"
-    ],
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/controller-basic.spec.ts",
       "**/tests/**/peer2peer.spec.ts",

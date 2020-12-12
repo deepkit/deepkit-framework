@@ -25,7 +25,6 @@ import {Buffer} from 'buffer';
 import {SimpleModel} from './entities';
 import {PageClass} from './document-scenario/PageClass';
 import {DocumentClass} from './document-scenario/DocumentClass';
-import {PageCollection} from './document-scenario/PageCollection';
 import {resolvePropertyCompilerSchema} from '../src/jit';
 
 
@@ -107,11 +106,10 @@ test('test invalid usage', async () => {
 });
 
 test('test circular', async () => {
-    expect(getClassSchema(PageClass).getProperty('children').getResolvedClassType()).toBe(PageCollection);
+    expect(getClassSchema(PageClass).getProperty('children').getResolvedClassType()).toBe(PageClass.PageCollection);
     expect(getClassSchema(PageClass).getProperty('parent').getResolvedClassType()).toBe(PageClass);
     expect(getClassSchema(PageClass).hasCircularDependency()).toBe(true);
     expect(getClassSchema(DocumentClass).hasCircularDependency()).toBe(true);
-    expect(getClassSchema(PageClass).getProperty('document').getResolvedClassType()).toBe(DocumentClass);
 });
 
 test('test entity database', async () => {

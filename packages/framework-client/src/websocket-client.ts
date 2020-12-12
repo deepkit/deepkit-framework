@@ -16,15 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import {ClassType} from '@deepkit/core';
 import {ClientMessageAll,} from '@deepkit/framework-shared';
 import {ClientTransportAdapter, TransportConnectionHooks} from './client';
 
 export class WebSocketClientAdapter implements ClientTransportAdapter {
+    protected WebSocket: ClassType<WebSocket> | undefined = 'undefined' !== typeof WebSocket ? WebSocket : undefined;
+
     constructor(public url: string) {
     }
 
-    public connect(connection: TransportConnectionHooks) {
-        const socket = new WebSocket(this.url);
+    public async connect(connection: TransportConnectionHooks) {
+        if (!this.WebSocket) {
+            this.WebSocket = (await import('ws')).default as any as ClassType<WebSocket>;
+        }
+
+        const socket = new this.WebSocket(this.url);
 
         socket.onmessage = (event: MessageEvent) => {
             connection.onMessage(event.data.toString());

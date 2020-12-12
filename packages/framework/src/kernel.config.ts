@@ -26,7 +26,7 @@ export const kernelConfig = createConfig({
     workers: t.number.default(1),
     server: t.any, //todo: change to t.classType(Server)
     maxPayload: t.number.optional,
-    publicDir: t.string.default('public'),
+    publicDir: t.string.optional.description('A path to a folder that should be served per default. Relative to cwd.'),
     debug: t.boolean.default(false),
     debugUrl: t.string.default('_debug'),
     httpLog: t.boolean.default(true),

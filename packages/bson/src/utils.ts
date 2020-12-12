@@ -16,19 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import * as Moment from 'moment';
-
-export let moment: typeof Moment = (() => {
-    throw new Error('Moment.js not installed')
-}) as any;
-
-declare function require(moduleName: string): any;
-
-try {
-    moment = require('moment');
-} catch (e) {
-}
-
 export const BSON_DATA_NUMBER = 1;
 export const BSON_DATA_STRING = 2;
 export const BSON_DATA_OBJECT = 3;

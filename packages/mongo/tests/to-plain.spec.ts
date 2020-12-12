@@ -1,6 +1,8 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {ObjectID} from 'mongodb';
+import mongodb from 'mongodb';
+const {ObjectID} = mongodb;
 import {jsonSerializer, t} from '@deepkit/type';
 import {mongoSerializer, uuid4Binary} from '../src/mongo-serializer';
 

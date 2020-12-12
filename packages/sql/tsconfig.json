@@ -11,7 +11,8 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2020",
-    "module": "CommonJS",
+    "module": "es2020",
+    "esModuleInterop": true,
 
     "baseUrl": ".",
     "outDir": "./dist",

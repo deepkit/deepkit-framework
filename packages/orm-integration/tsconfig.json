@@ -10,8 +10,9 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2020",
-    "module": "es6",
+    "target": "es2018",
+    "module": "es2020",
+    "esModuleInterop": true,
 
     "baseUrl": ".",
     "outDir": "./dist",

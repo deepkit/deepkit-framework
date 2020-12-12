@@ -18,7 +18,7 @@
 
 import {Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff} from '../schema/table';
 import {binaryTypes, ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@deepkit/type';
-import {escape} from 'sqlstring';
+import sqlstring from 'sqlstring';
 import {ClassType, isObject, isPlainObject} from '@deepkit/core';
 import {sqlSerializer} from '../serializer/sql-serializer';
 import {SchemaParser} from '../reverse/schema-parser';
@@ -68,8 +68,8 @@ export abstract class DefaultPlatform {
     }
 
     quoteValue(value: any): string {
-        if (isPlainObject(value) || isArray(value)) return escape(JSON.stringify(value));
-        return escape(value);
+        if (isPlainObject(value) || isArray(value)) return sqlstring.escape(JSON.stringify(value));
+        return sqlstring.escape(value);
     }
 
     addBinaryType(sqlType: string, size?: number, scale?: number) {

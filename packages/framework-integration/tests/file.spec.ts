@@ -6,9 +6,6 @@ import {sleep} from '@deepkit/core';
 import {Buffer} from 'buffer';
 import {arrayBufferTo} from '@deepkit/type';
 
-// @ts-ignore
-global['WebSocket'] = require('ws');
-
 afterAll(async () => {
     await closeAllCreatedServers();
 });

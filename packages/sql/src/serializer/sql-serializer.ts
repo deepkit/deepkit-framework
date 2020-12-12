@@ -21,7 +21,6 @@ import {
     getClassSchema,
     getDataConverterJS,
     jsonSerializer,
-    moment,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
     PropertyCompilerSchema,
@@ -81,15 +80,6 @@ sqlSerializer.toClass.register('undefined', (property: PropertyCompilerSchema, s
 //SQL escape does the job.
 sqlSerializer.fromClass.register('date', (property: PropertyCompilerSchema, state: CompilerState) => {
     state.addSetter(`${state.accessor}`);
-});
-
-sqlSerializer.fromClass.register('moment', (property: PropertyCompilerSchema, state: CompilerState) => {
-    state.addSetter(`${state.accessor}.toDate()`);
-});
-
-sqlSerializer.toClass.register('moment', (property: PropertyCompilerSchema, state: CompilerState) => {
-    state.setContext({moment});
-    state.addSetter(`moment(${state.accessor})`);
 });
 
 sqlSerializer.toClass.register('uuid', (property: PropertyCompilerSchema, state: CompilerState) => {

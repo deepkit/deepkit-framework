@@ -1,9 +1,11 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
-import {deserialize, serialize} from 'bson';
+import bson from 'bson';
 import {parseObject, ParserV2} from '../src/bson-parser';
 import {t} from '@deepkit/type';
 import {getBSONDecoder} from '../src/bson-jit-parser';
+const {deserialize, serialize} = bson;
 
 test('basic', () => {
     const obj = {

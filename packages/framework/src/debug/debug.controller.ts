@@ -67,7 +67,7 @@ export class DebugController implements DebugControllerInterface {
                         event: token.id,
                         controller: getClassName(listener.classType),
                         methodName: listener.methodName,
-                        priority: listener.priority,
+                        priority: listener.order,
                     });
                 }
             }

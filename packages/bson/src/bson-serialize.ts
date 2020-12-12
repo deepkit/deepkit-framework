@@ -35,10 +35,9 @@ import {
     BSON_DATA_OID,
     BSON_DATA_REGEXP,
     BSON_DATA_STRING,
-    digitByteSize,
-    moment
+    digitByteSize
 } from './utils';
-import {Binary, Long, ObjectId} from 'bson';
+import bson from 'bson';
 
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
@@ -111,7 +110,7 @@ export function getValueSize(value: any): number {
             //double
             return 8;
         }
-    } else if (value instanceof Date || moment.isMoment(value)) {
+    } else if (value instanceof Date) {
         return 8;
     } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
         let size = 4; //size
@@ -195,7 +194,7 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
         const sizerFn = jitStack.getOrCreate(property.getResolvedClassSchema(), () => createBSONSizer(property.getResolvedClassSchema(), jitStack));
         context.set(sizer, sizerFn);
         code = `size += ${sizer}.fn(${accessor});`;
-    } else if (property.type === 'date' || property.type === 'moment') {
+    } else if (property.type === 'date') {
         code = `size += 8;`;
     } else if (property.type === 'objectId') {
         code = `size += 12;`;
@@ -408,12 +407,12 @@ export class Writer {
                 }
                 this.writeDouble(value);
             }
-        } else if (value instanceof Date || moment.isMoment(value)) {
+        } else if (value instanceof Date) {
             if (nameWriter) {
                 this.writeByte(BSON_DATA_DATE);
                 nameWriter();
             }
-            const long = Long.fromNumber(value.valueOf());
+            const long = bson.Long.fromNumber(value.valueOf());
             this.writeUint32(long.getLowBits());
             this.writeUint32(long.getHighBits());
         } else if (value && value['_bsontype'] === 'Binary') {
@@ -440,7 +439,7 @@ export class Writer {
             }
             let view = value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
             if (value['_bsontype'] === 'Binary') {
-                view = (value as Binary).buffer;
+                view = (value as any as bson.Binary).buffer;
             }
 
             this.writeUint32(value.byteLength);
@@ -540,7 +539,7 @@ function getPropertySerializerCode(
     }
 
     function numberSerializer() {
-        context.set('Long', Long);
+        context.set('Long', bson.Long);
         context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         return `
             if ('bigint' === typeof ${accessor}) {
@@ -603,7 +602,7 @@ function getPropertySerializerCode(
             writer.writeByte(${accessor} ? 1 : 0);
         `;
     } else if (property.type === 'date') {
-        context.set('Long', Long);
+        context.set('Long', bson.Long);
         code = `
             writer.writeByte(${BSON_DATA_DATE});
             ${nameWriter}
@@ -616,7 +615,7 @@ function getPropertySerializerCode(
         `;
     } else if (property.type === 'objectId') {
         context.set('hexToByte', hexToByte);
-        context.set('ObjectId', ObjectId);
+        context.set('ObjectId', bson.ObjectId);
         code = `
             writer.writeByte(${BSON_DATA_OID});
             ${nameWriter}
@@ -625,7 +624,7 @@ function getPropertySerializerCode(
         `;
     } else if (property.type === 'uuid') {
         context.set('uuidStringToByte', uuidStringToByte);
-        context.set('Binary', Binary);
+        context.set('Binary', bson.Binary);
         code = `
             writer.writeByte(${BSON_DATA_BINARY});
             ${nameWriter}
@@ -661,15 +660,6 @@ function getPropertySerializerCode(
                 }
             }
             writer.offset += 16;
-        `;
-    } else if (property.type === 'moment') {
-        context.set('Long', Long);
-        code = `
-            writer.writeByte(${BSON_DATA_DATE});
-            ${nameWriter}
-            const long = Long.fromNumber(${accessor}.valueOf());
-            writer.writeUint32(long.getLowBits());
-            writer.writeUint32(long.getHighBits());
         `;
     } else if (property.type === 'number') {
         code = numberSerializer();

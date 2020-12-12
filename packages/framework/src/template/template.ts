@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import 'reflect-metadata';
 import {ClassType, isClass} from '@deepkit/core';
 import {isArray} from '@deepkit/type';
 import './optimize-tsx';

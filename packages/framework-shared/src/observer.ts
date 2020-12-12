@@ -19,7 +19,7 @@
 import {ClassSchema, cloneClass, getClassSchema, jsonSerializer} from '@deepkit/type';
 import {eachPair, getPathValue, size} from '@deepkit/core';
 import {compare, Operation} from 'fast-json-patch';
-import {set} from 'dot-prop';
+import dotProp from 'dot-prop';
 import {BehaviorSubject} from 'rxjs';
 import {EntitySubject} from './core';
 
@@ -79,12 +79,12 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
                         if (this.old) {
                             const plainPatches = jsonSerializer.for(Object.getPrototypeOf(this.valueOrSubject.value).constructor).partialSerialize(patches);
                             for (const [i, v] of eachPair(plainPatches)) {
-                                set(this.old, i, v);
+                                dotProp.set(this.old, i, v);
                             }
                         }
 
                         for (const [i, v] of eachPair(patches)) {
-                            set(this._snapshot as any, i, v);
+                            dotProp.set(this._snapshot as any, i, v);
                         }
 
                         this.next(this._snapshot);
@@ -198,7 +198,7 @@ export class ItemObserver<T> extends BehaviorSubject<T | undefined> {
         const patches = this.getPatches();
         if (patches) {
             for (const [i, v] of eachPair(patches)) {
-                set(object as any, i, v);
+                dotProp.set(object as any, i, v);
             }
         }
 

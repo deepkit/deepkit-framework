@@ -22,7 +22,7 @@ import {ExchangeEntity, StreamBehaviorSubject, StreamFileResult} from '@deepkit/
 import {asyncOperation, ClassType, ParsedHost, parseHost, sleep} from '@deepkit/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
 import {AsyncSubscription} from '@deepkit/core-rxjs';
-import * as WebSocket from 'ws';
+import WebSocket from 'ws';
 import {inject, injectable} from '../injector/injector';
 import {getBSONDecoder, getBSONSerializer} from '@deepkit/bson';
 import {exchangeConfig} from './exchange.config';

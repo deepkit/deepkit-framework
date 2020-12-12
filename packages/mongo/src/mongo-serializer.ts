@@ -22,19 +22,18 @@ import {
     getClassSchema,
     getDataConverterJS,
     jsonSerializer,
-    moment,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
     PropertyCompilerSchema,
     typedArrayNamesMap,
     typedArrayToBuffer
 } from '@deepkit/type';
-import {Binary, ObjectID} from 'bson';
+import bson from 'bson';
 import {hexTable} from '@deepkit/bson';
-import * as mongoUuid from 'mongo-uuid';
+import mongoUuid from 'mongo-uuid';
 
-export function uuid4Binary(u?: string): Binary {
-    return mongoUuid(Binary, u);
+export function uuid4Binary(u?: string): bson.Binary {
+    return mongoUuid(bson.Binary, u);
 }
 
 export const mongoSerializer = new class extends jsonSerializer.fork('mongo') {
@@ -43,7 +42,7 @@ export const mongoSerializer = new class extends jsonSerializer.fork('mongo') {
 mongoSerializer.fromClass.noop('date'); //we dont stringify date
 mongoSerializer.fromClass.register('string', compilerToString);
 
-export function uuid4Stringify(binary: Binary): string {
+export function uuid4Stringify(binary: bson.Binary): string {
     if (!binary.buffer) {
         console.error('uuid4Stringify', binary);
         throw new Error('Invalid argument. Binary required.');
@@ -90,16 +89,6 @@ mongoSerializer.fromClass.register('date', (property: PropertyCompilerSchema, st
     state.addSetter(`${state.accessor}`);
 });
 
-mongoSerializer.fromClass.register('moment', (property: PropertyCompilerSchema, state: CompilerState) => {
-    state.addSetter(`${state.accessor}.toDate()`);
-});
-
-mongoSerializer.toClass.register('moment', (property: PropertyCompilerSchema, state: CompilerState) => {
-    state.setContext({moment});
-    state.addSetter(`moment(${state.accessor})`);
-});
-
-
 mongoSerializer.toClass.register('uuid', (property: PropertyCompilerSchema, state: CompilerState) => {
     state.setContext({uuid4Stringify});
     state.addCodeForSetter(`
@@ -137,7 +126,7 @@ mongoSerializer.toClass.register('objectId', (property: PropertyCompilerSchema, 
 });
 
 mongoSerializer.fromClass.register('objectId', (property: PropertyCompilerSchema, state: CompilerState) => {
-    state.setContext({ObjectID});
+    state.setContext({ObjectID: bson.ObjectID});
 
     state.addCodeForSetter(`
         try {
@@ -184,7 +173,7 @@ mongoSerializer.fromClass.prepend('class', (property: PropertyCompilerSchema, st
 });
 
 mongoSerializer.fromClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
-    state.setContext({typedArrayToBuffer, Binary});
+    state.setContext({typedArrayToBuffer, Binary: bson.Binary});
     state.addSetter(`new Binary(typedArrayToBuffer(${state.accessor}))`);
 });
 
@@ -199,6 +188,6 @@ mongoSerializer.toClass.register('arrayBuffer', (property: PropertyCompilerSchem
 });
 
 mongoSerializer.fromClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
-    state.setContext({Buffer, Binary});
+    state.setContext({Buffer, Binary: bson.Binary});
     state.addSetter(`new Binary(Buffer.from(${state.accessor}))`);
 });

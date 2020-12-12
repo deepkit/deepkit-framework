@@ -10,7 +10,6 @@ export * from './src/validation';
 export * from './src/validation-decorator';
 export * from './src/serializer-compiler';
 export * from './src/applyPatch';
-export * from './src/moment';
 export * from './src/jit';
 export * from './src/jit-validation';
 export * from './src/jit-validation-registry';

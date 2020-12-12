@@ -8,9 +8,7 @@ test('atomic', () => {
     }
 
     const bla = new Bla;
-    console.log('bla.position', bla.position);
     atomicChange(bla).increase('position', 5);
-    console.log('bla.position', bla.position);
 });
 
 test('changes', () => {

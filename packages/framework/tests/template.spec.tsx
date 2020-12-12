@@ -4,7 +4,7 @@ import '../src/template/optimize-tsx';
 import {html, render} from '../src/template/template';
 import {Injector} from '../src/injector/injector';
 import {simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid} from './simple';
-import {convertJsxCodeToCreateElement, optimize} from '../src/template/optimize-tsx';
+import {convertJsxCodeToCreateElement, optimizeJSX} from '../src/template/optimize-tsx';
 
 test('template simple', async () => {
     expect(await render(new Injector(), <div></div>)).toBe('<div></div>');
@@ -33,89 +33,89 @@ function normalize(string: string): string {
     return string.trim().replace(/\n\s*/g, '');
 }
 
+// function test1(props: {[name: string]: any} = {}) {
+//     return <div {...props} id="123">Test</div>
+// }
+
+// import tree from 'abstract-syntax-tree';
+//
+// test('template test', async () => {
+//     // console.log(test1.toString());
+//     // console.log(JSON.stringify(tree.parse('_jsx.createElement("div", {}, void 0)')));
+// });
+
+
 test('template jsx convert to createElement', async () => {
-    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx("div", { id: "123" }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", {id: "123"});`
+    expect(normalize(convertJsxCodeToCreateElement(`_jsx("div", { id: "123" }, void 0);`))).toBe(
+        `_jsx.createElement("div", {id: "123"});`
     );
 
-    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx("div", { id: myId }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", {id: myId});`
+    expect(normalize(convertJsxCodeToCreateElement(`_jsx("div", { id: myId }, void 0);`))).toBe(
+        `_jsx.createElement("div", {id: myId});`
     );
 
-    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx("div", { id: "123", name: "Peter" }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", {id: "123",name: "Peter"});`
+    expect(normalize(convertJsxCodeToCreateElement(`_jsx("div", { id: "123", name: "Peter" }, void 0);`))).toBe(
+        `_jsx.createElement("div", {id: "123",name: "Peter"});`
     );
 
-    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx("div", { children: "Test" }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", {}, "Test");`
+    expect(normalize(convertJsxCodeToCreateElement(`_jsx("div", { children: "Test" }, void 0);`))).toBe(
+        `_jsx.createElement("div", {}, "Test");`
     );
 
-    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", {id: "123"}, "Test");`
+    expect(normalize(convertJsxCodeToCreateElement(`_jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0);`))).toBe(
+        `_jsx.createElement("div", {id: "123"}, "Test");`
     );
 
     expect(normalize(convertJsxCodeToCreateElement(
-        `jsx_runtime_1.jsxs("div", Object.assign({ id: "123" }, { children: [jsx_runtime_1.jsx("b", { children: "strong" }, void 0), jsx_runtime_1.jsx("b", { children: "strong2" }, void 0)] }), void 0);`
+        `_jsxs("div", Object.assign({ id: "123" }, { children: [_jsx("b", { children: "strong" }, void 0), _jsx("b", { children: "strong2" }, void 0)] }), void 0);`
     ))).toBe(
-        `jsx_runtime_1.createElement("div", {id: "123"}, jsx_runtime_1.createElement("b", {}, "strong"), jsx_runtime_1.createElement("b", {}, "strong2"));`
+        `_jsx.createElement("div", {id: "123"}, _jsx.createElement("b", {}, "strong"), _jsx.createElement("b", {}, "strong2"));`
     );
 
-    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx(Website, { title: "Contact" }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement(Website, {title: "Contact"});`
+    expect(normalize(convertJsxCodeToCreateElement(`_jsx(Website, { title: "Contact" }, void 0);`))).toBe(
+        `_jsx.createElement(Website, {title: "Contact"});`
     );
 
-    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx('div', {children: this.config.get('TEST') }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", {}, this.config.get("TEST"));`
+    expect(normalize(convertJsxCodeToCreateElement(`_jsx('div', {children: this.config.get('TEST') }, void 0);`))).toBe(
+        `_jsx.createElement("div", {}, this.config.get("TEST"));`
     );
-});
-
-const {parse} = require('abstract-syntax-tree');
-
-function test1(props: {[name: string]: any} = {}) {
-    return <div {...props} id="123">Test</div>
-}
-
-test('template test', async () => {
-    // console.log(parse(`'one' + i + 'two'`).body);
-    console.log(test1.toString());
-    // console.log(parse(`html('asd')`).body[0].expression);
 });
 
 test('template jsx optimize', async () => {
-    expect(normalize(optimize(`jsx_runtime_1.jsx("div", { id: "123" }, void 0);`))).toBe(
-        `html("<div id=\\"123\\"></div>");`
+    expect(normalize(optimizeJSX(`_jsx("div", { id: "123" }, void 0);`))).toBe(
+        `_jsx.html("<div id=\\"123\\"></div>");`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsx("div", { id: myId }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", {id: myId});`
+    expect(normalize(optimizeJSX(`_jsx("div", { id: myId }, void 0);`))).toBe(
+        `_jsx.createElement("div", {id: myId});`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsx("div", { id: "123", name: "Peter" }, void 0);`))).toBe(
-        `html("<div id=\\"123\\" name=\\"Peter\\"></div>");`
+    expect(normalize(optimizeJSX(`_jsx("div", { id: "123", name: "Peter" }, void 0);`))).toBe(
+        `_jsx.html("<div id=\\"123\\" name=\\"Peter\\"></div>");`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsx("div", { children: "Test" }, void 0);`))).toBe(
-        `html("<div>Test</div>");`
+    expect(normalize(optimizeJSX(`_jsx("div", { children: "Test" }, void 0);`))).toBe(
+        `_jsx.html("<div>Test</div>");`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0);`))).toBe(
-        `html("<div id=\\"123\\">Test</div>");`
+    expect(normalize(optimizeJSX(`_jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0);`))).toBe(
+        `_jsx.html("<div id=\\"123\\">Test</div>");`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsx("div", Object.assign({}, props, { id: "123" }, { children: "Test" }), void 0);`))).toBe(
-        `jsx_runtime_1.createElement("div", Object.assign({}, props, {id: "123"}), "Test");`
+    expect(normalize(optimizeJSX(`_jsx("div", Object.assign({}, props, { id: "123" }, { children: "Test" }), void 0);`))).toBe(
+        `_jsx.createElement("div", Object.assign({}, props, {id: "123"}), "Test");`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsxs("div", Object.assign({ id: "123" }, { children: [jsx_runtime_1.jsx("b", { children: "strong" }, void 0), jsx_runtime_1.jsx("b", { children: "strong2" }, void 0)] }), void 0);`))).toBe(
-        `html("<div id=\\"123\\"><b>strong</b><b>strong2</b></div>");`
+    expect(normalize(optimizeJSX(`_jsxs("div", Object.assign({ id: "123" }, { children: [_jsx("b", { children: "strong" }, void 0), _jsx("b", { children: "strong2" }, void 0)] }), void 0);`))).toBe(
+        `_jsx.html("<div id=\\"123\\"><b>strong</b><b>strong2</b></div>");`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsx(Website, { title: "Contact" }, void 0);`))).toBe(
-        `jsx_runtime_1.createElement(Website, {title: "Contact"});`
+    expect(normalize(optimizeJSX(`_jsx(Website, { title: "Contact" }, void 0);`))).toBe(
+        `_jsx.createElement(Website, {title: "Contact"});`
     );
 
-    expect(normalize(optimize(`jsx_runtime_1.jsx(Website, { title: "Contact", children: jsx_runtime_1.jsx("div", { id: "123" }, void 0)}, void 0);`))).toBe(
-        `jsx_runtime_1.createElement(Website, {title: "Contact"}, html("<div id=\\"123\\"></div>"));`
+    expect(normalize(optimizeJSX(`_jsx(Website, { title: "Contact", children: _jsx("div", { id: "123" }, void 0)}, void 0);`))).toBe(
+        `_jsx.createElement(Website, {title: "Contact"}, _jsx.html("<div id=\\"123\\"></div>"));`
     );
 });
 

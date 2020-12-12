@@ -1,12 +1,18 @@
 {
   "name": "@deepkit/framework",
   "version": "1.0.1-alpha.1",
-  "main": "dist/",
+  "exports": {
+    ".": "./dist/index.js",
+    "./jsx-runtime": "./dist/jsx-runtime.js",
+    "./loader": "./dist/loader.js"
+  },
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "AGPL-3.0-only",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "sideEffects": false,
+  "type": "module",
   "publishConfig": {
     "access": "public"
   },
@@ -48,8 +54,6 @@
     "@types/clone": "^0.1.30",
     "@types/estree": "^0.0.45",
     "@types/fs-extra": "^9.0.1",
-    "@types/jest": "^26.0.4",
-    "@types/mongodb": "^3.5.25",
     "@types/node": "^14.14.10",
     "@types/serve-static": "^1.13.6",
     "@types/ws": "^6.0.1",
@@ -64,6 +68,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts",
       "**/tests/**/*.spec.tsx"

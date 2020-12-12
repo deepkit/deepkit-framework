@@ -18,6 +18,7 @@ import {
     ClassSchema,
     createClassSchema,
     FieldTypes,
+    ForwardRef,
     ForwardRefFn,
     getClassSchema,
     getGlobalStore,
@@ -888,13 +889,12 @@ fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabels
     return EnumField(clazz, allowLabelsAsValue);
 };
 
-fRaw['moment'] = MomentField();
-
-type ExtractType<T> = T extends ForwardRefFn<infer K> ? K :
-    T extends ClassType<infer K> ? K :
-        T extends ClassSchema<infer K> ? K :
-            T extends PlainSchemaProps ? ExtractClassDefinition<T> :
-                T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
+type ExtractType<T> = T extends ForwardRef<infer K> ? ExtractType<K> :
+    T extends () => infer K ? ExtractType<K> :
+        T extends ClassType<infer K> ? K :
+            T extends ClassSchema<infer K> ? K :
+                T extends PlainSchemaProps ? ExtractClassDefinition<T> :
+                    T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
 
 type StandardEnum<T> = {
     [id: string]: T | string;
@@ -1057,14 +1057,6 @@ export interface MainDecorator {
     partial<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<PartialField<ExtractType<T>>>;
 
     /**
-     * Marks a field as Moment.js value. Mongo and JSON transparent uses its toJSON() result.
-     * In MongoDB its stored as Date.
-     *
-     * You have to install moment npm package in order to use it.
-     */
-    moment: FieldDecoratorResult<any>;
-
-    /**
      * Marks a field as type any. It does not transform the value and directly uses JSON.parse/stringify.
      */
     any: FieldDecoratorResult<any>;
@@ -1222,14 +1214,5 @@ function EnumField<T>(type: any, allowLabelsAsValue = false) {
     return Field('enum').use((target, property) => {
         property.setClassType(type);
         property.allowLabelsAsValue = allowLabelsAsValue;
-    });
-}
-
-/**
- * @internal
- */
-function MomentField<T>() {
-    return FieldDecoratorWrapper((target, property, returnType?: any) => {
-        property.setType('moment');
     });
 }

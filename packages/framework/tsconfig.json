@@ -5,12 +5,12 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
-    "downlevelIteration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2018",
-    "module": "CommonJS",
+    "module": "esnext",
+    "esModuleInterop": true,
 
     "baseUrl": ".",
     "outDir": "./dist",
@@ -21,7 +21,9 @@
       "types"
     ],
     "types": [
-      "formidable"
+      "formidable",
+      "abstract-syntax-tree",
+      "ts-node/esm"
     ],
 
     "jsx": "react-jsx",
@@ -33,8 +35,8 @@
     "tests",
     "benchmark",
     "index.ts",
-    "jsx-runtime",
-    "jsx-runtime.ts"
+    "jsx-runtime.ts",
+    "loader.ts",
   ],
   "references": [
     {

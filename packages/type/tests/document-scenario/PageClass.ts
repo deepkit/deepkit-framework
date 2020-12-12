@@ -1,15 +1,16 @@
-import {PageCollection} from './PageCollection';
-import {DocumentClass} from './DocumentClass';
+import {createCollection, Collection} from './PageCollection';
 import {Entity, t} from '../../src/decorators';
 import {uuid} from '../../src/utils';
 
 @Entity('PageClass')
 export class PageClass {
+    static PageCollection = createCollection(PageClass);
+
     @t.uuid
     id: string = uuid();
 
-    @t.type(() => PageCollection)
-    children: PageCollection = new PageCollection;
+    @t.type(PageClass.PageCollection)
+    children: Collection<PageClass> = new PageClass.PageCollection;
 
     @t.type(ArrayBuffer)
     picture?: ArrayBuffer;
@@ -18,12 +19,8 @@ export class PageClass {
     parent?: PageClass;
 
     constructor(
-        @t.type(() => DocumentClass).parentReference
-        public readonly document: DocumentClass,
-        @t
-        public readonly name: string
+        @t public readonly name: string
     ) {
-        this.document = document;
         this.name = name;
     }
 }

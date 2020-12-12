@@ -11,7 +11,7 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2020",
-    "module": "CommonJS",
+    "module": "esnext",
     "esModuleInterop": true,
 
     "baseUrl": ".",
@@ -23,6 +23,8 @@
   },
   "include": [
     "src",
+    "model.ts",
+    "index2.ts",
     "index.ts"
   ],
   "references": [

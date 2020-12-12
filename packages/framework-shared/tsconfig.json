@@ -9,8 +9,9 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2017",
-    "module": "CommonJS",
+    "target": "es2018",
+    "module": "es2020",
+    "esModuleInterop": true,
 
     "baseUrl": ".",
     "outDir": "./dist",

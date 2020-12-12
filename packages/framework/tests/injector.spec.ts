@@ -4,6 +4,8 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {CircularDependencyError, createConfig, inject, injectable, Injector} from '../src/injector/injector';
 
+export const a = 'asd';
+
 test('injector', () => {
     class Connection {
     }

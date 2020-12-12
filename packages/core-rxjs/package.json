@@ -1,9 +1,10 @@
 {
   "name": "@deepkit/core-rxjs",
   "version": "1.0.1-alpha.1",
-  "description": "Super Hornet core rxjs library",
+  "description": "Deepkit core rxjs library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -12,9 +13,6 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "rm -rf dist && tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
@@ -28,6 +26,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

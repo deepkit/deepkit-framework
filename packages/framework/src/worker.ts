@@ -18,11 +18,11 @@
 
 import {ClientConnection} from './rpc/client-connection';
 import {ClientMessageAll, ConnectionWriter, ConnectionWriterStream} from '@deepkit/framework-shared';
-import * as WebSocket from 'ws';
-import * as http from 'http';
+import WebSocket from 'ws';
+import http from 'http';
 import {IncomingMessage, Server} from 'http';
-import * as https from 'https';
-import {HttpKernel} from './http';
+import https from 'https';
+import {HttpKernel, HttpRequest, HttpResponse} from './http';
 import {RpcInjectorContext} from './rpc/rpc';
 import {InjectorContext} from './injector/injector';
 import {Provider} from './injector/provider';
@@ -106,7 +106,10 @@ export class WebWorker extends BaseWorker {
             this.server = options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
         } else {
-            this.server = new http.Server(this.httpKernel.handleRequest.bind(this.httpKernel));
+            this.server = new http.Server(
+                {IncomingMessage: HttpRequest, ServerResponse: HttpResponse},
+                this.httpKernel.handleRequest.bind(this.httpKernel)
+            );
             this.server.keepAliveTimeout = 5000;
             this.server.listen(options.port, options.host, () => {
                 // console.log(`Worker #${id} listening on ${options.host}:${options.port}.`);

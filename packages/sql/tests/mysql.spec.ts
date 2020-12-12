@@ -3,8 +3,6 @@ import {createPool} from 'mariadb';
 import {MySQLConnectionPool, MySQLDatabaseAdapter} from '../src/mysql-adapter';
 import {Database} from '@deepkit/orm';
 
-jest.setTimeout(15_000);
-
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({
         host: 'localhost',

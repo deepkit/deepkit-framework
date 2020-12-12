@@ -17,18 +17,20 @@
  */
 
 import {addHook} from 'pirates';
-import {CallExpression, Expression, Literal, ObjectExpression, Property, SpreadElement, UnaryExpression} from 'estree';
+import {CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, Super, UnaryExpression} from 'estree';
+import abstractSyntaxTree from 'abstract-syntax-tree';
+import {inDebugMode} from '../utils';
 
-function transform(code: string, filename: string) {
-    if (code.indexOf('.jsx(') === -1 && code.indexOf('.jsxs(') === -1) return code;
-    const optimized = optimize(code);
-    // console.log('optimized tsx', filename, optimized);
+const {parse, generate, replace} = abstractSyntaxTree;
+
+export function transform(code: string, filename: string) {
+    if (inDebugMode()) return code;
+    if (code.indexOf('_jsx(') === -1 && code.indexOf('_jsxs(') === -1) return code;
+    const optimized = optimizeJSX(code);
     return optimized;
 }
 
 addHook(transform, {exts: ['.js', '.tsx']});
-
-const {parse, generate, replace} = require('abstract-syntax-tree');
 
 class NotSerializable {
 }
@@ -65,22 +67,23 @@ function optimizeAttributes(node: ObjectExpression): any {
  *
  * We convert
  *
- * jsx_runtime_1.jsx("div", { id: "123" }, void 0)
+ * _jsx("div", { id: "123" }, void 0)
  * -> "<div id=\"123\"></div>"
  *
- * jsx_runtime_1.jsx("div", { children: "Test" }, void 0)
+ * _jsx("div", { children: "Test" }, void 0)
  * -> "<div>Test</div>"
  *
- * jsx_runtime_1.jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0)
+ * _jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0)
  * -> "<div id=\"123\">Test</div>"
  *
- * jsx_runtime_1.jsx("div", Object.assign({ id: "123" }, { children: jsx_runtime_1.jsx("b", { children: "strong" }, void 0) }), void 0);
+ * _jsx("div", Object.assign({ id: "123" }, { children: _jsx("b", { children: "strong" }, void 0) }), void 0);
  * -> "<div id=\"123\">" + "<b>strong</b>" + "</div>"
  *
  */
 function optimizeNode(node: Expression): any {
     if (node.type !== 'CallExpression') return node;
-    const isCreateElementExpression = node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier' && node.callee.property?.name === 'createElement';
+    const isCreateElementExpression = node.callee.type === 'MemberExpression' && node.callee.object.type === 'Identifier' && node.callee.object.name === '_jsx'
+        && node.callee.property.type === 'Identifier' && node.callee.property?.name === 'createElement';
     if (!isCreateElementExpression) return node;
 
     //go deeper if possible
@@ -128,7 +131,13 @@ function optimizeNode(node: Expression): any {
             }
         }
         value += '</' + tag + '>';
-        return {type: 'CallExpression', callee: {type: 'Identifier', name: 'html'}, arguments: [{type: 'Literal', value: value}]};
+
+        return {
+            type: 'CallExpression', callee: {
+                type: 'MemberExpression',
+                object: {type: 'Identifier', name: '_jsx'}, computed: false, property: {type: 'Identifier', name: 'html'}
+            }, arguments: [{type: 'Literal', value: value}]
+        };
     }
 
     return node;
@@ -139,7 +148,10 @@ function extractLiteralValue(object: Literal | CallExpression) {
 }
 
 function isHtmlCall(object: Expression | SpreadElement) {
-    return object.type === 'CallExpression' && object.callee.type === 'Identifier' && object.callee.name === 'html' && object.arguments[0] && object.arguments[0].type === 'Literal';
+    return object.type === 'CallExpression' && object.callee.type === 'MemberExpression'
+        && object.callee.object.type === 'Identifier' && object.callee.object.name === '_jsx'
+        && object.callee.property.type === 'Identifier' && object.callee.property.name === 'html'
+        && object.arguments[0] && object.arguments[0].type === 'Literal';
 }
 
 function extractChildrenFromObjectExpressionProperties(props: Array<Property | SpreadElement>): Expression | undefined {
@@ -158,26 +170,29 @@ function extractChildrenFromObjectExpressionProperties(props: Array<Property | S
  * createElement is used by TSX as well as fallback when `<div {...props} something=123>` is used.
  *
  *
- * jsx_runtime_1.jsx("div", { id: "123" }, void 0)
- * -> jsx_runtime_1.createElement("div", {id: "123"}}
+ * _jsx("div", { id: "123" }, void 0)
+ * -> _jsx.createElement("div", {id: "123"}}
  *
- * jsx_runtime_1.jsx("div", { children: "Test" }, void 0)
- * -> jsx_runtime_1.createElement("div", {}, "Test")
+ * _jsx("div", { children: "Test" }, void 0)
+ * -> _jsx.createElement("div", {}, "Test")
  *
- * jsx_runtime_1.jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0)
- * -> jsx_runtime_1.createElement("div", {id: "123"}, "Test"}
+ * _jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0)
+ * -> _jsx.createElement("div", {id: "123"}, "Test"}
  *
- * jsx_runtime_1.jsx("div", Object.assign({ id: "123" }, { children: jsx_runtime_1.jsx("b", { children: "strong" }, void 0) }), void 0);
- * -> jsx_runtime_1.createElement("div", {id: "123"}, jsx_runtime_1.createElement("b", {}, "strong"))
+ * _jsx("div", Object.assign({ id: "123" }, { children: _jsx("b", { children: "strong" }, void 0) }), void 0);
+ * -> _jsx.createElement("div", {id: "123"}, _jsx.createElement("b", {}, "strong"))
  */
 function convertNodeToCreateElement(node: Expression): Expression {
     if (node.type !== 'CallExpression') return node;
-    if (node.callee.type !== 'MemberExpression') return node;
 
-    const isValid = node.callee.property.type === 'Identifier' && (node.callee.property.name === 'jsx' || node.callee.property.name === 'jsxs');
+    const isValid = node.callee.type === 'Identifier' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs');
     if (!isValid) return node;
 
-    if (node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier') node.callee.property.name = 'createElement';
+    //rewrite to _jsx.createElement
+    node.callee = {
+        type: 'MemberExpression',
+        object: {type: 'Identifier', name: '_jsx'}, computed: false, property: {type: 'Identifier', name: 'createElement'}
+    } as MemberExpression;
 
     node.arguments.splice(2); //remove void 0
 
@@ -225,11 +240,11 @@ function convertNodeToCreateElement(node: Expression): Expression {
     return node;
 }
 
-export function optimize(code: string): string {
+export function optimizeJSX(code: string): string {
     const tree = parse(code);
 
     replace(tree, (node: any) => {
-        if (node.type === 'CallExpression' && (node.callee.property?.name === 'jsx' || node.callee.property?.name === 'jsxs')) {
+        if (node.type === 'CallExpression' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs')) {
             try {
                 return optimizeNode(convertNodeToCreateElement(node));
             } catch (error) {
@@ -244,12 +259,11 @@ export function optimize(code: string): string {
     return generate(tree);
 }
 
-
 export function convertJsxCodeToCreateElement(code: string): string {
     const tree = parse(code);
 
     replace(tree, (node: any) => {
-        if (node.type === 'CallExpression' && (node.callee.property?.name === 'jsx' || node.callee.property?.name === 'jsxs')) {
+        if (node.type === 'CallExpression' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs')) {
             try {
                 return convertNodeToCreateElement(node);
             } catch (error) {

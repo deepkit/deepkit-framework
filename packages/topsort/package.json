@@ -4,14 +4,12 @@
   "description": "High-Performance topological sort / dependency resolver with optional grouping algorithm for Typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -21,6 +19,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

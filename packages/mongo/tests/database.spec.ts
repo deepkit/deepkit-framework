@@ -5,8 +5,6 @@ import {Database} from "@deepkit/orm";
 import {MongoDatabaseAdapter} from "../src/adapter";
 import {Entity, t} from "@deepkit/type";
 
-jest.setTimeout(100000);
-
 test('simple', async () => {
     @Entity('asd')
     class Test {

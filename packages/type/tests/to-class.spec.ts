@@ -3,10 +3,9 @@ import 'reflect-metadata';
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
 import {isExcluded} from '../src/mapper';
 import {getClassSchema, OnLoad, jsonSerializer, resolvePropertyCompilerSchema, t, uuid, validate, cloneClass} from '../index';
-import {ClassWithUnmetParent, DocumentClass, ImpossibleToMetDocumentClass} from './document-scenario/DocumentClass';
+import {ClassWithUnmetParent, DocumentClass} from './document-scenario/DocumentClass';
 import {PageClass} from './document-scenario/PageClass';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
-import {PageCollection} from './document-scenario/PageCollection';
 
 test('test simple model', () => {
     const schema = getClassSchema(SimpleModel);
@@ -396,12 +395,12 @@ test('test decorator complex', async () => {
 test('test @Decorated with parent', async () => {
     expect(resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages')).toMatchObject({
         type: 'class',
-        resolveClassType: PageCollection
+        resolveClassType: DocumentClass.PageCollection
     });
-    expect(resolvePropertyCompilerSchema(getClassSchema(PageCollection), 'pages')).toMatchObject({
+    expect(resolvePropertyCompilerSchema(getClassSchema(DocumentClass.PageCollection), 'pages')).toMatchObject({
         type: 'array',
     });
-    expect(resolvePropertyCompilerSchema(getClassSchema(PageCollection), 'pages.123')).toMatchObject({
+    expect(resolvePropertyCompilerSchema(getClassSchema(DocumentClass.PageCollection), 'pages.123')).toMatchObject({
         type: 'class',
         resolveClassType: PageClass
     });
@@ -409,51 +408,14 @@ test('test @Decorated with parent', async () => {
         type: 'class',
         resolveClassType: PageClass
     });
-    expect(resolvePropertyCompilerSchema(getClassSchema(PageClass), 'document')).toMatchObject({
-        type: 'class',
-        resolveClassType: DocumentClass
-    });
     expect(resolvePropertyCompilerSchema(getClassSchema(PageClass), 'children')).toMatchObject({
         type: 'class',
-        resolveClassType: PageCollection
+        resolveClassType: PageClass.PageCollection
     });
 
     expect(() => {
         const instance = jsonSerializer.for(ClassWithUnmetParent).deserialize({});
     }).toThrow('ClassWithUnmetParent.parent is defined as');
-
-    expect(() => {
-        const instance = jsonSerializer.for(PageClass).deserialize({
-            name: 'myName'
-        });
-    }).toThrow('PageClass.document is defined as @f.parentReference and NOT @f.optional');
-
-    {
-        const doc = new DocumentClass();
-
-        const instance = jsonSerializer.for(PageClass).deserialize({
-            name: 'myName'
-        }, {parents: [doc]});
-
-        expect(instance.document).toBe(doc);
-    }
-
-    expect(() => {
-        const instance = jsonSerializer.for(ImpossibleToMetDocumentClass).deserialize({
-            name: 'myName',
-            pages: [
-                {
-                    name: 'Foo',
-                    children: [
-                        {
-                            name: 'Foo.1'
-                        }
-                    ]
-                },
-                {name: 'Bar'}
-            ]
-        });
-    }).toThrow('PageClass.document is defined as');
 
     const instance = jsonSerializer.for(DocumentClass).deserialize({
         name: 'myName',
@@ -490,7 +452,7 @@ test('test @Decorated with parent', async () => {
     expect(instance.page!.children.get(1)!.parent).toBe(instance.page);
     expect(instance.page!.children.get(2)!.parent).toBe(instance.page);
 
-    expect(instance.pages).toBeInstanceOf(PageCollection);
+    expect(instance.pages).toBeInstanceOf(DocumentClass.PageCollection);
     expect(instance.pages.count()).toBe(2);
     expect(instance.pages.get(0)).toBeInstanceOf(PageClass);
     expect(instance.pages.get(1)).toBeInstanceOf(PageClass);
@@ -500,15 +462,11 @@ test('test @Decorated with parent', async () => {
     expect(instance.pages.get(0)!.parent).toBeUndefined();
     expect(instance.pages.get(1)!.parent).toBeUndefined();
 
-    expect(instance.pages.get(0)!.document).toBe(instance);
-    expect(instance.pages.get(1)!.document).toBe(instance);
-
-    expect(instance.pages.get(0)!.children).toBeInstanceOf(PageCollection);
+    expect(instance.pages.get(0)!.children).toBeInstanceOf(PageClass.PageCollection);
 
     const foo_1 = instance.pages.get(0)!.children.get(0);
     expect(foo_1).toBeInstanceOf(PageClass);
     expect(foo_1!.name).toBe('Foo.1');
-    expect(foo_1!.document).toBe(instance);
 
     expect(foo_1!.parent).not.toBeUndefined();
     expect(foo_1!.parent!.name).toBe('Foo');
@@ -531,21 +489,12 @@ test('test @Decorated with parent', async () => {
     expect(foo_1_2!.parent).toBe(foo_1);
     expect(foo_1_3!.parent).toBe(foo_1);
 
-    expect(foo_1_1!.document).toBe(instance);
-    expect(foo_1_2!.document).toBe(instance);
-    expect(foo_1_3!.document).toBe(instance);
-
     expect(foo_1_1!.parent!.name).toBe('Foo.1');
     expect(foo_1_2!.parent!.name).toBe('Foo.1');
     expect(foo_1_3!.parent!.name).toBe('Foo.1');
 
-    expect(() => {
-        const clone = cloneClass(instance.page);
-    }).toThrow('PageClass.document is defined as');
-
     const clone = cloneClass(instance.page, {parents: [instance]});
     expect(clone).toBeInstanceOf(PageClass);
-    expect(clone!.document).toBe(instance);
     expect(clone!.parent).toBeUndefined();
 
     const plain = jsonSerializer.for(DocumentClass).serialize(instance) as any;

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Long} from 'bson';
+import bson from 'bson';
 import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_BINARY_SUBTYPE_UUID,
@@ -193,7 +193,7 @@ export class BaseParser {
     parseDate() {
         const lowBits = this.eatUInt32();
         const highBits = this.eatUInt32();
-        return new Date(new Long(lowBits, highBits).toNumber());
+        return new Date(new bson.Long(lowBits, highBits).toNumber());
     }
 
     peekUInt32(): number {

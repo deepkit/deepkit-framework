@@ -18,7 +18,7 @@
 
 import {Database} from '@deepkit/orm';
 import {ClassType} from '@deepkit/core';
-import * as glob from 'fast-glob';
+import glob from 'fast-glob';
 import {basename, join} from 'path';
 import {Migration} from './migration';
 import {DatabaseRegistry} from './database-registry';

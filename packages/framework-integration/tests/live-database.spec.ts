@@ -1,19 +1,17 @@
+import 'jest';
+import {jest} from '@jest/globals';
 import 'jest-extended';
 import 'reflect-metadata';
 import {Collection, EntitySubject, IdInterface, rpc} from '@deepkit/framework-shared';
-import {ClientConnection} from '@deepkit/framework';
+import {ClientConnection, LiveDatabase} from '@deepkit/framework';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
 import {Entity, getClassSchema, t, uuid} from '@deepkit/type';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@deepkit/core-rxjs';
 import {sleep} from '@deepkit/core';
 import {Database} from '@deepkit/orm';
-import {LiveDatabase} from '@deepkit/framework';
 
-jest.setTimeout(123123132);
-
-// @ts-ignore
-global['WebSocket'] = require('ws');
+// jest.setTimeout(120_000);
 
 afterAll(async () => {
     await closeAllCreatedServers();

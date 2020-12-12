@@ -17,6 +17,7 @@
  */
 
 import {empty} from '@deepkit/core';
+import {inspect} from 'util';
 
 export type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T]
 export type Expression<T> = { [P in keyof T & string]?: string; }
@@ -42,6 +43,10 @@ export class Changes<T> {
         this.$unset = empty($unset) ? undefined : $unset;
         this.$inc = empty($inc) ? undefined : $inc;
         this.detectEmpty();
+    }
+
+    [inspect.custom]() {
+        return `Changes<empty=${this.empty}>`;
     }
 
     getReturning(): string[] {

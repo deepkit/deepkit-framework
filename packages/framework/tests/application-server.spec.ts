@@ -4,12 +4,10 @@ import 'reflect-metadata';
 import {InMemoryApplicationServer} from '../src/rpc/inmemory-application-server';
 import {rpc} from '@deepkit/framework-shared';
 import {Application} from '../src/application';
-import { createModule } from '../src/module';
-
-jest.setTimeout(123123123);
+import {createModule} from '../src/module';
 
 test('basic bootstrap', async () => {
-    const AppModule = createModule({})
+    const AppModule = createModule({});
 
     const app = new Application(AppModule, [InMemoryApplicationServer]);
     const applicationServer = app.get(InMemoryApplicationServer);
@@ -34,7 +32,7 @@ test('basic controller', async () => {
 
     const AppModule = createModule({
         controllers: [MyController],
-    })
+    });
 
     const app = new Application(AppModule, [InMemoryApplicationServer]);
     const applicationServer = app.get(InMemoryApplicationServer);

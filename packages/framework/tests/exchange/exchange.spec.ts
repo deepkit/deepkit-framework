@@ -9,8 +9,6 @@ afterAll(async () => {
     closeCreatedExchange();
 });
 
-jest.setTimeout(30000);
-
 // test('test basic', async () => {
 //     const server = new ExchangeServer('auto');
 //     await server.start();

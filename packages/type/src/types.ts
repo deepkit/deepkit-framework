@@ -11,20 +11,17 @@
 import {FlattenIfArray} from './utils';
 import {Buffer} from 'buffer';
 
-export const isPrimaryKey = Symbol('primaryKey');
-export type PrimaryKey<T> = T & { [isPrimaryKey]?: T };
+export type PrimaryKey<T> = T & { __isPrimaryKey?: T };
 
-const isReference = Symbol('reference');
-export type Reference<T> = T & { [isReference]?: T };
+export type Reference<T> = T & { __isReference?: T };
 
-const isBackReference = Symbol('backReference');
-export type BackReference<T> = T & { [isBackReference]?: T } & { [isReference]?: T };
+export type BackReference<T> = T & { __isBackReference?: T } & { __isReference?: T };
 
 export type ExtractLooselyPrimaryKeys<T, R = Required<T>> = { [K in keyof R]: R[K] extends string | number ? K : never }[keyof R];
-export type ExtractPrimaryKeys<T, R = Required<T>> = { [K in keyof R]: R[K] extends { [isPrimaryKey]?: infer PKT } ? K : never }[keyof R];
+export type ExtractPrimaryKeys<T, R = Required<T>> = { [K in keyof R]: R[K] extends { __isPrimaryKey?: infer PKT } ? K : never }[keyof R];
 export type ExtractPrimaryKeyType<T> = ExtractPrimaryKeys<T> extends never ? any : ExtractPrimaryKeys<T>;
 
-type _references<T> = { [K in keyof T]: T[K] extends { [isReference]?: any } ? K : never }[keyof T];
+type _references<T> = { [K in keyof T]: T[K] extends { __isReference?: any } ? K : never }[keyof T];
 
 type isProbablyReference<T> = FlattenIfArray<T> extends number | string | Date | boolean ? false : true;
 
@@ -48,7 +45,6 @@ export type Types =
     | 'patch'
     | 'array'
     | 'union'
-    | 'moment'
     | 'date'
     | 'enum'
     | 'any'

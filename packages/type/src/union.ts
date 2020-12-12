@@ -31,7 +31,6 @@ const sorts: { [type in Types]: number } = {
     class: 2,
     date: 2,
     enum: 2,
-    moment: 2,
 
     boolean: 3,
     string: 3,

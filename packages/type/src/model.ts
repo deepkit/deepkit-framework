@@ -15,6 +15,12 @@ import getParameterNames from 'get-parameter-names';
 import {typedArrayMap, typedArrayNamesMap, Types} from './types';
 import {FieldDecoratorResult} from './field-decorator';
 
+export enum UnpopulatedCheck {
+    None,
+    Throw, //throws regular error
+    ReturnSymbol, //returns `unpopulatedSymbol`
+}
+
 export interface GlobalStore {
     RegisteredEntities: { [name: string]: ClassType | ClassSchema };
     unpopulatedCheck: UnpopulatedCheck;
@@ -26,25 +32,15 @@ export interface GlobalStore {
     enableForwardRefDetection: boolean;
 }
 
-function getGlobal(): any {
-    if ('undefined' !== typeof globalThis) return globalThis;
-    if ('undefined' !== typeof window) return window;
-    throw Error('No global');
-}
+const global: GlobalStore = {
+    RegisteredEntities: {},
+    unpopulatedCheck: UnpopulatedCheck.Throw,
+    enableForwardRefDetection: true,
+};
 
 export function getGlobalStore(): GlobalStore {
-    const global = getGlobal();
-    if (!global.DeepkitStore) {
-        global.DeepkitStore = {
-            RegisteredEntities: {},
-            unpopulatedCheck: UnpopulatedCheck.Throw,
-            enableForwardRefDetection: true,
-        } as GlobalStore;
-    }
-
-    return global.DeepkitStore;
+    return global;
 }
-
 
 export function resolveClassTypeOrForward(type: ClassType | ForwardRefFn<ClassType>): ClassType {
     return isFunction(type) ? (type as Function)() : type;
@@ -119,7 +115,7 @@ export type FieldTypes<T> = string | ClassType | ForwardRefFn<T>;
 
 export type ForwardRefFn<T> = ForwardRef<T> | (() => T);
 
-class ForwardRef<T> {
+export class ForwardRef<T> {
     constructor(public forwardRef: () => T) {
     }
 }
@@ -134,12 +130,6 @@ function resolveForwardRef<T>(forwardRef: ForwardRefFn<T>): T {
     } else {
         return forwardRef();
     }
-}
-
-export enum UnpopulatedCheck {
-    None,
-    Throw, //throws regular error
-    ReturnSymbol, //returns `unpopulatedSymbol`
 }
 
 export const unpopulatedSymbol = Symbol('unpopulated');

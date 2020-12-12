@@ -18,7 +18,7 @@
 
 import {ClientMessageAll, ConnectionMiddleware, ConnectionWriterInterface} from '@deepkit/framework-shared';
 import {injectable} from '../injector/injector';
-import {EntityStorage} from '../autosync/entity-storage';
+import {LiveDatabase} from '../exchange/live-database';
 
 /**
  * Extends the ConnectionMiddleware to make sure entityStorage decrease the usage of EntitySubject when it got unsubscribed.
@@ -26,7 +26,7 @@ import {EntityStorage} from '../autosync/entity-storage';
 @injectable()
 export class ServerConnectionMiddleware extends ConnectionMiddleware {
     constructor(
-        protected entityStorage: EntityStorage,
+        protected liveDatabase: LiveDatabase,
     ) {
         super();
     }
@@ -37,7 +37,7 @@ export class ServerConnectionMiddleware extends ConnectionMiddleware {
     ) {
         if (message.name === 'entity/unsubscribe') {
             const sent = this.entitySent[message.forId];
-            this.entityStorage.decreaseUsage(sent.classType, sent.id);
+            this.liveDatabase.getSubscriptionHandler(sent.classType).decreaseUsage(sent.id);
         }
 
         return super.messageIn(message, writer);

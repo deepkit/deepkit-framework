@@ -1,8 +1,9 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {arrayBufferFrom, arrayBufferTo, arrayBufferToBase64, jsonSerializer, t,} from '@deepkit/type';
 import {Plan, SimpleModel, SubModel} from './entities';
-import {Binary, ObjectID} from 'bson';
+import bson from 'bson';
 import {Buffer} from 'buffer';
 import {DocumentClass} from './document-scenario/DocumentClass';
 import {mongoSerializer} from '../src/mongo-serializer';
@@ -11,7 +12,7 @@ test('test simple model', () => {
     const instance = new SimpleModel('myName');
     const mongo = mongoSerializer.for(SimpleModel).serialize(instance);
 
-    expect(mongo['id']).toBeInstanceOf(Binary);
+    expect(mongo['id']).toBeInstanceOf(bson.Binary);
     expect(mongo['name']).toBe('myName');
 
 });
@@ -29,7 +30,7 @@ test('test simple model all fields', () => {
 
     const mongo = mongoSerializer.for(SimpleModel).serialize(instance);
 
-    expect(mongo['id']).toBeInstanceOf(Binary);
+    expect(mongo['id']).toBeInstanceOf(bson.Binary);
     expect(mongo['name']).toBe('myName');
     expect(mongo['type']).toBe(5);
     expect(mongo['plan']).toBe(Plan.PRO);
@@ -108,7 +109,7 @@ test('convert IDs and invalid values', () => {
     instance.id2 = '5be340cb2ffb5e901a9b62e4';
 
     const mongo = mongoSerializer.for(Model).serialize(instance);
-    expect(mongo.id2).toBeInstanceOf(ObjectID);
+    expect(mongo.id2).toBeInstanceOf(bson.ObjectID);
     expect(mongo.id2.toHexString()).toBe('5be340cb2ffb5e901a9b62e4');
 
     expect(() => {
@@ -135,8 +136,8 @@ test('binary', () => {
     expect(Buffer.from(i.preview).toString('utf8')).toBe('FooBar');
 
     const mongo = mongoSerializer.for(Model).serialize(i);
-    expect(mongo.preview).toBeInstanceOf(Binary);
-    expect((mongo.preview as Binary).length()).toBe(6);
+    expect(mongo.preview).toBeInstanceOf(bson.Binary);
+    expect((mongo.preview as bson.Binary).length()).toBe(6);
 });
 
 
@@ -147,7 +148,7 @@ test('binary from mongo', () => {
     }
 
     const i = mongoSerializer.for(Model).deserialize({
-        preview: new Binary(Buffer.from('FooBar', 'utf8'))
+        preview: new bson.Binary(Buffer.from('FooBar', 'utf8'))
     });
 
     expect(i.preview.byteLength).toBe(6);
@@ -348,7 +349,7 @@ test('partial mongo to plain ', () => {
 
     {
         const m = mongoSerializer.for(User).toPartial(jsonSerializer, {
-            picture: new Binary(Buffer.from(bin)),
+            picture: new bson.Binary(Buffer.from(bin)),
             name: 'peter'
         });
 
@@ -363,7 +364,7 @@ test('partial mongo to plain ', () => {
         });
 
         expect(m.name).toBe('peter');
-        expect(m.picture).toBeInstanceOf(Binary);
+        expect(m.picture).toBeInstanceOf(bson.Binary);
         expect((m.picture as any).buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
     }
 
@@ -375,7 +376,7 @@ test('partial mongo to plain ', () => {
         });
 
         expect(m.name).toBe('peter');
-        expect(m.picture).toBeInstanceOf(Binary);
+        expect(m.picture).toBeInstanceOf(bson.Binary);
         expect(m.picture!.buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
         expect(m.tags).toBeArray();
     }

@@ -1,3 +1,4 @@
+import 'jest';
 import {arrayBufferTo, base64ToArrayBuffer, nodeBufferToTypedArray} from '../index';
 import {Buffer} from 'buffer';
 

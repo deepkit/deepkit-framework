@@ -22,7 +22,7 @@ import {t} from '@deepkit/type';
 import {MongoClientConfig} from '../../client';
 import {BaseResponse, Command} from '../command';
 import {MongoError} from '../../error';
-import * as saslprep from 'saslprep';
+import saslprep from 'saslprep';
 
 class SaslStartCommand extends t.class({
     saslStart: t.literal(1),

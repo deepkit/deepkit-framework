@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {v4} from 'uuid';
+import uuidPkg from 'uuid';
 import {ClassType} from '@deepkit/core';
 import {ClassSchema} from './model';
 import {ExtractPrimaryKeyOrReferenceType, TypedArrays} from './types';
 
 export function uuid(): string {
-    return v4();
+    return uuidPkg.v4();
 }
 
 export function isArray(v: any): v is Array<any> {

@@ -83,6 +83,7 @@ export const KernelModule = createModule({
         {provide: ClientConnection, scope: 'rpc'},
         {provide: ConnectionMiddleware, scope: 'rpc'},
         {provide: LiveDatabase, scope: 'rpc'},
+        {provide: HttpListener, scope: 'http'},
     ],
     workflows: [
         httpWorkflow,

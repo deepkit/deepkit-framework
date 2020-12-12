@@ -1,3 +1,4 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {SimpleModel, SubModel} from './entities';

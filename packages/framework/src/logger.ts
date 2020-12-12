@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import * as style from 'ansi-styles';
-import * as util from 'util';
+import style from 'ansi-styles';
+import util from 'util';
 import {ClassType} from '@deepkit/core';
 
 enum LoggerLevel {

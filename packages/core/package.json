@@ -1,9 +1,10 @@
 {
   "name": "@deepkit/core",
   "version": "1.0.1-alpha.1",
-  "description": "Super Hornet core library",
+  "description": "Deepkit core library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -19,14 +20,12 @@
     "@types/dot-prop": "~4.2.0"
   },
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "rm -rf dist && tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "jest": {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

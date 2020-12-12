@@ -3,9 +3,10 @@
   "private": true,
   "version": "1.0.1-alpha.0",
   "description": "",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "app": "ts-node app.tsx",
+    "app": "node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader app.tsx",
     "app:watch": "ts-node-dev app.tsx"
   },
   "dependencies": {
@@ -22,7 +23,7 @@
     "buffer": "^5.2.1",
     "rxjs": "~6.5.3",
     "sift": "^7.0.1",
-    "ts-node": "^9.0.0",
+    "ts-node": "^9.1.1",
     "ts-node-dev": "^1.0.0",
     "typescript": "^4.1.2",
     "reflect-metadata": "^0.1.13",

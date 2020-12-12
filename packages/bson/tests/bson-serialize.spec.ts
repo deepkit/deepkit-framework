@@ -2,11 +2,11 @@ import 'jest-extended';
 import 'reflect-metadata';
 import {createBSONSizer, getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte} from '../src/bson-serialize';
 import {f, jsonSerializer, t} from '@deepkit/type';
-import * as Moment from 'moment';
-import {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} from 'bson';
+import bson from 'bson';
 import {getBSONDecoder} from '../src/bson-jit-parser';
 import {randomBytes} from 'crypto';
 import {parseObject, ParserV2} from '../src/bson-parser';
+const {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} = bson;
 
 test('hexToByte', () => {
     expect(hexToByte('00')).toBe(0);
@@ -256,31 +256,6 @@ test('basic date', () => {
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
     expect(createBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
-});
-
-test('basic moment', () => {
-    const object = {created: Moment()};
-
-    const expectedSize =
-        4 //size uint32
-        + 1 // type (date)
-        + 'created\0'.length
-        + (
-            8 //date
-        )
-        + 1 //object null
-    ;
-
-    const bsonObject = {created: object.created.toDate()};
-    expect(calculateObjectSize(bsonObject)).toBe(expectedSize);
-
-    const schema = t.schema({
-        created: t.moment,
-    });
-
-    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONSerializer(schema)(object)).toEqual(serialize(bsonObject));
 });
 
 test('basic binary', () => {

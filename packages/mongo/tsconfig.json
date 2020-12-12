@@ -11,7 +11,8 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2020",
-    "module": "CommonJS",
+    "module": "es2020",
+    "esModuleInterop": true,
 
     "baseUrl": ".",
     "outDir": "./dist",
@@ -19,10 +20,8 @@
     "composite": true,
     "typeRoots": [
       "node_modules/@types",
+      "../../node_modules/@types",
       "types"
-    ],
-    "types": [
-      "mongo-uuid"
     ]
   },
   "include": [

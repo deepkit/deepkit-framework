@@ -130,7 +130,7 @@ export class Application<T extends ModuleOptions<any>> {
             }
         }
 
-        const config = new MyConfig({root: __dirname});
+        const config = new MyConfig({root: import.meta.url.replace('file://', '')});
 
         for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
             config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.rootScopedContext);

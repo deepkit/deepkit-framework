@@ -1,10 +1,10 @@
 import 'jest-extended';
 import 'reflect-metadata';
 import {FieldDecoratorResult, t, Types} from '@deepkit/type';
-import {calculateObjectSize, serialize} from 'bson';
+import bson from 'bson';
 import {createBSONSizer, getBSONSerializer, JS_INT_MAX, JS_INT_MIN} from '../src/bson-serialize';
 import {getBSONDecoder} from '../src/bson-jit-parser';
-import * as Moment from 'moment';
+const {calculateObjectSize, serialize} = bson;
 
 enum MyEnum {
     first, second, third,
@@ -47,8 +47,6 @@ const types: [FieldDecoratorResult<any>, any, any?][] = [
     [t.mongoId, '507f191e810c19729de860ea'],
     [t.date, new Date("1987-10-12T00:00:00.000Z")],
     [t.date, new Date("2020-08-09T19:02:28.397Z")],
-    [t.moment, Moment(new Date("1987-10-12T00:00:00.000Z"))],
-    [t.moment, Moment(new Date("2020-08-09T19:02:28.397Z"))],
     [t.enum(MyEnum), MyEnum.first],
     [t.enum(MyEnum), MyEnum.second],
     [t.enum(MyEnum), MyEnum.third],
@@ -106,7 +104,6 @@ for (const type of types) {
 
         const type = field.buildPropertySchema().type;
         const blacklist: Types[] = [
-            'moment',
             'uuid',
             'objectId',
             'arrayBuffer',

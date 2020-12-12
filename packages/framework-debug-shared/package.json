@@ -1,8 +1,9 @@
 {
   "name": "@deepkit/framework-debug-shared",
   "version": "1.0.1-alpha.1",
-  "main": "dist/",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "license": "AGPL-3.0-only",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -20,6 +21,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts",
       "**/tests/**/*.spec.tsx"

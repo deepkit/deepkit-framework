@@ -1,3 +1,4 @@
+import 'jest';
 import 'jest-extended';
 import {
     asyncOperation,
@@ -237,7 +238,7 @@ test('asyncOperation', async () => {
     } catch (error) {
         fetched = true;
         expect(error.stack).toContain('MyError1');
-        expect(error.stack).toContain('Object.asyncOperation');
+        expect(error.stack).toContain('asyncOperation');
     }
     expect(fetched).toBe(true);
 });
@@ -254,9 +255,8 @@ test('asyncOperation deep', async () => {
         });
     } catch (error) {
         fetched = true;
-        console.log(error);
         expect(error.stack).toContain('MyError2');
-        expect(error.stack).toContain('Object.asyncOperation');
+        expect(error.stack).toContain('asyncOperation');
     }
     expect(fetched).toBe(true);
 });

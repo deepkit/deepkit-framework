@@ -20,7 +20,7 @@ import {each, getClassName} from '@deepkit/core';
 import {WebWorker, WebWorkerFactory} from './worker';
 import {RpcControllers} from './service-container';
 import {EventDispatcher, BaseEvent, eventDispatcher, EventToken} from './event';
-import * as cluster from 'cluster';
+import cluster from 'cluster';
 import {injectable} from './injector/injector';
 import {Logger} from './logger';
 import {kernelConfig} from './kernel.config';

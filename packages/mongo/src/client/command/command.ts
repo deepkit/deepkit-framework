@@ -22,7 +22,7 @@ import {getBSONDecoder} from '@deepkit/bson';
 import {MongoError} from '../error';
 import {MongoClientConfig} from '../client';
 import {Host} from '../host';
-import {deserialize} from 'bson';
+import bson from 'bson';
 
 
 export interface CommandMessageResponseCallbackResult<T> {
@@ -77,7 +77,7 @@ export abstract class Command {
 
     handleResponse(response: Buffer) {
         if (!this.current) throw new Error('Got handleResponse without active command');
-        const message = this.current.response ? getBSONDecoder(this.current.response)(response) : deserialize(response);
+        const message = this.current.response ? getBSONDecoder(this.current.response)(response) : bson.deserialize(response);
         if (!message.ok) {
             console.error(message);
             this.current.reject(new MongoError(message.errmsg, message.code));

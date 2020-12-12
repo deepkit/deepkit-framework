@@ -24,7 +24,7 @@ import {SQLiteSchemaParser} from '../reverse/sqlite-schema-parser';
 import {SqliteSerializer} from '../serializer/sqlite-serializer';
 import {SQLiteFilterBuilder} from '../sql-filter-builder.sqlite';
 import {isPlainObject} from '@deepkit/core';
-import {escape} from 'sqlstring-sqlite';
+import sqlstring from 'sqlstring-sqlite';
 
 export class SQLitePlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
@@ -36,15 +36,14 @@ export class SQLitePlatform extends DefaultPlatform {
         super();
         this.addType('number', 'float');
         this.addType('date', 'text');
-        this.addType('moment', 'text');
         this.addType('boolean', 'integer', 1);
         this.addType('uuid', 'blob');
         this.addBinaryType('blob');
     }
 
     quoteValue(value: any): string {
-        if (isPlainObject(value) || isArray(value)) return escape(JSON.stringify(value));
-        return escape(value);
+        if (isPlainObject(value) || isArray(value)) return sqlstring.escape(JSON.stringify(value));
+        return sqlstring.escape(value);
     }
 
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLiteFilterBuilder {

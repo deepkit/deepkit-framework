@@ -31,12 +31,10 @@ import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, En
 import {PostgresPlatform} from './platform/postgres-platform';
 import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
-import {Pool, PoolClient, PoolConfig, types} from 'pg';
+import pg from 'pg';
+import type {PoolClient, PoolConfig, Pool} from 'pg';
 import {asyncOperation, ClassType, empty} from '@deepkit/core';
 import {SqlBuilder} from './sql-builder';
-
-types.setTypeParser(1700, parseFloat);
-types.setTypeParser(20, BigInt);
 
 export class PostgresStatement extends SQLStatement {
     protected released = false;
@@ -423,12 +421,15 @@ export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
 }
 
 export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
-    protected pool = new Pool(this.options);
+    protected pool = new pg.Pool(this.options);
     public connectionPool = new PostgresConnectionPool(this.pool);
     public platform = new PostgresPlatform();
 
     constructor(protected options: PoolConfig) {
         super();
+
+        pg.types.setTypeParser(1700, parseFloat);
+        pg.types.setTypeParser(20, BigInt);
     }
 
     getName(): string {

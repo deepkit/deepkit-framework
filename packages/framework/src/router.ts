@@ -23,9 +23,9 @@ import {ValidationError, ValidationErrorItem} from '@deepkit/framework-shared';
 import {httpClass} from './decorator';
 import {BasicInjector, injectable} from './injector/injector';
 import {Logger} from './logger';
-import {IncomingMessage, ServerResponse} from 'http';
-import * as formidable from 'formidable';
-import * as querystring from 'querystring';
+import {IncomingMessage} from 'http';
+import formidable from 'formidable';
+import querystring from 'querystring';
 
 type ResolvedController = { parameters: (injector: BasicInjector) => any[], routeConfig: RouteConfig };
 

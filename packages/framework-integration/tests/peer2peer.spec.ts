@@ -1,3 +1,4 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {Entity, f} from '@deepkit/type';
@@ -6,9 +7,6 @@ import {createModule, InternalClient, RpcSecurityStrategy, Session} from '@deepk
 import {Observable} from 'rxjs';
 import {sleep} from '@deepkit/core';
 import {rpc} from '@deepkit/framework-shared';
-
-// @ts-ignore
-global['WebSocket'] = require('ws');
 
 afterAll(async () => {
     await closeAllCreatedServers();

@@ -1,6 +1,7 @@
-import {Database, DatabaseSession} from '@deepkit/orm';
+import {Database} from '@deepkit/orm';
 import {MongoDatabaseAdapter} from '../src/adapter';
 import {GenericCommand} from '../src/client/command/generic';
+import {performance} from 'perf_hooks';
 
 /**
  * Executes given exec() method 3 times and averages the consumed time.

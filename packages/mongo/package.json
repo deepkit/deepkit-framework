@@ -4,14 +4,12 @@
   "description": "Deepkit ORM MongoDB adapter",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "tsc --build",
-    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -26,19 +24,17 @@
     "saslprep": "^1.0.3"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.4",
     "@types/mongodb": "^3.5.25",
-    "jest-serial-runner": "^1.1.0",
-    "moment": "^2.0.0",
     "mongodb": "^3.6.0",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "runner": "jest-serial-runner",
+    "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

@@ -36,6 +36,6 @@ test('simple', () => {
     }
 
     const code = extractMethod(User.toString(), 'constructor');
-    expect(code.trim()).toBe('this.id=utils_1.uuid();this.bla=;');
+    expect(code.trim()).toBe('this.id=uuid();this.bla=;');
     console.log(code);
 });

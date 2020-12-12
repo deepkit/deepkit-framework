@@ -17,16 +17,26 @@
  */
 
 import {RouteConfig, Router} from './router';
-import {ClassType, CustomError} from '@deepkit/core';
+import {ClassType, CustomError, isPromise} from '@deepkit/core';
 import {injectable, InjectorContext, MemoryInjector} from './injector/injector';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
 import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
 import {Logger} from './logger';
-import * as serveStatic from 'serve-static';
+import serveStatic from 'serve-static';
 import {EventDispatcher, eventDispatcher,} from './event';
 import {createWorkflow, WorkflowEvent} from './workflow';
+import {join} from 'path';
+import {stat} from 'fs';
+
+export class HttpResponse extends ServerResponse {
+    status(code: number) {
+        this.writeHead(code);
+        this.end();
+    }
+}
+export class HttpRequest extends IncomingMessage {}
 
 export interface HttpError<T> {
     new(...args: any[]): Error;
@@ -50,6 +60,26 @@ export class HttpNotFoundError extends HttpError(404, 'Not found') {
 }
 
 export class HttpBadRequestError extends HttpError(400, 'Bad request') {
+}
+
+export class HttpWorkflowEvent extends WorkflowEvent {
+    constructor(
+        public readonly request: IncomingMessage,
+        public readonly response: ServerResponse,
+    ) {
+        super();
+    }
+
+    get url() {
+        return this.request.url || '/';
+    }
+
+    /**
+     * Whether a response has already been sent.
+     */
+    get sent() {
+        return this.response.headersSent;
+    }
 }
 
 export class HttpRequestEvent extends WorkflowEvent {
@@ -79,14 +109,24 @@ export class HttpRouteNotFoundEvent extends WorkflowEvent {
     }
 }
 
-export class HttpRouteEvent extends WorkflowEvent {
+export class HttpRouteEvent extends HttpWorkflowEvent {
     constructor(
         public readonly request: IncomingMessage,
         public readonly response: ServerResponse,
         public parameters: any[] = [],
         public route?: RouteConfig,
     ) {
-        super();
+        super(request, response);
+    }
+
+    routeFound(route: RouteConfig, parameters?: any[]) {
+        this.route = route;
+        if (parameters) this.parameters = parameters;
+        this.next('auth', new HttpAuthEvent(this.request, this.response, this.parameters, this.route));
+    }
+
+    notFound() {
+        this.next('routeNotFound', new HttpRouteNotFoundEvent(this.request, this.response));
     }
 }
 
@@ -125,6 +165,14 @@ export class HttpControllerEvent extends WorkflowEvent {
     ) {
         super();
     }
+
+    controllerResponse(response: any) {
+        this.next('controllerResponse', new HttpControllerResponseEvent(this.request, this.response, this.parameters, this.route, response));
+    }
+
+    controllerError(error: Error) {
+        this.next('controllerError', new HttpControllerErrorEvent(this.request, this.response, this.parameters, this.route, error));
+    }
 }
 
 export class HttpControllerResponseEvent extends WorkflowEvent {
@@ -161,7 +209,6 @@ export const httpWorkflow = createWorkflow('http', {
     controller: HttpControllerEvent,
     controllerResponse: HttpControllerResponseEvent,
     controllerError: HttpControllerErrorEvent,
-    static: WorkflowEvent,
     response: HttpResponseEvent,
 }, {
     start: 'request',
@@ -172,8 +219,6 @@ export const httpWorkflow = createWorkflow('http', {
     accessDenied: 'response',
     controllerResponse: 'response',
     controllerError: 'response',
-    routeNotFound: ['static'],
-    static: 'response',
 });
 
 export class HtmlResponse {
@@ -191,12 +236,29 @@ export function serveStaticListener(path: string): ClassType {
     class HttpRequestStaticServingListener {
         protected serveStatic = serveStatic(path, {index: false});
 
-        @eventDispatcher.listen(httpWorkflow.onRouteNotFound, -1)
-        onRouteNotFound(event: typeof httpWorkflow.onRouteNotFound.event) {
-            if (event.response.finished) return;
+        serve(path: string, request: IncomingMessage, response: ServerResponse) {
+            return new Promise(resolve => {
+                this.serveStatic(request, response, () => {
+                    resolve(response);
+                });
+            });
+        }
+
+        @eventDispatcher.listen(httpWorkflow.onRoute, 1) //after default route listener at 0.5
+        onRoute(event: typeof httpWorkflow.onRoute.event) {
+            if (event.sent) return;
+            if (event.route) return;
+
+            const localPath = join(path, join('/', event.url));
 
             return new Promise(resolve => {
-                this.serveStatic(event.request, event.response, () => {
+                stat(localPath, (err, stat) => {
+                    if (stat && stat.isFile()) {
+                        event.routeFound(
+                            new RouteConfig('angular', 'GET', event.url, {controller: HttpRequestStaticServingListener, methodName: 'serve'}),
+                            [path, event.request, event.response]
+                        );
+                    }
                     resolve(undefined);
                 });
             });
@@ -216,7 +278,7 @@ export class HttpListener {
     ) {
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRoute)
+    @eventDispatcher.listen(httpWorkflow.onRoute, 0.5)
     async onRoute(event: typeof httpWorkflow.onRoute.event): Promise<void> {
         if (event.response.finished) return;
         if (event.hasNext()) return;
@@ -224,20 +286,20 @@ export class HttpListener {
         const resolved = await this.router.resolveRequest(event.request);
 
         if (!resolved) {
-            event.next('routeNotFound', new HttpRouteNotFoundEvent(event.request, event.response));
+            event.notFound();
         } else {
-            event.next('auth', new HttpAuthEvent(event.request, event.response, resolved.parameters(this.scopedContext), resolved.routeConfig));
+            event.routeFound(resolved.routeConfig, resolved.parameters(this.scopedContext));
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRouteNotFound)
+    @eventDispatcher.listen(httpWorkflow.onRouteNotFound, 0.5)
     async routeNotFound(event: typeof httpWorkflow.onRouteNotFound.event): Promise<void> {
         if (event.response.finished) return;
         event.response.writeHead(404);
         event.response.end('Not found.');
     }
 
-    @eventDispatcher.listen(httpWorkflow.onAuth)
+    @eventDispatcher.listen(httpWorkflow.onAuth, 0.5)
     onAuth(event: typeof httpWorkflow.onAuth.event): void {
         if (event.hasNext()) return;
         if (event.accessDenied) {
@@ -247,7 +309,7 @@ export class HttpListener {
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onAccessDenied)
+    @eventDispatcher.listen(httpWorkflow.onAccessDenied, 0.5)
     onAccessDenied(event: typeof httpWorkflow.onAccessDenied.event): void {
         if (event.hasNext()) return;
         if (event.response.finished) return;
@@ -255,31 +317,34 @@ export class HttpListener {
         event.response.end('Access denied');
     }
 
-    @eventDispatcher.listen(httpWorkflow.onController)
+    @eventDispatcher.listen(httpWorkflow.onController, 0.5)
     async onController(event: typeof httpWorkflow.onController.event): Promise<void> {
         if (event.hasNext()) return;
         if (event.response.finished) return;
 
         const controllerInstance = this.scopedContext.get(event.route.action.controller);
-        const method = controllerInstance[event.route.action.methodName];
-        let result = method.apply(controllerInstance, event.parameters);
-        if (result instanceof Promise) result = await result;
-        event.next('controllerResponse', new HttpControllerResponseEvent(event.request, event.response, event.parameters, event.route, result));
+        try {
+            const method = controllerInstance[event.route.action.methodName];
+            let result = method.apply(controllerInstance, event.parameters);
+            if (isPromise(result)) result = await result;
+            event.controllerResponse(result);
+        } catch (error) {
+            event.controllerError(error);
+        }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onControllerError)
-    onControllerException(event: typeof httpWorkflow.onControllerError.event): void {
+    @eventDispatcher.listen(httpWorkflow.onControllerError, 0.5)
+    onControllerError(event: typeof httpWorkflow.onControllerError.event): void {
         if (event.response.finished) return;
         event.response.writeHead(500);
         event.response.end('Internal error');
     }
 
-    @eventDispatcher.listen(httpWorkflow.onControllerResponse)
+    @eventDispatcher.listen(httpWorkflow.onControllerResponse, 0.5)
     async onControllerResponse(event: typeof httpWorkflow.onControllerResponse.event) {
         const response = event.result;
 
         if (response === null || response === undefined) {
-            event.response.setHeader('Content-Type', 'text/plain; charset=utf-8');
             event.response.end(response);
         } else if ('string' === typeof response) {
             event.response.end(response);
@@ -305,7 +370,7 @@ export class HttpListener {
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRequest)
+    @eventDispatcher.listen(httpWorkflow.onRequest, 0.5)
     onRequest(event: typeof httpWorkflow.onRequest.event): void {
         if (event.response.finished) return;
         event.next('route', new HttpRouteEvent(event.request, event.response));

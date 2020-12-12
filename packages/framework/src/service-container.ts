@@ -223,7 +223,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
                 providers.unshift({provide: listener});
                 this.eventListenerContainer.registerListener(listener, context);
             } else {
-                this.eventListenerContainer.add(listener.eventToken, {fn: listener.callback, priority: listener.priority});
+                this.eventListenerContainer.add(listener.eventToken, {fn: listener.callback, order: listener.order});
             }
         }
 

@@ -1,6 +1,7 @@
-import {PageCollection} from "./PageCollection";
-import {PageClass} from "./PageClass";
-import {t, ParentReference} from "@deepkit/type";
+import {PageCollection} from './PageCollection';
+import {PageClass} from './PageClass';
+import {t, ParentReference} from '@deepkit/type';
+import {Forward} from '@deepkit/core';
 
 export class DocumentClass {
     @t.primary.mongoId
@@ -12,23 +13,8 @@ export class DocumentClass {
     @t.type(PageCollection)
     pages: PageCollection = new PageCollection;
 
-    @t.type(PageClass)
-    page?: PageClass;
-}
-
-export class ImpossibleToMetDocumentClass {
-    @t.primary.mongoId
-    _id?: string;
-
-
-    @t
-    name?: string;
-
-    @t.type(PageCollection)
-    pages: PageCollection = new PageCollection;
-
-    constructor(pages: PageCollection) {
-    }
+    @t.type(() => PageClass)
+    page?: Forward<PageClass>;
 }
 
 export class ClassWithUnmetParent {

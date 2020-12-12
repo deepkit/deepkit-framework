@@ -15,7 +15,6 @@ import {ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumV
 import {CompilerState, getDataConverterJS} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';
-import {moment} from './moment';
 import {typedArrayNamesMap} from './types';
 import {ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 import {validate, ValidationFailed } from './validation';
@@ -129,11 +128,6 @@ jsonSerializer.toClass.register('date', (property: PropertyCompilerSchema, state
     state.addSetter(`new Date(${state.accessor});`);
 });
 
-jsonSerializer.toClass.register('moment', (property: PropertyCompilerSchema, state: CompilerState) => {
-    state.setContext({moment});
-    state.addSetter(`moment(${state.accessor});`);
-});
-
 jsonSerializer.toClass.register('boolean', (property: PropertyCompilerSchema, state: CompilerState) => {
     state.addCodeForSetter(`
     if ('boolean' === typeof ${state.accessor}) {
@@ -197,7 +191,6 @@ const convertToPlainUsingToJson = (property: PropertyCompilerSchema, state: Comp
 };
 
 jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
-jsonSerializer.fromClass.register('moment', convertToPlainUsingToJson);
 
 jsonSerializer.fromClass.register('class', (property: PropertyCompilerSchema, state: CompilerState) => {
     const classSchema = getClassSchema(property.resolveClassType!);

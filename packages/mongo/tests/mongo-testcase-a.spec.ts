@@ -51,9 +51,6 @@ class OrganisationMembership {
     }
 }
 
-
-jest.setTimeout(1000000);
-
 async function setupTestCase(name: string) {
     const db = await createDatabase(name);
     const session = db.createSession();

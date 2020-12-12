@@ -1,9 +1,12 @@
+import 'jest';
 import 'jest-extended';
 import 'reflect-metadata';
 import {cloneClass, t, getEntityName, isExcluded, uuid, getClassSchema, jsonSerializer} from '@deepkit/type';
-import {Binary} from "bson";
-import { SimpleModel, Plan, now, SubModel, StringCollectionWrapper } from './entities';
+import bson from 'bson';
+import {SimpleModel, Plan, now, SubModel, StringCollectionWrapper} from './entities';
 import {mongoSerializer} from '../src/mongo-serializer';
+
+const {Binary} = bson;
 
 test('test simple model all fields', () => {
     expect(getEntityName(SimpleModel)).toBe('SimpleModel');
