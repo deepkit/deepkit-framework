@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2018",
+    "module": "es2020",
+    "esModuleInterop": true,
+
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true
+  },
+  "include": [
+    "src",
+    "tests",
+    "index.ts",
+    "tokens"
+  ],
+  "references": [
+      {
+        "path": "../framework/tsconfig.json"
+      }
+    ]
+}

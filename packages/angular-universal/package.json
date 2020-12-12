@@ -1,0 +1,41 @@
+{
+  "name": "@deepkit/angular-universal",
+  "version": "1.0.1-alpha.1",
+  "description": "Angular server side rendering for Deepkit Framework",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "dependencies": {
+    "domino": "^2.0.0",
+    "@deepkit/framework": "^1.0.1-alpha.0",
+    "@deepkit/type": "^1.0.1-alpha.0"
+  },
+  "devDependencies": {
+    "@angular/common": "^10.0.0 || ^11.0.0",
+    "@angular/core": "^10.0.0 || ^11.0.0",
+    "@angular/platform-server": "^10.0.0 || ^11.0.0",
+    "@angular/router": "^10.0.0 || ^11.0.0",
+    "@angular/animations": "^10.0.0 || ^11.0.0",
+    "@types/node": "^14.0.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}
