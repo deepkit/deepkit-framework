@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
 import {DocumentClass} from './document-scenario/DocumentClass';

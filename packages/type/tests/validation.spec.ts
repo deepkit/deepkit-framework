@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {
     getClassSchema,
@@ -14,6 +13,7 @@ import {
     ValidationFailedItem
 } from '../index';
 import {CustomError, isPlainObject} from '@deepkit/core';
+import {fail} from 'assert';
 
 test('test simple', async () => {
     class Page {
@@ -67,7 +67,7 @@ test('test required', async () => {
     }
 
     const instance = new Model;
-    expect(validate(Model, instance)).toBeArrayOfSize(1);
+    expect(validate(Model, instance).length).toBe(1);
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
         message: 'Required value is undefined',
@@ -112,7 +112,7 @@ test('test deep', async () => {
     }
 
     const instance = new Model;
-    expect(validate(Model, instance)).toBeArrayOfSize(1);
+    expect(validate(Model, instance).length).toBe(1);
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
         message: 'Required value is undefined',
@@ -759,7 +759,7 @@ test('test valdiation on real life case', () => {
 
     jsonSerializer.for(NodeResources).deserialize(object);
 
-    expect(isPlainObject(object.assignedJobTaskInstances['a09be358-d6ce-477f-829a-0dc27219de34.0.main'].assignedResources)).toBeTrue();
+    expect(isPlainObject(object.assignedJobTaskInstances['a09be358-d6ce-477f-829a-0dc27219de34.0.main'].assignedResources)).toBe(true);
 
     expect(validate(NodeResources, object)).toEqual([]);
 });
@@ -792,7 +792,7 @@ test('custom isRequired', () => {
     function isRequired() {
         return (value: any) => {
             if (value === undefined) throw new PropertyValidatorError('no', 'Sollte angegeben werden');
-        }
+        };
     }
 
     class MyModel {
@@ -814,7 +814,7 @@ test('custom isRequired null', () => {
         return (value: any) => {
             if (value === null) throw new PropertyValidatorError('no', 'Sollte angegeben werden');
             return undefined;
-        }
+        };
     }
 
     class MyModel {

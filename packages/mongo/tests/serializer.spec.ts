@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {t} from '@deepkit/type';
 import {mongoSerializer} from '../src/mongo-serializer';
 

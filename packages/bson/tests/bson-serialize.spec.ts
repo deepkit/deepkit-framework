@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {createBSONSizer, getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte} from '../src/bson-serialize';
 import {f, jsonSerializer, t} from '@deepkit/type';

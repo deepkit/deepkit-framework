@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {afterAll, expect, test} from '@jest/globals';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer, str2ab} from '../../src/exchange/exchange-prot';
 import {closeCreatedExchange, createExchange} from './utils';
 import {performance} from 'perf_hooks';
@@ -22,7 +21,7 @@ afterAll(async () => {
 //     await client.publish('mowla', {test: true});
 //
 //     await sleep(0.05);
-//     expect(gotIt).toBeTrue();
+//     expect(gotIt).toBe(true);
 //     server.close();
 // });
 

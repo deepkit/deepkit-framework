@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import {getEnumLabels, getEnumValues} from '../src/enum';
 
 test('getEnumLabels numbered index', () => {

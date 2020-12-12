@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {t} from '../src/decorators';
 import {uuid} from '../src/utils';
 import {extractMethod, removeStrings} from '../src/code-parser';

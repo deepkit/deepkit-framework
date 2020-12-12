@@ -1,6 +1,4 @@
-import 'jest';
-import {jest} from '@jest/globals';
-import 'jest-extended';
+import {jest, beforeAll, expect, test, afterAll} from '@jest/globals';
 import 'reflect-metadata';
 import {Collection, EntitySubject, IdInterface, rpc} from '@deepkit/framework-shared';
 import {ClientConnection, LiveDatabase} from '@deepkit/framework';
@@ -10,6 +8,7 @@ import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@deepkit/core-rxjs';
 import {sleep} from '@deepkit/core';
 import {Database} from '@deepkit/orm';
+import { fail } from 'assert';
 
 // jest.setTimeout(120_000);
 

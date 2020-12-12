@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import mongodb from 'mongodb';
 const {ObjectID} = mongodb;

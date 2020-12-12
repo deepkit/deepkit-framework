@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
 import {isExcluded} from '../src/mapper';
@@ -21,7 +21,7 @@ test('test simple model', () => {
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(0);
     expect(instance.plan).toBe(Plan.DEFAULT);
-    expect(instance.created).toBeDate();
+    expect(instance.created).toBeInstanceOf(Date);
     expect(instance.created).toBe(now);
 });
 
@@ -48,15 +48,15 @@ test('test simple model all fields', () => {
     });
 
     expect(instance).toBeInstanceOf(SimpleModel);
-    expect(instance.id).toBeString();
+    expect(typeof instance.id).toBe('string');
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
     expect(instance.yesNo).toBe(true);
     expect(instance.plan).toBe(Plan.PRO);
-    expect(instance.created).toBeDate();
+    expect(instance.created).toBeInstanceOf(Date);
     expect(instance.created).toEqual(new Date('Sat Oct 13 2018 14:17:35 GMT+0200'));
 
-    expect(instance.children).toBeArrayOfSize(2);
+    expect(instance.children.length).toBe(2);
 
     expect(instance.children[0]).toBeInstanceOf(SubModel);
     expect(instance.children[1]).toBeInstanceOf(SubModel);
@@ -64,7 +64,7 @@ test('test simple model all fields', () => {
     expect(instance.children[0].label).toBe('fooo');
     expect(instance.children[1].label).toBe('barr');
 
-    expect(instance.childrenMap).toBeObject();
+    expect(instance.childrenMap).toBeInstanceOf(Object);
     expect(instance.childrenMap.foo).toBeInstanceOf(SubModel);
     expect(instance.childrenMap.foo2).toBeInstanceOf(SubModel);
 
@@ -72,16 +72,16 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo2.label).toBe('bar2');
 
     const plain = jsonSerializer.for(SimpleModel).serialize(instance);
-    expect(plain.yesNo).toBeTrue();
+    expect(plain.yesNo).toBe(true);
     expect(plain.plan).toBe(1);
 
     const copy = cloneClass(instance);
-    expect(instance !== copy).toBeTrue();
-    expect(instance.children[0] !== copy.children[0]).toBeTrue();
-    expect(instance.children[1] !== copy.children[1]).toBeTrue();
-    expect(instance.childrenMap.foo !== copy.childrenMap.foo).toBeTrue();
-    expect(instance.childrenMap.foo2 !== copy.childrenMap.foo2).toBeTrue();
-    expect(instance.created !== copy.created).toBeTrue();
+    expect(instance !== copy).toBe(true);
+    expect(instance.children[0] !== copy.children[0]).toBe(true);
+    expect(instance.children[1] !== copy.children[1]).toBe(true);
+    expect(instance.childrenMap.foo !== copy.childrenMap.foo).toBe(true);
+    expect(instance.childrenMap.foo2 !== copy.childrenMap.foo2).toBe(true);
+    expect(instance.created !== copy.created).toBe(true);
 
     expect(plain).toEqual(jsonSerializer.for(SimpleModel).serialize(copy));
 });
@@ -109,16 +109,16 @@ test('test simple model all fields plainToMongo', () => {
         }
     });
 
-    expect(item).toBeObject();
+    expect(item).toBeInstanceOf(Object);
     expect(item.id).not.toBeUndefined();
     expect(item.name).toBe('myName');
     expect(item.type).toBe(5);
     expect(item.yesNo).toBe(true);
     expect(item.plan).toBe(Plan.PRO);
-    expect(item.created).toBeDate();
+    expect(item.created).toBeInstanceOf(Date);
     expect(item.created).toEqual(new Date('Sat Oct 13 2018 14:17:35 GMT+0200'));
 
-    expect(item.children).toBeArrayOfSize(2);
+    expect(item.children.length).toBe(2);
 
     expect(item.children[0]).toBeInstanceOf(SubModel);
     expect(item.children[1]).toBeInstanceOf(SubModel);
@@ -126,7 +126,7 @@ test('test simple model all fields plainToMongo', () => {
     expect(item.children[0].label).toBe('fooo');
     expect(item.children[1].label).toBe('barr');
 
-    expect(item.childrenMap).toBeObject();
+    expect(item.childrenMap).toBeInstanceOf(Object);
     expect(item.childrenMap.foo).toBeInstanceOf(SubModel);
     expect(item.childrenMap.foo2).toBeInstanceOf(SubModel);
 
@@ -134,20 +134,20 @@ test('test simple model all fields plainToMongo', () => {
     expect(item.childrenMap.foo2.label).toBe('bar2');
 
     const plain = jsonSerializer.for(SimpleModel).serialize(item);
-    expect(plain.yesNo).toBeTrue();
+    expect(plain.yesNo).toBe(true);
     expect(plain.plan).toBe(1);
 });
 
 test('test simple model with not mapped fields', () => {
     const schema = getClassSchema(SimpleModel);
-    expect(isExcluded(schema, 'excluded', 'database')).toBeTrue();
-    expect(isExcluded(schema, 'excluded', 'json')).toBeTrue();
+    expect(isExcluded(schema, 'excluded', 'database')).toBe(true);
+    expect(isExcluded(schema, 'excluded', 'json')).toBe(true);
 
-    expect(isExcluded(schema, 'excludedForPlain', 'mongo')).toBeFalse();
-    expect(isExcluded(schema, 'excludedForPlain', 'json')).toBeTrue();
+    expect(isExcluded(schema, 'excludedForPlain', 'mongo')).toBe(false);
+    expect(isExcluded(schema, 'excludedForPlain', 'json')).toBe(true);
 
-    expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBeTrue();
-    expect(isExcluded(schema, 'excludedForMongo', 'json')).toBeFalse();
+    expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBe(true);
+    expect(isExcluded(schema, 'excludedForMongo', 'json')).toBe(false);
 
     const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
@@ -157,7 +157,7 @@ test('test simple model with not mapped fields', () => {
     });
 
     expect(instance).toBeInstanceOf(SimpleModel);
-    expect(instance.id).toBeString();
+    expect(typeof instance.id).toBe('string');
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
     expect(instance.yesNo).toBe(true);
@@ -175,7 +175,7 @@ test('test simple model with not mapped fields', () => {
         excludedForPlain: 'excludedForPlain'
     });
 
-    expect(item.id).toBeString();
+    expect(typeof item.id).toBe('string');
     expect(item.name).toBe('myName');
     expect(item.type).toBe(5);
     expect(item.yesNo).toBe(false);
@@ -186,7 +186,7 @@ test('test simple model with not mapped fields', () => {
 
     const plainObject = jsonSerializer.for(SimpleModel).serialize(instance);
 
-    expect(plainObject.id).toBeString();
+    expect(typeof plainObject.id).toBe('string');
     expect(plainObject.name).toBe('myName');
     expect(plainObject.type).toBe(5);
     expect(plainObject.notMapped).toBeUndefined();
@@ -353,16 +353,16 @@ test('test setter/getter', async () => {
         fonts: [{name: 'Arial'}, {name: 'Verdana'}]
     });
 
-    expect(instance.test).toBeTrue();
+    expect(instance.test).toBe(true);
     expect(instance.fonts!.length).toBe(2);
 
     const plain = jsonSerializer.for(Model).serialize(instance);
     expect((plain as any)._fonts).toBeUndefined();
-    expect(plain.fonts).toBeArrayOfSize(2);
+    expect(plain.fonts.length).toBe(2);
 
     const mongo = jsonSerializer.for(Model).serialize(instance);
     expect((mongo as any)._fonts).toBeUndefined();
-    expect(mongo.fonts).toBeArrayOfSize(2);
+    expect(mongo.fonts.length).toBe(2);
 });
 
 test('test decorator complex', async () => {
@@ -377,7 +377,7 @@ test('test decorator complex', async () => {
     expect(instance.childrenCollection.items[1]).toBeInstanceOf(SubModel);
     expect(instance.childrenCollection.items[0].label).toBe('Foo');
     expect(instance.childrenCollection.items[1].label).toBe('Bar');
-    expect(instance.childrenCollection.items[1].constructorUsed).toBeTrue();
+    expect(instance.childrenCollection.items[1].constructorUsed).toBe(true);
 
     instance.childrenCollection.add(new SubModel('Bar2'));
     expect(instance.childrenCollection.items[2].label).toEqual('Bar2');
@@ -529,18 +529,18 @@ test('simple string + number + boolean', () => {
     expect(instance.name).toBe('1');
     expect(instance.age).toBe(2);
 
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 'false'}).yesNo).toBeFalse();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: '0'}).yesNo).toBeFalse();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: false}).yesNo).toBeFalse();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 0}).yesNo).toBeFalse();
+    expect(jsonSerializer.for(Model).deserialize({yesNo: 'false'}).yesNo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({yesNo: '0'}).yesNo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({yesNo: false}).yesNo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({yesNo: 0}).yesNo).toBe(false);
     expect(jsonSerializer.for(Model).deserialize({yesNo: 'nothing'}).yesNo).toBeUndefined();
     expect(jsonSerializer.for(Model).deserialize({yesNo: null}).yesNo).toBeUndefined();
     expect(jsonSerializer.for(Model).deserialize({yesNo: undefined}).yesNo).toBeUndefined();
 
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 'true'}).yesNo).toBeTrue();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: '1'}).yesNo).toBeTrue();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: true}).yesNo).toBeTrue();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 1}).yesNo).toBeTrue();
+    expect(jsonSerializer.for(Model).deserialize({yesNo: 'true'}).yesNo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({yesNo: '1'}).yesNo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({yesNo: true}).yesNo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({yesNo: 1}).yesNo).toBe(true);
     expect(jsonSerializer.for(Model).deserialize({yesNo: null}).yesNo).toBeUndefined();
 });
 
@@ -646,43 +646,43 @@ test('enums', () => {
     expect(getEnumValues(Enum3)).toEqual([200, 100]);
     expect(getEnumValues(Enum4)).toEqual(['200', 'x']);
 
-    expect(isValidEnumValue(Enum1, 'first')).toBeFalse();
-    expect(isValidEnumValue(Enum1, 'second')).toBeFalse();
-    expect(isValidEnumValue(Enum1, 0)).toBeTrue();
-    expect(isValidEnumValue(Enum1, 1)).toBeTrue();
-    expect(isValidEnumValue(Enum1, '0')).toBeTrue();
-    expect(isValidEnumValue(Enum1, '1')).toBeTrue();
-    expect(isValidEnumValue(Enum1, 2)).toBeFalse();
-    expect(isValidEnumValue(Enum1, '2')).toBeFalse();
+    expect(isValidEnumValue(Enum1, 'first')).toBe(false);
+    expect(isValidEnumValue(Enum1, 'second')).toBe(false);
+    expect(isValidEnumValue(Enum1, 0)).toBe(true);
+    expect(isValidEnumValue(Enum1, 1)).toBe(true);
+    expect(isValidEnumValue(Enum1, '0')).toBe(true);
+    expect(isValidEnumValue(Enum1, '1')).toBe(true);
+    expect(isValidEnumValue(Enum1, 2)).toBe(false);
+    expect(isValidEnumValue(Enum1, '2')).toBe(false);
 
     expect(getValidEnumValue(Enum1, 1)).toBe(1);
     expect(getValidEnumValue(Enum1, '1')).toBe(1);
     expect(getValidEnumValue(Enum1, '2')).toBeUndefined();
 
-    expect(isValidEnumValue(Enum2, 'first')).toBeFalse();
-    expect(isValidEnumValue(Enum2, 'second')).toBeFalse();
-    expect(isValidEnumValue(Enum2, 'z')).toBeTrue();
-    expect(isValidEnumValue(Enum2, 'x')).toBeTrue();
+    expect(isValidEnumValue(Enum2, 'first')).toBe(false);
+    expect(isValidEnumValue(Enum2, 'second')).toBe(false);
+    expect(isValidEnumValue(Enum2, 'z')).toBe(true);
+    expect(isValidEnumValue(Enum2, 'x')).toBe(true);
 
     expect(getValidEnumValue(Enum2, 1)).toBeUndefined();
     expect(getValidEnumValue(Enum2, 'x')).toBe('x');
     expect(getValidEnumValue(Enum2, '2')).toBeUndefined();
 
-    expect(isValidEnumValue(Enum3, 'first')).toBeFalse();
-    expect(isValidEnumValue(Enum3, 'second')).toBeFalse();
-    expect(isValidEnumValue(Enum3, '200')).toBeTrue();
-    expect(isValidEnumValue(Enum3, '100')).toBeTrue();
-    expect(isValidEnumValue(Enum3, 200)).toBeTrue();
-    expect(isValidEnumValue(Enum3, 100)).toBeTrue();
+    expect(isValidEnumValue(Enum3, 'first')).toBe(false);
+    expect(isValidEnumValue(Enum3, 'second')).toBe(false);
+    expect(isValidEnumValue(Enum3, '200')).toBe(true);
+    expect(isValidEnumValue(Enum3, '100')).toBe(true);
+    expect(isValidEnumValue(Enum3, 200)).toBe(true);
+    expect(isValidEnumValue(Enum3, 100)).toBe(true);
 
-    expect(isValidEnumValue(Enum4, 'first')).toBeFalse();
-    expect(isValidEnumValue(Enum4, 'second')).toBeFalse();
-    expect(isValidEnumValue(Enum4, '200')).toBeTrue();
-    expect(isValidEnumValue(Enum4, 200)).toBeTrue();
-    expect(isValidEnumValue(Enum4, 'x')).toBeTrue();
+    expect(isValidEnumValue(Enum4, 'first')).toBe(false);
+    expect(isValidEnumValue(Enum4, 'second')).toBe(false);
+    expect(isValidEnumValue(Enum4, '200')).toBe(true);
+    expect(isValidEnumValue(Enum4, 200)).toBe(true);
+    expect(isValidEnumValue(Enum4, 'x')).toBe(true);
 
-    expect(isValidEnumValue(Enum4, 'first', true)).toBeTrue();
-    expect(isValidEnumValue(Enum4, 'second', true)).toBeTrue();
+    expect(isValidEnumValue(Enum4, 'first', true)).toBe(true);
+    expect(isValidEnumValue(Enum4, 'second', true)).toBe(true);
 
     expect(getValidEnumValue(Enum4, 1)).toBeUndefined();
     expect(getValidEnumValue(Enum4, 200)).toBe('200');

@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {MemoryDatabaseAdapter} from '../src/memory-db';
 import {Database} from '../src/database';
 import {t, validate, plainToClass} from '@deepkit/type';

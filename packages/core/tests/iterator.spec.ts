@@ -1,25 +1,24 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {each, eachKey, eachPair} from '../src/iterators';
-import 'jest-extended';
 
 test('test array', () => {
     const array: string[] = ['a', 'b', 'c'];
 
     for (const v of each(array)) {
-        expect(v).toBeString();
+        expect(typeof v).toBe('string');
     }
 
     for (let i in array) {
-        expect(i).toBeString();
+        expect(typeof i).toBe('string');
     }
 
     for (const i of eachKey(array)) {
-        expect(i).toBeNumber();
+        expect(typeof i).toBe('number');
     }
 
     for (const [k, v] of eachPair(array)) {
-        expect(k).toBeNumber();
-        expect(v).toBeString();
+        expect(typeof k).toBe('number');
+        expect(typeof v).toBe('string');
     }
 
     for (const [k, v] of eachPair(['y'])) {
@@ -34,11 +33,11 @@ test('test object1', () => {
     const object: {[index: string]: number} = {'a': 1, 'b': 2, 'c': 3};
 
     for (const v of each(object)) {
-        expect(v).toBeNumber();
+        expect(typeof v).toBe('number');
     }
 
     for (const i of eachKey(object)) {
-        expect(i).toBeString();
+        expect(typeof i).toBe('string');
     }
 });
 
@@ -55,7 +54,7 @@ test('test object2', () => {
     const object2: {[index: string]: Mowla} = {'a': new Mowla('hallo'), 'b': new Mowla('hallo'), 'c': new Mowla('hallo')};
 
     for (const v of eachKey(object2)) {
-        expect(v).toBeString();
+        expect(typeof v).toBe('string');
     }
 
     for (const v of each(object2)) {
@@ -63,7 +62,7 @@ test('test object2', () => {
     }
 
     for (const [i, v] of eachPair(object2)) {
-        expect(i).toBeString();
+        expect(typeof i).toBe('string');
         expect(v).toBeInstanceOf(Mowla);
     }
 });
@@ -75,15 +74,15 @@ test('test object3', () => {
     };
 
     for (const v of eachKey(object3)) {
-        expect(v).toBeString();
+        expect(typeof v).toBe('string');
     }
 
     for (const v of each(object3)) {
-        expect(v).toBeBoolean();
+        expect(typeof v).toBe('boolean');
     }
 
     for (const [k, v] of eachPair(object3)) {
-        expect(k).toBeString();
-        expect(v).toBeBoolean();
+        expect(typeof k).toBe('string');
+        expect(typeof v).toBe('boolean');
     }
 });

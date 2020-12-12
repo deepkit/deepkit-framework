@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {uuid} from '../src/utils';
 import {getClassSchema, t} from '../index';
 

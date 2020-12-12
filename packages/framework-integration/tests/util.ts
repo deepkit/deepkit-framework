@@ -1,4 +1,3 @@
-import 'jest';
 import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
 import {KernelModule, Application, ApplicationServer, createModule, DatabaseModule, Module} from '@deepkit/framework';
 import {RemoteController} from '@deepkit/framework-shared';

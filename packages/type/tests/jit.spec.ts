@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {t} from '../src/decorators';
 import {getClassToXFunction} from '../src/jit';

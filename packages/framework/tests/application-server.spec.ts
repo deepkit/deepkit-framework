@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {test, expect} from '@jest/globals';
 import 'reflect-metadata';
 import {InMemoryApplicationServer} from '../src/rpc/inmemory-application-server';
 import {rpc} from '@deepkit/framework-shared';

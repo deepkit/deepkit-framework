@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {User, UserGroup} from './user';
 import {createEnvSetup} from './setup';

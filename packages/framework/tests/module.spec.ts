@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {t} from '@deepkit/type';
 import {ConfigSlice, createConfig, inject, injectable} from '../src/injector/injector';

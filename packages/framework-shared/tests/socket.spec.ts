@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {MessageSubject} from "../src/client";
 
@@ -11,7 +11,7 @@ test('test MessageSubject', () => {
     });
 
     subject.complete();
-    expect(closeCalled).toBeTrue();
+    expect(closeCalled).toBe(true);
 });
 
 test('test MessageSubject first', async () => {
@@ -28,5 +28,5 @@ test('test MessageSubject first', async () => {
 
     const res = await subject.firstThenClose();
     expect(res).toBe('peter');
-    expect(closeCalled).toBeTrue();
+    expect(closeCalled).toBe(true);
 });

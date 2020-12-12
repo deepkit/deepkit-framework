@@ -1,4 +1,4 @@
-import 'jest';
+import {afterEach, expect, test} from '@jest/globals';
 import {uuid} from '@deepkit/type';
 import {ChildProcess, spawn, spawnSync} from 'child_process';
 import {existsSync, mkdirSync, rmdirSync} from 'fs';

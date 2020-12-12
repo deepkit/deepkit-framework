@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {jsonSerializer, t, validate} from '../index';
 

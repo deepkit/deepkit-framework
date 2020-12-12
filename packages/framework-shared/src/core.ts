@@ -49,15 +49,11 @@ export class ValidationError extends CustomError {
     constructor(
         @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
     ) {
-        super('Validation error: ' + errors.map(e => e.toString()).join(','));
+        super('Validation error: ' + errors.map(v => `${v.path}: ${v.message} (${v.code})`).join(','));
     }
 
     static from(errors: { path: string, message: string, code?: string }[]) {
         return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '')));
-    }
-
-    get message(): string {
-        return this.errors.map(v => `${v.path}: ${v.message} (${v.code})`).join(',');
     }
 }
 

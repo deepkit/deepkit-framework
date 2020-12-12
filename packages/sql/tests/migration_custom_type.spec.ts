@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {jest} from '@jest/globals'
 import 'reflect-metadata';
 import {t} from '@deepkit/type';

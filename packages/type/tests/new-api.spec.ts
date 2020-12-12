@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {
     emptySerializer,
@@ -125,8 +125,8 @@ test('custom serialization formats', async () => {
     });
     const scopedSerializer = mySerializer.for(Test);
 
-    expect(jsonSerializer.toClass.get('number')).toBeFunction();
-    expect(mySerializer.toClass.get('number')).toBeFunction();
+    expect(jsonSerializer.toClass.get('number')).toBeInstanceOf(Function);
+    expect(mySerializer.toClass.get('number')).toBeInstanceOf(Function);
 
     expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
 

@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {arrayBufferFrom, Entity, getClassSchema, getEntityName, jsonSerializer, t, uuid,} from '@deepkit/type';
 import bson from 'bson';
@@ -59,9 +58,9 @@ test('test save model', async () => {
     expect(await session.query(SimpleModel).filter({name: 'myName'}).count()).toBe(1);
     expect(await session.query(SimpleModel).filter({name: 'MyNameNOTEXIST'}).count()).toBe(0);
 
-    expect(await session.query(SimpleModel).has()).toBeTrue();
-    expect(await session.query(SimpleModel).filter({name: 'myName'}).has()).toBeTrue();
-    expect(await session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).has()).toBeFalse();
+    expect(await session.query(SimpleModel).has()).toBe(true);
+    expect(await session.query(SimpleModel).filter({name: 'myName'}).has()).toBe(true);
+    expect(await session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).has()).toBe(false);
 
     expect(await session.query(SimpleModel).filter({name: 'myName'}).findOneOrUndefined()).not.toBeUndefined();
     expect(await session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOneOrUndefined()).toBeUndefined();
@@ -113,8 +112,8 @@ test('test save model', async () => {
 
     instance.name = 'New Name';
     await db.persist(instance);
-    expect(await session.query(SimpleModel).filter({name: 'MyName'}).has()).toBeFalse();
-    expect(await session.query(SimpleModel).filter({name: 'New Name'}).has()).toBeTrue();
+    expect(await session.query(SimpleModel).filter({name: 'MyName'}).has()).toBe(false);
+    expect(await session.query(SimpleModel).filter({name: 'New Name'}).has()).toBe(true);
 });
 
 test('test patchAll', async () => {
@@ -139,7 +138,7 @@ test('test patchAll', async () => {
     expect(fields!.name).toBe('peterNew');
 
     const fieldRows = await session.query(SimpleModel).select(['name']).find();
-    expect(fieldRows).toBeArrayOfSize(3);
+    expect(fieldRows.length).toBe(3);
     expect(fieldRows[0].name).toBe('peterNew');
     expect(fieldRows[1].name).toBe('peterNew');
     expect(fieldRows[2].name).toBe('peter');
@@ -339,7 +338,7 @@ test('second object id', async () => {
 
     // const collection = await session.adapter.connection.getCollection(getClassSchema(SecondObjectId));
     // const mongoItem = await collection.find().toArray();
-    // expect(mongoItem).toBeArrayOfSize(1);
+    // expect(mongoItem.length).toBe(1);
     // expect(mongoItem[0].name).toBe('myName');
     // expect(mongoItem[0].preview).toBeInstanceOf(mongodb.Binary);
     // expect(mongoItem[0].preview.buffer.toString('utf8')).toBe('Baar');
@@ -430,11 +429,11 @@ test('references back', async () => {
         expect(() => {
             marcFromDb.images;
         }).toThrow('images was not populated');
-        expect(marcFromDb.id).toBeString();
+        expect(typeof marcFromDb.id).toBe('string');
         expect(marcFromDb.name).toBe('marc');
 
         const plain = jsonSerializer.for(User).serialize(marcFromDb);
-        expect(plain.id).toBeString();
+        expect(typeof plain.id).toBe('string');
         expect(plain.name).toBe('marc');
         expect(plain.images).toBeUndefined();
     }

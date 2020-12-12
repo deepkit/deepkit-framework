@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {afterAll, expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@deepkit/framework-shared';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from './util';
@@ -10,6 +9,7 @@ import {ObserverTimer} from '@deepkit/core-rxjs';
 import {isArray} from '@deepkit/core';
 import {ClientProgress} from '@deepkit/framework-client';
 import {rpc} from '@deepkit/framework-shared';
+import { fail } from 'assert';
 
 afterAll(async () => {
     await closeAllCreatedServers();

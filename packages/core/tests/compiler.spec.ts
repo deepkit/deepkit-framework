@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {CompilerContext} from '../src/compiler';
 
 test('compiler', () => {

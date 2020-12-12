@@ -1,3 +1,4 @@
+import {afterAll} from '@jest/globals';
 import {ClassSchema} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import {MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLiteDatabaseAdapter} from '@deepkit/sql';

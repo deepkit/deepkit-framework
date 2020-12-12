@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {MongoClient} from '../../src/client/client';
 import {HostType} from '../../src/client/host';
 import {IsMasterCommand} from '../../src/client/command/ismaster';

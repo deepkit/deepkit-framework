@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {Entity, t, uuid, getClassSchema} from '@deepkit/type';
 import {getInstanceState, hydrateEntity} from '@deepkit/orm';
@@ -241,7 +240,7 @@ test('hydrate', async () => {
             expect(item.organisation.id).toBe(apple.id);
             expect(() => item.user.name).toThrow(`Can not access User.name since class was not completely hydrated`);
             expect(getInstanceState(item.user).getLastKnownPK()).toEqual({id: item.user.id});
-            expect(session.identityMap.isKnown(item.user)).toBeTrue();
+            expect(session.identityMap.isKnown(item.user)).toBe(true);
 
             //this will hydrate all related proxy objects
             const items = await session.query(User).filter({name: 'marc'}).find();
@@ -255,7 +254,7 @@ test('joins', async () => {
         session, admin, marc, peter, marcel, apple, microsoft
     } = await setupTestCase('joins');
 
-    expect('_id' in marc).toBeFalse();
+    expect('_id' in marc).toBe(false);
     expect(await session.query(User).count()).toBe(4);
     expect(await session.query(Organisation).count()).toBe(2);
     expect(await session.query(OrganisationMembership).count()).toBe(4);
@@ -275,23 +274,23 @@ test('joins', async () => {
 
     // {
     //     const item = await session.query(User).filter({name: 'marc'}).findOne();
-    //     expect('_id' in item).toBeFalse();
+    //     expect('_id' in item).toBe(false);
     // }
 
     // todo: fix this stuff
     // {
     //     const item = await database.query(User).filter({name: 'marc'}).asJSON().findOne();
-    //     expect('_id' in item).toBeFalse();
+    //     expect('_id' in item).toBe(false);
     // }
     //
     // {
     //     const item = await database.query(User).filter({name: 'marc'}).asRaw().findOne();
-    //     expect('_id' in item).toBeFalse();
+    //     expect('_id' in item).toBe(false);
     // }
     //
     // {
     //     const item = await database.query(User).filter({name: 'marc'}).select(['_id']).asRaw().findOne();
-    //     expect('_id' in item).toBeTrue();
+    //     expect('_id' in item).toBe(true);
     // }
 
 
@@ -470,13 +469,13 @@ test('joins', async () => {
     {
         const items = await session.query(User).innerJoinWith('organisations').find();
 
-        expect(items[0].organisations).toBeArrayOfSize(2);
+        expect(items[0].organisations.length).toBe(2);
         expect(items[0].organisations[0]).toBeInstanceOf(Organisation);
         expect(items[0].organisations[0].name).toBe('Microsoft');
         expect(items[0].organisations[1]).toBeInstanceOf(Organisation);
         expect(items[0].organisations[1].name).toBe('Apple');
 
-        expect(items[1].organisations).toBeArrayOfSize(1);
+        expect(items[1].organisations.length).toBe(1);
         expect(items[1].organisations[0]).toBeInstanceOf(Organisation);
         expect(items[1].organisations[0].name).toBe('Microsoft');
 
@@ -485,11 +484,11 @@ test('joins', async () => {
 
     {
         const items = await session.query(User).useInnerJoinWith('organisations').filter({name: 'Microsoft'}).end().find();
-        expect(items[0].organisations).toBeArrayOfSize(1);
+        expect(items[0].organisations.length).toBe(1);
         expect(items[0].organisations[0]).toBeInstanceOf(Organisation);
         expect(items[0].organisations[0].name).toBe('Microsoft');
 
-        expect(items[1].organisations).toBeArrayOfSize(1);
+        expect(items[1].organisations.length).toBe(1);
         expect(items[1].organisations[0]).toBeInstanceOf(Organisation);
         expect(items[1].organisations[0].name).toBe('Microsoft');
 
@@ -498,22 +497,22 @@ test('joins', async () => {
 
     {
         const items = await session.query(Organisation).useJoinWith('users').end().find();
-        expect(items).toBeArrayOfSize(2);
+        expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
 
-        expect(items[0].users).toBeArrayOfSize(3);
-        expect(items[1].users).toBeArrayOfSize(1);
+        expect(items[0].users.length).toBe(3);
+        expect(items[1].users.length).toBe(1);
     }
 
     {
         const items = await session.query(Organisation).useInnerJoinWith('users').end().find();
-        expect(items).toBeArrayOfSize(2);
+        expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
 
-        expect(items[0].users).toBeArrayOfSize(3);
-        expect(items[1].users).toBeArrayOfSize(1);
+        expect(items[0].users.length).toBe(3);
+        expect(items[1].users.length).toBe(1);
 
         expect(items[0].users[0].name).toBe('marc');
         expect(items[0].users[1].name).toBe('peter');
@@ -522,12 +521,12 @@ test('joins', async () => {
 
     {
         const items = await session.query(Organisation).useInnerJoinWith('users').sort({name: 'asc'}).end().find();
-        expect(items).toBeArrayOfSize(2);
+        expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
 
-        expect(items[0].users).toBeArrayOfSize(3);
-        expect(items[1].users).toBeArrayOfSize(1);
+        expect(items[0].users.length).toBe(3);
+        expect(items[1].users.length).toBe(1);
 
         expect(items[0].users[0].name).toBe('marc');
         expect(items[0].users[1].name).toBe('marcel');
@@ -536,12 +535,12 @@ test('joins', async () => {
 
     {
         const items = await session.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).end().find();
-        expect(items).toBeArrayOfSize(2);
+        expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
 
-        expect(items[0].users).toBeArrayOfSize(2);
-        expect(items[1].users).toBeArrayOfSize(0);
+        expect(items[0].users.length).toBe(2);
+        expect(items[1].users.length).toBe(0);
 
         expect(items[0].users[0].name).toBe('marcel');
         expect(items[0].users[1].name).toBe('peter');
@@ -549,24 +548,24 @@ test('joins', async () => {
 
     {
         const items = await session.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).limit(1).end().find();
-        expect(items).toBeArrayOfSize(2);
+        expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
 
-        expect(items[0].users).toBeArrayOfSize(1);
-        expect(items[1].users).toBeArrayOfSize(0);
+        expect(items[0].users.length).toBe(1);
+        expect(items[1].users.length).toBe(0);
 
         expect(items[0].users[0].name).toBe('marcel');
     }
 
     {
         const items = await session.query(Organisation).useJoinWith('users').select(['id']).end().find();
-        expect(items).toBeArrayOfSize(2);
+        expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
 
-        expect(items[0].users).toBeArrayOfSize(3);
-        expect(items[1].users).toBeArrayOfSize(1);
+        expect(items[0].users.length).toBe(3);
+        expect(items[1].users.length).toBe(1);
 
         expect(items[0].users[0]).not.toBeInstanceOf(User);
         expect(items[0].users[0].id).toBe(marc.id);
@@ -623,7 +622,7 @@ test('joins', async () => {
             .useJoinWith('user').filter({name: 'marc'}).end()
             .joinWith('organisation');
 
-        expect(query.model.joins).toBeArrayOfSize(2);
+        expect(query.model.joins.length).toBe(2);
         expect(query.model.joins[0].propertySchema.getResolvedClassType()).toBe(User);
         expect(query.model.joins[1].propertySchema.getResolvedClassType()).toBe(Organisation);
 
@@ -637,22 +636,22 @@ test('joins', async () => {
 
         {
             const items = await query.clone().find();
-            expect(items).toBeArrayOfSize(2);
+            expect(items.length).toBe(2);
             expect(() => {
                 expect(items[0].organisations[0].owner.name).toBeUndefined();
             }).toThrow('was not completely hydrated');
         }
         {
             const items = await query.find();
-            expect(items).toBeArrayOfSize(2);
+            expect(items.length).toBe(2);
             expect(items[0].name).toBe('marc');
-            expect(items[0].organisations).toBeArrayOfSize(1);
+            expect(items[0].organisations.length).toBe(1);
             expect(items[0].organisations[0].name).toBe('Microsoft');
             expect(() => {
                 expect(items[0].organisations[0].owner.name).toBeUndefined();
             }).toThrow('was not completely hydrated');
             expect(items[1].name).toBe('marcel');
-            expect(items[1].organisations).toBeArrayOfSize(1);
+            expect(items[1].organisations.length).toBe(1);
             expect(items[1].organisations[0].name).toBe('Microsoft');
             expect(() => {
                 expect(items[1].organisations[0].owner.name).toBeUndefined();
@@ -661,13 +660,13 @@ test('joins', async () => {
 
         {
             const items = await query.clone().getJoin('organisations').joinWith('owner').end().find();
-            expect(items).toBeArrayOfSize(2);
+            expect(items.length).toBe(2);
             expect(items[0].name).toBe('marc');
-            expect(items[0].organisations).toBeArrayOfSize(1);
+            expect(items[0].organisations.length).toBe(1);
             expect(items[0].organisations[0].name).toBe('Microsoft');
             expect(items[0].organisations[0].owner).toBeInstanceOf(User);
             expect(items[1].name).toBe('marcel');
-            expect(items[1].organisations).toBeArrayOfSize(1);
+            expect(items[1].organisations.length).toBe(1);
             expect(items[1].organisations[0].name).toBe('Microsoft');
             expect(items[1].organisations[0].owner).toBeInstanceOf(User);
             expect(items[1].organisations[0].owner).toBe(items[0].organisations[0].owner);
@@ -677,13 +676,13 @@ test('joins', async () => {
 
         {
             const items = await query.clone().getJoin('organisations').useJoinWith('owner').select(['id']).end().end().find();
-            expect(items).toBeArrayOfSize(2);
+            expect(items.length).toBe(2);
             expect(items[0].name).toBe('marc');
-            expect(items[0].organisations).toBeArrayOfSize(1);
+            expect(items[0].organisations.length).toBe(1);
             expect(items[0].organisations[0].name).toBe('Microsoft');
             expect(items[0].organisations[0].owner).not.toBeInstanceOf(User);
             expect(items[1].name).toBe('marcel');
-            expect(items[1].organisations).toBeArrayOfSize(1);
+            expect(items[1].organisations.length).toBe(1);
             expect(items[1].organisations[0].name).toBe('Microsoft');
             expect(items[1].organisations[0].owner).not.toBeInstanceOf(User);
             expect(items[1].organisations[0].owner.name).toBeUndefined();

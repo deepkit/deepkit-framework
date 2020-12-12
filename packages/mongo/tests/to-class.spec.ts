@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {cloneClass, t, getEntityName, isExcluded, uuid, getClassSchema, jsonSerializer} from '@deepkit/type';
 import bson from 'bson';
@@ -32,15 +31,15 @@ test('test simple model all fields', () => {
     });
 
     expect(instance).toBeInstanceOf(SimpleModel);
-    expect(instance.id).toBeString();
+    expect(typeof instance.id).toBe('string');
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
     expect(instance.yesNo).toBe(true);
     expect(instance.plan).toBe(Plan.PRO);
-    expect(instance.created).toBeDate();
+    expect(instance.created).toBeInstanceOf(Date);
     expect(instance.created).toEqual(new Date('Sat Oct 13 2018 14:17:35 GMT+0200'));
 
-    expect(instance.children).toBeArrayOfSize(2);
+    expect(instance.children.length).toBe(2);
 
     expect(instance.children[0]).toBeInstanceOf(SubModel);
     expect(instance.children[1]).toBeInstanceOf(SubModel);
@@ -48,7 +47,7 @@ test('test simple model all fields', () => {
     expect(instance.children[0].label).toBe('fooo');
     expect(instance.children[1].label).toBe('barr');
 
-    expect(instance.childrenMap).toBeObject();
+    expect(instance.childrenMap).toBeInstanceOf(Object);
     expect(instance.childrenMap.foo).toBeInstanceOf(SubModel);
     expect(instance.childrenMap.foo2).toBeInstanceOf(SubModel);
 
@@ -56,16 +55,16 @@ test('test simple model all fields', () => {
     expect(instance.childrenMap.foo2.label).toBe('bar2');
 
     const plain = jsonSerializer.for(SimpleModel).serialize(instance);
-    expect(plain.yesNo).toBeTrue();
+    expect(plain.yesNo).toBe(true);
     expect(plain.plan).toBe(1);
 
     const copy = cloneClass(instance);
-    expect(instance !== copy).toBeTrue();
-    expect(instance.children[0] !== copy.children[0]).toBeTrue();
-    expect(instance.children[1] !== copy.children[1]).toBeTrue();
-    expect(instance.childrenMap.foo !== copy.childrenMap.foo).toBeTrue();
-    expect(instance.childrenMap.foo2 !== copy.childrenMap.foo2).toBeTrue();
-    expect(instance.created !== copy.created).toBeTrue();
+    expect(instance !== copy).toBe(true);
+    expect(instance.children[0] !== copy.children[0]).toBe(true);
+    expect(instance.children[1] !== copy.children[1]).toBe(true);
+    expect(instance.childrenMap.foo !== copy.childrenMap.foo).toBe(true);
+    expect(instance.childrenMap.foo2 !== copy.childrenMap.foo2).toBe(true);
+    expect(instance.created !== copy.created).toBe(true);
 
     expect(plain).toEqual(jsonSerializer.for(SimpleModel).serialize(copy));
 });
@@ -93,17 +92,17 @@ test('test simple model all fields plainToMongo', () => {
         }
     });
 
-    expect(mongoItem).toBeObject();
+    expect(mongoItem).toBeInstanceOf(Object);
     expect(mongoItem).not.toBeInstanceOf(SimpleModel);
     expect(mongoItem.id).not.toBeUndefined(); //IT does apply defaults. user should use partialPlainToMongo otherwise
     expect(mongoItem.name).toBe('myName');
     expect(mongoItem.type).toBe(5);
     expect(mongoItem.yesNo).toBe(true);
     expect(mongoItem.plan).toBe(Plan.PRO);
-    expect(mongoItem.created).toBeDate();
+    expect(mongoItem.created).toBeInstanceOf(Date);
     expect(mongoItem.created).toEqual(new Date('Sat Oct 13 2018 14:17:35 GMT+0200'));
 
-    expect(mongoItem.children).toBeArrayOfSize(2);
+    expect(mongoItem.children.length).toBe(2);
 
     expect(mongoItem.children[0]).not.toBeInstanceOf(SubModel);
     expect(mongoItem.children[1]).not.toBeInstanceOf(SubModel);
@@ -111,7 +110,7 @@ test('test simple model all fields plainToMongo', () => {
     expect(mongoItem.children[0].label).toBe('fooo');
     expect(mongoItem.children[1].label).toBe('barr');
 
-    expect(mongoItem.childrenMap).toBeObject();
+    expect(mongoItem.childrenMap).toBeInstanceOf(Object);
     expect(mongoItem.childrenMap.foo).not.toBeInstanceOf(SubModel);
     expect(mongoItem.childrenMap.foo2).not.toBeInstanceOf(SubModel);
 
@@ -119,20 +118,20 @@ test('test simple model all fields plainToMongo', () => {
     expect(mongoItem.childrenMap.foo2.label).toBe('bar2');
 
     const plain = mongoSerializer.for(SimpleModel).to(jsonSerializer, mongoItem);
-    expect(plain.yesNo).toBeTrue();
+    expect(plain.yesNo).toBe(true);
     expect(plain.plan).toBe(1);
 });
 
 test('test simple model with not mapped fields', () => {
     const schema = getClassSchema(SimpleModel);
-    expect(isExcluded(schema, 'excluded', 'mongo')).toBeTrue();
-    expect(isExcluded(schema, 'excluded', 'json')).toBeTrue();
+    expect(isExcluded(schema, 'excluded', 'mongo')).toBe(true);
+    expect(isExcluded(schema, 'excluded', 'json')).toBe(true);
 
-    expect(isExcluded(schema, 'excludedForPlain', 'mongo')).toBeFalse();
-    expect(isExcluded(schema, 'excludedForPlain', 'json')).toBeTrue();
+    expect(isExcluded(schema, 'excludedForPlain', 'mongo')).toBe(false);
+    expect(isExcluded(schema, 'excludedForPlain', 'json')).toBe(true);
 
-    expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBeTrue();
-    expect(isExcluded(schema, 'excludedForMongo', 'json')).toBeFalse();
+    expect(isExcluded(schema, 'excludedForMongo', 'mongo')).toBe(true);
+    expect(isExcluded(schema, 'excludedForMongo', 'json')).toBe(false);
 
     const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
@@ -142,7 +141,7 @@ test('test simple model with not mapped fields', () => {
     });
 
     expect(instance).toBeInstanceOf(SimpleModel);
-    expect(instance.id).toBeString();
+    expect(typeof instance.id).toBe('string');
     expect(instance.name).toBe('myName');
     expect(instance.type).toBe(5);
     expect(instance.yesNo).toBe(true);
@@ -171,7 +170,7 @@ test('test simple model with not mapped fields', () => {
 
     const plainObject = jsonSerializer.for(SimpleModel).serialize(instance);
 
-    expect(plainObject.id).toBeString();
+    expect(typeof plainObject.id).toBe('string');
     expect(plainObject.name).toBe('myName');
     expect(plainObject.type).toBe(5);
     expect(plainObject.notMapped).toBeUndefined();

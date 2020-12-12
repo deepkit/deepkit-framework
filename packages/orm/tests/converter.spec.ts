@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '../index';
 import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
@@ -29,13 +29,13 @@ test('getJITConverterForSnapshot', () => {
 
     {
         const converted = converter({id: 22, title: 'Peter'});
-        expect(converted).toBeObject();
+        expect(converted).toBeInstanceOf(Object);
         expect(converted).toEqual({id: 22, title: 'Peter', image: null});
     }
 
     {
         const converted = converter({id: 22, title: 'Peter', image: new Image(3)});
-        expect(converted).toBeObject();
+        expect(converted).toBeInstanceOf(Object);
         expect(converted).toEqual({id: 22, title: 'Peter', image: {id: 3}});
     }
 });
@@ -47,13 +47,13 @@ test('getPrimaryKeyExtractor', () => {
 
     {
         const converted = converter({id: 22, title: 'Peter'});
-        expect(converted).toBeObject();
+        expect(converted).toBeInstanceOf(Object);
         expect(converted).toEqual({id: 22});
     }
 
     {
         const converted = converter({id: 22, title: 'Peter', image: new Image(3)});
-        expect(converted).toBeObject();
+        expect(converted).toBeInstanceOf(Object);
         expect(converted).toEqual({id: 22});
     }
 });

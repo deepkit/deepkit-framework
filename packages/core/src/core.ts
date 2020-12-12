@@ -24,7 +24,9 @@ import dotProp from 'dot-prop';
  * @public
  */
 export class CustomError extends Error {
-    constructor(message: string) {
+    public name: string;
+    public stack?: string;
+    constructor(public message: string = '') {
         super(message);
         this.name = this.constructor.name;
     }

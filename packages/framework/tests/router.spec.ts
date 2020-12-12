@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {Router} from '../src/router';
 import {HttpKernel, JSONResponse} from '../src/http';

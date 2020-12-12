@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
 import {BaseQuery, Formatter, getInstanceState, getNormalizedPrimaryKey} from '../index';

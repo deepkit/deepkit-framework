@@ -30,7 +30,6 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^5.4.0",
-    "@types/jest": "^26.0.4",
     "@types/pg": "^7.14.7",
     "@types/sqlstring": "^2.2.1",
     "reflect-metadata": "^0.1.13"

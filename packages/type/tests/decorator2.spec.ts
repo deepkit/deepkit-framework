@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {Entity, getClassSchema, jsonSerializer, PropertySchema, t} from '../index';
 import {uuid} from '../src/utils';

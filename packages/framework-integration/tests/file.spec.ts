@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test, beforeAll} from '@jest/globals';
 import {File, rpc, StreamBehaviorSubject} from '@deepkit/framework-shared';
 import {EntityStorage, FS} from '@deepkit/fs';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';

@@ -18,7 +18,7 @@
 
 import {ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, PlainSchemaProps, t} from '@deepkit/type';
 import {ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provider, ProviderWithScope, ValueProvider} from './provider';
-import {ClassType, CompilerContext, getClassName, isClass, isFunction} from '@deepkit/core';
+import {ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction} from '@deepkit/core';
 import {Module, ModuleOptions} from '../module';
 
 
@@ -182,14 +182,13 @@ export function isFactoryProvider(obj: any): obj is FactoryProvider {
     return obj.provide && obj.hasOwnProperty('useFactory');
 }
 
-
-export class CircularDependencyError extends Error {
+export class CircularDependencyError extends CustomError {
 }
 
-export class TokenNotFoundError extends Error {
+export class TokenNotFoundError extends CustomError {
 }
 
-export class DependenciesUnmetError extends Error {
+export class DependenciesUnmetError extends CustomError {
 }
 
 export function tokenLabel(token: any): string {

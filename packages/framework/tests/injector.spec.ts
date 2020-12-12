@@ -1,6 +1,5 @@
+import {expect, test} from '@jest/globals';
 import {t} from '@deepkit/type';
-import 'jest';
-import 'jest-extended';
 import 'reflect-metadata';
 import {CircularDependencyError, createConfig, inject, injectable, Injector} from '../src/injector/injector';
 
@@ -124,7 +123,7 @@ test('injector direct circular dependency', () => {
 
     {
         const injector = new Injector([MyServer]);
-        expect(() => injector.get(MyServer)).toThrow(CircularDependencyError);
+        expect(() => injector.get(MyServer)).toThrow(CircularDependencyError as any);
     }
 });
 
@@ -148,7 +147,7 @@ test('injector circular dependency', () => {
 
     {
         const injector = new Injector([MyServer, Connection]);
-        expect(() => injector.get(MyServer)).toThrow(CircularDependencyError);
+        expect(() => injector.get(MyServer)).toThrow(CircularDependencyError as any);
         expect(() => injector.get(MyServer)).toThrow('Circular dependency found MyServer -> Connection -> MyServer');
     }
 });

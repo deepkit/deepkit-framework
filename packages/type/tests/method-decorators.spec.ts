@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {getClassSchema, jsonSerializer, PartialField, PropertySchema, t, validateMethodArgs} from '../index';
 
@@ -44,7 +43,7 @@ test('short @f 2', () => {
 
         const props = s.getMethodProperties('foo');
 
-        expect(props).toBeArrayOfSize(1);
+        expect(props.length).toBe(1);
         expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
@@ -58,7 +57,7 @@ test('short @f 2', () => {
 
         const props = s.getMethodProperties('foo2');
 
-        expect(props).toBeArrayOfSize(1);
+        expect(props.length).toBe(1);
         expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isMap).toBe(true);
@@ -128,7 +127,7 @@ test('method args', () => {
     {
         const props = s.getMethodProperties('foo');
 
-        expect(props).toBeArrayOfSize(1);
+        expect(props.length).toBe(1);
         expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
     }
@@ -136,7 +135,7 @@ test('method args', () => {
     {
         const props = s.getMethodProperties('foo2');
 
-        expect(props).toBeArrayOfSize(3);
+        expect(props.length).toBe(3);
         expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
 
@@ -171,7 +170,7 @@ test('short @f', () => {
     {
         const props = s.getMethodProperties('foo');
 
-        expect(props).toBeArrayOfSize(1);
+        expect(props.length).toBe(1);
         expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
@@ -189,7 +188,7 @@ test('short @f multi', () => {
     {
         const props = s.getMethodProperties('foo');
 
-        expect(props).toBeArrayOfSize(2);
+        expect(props.length).toBe(2);
         expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
@@ -270,7 +269,7 @@ test('argument partial', () => {
         }
     }
 
-    expect(validateMethodArgs(User, 'foo', [{}])).toBeArrayOfSize(0);
+    expect(validateMethodArgs(User, 'foo', [{}]).length).toBe(0);
     expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name'}]);
     expect(validateMethodArgs(User, 'foo', [{name: []}])).toEqual([{'code': 'invalid_string', 'message': 'No string given', 'path': '#0.name'}]);
     expect(validateMethodArgs(User, 'foo', [{name: ''}])).toEqual([]);
@@ -353,7 +352,7 @@ test('short @f multi gap', () => {
     {
         const props = s.getMethodProperties('foo');
 
-        expect(props).toBeArrayOfSize(3);
+        expect(props.length).toBe(3);
         expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
         expect(props[0].isArray).toBe(false);
@@ -368,7 +367,7 @@ test('short @f multi gap', () => {
     {
         const props = s.getMethodProperties('undefined');
 
-        expect(props).toBeArrayOfSize(2);
+        expect(props.length).toBe(2);
         expect(props[0].name).toBe('bar');
         expect(props[0].type).toBe('string');
 
@@ -378,7 +377,7 @@ test('short @f multi gap', () => {
     {
         const props = s.getMethodProperties('onlyFirst');
 
-        expect(props).toBeArrayOfSize(2);
+        expect(props.length).toBe(2);
         expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
@@ -403,7 +402,7 @@ test('short @f with type', () => {
     {
         const props = s.getMethodProperties('foo');
 
-        expect(props).toBeArrayOfSize(1);
+        expect(props.length).toBe(1);
         expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
         expect(props[0].isArray).toBe(true);
@@ -488,7 +487,7 @@ test('short @f templateArgs', () => {
         const props = s.getMethod('foo');
         expect(props.getResolvedClassType()).toBe(Observable);
         expect(props.templateArgs).not.toBeUndefined();
-        expect(props.templateArgs).toBeArrayOfSize(1);
+        expect(props.templateArgs.length).toBe(1);
         if (props.templateArgs) {
             expect(props.templateArgs[0]).toBeInstanceOf(PropertySchema);
             expect(props.templateArgs[0].name).toBe('foo_0');
@@ -501,7 +500,7 @@ test('short @f templateArgs', () => {
         const props = s.getMethod('foo2');
         expect(props.getResolvedClassType()).toBe(Observable);
         expect(props.templateArgs).not.toBeUndefined();
-        expect(props.templateArgs).toBeArrayOfSize(1);
+        expect(props.templateArgs.length).toBe(1);
         if (props.templateArgs) {
             expect(props.templateArgs[0]).toBeInstanceOf(PropertySchema);
             expect(props.templateArgs[0].name).toBe('foo2_0');
@@ -547,7 +546,7 @@ test('set any param', () => {
 
     {
         const props = s.getMethodProperties('streamCsvFile');
-        expect(props).toBeArrayOfSize(2);
+        expect(props.length).toBe(2);
         expect(props[1].type).toBe('any');
     }
 });
@@ -563,7 +562,7 @@ test('set any [][]', () => {
 
     {
         const props = s.getMethodProperties('streamCsvFile');
-        expect(props).toBeArrayOfSize(2);
+        expect(props.length).toBe(2);
         expect(props[0].type).toBe('string');
         expect(props[1].type).toBe('array');
         expect(props[1].getSubType().type).toBe('array');

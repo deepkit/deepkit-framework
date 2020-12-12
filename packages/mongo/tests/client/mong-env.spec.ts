@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {MongoEnv} from './env-setup';
 
 // jest.setTimeout(213123);

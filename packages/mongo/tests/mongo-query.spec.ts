@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {convertClassQueryToMongo, convertPlainQueryToMongo} from '../index';
 import {t} from '@deepkit/type';

@@ -1,8 +1,7 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import {parseHost} from '../src/network';
 
 test('parseHost', () => {
-
     {
         const parsed = parseHost('aosdad');
         expect(parsed.isUnixSocket).toBe(false);

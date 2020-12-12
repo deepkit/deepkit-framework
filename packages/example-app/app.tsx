@@ -1,6 +1,7 @@
 import 'reflect-metadata';
-import {Application, BodyValidation, DatabaseModule, http} from '@deepkit/framework';
 import {entity, t} from '@deepkit/type';
+
+import {Application, BodyValidation, DatabaseModule, http, KernelModule} from '@deepkit/framework';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
@@ -70,6 +71,7 @@ Application.create({
     providers: [],
     controllers: [HelloWorldController],
     imports: [
+        KernelModule.configure({workers: 1, debug: true, publicDir: 'public'}),
         DatabaseModule.configure({databases: [SQLiteDatabase], migrateOnStartup: true})
     ]
 }).run();

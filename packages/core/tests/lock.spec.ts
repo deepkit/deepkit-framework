@@ -1,6 +1,4 @@
-import 'jest';
-import {jest} from '@jest/globals'
-import 'jest-extended';
+import {jest, expect, test, beforeAll} from '@jest/globals';
 import {ProcessLock, ProcessLocker} from '../src/process-locker';
 
 jest.setTimeout(20000);
@@ -78,27 +76,27 @@ test('test tryLock', async () => {
 
     const lock2 = await locker.tryLock('trylock', 1);
     expect(lock2).toBeUndefined();
-    expect(await locker.isLocked('trylock')).toBeTrue();
+    expect(await locker.isLocked('trylock')).toBe(true);
 
     await new Promise((resolve) => {
         setTimeout(async () => {
-            expect(await locker.isLocked('trylock')).toBeFalse();
+            expect(await locker.isLocked('trylock')).toBe(false);
             const lock3 = await locker.tryLock('trylock', 1);
             expect(lock3).toBeInstanceOf(ProcessLock);
-            expect(await locker.isLocked('trylock')).toBeTrue();
+            expect(await locker.isLocked('trylock')).toBe(true);
 
             setTimeout(async () => {
-                expect(await locker.isLocked('trylock')).toBeTrue();
+                expect(await locker.isLocked('trylock')).toBe(true);
                 const lock4 = await locker.tryLock('trylock', 1);
                 expect(lock4).toBeUndefined();
-                expect(await locker.isLocked('trylock')).toBeTrue();
+                expect(await locker.isLocked('trylock')).toBe(true);
             }, 200);
 
             setTimeout(async () => {
-                expect(await locker.isLocked('trylock')).toBeFalse();
+                expect(await locker.isLocked('trylock')).toBe(false);
                 const lock5 = await locker.acquireLock('trylock', 1);
                 expect(lock5).toBeInstanceOf(ProcessLock);
-                expect(await locker.isLocked('trylock')).toBeTrue();
+                expect(await locker.isLocked('trylock')).toBe(true);
                 await lock5.unlock();
                 resolve(undefined);
             }, 1000);

@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {Entity, jsonSerializer, t, uuid} from '../index';
 import {Channel, Job} from './big-entity';

@@ -1,3 +1,4 @@
+import {afterEach} from '@jest/globals';
 import {Database} from '@deepkit/orm';
 import {MongoDatabaseAdapter} from '../src/adapter';
 import {GenericCommand} from '../src/client/command/generic';

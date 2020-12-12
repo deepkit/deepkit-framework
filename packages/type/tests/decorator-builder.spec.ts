@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, isDecoratorContext, mergeDecorator} from '../src/decorator-builder';
 import {entity, getClassSchema, t} from '../index';
 

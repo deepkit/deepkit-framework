@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {createWorkflow, WorkflowEvent} from '../src/workflow';
 import {eventDispatcher, EventDispatcher, EventToken} from '../src/event';

@@ -1,5 +1,4 @@
 // import 'jest';
-// import 'jest-extended';
 // import {FS, getMd5} from "../src/fs";
 // import {Exchange} from "../src/exchange";
 // import {pathExists, readFile, remove} from 'fs-extra';
@@ -111,8 +110,8 @@
 //
 //     expect(md5).toBe(file1.md5);
 //     expect(md5).toBe(file2.md5);
-//     expect(await fs.hasMd5InDb(md5)).toBeTrue();
-//     expect(await fs.hasMd5(md5)).toBeTrue();
+//     expect(await fs.hasMd5InDb(md5)).toBe(true);
+//     expect(await fs.hasMd5(md5)).toBe(true);
 //
 //     expect((await fs.read('file2.txt'))!.toString()).toBe(content.toString());
 //
@@ -120,19 +119,19 @@
 //     const path2 = fs.getLocalPath(file1);
 //
 //     expect(path1).toBe(path2);
-//     expect(await pathExists(path1)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
 //
 //     expect((await readFile(path1)).toString()).toBe(content.toString());
 //
 //     await fs.remove(file1.path);
-//     expect(await pathExists(path1)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
 //
-//     expect(await fs.hasMd5InDb(md5)).toBeTrue();
-//     expect(await fs.hasMd5(md5)).toBeTrue();
+//     expect(await fs.hasMd5InDb(md5)).toBe(true);
+//     expect(await fs.hasMd5(md5)).toBe(true);
 //
 //     await fs.remove(file2.path);
 //     //now after we have no files anymore with that md5, we are going to remove it from the disk
-//     expect(await pathExists(path1)).toBeFalse();
+//     expect(await pathExists(path1)).toBe(false);
 //
 //     await disconnect();
 // });
@@ -146,8 +145,8 @@
 //
 //     const path1 = fs.getLocalPath(file1);
 //     const path2 = fs.getLocalPath(file1);
-//     expect(await pathExists(path1)).toBeTrue();
-//     expect(await pathExists(path2)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
+//     expect(await pathExists(path2)).toBe(true);
 //
 //     const content2 = new Buffer('TestString 222 ' + Math.random());
 //     file1 = await fs.write('file1.txt', content2);
@@ -155,8 +154,8 @@
 //
 //     expect(file1.md5).not.toBeUndefined();
 //     expect(file1.md5).not.toBe(file2.md5);
-//     expect(await fs.hasMd5(file1.md5!)).toBeTrue();
-//     expect(await fs.hasMd5(file2.md5!)).toBeTrue();
+//     expect(await fs.hasMd5(file1.md5!)).toBe(true);
+//     expect(await fs.hasMd5(file2.md5!)).toBe(true);
 //
 //     await disconnect();
 // });
@@ -167,12 +166,12 @@
 //     const file1 = await fs.write('file1.txt', content);
 //
 //     const path1 = fs.getLocalPath(file1);
-//     expect(await pathExists(path1)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
 //
 //     await fs.remove(file1.path);
 //
 //     expect(await fs.findOne('file1.txt')).toBeUndefined();
-//     expect(await pathExists(path1)).toBeFalse();
+//     expect(await pathExists(path1)).toBe(false);
 //
 //     await disconnect();
 // });
@@ -183,7 +182,7 @@
 //     const file1 = await fs.write('file1.txt', content);
 //
 //     const path1 = fs.getLocalPath(file1);
-//     expect(await pathExists(path1)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
 //
 //     const file2 = await fs.registerFile(file1.md5!, 'file1-copy.txt');
 //
@@ -195,11 +194,11 @@
 //     expect(fs.getLocalPath(file2Changed)).not.toBe(path1); //changed since new md5
 //
 //     await fs.remove(file2Changed.path);
-//     expect(await pathExists(path1)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
 //
 //     await fs.remove(file1.path);
 //
-//     expect(await pathExists(path1)).toBeFalse();
+//     expect(await pathExists(path1)).toBe(false);
 //     expect(await fs.findOne('file1.txt')).toBeUndefined();
 //
 //     await disconnect();
@@ -217,13 +216,13 @@
 //     }).toThrow('File is in streaming mode');
 //
 //     const path1 = fs.getLocalPath(file1!);
-//     expect(await pathExists(path1)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
 //     expect(await readFile(path1, 'utf8')).toBe('start\n');
 //
 //     await fs.stream('filestream.txt', new Buffer('next1\n'));
 //     expect(await readFile(path1, 'utf8')).toBe('start\nnext1\n');
 //
-//     expect(await pathExists(path1)).toBeTrue();
+//     expect(await pathExists(path1)).toBe(true);
 //
 //     await disconnect();
 // });

@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {f, getClassSchema, jsonSerializer} from '@deepkit/type';
 import bson from 'bson';
@@ -20,7 +19,7 @@ test('Int8Array', async () => {
     expect(getClassSchema(Clazz).getProperty('ints').type).toBe('Int8Array');
 
     const plain = jsonSerializer.for(Clazz).serialize(clazz);
-    expect(plain.ints).toBeString();
+    expect(typeof plain.ints).toBe('string');
     expect(plain.ints).toBe('AUA=');
 
     const mongo = mongoSerializer.for(Clazz).serialize(clazz);
@@ -52,7 +51,7 @@ test('arrayBuffer', async () => {
     expect(new Int8Array(clazz.ints!)[1]).toBe(64);
 
     const plain = jsonSerializer.for(Clazz).serialize(clazz);
-    expect(plain.ints).toBeString();
+    expect(typeof plain.ints).toBe('string');
     expect(plain.ints).toBe('AUA=');
 
     const mongo = mongoSerializer.for(Clazz).serialize(clazz);
@@ -86,7 +85,7 @@ test('arrayBuffer 2', async () => {
     expect(new Int8Array(clazz.ints!)[1]).toBe(64);
 
     const plain = jsonSerializer.for(Clazz).serialize(clazz);
-    expect(plain.ints).toBeString();
+    expect(typeof plain.ints).toBe('string');
     expect(plain.ints).toBe('AUA=');
 
     const mongo = mongoSerializer.for(Clazz).serialize(clazz);

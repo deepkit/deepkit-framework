@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {applyAndReturnPatches, applyPatch} from '../index';
 
@@ -57,16 +56,16 @@ test('check object map', () => {
         const newGoal = new Goal();
         expect(Object.keys(state.persistent.goals)).toEqual(['foo']);
         const newState = applyPatch(Object.freeze(state), (state) => {
-            expect('foo' in state.persistent.goals).toBeTrue();
+            expect('foo' in state.persistent.goals).toBe(true);
             expect(Object.keys(state.persistent.goals)).toEqual(['foo']);
             state.persistent.addGoal('bar', newGoal);
-            expect('bar' in state.persistent.goals).toBeTrue();
+            expect('bar' in state.persistent.goals).toBe(true);
             expect(Object.keys(state.persistent.goals)).toEqual(['foo', 'bar']);
-            expect(state.persistent.goals['bar'] === newGoal).toBeTrue();
+            expect(state.persistent.goals['bar'] === newGoal).toBe(true);
         });
-        expect('bar' in newState.persistent.goals).toBeTrue();
+        expect('bar' in newState.persistent.goals).toBe(true);
         expect(Object.keys(newState.persistent.goals)).toEqual(['foo', 'bar']);
-        expect(newState.persistent.goals['bar'] === newGoal).toBeTrue();
+        expect(newState.persistent.goals['bar'] === newGoal).toBe(true);
     }
 });
 
@@ -86,7 +85,7 @@ test('check deep patch', () => {
     state.goals.push(new Goal());
     state.persistent.titles.push('Init');
 
-    expect(state.goals).toBeArrayOfSize(1);
+    expect(state.goals.length).toBe(1);
 
     {
         const newState = applyPatch(Object.freeze(state), (state) => {
@@ -94,11 +93,11 @@ test('check deep patch', () => {
             expect(state.persistent.id).toBe(12);
         });
 
-        expect(state !== newState).toBeTrue();
+        expect(state !== newState).toBe(true);
         expect(state.persistent.id).not.toBe(newState.persistent.id);
-        expect(state.persistent !== newState.persistent).toBeTrue();
-        expect(state.persistent.goal === newState.persistent.goal).toBeTrue();
-        expect(state.goals === newState.goals).toBeTrue();
+        expect(state.persistent !== newState.persistent).toBe(true);
+        expect(state.persistent.goal === newState.persistent.goal).toBe(true);
+        expect(state.goals === newState.goals).toBe(true);
     }
 
     {
@@ -111,69 +110,69 @@ test('check deep patch', () => {
             expect(state.persistent2.id).toBe(13);
         });
 
-        expect(state !== newState).toBeTrue();
+        expect(state !== newState).toBe(true);
         expect(newState.title).toBe('myState');
         expect(newState.persistent.id).toBe(12);
         expect(newState.persistent2.id).toBe(13);
         expect(state.persistent.id).not.toBe(newState.persistent.id);
-        expect(state.persistent !== newState.persistent).toBeTrue();
-        expect(state.persistent.goal === newState.persistent.goal).toBeTrue();
-        expect(state.goals === newState.goals).toBeTrue();
+        expect(state.persistent !== newState.persistent).toBe(true);
+        expect(state.persistent.goal === newState.persistent.goal).toBe(true);
+        expect(state.goals === newState.goals).toBe(true);
     }
 
     {
-        expect(state.persistent.titles).toBeArrayOfSize(1);
+        expect(state.persistent.titles.length).toBe(1);
         const newState = applyPatch(Object.freeze(state), (state) => {
             expect(state.persistent.titles[0]).toBe('Init');
             state.persistent.titles.push('modified');
-            expect(state.persistent.titles).toBeArrayOfSize(2);
+            expect(state.persistent.titles.length).toBe(2);
             expect(state.persistent.titles[1]).toBe('modified');
             const mod = state.persistent.titles.pop();
             expect(mod).toBe('modified');
-            expect(state.persistent.titles).toBeArrayOfSize(1);
+            expect(state.persistent.titles.length).toBe(1);
             state.persistent.titles.unshift('newFirst');
-            expect(state.persistent.titles).toBeArrayOfSize(2);
+            expect(state.persistent.titles.length).toBe(2);
             expect(state.persistent.titles[0]).toBe('newFirst');
             expect(state.persistent.titles[1]).toBe('Init');
-            expect(state.persistent.titles.includes('Init')).toBeTrue();
+            expect(state.persistent.titles.includes('Init')).toBe(true);
         });
-        expect(newState.persistent.titles).toBeArrayOfSize(2);
+        expect(newState.persistent.titles.length).toBe(2);
         expect(newState.persistent.titles[0]).toBe('newFirst');
         expect(newState.persistent.titles[1]).toBe('Init');
-        expect(state.persistent.titles.includes('Init')).toBeTrue();
-        expect(newState.persistent.titles.includes('Init')).toBeTrue();
-        expect(newState.persistent.titles.includes('newFirst')).toBeTrue();
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-        expect(state.persistent !== newState.persistent).toBeTrue();
-        expect(state.persistent.goal === newState.persistent.goal).toBeTrue();
-        expect(state.goals === newState.goals).toBeTrue();
+        expect(state.persistent.titles.includes('Init')).toBe(true);
+        expect(newState.persistent.titles.includes('Init')).toBe(true);
+        expect(newState.persistent.titles.includes('newFirst')).toBe(true);
+        expect(state.persistent.titles.length).toBe(1);
+        expect(state.persistent !== newState.persistent).toBe(true);
+        expect(state.persistent.goal === newState.persistent.goal).toBe(true);
+        expect(state.goals === newState.goals).toBe(true);
     }
 
     {
         //same ref check
-        expect(state.persistent.titles).toBeArrayOfSize(1);
+        expect(state.persistent.titles.length).toBe(1);
         const newState = applyPatch(Object.freeze(state), (state) => {
             state.persistent.titles = state.persistent.titles;
             state.persistent.titles.unshift('newFirst');
-            expect(state.persistent.titles).toBeArrayOfSize(2);
+            expect(state.persistent.titles.length).toBe(2);
             expect(state.persistent.titles[0]).toBe('newFirst');
             expect(state.persistent.titles[1]).toBe('Init');
         });
-        expect(newState.persistent.titles).toBeArrayOfSize(2);
+        expect(newState.persistent.titles.length).toBe(2);
         expect(newState.persistent.titles[0]).toBe('newFirst');
         expect(newState.persistent.titles[1]).toBe('Init');
-        expect(state.persistent.titles).toBeArrayOfSize(1);
+        expect(state.persistent.titles.length).toBe(1);
     }
 
     {
         //same ref check doesnt change anything
-        expect(state.persistent.titles).toBeArrayOfSize(1);
+        expect(state.persistent.titles.length).toBe(1);
         const newState = applyPatch(Object.freeze(state), (state) => {
             state.persistent.titles = state.persistent.titles;
         });
-        expect(newState.persistent.titles).toBeArrayOfSize(1);
-        expect(state.persistent.titles).toBeArrayOfSize(1);
-        expect(state.persistent === newState.persistent).toBeTrue();
+        expect(newState.persistent.titles.length).toBe(1);
+        expect(state.persistent.titles.length).toBe(1);
+        expect(state.persistent === newState.persistent).toBe(true);
     }
 });
 
@@ -183,7 +182,7 @@ test('patches', () => {
     state.goals.push(new Goal());
     state.persistent.titles.push('Init');
 
-    expect(state.goals).toBeArrayOfSize(1);
+    expect(state.goals.length).toBe(1);
 
     {
         const patches = applyAndReturnPatches(Object.freeze(state), (state) => {

@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import {
     asyncOperation,
     getClassName,
@@ -35,38 +34,38 @@ test('helper getClassName', () => {
 });
 
 test('helper isObject', () => {
-    expect(isObject([])).toBeFalse();
-    expect(isObject(false)).toBeFalse();
-    expect(isObject(true)).toBeFalse();
-    expect(isObject(null)).toBeFalse();
-    expect(isObject(undefined)).toBeFalse();
-    expect(isObject(() => {})).toBeFalse();
-    expect(isObject(function() {})).toBeFalse();
-    expect(isObject(1)).toBeFalse();
-    expect(isObject('1')).toBeFalse();
+    expect(isObject([])).toBe(false);
+    expect(isObject(false)).toBe(false);
+    expect(isObject(true)).toBe(false);
+    expect(isObject(null)).toBe(false);
+    expect(isObject(undefined)).toBe(false);
+    expect(isObject(() => {})).toBe(false);
+    expect(isObject(function() {})).toBe(false);
+    expect(isObject(1)).toBe(false);
+    expect(isObject('1')).toBe(false);
 
-    expect(isObject({})).toBeTrue();
-    expect(isObject(new Date())).toBeTrue();
-    expect(isObject(new SimpleClass('asd'))).toBeTrue();
+    expect(isObject({})).toBe(true);
+    expect(isObject(new Date())).toBe(true);
+    expect(isObject(new SimpleClass('asd'))).toBe(true);
 });
 
 test('helper isPromise', async () => {
-    expect(isPromise([])).toBeFalse();
-    expect(isPromise(false)).toBeFalse();
-    expect(isPromise(true)).toBeFalse();
-    expect(isPromise(null)).toBeFalse();
-    expect(isPromise(undefined)).toBeFalse();
-    expect(isPromise(() => {})).toBeFalse();
-    expect(isPromise(function() {})).toBeFalse();
-    expect(isPromise(1)).toBeFalse();
-    expect(isPromise('1')).toBeFalse();
+    expect(isPromise([])).toBe(false);
+    expect(isPromise(false)).toBe(false);
+    expect(isPromise(true)).toBe(false);
+    expect(isPromise(null)).toBe(false);
+    expect(isPromise(undefined)).toBe(false);
+    expect(isPromise(() => {})).toBe(false);
+    expect(isPromise(function() {})).toBe(false);
+    expect(isPromise(1)).toBe(false);
+    expect(isPromise('1')).toBe(false);
 
     function foo1() {
     }
 
     const foo2 = () => {};
-    expect(isPromise(foo1())).toBeFalse();
-    expect(isPromise(foo2())).toBeFalse();
+    expect(isPromise(foo1())).toBe(false);
+    expect(isPromise(foo2())).toBe(false);
 
     async function foo3() {
     }
@@ -76,99 +75,99 @@ test('helper isPromise', async () => {
         })
     }
 
-    expect(isObject(foo3())).toBeTrue();
-    expect(isObject(foo4())).toBeTrue();
-    expect(isObject(await foo4())).toBeFalse();
-    expect(isObject((async () => {})())).toBeTrue();
+    expect(isObject(foo3())).toBe(true);
+    expect(isObject(foo4())).toBe(true);
+    expect(isObject(await foo4())).toBe(false);
+    expect(isObject((async () => {})())).toBe(true);
 });
 
 test('helper isFunction', () => {
-    expect(isFunction([])).toBeFalse();
-    expect(isFunction(false)).toBeFalse();
-    expect(isFunction(true)).toBeFalse();
-    expect(isFunction(null)).toBeFalse();
-    expect(isFunction(undefined)).toBeFalse();
-    expect(isFunction(1)).toBeFalse();
-    expect(isFunction('1')).toBeFalse();
-    expect(isFunction({})).toBeFalse();
-    expect(isFunction(new Date())).toBeFalse();
-    expect(isFunction(new SimpleClass('asd'))).toBeFalse();
+    expect(isFunction([])).toBe(false);
+    expect(isFunction(false)).toBe(false);
+    expect(isFunction(true)).toBe(false);
+    expect(isFunction(null)).toBe(false);
+    expect(isFunction(undefined)).toBe(false);
+    expect(isFunction(1)).toBe(false);
+    expect(isFunction('1')).toBe(false);
+    expect(isFunction({})).toBe(false);
+    expect(isFunction(new Date())).toBe(false);
+    expect(isFunction(new SimpleClass('asd'))).toBe(false);
 
-    expect(isFunction(isFunction)).toBeTrue();
-    expect(isFunction(() => {})).toBeTrue();
-    expect(isFunction(async () => {})).toBeTrue();
-    expect(isFunction(function() {})).toBeTrue();
-    expect(isFunction(async function() {})).toBeTrue();
+    expect(isFunction(isFunction)).toBe(true);
+    expect(isFunction(() => {})).toBe(true);
+    expect(isFunction(async () => {})).toBe(true);
+    expect(isFunction(function() {})).toBe(true);
+    expect(isFunction(async function() {})).toBe(true);
 });
 
 test('helper isClass', () => {
-    expect(isClass([])).toBeFalse();
-    expect(isClass(false)).toBeFalse();
-    expect(isClass(true)).toBeFalse();
-    expect(isClass(null)).toBeFalse();
-    expect(isClass(undefined)).toBeFalse();
-    expect(isClass(1)).toBeFalse();
-    expect(isClass('1')).toBeFalse();
-    expect(isClass({})).toBeFalse();
-    expect(isClass(new Date())).toBeFalse();
-    expect(isClass(new SimpleClass('asd'))).toBeFalse();
-    expect(isClass(isFunction)).toBeFalse();
-    expect(isClass(() => {})).toBeFalse();
-    expect(isClass(async () => {})).toBeFalse();
-    expect(isClass(function() {})).toBeFalse();
-    expect(isClass(async function() {})).toBeFalse();
+    expect(isClass([])).toBe(false);
+    expect(isClass(false)).toBe(false);
+    expect(isClass(true)).toBe(false);
+    expect(isClass(null)).toBe(false);
+    expect(isClass(undefined)).toBe(false);
+    expect(isClass(1)).toBe(false);
+    expect(isClass('1')).toBe(false);
+    expect(isClass({})).toBe(false);
+    expect(isClass(new Date())).toBe(false);
+    expect(isClass(new SimpleClass('asd'))).toBe(false);
+    expect(isClass(isFunction)).toBe(false);
+    expect(isClass(() => {})).toBe(false);
+    expect(isClass(async () => {})).toBe(false);
+    expect(isClass(function() {})).toBe(false);
+    expect(isClass(async function() {})).toBe(false);
 
-    expect(isClass(SimpleClass)).toBeTrue();
+    expect(isClass(SimpleClass)).toBe(true);
 });
 
 test('helper isPlainObject', () => {
-    expect(isPlainObject([])).toBeFalse();
-    expect(isPlainObject(false)).toBeFalse();
-    expect(isPlainObject(true)).toBeFalse();
-    expect(isPlainObject(null)).toBeFalse();
-    expect(isPlainObject(undefined)).toBeFalse();
-    expect(isPlainObject(1)).toBeFalse();
-    expect(isPlainObject('1')).toBeFalse();
-    expect(isPlainObject(() => {})).toBeFalse();
-    expect(isPlainObject(function() {})).toBeFalse();
+    expect(isPlainObject([])).toBe(false);
+    expect(isPlainObject(false)).toBe(false);
+    expect(isPlainObject(true)).toBe(false);
+    expect(isPlainObject(null)).toBe(false);
+    expect(isPlainObject(undefined)).toBe(false);
+    expect(isPlainObject(1)).toBe(false);
+    expect(isPlainObject('1')).toBe(false);
+    expect(isPlainObject(() => {})).toBe(false);
+    expect(isPlainObject(function() {})).toBe(false);
 
-    expect(isPlainObject(new Date())).toBeFalse();
-    expect(isPlainObject(new SimpleClass('asd'))).toBeFalse();
+    expect(isPlainObject(new Date())).toBe(false);
+    expect(isPlainObject(new SimpleClass('asd'))).toBe(false);
 
     class O extends Object {
     }
-    expect(isPlainObject(new O)).toBeFalse();
+    expect(isPlainObject(new O)).toBe(false);
 
-    expect(isPlainObject({})).toBeTrue();
-    expect(isPlainObject(new Object)).toBeTrue();
+    expect(isPlainObject({})).toBe(true);
+    expect(isPlainObject(new Object)).toBe(true);
 });
 
 test('helper is array', () => {
-    expect(isArray({})).toBeFalse();
-    expect(isArray(new Date())).toBeFalse();
-    expect(isArray(new SimpleClass('asd'))).toBeFalse();
-    expect(isArray(false)).toBeFalse();
-    expect(isArray(true)).toBeFalse();
-    expect(isArray(null)).toBeFalse();
-    expect(isArray(undefined)).toBeFalse();
-    expect(isArray(1)).toBeFalse();
-    expect(isArray('1')).toBeFalse();
+    expect(isArray({})).toBe(false);
+    expect(isArray(new Date())).toBe(false);
+    expect(isArray(new SimpleClass('asd'))).toBe(false);
+    expect(isArray(false)).toBe(false);
+    expect(isArray(true)).toBe(false);
+    expect(isArray(null)).toBe(false);
+    expect(isArray(undefined)).toBe(false);
+    expect(isArray(1)).toBe(false);
+    expect(isArray('1')).toBe(false);
 
-    expect(isArray([])).toBeTrue();
+    expect(isArray([])).toBe(true);
 });
 
 test('helper is isUndefined', () => {
-    expect(isUndefined({})).toBeFalse();
-    expect(isUndefined(new Date())).toBeFalse();
-    expect(isUndefined(new SimpleClass('asd'))).toBeFalse();
-    expect(isUndefined(false)).toBeFalse();
-    expect(isUndefined(true)).toBeFalse();
-    expect(isUndefined(null)).toBeFalse();
-    expect(isUndefined(1)).toBeFalse();
-    expect(isUndefined('1')).toBeFalse();
-    expect(isUndefined([])).toBeFalse();
+    expect(isUndefined({})).toBe(false);
+    expect(isUndefined(new Date())).toBe(false);
+    expect(isUndefined(new SimpleClass('asd'))).toBe(false);
+    expect(isUndefined(false)).toBe(false);
+    expect(isUndefined(true)).toBe(false);
+    expect(isUndefined(null)).toBe(false);
+    expect(isUndefined(1)).toBe(false);
+    expect(isUndefined('1')).toBe(false);
+    expect(isUndefined([])).toBe(false);
 
-    expect(isUndefined(undefined)).toBeTrue();
+    expect(isUndefined(undefined)).toBe(true);
 });
 
 test('test getPathValue', () => {

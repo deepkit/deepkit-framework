@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {f, getClassSchema, Patcher, jsonSerializer} from '@deepkit/type';
 import { BenchSuite } from './bench';
 
-test.only('nope');
+test.only('nope', () => {});
 
 test('parse JSON_ARRAYAGG', () => {
     const bench = new BenchSuite('JSON_ARRAYAGG');

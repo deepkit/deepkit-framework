@@ -28,7 +28,6 @@
   },
   "devDependencies": {
     "@types/clone": "^0.1.30",
-    "@types/jest": "^26.0.3",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

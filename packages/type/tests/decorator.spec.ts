@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import {
     arrayBufferFrom,
     ClassSchema,
@@ -261,7 +261,7 @@ test('test decorator circular', () => {
             type: 'class',
             resolveClassType: Sub
         });
-        expect(isMapType(Model, 'sub')).toBeTrue();
+        expect(isMapType(Model, 'sub')).toBe(true);
     }
 
     {
@@ -278,7 +278,7 @@ test('test decorator circular', () => {
             type: 'class',
             resolveClassType: Sub
         });
-        expect(isArrayType(Model, 'sub')).toBeTrue();
+        expect(isArrayType(Model, 'sub')).toBe(true);
     }
 });
 
@@ -371,7 +371,7 @@ test('more decorator', () => {
 
         expect(getClassSchema(Model).getProperty('whatever').type).toBe('any');
 
-        expect(instance.bool).toBeFalse();
+        expect(instance.bool).toBe(false);
         expect(instance.whatever).toEqual({any: false});
     }
 
@@ -379,42 +379,42 @@ test('more decorator', () => {
         const instance = jsonSerializer.for(Model).deserialize({
             bool: 'true',
         });
-        expect(instance.bool).toBeTrue();
+        expect(instance.bool).toBe(true);
     }
 
     {
         const instance = jsonSerializer.for(Model).deserialize({
             bool: '1',
         });
-        expect(instance.bool).toBeTrue();
+        expect(instance.bool).toBe(true);
     }
 
     {
         const instance = jsonSerializer.for(Model).deserialize({
             bool: 1,
         });
-        expect(instance.bool).toBeTrue();
+        expect(instance.bool).toBe(true);
     }
 
     {
         const instance = jsonSerializer.for(Model).deserialize({
             bool: 'false',
         });
-        expect(instance.bool).toBeFalse();
+        expect(instance.bool).toBe(false);
     }
 
     {
         const instance = jsonSerializer.for(Model).deserialize({
             bool: '0',
         });
-        expect(instance.bool).toBeFalse();
+        expect(instance.bool).toBe(false);
     }
 
     {
         const instance = jsonSerializer.for(Model).deserialize({
             bool: 0,
         });
-        expect(instance.bool).toBeFalse();
+        expect(instance.bool).toBe(false);
     }
 });
 
@@ -430,9 +430,9 @@ test('more array/map', () => {
         whatevermap?: { [k: string]: any };
     }
 
-    expect(isArrayType(Model, 'bools')).toBeTrue();
-    expect(isMapType(Model, 'whatevermap')).toBeTrue();
-    expect(isMapType(Model, 'whatever')).toBeFalse();
+    expect(isArrayType(Model, 'bools')).toBe(true);
+    expect(isMapType(Model, 'whatevermap')).toBe(true);
+    expect(isMapType(Model, 'whatever')).toBe(false);
 });
 
 test('binary', () => {
@@ -484,10 +484,10 @@ test('group', () => {
     expect(schema.getProperty('password').groupNames).toEqual(['confidential']);
     expect(schema.getProperty('config').groupNames).toEqual(['details']);
 
-    expect(schema.getPropertiesByGroup('confidential')).toBeArrayOfSize(1);
+    expect(schema.getPropertiesByGroup('confidential').length).toBe(1);
     expect(schema.getPropertiesByGroup('confidential')[0].name).toBe('password');
 
-    expect(schema.getPropertiesByGroup('details')).toBeArrayOfSize(1);
+    expect(schema.getPropertiesByGroup('details').length).toBe(1);
     expect(schema.getPropertiesByGroup('details')[0].name).toBe('config');
 
     const user = new User();
@@ -611,7 +611,7 @@ test('f on class, constructor resolution', () => {
         const schema = getClassSchema(MyServer);
 
         const properties = schema.getMethodProperties('constructor');
-        expect(properties).toBeArrayOfSize(2);
+        expect(properties.length).toBe(2);
 
         expect(properties[0].resolveClassType).toBe(Connection);
         expect(properties[0].isOptional).toBe(false);
@@ -630,7 +630,7 @@ test('f on class, constructor resolution', () => {
         const schema = getClassSchema(MyServer);
 
         const properties = schema.getMethodProperties('constructor');
-        expect(properties).toBeArrayOfSize(2);
+        expect(properties.length).toBe(2);
 
         expect(properties[0].resolveClassType).toBe(Connection);
         expect(properties[0].isOptional).toBe(false);
@@ -648,7 +648,7 @@ test('f on class, constructor resolution', () => {
 
         const schema = getClassSchema(MyServer);
         const properties = schema.getMethodProperties('constructor');
-        expect(properties).toBeArrayOfSize(1);
+        expect(properties.length).toBe(1);
 
         expect(properties[0].resolveClassType).toBe(Connection);
         expect(properties[0].isOptional).toBe(true);
@@ -781,7 +781,7 @@ test('old forwardRef struct for IE11', () => {
             children: t.type(() => Children)
         });
 
-        expect(schema.getProperty('children').resolveClassType).toBeFunction();
+        expect(schema.getProperty('children').resolveClassType).toBeInstanceOf(Function);
         expect(schema.getProperty('children').resolveClassType).not.toBe(Children);
     }
 });

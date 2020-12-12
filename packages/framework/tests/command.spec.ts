@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {arg, cli, Command} from '../src/command';
 import {Application} from '../src/application';

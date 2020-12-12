@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {Collection} from '../src/collection';
 import {uuid} from '@deepkit/type';

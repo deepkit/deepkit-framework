@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import {BehaviorSubject, Subject, Subscription} from 'rxjs';
 import {nextValue, Subscriptions} from '../src/rxjs';
 

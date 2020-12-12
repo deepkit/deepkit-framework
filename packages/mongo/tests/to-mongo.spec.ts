@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {arrayBufferFrom, arrayBufferTo, arrayBufferToBase64, jsonSerializer, t,} from '@deepkit/type';
 import {Plan, SimpleModel, SubModel} from './entities';
@@ -34,14 +33,14 @@ test('test simple model all fields', () => {
     expect(mongo['name']).toBe('myName');
     expect(mongo['type']).toBe(5);
     expect(mongo['plan']).toBe(Plan.PRO);
-    expect(mongo['created']).toBeDate();
-    expect(mongo['children']).toBeArrayOfSize(2);
-    expect(mongo['children'][0]).toBeObject();
+    expect(mongo['created']).toBeInstanceOf(Date);
+    expect(mongo['children'].length).toBe(2);
+    expect(mongo['children'][0]).toBeInstanceOf(Object);
     expect(mongo['children'][0].label).toBe('fooo');
     expect(mongo['children'][1].label).toBe('barr');
 
-    expect(mongo['childrenMap']).toBeObject();
-    expect(mongo['childrenMap'].foo).toBeObject();
+    expect(mongo['childrenMap']).toBeInstanceOf(Object);
+    expect(mongo['childrenMap'].foo).toBeInstanceOf(Object);
     expect(mongo['childrenMap'].foo.label).toBe('bar');
     expect(mongo['childrenMap'].foo2.label).toBe('bar2');
 });
@@ -330,7 +329,7 @@ test('partial mongo to plain ', () => {
 
         expect(m.name).toBe(undefined);
         expect(m.picture).toBe(undefined);
-        expect(m.tags).toBeArray();
+        expect(m.tags).toBeInstanceOf(Array);
     }
 
     {
@@ -344,7 +343,7 @@ test('partial mongo to plain ', () => {
         expect(m.name).toBe(null);
         expect(m.picture).toBe(null);
         expect(m.parent).toBeUndefined();
-        expect(m.tags).toBeArray();
+        expect(m.tags).toBeInstanceOf(Array);
     }
 
     {
@@ -378,7 +377,7 @@ test('partial mongo to plain ', () => {
         expect(m.name).toBe('peter');
         expect(m.picture).toBeInstanceOf(bson.Binary);
         expect(m.picture!.buffer.toString('base64')).toBe(arrayBufferToBase64(bin));
-        expect(m.tags).toBeArray();
+        expect(m.tags).toBeInstanceOf(Array);
     }
 });
 

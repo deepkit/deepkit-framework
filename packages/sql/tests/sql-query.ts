@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
 import {SQLFilterBuilder} from '../src/sql-filter-builder';
 import {escape} from 'sqlstring';

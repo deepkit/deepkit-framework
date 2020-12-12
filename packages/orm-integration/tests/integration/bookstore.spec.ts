@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {entity, getClassSchema, t} from '@deepkit/type';
 import {createEnvSetup} from './setup';

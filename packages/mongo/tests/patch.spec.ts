@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {SimpleModel, SubModel} from './entities';
 import {DocumentClass} from './document-scenario/DocumentClass';
@@ -47,13 +46,13 @@ test('partial 2', () => {
         const im = mongoSerializer.for(SimpleModel).patchSerialize({
             'children.0': new SubModel('3')
         });
-        expect(im['children.0']).toBeObject();
+        expect(im['children.0']).toBeInstanceOf(Object);
         expect(im['children.0'].label).toBe('3');
 
         const i = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {
             'children.0': {label: 3}
         });
-        expect(i['children.0']).toBeObject();
+        expect(i['children.0']).toBeInstanceOf(Object);
         expect(i['children.0'].label).toBe('3');
 
         const i2 = mongoSerializer.for(SimpleModel).fromPatch(jsonSerializer, {

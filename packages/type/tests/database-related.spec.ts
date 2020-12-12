@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {Entity, MultiIndex, t} from '../src/decorators';
 import {getClassSchema} from '../index';

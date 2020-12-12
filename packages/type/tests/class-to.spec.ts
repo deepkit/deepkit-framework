@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {SimpleModel, SubModel} from './entities';
 import {jsonSerializer} from '../src/json-serializer';

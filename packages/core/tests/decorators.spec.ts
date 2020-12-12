@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import {log, stack} from '../src/decorators';
 import {sleep} from '../src/core';
 

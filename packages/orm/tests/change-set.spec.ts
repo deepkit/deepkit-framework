@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {atomicChange, Changes} from '../src/changes';
 
 

@@ -1,4 +1,4 @@
-import 'jest-extended';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {size} from "@deepkit/core";
 import {observeItem} from "../src/observer";

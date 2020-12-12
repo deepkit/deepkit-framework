@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import {arrayBufferTo, base64ToArrayBuffer, nodeBufferToTypedArray} from '../index';
 import {Buffer} from 'buffer';
 

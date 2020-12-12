@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {SQLiteDatabaseAdapter} from '../index';
 import {Entity, plainToClass, t} from '@deepkit/type';

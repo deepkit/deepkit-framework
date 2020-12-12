@@ -1,4 +1,4 @@
-import 'jest';
+import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import '../src/template/optimize-tsx';
 import {html, render} from '../src/template/template';

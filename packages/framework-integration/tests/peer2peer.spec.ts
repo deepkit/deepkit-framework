@@ -1,5 +1,4 @@
-import 'jest';
-import 'jest-extended';
+import {afterAll, expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {Entity, f} from '@deepkit/type';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
@@ -7,6 +6,7 @@ import {createModule, InternalClient, RpcSecurityStrategy, Session} from '@deepk
 import {Observable} from 'rxjs';
 import {sleep} from '@deepkit/core';
 import {rpc} from '@deepkit/framework-shared';
+import {fail} from 'assert';
 
 afterAll(async () => {
     await closeAllCreatedServers();
@@ -48,7 +48,7 @@ test('test peer2peer', async () => {
         }
     }
 
-   const AppModule = createModule({
+    const AppModule = createModule({
         controllers: [TestController],
         providers: [
             {
