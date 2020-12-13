@@ -4,7 +4,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "scripts": {
-    "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit",
+    "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js --no-cache --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
     "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
@@ -17,16 +17,16 @@
   },
   "peerDependencies": {},
   "devDependencies": {
+    "@jest/globals": "^27.0.0-next.1",
     "@types/node": "^14.14.12",
     "coveralls": "^3.0.3",
     "jest": "^27.0.0-next.2",
-    "@jest/globals": "^27.0.0-next.1",
     "lerna": "^3.22.1",
-    "ts-node": "^9.1.1",
     "ts-jest": "https://github.com/marcj/ts-jest.git",
-    "typescript": "^4.1.2",
+    "ts-node": "^9.1.1",
     "typedoc": "^0.16.8",
-    "typedoc-plugin-lerna-packages": "^0.3.0"
+    "typedoc-plugin-lerna-packages": "^0.3.0",
+    "typescript": "^4.1.2"
   },
   "engines": {
     "node": ">= 8.9.0"

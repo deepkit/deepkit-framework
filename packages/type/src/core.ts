@@ -130,5 +130,5 @@ export function arrayBufferFrom(data: string, encoding?: string): ArrayBuffer {
  * Same as Buffer.from(arrayBuffer).toString(encoding), but more in line with the current API.
  */
 export function arrayBufferTo(arrayBuffer: ArrayBuffer, encoding?: string | 'utf8' | 'base64' | 'ascii') {
-    return Buffer.from(arrayBuffer).toString(encoding);
+    return Buffer.from(arrayBuffer).toString(encoding as any);
 }

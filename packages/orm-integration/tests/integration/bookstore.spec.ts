@@ -353,7 +353,7 @@ test('events', async () => {
         const sub3 = database.queryEvents.onPatchPost.subscribe((event) => {
             if (event.isSchemaOf(User)) {
                 expect(isArray(event.patchResult.returning['version'])).toBe(true);
-                expect(event.patchResult.returning['version'][0]).toBeGreaterThan(0);
+                expect(event.patchResult.returning['version']![0]).toBeGreaterThan(0);
             }
         });
         const user = new User('jo');
@@ -416,7 +416,7 @@ test('atomic operations', async () => {
         const changes = await database.query(User).filter(user).patchOne({$inc: {logins: 10}});
         expect(changes.modified).toBe(1);
         expect(changes.primaryKeys[0]).toBe(user.id);
-        expect(changes.returning['logins'][0]).toBe(11);
+        expect(changes.returning['logins']![0]).toBe(11);
 
         await database.persist(user);
         expect(user.logins).toBe(1 + 2 + 10);

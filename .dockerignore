@@ -1,4 +1,10 @@
 node_modules
+packages/*/node_modules
+packages/node
+packages/network
+dist
+packages/*/dist
+.git
 .idea
 docs
 coverage

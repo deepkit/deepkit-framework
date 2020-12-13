@@ -279,7 +279,7 @@ export abstract class DefaultPlatform {
         return `ALTER TABLE ${this.getIdentifier(table)} DROP CONSTRAINT ${this.getPrimaryKeyName(table)}`;
     }
 
-    getAddPrimaryKeyDDL(table) {
+    getAddPrimaryKeyDDL(table: Table) {
         return `ALTER TABLE ${this.getIdentifier(table)} ADD ${this.getPrimaryKeyDDL(table)}`;
     }
 
