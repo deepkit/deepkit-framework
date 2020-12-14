@@ -30,9 +30,7 @@ export class WebSocketClientAdapter implements ClientTransportAdapter {
         if (!this.WebSocket) {
             const ws = await import('ws');
             this.WebSocket = ws.default as any as ClassType<WebSocket>;
-            if (!this.WebSocket) {
-                console.error('Package ws returned wrong API', ws);
-            }
+            console.error('Weird issue on Travis', ws);
         }
 
         const socket = new this.WebSocket(this.url);
