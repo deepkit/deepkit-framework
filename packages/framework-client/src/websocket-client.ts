@@ -20,20 +20,12 @@ import {ClassType} from '@deepkit/core';
 import {ClientMessageAll,} from '@deepkit/framework-shared';
 import {ClientTransportAdapter, TransportConnectionHooks} from './client';
 
-let loadedWebSocket: ClassType<WebSocket> | undefined =  'undefined' !== typeof WebSocket ? WebSocket : undefined
-
 export class WebSocketClientAdapter implements ClientTransportAdapter {
     constructor(public url: string) {
     }
 
     public async connect(connection: TransportConnectionHooks) {
-        if (!loadedWebSocket) {
-            const ws = await import('ws');
-            loadedWebSocket = ws.default as any as ClassType<WebSocket>;
-            console.error('Weird issue on Travis', ws);
-        }
-
-        const socket = new loadedWebSocket(this.url);
+        const socket = new WebSocket(this.url);
 
         socket.onmessage = (event: MessageEvent) => {
             connection.onMessage(event.data.toString());

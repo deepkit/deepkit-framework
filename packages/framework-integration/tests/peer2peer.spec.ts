@@ -7,6 +7,10 @@ import {Observable} from 'rxjs';
 import {sleep} from '@deepkit/core';
 import {rpc} from '@deepkit/framework-shared';
 import {fail} from 'assert';
+import ws from 'ws';
+
+// @ts-ignore
+global['WebSocket'] = ws;
 
 afterAll(async () => {
     await closeAllCreatedServers();

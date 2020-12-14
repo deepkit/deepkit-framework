@@ -8,7 +8,11 @@ import {BehaviorSubject, Observable} from 'rxjs';
 import {nextValue} from '@deepkit/core-rxjs';
 import {sleep} from '@deepkit/core';
 import {Database} from '@deepkit/orm';
-import { fail } from 'assert';
+import {fail} from 'assert';
+import ws from 'ws';
+
+// @ts-ignore
+global['WebSocket'] = ws;
 
 // jest.setTimeout(120_000);
 

@@ -5,6 +5,10 @@ import {appModuleForControllers, closeAllCreatedServers, createServerClientPair}
 import {sleep} from '@deepkit/core';
 import {Buffer} from 'buffer';
 import {arrayBufferTo} from '@deepkit/type';
+import ws from 'ws';
+
+// @ts-ignore
+global['WebSocket'] = ws;
 
 afterAll(async () => {
     await closeAllCreatedServers();
