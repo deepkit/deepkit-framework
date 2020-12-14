@@ -28,7 +28,11 @@ export class WebSocketClientAdapter implements ClientTransportAdapter {
 
     public async connect(connection: TransportConnectionHooks) {
         if (!this.WebSocket) {
-            this.WebSocket = (await import('ws')).default as any as ClassType<WebSocket>;
+            const ws = await import('ws');
+            this.WebSocket = ws.default as any as ClassType<WebSocket>;
+            if (!this.WebSocket) {
+                console.error('Package ws returned wrong API', ws);
+            }
         }
 
         const socket = new this.WebSocket(this.url);
