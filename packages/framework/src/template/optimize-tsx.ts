@@ -17,7 +17,7 @@
  */
 
 import {addHook} from 'pirates';
-import {CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, Super, UnaryExpression} from 'estree';
+import {CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, UnaryExpression} from 'estree';
 import abstractSyntaxTree from 'abstract-syntax-tree';
 import {inDebugMode} from '../utils';
 

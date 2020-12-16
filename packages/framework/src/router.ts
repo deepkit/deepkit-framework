@@ -27,7 +27,7 @@ import {IncomingMessage} from 'http';
 import formidable from 'formidable';
 import querystring from 'querystring';
 
-type ResolvedController = { parameters: (injector: BasicInjector) => any[], routeConfig: RouteConfig };
+type ResolvedController = { parameters?: ((injector: BasicInjector) => any[] | Promise<any[]>), routeConfig: RouteConfig };
 
 export class HttpControllers {
     constructor(public readonly controllers: ClassType[]) {
@@ -84,7 +84,6 @@ export class RouteConfig {
         public readonly path: string,
         public readonly action: RouteControllerAction,
     ) {
-        this.httpMethod = this.httpMethod.toLowerCase();
     }
 
     getFullPath(): string {
@@ -219,9 +218,16 @@ export function parseRouteControllerAction(routeConfig: RouteConfig): ParsedRout
     return parsedRoute;
 }
 
+export function dotToUrlPath(dotPath: string): string {
+    if (-1 === dotPath.indexOf('.')) return dotPath;
+
+    return dotPath.replace(/\./g, '][').replace('][', '[') + ']';
+}
+
 @injectable()
 export class Router {
-    protected fn?: (request: IncomingMessage) => Promise<ResolvedController | undefined>;
+    protected fn?: (request: IncomingMessage) => ResolvedController | undefined;
+    protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
 
     protected routes: RouteConfig[] = [];
 
@@ -256,6 +262,8 @@ export class Router {
         let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
 
         let enableParseBody = false;
+        const hasParameters = parsedRoute.getParameters().length > 0;
+        let requiresAsyncParameters = false;
 
         for (const parameter of parsedRoute.getParameters()) {
             if (parameter.isPartOfPath()) {
@@ -283,7 +291,6 @@ export class Router {
                     ${validatorVar}(${bodyVar}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);
                     `);
                     setParameters.push(bodyVar);
-                    // } else if (parameter.property.type === 'class') {
                 } else if (parameter.query) {
                     const converted = parameter.property.type === 'any' ? (v: any) => v : getPropertyXtoClassFunction(parameter.property, jsonSerializer);
                     const validator = parameter.property.type === 'any' ? (v: any) => undefined : jitValidateProperty(parameter.property);
@@ -307,18 +314,80 @@ export class Router {
             const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
             const formVar = compiler.reserveVariable('form', this.form);
             parseBodyLoading = `const bodyFields = (await ${parseBodyVar}(${formVar}, request)).fields;`;
+            requiresAsyncParameters = true;
         }
 
-        return `
-            //=> ${path}
-            if (_method === '${routeConfig.httpMethod}' && _path.startsWith(${JSON.stringify(prefix)}) && (_match = _path.match(${regexVar}))) {
+        let matcher = `_path.startsWith(${JSON.stringify(prefix)}) && (_match = _path.match(${regexVar}))`;
+        if (!hasParameters) {
+            matcher = `_path === ${JSON.stringify(path)}`;
+        }
+
+        let parameters = 'undefined';
+        if (setParameters.length) {
+            parameters = `${requiresAsyncParameters ? 'async' : ''} function(_injector){
                 const validationErrors = [];
                 const bodyErrors = [];
                 ${parseBodyLoading}
                 ${parameterValidator.join('\n')}
                 ${bodyValidationErrorHandling}
                 if (validationErrors.length) throw ValidationError.from(validationErrors);
-                return {routeConfig: ${routeConfigVar}, parameters: (_injector) => [${setParameters.join(',')}]};
+                return [${setParameters.join(',')}];
+            }`;
+        }
+
+        return `
+            //=> ${path}
+            if (_method === '${routeConfig.httpMethod.toLowerCase()}' && ${matcher}) {
+                return {routeConfig: ${routeConfigVar}, parameters: ${parameters}};
+            }
+        `;
+    }
+
+    protected getRouteUrlResolveCode(compiler: CompilerContext, routeConfig: RouteConfig): string {
+        const routeConfigVar = compiler.reserveVariable('routeConfigVar', routeConfig);
+        const parsedRoute = parseRouteControllerAction(routeConfig);
+        const path = routeConfig.getFullPath();
+        const prefix = path.substr(0, path.indexOf(':'));
+
+        const regexVar = compiler.reserveVariable('regex', new RegExp('^' + parsedRoute.regex + '$'));
+        const setParameters: string[] = [];
+        const parameterValidator: string[] = [];
+        let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
+
+        let enableParseBody = false;
+        const hasParameters = parsedRoute.getParameters().length > 0;
+        let requiresAsyncParameters = false;
+
+
+        let url = routeConfig.getFullPath();
+        url = url.replace(/:(\w+)/g, (a, name) => {
+            return `\${parameters.${name}}`;
+        });
+
+        const modify: string[] = [];
+        for (const parameter of parsedRoute.getParameters()) {
+            if (parameter.query) {
+                const queryPath = parameter.typePath === undefined ? parameter.property.name : parameter.typePath;
+
+                if (parameter.property.type === 'class') {
+                    for (const property of parameter.property.getResolvedClassSchema().getClassProperties().values()) {
+                        const accessor = `parameters.${parameter.getName()}?.${property.name}`;
+                        const thisPath = queryPath ? queryPath + '.' + property.name : property.name;
+                        modify.push(`${accessor} !== undefined && query.push(${JSON.stringify(dotToUrlPath(thisPath))} + '=' + encodeURIComponent(${accessor}))`);
+                    }
+                } else {
+                    modify.push(`parameters.${parameter.getName()} !== undefined && query.push(${JSON.stringify(dotToUrlPath(queryPath))} + '=' + encodeURIComponent(parameters.${parameter.getName()}))`);
+
+                }
+            }
+        }
+
+        return `
+            case ${JSON.stringify(routeConfig.name)}: {
+                let url = \`${url}\`;
+                let query = [];
+                ${modify.join('\n')}
+                return url + (query.length ? '?'+query.join('&') : '');
             }
         `;
     }
@@ -357,7 +426,7 @@ export class Router {
             code.push(this.getRouteCode(compiler, route));
         }
 
-        return compiler.buildAsync(`
+        return compiler.build(`
             const _method = request.method.toLowerCase();
             const _qPosition = request.url.indexOf('?');
             const _path = _qPosition === -1 ? request.url : request.url.substr(0, _qPosition); 
@@ -366,7 +435,31 @@ export class Router {
         `, 'request') as any;
     }
 
-    async resolveRequest(request: IncomingMessage): Promise<ResolvedController | undefined> {
+    protected buildUrlResolver(): any {
+        const compiler = new CompilerContext;
+        const code: string[] = [];
+
+        for (const route of this.routes) {
+            code.push(this.getRouteUrlResolveCode(compiler, route));
+        }
+
+        return compiler.build(`
+        switch (name) {
+            ${code.join('\n')}
+        }
+        throw new Error('No route for name ' + name + ' found');
+        `, 'name', 'parameters') as any;
+    }
+
+    public resolveUrl(routeName: string, parameters: { [name: string]: any } = {}): string {
+        if (!this.resolveFn) {
+            this.resolveFn = this.buildUrlResolver();
+        }
+
+        return this.resolveFn!(routeName, parameters);
+    }
+
+    public resolveRequest(request: IncomingMessage): ResolvedController | undefined {
         if (!this.fn) {
             this.fn = this.build();
         }
@@ -374,7 +467,7 @@ export class Router {
         return this.fn!(request);
     }
 
-    async resolve(method: string, url: string): Promise<ResolvedController | undefined> {
+    public resolve(method: string, url: string): ResolvedController | undefined {
         return this.resolveRequest({
             method,
             url

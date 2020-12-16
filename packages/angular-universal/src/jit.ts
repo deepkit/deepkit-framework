@@ -1,8 +1,8 @@
-import {existsSync, readFileSync} from 'fs';
-import {IncomingMessage} from 'http';
-
-const indexPath = __dirname + '/../../../dist/browser/index.html'
-const indexHtml = readFileSync(indexPath).toString();
+// import {existsSync, readFileSync} from 'fs';
+// import {IncomingMessage} from 'http';
+//
+// const indexPath = __dirname + '/../../../dist/browser/index.html'
+// const indexHtml = readFileSync(indexPath).toString();
 
 /**
  * This is an experiment to support rendering Angular in JIT mode.

@@ -16,12 +16,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {injectable} from '../injector/injector';
+import {AsyncLocalStorage} from 'async_hooks';
+import {DebugCollector} from './debug/collector';
 
-@injectable()
-export class DebugCollector {
+type SimpleStore = { [name: string]: any };
 
-    async save() {
+export class Zone {
+    static asyncLocalStorage?: any;
 
+    static enable() {
+        this.asyncLocalStorage = new AsyncLocalStorage<any>();
+        this.asyncLocalStorage.enterWith({});
+    }
+
+    static current(): SimpleStore {
+        return Zone.asyncLocalStorage?.getStore();
+    }
+
+    static run<T>(data: SimpleStore, cb: () => T): T {
+        if (!Zone.asyncLocalStorage) return cb();
+        return Zone.asyncLocalStorage.run(data, cb);
+    }
+
+    static debugCollector(): DebugCollector | undefined {
+        return Zone.current().collector;
     }
 }

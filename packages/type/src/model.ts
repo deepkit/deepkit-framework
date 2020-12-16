@@ -262,7 +262,7 @@ export class PropertyCompilerSchema {
 
     toString(): string {
         let affix = this.isOptional ? '?' : '';
-        if (this.isNullable) affix + '|null';
+        if (this.isNullable) affix += '|null';
 
         if (this.type === 'array') {
             return `Array<${this.templateArgs[0]}}>${affix}`;
@@ -992,7 +992,7 @@ export class ClassSchema<T = any> {
     protected initializeMethod(name: string) {
         if (!this.initializedMethods.has(name)) {
             if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {
-                throw new Error(`Method ${name} has no decorators used or is not defined, so reflection does not work. Use @f on the method or arguments. Is emitDecoratorMetadata enabled? Correctly 'reflect-metadata' imported? Return type annotated?`);
+                throw new Error(`Method ${this.getClassPropertyName(name)} has no decorators used or is not defined, so reflection does not work. Use @t on the method or arguments. Is emitDecoratorMetadata enabled? Correctly 'reflect-metadata' imported? Return type annotated?`);
             }
 
             if (name !== 'constructor' && !this.methods[name]) {

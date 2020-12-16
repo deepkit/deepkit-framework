@@ -27,9 +27,19 @@ interface WorkflowTransition<T> {
     label?: string;
 }
 
-export class WorkflowEvent extends BaseEvent {
-    public nextState?: any;
-    public nextStateEvent?: any;
+export class WorkflowEvent {
+    stopped = false;
+
+    stopPropagation() {
+        this.stopped = true;
+    }
+
+    isStopped() {
+        return this.stopped;
+    }
+
+    public nextState: any = undefined;
+    public nextStateEvent: any = undefined;
 
     /**
      * @see WorkflowNextEvent.next
@@ -40,7 +50,7 @@ export class WorkflowEvent extends BaseEvent {
     }
 
     hasNext(): boolean {
-        return !!this.nextState;
+        return this.nextState !== undefined;
     }
 }
 
@@ -73,7 +83,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
     ) {
         for (const placeName in this.places) {
             if (!this.places.hasOwnProperty(placeName)) continue;
-            const token = new EventToken(name + '.' + placeName, this.places[placeName]);
+            const token = new EventToken(name + '.' + placeName, this.places[placeName] as any);
             this.tokens[placeName] = token;
             (this as any)['on' + capitalize(placeName)] = token;
         }
@@ -235,7 +245,6 @@ export class Workflow<T extends WorkflowPlaces> {
         private eventDispatcher: EventDispatcher,
         private injectorContext: InjectorContext
     ) {
-
     }
 
     can(nextState: keyof T & string): boolean {

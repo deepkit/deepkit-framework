@@ -45,10 +45,10 @@ export class ServerListenController implements Command {
         if (!this.logger.hasFormatter(TimestampFormatter)) this.logger.addFormatter(new TimestampFormatter);
 
         const applicationServer = new ApplicationServer(this.logger, this.webWorkerFactory, this.eventDispatcher, {
-                workers: this.config.workers || 1,
-                host: host || this.config.host,
-                port: port || this.config.port,
-                server: this.config.server,
+            workers: this.config.workers || 1,
+            host: host || this.config.host,
+            port: port || this.config.port,
+            server: this.config.server,
         });
 
         await applicationServer.start();

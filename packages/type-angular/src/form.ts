@@ -130,10 +130,6 @@ function isConditionalValidatorFn(obj: any): obj is ConditionalValidatorFn<any, 
     return isFunction(obj);
 }
 
-function isTypedFormGroupConditionalValidators(obj: any): obj is TypedFormGroupConditionalValidators<any, any> {
-    return isObject(obj);
-}
-
 type TypedFormGroupConditionalValidators<RT, T> = {
     [P in keyof T & string]?: ConditionalValidatorFn<RT, T> | (FlattenIfArray<T[P]> extends object ? TypedFormGroupConditionalValidators<RT, FlattenIfArray<T[P]>> : undefined);
 }

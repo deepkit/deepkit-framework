@@ -18,17 +18,20 @@
 
 import {RouteConfig, Router} from './router';
 import {ClassType, CustomError, isPromise} from '@deepkit/core';
-import {injectable, InjectorContext, MemoryInjector} from './injector/injector';
+import {inject, injectable, InjectorContext, MemoryInjector} from './injector/injector';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
 import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
 import {isElementStruct, render} from './template/template';
 import {Logger} from './logger';
 import serveStatic from 'serve-static';
-import {EventDispatcher, eventDispatcher,} from './event';
+import {BaseEvent, EventDispatcher, eventDispatcher,} from './event';
 import {createWorkflow, WorkflowEvent} from './workflow';
 import {join} from 'path';
 import {stat} from 'fs';
+import {DebugCollector} from './debug/collector';
+import {kernelConfig} from './kernel.config';
+import {Zone} from './zone';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -36,7 +39,32 @@ export class HttpResponse extends ServerResponse {
         this.end();
     }
 }
+
 export class HttpRequest extends IncomingMessage {}
+
+export class Redirect {
+    public routeName?: string;
+    public routeParameters?: { [name: string]: any };
+    public url?: string;
+
+    constructor(
+        public statusCode: number = 302,
+    ) {
+    }
+
+    static toRoute(routeName: string, parameters: { [name: string]: any } = {}, statusCode: number = 302): Redirect {
+        const redirect = new Redirect(statusCode);
+        redirect.routeName = routeName;
+        redirect.routeParameters = parameters;
+        return redirect;
+    }
+
+    static toUrl(url: string, statusCode: number = 302): Redirect {
+        const redirect = new Redirect(statusCode);
+        redirect.url = url;
+        return redirect;
+    }
+}
 
 export interface HttpError<T> {
     new(...args: any[]): Error;
@@ -62,12 +90,37 @@ export class HttpNotFoundError extends HttpError(404, 'Not found') {
 export class HttpBadRequestError extends HttpError(400, 'Bad request') {
 }
 
-export class HttpWorkflowEvent extends WorkflowEvent {
+export class HttpWorkflowEvent {
+    stopped = false;
+
+    stopPropagation() {
+        this.stopped = true;
+    }
+
+    isStopped() {
+        return this.stopped;
+    }
+
+    public nextState: any = undefined;
+    public nextStateEvent: any = undefined;
+
+    /**
+     * @see WorkflowNextEvent.next
+     */
+    next(nextState: string, event?: any) {
+        this.nextState = nextState;
+        this.nextStateEvent = event;
+    }
+
+    hasNext(): boolean {
+        return this.nextState !== undefined;
+    }
+
     constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
+        public injectorContext: InjectorContext,
+        public request: IncomingMessage,
+        public response: ServerResponse,
     ) {
-        super();
     }
 
     get url() {
@@ -81,104 +134,67 @@ export class HttpWorkflowEvent extends WorkflowEvent {
         return this.response.headersSent;
     }
 }
+export const HttpRequestEvent = HttpWorkflowEvent;
+export const HttpResponseEvent = HttpWorkflowEvent;
+export const HttpRouteNotFoundEvent = HttpWorkflowEvent;
 
-export class HttpRequestEvent extends WorkflowEvent {
+export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
     constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
+        public injectorContext: InjectorContext,
+        public request: IncomingMessage,
+        public response: ServerResponse,
+        public parameters: any[] = [],
+        public route: RouteConfig,
     ) {
-        super();
-    }
-}
-
-export class HttpResponseEvent extends WorkflowEvent {
-    constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
-    ) {
-        super();
-    }
-}
-
-export class HttpRouteNotFoundEvent extends WorkflowEvent {
-    constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
-    ) {
-        super();
+        super(injectorContext, request, response);
     }
 }
 
 export class HttpRouteEvent extends HttpWorkflowEvent {
     constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
+        public injectorContext: InjectorContext,
+        public request: IncomingMessage,
+        public response: ServerResponse,
         public parameters: any[] = [],
         public route?: RouteConfig,
     ) {
-        super(request, response);
+        super(injectorContext, request, response);
     }
 
     routeFound(route: RouteConfig, parameters?: any[]) {
         this.route = route;
         if (parameters) this.parameters = parameters;
-        this.next('auth', new HttpAuthEvent(this.request, this.response, this.parameters, this.route));
+        this.next('auth', new HttpAuthEvent(this.injectorContext, this.request, this.response, this.parameters, this.route));
     }
 
     notFound() {
-        this.next('routeNotFound', new HttpRouteNotFoundEvent(this.request, this.response));
+        this.next('routeNotFound', new HttpRouteNotFoundEvent(this.injectorContext, this.request, this.response));
     }
 }
 
-export class HttpAuthEvent extends WorkflowEvent {
+export class HttpAuthEvent extends HttpWorkflowEventWithRoute {
     accessDenied = false;
-
-    constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
-        public parameters: any[],
-        public route: RouteConfig,
-    ) {
-        super();
-    }
 }
 
-export class HttpAccessDeniedEvent extends WorkflowEvent {
+export class HttpAccessDeniedEvent extends HttpWorkflowEventWithRoute {
     accessDenied = false;
-
-    constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
-        public parameters: any[],
-        public route: RouteConfig,
-    ) {
-        super();
-    }
 }
 
-export class HttpControllerEvent extends WorkflowEvent {
-    constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
-        public parameters: any[],
-        public route: RouteConfig,
-    ) {
-        super();
-    }
-
+export class HttpControllerEvent extends HttpWorkflowEventWithRoute {
     controllerResponse(response: any) {
-        this.next('controllerResponse', new HttpControllerResponseEvent(this.request, this.response, this.parameters, this.route, response));
+        this.next('controllerResponse', new HttpControllerResponseEvent(this.injectorContext, this.request, this.response, this.parameters, this.route, response));
     }
 
     controllerError(error: Error) {
-        this.next('controllerError', new HttpControllerErrorEvent(this.request, this.response, this.parameters, this.route, error));
+        this.next('controllerError', new HttpControllerErrorEvent(this.injectorContext, this.request, this.response, this.parameters, this.route, error));
     }
 }
 
 export class HttpControllerResponseEvent extends WorkflowEvent {
     constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
+        public injectorContext: InjectorContext,
+        public request: IncomingMessage,
+        public response: ServerResponse,
         public parameters: any[],
         public route: RouteConfig,
         public result: any,
@@ -189,8 +205,9 @@ export class HttpControllerResponseEvent extends WorkflowEvent {
 
 export class HttpControllerErrorEvent extends WorkflowEvent {
     constructor(
-        public readonly request: IncomingMessage,
-        public readonly response: ServerResponse,
+        public injectorContext: InjectorContext,
+        public request: IncomingMessage,
+        public response: ServerResponse,
         public parameters: any[],
         public route: RouteConfig,
         public error: Error,
@@ -273,43 +290,42 @@ export function serveStaticListener(path: string): ClassType {
 export class HttpListener {
     constructor(
         protected router: Router,
-        protected scopedContext: InjectorContext,
         protected logger: Logger,
     ) {
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRoute, 0.5)
-    async onRoute(event: typeof httpWorkflow.onRoute.event): Promise<void> {
+    @eventDispatcher.listen(httpWorkflow.onRoute)
+    async onRoute(event: typeof httpWorkflow.onRoute.event) {
         if (event.response.finished) return;
         if (event.hasNext()) return;
 
-        const resolved = await this.router.resolveRequest(event.request);
+        const resolved = this.router.resolveRequest(event.request);
 
         if (!resolved) {
             event.notFound();
         } else {
-            event.routeFound(resolved.routeConfig, resolved.parameters(this.scopedContext));
+            event.routeFound(resolved.routeConfig, resolved.parameters ? await resolved.parameters(event.injectorContext) : []);
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRouteNotFound, 0.5)
+    @eventDispatcher.listen(httpWorkflow.onRouteNotFound)
     async routeNotFound(event: typeof httpWorkflow.onRouteNotFound.event): Promise<void> {
         if (event.response.finished) return;
         event.response.writeHead(404);
         event.response.end('Not found.');
     }
 
-    @eventDispatcher.listen(httpWorkflow.onAuth, 0.5)
+    @eventDispatcher.listen(httpWorkflow.onAuth)
     onAuth(event: typeof httpWorkflow.onAuth.event): void {
         if (event.hasNext()) return;
         if (event.accessDenied) {
-            event.next('accessDenied', new HttpAccessDeniedEvent(event.request, event.response, event.parameters, event.route));
+            event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
         } else {
-            event.next('controller', new HttpControllerEvent(event.request, event.response, event.parameters, event.route));
+            event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onAccessDenied, 0.5)
+    @eventDispatcher.listen(httpWorkflow.onAccessDenied)
     onAccessDenied(event: typeof httpWorkflow.onAccessDenied.event): void {
         if (event.hasNext()) return;
         if (event.response.finished) return;
@@ -317,30 +333,28 @@ export class HttpListener {
         event.response.end('Access denied');
     }
 
-    @eventDispatcher.listen(httpWorkflow.onController, 0.5)
-    async onController(event: typeof httpWorkflow.onController.event): Promise<void> {
+    @eventDispatcher.listen(httpWorkflow.onController)
+    async onController(event: typeof httpWorkflow.onController.event) {
         if (event.hasNext()) return;
         if (event.response.finished) return;
 
-        const controllerInstance = this.scopedContext.get(event.route.action.controller);
+        const controllerInstance = event.injectorContext.get(event.route.action.controller);
         try {
             const method = controllerInstance[event.route.action.methodName];
-            let result = method.apply(controllerInstance, event.parameters);
-            if (isPromise(result)) result = await result;
-            event.controllerResponse(result);
+            event.controllerResponse(await method.apply(controllerInstance, event.parameters));
         } catch (error) {
             event.controllerError(error);
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onControllerError, 0.5)
+    @eventDispatcher.listen(httpWorkflow.onControllerError)
     onControllerError(event: typeof httpWorkflow.onControllerError.event): void {
         if (event.response.finished) return;
         event.response.writeHead(500);
         event.response.end('Internal error');
     }
 
-    @eventDispatcher.listen(httpWorkflow.onControllerResponse, 0.5)
+    @eventDispatcher.listen(httpWorkflow.onControllerResponse)
     async onControllerResponse(event: typeof httpWorkflow.onControllerResponse.event) {
         const response = event.result;
 
@@ -348,14 +362,24 @@ export class HttpListener {
             event.response.end(response);
         } else if ('string' === typeof response) {
             event.response.end(response);
+        } else if (response instanceof Redirect) {
+            if (response.routeName) {
+                event.response.writeHead(response.statusCode, {
+                    Location: this.router.resolveUrl(response.routeName, response.routeParameters)
+                });
+            } else {
+                event.response.writeHead(response.statusCode, {
+                    Location: response.url
+                });
+            }
+            event.response.end();
         } else if (response instanceof ServerResponse) {
-            return;
         } else if (response instanceof HtmlResponse) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
             event.response.end(response.html);
         } else if (isElementStruct(response)) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
-            event.response.end(await render(this.scopedContext, response));
+            event.response.end(await render(event.injectorContext, response));
         } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response)));
@@ -368,12 +392,13 @@ export class HttpListener {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(response));
         }
+        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRequest, 0.5)
+    @eventDispatcher.listen(httpWorkflow.onRequest)
     onRequest(event: typeof httpWorkflow.onRequest.event): void {
         if (event.response.finished) return;
-        event.next('route', new HttpRouteEvent(event.request, event.response));
+        event.next('route', new HttpRouteEvent(event.injectorContext, event.request, event.response));
     }
 }
 
@@ -382,9 +407,11 @@ export class HttpKernel {
     constructor(
         protected router: Router,
         protected eventDispatcher: EventDispatcher,
-        protected scopedContext: InjectorContext,
+        protected injectorContext: InjectorContext,
         protected logger: Logger,
+        @inject(kernelConfig.token('debug')) protected debug: boolean = false,
     ) {
+
     }
 
     async handleRequestFor(method: string, url: string, jsonBody?: any): Promise<any> {
@@ -435,12 +462,26 @@ export class HttpKernel {
     }
 
     async handleRequest(req: IncomingMessage, res: ServerResponse) {
-        const httpScopedContext = this.scopedContext.createChildScope('http', new MemoryInjector([
+        const collector = this.debug ? new DebugCollector : undefined;
+
+        const httpInjectorContext = this.injectorContext.createChildScope('http', new MemoryInjector([
             {provide: IncomingMessage, useValue: req},
             {provide: ServerResponse, useValue: res},
         ]));
 
-        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpScopedContext);
-        return workflow.apply('request', new HttpRequestEvent(req, res));
+        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext);
+        try {
+            if (collector) {
+                await Zone.run({collector: collector}, async () => {
+                    await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
+                });
+                collector.save();
+            } else {
+                return await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
+            }
+        } catch (error) {
+            this.logger.log('HTTP kernel request failed', error);
+            throw error;
+        }
     }
 }

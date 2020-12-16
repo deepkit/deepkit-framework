@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import {entity, t} from '@deepkit/type';
 
-import {Application, BodyValidation, DatabaseModule, http, KernelModule} from '@deepkit/framework';
+import {Application, BodyValidation, DatabaseModule, http, KernelModule, Redirect} from '@deepkit/framework';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
@@ -48,9 +48,14 @@ async function UserList({error}: {error?: string} = {}) {
 
 @http.controller()
 class HelloWorldController {
-    @http.GET('/').description('List all users')
-    async startPage() {
+    @http.GET('/').name('startPage').description('List all users')
+    startPage() {
         return <UserList/>;
+    }
+
+    @http.GET('/api/users')
+    async users() {
+        return await User.query<User>().find();
     }
 
     @http.POST('/add').description('Adds a new user')
@@ -58,7 +63,7 @@ class HelloWorldController {
         if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')}/>;
 
         await new User(body.username).save();
-        return <UserList/>;
+        return Redirect.toRoute('startPage');
     }
 
     @http.GET('/my-getter')
@@ -71,7 +76,8 @@ Application.create({
     providers: [],
     controllers: [HelloWorldController],
     imports: [
-        KernelModule.configure({workers: 1, debug: true, publicDir: 'public'}),
+        KernelModule.configure({workers: 1, debug: false, publicDir: 'public', httpLog: false}),
         DatabaseModule.configure({databases: [SQLiteDatabase], migrateOnStartup: true})
     ]
 }).run();
+

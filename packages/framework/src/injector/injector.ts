@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, PlainSchemaProps, t} from '@deepkit/type';
+import {ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, t} from '@deepkit/type';
 import {ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provider, ProviderWithScope, ValueProvider} from './provider';
 import {ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction} from '@deepkit/core';
 import {Module, ModuleOptions} from '../module';
@@ -66,9 +66,14 @@ export class ConfigDefinition<T extends {}> {
     }
 
     getModule(): Module<ModuleOptions<any>> {
-        if (!this.module) throw new Error('ConfigDefinition module not set. Make sure your config is actually assigned to a single module. See createModule({config: x}).');
+        if (!this.module) throw new Error('ConfigDefinition module not set. Make sure your config is assigned to a single module. See createModule({config: x}).');
 
         return this.module;
+    }
+
+    getConfigOrDefaults(): any {
+        if (this.module) return this.module.getConfig();
+        return jsonSerializer.for(this.schema).validatedDeserialize({});
     }
 
     all(): ClassType<T> {
@@ -92,6 +97,15 @@ export class ConfigDefinition<T extends {}> {
     token<N extends (keyof T & string)>(name: N): ConfigToken<T> {
         return new ConfigToken(this, name);
     }
+}
+
+export class InjectorReference {
+    constructor(public readonly to: any) {
+    }
+}
+
+export function injectorReference<T>(classTypeOrToken: T): any {
+    return new InjectorReference(classTypeOrToken);
 }
 
 export function createConfig<T extends PlainSchemaProps>(config: T): ConfigDefinition<ExtractClassDefinition<T>> {
@@ -171,7 +185,7 @@ export function isValueProvider(obj: any): obj is ValueProvider {
 }
 
 export function isClassProvider(obj: any): obj is ClassProvider {
-    return obj.provide && obj.hasOwnProperty('useClass');
+    return obj.provide && !isValueProvider(obj) && !isExistingProvider(obj) && !isFactoryProvider(obj);
 }
 
 export function isExistingProvider(obj: any): obj is ExistingProvider {
@@ -205,6 +219,7 @@ export interface ConfigContainer {
 }
 
 let CircularDetector: any[] = [];
+let CircularDetectorResets: (() => void)[] = [];
 
 export interface BasicInjector {
     get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R;
@@ -226,20 +241,11 @@ export class Injector {
 
     constructor(
         protected providers: Provider[] = [],
-        public parents: Injector[] = [],
-        protected factories = new Map<any, (rootInjector?: Injector) => any>(),
-        protected injectorContext?: InjectorContext
+        protected parents: Injector[] = [],
+        protected injectorContext: InjectorContext | undefined = undefined,
+        protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined
     ) {
-        if (providers.length) {
-            this.addProviders(providers);
-        }
-    }
-
-    addProviders(providers: Provider[] = [], withBuild = true) {
-        for (const provider of providers) this.addProvider(provider, false);
-        if (withBuild) {
-            this.retriever = this.buildRetriever();
-        }
+        if (this.providers.length) this.retriever = this.buildRetriever();
     }
 
     /**
@@ -247,7 +253,7 @@ export class Injector {
      * Note: addProviders() in the new fork changes the origin, since providers array is not cloned.
      */
     public fork(parents?: Injector[], injectorContext?: InjectorContext) {
-        const injector = new Injector(undefined, parents || this.parents, this.factories, injectorContext);
+        const injector = new Injector(undefined, parents || this.parents, injectorContext, this.configuredProviderRegistry);
         injector.providers = this.providers;
         injector.retriever = this.retriever;
         return injector;
@@ -263,44 +269,13 @@ export class Injector {
         return this;
     }
 
-    public addProvider(provider: Provider, withBuild = true) {
-        if (this.factories.size === 0) {
-            this.factories.set(Injector, (frontInjector?: Injector) => {
-                return this;
-            });
-        }
-
-        if (isValueProvider(provider)) {
-            this.factories.set(provider.provide, function (frontInjector?: Injector) {
-                return provider.useValue;
-            });
-        } else if (isClassProvider(provider)) {
-            this.factories.set(provider.provide, (frontInjector?: Injector) => {
-                return this.create(provider.useClass, frontInjector);
-            });
-        } else if (isExistingProvider(provider)) {
-            this.factories.set(provider.provide, (frontInjector?: Injector) => {
-                return (frontInjector || this).get(provider.useExisting, frontInjector);
-            });
-        } else if (isFactoryProvider(provider)) {
-            this.factories.set(provider.provide, (frontInjector?: Injector) => {
-                const deps: any[] = (provider.deps || []).map(v => (frontInjector || this).get(v, frontInjector));
-                return provider.useFactory(...deps);
-            });
-        } else if (isClass(provider)) {
-            this.factories.set(provider, (frontInjector?: Injector) => {
-                return this.create(provider, frontInjector);
-            });
-        }
-        if (withBuild) {
-            this.retriever = this.buildRetriever();
-        }
-    }
-
-    protected create<T>(classType: ClassType<T>, frontInjector?: Injector): T {
-        const args: any[] = [];
+    protected createFactory(compiler: CompilerContext, classType: ClassType): string {
         const argsCheck: string[] = [];
         const schema = getClassSchema(classType);
+
+        const args: string[] = [];
+
+        const classTypeVar = compiler.reserveVariable('classType', classType);
 
         for (const property of schema.getMethodProperties('constructor')) {
             const options = property.data['deepkit/inject'] as InjectOptions | undefined;
@@ -311,76 +286,143 @@ export class Injector {
                 token = isFunction(options.token) ? options.token() : options.token;
             }
 
-            const injectorToUse = options?.root ? this.getRoot() : (frontInjector || this);
+            const useRootInjector = options?.root === true;
 
-            try {
-                if (token instanceof ConfigDefinition) {
-                    args.push(token.getModule().getConfig());
-                } else if (token instanceof ConfigToken) {
-                    const config = token.config.getModule().getConfig();
-                    args.push(config[token.name]);
-                } else if (isClass(token) && Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice) {
-                    const value: ConfigSlice<any> = new token;
-
-                    if (!value.bag) {
-                        const bag: { [name: string]: any } = {};
-                        const config = value.config.getModule().getConfig();
-                        // console.log('module config', value.config.getModule().getName(), config);
-                        for (const name of value.names) {
-                            bag[name] = config[name];
-                        }
-                        value.bag = bag;
-                        args.push(value);
+            if (token instanceof ConfigDefinition) {
+                args.push(compiler.reserveVariable('fullConfig', token.getConfigOrDefaults()));
+            } else if (token instanceof ConfigToken) {
+                const config = token.config.getConfigOrDefaults();
+                args.push(compiler.reserveVariable(token.name, config[token.name]));
+            } else if (isClass(token) && (Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice || Object.getPrototypeOf(token) === ConfigSlice)) {
+                const value: ConfigSlice<any> = new token;
+                if (!value.bag) {
+                    const bag: { [name: string]: any } = {};
+                    const config = value.config.getConfigOrDefaults();
+                    for (const name of value.names) {
+                        bag[name] = config[name];
                     }
-                } else {
-                    const value = injectorToUse.get(token, frontInjector);
-                    args.push(value);
+                    value.bag = bag;
+                    args.push(compiler.reserveVariable('configSlice', value));
                 }
+            } else {
+                const tokenVar = compiler.reserveVariable('token', token);
+                const orThrow = isOptional ? '' : `|| notFound(${classTypeVar}, ${JSON.stringify(property.name)}, ${args.length}, ${tokenVar})`;
 
-                argsCheck.push('✓');
-            } catch (e) {
-                if (e instanceof TokenNotFoundError) {
-                    if (isOptional) {
-                        argsCheck.push('✓');
-                        args.push(undefined);
-                    } else {
-                        argsCheck.push('?');
-                        throw new DependenciesUnmetError(
-                            `Unknown constructor argument ${property.name} of ${getClassName(classType)}(${argsCheck.join(', ')}). ` +
-                            `Make sure '${tokenLabel(token)}' is provided. ` + e
-                        );
-                    }
-                } else {
-                    throw e;
-                }
+                args.push(`frontInjector.retriever(frontInjector, ${tokenVar}, frontInjector) ${orThrow}`);
             }
         }
 
-        return new classType(...args);
+        return `new ${classTypeVar}(${args.join(',')});`;
     }
 
     protected buildRetriever(): (injector: Injector, token: any, frontInjector?: Injector) => any {
         const compiler = new CompilerContext();
         const lines: string[] = [];
+        const resets: string[] = [];
         this.resolved = [];
 
-        const injectorContextClassType = compiler.reserveVariable('injectorContextClassType', InjectorContext);
         lines.push(`
-            case ${injectorContextClassType}: return injector.injectorContext;
+            case ${compiler.reserveVariable('injectorContextClassType', InjectorContext)}: return injector.injectorContext;
+            case ${compiler.reserveVariable('injectorClassType', Injector)}: return injector;
         `);
 
         let resolvedIds = 0;
-        for (const [provide, factory] of this.factories.entries()) {
+        const normalizedProviders = new Map<any, Provider>();
+
+        //make sure that providers that declare the same provider token will be filtered out so that the last will be used.
+        for (const provider of this.providers) {
+            if (isValueProvider(provider)) {
+                normalizedProviders.set(provider.provide, provider);
+            } else if (isClassProvider(provider)) {
+                normalizedProviders.set(provider.provide, provider);
+            } else if (isExistingProvider(provider)) {
+                normalizedProviders.set(provider.provide, provider);
+            } else if (isFactoryProvider(provider)) {
+                normalizedProviders.set(provider.provide, provider);
+            } else if (isClass(provider)) {
+                normalizedProviders.set(provider, provider);
+            }
+        }
+
+        for (const provider of normalizedProviders.values()) {
             const resolvedId = resolvedIds++;
             this.resolved.push(undefined);
-            const tokenVar = compiler.reserveVariable('token', provide);
-            const resolvedIdVar = compiler.reserveVariable('resolvedId', resolvedId);
-            const factoryVar = compiler.reserveVariable('factory', factory);
+            let transient = false;
+            let factory = '';
+            let token: any;
+
+            if (isValueProvider(provider)) {
+                transient = provider.transient === true;
+                token = provider.provide;
+                const valueVar = compiler.reserveVariable('useValue', provider.useValue);
+                factory = `v = ${valueVar};`;
+            } else if (isClassProvider(provider)) {
+                transient = provider.transient === true;
+                token = provider.provide;
+                factory = `v = ` + this.createFactory(compiler, provider.useClass || provider.provide);
+            } else if (isExistingProvider(provider)) {
+                transient = provider.transient === true;
+                token = provider.provide;
+                factory = `v = ` + this.createFactory(compiler, provider.useExisting);
+            } else if (isFactoryProvider(provider)) {
+                transient = provider.transient === true;
+                token = provider.provide;
+
+                const deps: any[] = (provider.deps || []).map(v => `frontInjector.get(${compiler.reserveVariable('dep', v)}, frontInjector)`);
+                factory = `v = ${compiler.reserveVariable('factory', provider.useFactory)}(${deps.join(', ')});`;
+            } else if (isClass(provider)) {
+                token = provider;
+                factory = `v = ` + this.createFactory(compiler, provider);
+            } else {
+                console.log('provider', provider);
+                throw new Error('Invalid provider');
+            }
+
+            const tokenVar = compiler.reserveVariable('token', token);
+            const creatingVar = compiler.reserveVariable('creating', false);
+            const configuredProviderCalls = this.configuredProviderRegistry?.get(provider);
+
+            const configureProvider: string[] = [];
+            if (configuredProviderCalls) {
+                for (const call of configuredProviderCalls) {
+                    if (call.type === 'stop') break;
+                    if (call.type === 'call') {
+                        const args: string[] = [];
+                        const methodName = 'symbol' === typeof call.methodName ? '[' + compiler.reserveVariable('arg', call.methodName) + ']' : call.methodName;
+                        for (const arg of call.args) {
+                            if (arg instanceof InjectorReference) {
+                                args.push(`frontInjector.get(${compiler.reserveVariable('forward', arg.to)})`);
+                            } else {
+                                args.push(`${compiler.reserveVariable('arg', arg)}`);
+                            }
+                        }
+
+                        configureProvider.push(`v.${methodName}(${args.join(', ')});`);
+                    }
+                    if (call.type === 'property') {
+                        const property = 'symbol' === typeof call.property ? '[' + compiler.reserveVariable('property', call.property) + ']' : call.property;
+                        const value = call.value instanceof InjectorReference ? `frontInjector.get(${compiler.reserveVariable('forward', call.value.to)})` : compiler.reserveVariable('value', call.value);
+                        configureProvider.push(`v.${property} = ${value};`);
+                    }
+                }
+            }
+
+            resets.push(`${creatingVar} = false;`);
+
             lines.push(`
                 case ${tokenVar}: {
-                    const r = injector.resolved[${resolvedIdVar}];
-                    if (r !== undefined) return r;
-                    return injector.resolved[${resolvedIdVar}] = ${factoryVar}(frontInjector);
+                    ${transient ? 'let v;' : `let v = injector.resolved[${resolvedId}]; if (v !== undefined) return v;`}
+                    CircularDetector.push(${tokenVar});
+                    if (${creatingVar}) {
+                        throwCircularDependency();
+                    }
+                    ${creatingVar} = true;
+                    ${factory}
+                    ${transient ? '' : `injector.resolved[${resolvedId}] = v;`}
+                    ${creatingVar} = false;
+                    ${configureProvider.join('\n')}
+                    CircularDetector.pop();
+                    return v;
                 }
             `);
         }
@@ -395,7 +437,20 @@ export class Injector {
             `);
         }
 
+        compiler.context.set('CircularDetector', CircularDetector);
+        compiler.context.set('throwCircularDependency', throwCircularDependency);
+        compiler.context.set('CircularDetectorResets', CircularDetectorResets);
+        compiler.context.set('notFound', notFound);
+
+        compiler.preCode = `
+            CircularDetectorResets.push(() => {
+                ${resets.join('\n')};
+            });
+        `;
+
         return compiler.build(`
+        frontInjector = frontInjector || injector;
+
         switch (token) {
             ${lines.join('\n')}
         }
@@ -407,22 +462,30 @@ export class Injector {
     }
 
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
-        try {
-            if (this.circularCheck && -1 !== CircularDetector.indexOf(token)) {
-                const path = [...CircularDetector, token].map(tokenLabel).join(' -> ');
-                throw new CircularDependencyError(`Circular dependency found ${path}`);
-            }
+        const v = this.retriever(this, token, frontInjector || this);
+        if (v !== undefined) return v;
 
-            CircularDetector.push(token);
-
-            const v = this.retriever(this, token, frontInjector || this);
-            if (v !== undefined) return v;
-
-            throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
-        } finally {
-            CircularDetector.pop();
-        }
+        for (const reset of CircularDetectorResets) reset();
+        throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
     }
+}
+
+function notFound(classType: ClassType, name: string, position: number, token: any) {
+    const argsCheck: string[] = [];
+    for (let i = 0; i < position - 1; i++) argsCheck.push('✓');
+    argsCheck.push('?');
+
+    for (const reset of CircularDetectorResets) reset();
+    throw new DependenciesUnmetError(
+        `Unknown constructor argument ${name} of ${getClassName(classType)}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
+    );
+}
+
+function throwCircularDependency() {
+    const path = CircularDetector.map(tokenLabel).join(' -> ');
+    CircularDetector.length = 0;
+    for (const reset of CircularDetectorResets) reset();
+    throw new CircularDependencyError(`Circular dependency found ${path}`);
 }
 
 export class MemoryInjector extends Injector {
@@ -507,6 +570,31 @@ export class Context {
     }
 }
 
+export type ConfiguredProviderCalls = {
+        type: 'call', methodName: string | symbol | number, args: any[]
+    }
+    | { type: 'property', property: string | symbol | number, value: any }
+    | { type: 'stop' }
+    ;
+
+export class ConfiguredProviderRegistry {
+    public calls = new Map<any, ConfiguredProviderCalls[]>();
+
+    public add(token: any, ...newCalls: ConfiguredProviderCalls[]) {
+        let calls = this.calls.get(token);
+        if (!calls) {
+            calls = [];
+            this.calls.set(token, calls);
+        }
+
+        calls.push(...newCalls);
+    }
+
+    public get(token: any): ConfiguredProviderCalls[] | undefined {
+        return this.calls.get(token);
+    }
+}
+
 export class InjectorContext {
     protected injectors: (Injector | undefined)[] = new Array(this.contextManager.contexts.length);
     public readonly scopeCaches: ScopedContextScopeCaches;
@@ -517,8 +605,9 @@ export class InjectorContext {
     constructor(
         public readonly contextManager: ContextRegistry = new ContextRegistry,
         public readonly scope: string = 'module',
-        public readonly parent?: InjectorContext,
-        public readonly additionalInjectorParent?: Injector,
+        public readonly configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined,
+        public readonly parent: InjectorContext | undefined = undefined,
+        public readonly additionalInjectorParent: Injector | undefined = undefined,
         scopeCaches?: ScopedContextScopeCaches,
     ) {
         this.scopeCaches = scopeCaches || new ScopedContextScopeCaches(this.contextManager.size);
@@ -556,7 +645,7 @@ export class InjectorContext {
 
         const providers = getProviders(context.providers, this.scope);
 
-        injector = new Injector(providers, parents, undefined, this);
+        injector = new Injector(providers, parents, this, this.configuredProviderRegistry);
         this.injectors[contextId] = injector;
         this.cache.set(contextId, injector);
 
@@ -564,12 +653,12 @@ export class InjectorContext {
     }
 
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
-        const context = token ? (token as any)[InjectorContext.contextSymbol] as Context : undefined;
+        const context = typeof token === 'object' || typeof token === 'function' ? (token as any)[InjectorContext.contextSymbol] as Context : undefined;
         const injector = this.getInjector(context ? context.id : 0);
         return injector.get(token, frontInjector);
     }
 
     public createChildScope(scope: string, additionalInjectorParent?: Injector): InjectorContext {
-        return new InjectorContext(this.contextManager, scope, this, additionalInjectorParent, this.scopeCaches);
+        return new InjectorContext(this.contextManager, scope, this.configuredProviderRegistry, this, additionalInjectorParent, this.scopeCaches);
     }
 }

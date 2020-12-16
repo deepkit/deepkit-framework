@@ -20,7 +20,7 @@ import {arrayRemoveItem, ClassType, getClassName, isClass} from '@deepkit/core';
 import {httpClass} from './decorator';
 import {EventDispatcher} from './event';
 import {Module, ModuleOptions} from './module';
-import {Injector, tokenLabel} from './injector/injector';
+import {ConfiguredProviderRegistry, Injector, tokenLabel} from './injector/injector';
 import {ProviderWithScope} from './injector/provider';
 import {rpcClass} from '@deepkit/framework-shared';
 import {cli} from './command';
@@ -82,7 +82,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     protected currentIndexId = 0;
 
     protected contextManager = new ContextRegistry();
-    public rootScopedContext = new InjectorContext(this.contextManager, 'module');
+    public rootScopedContext = new InjectorContext(this.contextManager, 'module', new ConfiguredProviderRegistry);
     protected eventListenerContainer = new EventDispatcher(this.rootScopedContext);
 
     protected rootContext?: Context;
@@ -130,10 +130,8 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
 
     bootstrapModules(): void {
         for (const [module, contexts] of this.moduleContexts.entries()) {
-            for (const context of contexts) {
-                if (module.options.bootstrap) {
-                    this.getInjectorFor(module).get(module.options.bootstrap);
-                }
+            if (module.options.bootstrap) {
+                this.getInjectorFor(module).get(module.options.bootstrap);
             }
         }
     }
@@ -224,6 +222,12 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
                 this.eventListenerContainer.registerListener(listener, context);
             } else {
                 this.eventListenerContainer.add(listener.eventToken, {fn: listener.callback, order: listener.order});
+            }
+        }
+
+        if (this.rootScopedContext.configuredProviderRegistry) {
+            for (const [provider, calls] of module.getConfiguredProviderCalls().entries()) {
+                this.rootScopedContext.configuredProviderRegistry.add(provider, ...calls);
             }
         }
 

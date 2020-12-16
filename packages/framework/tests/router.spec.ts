@@ -1,6 +1,6 @@
 import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
-import {Router} from '../src/router';
+import {dotToUrlPath, Router} from '../src/router';
 import {HttpKernel, JSONResponse} from '../src/http';
 import {http, httpClass} from '../src/decorator';
 import {Application} from '../src/application';
@@ -238,4 +238,67 @@ test('router query all', async () => {
     expect(await httpHandler.handleRequestFor('GET', '/my-action?test=123')).toEqual({test: '123'});
     expect(await httpHandler.handleRequestFor('GET', '/my-action')).toEqual({});
     expect(await httpHandler.handleRequestFor('GET', '/my-action?filter=page&page=5')).toEqual({filter: 'page', page: 5});
+});
+
+
+test('router dotToUrlPath', () => {
+    expect(dotToUrlPath('peter')).toBe('peter');
+    expect(dotToUrlPath('foo.bar')).toBe('foo[bar]');
+    expect(dotToUrlPath('foo.bar.deep')).toBe('foo[bar][deep]');
+    expect(dotToUrlPath('foo.bar.deep.very')).toBe('foo[bar][deep][very]');
+});
+
+test('router url resolve', async () => {
+    class AnyReqQuery {
+        @t.optional test?: string;
+        @t.optional filter?: string;
+        @t.optional page?: number;
+    }
+
+    class Controller {
+        @http.GET('').name('first')
+        first() {
+            return '';
+        }
+
+        @http.GET(':peter').name('second')
+        second(peter: string) {
+            return '';
+        }
+
+        @http.GET('').name('secondQuery')
+        secondQuery(@http.query() peter: string) {
+            return '';
+        }
+
+        @http.GET('').name('secondQuery2')
+        secondQuery2(@http.query('changed') peter: string) {
+            return '';
+        }
+
+        @http.GET('third').name('third')
+        third(@http.queries() params: AnyReqQuery) {
+            return params;
+        }
+
+        @http.GET('third2').name('third2')
+        third2(@http.queries('deep') params: AnyReqQuery) {
+            return params;
+        }
+    }
+
+    const app = Application.create({controllers: [Controller]});
+    const router = app.get(Router);
+
+    expect(router.resolveUrl('first')).toBe('/');
+    expect(router.resolveUrl('second', {peter: 'foo'})).toBe('/foo');
+    expect(router.resolveUrl('secondQuery', {peter: 'foo'})).toBe('/?peter=foo');
+    expect(router.resolveUrl('secondQuery2', {peter: 'foo'})).toBe('/?changed=foo');
+    expect(router.resolveUrl('third', {})).toBe('/third');
+    expect(router.resolveUrl('third', {params: {test: 123}})).toBe('/third?test=123');
+    expect(router.resolveUrl('third', {params: {test: 123, filter: 'peter'}})).toBe('/third?test=123&filter=peter');
+
+    expect(router.resolveUrl('third2', {})).toBe('/third2');
+    expect(router.resolveUrl('third2', {params: {test: 123}})).toBe('/third2?deep[test]=123');
+    expect(router.resolveUrl('third2', {params: {test: 123, filter: 'peter'}})).toBe('/third2?deep[test]=123&deep[filter]=peter');
 });

@@ -7,7 +7,6 @@
   "private": true,
   "scripts": {
     "benchmark": "node --no-warnings --experimental-vm-modules --experimental-specifier-resolution=node --loader @deepkit/framework/loader index.ts",
-    "benchmark2": "node --no-warnings --experimental-vm-modules --experimental-specifier-resolution=node --loader @deepkit/framework/loader index2.ts",
     "benchmark-prof": "node --prof --experimental-vm-modules --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader index.ts",
     "setup": "sh setup.sh"
   },

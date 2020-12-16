@@ -18,7 +18,7 @@
 
 import {EventListener} from './event';
 import {JSONPartial, jsonSerializer, ValidationFailed} from '@deepkit/type';
-import {ConfigDefinition, InjectToken} from './injector/injector';
+import {ConfigDefinition, ConfiguredProviderCalls, InjectToken} from './injector/injector';
 import {ProviderWithScope} from './injector/provider';
 import {ClassType, CustomError} from '@deepkit/core';
 import {WorkflowDefinition} from './workflow';
@@ -130,10 +130,13 @@ export class ConfigurationInvalidError extends CustomError {}
 
 let moduleId = 0;
 
+export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
+
 export class Module<T extends ModuleOptions<any>> {
     public root: boolean = false;
     public parent?: Module<any>;
-    private resolvedConfig: any;
+    protected resolvedConfig: any;
+    protected configuredProviderCalls = new Map<any, ConfiguredProviderCalls[]>();
 
     constructor(
         public options: T,
@@ -149,6 +152,10 @@ export class Module<T extends ModuleOptions<any>> {
                 module.setParent(this);
             }
         }
+    }
+
+    getConfiguredProviderCalls(): Map<any, ConfiguredProviderCalls[]> {
+        return this.configuredProviderCalls;
     }
 
     getImports(): Module<ModuleOptions<any>>[] {
@@ -179,21 +186,48 @@ export class Module<T extends ModuleOptions<any>> {
     }
 
     addController(...controller: ClassType[]) {
-        if(!this.options.controllers) this.options.controllers = [];
+        if (!this.options.controllers) this.options.controllers = [];
 
         this.options.controllers.push(...controller);
     }
 
     addProvider(...provider: ProviderWithScope[]) {
-        if(!this.options.providers) this.options.providers = [];
+        if (!this.options.providers) this.options.providers = [];
 
         this.options.providers.push(...provider);
     }
 
     addListener(...listener: ClassType[]) {
-        if(!this.options.listeners) this.options.listeners = [];
+        if (!this.options.listeners) this.options.listeners = [];
 
         this.options.listeners.push(...listener);
+    }
+
+    /**
+     * Returns a configuration object that reflects the API of the given ClassType or token. Each call
+     * is scheduled and executed once the provider has been created by the dependency injection container.
+     */
+    setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
+        let calls = this.configuredProviderCalls.get(classTypeOrToken);
+        if (!calls) {
+            calls = [];
+            this.configuredProviderCalls.set(classTypeOrToken, calls);
+        }
+
+        const proxy = new Proxy({}, {
+            get(target, prop) {
+                return (...args: any[]) => {
+                    calls!.push({type: 'call', methodName: prop, args: args});
+                    return proxy;
+                };
+            },
+            set(target, prop, value) {
+                calls!.push({type: 'property', property: prop, value: value});
+                return true;
+            }
+        });
+
+        return proxy as any;
     }
 
     private hasConfigOption(path: string): boolean {

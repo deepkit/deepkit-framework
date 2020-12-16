@@ -187,7 +187,7 @@ export class FS<T extends DeepkitFile> {
             return;
         }
 
-        return new Promise<Buffer>(async (resolve, reject) => {
+        return new Promise<Buffer | undefined>(async (resolve, reject) => {
             const localPath = this.getLocalPath(file);
             if (await pathExists(localPath)) {
                 readFile(localPath, (err, data: Buffer) => {

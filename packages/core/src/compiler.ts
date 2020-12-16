@@ -13,6 +13,10 @@ export class CompilerContext {
 
     public maxReservedVariable: number = 10_000;
 
+    /**
+     * Code that is executed in the context, but before the actual function is generated.
+     * This helps for example to initialize dynamically some context variables.
+     */
     public preCode: string = '';
 
     reserveVariable(name: string = 'var', value?: any): string {

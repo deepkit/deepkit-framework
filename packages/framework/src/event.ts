@@ -50,7 +50,7 @@ export class EventToken<T extends BaseEvent> {
 }
 
 export class BaseEvent {
-    protected stopped = false;
+    stopped = false;
 
     stopPropagation() {
         this.stopped = true;

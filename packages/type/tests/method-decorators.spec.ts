@@ -210,7 +210,7 @@ test('no decorators', () => {
         const s = getClassSchema(Controller);
         s.getMethodProperties('foo');
 
-    }).toThrow('Method foo has no decorators used');
+    }).toThrow('Method Controller.foo has no decorators used');
 });
 
 test('partial', () => {

@@ -61,17 +61,14 @@ export class Application<T extends ModuleOptions<any>> {
 
     loadConfigFromEnvFile(path: string | string[]): this {
         throw new Error('Not implemented yet.');
-        return this;
     }
 
     loadConfigFromEnvVariables(prefix: string = ''): this {
         throw new Error('Not implemented yet.');
-        return this;
     }
 
     loadConfigFromEnvVariable(variableName: string): this {
         throw new Error('Not implemented yet.');
-        return this;
     }
 
     async run(argv?: any[]) {
@@ -142,7 +139,7 @@ export class Application<T extends ModuleOptions<any>> {
             if (e instanceof ExitError) {
                 process.exit(e.oclif.exit);
             } else {
-                throw e;
+                console.log(e);
             }
         }
         return result;

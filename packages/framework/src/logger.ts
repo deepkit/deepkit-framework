@@ -19,6 +19,8 @@
 import style from 'ansi-styles';
 import util from 'util';
 import {ClassType} from '@deepkit/core';
+import {DebugCollector} from './debug/collector';
+import {inject} from './injector/injector';
 
 enum LoggerLevel {
     alert,

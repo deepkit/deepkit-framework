@@ -16,7 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {EventDispatcher, http, HttpControllers, HttpKernel, HttpListener, InjectorContext, Logger, Router} from '@deepkit/framework';
+import 'reflect-metadata';
+import {
+    BaseEvent,
+    createModule,
+    EventDispatcher,
+    http,
+    HttpControllers,
+    HttpKernel,
+    HttpListener,
+    HttpRequestEvent,
+    HttpWorkflowEventWithRoute,
+    InjectorContext,
+    KernelModule,
+    Logger,
+    Router,
+    ServiceContainer,
+    WorkflowEvent
+} from '@deepkit/framework';
 import {BenchSuite} from '../bench';
 import {IncomingMessage, ServerResponse} from 'http';
 import {Socket} from 'net';
@@ -32,28 +49,87 @@ export async function main() {
             return 'hi';
         }
     }
-    const logger = new Logger();
 
-    const router = new Router(new HttpControllers([Controller]), logger);
+    const app = createModule({
+        controllers: [Controller],
+        imports: [
+            KernelModule.configure({httpLog: false})
+        ]
+    });
 
-    const context = InjectorContext.forProviders([
-        {provide: Controller, scope: 'http'},
-        HttpListener,
-        {provide: Router, useValue: router},
-        {provide: Logger, useValue: logger},
-    ]);
-    const dispatcher = new EventDispatcher(context);
-    dispatcher.registerListener(HttpListener);
-    const httpKernel = new HttpKernel(router, dispatcher, context, logger);
+    const serviceContainer = new ServiceContainer(app);
+    const httpKernel = serviceContainer.getInjectorFor(app).get(HttpKernel);
+
+    // const logger = new Logger();
+    //
+    // const router = new Router(new HttpControllers([Controller]), logger);
+    //
+    // const context = InjectorContext.forProviders([
+    //     {provide: Controller, scope: 'http'},
+    //     HttpListener,
+    //     {provide: Router, useValue: router},
+    //     {provide: Logger, useValue: logger},
+    // ]);
+    // const dispatcher = new EventDispatcher(context);
+    // dispatcher.registerListener(HttpListener);
+    // const httpKernel = new HttpKernel(router, dispatcher, context, logger);
 
     const request = new (class extends IncomingMessage {
         url = '/';
         method = 'GET';
     })(new Socket());
 
-    bench.addAsync('http', (): Promise<any> => {
+    const res = new ServerResponse(request);
+    await httpKernel.handleRequest(request, res);
+
+    // class MyClass {
+    //     stopped = false;
+    //
+    //     stopPropagation() {
+    //         this.stopped = true;
+    //     }
+    //
+    //     isStopped() {
+    //         return this.stopped;
+    //     }
+    // }
+    //
+    // bench.add('new BaseEvent', () => {
+    //     new BaseEvent();
+    //     new BaseEvent();
+    //     new BaseEvent();
+    // });
+    //
+    // bench.add('new MyClass', () => {
+    //     new MyClass();
+    //     new MyClass();
+    //     new MyClass();
+    // });
+    //
+    // bench.add('new workflowEVent', () => {
+    //     new WorkflowEvent();
+    //     new WorkflowEvent();
+    //     new WorkflowEvent();
+    // });
+    //
+    // bench.add('new HttpRequestEvent', () => {
+    //     new HttpRequestEvent(undefined as any, undefined as any, undefined as any);
+    //     new HttpRequestEvent(undefined as any, undefined as any, undefined as any);
+    //     new HttpRequestEvent(undefined as any, undefined as any, undefined as any);
+    // });
+    //
+    //
+    // bench.add('new HttpWorkflowEventWithRoute', () => {
+    //     new HttpWorkflowEventWithRoute(undefined as any, undefined as any, undefined as any, undefined as any, undefined as any);
+    //     new HttpWorkflowEventWithRoute(undefined as any, undefined as any, undefined as any, undefined as any, undefined as any);
+    //     new HttpWorkflowEventWithRoute(undefined as any, undefined as any, undefined as any, undefined as any, undefined as any);
+    // });
+    //
+    // bench.run();
+
+    bench.addAsync('http', async () => {
         const res = new ServerResponse(request);
-        return httpKernel.handleRequest(request, res);
+        await httpKernel.handleRequest(request, res);
     });
 
     await bench.runAsync();

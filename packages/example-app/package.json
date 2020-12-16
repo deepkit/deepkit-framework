@@ -6,8 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "app": "node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader app.tsx",
-    "app:watch": "ts-node-dev app.tsx"
+    "app": "node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader app.tsx"
   },
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",

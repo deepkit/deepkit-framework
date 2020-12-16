@@ -34,6 +34,39 @@ test('injector key', () => {
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
 });
 
+
+test('injector transient', () => {
+    class Connection {
+    }
+
+    @injectable()
+    class MyServer {
+        constructor(public connection: Connection) {
+            expect(connection).toBeInstanceOf(Connection);
+        }
+    }
+
+    const injector = new Injector([MyServer, {provide: Connection, transient: true}]);
+    const c1 = injector.get(Connection);
+    const c2 = injector.get(Connection);
+    expect(c1).toBeInstanceOf(Connection);
+    expect(c2).toBeInstanceOf(Connection);
+    expect(c1 !== c2).toBe(true);
+
+    const s1 = injector.get(MyServer);
+    const s2 = injector.get(MyServer);
+    expect(s1).toBeInstanceOf(MyServer);
+    expect(s2).toBeInstanceOf(MyServer);
+
+    expect(s1.connection).toBeInstanceOf(Connection);
+    expect(s2.connection).toBeInstanceOf(Connection);
+
+    expect(s1 === s2).toBe(true);
+    expect(s1.connection === s2.connection).toBe(true);
+    expect(s1.connection !== c1).toBe(true);
+    expect(s2.connection !== c2).toBe(true);
+});
+
 test('injector overwrite token', () => {
     class Connection {
     }
@@ -212,13 +245,41 @@ test('injector config', () => {
 
     @injectable()
     class MyService {
-        constructor(private config: ServiceConfig) {
+        constructor(public config: ServiceConfig) {
+        }
+    }
+
+    @injectable()
+    class MyService2 {
+        constructor(@inject(FullConfig) public config: typeof FullConfig.type) {
+        }
+    }
+
+    @injectable()
+    class MyService3 {
+        constructor(@inject(FullConfig.all()) public config: typeof FullConfig.type) {
+        }
+    }
+
+    class Slice extends FullConfig.slice(['debug']) {}
+
+    @injectable()
+    class MyService4 {
+        constructor(public config: Slice) {
         }
     }
 
     const i1 = new Injector([
-        MyService
+        MyService,
+        MyService2,
+        MyService3,
+        MyService4,
     ]);
+
+    expect(i1.get(MyService).config.debug).toBe(false);
+    expect(i1.get(MyService2).config.debug).toBe(false);
+    expect(i1.get(MyService3).config.debug).toBe(false);
+    expect(i1.get(MyService4).config.debug).toBe(false);
 });
 
 test('injector fork', () => {

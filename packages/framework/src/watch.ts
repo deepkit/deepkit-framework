@@ -16,12 +16,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {injectable} from '../injector/injector';
+import {EventEmitter} from 'events';
 
-@injectable()
-export class DebugCollector {
+class ImportedFiles extends EventEmitter {
+    files: string[] = [];
 
-    async save() {
-
+    on(event: 'file', listener: (...args: any[]) => void): this {
+        return super.on(event, listener);
     }
+
+    add(path: string) {
+        this.files.push(path);
+        this.emit('file');
+    }
+}
+
+export const importedFiles = new ImportedFiles();
+
+/**
+ * Watch files in importedFiles and trigger the callback when change detected
+ */
+export function watch(callback: () => void) {
+    //todo: Watch for changes and callback when detected.
+    // make sure that files added after this watch function has been called are handled as well
+    importedFiles.on('file', () => {
+
+    });
 }

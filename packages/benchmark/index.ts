@@ -71,5 +71,5 @@ try {
     });
     await res.json();
 } catch (error) {
-    console.log('error sending benchmark data', error);
+    console.log('error sending benchmark data', error.message);
 }

@@ -68,30 +68,30 @@ export async function main() {
     //     fn(2);
     // });
 
-    bench.add('new Injector', () => {
-        new Injector();
-    });
-
-    bench.add('new Injector w parents', () => {
-        new Injector([], [root]);
-    });
-
-    bench.add('fork', () => {
-        root.fork();
-    });
-
-    const context = InjectorContext.forProviders([Database, MyService, {provide: Database2, scope: 'http'}]);
-    const context2 = context.createChildScope('http');
-    context2.getInjector(0);
-
-    bench.add('context.createChildScope', () => {
-        const context2 = context.createChildScope('http');
-    });
-
-    bench.add('context.createChildScope + getInjector', () => {
-        const context2 = context.createChildScope('http');
-        context2.getInjector(0);
-    });
+    // bench.add('new Injector', () => {
+    //     new Injector();
+    // });
+    //
+    // bench.add('new Injector w parents', () => {
+    //     new Injector([], [root]);
+    // });
+    //
+    // bench.add('fork', () => {
+    //     root.fork();
+    // });
+    //
+    // const context = InjectorContext.forProviders([Database, MyService, {provide: Database2, scope: 'http'}]);
+    // const context2 = context.createChildScope('http');
+    // context2.getInjector(0);
+    //
+    // bench.add('context.createChildScope', () => {
+    //     const context2 = context.createChildScope('http');
+    // });
+    //
+    // bench.add('context.createChildScope + getInjector', () => {
+    //     const context2 = context.createChildScope('http');
+    //     context2.getInjector(0);
+    // });
 
     bench.add('new Database', () => {
         new Database();
@@ -107,6 +107,10 @@ export async function main() {
 
     bench.add('root myService', () => {
         root.get(MyService);
+    });
+
+    bench.add('root myService in fork', () => {
+        root.fork().get(MyService);
     });
 
     bench.add('child db', () => {

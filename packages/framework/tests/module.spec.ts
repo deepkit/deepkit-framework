@@ -5,6 +5,7 @@ import {ConfigSlice, createConfig, inject, injectable} from '../src/injector/inj
 import {createModule, Module} from '../src/module';
 import {ServiceContainer} from '../src/service-container';
 import {ClassType} from '@deepkit/core';
+import {injectorReference} from '../src/injector/injector';
 
 
 const myModuleConfig = createConfig({
@@ -200,4 +201,59 @@ test('config inheritance', () => {
 
     expect(AppModule.configure({myModule: {param2: 555}}).getImports()[0].getConfig()).toEqual({param1: '12345', param2: 555});
 
+});
+
+
+test('configured provider', () => {
+    class Transporter {
+
+    }
+
+    class Logger {
+        transporter: any[] = [];
+
+        addTransport(transport: any) {
+            this.transporter.push(transport);
+        }
+    }
+
+    const AppModule = createModule({
+        providers: [
+            Transporter,
+            Logger,
+        ],
+    });
+
+    {
+        const logger = new ServiceContainer(AppModule.setup((module) => {
+            module.setupProvider(Logger).addTransport('first').addTransport('second');
+        })).getInjectorFor(AppModule).get(Logger);
+        expect(logger.transporter).toEqual(['first', 'second']);
+    }
+
+    {
+        const logger = new ServiceContainer(AppModule.setup((module) => {
+            module.setupProvider(Logger).transporter = ['first', 'second', 'third'];
+        })).getInjectorFor(AppModule).get(Logger);
+        expect(logger.transporter).toEqual(['first', 'second', 'third']);
+    }
+
+    {
+        const logger = new ServiceContainer(AppModule.setup((module) => {
+            module.setupProvider(Logger).addTransport(new Transporter);
+        })).getInjectorFor(AppModule).get(Logger);
+        expect(logger.transporter[0] instanceof Transporter).toBe(true);
+    }
+
+    {
+        const logger = new ServiceContainer(AppModule.setup((module) => {
+            module.setupProvider(Logger).addTransport(injectorReference(Transporter));
+        })).getInjectorFor(AppModule).get(Logger);
+        expect(logger.transporter[0] instanceof Transporter).toBe(true);
+    }
+
+    {
+        const logger = new ServiceContainer(AppModule).getInjectorFor(AppModule).get(Logger);
+        expect(logger.transporter).toEqual([]);
+    }
 });

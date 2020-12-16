@@ -17,6 +17,7 @@ export * from './src/database/migration';
 export * from './src/database/migration-provider';
 export * from './src/module';
 export * from './src/http';
+export * from './src/workflow';
 export * from './src/command';
 export * from './src/router';
 export * from './src/kernel.config';

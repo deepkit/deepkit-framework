@@ -25,11 +25,11 @@ import {RpcSecurityStrategy} from './rpc/security';
 import {Router} from './router';
 import {HttpKernel, HttpListener, httpWorkflow, serveStaticListener} from './http';
 import {ServerListenController} from './cli/server-listen';
-import {EventDispatcher, eventDispatcher} from './event';
+import {eventDispatcher} from './event';
 import {ApplicationServer, ApplicationServerListener} from './application-server';
 import {ConsoleTransport, Logger} from './logger';
 import {LiveDatabase} from './exchange/live-database';
-import {inject, injectable} from './injector/injector';
+import {injectable, injectorReference} from './injector/injector';
 import {DebugController} from './debug/debug.controller';
 import {createModule} from './module';
 import {ExchangeModule} from './exchange/exchange.module';
@@ -38,9 +38,11 @@ import {EnvConfiguration} from './configuration';
 import {WebWorkerFactory} from './worker';
 import {rpcWorkflow} from './rpc/rpc';
 import {registerDebugHttpController} from './debug/http-debug.controller';
+import {Zone} from './zone';
 
+@injectable()
 class HttpLogger {
-    constructor(@inject() private logger: Logger) {
+    constructor(private logger: Logger) {
     }
 
     @eventDispatcher.listen(httpWorkflow.onResponse)
@@ -56,16 +58,6 @@ class HttpLogger {
     }
 }
 
-class HttpRouteNotFoundListener {
-    @eventDispatcher.listen(httpWorkflow.onRouteNotFound)
-    on(event: typeof httpWorkflow.onRouteNotFound.event) {
-        if (event.response.finished) return;
-
-        event.response.writeHead(404);
-        event.response.end('Not found');
-    }
-}
-
 export const KernelModule = createModule({
     name: 'kernel',
     config: kernelConfig,
@@ -78,12 +70,13 @@ export const KernelModule = createModule({
         HttpKernel,
         EnvConfiguration,
         WebWorkerFactory,
-        {provide: Logger, useFactory: () => new Logger([new ConsoleTransport()], [])},
+        ConsoleTransport,
+        Logger,
         {provide: SessionStack, scope: 'rpc'},
         {provide: ClientConnection, scope: 'rpc'},
         {provide: ConnectionMiddleware, scope: 'rpc'},
         {provide: LiveDatabase, scope: 'rpc'},
-        {provide: HttpListener, scope: 'http'},
+        {provide: HttpListener},
     ],
     workflows: [
         httpWorkflow,
@@ -91,7 +84,6 @@ export const KernelModule = createModule({
     ],
     listeners: [
         HttpListener,
-        HttpRouteNotFoundListener,
         ApplicationServerListener,
     ],
     controllers: [
@@ -109,7 +101,10 @@ export const KernelModule = createModule({
         module.addListener(serveStaticListener(config.publicDir));
     }
 
+    module.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
+
     if (config.debug) {
+        Zone.enable();
         module.addController(DebugController);
         registerDebugHttpController(module, config.debugUrl);
     }
