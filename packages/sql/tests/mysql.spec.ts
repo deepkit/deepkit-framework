@@ -32,7 +32,7 @@ test('connection release persistence/query', async () => {
     const adapter = new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'});
     const database = new Database(adapter);
     database.registerEntity(user);
-    await database.migrate();
+    await adapter.createTables([...database.entities]);
     const session = database.createSession();
 
     session.add(plainToClass(user, {id: undefined, username: '123'}));

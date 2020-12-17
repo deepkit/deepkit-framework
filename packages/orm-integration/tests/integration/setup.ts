@@ -1,7 +1,7 @@
 import {afterAll} from '@jest/globals';
 import {ClassSchema} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
-import {MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLiteDatabaseAdapter} from '@deepkit/sql';
+import {MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLDatabaseAdapter, SQLiteDatabaseAdapter} from '@deepkit/sql';
 import {Database, DatabaseAdapter} from '@deepkit/orm';
 import {GenericCommand, MongoDatabaseAdapter} from '@deepkit/mongo';
 
@@ -30,7 +30,12 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
     const database = new Database(adapter);
     databases.push(database);
     database.registerEntity(...schemas);
-    await database.migrate();
+    if (adapter instanceof SQLDatabaseAdapter) {
+        await adapter.createTables([...database.entities])
+    } else {
+        await database.migrate();
+    }
+
     if (adapter instanceof MongoDatabaseAdapter) {
         await adapter.resetAutoIncrementSequences();
         await adapter.client.execute(new GenericCommand({dropDatabase: 1, $db: 'bookstore'}));

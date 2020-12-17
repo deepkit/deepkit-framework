@@ -16,11 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createConfig} from '../injector/injector';
-import {t} from '@deepkit/type';
+import {entity, t} from '@deepkit/type';
+import {LoggerLevel} from '../logger';
 
-export const databaseConfig = createConfig({
-    databases: t.array(t.any),
-    migrateOnStartup: t.boolean.default(false).description('Whether all registered database should be migrated automatically on startup.'),
-    migrationDir: t.string.default('migrations'),
-});
+@entity.name('debugRequest')
+export class DebugRequest {
+    @t.primary.autoIncrement id: number = 0;
+    @t created: Date = new Date;
+    @t.optional statusCode?: number;
+
+    constructor(
+        @t public url: string,
+        @t public clientIp: string,
+    ) {
+    }
+}

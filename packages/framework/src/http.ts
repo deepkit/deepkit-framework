@@ -29,18 +29,11 @@ import {BaseEvent, EventDispatcher, eventDispatcher,} from './event';
 import {createWorkflow, WorkflowEvent} from './workflow';
 import {join} from 'path';
 import {stat} from 'fs';
-import {DebugCollector} from './debug/collector';
+import {HttpRequestDebugCollector} from './debug/debugger';
 import {kernelConfig} from './kernel.config';
 import {Zone} from './zone';
+import {HttpRequest, HttpResponse} from './http-model';
 
-export class HttpResponse extends ServerResponse {
-    status(code: number) {
-        this.writeHead(code);
-        this.end();
-    }
-}
-
-export class HttpRequest extends IncomingMessage {}
 
 export class Redirect {
     public routeName?: string;
@@ -118,8 +111,8 @@ export class HttpWorkflowEvent {
 
     constructor(
         public injectorContext: InjectorContext,
-        public request: IncomingMessage,
-        public response: ServerResponse,
+        public request: HttpRequest,
+        public response: HttpResponse,
     ) {
     }
 
@@ -141,8 +134,8 @@ export const HttpRouteNotFoundEvent = HttpWorkflowEvent;
 export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
     constructor(
         public injectorContext: InjectorContext,
-        public request: IncomingMessage,
-        public response: ServerResponse,
+        public request: HttpRequest,
+        public response: HttpResponse,
         public parameters: any[] = [],
         public route: RouteConfig,
     ) {
@@ -153,8 +146,8 @@ export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
 export class HttpRouteEvent extends HttpWorkflowEvent {
     constructor(
         public injectorContext: InjectorContext,
-        public request: IncomingMessage,
-        public response: ServerResponse,
+        public request: HttpRequest,
+        public response: HttpResponse,
         public parameters: any[] = [],
         public route?: RouteConfig,
     ) {
@@ -193,8 +186,8 @@ export class HttpControllerEvent extends HttpWorkflowEventWithRoute {
 export class HttpControllerResponseEvent extends WorkflowEvent {
     constructor(
         public injectorContext: InjectorContext,
-        public request: IncomingMessage,
-        public response: ServerResponse,
+        public request: HttpRequest,
+        public response: HttpResponse,
         public parameters: any[],
         public route: RouteConfig,
         public result: any,
@@ -206,8 +199,8 @@ export class HttpControllerResponseEvent extends WorkflowEvent {
 export class HttpControllerErrorEvent extends WorkflowEvent {
     constructor(
         public injectorContext: InjectorContext,
-        public request: IncomingMessage,
-        public response: ServerResponse,
+        public request: HttpRequest,
+        public response: HttpResponse,
         public parameters: any[],
         public route: RouteConfig,
         public error: Error,
@@ -253,7 +246,7 @@ export function serveStaticListener(path: string): ClassType {
     class HttpRequestStaticServingListener {
         protected serveStatic = serveStatic(path, {index: false});
 
-        serve(path: string, request: IncomingMessage, response: ServerResponse) {
+        serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise(resolve => {
                 this.serveStatic(request, response, () => {
                     resolve(response);
@@ -350,6 +343,7 @@ export class HttpListener {
     @eventDispatcher.listen(httpWorkflow.onControllerError)
     onControllerError(event: typeof httpWorkflow.onControllerError.event): void {
         if (event.response.finished) return;
+        this.logger.error('Controller error', event.error);
         event.response.writeHead(500);
         event.response.end('Internal error');
     }
@@ -417,7 +411,7 @@ export class HttpKernel {
     async handleRequestFor(method: string, url: string, jsonBody?: any): Promise<any> {
         const body = Buffer.from(jsonBody ? JSON.stringify(jsonBody) : '');
 
-        const request = new (class extends IncomingMessage {
+        const request = new (class extends HttpRequest {
             url = url;
             method = method;
             position = 0;
@@ -440,7 +434,7 @@ export class HttpKernel {
         })(new Socket());
 
         let result: any = 'nothing';
-        const response = new (class extends ServerResponse {
+        const response = new (class extends HttpResponse {
             end(chunk: any) {
                 result = chunk ? chunk.toString() : chunk;
             }
@@ -461,21 +455,22 @@ export class HttpKernel {
         }
     }
 
-    async handleRequest(req: IncomingMessage, res: ServerResponse) {
-        const collector = this.debug ? new DebugCollector : undefined;
-
+    async handleRequest(req: HttpRequest, res: HttpResponse) {
         const httpInjectorContext = this.injectorContext.createChildScope('http', new MemoryInjector([
-            {provide: IncomingMessage, useValue: req},
-            {provide: ServerResponse, useValue: res},
+            {provide: HttpRequest, useValue: req},
+            {provide: HttpResponse, useValue: res},
         ]));
+
+        const collector = this.debug ? httpInjectorContext.get(HttpRequestDebugCollector) : undefined;
 
         const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext);
         try {
             if (collector) {
+                await collector.init(req);
                 await Zone.run({collector: collector}, async () => {
                     await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
                 });
-                collector.save();
+                await collector.save();
             } else {
                 return await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
             }

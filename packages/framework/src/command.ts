@@ -141,7 +141,10 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
     if (!argDefinitions.name) throw new Error(`No command name set. use @cli.controller('name')`);
 
     const schema = getClassSchema(classType);
-    const properties = schema.getMethodProperties('execute');
+    let properties: PropertySchema[] = [];
+    try {
+        properties = schema.getMethodProperties('execute');
+    } catch {}
 
     for (const i in argDefinitions.args) {
         if (!argDefinitions.args.hasOwnProperty(i)) continue;

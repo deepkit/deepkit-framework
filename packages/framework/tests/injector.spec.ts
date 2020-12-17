@@ -67,6 +67,25 @@ test('injector transient', () => {
     expect(s2.connection !== c2).toBe(true);
 });
 
+test('injector property injection', () => {
+    class Connection {
+    }
+
+    @injectable()
+    class MyServer {
+        @inject()
+        public connection!: Connection;
+
+        constructor(@inject('name') public name: string) {
+        }
+    }
+
+    const injector = new Injector([MyServer, Connection, {provide: 'name', useValue: 'peter'}]);
+    const s = injector.get(MyServer);
+    expect(s.connection).toBeInstanceOf(Connection);
+    expect(s.name).toBe('peter');
+});
+
 test('injector overwrite token', () => {
     class Connection {
     }

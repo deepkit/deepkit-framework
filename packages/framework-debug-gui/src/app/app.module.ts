@@ -27,6 +27,7 @@ import {RpcComponent} from './views/rpc/rpc.component';
 import {WorkflowComponent} from './components/workflow.component';
 import {EventsComponent} from './views/events/events.component';
 import {DeepkitClient} from '@deepkit/framework-client';
+import {OverlayModule} from '@angular/cdk/overlay';
 
 @NgModule({
   declarations: [
@@ -44,6 +45,7 @@ import {DeepkitClient} from '@deepkit/framework-client';
 
     DuiAppModule.forRoot(),
     DuiWindowModule.forRoot(),
+    OverlayModule,
 
     DuiCheckboxModule,
     DuiButtonModule,

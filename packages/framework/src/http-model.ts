@@ -16,11 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createConfig} from '../injector/injector';
-import {t} from '@deepkit/type';
+import {IncomingMessage, ServerResponse} from 'http';
 
-export const databaseConfig = createConfig({
-    databases: t.array(t.any),
-    migrateOnStartup: t.boolean.default(false).description('Whether all registered database should be migrated automatically on startup.'),
-    migrationDir: t.string.default('migrations'),
-});
+export class HttpResponse extends ServerResponse {
+    status(code: number) {
+        this.writeHead(code);
+        this.end();
+    }
+}
+
+export class HttpRequest extends IncomingMessage {
+    getUrl(): string {
+        return this.url || '/';
+    }
+
+    getRemoteAddress(): string {
+        return this.connection.remoteAddress || '';
+    }
+}

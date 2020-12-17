@@ -42,7 +42,7 @@ export async function main() {
     const count = 10_000;
     const database = new Database(new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres'}));
     database.registerEntity(DeepkitModel);
-    await database.migrate();
+    await database.adapter.createTables([...database.entities]);
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);

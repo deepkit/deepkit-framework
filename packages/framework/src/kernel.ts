@@ -39,6 +39,13 @@ import {WebWorkerFactory} from './worker';
 import {rpcWorkflow} from './rpc/rpc';
 import {registerDebugHttpController} from './debug/http-debug.controller';
 import {Zone} from './zone';
+import {HttpRequestDebugCollector, Debugger} from './debug/debugger';
+import {DatabaseModule} from './database/database.module';
+import {DebugDatabase} from './debug/db';
+import {DatabaseRegistry} from './database/database-registry';
+import fs from 'fs-extra';
+import {dirname} from 'path';
+import {DebugRouterController} from './cli/router-debug';
 
 @injectable()
 class HttpLogger {
@@ -77,6 +84,7 @@ export const KernelModule = createModule({
         {provide: ConnectionMiddleware, scope: 'rpc'},
         {provide: LiveDatabase, scope: 'rpc'},
         {provide: HttpListener},
+        {provide: HttpRequestDebugCollector, scope: 'http'},
     ],
     workflows: [
         httpWorkflow,
@@ -88,6 +96,7 @@ export const KernelModule = createModule({
     ],
     controllers: [
         ServerListenController,
+        DebugRouterController,
     ],
     imports: [
         ExchangeModule,
@@ -104,8 +113,15 @@ export const KernelModule = createModule({
     module.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
 
     if (config.debug) {
+        fs.ensureDirSync(config.debugStorePath);
+        fs.ensureDirSync(dirname(config.debugSqlitePath));
+
         Zone.enable();
+        module.addProvider(Debugger);
         module.addController(DebugController);
         registerDebugHttpController(module, config.debugUrl);
+
+        module.addProvider(DebugDatabase);
+        module.setupProvider(DatabaseRegistry).addDatabase(DebugDatabase, {migrateOnStartup: true});
     }
 }).forRoot();

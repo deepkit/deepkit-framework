@@ -26,6 +26,8 @@ import {Logger} from './logger';
 import {IncomingMessage} from 'http';
 import formidable from 'formidable';
 import querystring from 'querystring';
+import {HttpRequest} from './http-model';
+import {Socket} from 'net';
 
 type ResolvedController = { parameters?: ((injector: BasicInjector) => any[] | Promise<any[]>), routeConfig: RouteConfig };
 
@@ -226,7 +228,7 @@ export function dotToUrlPath(dotPath: string): string {
 
 @injectable()
 export class Router {
-    protected fn?: (request: IncomingMessage) => ResolvedController | undefined;
+    protected fn?: (request: HttpRequest) => ResolvedController | undefined;
     protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
 
     protected routes: RouteConfig[] = [];
@@ -459,7 +461,7 @@ export class Router {
         return this.resolveFn!(routeName, parameters);
     }
 
-    public resolveRequest(request: IncomingMessage): ResolvedController | undefined {
+    public resolveRequest(request: HttpRequest): ResolvedController | undefined {
         if (!this.fn) {
             this.fn = this.build();
         }
@@ -468,9 +470,9 @@ export class Router {
     }
 
     public resolve(method: string, url: string): ResolvedController | undefined {
-        return this.resolveRequest({
-            method,
-            url
-        } as IncomingMessage);
+        return this.resolveRequest(new class extends HttpRequest {
+            method = method;
+            url = url;
+        }(new Socket()));
     }
 }

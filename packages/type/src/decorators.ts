@@ -886,15 +886,23 @@ fRaw['partial'] = function <T extends ClassType>(this: FieldDecoratorResult<T>, 
 };
 
 fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabelsAsValue: boolean = false): FieldDecoratorResult<T> {
-    return EnumField(clazz, allowLabelsAsValue);
+    return Field('enum').use((target, property) => {
+        property.setFromJSType(clazz);
+        property.type = 'enum';
+        property.allowLabelsAsValue = allowLabelsAsValue;
+    });
 };
 
-type ExtractType<T> = T extends ForwardRef<infer K> ? ExtractType<K> :
-    T extends () => infer K ? ExtractType<K> :
-        T extends ClassType<infer K> ? K :
-            T extends ClassSchema<infer K> ? K :
-                T extends PlainSchemaProps ? ExtractClassDefinition<T> :
-                    T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
+type EnumValue<T> = T[keyof T];
+
+//this separation is necessary to support older TS version and avoid "error TS2315: Type 'ExtractType' is not generic."
+type ExtractType<T> = T extends ForwardRef<infer K> ? ExtractSimpleType<K> :
+    T extends () => infer K ? ExtractSimpleType<K> : ExtractSimpleType<T>;
+
+type ExtractSimpleType<T> = T extends ClassType<infer K> ? K :
+    T extends ClassSchema<infer K> ? K :
+        T extends PlainSchemaProps ? ExtractClassDefinition<T> :
+            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
 
 type StandardEnum<T> = {
     [id: string]: T | string;
@@ -1030,7 +1038,7 @@ export interface MainDecorator {
      *
      * Note: const enums are not supported.
      */
-    enum<T>(type: T, allowLabelsAsValue?: boolean): FieldDecoratorResult<T[keyof T]>;
+    enum<T>(type: T, allowLabelsAsValue?: boolean): FieldDecoratorResult<EnumValue<T extends ForwardRef<infer K> ? K : T>>;
 
     /**
      * Marks a field as partial of a class entity. It differs in a way to standard Partial<> that
@@ -1202,17 +1210,4 @@ export function MultiIndex(fields: string[], options?: IndexOptions, name?: stri
 
         schema.indices.set(name || fields.join('_'), {fields: fields as string[], options: options || {}});
     };
-}
-
-/**
- * Used to define a field as Enum.
- * If allowLabelsAsValue is set, you can use the enum labels as well for setting the property value using plainToClass().
- *
- * @internal
- */
-function EnumField<T>(type: any, allowLabelsAsValue = false) {
-    return Field('enum').use((target, property) => {
-        property.setClassType(type);
-        property.allowLabelsAsValue = allowLabelsAsValue;
-    });
 }

@@ -44,7 +44,7 @@ export const onServerMainBootstrapDone = new EventToken('server.main.bootstrapDo
 /**
  * Called for each worker as soon as the worker bootstraps.
  */
-export const onServerBootstrap = new EventToken('server.bootstrap', ServerBootstrapEvent);
+export const onServerWorkerBootstrap = new EventToken('server.worker.bootstrap', ServerBootstrapEvent);
 
 export class ServerShutdownEvent extends BaseEvent {}
 
@@ -149,7 +149,7 @@ export class ApplicationServer {
 
                 await this.bootstrapDone();
             } else {
-                await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
+                await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
                 this.webWorkerFactory.create(cluster.worker.id, this.config);
 
                 cluster.on('exit', (w) => {
@@ -159,7 +159,7 @@ export class ApplicationServer {
             }
         } else {
             await this.bootstrap();
-            await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
+            await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
             this.masterWorker = this.webWorkerFactory.create(1, this.config);
             await this.bootstrapDone();
         }

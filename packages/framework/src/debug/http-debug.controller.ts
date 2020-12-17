@@ -28,9 +28,10 @@ import {normalizeDirectory} from '../utils';
 
 export function registerDebugHttpController(module: Module<any>, path: string): void {
     path = normalizeDirectory(path);
-    const localPathPrefix = import.meta.url.replace('file://', '').includes('framework/dist/') ? '../../../' : '../../';
+    const localPathPrefix = import.meta.url.replace('file://', '').includes('framework/dist/') ? '../../../../' : '../../../';
     const localPath = join(import.meta.url.replace('file://', ''), localPathPrefix, 'node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui');
 
+    console.log('localPath', localPath);
     let indexHtml = '';
     try {
         indexHtml = readFileSync(join(localPath, 'index.html')).toString('utf8');
@@ -41,7 +42,7 @@ export function registerDebugHttpController(module: Module<any>, path: string): 
     @http.controller(path)
     class HttpDebugController {
         @http.GET(':path').regexp('path', '[^\.]*')
-        serviceApp() {
+        serviceApp(path: string) {
             return new HtmlResponse(indexHtml);
         }
     }

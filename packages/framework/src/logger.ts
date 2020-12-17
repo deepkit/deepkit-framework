@@ -19,10 +19,10 @@
 import style from 'ansi-styles';
 import util from 'util';
 import {ClassType} from '@deepkit/core';
-import {DebugCollector} from './debug/collector';
 import {inject} from './injector/injector';
+import {Debugger} from './debug/debugger';
 
-enum LoggerLevel {
+export enum LoggerLevel {
     alert,
     error,
     warning,
@@ -30,6 +30,7 @@ enum LoggerLevel {
     info,
     debug,
 }
+
 
 export class ConsoleTransport implements Transport {
     write(message: string, level: LoggerLevel) {
@@ -105,6 +106,9 @@ export class Logger {
     protected colorFormatter = new ColorFormatter;
     protected removeColorFormatter = new RemoveColorFormatter;
 
+    @inject().optional
+    protected debugger?: Debugger;
+
     constructor(
         protected transport: Transport[] = [],
         protected formatter: Formatter[] = [],
@@ -135,6 +139,7 @@ export class Logger {
 
     protected send(messages: any[], level: LoggerLevel) {
         let message = this.format((util.format as any)(...messages), level);
+        this.debugger?.log(this.colorFormatter.format(message, level));
 
         for (const transport of this.transport) {
             if (transport.supportsColor()) {

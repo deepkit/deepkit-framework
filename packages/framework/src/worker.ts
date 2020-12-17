@@ -22,7 +22,8 @@ import WebSocket from 'ws';
 import http from 'http';
 import {IncomingMessage, Server} from 'http';
 import https from 'https';
-import {HttpKernel, HttpRequest, HttpResponse} from './http';
+import {HttpKernel} from './http';
+import {HttpRequest, HttpResponse} from './http-model';
 import {RpcInjectorContext} from './rpc/rpc';
 import {InjectorContext} from './injector/injector';
 import {Provider} from './injector/provider';
@@ -108,7 +109,7 @@ export class WebWorker extends BaseWorker {
         } else {
             this.server = new http.Server(
                 {IncomingMessage: HttpRequest, ServerResponse: HttpResponse},
-                this.httpKernel.handleRequest.bind(this.httpKernel)
+                this.httpKernel.handleRequest.bind(this.httpKernel) as any //as any necessary since http.Server is not typed correctly
             );
             this.server.keepAliveTimeout = 5000;
             this.server.listen(options.port, options.host, () => {

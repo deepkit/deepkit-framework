@@ -16,12 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {injectable} from '../injector/injector';
+import {cli, Command, flag} from '../command';
+import {Router} from '../router';
 
-@injectable()
-export class DebugCollector {
+@cli.controller('debug:router', {
+})
+export class DebugRouterController implements Command {
+    constructor(
+        protected router: Router,
+    ) {
+    }
 
-    async save() {
-
+    async execute(): Promise<void> {
+        this.router.resolve('GET', '/');
+        console.log((this.router as any).fn.toString());
     }
 }

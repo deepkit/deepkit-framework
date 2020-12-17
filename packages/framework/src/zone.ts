@@ -17,7 +17,6 @@
  */
 
 import {AsyncLocalStorage} from 'async_hooks';
-import {DebugCollector} from './debug/collector';
 
 type SimpleStore = { [name: string]: any };
 
@@ -36,9 +35,5 @@ export class Zone {
     static run<T>(data: SimpleStore, cb: () => T): T {
         if (!Zone.asyncLocalStorage) return cb();
         return Zone.asyncLocalStorage.run(data, cb);
-    }
-
-    static debugCollector(): DebugCollector | undefined {
-        return Zone.current().collector;
     }
 }

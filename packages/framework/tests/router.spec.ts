@@ -4,8 +4,8 @@ import {dotToUrlPath, Router} from '../src/router';
 import {HttpKernel, JSONResponse} from '../src/http';
 import {http, httpClass} from '../src/decorator';
 import {Application} from '../src/application';
-import {IncomingMessage} from 'http';
 import {t} from '@deepkit/type';
+import {HttpRequest} from '../src/http-model';
 
 test('router', async () => {
     class Controller {
@@ -82,10 +82,10 @@ test('router parameters', async () => {
 });
 
 
-test('router IncomingMessage', async () => {
+test('router HttpRequest', async () => {
     class Controller {
         @http.GET(':path').regexp('path', '.*')
-        anyReq(req: IncomingMessage, path: string) {
+        anyReq(req: HttpRequest, path: string) {
             return [req.url, path];
         }
     }
@@ -104,7 +104,7 @@ test('router body', async () => {
 
     class Controller {
         @http.POST()
-        anyReq(@http.body() body: Body, req: IncomingMessage) {
+        anyReq(@http.body() body: Body, req: HttpRequest) {
             return [body.username, body instanceof Body, req.url];
         }
     }
@@ -123,7 +123,7 @@ test('router body double', async () => {
 
     class Controller {
         @http.POST()
-        anyReq(@http.body() body: Body, @http.body() body2: Body, req: IncomingMessage) {
+        anyReq(@http.body() body: Body, @http.body() body2: Body, req: HttpRequest) {
             return [body2.username, body2 instanceof Body && body instanceof Body, req.url];
         }
     }

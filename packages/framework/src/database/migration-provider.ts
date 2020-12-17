@@ -38,7 +38,7 @@ export class MigrationProvider {
         const migrationsPerDatabase = new Map<Database<any>, Migration[]>();
 
         for (const migration of await this.getMigrations(this.migrationDir)) {
-            const database = this.databases.getDatabase(migration.databaseName);
+            const database = this.databases.getDatabaseByName(migration.databaseName);
             if (!database) continue;
             if (limitDatabase && database.name !== limitDatabase) continue;
 

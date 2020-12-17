@@ -27,13 +27,16 @@ import {InjectorContext} from '../injector/injector';
  * Class to register a new database and resolve a schema/type to a database.
  */
 export class DatabaseRegistry {
-    protected databaseMap = new Map<string, Database<any>>();
+    protected databaseNameMap = new Map<string, Database<any>>();
+    protected databaseMap = new Map<ClassType, Database<any>>();
+    protected databaseOptions = new Map<ClassType, { migrateOnStartup?: boolean }>();
+    protected initialized = false;
 
     constructor(
         protected scopedContext: InjectorContext,
-        @inject(databaseConfig.token('databases')) public databaseTypes: ClassType<Database<any>>[]
+        @inject(databaseConfig.token('databases')) protected databaseTypes: ClassType<Database<any>>[],
+        @inject(databaseConfig.token('migrateOnStartup')) protected migrateOnStartup: boolean,
     ) {
-        this.init();
     }
 
     public onShutDown() {
@@ -42,17 +45,40 @@ export class DatabaseRegistry {
         }
     }
 
+    public addDatabase(database: ClassType, options: { migrateOnStartup?: boolean } = {}) {
+        this.databaseTypes.push(database);
+        this.databaseOptions.set(database, options);
+    }
+
+    public getDatabaseTypes() {
+        return this.databaseTypes;
+    }
+
+    public isMigrateOnStartup(database: ClassType): boolean {
+        const options = this.databaseOptions.get(database);
+        if (options && options.migrateOnStartup !== undefined) return options.migrateOnStartup;
+
+        return this.migrateOnStartup;
+    }
+
     public init() {
+        if (this.initialized) return;
+
         for (const databaseType of this.databaseTypes) {
             const database = this.scopedContext.get(databaseType);
-            if (this.databaseMap.has(database.name)) continue;
+            if (this.databaseNameMap.has(database.name)) {
+                throw new Error(`Database with name ${database.name} already registered. If you have multiple Database instances, make sure each has its own name.`);
+            }
 
             for (const classSchema of database.entities) {
                 classSchema.data['orm.database'] = database;
             }
 
-            this.databaseMap.set(database.name, database);
+            this.databaseNameMap.set(database.name, database);
+            this.databaseMap.set(databaseType, database);
         }
+
+        this.initialized = true;
     }
 
     getDatabaseForEntity(entity: ClassSchema | ClassType): Database<any> {
@@ -63,10 +89,17 @@ export class DatabaseRegistry {
     }
 
     getDatabases() {
+        this.init();
         return this.databaseMap.values();
     }
 
-    getDatabase(name: string): Database<any> | undefined {
-        return this.databaseMap.get(name);
+    getDatabase(classType: ClassType): Database<any> | undefined {
+        this.init();
+        return this.databaseMap.get(classType);
+    }
+
+    getDatabaseByName(name: string): Database<any> | undefined {
+        this.init();
+        return this.databaseNameMap.get(name);
     }
 }

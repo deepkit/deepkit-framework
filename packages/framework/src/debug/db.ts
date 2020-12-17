@@ -16,11 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createConfig} from '../injector/injector';
-import {t} from '@deepkit/type';
+import {Database} from '@deepkit/orm';
+import {SQLiteDatabaseAdapter} from '@deepkit/sql';
+import {inject} from '../injector/injector';
+import {kernelConfig} from '../kernel.config';
+import {DebugRequest} from './models';
 
-export const databaseConfig = createConfig({
-    databases: t.array(t.any),
-    migrateOnStartup: t.boolean.default(false).description('Whether all registered database should be migrated automatically on startup.'),
-    migrationDir: t.string.default('migrations'),
-});
+export class DebugDatabase extends Database {
+    constructor(@inject(kernelConfig.token('debugSqlitePath')) debugSqlitePath: string) {
+        super(new SQLiteDatabaseAdapter(debugSqlitePath), [
+            DebugRequest,
+        ]);
+        this.name = 'debug';
+    }
+}

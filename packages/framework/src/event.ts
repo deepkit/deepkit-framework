@@ -119,6 +119,7 @@ interface EventDispatcherFn {
 export class EventDispatcher {
     protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
     protected instances: any[] = [];
+    protected registeredClassTypes = new Set<ClassType>();
 
     constructor(
         public scopedContext: InjectorContext = InjectorContext.forProviders([]),
@@ -126,6 +127,8 @@ export class EventDispatcher {
     }
 
     public registerListener(listener: ClassType, context?: Context) {
+        if (this.registeredClassTypes.has(listener)) return;
+        this.registeredClassTypes.add(listener);
         const config = eventClass._fetch(listener);
         if (!config) return;
         for (const entry of config.listeners) {

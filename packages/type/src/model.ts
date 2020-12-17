@@ -618,7 +618,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             if (this.classTypeResolved) {
                 return this.classTypeResolved;
             }
-            throw new Error(`ForwardRef returns no value. ${this.classTypeForwardRef}`);
+            throw new Error(`ForwardRef returns no value for field ${this.name}`);
         }
 
         if (!this.classType || isArray(this.classType)) {

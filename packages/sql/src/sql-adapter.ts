@@ -37,7 +37,7 @@ import {DefaultPlatform} from './platform/default-platform';
 import {SqlBuilder} from './sql-builder';
 import {SqlFormatter} from './sql-formatter';
 import {sqlSerializer} from './serializer/sql-serializer';
-import {DatabaseModel} from './schema/table';
+import {DatabaseComparator, DatabaseModel} from './schema/table';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -344,7 +344,11 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         return true;
     }
 
-    async migrate(classSchemas: ClassSchema[]): Promise<void> {
+    /**
+     * Creates (and re-creates already existing) tables in the database.
+     * This is only for testing purposes useful.
+     */
+    public async createTables(classSchemas: ClassSchema[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();
         try {
             const database = new DatabaseModel();
@@ -353,6 +357,41 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
             const DDLs = this.platform.getAddTablesDDL(database);
             for (const sql of DDLs) {
                 await connection.run(sql);
+            }
+        } finally {
+            connection.release();
+        }
+    }
+
+    public async migrate(classSchemas: ClassSchema[]): Promise<void> {
+        const connection = await this.connectionPool.getConnection();
+
+        try {
+            const databaseModel = new DatabaseModel();
+            databaseModel.schemaName = this.getSchemaName();
+            this.platform.createTables(classSchemas, databaseModel);
+
+            const schemaParser = new this.platform.schemaParserType(connection, this.platform);
+
+            const parsedDatabaseModel = new DatabaseModel();
+            parsedDatabaseModel.schemaName = this.getSchemaName();
+            await schemaParser.parse(parsedDatabaseModel);
+
+            const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
+            if (!databaseDiff) {
+                return;
+            }
+
+            const upSql = this.platform.getModifyDatabaseDDL(databaseDiff);
+            if (!upSql.length) return;
+
+            for (const sql of upSql) {
+                try {
+                    await connection.run(sql);
+                } catch (error) {
+                    console.error('Could not execute migration SQL', sql);
+                    throw error;
+                }
             }
         } finally {
             connection.release();

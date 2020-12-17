@@ -26,7 +26,7 @@ import {DatabaseRegistry} from './database-registry';
 import {MigrationProvider} from './migration-provider';
 import {databaseConfig} from './database.config';
 import {eventDispatcher} from '../event';
-import {onServerBootstrap, onServerMainBootstrap, onServerMainShutdown} from '../application-server';
+import {onServerMainBootstrap, onServerMainShutdown, onServerWorkerBootstrap} from '../application-server';
 import {Logger} from '../logger';
 
 @injectable()
@@ -34,19 +34,15 @@ export class DatabaseListener {
     constructor(
         protected databases: DatabaseRegistry,
         protected logger: Logger,
-        @inject(databaseConfig.token('migrateOnStartup')) protected migrateOnStartup: boolean,
     ) {
-    }
-
-    @eventDispatcher.listen(onServerBootstrap)
-    async onBootstrap() {
-        this.databases.init();
     }
 
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
-        if (this.migrateOnStartup) {
-            for (const database of this.databases.getDatabases()) {
+        for (const databaseType of this.databases.getDatabaseTypes()) {
+            if (this.databases.isMigrateOnStartup(databaseType)) {
+                const database = this.databases.getDatabase(databaseType);
+                if (!database) throw new Error('Database not created');
                 this.logger.log(`Migrate database <yellow>${database.name}</yellow>`);
                 await database.migrate();
             }

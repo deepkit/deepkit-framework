@@ -7,7 +7,7 @@ import {DatabaseModel, TableComparator} from '../src/schema/table';
 export async function createSetup(adapter: SQLDatabaseAdapter, schemas: (ClassSchema | ClassType)[]) {
     const database = new Database(adapter);
     database.registerEntity(...schemas);
-    await database.migrate();
+    await adapter.createTables([...database.entities]);
 
     return database;
 }
@@ -20,7 +20,7 @@ export async function schemaMigrationRoundTrip(types: (ClassType | ClassSchema)[
     const connection = await adapter.connectionPool.getConnection();
 
     try {
-        await db.migrate();
+        await adapter.createTables([...db.entities]);
         const schemaParser = new adapter.platform.schemaParserType(connection, adapter.platform);
 
         // console.log(adapter.platform.getAddTablesDDL(originDatabaseModel));

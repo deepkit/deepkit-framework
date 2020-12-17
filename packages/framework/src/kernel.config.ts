@@ -29,6 +29,8 @@ export const kernelConfig = createConfig({
     publicDir: t.string.optional.description('A path to a folder that should be served per default. Relative to cwd.'),
     debug: t.boolean.default(false),
     debugUrl: t.string.default('_debug'),
+    debugStorePath: t.string.default('var/debug/'),
+    debugSqlitePath: t.string.default('var/debug/deepkit-debug.sqlite'),
     httpLog: t.boolean.default(true),
 });
 

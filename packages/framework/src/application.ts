@@ -127,13 +127,12 @@ export class Application<T extends ModuleOptions<any>> {
             }
         }
 
-        const config = new MyConfig({root: import.meta.url.replace('file://', '')});
-
-        for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
-            config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.rootScopedContext);
-        }
-
         try {
+            const config = new MyConfig({root: import.meta.url.replace('file://', '')});
+            for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
+                config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.rootScopedContext);
+            }
+
             await Main.run(argv, config);
         } catch (e) {
             if (e instanceof ExitError) {

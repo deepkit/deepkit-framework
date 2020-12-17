@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import {entity, t} from '@deepkit/type';
 
-import {Application, BodyValidation, DatabaseModule, http, KernelModule, Redirect} from '@deepkit/framework';
+import {Application, BodyValidation, DatabaseModule, http, KernelModule, Logger, Redirect} from '@deepkit/framework';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
@@ -48,8 +48,12 @@ async function UserList({error}: {error?: string} = {}) {
 
 @http.controller()
 class HelloWorldController {
+    constructor(protected logger: Logger) {
+    }
+
     @http.GET('/').name('startPage').description('List all users')
     startPage() {
+        this.logger.log('Hi!');
         return <UserList/>;
     }
 
@@ -76,7 +80,7 @@ Application.create({
     providers: [],
     controllers: [HelloWorldController],
     imports: [
-        KernelModule.configure({workers: 1, debug: false, publicDir: 'public', httpLog: false}),
+        KernelModule.configure({workers: 1, debug: true, publicDir: 'public', httpLog: true}),
         DatabaseModule.configure({databases: [SQLiteDatabase], migrateOnStartup: true})
     ]
 }).run();
