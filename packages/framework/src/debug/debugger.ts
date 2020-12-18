@@ -16,59 +16,77 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import {DebugRequest} from '@deepkit/framework-debug-shared';
 import {LoggerLevel} from '../logger';
 import {injectable} from '../injector/injector';
 import {Zone} from '../zone';
-import {HttpRequest} from '../http-model';
-import {DebugRequest} from './models';
+import {HttpRequest, HttpResponse} from '../http-model';
 import {DebugDatabase} from './db';
 import {kernelConfig} from '../kernel.config';
 import {openSync, appendFileSync, mkdirSync} from 'fs';
 import {dirname, join} from 'path';
+import {DatabaseAdapter, DatabaseSession} from '@deepkit/orm';
+import {Stopwatch} from './stopwatch';
+import {normalizeDirectory} from '../utils';
 
 export class Debugger {
-    protected getCollector(): HttpRequestDebugCollector {
+    protected getCollector(): HttpRequestDebugCollector | undefined {
         return Zone.current().collector;
     }
 
-    public log(message: string) {
-        this.getCollector()?.log(message);
+    public log(message: string, level: LoggerLevel) {
+        this.getCollector()?.log(message, level);
+    }
+
+    get stopwatch(): Stopwatch | undefined {
+        return this.getCollector()?.stopwatch;
     }
 }
 
-class Config extends kernelConfig.slice(['debugSqlitePath', 'debugStorePath']) {}
+class Config extends kernelConfig.slice(['debugSqlitePath', 'debugStorePath', 'debugUrl']) {}
 
 @injectable()
 export class HttpRequestDebugCollector {
     protected debugRequest?: DebugRequest;
     protected logPath?: string;
     protected logFile?: number;
+    protected session: DatabaseSession<DatabaseAdapter>;
+    protected logs: number = 0;
+    public stopwatch = new Stopwatch;
 
     constructor(
         protected db: DebugDatabase,
         protected config: Config,
+        protected request: HttpRequest,
+        protected response: HttpResponse,
     ) {
+        this.session = this.db.createSession();
     }
 
-    public async init(request: HttpRequest) {
-        if (this.debugRequest) throw new Error('DebugCollector already init');
+    public async init() {
+        if (this.request.getUrl().startsWith(normalizeDirectory(this.config.debugUrl))) return;
+
         this.debugRequest = new DebugRequest(
-            request.getUrl(), '127.0.0.1'
+            this.request.getMethod(), this.request.getUrl(), '127.0.0.1'
         );
-        await this.db.persist(this.debugRequest);
+        this.session.add(this.debugRequest);
+        await this.session.commit();
         this.logPath = join(this.config.debugStorePath, 'requests', this.debugRequest.id + '');
         mkdirSync(this.logPath, {recursive: true});
         this.logFile = openSync(join(this.logPath, 'log.txt'), 'a');
     }
 
-    public log(message: string) {
+    public log(message: string, level: LoggerLevel) {
         if (this.logFile === undefined) return;
+        this.logs++;
         appendFileSync(this.logFile, message);
     }
 
     async save() {
-        const session = this.db.createSession();
+        if (!this.debugRequest) return;
 
-        await session.commit();
+        this.debugRequest!.times = this.stopwatch.getTimes();
+        this.debugRequest!.statusCode = this.response.statusCode;
+        await this.session.commit();
     }
 }

@@ -137,9 +137,9 @@ function createFieldDecoratorResult<T>(
         }
     }
 
-    function buildPropertySchema(target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any): PropertySchema {
+    function buildPropertySchema(target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any, parent?: PropertySchema): PropertySchema {
         //anon properties
-        const propertySchema = new PropertySchema(propertyOrMethodName || String(parameterIndexOrDescriptor));
+        const propertySchema = new PropertySchema(propertyOrMethodName || String(parameterIndexOrDescriptor), parent);
 
         for (const mod of modifier) {
             mod(target, propertySchema);
@@ -486,20 +486,20 @@ function createFieldDecoratorResult<T>(
             for (const [i, t] of eachPair(templateArgs)) {
                 const name = property.name + '_' + i;
                 if ('string' === typeof t || 'number' === typeof t || 'boolean' === typeof t) {
-                    const p = fRaw.literal(t).buildPropertySchema(name);
+                    const p = fRaw.literal(t).buildPropertySchema(name, property);
                     property.templateArgs.push(p);
                 } else if (isFieldDecorator(t)) {
                     //its a decorator @f()
                     //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
-                    const p = t.buildPropertySchema(name);
+                    const p = t.buildPropertySchema(name, );
                     property.templateArgs.push(p);
                 } else if (t instanceof ClassSchema) {
-                    property.templateArgs.push(fRaw.type(t.classType).buildPropertySchema(name));
+                    property.templateArgs.push(fRaw.type(t.classType).buildPropertySchema(name, property));
                 } else if (isPlainObject(t)) {
                     const schema = fRaw.schema(t);
-                    property.templateArgs.push(fRaw.type(schema.classType).buildPropertySchema(name));
+                    property.templateArgs.push(fRaw.type(schema.classType).buildPropertySchema(name, property));
                 } else {
-                    const p = new PropertySchema(name);
+                    const p = new PropertySchema(name, property);
                     p.setFromJSType(t);
                     property.templateArgs.push(p);
                 }
@@ -507,8 +507,8 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.buildPropertySchema = function (name: string = 'unknown') {
-        return buildPropertySchema(Object, name);
+    fn.buildPropertySchema = function (name: string = 'unknown', parent?: PropertySchema) {
+        return buildPropertySchema(Object, name, undefined, parent);
     };
 
     fn.toString = function () {

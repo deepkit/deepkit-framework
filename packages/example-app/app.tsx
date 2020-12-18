@@ -1,3 +1,4 @@
+#!/usr/bin/env -S node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
 import 'reflect-metadata';
 import {entity, t} from '@deepkit/type';
 

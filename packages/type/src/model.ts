@@ -247,9 +247,11 @@ export class PropertyCompilerSchema {
      */
     classTypeName?: string;
 
+    classType?: ClassType;
+
     constructor(
         public name: string,
-        public classType?: ClassType
+        public parent?: PropertyCompilerSchema,
     ) {
     }
 
@@ -324,11 +326,13 @@ export class PropertyCompilerSchema {
 
     static createFromPropertySchema(
         propertySchema: PropertySchema,
+        parent?: PropertyCompilerSchema,
     ): PropertyCompilerSchema {
         const i = new PropertyCompilerSchema(
             propertySchema.name,
-            propertySchema.getResolvedClassTypeForValidType()
+            parent
         );
+        i.classType = propertySchema.getResolvedClassTypeForValidType();
         i.type = propertySchema.type;
         i.literalValue = propertySchema.literalValue;
         i.validators = propertySchema.validators;
@@ -394,8 +398,8 @@ export class PropertySchema extends PropertyCompilerSchema {
 
     description: string = '';
 
-    constructor(name: string) {
-        super(name);
+    constructor(name: string, public parent?: PropertySchema) {
+        super(name, parent);
     }
 
     setType(type: Types) {
@@ -472,7 +476,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         return props;
     }
 
-    static fromJSON(props: PropertySchemaSerialized): PropertySchema {
+    static fromJSON(props: PropertySchemaSerialized, parent?: PropertySchema): PropertySchema {
         const p = new PropertySchema(props['name']);
         p.type = props['type'];
         p.literalValue = props['literalValue'];
@@ -489,7 +493,7 @@ export class PropertySchema extends PropertyCompilerSchema {
         if (props['noValidation']) p.noValidation = props['noValidation'];
 
         if (props['templateArgs']) {
-            p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v));
+            p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v, p));
         }
 
         if (props['classType']) {
@@ -530,7 +534,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             //of any type
             this.type = 'array';
             this.typeSet = true;
-            this.templateArgs[0] = new PropertySchema('0');
+            this.templateArgs[0] = new PropertySchema('0', this);
             return;
         }
 
@@ -571,7 +575,7 @@ export class PropertySchema extends PropertyCompilerSchema {
     }
 
     clone(): PropertySchema {
-        const s = new PropertySchema(this.name);
+        const s = new PropertySchema(this.name, this.parent);
         for (const i of eachKey(this)) {
             (s as any)[i] = (this as any)[i];
         }

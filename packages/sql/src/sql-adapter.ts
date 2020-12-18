@@ -468,7 +468,12 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         const sql = this.getInsertSQL(classSchema, fields.map(v => this.platform.quoteIdentifier(v)), insert);
-        await this.connection.run(sql, params);
+        try {
+            await this.connection.run(sql, params);
+        } catch (error) {
+            console.warn('Insert failed', sql, params);
+            throw error;
+        }
     }
 
     protected resetPlaceholderSymbol() {

@@ -34,8 +34,8 @@
               "src/assets"
             ],
             "styles": [
-              "node_modules/@marcj/angular-desktop-ui/src/scss/all.scss",
-              "node_modules/@marcj/angular-desktop-ui/src/scss/icon.scss",
+              "node_modules/@deepkit/desktop-ui/src/scss/all.scss",
+              "node_modules/@deepkit/desktop-ui/src/scss/icon.scss",
               "src/styles.scss"
             ],
             "scripts": []

@@ -25,7 +25,7 @@
     "@angular/core": "^9.0.0",
     "@angular/forms": "^9.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "~6.5.5"
+    "rxjs": "~6.6.0"
   },
   "jest": {
     "transform": {

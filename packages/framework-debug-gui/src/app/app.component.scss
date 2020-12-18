@@ -1,0 +1,27 @@
+.request-line {
+  display: flex;
+  font-size: 10px;
+  line-height: 12px;
+
+  .id, .method {
+    flex: 0;
+    white-space: nowrap;
+    margin-right: 5px;
+  }
+
+  .url {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .icons {
+    width: 34px;
+  }
+}
+
+.request-subline {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-light);
+}

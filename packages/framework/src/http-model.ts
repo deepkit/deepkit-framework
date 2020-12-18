@@ -30,6 +30,10 @@ export class HttpRequest extends IncomingMessage {
         return this.url || '/';
     }
 
+    getMethod(): string {
+        return this.method || 'GET';
+    }
+
     getRemoteAddress(): string {
         return this.connection.remoteAddress || '';
     }

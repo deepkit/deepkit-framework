@@ -12,12 +12,12 @@ import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertyCompilerS
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions} from './jit';
 import {ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
-import {CompilerState, getDataConverterJS} from './serializer-compiler';
+import {CompilerState, getDataConverterJS, reserveVariable} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';
 import {typedArrayNamesMap} from './types';
 import {ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
-import {validate, ValidationFailed } from './validation';
+import {validate, ValidationFailed} from './validation';
 
 export class JSONSerializer extends Serializer {
     constructor() {
@@ -192,6 +192,65 @@ const convertToPlainUsingToJson = (property: PropertyCompilerSchema, state: Comp
 
 jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
 
+
+function convertArray(property: PropertyCompilerSchema, state: CompilerState) {
+    const a = state.setVariable('a');
+    const l = state.setVariable('l');
+    let setDefault = property.isOptional ? '' : `${state.setter} = [];`;
+
+    //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
+    state.addCodeForSetter(`
+    if (${state.accessor}.length === undefined || 'string' === typeof ${state.accessor} || 'function' !== typeof ${state.accessor}.slice) {
+        ${setDefault}
+    } else {
+         let ${l} = ${state.accessor}.length;
+         let ${a} = ${state.accessor}.slice();
+         while (${l}--) {
+            //make sure all elements have the correct type
+            if (${state.accessor}[${l}] !== undefined && ${state.accessor}[${l}] !== null) {
+                let itemValue;
+                ${getDataConverterJS(`itemValue`, `${a}[${l}]`, property.getSubType(), state.serializerCompilers, state.rootContext, state.jitStack)}
+                if (${!property.getSubType().isOptional} && itemValue === undefined) {
+                    ${a}.splice(${l}, 1);
+                } else {
+                    ${a}[${l}] = itemValue;   
+                }
+            }
+         }
+         ${state.setter} = ${a};
+    }
+    `);
+}
+
+jsonSerializer.fromClass.register('array', convertArray);
+jsonSerializer.toClass.register('array', convertArray);
+
+function convertMap(property: PropertyCompilerSchema, state: CompilerState) {
+    const a = state.setVariable('a');
+    const i = state.setVariable('i');
+    let setDefault = property.isOptional ? '' : `${state.setter} = {};`;
+
+    state.addCodeForSetter(`
+        let ${a} = {};
+        //we make sure its a object and not an array
+        if (${state.accessor} && 'object' === typeof ${state.accessor} && 'function' !== typeof ${state.accessor}.slice) {
+            for (let ${i} in ${state.accessor}) {
+                if (!${state.accessor}.hasOwnProperty(${i})) continue;
+                if (${!property.getSubType().isOptional} && ${state.accessor}[${i}] === undefined) {
+                    continue;
+                }
+                ${getDataConverterJS(`${a}[${i}]`, `${state.accessor}[${i}]`, property.getSubType(), state.serializerCompilers, state.rootContext, state.jitStack)}
+            }
+            ${state.setter} = ${a};
+        } else {
+            ${setDefault}
+        }
+    `);
+}
+
+jsonSerializer.fromClass.register('map', convertMap);
+jsonSerializer.toClass.register('map', convertMap);
+
 jsonSerializer.fromClass.register('class', (property: PropertyCompilerSchema, state: CompilerState) => {
     const classSchema = getClassSchema(property.resolveClassType!);
     const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
@@ -200,6 +259,10 @@ jsonSerializer.fromClass.register('class', (property: PropertyCompilerSchema, st
 });
 
 jsonSerializer.toClass.register('class', (property: PropertyCompilerSchema, state) => {
+    if (!property.resolveClassType) {
+        throw new Error(`Property ${property.name} has no classType defined`);
+    }
+
     const classSchema = getClassSchema(property.resolveClassType!);
     const xToClass = state.setVariable('xToClass', state.jitStack.getOrCreate(classSchema, () => getXToClassFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
 

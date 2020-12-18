@@ -1,0 +1,48 @@
+
+:host {
+    display: none;
+}
+
+.category-title {
+    font-size: 12px;
+    margin-top: 15px;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--text-grey);
+    letter-spacing: -0.3px;
+}
+
+
+.emoji-image {
+    display: inline-block;
+    background-image: url(./emoji_apple_32.png);
+    background-repeat: no-repeat;
+    width: 32px;
+    height: 32px;
+    transform: scale((1/32*26));
+}
+
+.emoji {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    text-align: center;
+    border-radius: 3px;
+
+    &.selected, &:active {
+        background: rgba(180, 206, 239, 0.85);
+    }
+}
+
+.emojis {
+    margin-top: 7px;
+    display: grid;
+    width: 100%;
+    grid-gap: 4px;
+    grid-template-columns: repeat(auto-fill, 32px);
+}
+
+.dropdown {
+    padding: 10px 13px;
+}
+

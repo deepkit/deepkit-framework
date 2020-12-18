@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="17px" height="17px" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 59.1 (86144) - https://sketch.com -->
+    <title>comment</title>
+    <desc>Created with Sketch.</desc>
+    <g id="comment" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M13,3 C14.1045695,3 15,3.8954305 15,5 L15,11 C15,12.1045695 14.1045695,13 13,13 L4,13 C2.8954305,13 2,12.1045695 2,11 L2,5 C2,3.8954305 2.8954305,3 4,3 L13,3 Z M13,4 L4,4 C3.44771525,4 3,4.44771525 3,5 L3,11 C3,11.5522847 3.44771525,12 4,12 L13,12 C13.5522847,12 14,11.5522847 14,11 L14,5 C14,4.44771525 13.5522847,4 13,4 Z" id="Rectangle" fill="#313131" fill-rule="nonzero"></path>
+        <polygon id="Line-26" fill="#313131" fill-rule="nonzero" points="5 6 5 7 12 7 12 6"></polygon>
+        <polygon id="Line-27" fill="#313131" fill-rule="nonzero" points="5 9 5 10 12 10 12 9"></polygon>
+        <polygon id="Line-28" fill="#313131" fill-rule="nonzero" points="5 13 5 14 8 14 8 13"></polygon>
+        <rect id="Rectangle" fill="#313131" opacity="0.591959635" x="5" y="14" width="1" height="1"></rect>
+    </g>
+</svg>

@@ -10,7 +10,7 @@ import {isArray} from '@deepkit/core';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
-process.env['ADAPTER_DRIVER'] = 'postgres';
+// process.env['ADAPTER_DRIVER'] = 'postgres';
 
 class BookModeration {
     @t locked: boolean = false;
@@ -182,33 +182,32 @@ test('sub documents', async () => {
     const peter = new User('Peter');
     const herbert = new User('Herbert');
 
+    const session = database.createSession();
+    session.add(admin, peter, herbert);
+
+    const book1 = new Book(peter, 'Peters book');
+    book1.moderation.locked = true;
+
+    const book2 = new Book(herbert, 'Herberts book');
+    book2.moderation.admin = admin;
+    session.add(book1, book2);
+
+    await session.commit();
+
     {
-        const session = database.createSession();
-        session.add(admin, peter, herbert);
-
-        const book1 = new Book(peter, 'Peters book');
-        book1.moderation.locked = true;
-
-        const book2 = new Book(herbert, 'Herberts book');
-        book2.moderation.admin = admin;
-        session.add(book1, book2);
-
-        await session.commit();
+        const book1DB = await database.query(Book).filter({author: peter}).findOne();
+        expect(book1DB.title).toBe('Peters book');
+        expect(book1DB.moderation === book1.moderation).toBe(false);
+        expect(book1DB.moderation).toBeInstanceOf(BookModeration);
+        expect(book1DB.moderation.locked).toBe(true);
     }
 
     {
-        const book1 = await database.query(Book).filter({author: peter}).findOne();
-        expect(book1.title).toBe('Peters book');
-        expect(book1.moderation).toBeInstanceOf(BookModeration);
-        expect(book1.moderation.locked).toBe(true);
-    }
-
-    {
-        const book2 = await database.query(Book).filter({author: herbert}).findOne();
-        expect(book2.title).toBe('Herberts book');
-        expect(book2.moderation).toBeInstanceOf(BookModeration);
-        expect(book2.moderation.locked).toBe(false);
-        expect(book2.moderation.admin).toBeInstanceOf(User);
+        const book2DB = await database.query(Book).filter({author: herbert}).findOne();
+        expect(book2DB.title).toBe('Herberts book');
+        expect(book2DB.moderation).toBeInstanceOf(BookModeration);
+        expect(book2DB.moderation.locked).toBe(false);
+        expect(book2DB.moderation.admin).toBeInstanceOf(User);
     }
 
     {

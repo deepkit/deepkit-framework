@@ -26,23 +26,28 @@ import {eventDispatcher} from '../event';
 import serveStatic from 'serve-static';
 import {normalizeDirectory} from '../utils';
 
+function loadHtml(localPath: string, path: string): string {
+    try {
+        let indexHtml = readFileSync(join(localPath, 'index.html')).toString('utf8');
+        indexHtml = indexHtml.replace('<base href="/">', `<base href="${path}">`);
+        return indexHtml;
+    } catch (error) {
+        return '';
+    }
+}
+
 export function registerDebugHttpController(module: Module<any>, path: string): void {
     path = normalizeDirectory(path);
     const localPathPrefix = import.meta.url.replace('file://', '').includes('framework/dist/') ? '../../../../' : '../../../';
     const localPath = join(import.meta.url.replace('file://', ''), localPathPrefix, 'node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui');
 
-    console.log('localPath', localPath);
     let indexHtml = '';
-    try {
-        indexHtml = readFileSync(join(localPath, 'index.html')).toString('utf8');
-        indexHtml = indexHtml.replace('<base href="/">', `<base href="${path}">`);
-    } catch (error) {
-    }
 
     @http.controller(path)
     class HttpDebugController {
-        @http.GET(':path').regexp('path', '[^\.]*')
-        serviceApp(path: string) {
+        @http.GET(':any').regexp('any', '[^\.]*')
+        serviceApp(any: string) {
+            if (!indexHtml) indexHtml = loadHtml(localPath, path);
             return new HtmlResponse(indexHtml);
         }
     }
@@ -59,6 +64,9 @@ export function registerDebugHttpController(module: Module<any>, path: string): 
             event.request.url = event.request.url.substr(path.length);
 
             return new Promise(resolve => {
+                event.response.once('finish', () => {
+                    resolve(undefined);
+                });
                 this.serveStatic(event.request, event.response, () => {
                     resolve(undefined);
                 });

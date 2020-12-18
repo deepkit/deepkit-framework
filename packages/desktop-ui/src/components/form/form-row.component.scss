@@ -1,0 +1,24 @@
+:host {
+    display: flex;
+    margin-bottom: 12px;
+
+    > div:first-child {
+        width: 30%;
+        margin-right: 8px;
+        line-height: 20px;
+        text-align: right;
+    }
+
+    .field {
+        flex: 1;
+
+        ::ng-deep > * {
+            width: 100%;
+        }
+    }
+}
+
+.error {
+    margin-top: 2px;
+    color: var(--color-red);
+}

@@ -55,3 +55,30 @@ test('context fork', () => {
         expect(connectionConstructed).toBe(2);
     }
 });
+
+test('injector scoped setup provider', () => {
+    class MyService {
+        public value: any;
+
+        set(value: any) {
+            this.value = value;
+        }
+    }
+
+    class MySubService extends MyService {}
+
+    const context = InjectorContext.forProviders([MyService, {provide: MySubService, scope: 'rpc'}]);
+    context.configuredProviderRegistry.add(MyService, {type: 'call', methodName: 'set', args: ['foo']});
+    context.configuredProviderRegistry.add(MySubService, {type: 'call', methodName: 'set', args: ['foo']});
+
+    {
+        const s = context.getInjector(0).get(MyService);
+        expect(s.value).toBe('foo');
+    }
+
+    const sub = context.createChildScope('rpc');
+    {
+        const s = sub.getInjector(0).get(MySubService);
+        expect(s.value).toBe('foo');
+    }
+});

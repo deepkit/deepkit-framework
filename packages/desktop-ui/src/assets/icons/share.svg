@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="17px" height="17px" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 59.1 (86144) - https://sketch.com -->
+    <title>share</title>
+    <desc>Created with Sketch.</desc>
+    <g id="share" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M7,7 L4,7 L4,15 L13,15 L13,7 L10,7 L10,6 L14,6 L14,16 L3,16 L3,6 L7,6 L7,7 Z" id="Combined-Shape" fill="#2D2D2D" fill-rule="nonzero"></path>
+        <polygon id="Line-30" fill="#2D2D2D" fill-rule="nonzero" points="8 11 9 11 9 2 8 2"></polygon>
+        <path d="M8.07789375,1.14740063 L5.57189412,4.14740063 C5.37715886,4.38052348 5.40827815,4.727371 5.641401,4.92210625 C5.87452384,5.1168415 6.22137136,5.08572221 6.41610662,4.85259937 L8.92210625,1.85259937 C9.1168415,1.61947652 9.08572221,1.272629 8.85259937,1.07789375 C8.61947652,0.883158497 8.272629,0.914277788 8.07789375,1.14740063 Z" id="Line-31" fill="#2D2D2D" fill-rule="nonzero"></path>
+        <path d="M8.07714845,1.85170522 L10.5723874,4.85170522 C10.7666288,5.08523969 11.1134097,5.11709298 11.3469442,4.92285155 C11.5804786,4.72861012 11.6123319,4.38182924 11.4180905,4.14829478 L8.92285155,1.14829478 C8.72861012,0.914760313 8.38182924,0.882907015 8.14829478,1.07714845 C7.91476031,1.27138988 7.88290702,1.61817076 8.07714845,1.85170522 Z" id="Line-32" fill="#2D2D2D" fill-rule="nonzero"></path>
+    </g>
+</svg>

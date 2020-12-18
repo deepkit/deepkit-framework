@@ -15,8 +15,20 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import {Config, ConfigOption, DebugControllerInterface, Route, RpcAction, RpcActionParameter, Workflow, Event, Database, DatabaseEntity} from '@deepkit/framework-debug-shared';
-import {rpc, rpcClass} from '@deepkit/framework-shared';
+import {
+    Config,
+    ConfigOption,
+    Database,
+    DatabaseEntity,
+    DebugControllerInterface,
+    DebugRequest,
+    Event,
+    Route,
+    RpcAction,
+    RpcActionParameter,
+    Workflow
+} from '@deepkit/framework-debug-shared';
+import {Collection, rpc, rpcClass} from '@deepkit/framework-shared';
 import {getClassSchema, t} from '@deepkit/type';
 import {ServiceContainer} from '../service-container';
 import {parseRouteControllerAction, Router} from '../router';
@@ -25,6 +37,7 @@ import {EventDispatcher, isEventListenerContainerEntryService} from '../event';
 import {DatabaseRegistry} from '../database/database-registry';
 import {inject} from '../injector/injector';
 import {DatabaseAdapter} from '@deepkit/orm';
+import {LiveDatabase} from '../exchange/live-database';
 
 
 @rpc.controller(DebugControllerInterface)
@@ -33,6 +46,7 @@ export class DebugController implements DebugControllerInterface {
         protected serviceContainer: ServiceContainer,
         protected eventDispatcher: EventDispatcher,
         protected router: Router,
+        protected liveDatabase: LiveDatabase,
         @inject().optional protected databaseRegistry?: DatabaseRegistry,
     ) {
     }
@@ -201,5 +215,10 @@ export class DebugController implements DebugControllerInterface {
             places: Object.keys(w.places),
             transitions: w.transitions,
         };
+    }
+
+    @rpc.action()
+    httpRequests(): Promise<Collection<DebugRequest>> {
+        return this.liveDatabase.query(DebugRequest).find();
     }
 }

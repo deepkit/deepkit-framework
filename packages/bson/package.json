@@ -24,7 +24,7 @@
     "@types/bson": "^4.0.3",
     "bson-ext": "^2.0.5",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "~6.5.3"
+    "rxjs": "~6.6.0"
   },
   "jest": {
     "testEnvironment": "node",

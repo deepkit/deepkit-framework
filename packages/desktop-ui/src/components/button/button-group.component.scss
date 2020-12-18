@@ -1,0 +1,54 @@
+:host {
+    //fix for non-integer widths, making icons blurry that come behind those elements
+    display: inline-table;
+    line-height: 0;
+    white-space: nowrap;
+}
+
+//:host ::ng-deep > * {
+//    margin-right: 6px;
+//}
+
+:host ::ng-deep > * {
+    margin-right: 6px;
+}
+:host:last-child ::ng-deep > *:last-child {
+    margin-right: 0;
+}
+
+:host ::ng-deep dui-button.active {
+    z-index: 1;
+}
+
+:host.float-right {
+    margin-left: auto;
+}
+
+:host.with-animation {
+    transition: padding-left 300ms ease-in-out;
+}
+
+:host-context(.dark).padding-none {
+    ::ng-deep dui-select:not(:first-child),
+    ::ng-deep dui-button:not(.square):not(:first-child) {
+        border-left: 1px solid #484c50 !important;
+    }
+}
+
+:host.padding-none {
+    margin-right: 7px;
+}
+
+:host.padding-none ::ng-deep > * {
+    margin-right: -1px;
+
+    &:not(:first-child) {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+
+    &:not(:last-child) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+}

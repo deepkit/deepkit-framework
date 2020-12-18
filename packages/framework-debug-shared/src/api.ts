@@ -1,5 +1,6 @@
 import {entity, PropertySchema, t} from '@deepkit/type';
-import {ControllerSymbol} from '@deepkit/framework-shared';
+import {Collection, ControllerSymbol} from '@deepkit/framework-shared';
+import { DebugRequest } from './model';
 
 export class ConfigOption {
     @t name!: string;
@@ -102,4 +103,6 @@ export interface DebugControllerInterface {
     getWorkflow(name: string): Workflow;
 
     events(): Event[];
+
+    httpRequests(): Promise<Collection<DebugRequest>>;
 }

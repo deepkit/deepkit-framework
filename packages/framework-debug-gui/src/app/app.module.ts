@@ -18,16 +18,17 @@ import {
   DuiDialogModule,
   DuiSliderModule,
   DuiEmojiModule,
-} from '@marcj/angular-desktop-ui';
+} from '@deepkit/desktop-ui';
 import {ConfigurationComponent} from './views/configuration/configuration.component';
 import {HttpComponent} from './views/http/http.component';
 import {ControllerClient} from './client';
 import {FormsModule} from '@angular/forms';
 import {RpcComponent} from './views/rpc/rpc.component';
-import {WorkflowComponent} from './components/workflow.component';
+import {WorkflowCardComponent, WorkflowComponent} from './components/workflow.component';
 import {EventsComponent} from './views/events/events.component';
 import {DeepkitClient} from '@deepkit/framework-client';
 import {OverlayModule} from '@angular/cdk/overlay';
+import {HttpRequestComponent} from './views/http/request/http-request.component';
 
 @NgModule({
   declarations: [
@@ -36,7 +37,9 @@ import {OverlayModule} from '@angular/cdk/overlay';
     HttpComponent,
     RpcComponent,
     WorkflowComponent,
+    WorkflowCardComponent,
     EventsComponent,
+    HttpRequestComponent,
   ],
   imports: [
     BrowserModule,

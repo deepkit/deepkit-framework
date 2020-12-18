@@ -289,7 +289,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         super(1);
     }
 
-    public getEntitySubject(idOrItem: string | T): EntitySubject<T> {
+    public getEntitySubject(idOrItem: string | number | T): EntitySubject<T> {
         const id: string | number = idOrItem instanceof this.classType ? idOrItem.id : String(idOrItem);
         return this.entitySubjects[id];
     }

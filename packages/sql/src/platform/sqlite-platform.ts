@@ -23,7 +23,7 @@ import {parseType} from '../reverse/schema-parser';
 import {SQLiteSchemaParser} from '../reverse/sqlite-schema-parser';
 import {SqliteSerializer} from '../serializer/sqlite-serializer';
 import {SQLiteFilterBuilder} from '../sql-filter-builder.sqlite';
-import {isPlainObject} from '@deepkit/core';
+import {isObject} from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 
 export class SQLitePlatform extends DefaultPlatform {
@@ -42,7 +42,7 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     quoteValue(value: any): string {
-        if (isPlainObject(value) || isArray(value)) return sqlstring.escape(JSON.stringify(value));
+        if (isObject(value) || isArray(value)) return sqlstring.escape(JSON.stringify(value));
         return sqlstring.escape(value);
     }
 

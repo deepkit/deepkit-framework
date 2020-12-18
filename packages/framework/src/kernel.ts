@@ -46,6 +46,8 @@ import {DatabaseRegistry} from './database/database-registry';
 import fs from 'fs-extra';
 import {dirname} from 'path';
 import {DebugRouterController} from './cli/router-debug';
+import {DebugRequest} from '@deepkit/framework-debug-shared';
+import { DebugDIController } from './cli/router-di';
 
 @injectable()
 class HttpLogger {
@@ -60,7 +62,7 @@ class HttpLogger {
             `"${event.request.url}"`,
             event.response.statusCode,
             `"${event.request.headers.referer || ''}"`,
-            `"${event.request.headers['user-agent']}"`,
+            // `"${event.request.headers['user-agent']}"`,
         );
     }
 }
@@ -97,6 +99,7 @@ export const KernelModule = createModule({
     controllers: [
         ServerListenController,
         DebugRouterController,
+        DebugDIController,
     ],
     imports: [
         ExchangeModule,
@@ -120,6 +123,9 @@ export const KernelModule = createModule({
         module.addProvider(Debugger);
         module.addController(DebugController);
         registerDebugHttpController(module, config.debugUrl);
+
+        //this works currently only for one worker. We should move that call to onServerMainBootstrap
+        module.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
 
         module.addProvider(DebugDatabase);
         module.setupProvider(DatabaseRegistry).addDatabase(DebugDatabase, {migrateOnStartup: true});

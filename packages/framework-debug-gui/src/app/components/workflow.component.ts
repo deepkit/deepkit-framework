@@ -1,11 +1,28 @@
-import {Component, Input, OnChanges, SimpleChanges} from '@angular/core';
+import {AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Input, OnChanges, QueryList, SimpleChanges, TemplateRef, ViewChild} from '@angular/core';
 import {Workflow} from '@deepkit/framework-debug-shared';
 import {graphlib, layout, Node} from 'dagre';
 
 @Component({
+  selector: 'app-workflow-card',
+  template: '<ng-template #templateRef><ng-content></ng-content></ng-template>'
+})
+export class WorkflowCardComponent {
+  /**
+   * The name of the field of T.
+   */
+  @Input('name') name!: string;
+
+  @Input('class') class!: string;
+
+  @ViewChild('templateRef', {static: false}) template!: TemplateRef<any>;
+}
+
+@Component({
   selector: 'app-workflow',
   template: `
-    <div class="nodes">
+    <div class="nodes"
+         [style.width.px]="graphWidth"
+         [style.height.px]="graphHeight">
       <svg
         [style.width.px]="graphWidth"
         [style.height.px]="graphHeight">
@@ -20,16 +37,20 @@ import {graphlib, layout, Node} from 'dagre';
         [style.top.px]="(node.y - (node.height/2))"
         [style.width.px]="node.width"
         [style.height.px]="node.height"
-        class="node">
+        class="node {{cardMap[node.label!] ? cardMap[node.label!].class : ''}}">
         <div class="label">
           {{node.label}}
+          <ng-container
+            *ngIf="cardMap[node.label!]"
+            [ngTemplateOutlet]="cardMap[node.label!].template"
+            [ngTemplateOutletContext]="{$implicit: node}"></ng-container>
         </div>
       </div>
     </div>
   `,
   styleUrls: ['./workflow.component.scss']
 })
-export class WorkflowComponent implements OnChanges {
+export class WorkflowComponent implements OnChanges, AfterViewInit {
   @Input() workflow?: Workflow;
 
   public nodes: Node[] = [];
@@ -39,8 +60,31 @@ export class WorkflowComponent implements OnChanges {
   public nodeWidth = 130;
   public nodeHeight = 40;
 
+  public cardMap: { [name: string]: WorkflowCardComponent } = {};
+
+  @ContentChildren(WorkflowCardComponent) cards?: QueryList<WorkflowCardComponent>;
+
+  constructor(protected cd: ChangeDetectorRef) {
+  }
+
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.workflow) this.loadGraph();
+  }
+
+  ngAfterViewInit(): void {
+    if (!this.cards) return;
+    this.cards.changes.subscribe((cards) => {
+      this.loadCards(cards);
+    });
+    this.loadCards(this.cards.toArray());
+  }
+
+  protected loadCards(cards: WorkflowCardComponent[]) {
+    for (const card of cards) {
+      this.cardMap[card.name] = card;
+    }
+    this.cd.detectChanges();
   }
 
   protected loadGraph() {

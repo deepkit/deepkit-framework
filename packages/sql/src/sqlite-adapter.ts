@@ -74,7 +74,7 @@ export class SQLiteConnection extends SQLConnection {
         try {
             this.db.exec(sql);
         } catch (error) {
-            console.log('sql', sql);
+            console.warn('sql', sql);
             throw error;
         }
     }

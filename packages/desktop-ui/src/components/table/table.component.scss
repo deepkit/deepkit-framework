@@ -1,0 +1,160 @@
+@import "../../scss/mixins";
+
+:host {
+    display: block;
+    border: 1px solid #c5c5c5;
+    background-color: white;
+    height: 100px;
+
+    &.auto-height {
+        height: auto;
+    }
+}
+
+.cdk-virtual-scroll-viewport {
+    height: 100%;
+}
+
+.header {
+    white-space: nowrap;
+    height: 23px;
+    overflow: hidden;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #cecece;
+    padding-right: 13px;
+
+    > div {
+        position: relative;
+        display: inline-block;
+        height: 23px;
+        padding: 3px 6px;
+        line-height: 17px;
+        text-align: left;
+        color: #303030;
+        font-size: 11px;
+        font-weight: 500;
+        z-index: 1;
+        left: 0;
+
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+
+        dui-icon {
+            float: right;
+            margin-top: 2px;
+            margin-right: 2px;
+        }
+
+        dui-splitter {
+            top: 3px;
+            right: 0;
+            bottom: 3px;
+        }
+
+        &:active {
+            background-color: #e3e3e3;
+            font-weight: 500;
+        }
+
+        &.other-cell {
+            transition: left 0.1s ease-out;
+        }
+    }
+}
+
+.body {
+    height: 100%;
+    &.with-header {
+        height: calc(100% - 23px);
+    }
+}
+
+.cdk-virtual-scroll-viewport {
+    overflow: auto !important;
+}
+
+.table-row {
+    white-space: nowrap;
+    border-bottom: 1px solid rgba(192, 192, 192, 0.05);
+
+    > div {
+        position: relative;
+        display: inline-block;
+        padding: 3px 6px;
+        line-height: 16px;
+        height: 100%;
+        vertical-align: middle;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        left: 0;
+
+        &.active-drop {
+            opacity: 0.8;
+            border-left: 1px solid var(--line-color-light);
+            border-right: 1px solid var(--line-color-light);
+        }
+
+        &.other-cell {
+            transition: left 0.1s ease-out;
+        }
+    }
+
+    &.odd {
+        background-color: #f5f5f5;
+    }
+
+    &.selected {
+        background-color: #dcdcdc;
+    }
+}
+
+:host:focus {
+    outline: 0;
+}
+
+:host:focus:not(.no-focus-outline) {
+    @include focus-border;
+}
+
+:host-context(.dark) {
+    background-color: #1e1e1e;
+    border: 1px solid #565656;
+
+    .header {
+        background-color: #2d2d2d;
+        border-bottom: 1px solid #474747;
+    }
+
+    .th {
+        color: white;
+
+        &:active {
+            background-color: #474747;
+        }
+    }
+
+    .table-row.odd {
+        background-color: rgba(245, 245, 245, 0.016);
+    }
+
+    &:not(:focus) .table-row.selected {
+        background-color: #444444;
+    }
+
+    &:focus:not(.no-focus-outline) {
+        @include focus-border-dark;
+    }
+}
+
+:host.borderless {
+    border: 0;
+}
+
+:host:focus {
+    .table-row.selected {
+        background-color: var(--dui-selection);
+        color: white;
+    }
+}

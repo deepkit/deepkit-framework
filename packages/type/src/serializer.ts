@@ -46,13 +46,17 @@ export class SerializerCompilers {
                 return;
             }
 
-            if (!this.parent) return;
-            const parent = this.parent.get(type);
-            if (!parent) return;
+            const parent = this.parent?.get(type);
 
-            parent(property, compilerState);
-            if (compilerState.ended) return;
-            compiler(property, compilerState);
+            if (parent) {
+                parent(property, compilerState);
+                if (compilerState.ended) return;
+                compiler(property, compilerState);
+            } else {
+                if (compilerState.ended) return;
+                compiler(property, compilerState);
+                return;
+            }
         });
     }
 
@@ -68,13 +72,14 @@ export class SerializerCompilers {
                 return;
             }
 
-            if (this.parent) {
-                const parent = this.parent.get(type);
-                if (parent) {
-                    parent(property, compilerState);
-                    return;
-                }
+            const parent = this.parent?.get(type);
+            if (!parent) {
+                if (compilerState.ended) return;
+                compiler(property, compilerState);
+                return;
             }
+
+            parent(property, compilerState);
         });
     }
 

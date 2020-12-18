@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import {DebugRequest} from '@deepkit/framework-debug-shared';
 import {Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
 import {inject} from '../injector/injector';
 import {kernelConfig} from '../kernel.config';
-import {DebugRequest} from './models';
 
 export class DebugDatabase extends Database {
     constructor(@inject(kernelConfig.token('debugSqlitePath')) debugSqlitePath: string) {

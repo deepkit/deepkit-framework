@@ -21,6 +21,9 @@
     "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
+  "peerDependencies": {
+    "rxjs": "~6.6.0"
+  },
   "dependencies": {
     "@deepkit/bson": "^1.0.1-alpha.1",
     "@deepkit/core": "^1.0.1-alpha.1",
@@ -45,7 +48,6 @@
     "md5": "^2.2.1",
     "mime-types": "^2.1.27",
     "pirates": "^4.0.1",
-    "rxjs": "~6.5.3",
     "serve-static": "^1.13.2",
     "sift": "^7.0.1",
     "ws": "^7.2.1"
@@ -61,7 +63,8 @@
     "cache-loader": "^1.2.2",
     "reflect-metadata": "^0.1.13",
     "source-map": "^0.7.3",
-    "source-map-support": "^0.5.9"
+    "source-map-support": "^0.5.9",
+    "rxjs": "~6.6.0"
   },
   "jest": {
     "testEnvironment": "node",

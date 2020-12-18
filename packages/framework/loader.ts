@@ -22,6 +22,10 @@ export async function transformSource(source: any, context: { url: string, forma
 
     if (context.url.endsWith('.tsx')) {
         if (code.source.indexOf('@deepkit/framework/jsx-runtime') === -1) return code;
+        if (code.source.startsWith('#!')) {
+            //allow shebang
+            code.source = code.source.substr(code.source.indexOf('\n'));
+        }
         const optimized = optimizeJSX(code.source);
         code.source = optimized;
     }

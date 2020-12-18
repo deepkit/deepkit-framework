@@ -16,11 +16,11 @@
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
-    "rxjs": "~6.5.3"
+    "rxjs": "~6.6.0"
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.1",
-    "rxjs": "~6.5.3"
+    "rxjs": "~6.6.0"
   },
   "jest": {
     "transform": {

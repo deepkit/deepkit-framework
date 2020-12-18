@@ -1,0 +1,261 @@
+@import "./reset";
+@import "~@angular/cdk/overlay";
+@include cdk-overlay();
+
+html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, sans-serif;
+    letter-spacing: 0.3px;
+
+    height: 100%;
+    overflow: hidden;
+
+    font-size: 13px;
+    line-height: 18px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+
+    -webkit-user-select: none;
+    user-select: none;
+
+    --dui-selection: #016dea;
+    --dui-selection-hover: #016dea80;
+    --dui-selection-light: #5182f8;
+    --dui-selection-unfocused: #999ca352;
+
+    --dui-button-text: #575757;
+
+    --dui-input-text: #252525;
+
+    --text-grey: #6c6970;
+    --text-light: #737880;
+
+    --color-black: black;
+    --color-green: green;
+    --color-red: red;
+    --color-orange: orange;
+    --line-color-light: #d3d3d3;
+    --line-color: #979797;
+    --line-color-prominent: #9fa4a9;
+    --line-sidebar: #c3c2c3;
+
+    --dui-window-content-bg: #ececec;
+
+    --dui-background-vibrancy: none;
+
+    &.platform-darwin {
+        --dui-background-vibrancy: blur(10px);
+        --dui-window-content-bg-trans: #dcdcdcee;
+        --dui-toolbar-bg-trans: #dcdcdcde;
+    }
+
+    &:not(.platform-darwin) {
+        --dui-window-content-bg-trans: #dcdcdc;
+        --dui-toolbar-bg-trans: #dcdcdc;
+        background: var(--dui-window-content-bg-trans);
+    }
+
+    color: var(--color-black);
+
+    a, a:link {
+        color: #255273;
+    }
+}
+
+*:focus {
+    outline: 0;
+}
+
+.dark {
+    --text-grey: #aaadb7;
+    --text-light: #7a7f88;
+
+    --color-black: #ffffff;
+    --color-green: #0bd40b;
+    --color-red: #ff5c5c;
+    --color-orange: orange;
+
+    --dui-selection-light: #3662e1;
+    --dui-selection-unfocused: #acaeb936;
+
+    --line-color-light: rgba(232, 232, 232, 0.16);
+    --line-color: rgba(232, 232, 232, 0.32);
+    --line-color-prominent: rgba(220, 225, 230, 0.8);
+    --line-sidebar: black;
+
+    --dui-window-content-bg: #323232;
+
+    &.platform-darwin {
+        --dui-window-content-bg-trans: #323232f2;
+        --dui-toolbar-bg-trans: #323232e3;
+    }
+
+    &:not(.platform-darwin) {
+        --dui-window-content-bg-trans: #323232;
+        --dui-toolbar-bg-trans: #323232;
+        background: var(--dui-window-content-bg-trans);
+    }
+
+    a, a:link {
+        color: #78a1bf;
+    }
+}
+
+
+body {
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+}
+
+.text-selection {
+    user-select: text;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-corner {
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(169, 173, 175, 0.77);
+    border-radius: 8px;
+    border: 2px solid rgba(0, 0, 0, 0.01);
+    background-clip: padding-box;
+}
+
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.text-light {
+    color: var(--text-light);
+}
+
+
+input, textarea, select, button {
+    font-size: 13px;
+}
+
+p {
+    margin: 15px 0;
+}
+
+ol, ul {
+    padding-left: 15px;
+}
+
+h1 {
+    font-weight: 600;
+
+    &:first-child {
+        margin-top: 0;
+    }
+}
+
+h2 {
+    font-size: 18px;
+    font-weight: 600;
+
+    &:first-child {
+        margin-top: 0;
+    }
+}
+
+h3 {
+    font-size: 14px;
+    font-weight: 600;
+
+    &:first-child {
+        margin-top: 0;
+    }
+}
+
+h4 {
+    font-weight: 600;
+
+    &:first-child {
+        margin-top: 0;
+    }
+}
+
+.overlay-scrollbar,
+.overlay-scrollbar-small, {
+    overflow: auto;
+    overflow: overlay;
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+        height: 11px;
+        width: 11px;
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(169, 173, 175, 0.77);
+        border-radius: 8px;
+        border: 2px solid rgba(0, 0, 0, 0.01);
+        background-clip: padding-box;
+
+        &:hover {
+            background: #727475;
+            border: 2px solid rgba(0, 0, 0, 0.01);
+            background-clip: padding-box;
+        }
+    }
+}
+
+.overlay-scrollbar-small {
+    &::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+    }
+}
+
+.panel {
+    background-color: white;
+    border: 1px solid #c5c5c5;
+}
+
+.dark .panel {
+    background-color: #1e1e1e;
+    border: 1px solid #565656;
+}
+
+.dui-panel {
+    border-radius: 4px;
+}
+
+body.dark .dui-panel {
+    background-color: #383636;
+    border: 1px solid #514e4e;
+}
+
+body.light .dui-panel {
+    background-color: #e3e3e3;
+    border: 1px solid #dfdfdf;
+    border-top: 1px solid #d4d4d4;
+}
+
+code {
+    background: #ffffff21;
+    border-radius: 3px;
+    padding: 1px 3px;
+    user-select: text;
+}
+
+body.light code {
+    background: #33333321;
+}

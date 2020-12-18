@@ -21,7 +21,7 @@
     "@deepkit/orm": "^1.0.1-alpha.1",
     "@deepkit/type": "^1.0.1-alpha.1",
     "fs-extra": "^9.0.1",
-    "rxjs": "~6.5.3"
+    "rxjs": "~6.6.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^9.0.1"

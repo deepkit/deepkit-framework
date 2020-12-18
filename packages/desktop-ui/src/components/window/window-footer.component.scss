@@ -1,0 +1,20 @@
+:host {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 26px;
+    line-height: 26px;
+    font-size: 11px;
+    padding: 0 10px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.73);
+    background: #F0F0F0;
+    border-top: 1px solid #CECECE;
+}
+
+:host-context(.dark) {
+    background: #282c32;
+    border-top: 1px solid #4a4e54;
+    color: white;
+}

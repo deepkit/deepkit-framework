@@ -139,7 +139,7 @@ export class Logger {
 
     protected send(messages: any[], level: LoggerLevel) {
         let message = this.format((util.format as any)(...messages), level);
-        this.debugger?.log(this.colorFormatter.format(message, level));
+        this.debugger?.log(this.colorFormatter.format(message, level), level);
 
         for (const transport of this.transport) {
             if (transport.supportsColor()) {

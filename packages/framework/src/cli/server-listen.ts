@@ -38,14 +38,15 @@ export class ServerListenController implements Command {
     }
 
     async execute(
-        @flag.optional.default('localhost') host?: string,
+        @flag.default('localhost') host?: string,
         @flag.optional port?: number,
         @flag.optional workers?: number,
+        @flag.default(false) watch?: boolean,
     ): Promise<void> {
         if (!this.logger.hasFormatter(TimestampFormatter)) this.logger.addFormatter(new TimestampFormatter);
 
         const applicationServer = new ApplicationServer(this.logger, this.webWorkerFactory, this.eventDispatcher, {
-            workers: this.config.workers || 1,
+            workers: workers || this.config.workers || 1,
             host: host || this.config.host,
             port: port || this.config.port,
             server: this.config.server,

@@ -68,12 +68,12 @@ export class ApplicationServerListener {
     @eventDispatcher.listen(onServerMainBootstrapDone)
     onBootstrapDone() {
         for (const [name, controller] of this.rpcControllers.controllers.entries()) {
-            this.logger.log('RPC controller', name, getClassName(controller));
+            this.logger.log('RPC', `<yellow>${getClassName(controller)}</yellow>`, `<grey>${name}</grey>`);
         }
 
         for (const controller of this.httpControllers.controllers.values()) {
             const httpConfig = httpClass._fetch(controller)!;
-            this.logger.log('HTTP controller', httpConfig.baseUrl || '/', getClassName(controller));
+            this.logger.log('HTTP', `<yellow>${getClassName(controller)}</yellow>`);
 
             for (const action of httpConfig.getActions()) {
                 this.logger.log(`    ${action.httpMethod} ${httpConfig.getUrl(action)} <grey>${action.methodName}</grey>`);

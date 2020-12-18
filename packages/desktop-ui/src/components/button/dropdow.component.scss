@@ -1,0 +1,68 @@
+@import "../../scss/mixins";
+
+:host {
+    display: none;
+}
+
+.dui-dropdown {
+    flex: 1;
+
+    @include background-vibrancy;
+
+    border-top: 1px solid #d0d0d0;
+    border-left: 1px solid #c5c5c5;
+    border-right: 1px solid #c5c5c5;
+    border-bottom: 1px solid #b9b9b9;
+
+    box-shadow: 0 4px 14px 0 rgba(133, 129, 129, 0.44);
+    display: flex;
+    border-radius: 5px;
+    overflow: hidden;
+
+    &:focus {
+        outline: 0;
+    }
+
+
+    > div.content {
+        flex: 1;
+        padding: 4px 0;
+        min-height: 25px;
+        border-radius: 5px;
+    }
+}
+
+.dui-dropdown-arrow {
+    position: absolute;
+    top: -14px;
+    left: calc(50% - 28px / 2);
+    width: 28px;
+    height: 15px;
+
+    background-image: url(./overlay-arrow.svg);
+    background-repeat: no-repeat;
+}
+
+::ng-deep .dark {
+    .dui-dropdown-arrow {
+        height: 16px;
+        background-image: url(./overlay-arrow-dark.svg);
+    }
+
+    .dui-dropdown {
+        box-shadow: 0 4px 12px 0 rgba(45, 45, 45, 0.77);
+
+        border-top: 1px solid #0a0b0c;
+        border-left: 1px solid #07090a;
+        border-right: 1px solid #07090a;
+        border-bottom: 1px solid #050607;
+
+        > div.content {
+            border-top: 1px solid #5f5f5f;
+            border-left: 1px solid #5f5f5f;
+            border-right: 1px solid #5f5f5f;
+            border-bottom: 1px solid #5f5f5f;
+        }
+
+    }
+}

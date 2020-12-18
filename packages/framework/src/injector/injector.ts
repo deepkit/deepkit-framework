@@ -390,7 +390,7 @@ export class Injector {
 
             const tokenVar = compiler.reserveVariable('token', token);
             const creatingVar = compiler.reserveVariable('creating', false);
-            const configuredProviderCalls = this.configuredProviderRegistry?.get(provider);
+            const configuredProviderCalls = this.configuredProviderRegistry?.get(token);
 
             const configureProvider: string[] = [];
             if (configuredProviderCalls) {
@@ -415,11 +415,14 @@ export class Injector {
                         configureProvider.push(`v.${property} = ${value};`);
                     }
                 }
+            } else {
+                configureProvider.push('//no custom provider setup');
             }
 
             resets.push(`${creatingVar} = false;`);
 
             lines.push(`
+                //${tokenLabel(token)}
                 case ${tokenVar}: {
                     ${transient ? 'let v;' : `let v = injector.resolved[${resolvedId}]; if (v !== undefined) return v;`}
                     CircularDetector.push(${tokenVar});
@@ -623,7 +626,7 @@ export class InjectorContext {
     constructor(
         public readonly contextManager: ContextRegistry = new ContextRegistry,
         public readonly scope: string = 'module',
-        public readonly configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined,
+        public readonly configuredProviderRegistry: ConfiguredProviderRegistry = new ConfiguredProviderRegistry,
         public readonly parent: InjectorContext | undefined = undefined,
         public readonly additionalInjectorParent: Injector | undefined = undefined,
         scopeCaches?: ScopedContextScopeCaches,
@@ -643,9 +646,6 @@ export class InjectorContext {
     public getInjector(contextId: number): Injector {
         let injector = this.injectors[contextId];
         if (injector) return injector;
-
-        // injector = this.cache.get(contextId);
-        // if (injector) return injector;
 
         const parents: Injector[] = [];
         parents.push(this.parent ? this.parent.getInjector(contextId) : new Injector());

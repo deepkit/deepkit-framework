@@ -1,0 +1,13 @@
+:host {
+    display: inline-block;
+    overflow: hidden;
+}
+
+.emoji-image {
+    display: inline-block;
+    background-image: url(./emoji_apple_32.png);
+    background-repeat: no-repeat;
+    width: 32px;
+    height: 32px;
+    transform-origin: left top;
+}

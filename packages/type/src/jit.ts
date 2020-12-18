@@ -340,6 +340,7 @@ export class JitStackEntry {
  */
 export class JitStack {
     protected stack?: Map<ClassSchema, { fn: Function | undefined }>;
+    protected schemaStack: ClassSchema[] = [];
 
     getStack() {
         if (!this.stack) this.stack = new Map<ClassSchema, { fn: Function | undefined }>();
@@ -362,12 +363,18 @@ export class JitStack {
         return entry;
     }
 
+    get currentSchema(): ClassSchema | undefined {
+        return this.schemaStack[this.schemaStack.length - 1];
+    }
+
     prepare(schema: ClassSchema) {
         if (this.getStack().has(schema)) throw new Error('Circular jit building detected: ' + schema.getClassName());
+        this.schemaStack.push(schema);
 
         const entry: { fn: Function | undefined } = {fn: undefined};
         this.getStack().set(schema, entry);
         return (fn: Function) => {
+            this.schemaStack.pop();
             entry.fn = fn;
         };
     }

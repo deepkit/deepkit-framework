@@ -118,98 +118,33 @@ export function getDataConverterJS(
     undefinedSetterCode: string = '',
     nullSetterCode: string = ''
 ): string {
-    const subProperty = property.isArray || property.isMap ? property.getSubType() : property;
     const setNull = property.isNullable ? `${setter} = null;` : '';
     rootContext.set('_default_' + property.name, property.defaultValue);
     const setUndefined = !property.hasDefaultValue && property.defaultValue !== undefined ? `${setter} = ${'_default_' + property.name};` : '';
     const undefinedCompiler = serializerCompilers.get('undefined');
     const nullCompiler = serializerCompilers.get('null');
 
-    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeCompiler(rootContext, jitStack, undefinedCompiler, setter, accessor, subProperty, serializerCompilers) : '');
-    nullSetterCode = nullSetterCode || (nullCompiler ? executeCompiler(rootContext, jitStack, nullCompiler, setter, accessor, subProperty, serializerCompilers) : '');
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeCompiler(rootContext, jitStack, undefinedCompiler, setter, accessor, property, serializerCompilers) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeCompiler(rootContext, jitStack, nullCompiler, setter, accessor, property, serializerCompilers) : '');
 
-    if (property.isArray) {
-        const a = reserveVariable(rootContext, 'a');
-        const l = reserveVariable(rootContext, 'l');
-        //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
-        let setDefault = property.isOptional ? '' : `${setter} = [];`;
-        return `
-            if (${accessor} === undefined) {
-                ${setUndefined}
-                ${undefinedSetterCode}
-            } else if (${accessor} === null) {
-                ${setNull}
-                ${nullSetterCode}
-            } else {
-                if (${accessor}.length === undefined || 'string' === typeof ${accessor} || 'function' !== typeof ${accessor}.slice) {
-                    ${setDefault}
-                } else {
-                     let ${l} = ${accessor}.length;
-                     let ${a} = ${accessor}.slice();
-                     while (${l}--) {
-                        //make sure all elements have the correct type
-                        if (${accessor}[${l}] !== undefined && ${accessor}[${l}] !== null) {
-                            let itemValue;
-                            ${getDataConverterJS(`itemValue`, `${a}[${l}]`, subProperty, serializerCompilers, rootContext, jitStack)}
-                            if (${!subProperty.isOptional} && itemValue === undefined) {
-                                ${a}.splice(${l}, 1);
-                            } else {
-                                ${a}[${l}] = itemValue;   
-                            }
-                        }
-                     }
-                     ${setter} = ${a};
-                }
-            }
-        `;
-    } else if (property.isMap) {
-        const a = reserveVariable(rootContext, 'a');
-        const i = reserveVariable(rootContext, 'i');
-        let setDefault = property.isOptional ? '' : `${setter} = {};`;
-        return `
-            if (${accessor} === undefined) {
-                ${setUndefined}
-                ${undefinedSetterCode}
-            } else if (${accessor} === null) {
-                ${setNull}
-                ${nullSetterCode}
-            } else {
-                let ${a} = {};
-                //we make sure its a object and not an array
-                if (${accessor} && 'object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                    for (let ${i} in ${accessor}) {
-                        if (!${accessor}.hasOwnProperty(${i})) continue;
-                        if (${!subProperty.isOptional} && ${accessor}[${i}] === undefined) {
-                            continue;
-                        }
-                        ${getDataConverterJS(`${a}[${i}]`, `${accessor}[${i}]`, property.getSubType(), serializerCompilers, rootContext, jitStack)}
-                    }
-                    ${setter} = ${a};
-                } else {
-                    ${setDefault}
-                }
-            }
-        `;
+    const compiler = serializerCompilers.get(property.type);
+    let convert = '';
+    if (compiler) {
+        convert = executeCompiler(rootContext, jitStack, compiler, setter, accessor, property, serializerCompilers);
     } else {
-        const compiler = serializerCompilers.get(subProperty.type);
-        let convert = '';
-        if (compiler) {
-            convert = executeCompiler(rootContext, jitStack, compiler, setter, accessor, property, serializerCompilers);
-        } else {
-            convert = `//no compiler for ${subProperty.type}
-            ${setter} = ${accessor};`;
-        }
-
-        return `
-            if (${accessor} === undefined) {
-                ${setUndefined}
-                ${undefinedSetterCode}
-            } else if (${accessor} === null) {
-                ${setNull}
-                ${nullSetterCode}
-            } else {
-                ${convert}
-            }
-        `;
+        convert = `//no compiler for ${property.type}
+        ${setter} = ${accessor};`;
     }
+
+    return `
+        if (${accessor} === undefined) {
+            ${setUndefined}
+            ${undefinedSetterCode}
+        } else if (${accessor} === null) {
+            ${setNull}
+            ${nullSetterCode}
+        } else {
+            ${convert}
+        }
+    `;
 }

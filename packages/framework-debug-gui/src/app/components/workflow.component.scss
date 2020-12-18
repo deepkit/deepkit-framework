@@ -1,6 +1,8 @@
 :host {
-  display: block;
+  display: flex;
   height: 100%;
+  justify-content: center;
+  align-items: center;
 }
 
 .nodes {
@@ -34,6 +36,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-align: center;
   }
 
 }

@@ -87,7 +87,7 @@ export class HttpComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     [this.routes, this.workflow] = await Promise.all([
       this.controllerClient.debug.routes(),
-      this.controllerClient.debug.getWorkflow('http')
+      this.controllerClient.getWorkflow('http')
     ]);
 
     this.cd.detectChanges();

@@ -1,0 +1,32 @@
+:host {
+    padding: 1px 23px;
+    position: relative;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+
+    dui-icon.selected {
+        position: absolute;
+        color: var(--color-black);
+        left: 6px;
+        top: 3px;
+    }
+
+    &.selected {
+
+    }
+
+    &.disabled {
+        opacity: 0.8;
+        pointer-events: none;
+    }
+
+    &:not(.disabled):hover {
+        background-color: var(--dui-selection);
+        color: white;
+    }
+}

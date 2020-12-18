@@ -1,0 +1,223 @@
+@import "../../scss/mixins";
+
+:host {
+    display: block;
+    position: relative;
+    flex-shrink: 0;
+    flex-grow: 0;
+
+    padding: 0 70px;
+    text-align: center;
+
+    .title {
+        min-height: 22px;
+        line-height: 22px;
+        color: rgba(0, 0, 0, 0.73);
+        letter-spacing: -0.08px;
+        font-weight: 500;
+    }
+
+    -webkit-app-region: drag;
+
+    ::ng-deep dui-window-toolbar-container {
+        *:not(dui-button-group) {
+            -webkit-app-region: no-drag;
+        }
+    }
+}
+
+:host.size-small .title {
+    min-height: auto;
+}
+
+:host.size-default.with-toolbar {
+    height: 55px;
+}
+
+:host.size-small.with-toolbar {
+    height: 37px;
+}
+
+
+::ng-deep .cdk-overlay-pane {
+    -webkit-app-region: no-drag;
+}
+
+.closer {
+    position: absolute;
+    right: 8px;
+    top: 3px;
+    display: none;
+    color: #3d3c37;
+    -webkit-app-region: no-drag;
+
+    > div {
+        display: inline-flex;
+        background-color: rgba(255, 255, 255, 0.0001);
+        border: 1px solid rgba(255, 255, 255, 0.0001);
+    }
+}
+
+:host-context(.platform-linux.light) {
+    .closer > div {
+        &:active {
+            border-radius: 4px;
+            border: 1px solid silver;
+        }
+    }
+}
+
+:host-context(.platform-linux.dark) {
+    .closer {
+        top: 1px;
+    }
+
+    .closer > div {
+        border-radius: 20px;
+        width: 20px;
+        height: 20px;
+        margin-left: 2px;
+
+        background-image: linear-gradient(180deg, #8B8A84 0%, #5F5E59 78%);
+        border: 1px solid #3A3937;
+        text-shadow: 0 1px 0px rgba(255, 255, 255, 0.1);
+
+        &.highlight {
+            background-image: linear-gradient(180deg, #F28665 0%, #DF501E 78%);
+            border: 1px solid #3A3937;
+        }
+
+        &:active {
+            opacity: 0.7;
+        }
+    }
+
+    //background-image: linear-gradient(180deg, #5A584F 0%, #3D3C37 100%);
+    //border-bottom-color: #3D3C37;
+
+    .title {
+        color: rgba(255, 255, 255, 0.73);
+    }
+}
+
+:host-context(.platform-linux) {
+    .closer {
+        display: block;
+    }
+}
+
+:host-context(.platform-native.light) {
+    background-image: linear-gradient(-180deg, white 1px, #e6e5e5 0%, #cfcfd0 100%);
+    border-bottom: 1px solid #aaaaaa;
+
+    &.inactive {
+        background: #f6f6f6;
+        .toolbar {
+            opacity: 0.65;
+        }
+    }
+}
+
+:host-context(.platform-native.dark) {
+    background-image: linear-gradient(-180deg, #424242 0%, #353535 100%);
+    border-bottom: 1px solid #000000;
+
+    .title {
+        color: #bbc3cc;
+    }
+
+    &.inactive {
+        background: #2d2d2d;
+
+        .toolbar {
+            opacity: 0.65;
+        }
+    }
+}
+
+:host-context(:not(.platform-native).light) {
+    background-color: #e2e2e2;
+    border-bottom: 1px solid #c7c7c7;
+}
+
+:host-context(:not(.platform-native).dark) {
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #1f1d1d;
+
+    .title {
+        color: #bbc3cc;
+    }
+}
+
+.toolbar dui-window-toolbar-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0 8px 7px;
+    display: flex;
+    white-space: nowrap;
+    word-break: keep-all;
+}
+//
+//:host.medium {
+//    height: 68px;
+//
+//    .actions {
+//        padding-bottom: 18px;
+//    }
+//}
+//
+//:host.large {
+//    height: 78px;
+//}
+
+:host ::ng-deep {
+    dui-input,
+    dui-select,
+    dui-button {
+        height: 22px !important;
+        line-height: 22px;
+    }
+
+    dui-input,
+    dui-button {
+        dui-icon {
+            position: relative;
+            top: -1px;
+        }
+    }
+}
+
+:host-context(.dark) .toolbar {
+    ::ng-deep {
+        dui-input,
+        dui-select,
+        dui-button {
+            @include box-textured-dark-toolbar;
+        }
+
+        dui-select,
+        dui-button {
+            &:active {
+                @include box-textured-dark-toolbar-active;
+            }
+
+            &:not(.disabled):not(.square).active {
+                background-image: linear-gradient(180deg, #C9C9C9 0%, #C3C3C3 100%) !important;
+                border-top: 1px solid #d2d2d2 !important;
+                border-bottom: 1px solid #C3C3C3 !important;
+                border-left: 1px solid transparent !important;
+                border-right: 1px solid transparent !important;
+
+                &:active {
+                    background-image: linear-gradient(-180deg, #ECECEC 0%, #E7E7E7 100%) !important;
+                    border-top: 1px solid #f2f2f2 !important;
+                    border-bottom: 1px solid #E7E7E7 !important;
+                    border-left: 1px solid transparent !important;
+                    border-right: 1px solid transparent !important;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="15px" height="15px" viewBox="0 0 15 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 59.1 (86144) - https://sketch.com -->
+    <title>15_text-format-align-left</title>
+    <desc>Created with Sketch.</desc>
+    <g id="15_text-format-align-left" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group" transform="translate(2.000000, 3.000000)">
+            <g id="Line-2"></g>
+            <polygon id="Line" fill="#585858" fill-rule="nonzero" points="0 0 0 1 11 1 11 0"></polygon>
+            <polygon id="Line-3" fill="#585858" fill-rule="nonzero" points="0 3 0 4 8 4 8 3"></polygon>
+            <polygon id="Line-4" fill="#585858" fill-rule="nonzero" points="0 6 0 7 11 7 11 6"></polygon>
+            <polygon id="Line-5" fill="#585858" fill-rule="nonzero" points="0 9 0 10 8 10 8 9"></polygon>
+        </g>
+    </g>
+</svg>

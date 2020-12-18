@@ -23,7 +23,7 @@ import {ClassSchema, isArray, PostgresOptions, PropertySchema} from '@deepkit/ty
 import {parseType} from '../reverse/schema-parser';
 import {PostgresSchemaParser} from '../reverse/postgres-schema-parser';
 import {PostgreSQLFilterBuilder} from '../postgres/sql-filter-builder';
-import {isPlainObject} from '@deepkit/core';
+import {isObject} from '@deepkit/core';
 import sqlstring from 'sqlstring';
 
 function escapeLiteral(value: any): string {
@@ -84,7 +84,7 @@ export class PostgresPlatform extends DefaultPlatform {
     }
 
     quoteValue(value: any): string {
-        if (isPlainObject(value) || isArray(value)) return escapeLiteral(JSON.stringify(value));
+        if (isObject(value) || isArray(value)) return escapeLiteral(JSON.stringify(value));
         return escapeLiteral(value);
     }
 

@@ -82,8 +82,8 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     protected currentIndexId = 0;
 
     protected contextManager = new ContextRegistry();
-    public rootScopedContext = new InjectorContext(this.contextManager, 'module', new ConfiguredProviderRegistry);
-    protected eventListenerContainer = new EventDispatcher(this.rootScopedContext);
+    public rootInjectorContext = new InjectorContext(this.contextManager, 'module', new ConfiguredProviderRegistry);
+    protected eventListenerContainer = new EventDispatcher(this.rootInjectorContext);
 
     protected rootContext?: Context;
     protected moduleContexts = new Map<Module<ModuleOptions<any>>, Context[]>();
@@ -112,7 +112,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         providers.push({provide: HttpControllers, useValue: this.httpControllers});
         providers.push({provide: CliControllers, useValue: this.cliControllers});
         providers.push({provide: RpcControllers, useValue: this.rpcControllers});
-        providers.push({provide: InjectorContext, useValue: this.rootScopedContext});
+        providers.push({provide: InjectorContext, useValue: this.rootInjectorContext});
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
         return appModule;
@@ -136,10 +136,15 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         }
     }
 
-    public getInjectorFor(module: Module<any>): Injector {
+    public getContextFor(module: Module<any>): Context {
         const contexts = this.moduleIdContexts.get(module.id) || [];
         if (!contexts.length) throw new Error('Module not registered.');
-        return this.rootScopedContext.getInjector(contexts[0].id);
+        return contexts[0];
+    }
+
+    public getInjectorFor(module: Module<any>): Injector {
+        const context = this.getContextFor(module);
+        return this.rootInjectorContext.getInjector(context.id);
     }
 
     protected getContext(id: number): Context {
@@ -225,9 +230,9 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
             }
         }
 
-        if (this.rootScopedContext.configuredProviderRegistry) {
+        if (this.rootInjectorContext.configuredProviderRegistry) {
             for (const [provider, calls] of module.getConfiguredProviderCalls().entries()) {
-                this.rootScopedContext.configuredProviderRegistry.add(provider, ...calls);
+                this.rootInjectorContext.configuredProviderRegistry.add(provider, ...calls);
             }
         }
 

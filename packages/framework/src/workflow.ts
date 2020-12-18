@@ -20,6 +20,7 @@ import {capitalize, ClassType, CompilerContext, CustomError, getClassName, isArr
 import {ExtractClassType} from '@deepkit/type';
 import {BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService} from './event';
 import {InjectorContext} from './injector/injector';
+import {HttpRequestDebugCollector} from './debug/debugger';
 
 interface WorkflowTransition<T> {
     from: keyof T & string,
@@ -110,8 +111,8 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         this.next[from]!.push(to);
     }
 
-    public create(state: keyof T & string, eventDispatcher: EventDispatcher, injectorContext?: InjectorContext): Workflow<T> {
-        return new Workflow(this, new WorkflowStateSubject(state), eventDispatcher, injectorContext || eventDispatcher.scopedContext);
+    public create(state: keyof T & string, eventDispatcher: EventDispatcher, injectorContext?: InjectorContext, debugCollector?: HttpRequestDebugCollector): Workflow<T> {
+        return new Workflow(this, new WorkflowStateSubject(state), eventDispatcher, injectorContext || eventDispatcher.scopedContext, debugCollector);
     }
 
     getTransitionsFrom(state: keyof T & string): (keyof T & string)[] {
@@ -147,8 +148,9 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 if (isEventListenerContainerEntryCallback(listener)) {
                     const fnVar = compiler.reserveVariable('fn', listener.fn);
                     listenerCode.push(`
-                        await ${fnVar}(event);
-                        if (event.isStopped()) return;
+                        if (!event.isStopped()) {
+                            await ${fnVar}(event);
+                        }
                     `);
                 } else if (isEventListenerContainerEntryService(listener)) {
                     let classTypeVar = varName.get(listener.classType);
@@ -160,12 +162,15 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
 
                     listenerCode.push(`
                     //${getClassName(listener.classType)}.${listener.methodName}
-                    if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar});
-                    await ${resolvedVar}.${listener.methodName}(event);
-                    if (event.isStopped()) return;
+                    if (!event.isStopped()) {
+                        if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar});
+                        await ${resolvedVar}.${listener.methodName}(event);
+                    }
                 `);
                 }
             }
+
+            const stopWatchId = 'workflow/' + this.name + '/' + place;
 
             lines.push(`
             case ${stateString}: {
@@ -173,9 +178,11 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 if (!(event instanceof ${eventTypeVar})) {
                     throw new Error(\`State ${place} got the wrong event. Expected ${getClassName(eventType)}, got \${getClassName(event)}\`);
                 }
+                if (debugCollector) debugCollector.stopwatch.start(${JSON.stringify(stopWatchId)});
             
                 ${listenerCode.join('\n')}
                 
+                if (debugCollector) debugCollector.stopwatch.end(${JSON.stringify(stopWatchId)});
                 state.set(${stateString});
                 break;
             }
@@ -201,7 +208,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 }
                 return;
             }
-        `, 'scopedContext', 'state', 'nextState', 'event');
+        `, 'scopedContext', 'state', 'nextState', 'event', 'debugCollector');
     }
 }
 
@@ -243,7 +250,8 @@ export class Workflow<T extends WorkflowPlaces> {
         public definition: WorkflowDefinition<T>,
         public state: WorkflowState<T>,
         private eventDispatcher: EventDispatcher,
-        private injectorContext: InjectorContext
+        private injectorContext: InjectorContext,
+        private debugCollector?: HttpRequestDebugCollector
     ) {
     }
 
@@ -263,7 +271,7 @@ export class Workflow<T extends WorkflowPlaces> {
             fn = (this.eventDispatcher as any)[this.definition.symbol] = this.definition.buildApplier(this.eventDispatcher);
         }
 
-        return fn(this.injectorContext, this.state, nextState, event || new WorkflowEvent() as ExtractClassType<T[K]>);
+        return fn(this.injectorContext, this.state, nextState, event || new WorkflowEvent() as ExtractClassType<T[K]>, this.debugCollector);
     }
 
     isDone(): boolean {

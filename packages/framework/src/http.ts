@@ -229,6 +229,7 @@ export const httpWorkflow = createWorkflow('http', {
     accessDenied: 'response',
     controllerResponse: 'response',
     controllerError: 'response',
+    routeNotFound: 'response',
 });
 
 export class HtmlResponse {
@@ -248,6 +249,9 @@ export function serveStaticListener(path: string): ClassType {
 
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise(resolve => {
+                response.once('finish', () => {
+                    resolve(undefined);
+                });
                 this.serveStatic(request, response, () => {
                     resolve(response);
                 });
@@ -463,16 +467,21 @@ export class HttpKernel {
 
         const collector = this.debug ? httpInjectorContext.get(HttpRequestDebugCollector) : undefined;
 
-        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext);
+        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, collector);
         try {
             if (collector) {
-                await collector.init(req);
-                await Zone.run({collector: collector}, async () => {
-                    await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
-                });
-                await collector.save();
+                await collector.init();
+                try {
+                    collector.stopwatch.start('http');
+                    await Zone.run({collector: collector}, async () => {
+                        await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
+                    });
+                    collector.stopwatch.end('http');
+                } finally {
+                    await collector.save();
+                }
             } else {
-                return await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
+                await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
             }
         } catch (error) {
             this.logger.log('HTTP kernel request failed', error);

@@ -76,7 +76,7 @@ export class Application<T extends ModuleOptions<any>> {
     }
 
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T): R {
-        return this.serviceContainer.rootScopedContext.getInjector(0).get(token);
+        return this.serviceContainer.rootInjectorContext.getInjector(0).get(token);
     }
 
     public async execute(argv: string[]) {
@@ -130,7 +130,7 @@ export class Application<T extends ModuleOptions<any>> {
         try {
             const config = new MyConfig({root: import.meta.url.replace('file://', '')});
             for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
-                config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.rootScopedContext);
+                config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.rootInjectorContext);
             }
 
             await Main.run(argv, config);

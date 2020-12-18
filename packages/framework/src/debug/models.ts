@@ -15,19 +15,3 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-import {entity, t} from '@deepkit/type';
-import {LoggerLevel} from '../logger';
-
-@entity.name('debugRequest')
-export class DebugRequest {
-    @t.primary.autoIncrement id: number = 0;
-    @t created: Date = new Date;
-    @t.optional statusCode?: number;
-
-    constructor(
-        @t public url: string,
-        @t public clientIp: string,
-    ) {
-    }
-}

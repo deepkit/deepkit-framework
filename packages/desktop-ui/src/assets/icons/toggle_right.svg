@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="17px" height="17px" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 59.1 (86144) - https://sketch.com -->
+    <title>toggle_right</title>
+    <desc>Created with Sketch.</desc>
+    <g id="toggle_right" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M0,1 L17,1 L17,16 L0,16 L0,1 Z M1,2 L1,15 L16,15 L16,2 L1,2 Z" id="Rectangle" fill="#000000" fill-rule="nonzero"></path>
+        <path d="M13.95,9 L14.05,9 L14.05,10 L13.95,10 L13.95,9 Z M13,14 L13,3 L15,3 L15,14 L13,14 Z" id="Rectangle" fill="#000000" fill-rule="nonzero"></path>
+    </g>
+</svg>

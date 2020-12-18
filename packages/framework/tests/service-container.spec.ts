@@ -32,7 +32,7 @@ test('controller', () => {
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
-        const rpcScopedContext = serviceContainer.rootScopedContext.createChildScope('rpc');
+        const rpcScopedContext = serviceContainer.rootInjectorContext.createChildScope('rpc');
         const controller = rpcScopedContext.getInjector(0).get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
@@ -73,7 +73,7 @@ test('controller in module and overwrite service', () => {
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
-        const rpcScopedContext = serviceContainer.rootScopedContext.createChildScope('rpc');
+        const rpcScopedContext = serviceContainer.rootInjectorContext.createChildScope('rpc');
         const controller = rpcScopedContext.get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
@@ -88,7 +88,7 @@ test('controller in module and overwrite service', () => {
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
-        const rpcScopedContext = serviceContainer.rootScopedContext.createChildScope('rpc');
+        const rpcScopedContext = serviceContainer.rootInjectorContext.createChildScope('rpc');
         const controller = rpcScopedContext.get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('different');
@@ -120,7 +120,7 @@ test('simple setup with import and overwrite', () => {
 
     {
         const serviceContainer = new ServiceContainer(MyModule);
-        const injector = serviceContainer.rootScopedContext.getInjector(0);
+        const injector = serviceContainer.rootInjectorContext.getInjector(0);
 
         expect(injector.get(Connection)).toBeInstanceOf(Connection);
         expect(injector.get(MyService)).toBeInstanceOf(MyService);
@@ -147,7 +147,7 @@ test('simple setup with import and overwrite', () => {
         });
 
         const serviceContainer = new ServiceContainer(MyModuleOverwritten);
-        expect(serviceContainer.rootScopedContext.get(Connection)).toBeInstanceOf(OverwrittenConnection);
+        expect(serviceContainer.rootInjectorContext.get(Connection)).toBeInstanceOf(OverwrittenConnection);
 
         const databaseModuleInjector = serviceContainer.getInjectorFor(DatabaseModule);
         const hiddenService = databaseModuleInjector.get(HiddenDatabaseService);
@@ -185,7 +185,7 @@ test('deep', () => {
     });
 
     const serviceContainer = new ServiceContainer(MyModule);
-    const injector = serviceContainer.rootScopedContext;
+    const injector = serviceContainer.rootInjectorContext;
 
     expect(injector.get(Connection)).toBeInstanceOf(Connection);
     expect(injector.get(MyService)).toBeInstanceOf(MyService);
@@ -208,14 +208,14 @@ test('scopes', () => {
     });
 
     const serviceContainer = new ServiceContainer(MyModule);
-    const sessionInjector = serviceContainer.rootScopedContext.createChildScope('rpc');
+    const sessionInjector = serviceContainer.rootInjectorContext.createChildScope('rpc');
 
-    expect(() => serviceContainer.rootScopedContext.get(SessionHandler)).toThrow('Could not resolve');
+    expect(() => serviceContainer.rootInjectorContext.get(SessionHandler)).toThrow('Could not resolve');
     expect(sessionInjector.get(SessionHandler)).toBeInstanceOf(SessionHandler);
 
-    expect(serviceContainer.rootScopedContext.get(MyService)).toBeInstanceOf(MyService);
+    expect(serviceContainer.rootInjectorContext.get(MyService)).toBeInstanceOf(MyService);
     expect(sessionInjector.get(MyService)).toBeInstanceOf(MyService);
-    expect(serviceContainer.rootScopedContext.get(MyService)).toBe(sessionInjector.get(MyService));
+    expect(serviceContainer.rootInjectorContext.get(MyService)).toBe(sessionInjector.get(MyService));
 });
 
 
@@ -249,7 +249,7 @@ test('for root with exported module', () => {
     });
 
     const serviceContainer = new ServiceContainer(MyModule);
-    const injector = serviceContainer.rootScopedContext;
+    const injector = serviceContainer.rootInjectorContext;
 
     expect(injector.get(BaseHandler)).toBeInstanceOf(BaseHandler);
     expect(injector.get(SharedService)).toBeInstanceOf(SharedService);
@@ -292,7 +292,7 @@ test('module with config object', () => {
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
-        expect(serviceContainer.rootScopedContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
+        expect(serviceContainer.rootInjectorContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
         expect(bootstrapMainCalledConfig).toBeInstanceOf(ExchangeConfig);
     }
 
@@ -302,7 +302,7 @@ test('module with config object', () => {
         const MyModule = createModule({});
 
         const serviceContainer = new ServiceContainer(MyModule, [], [MyBaseModule.forRoot()]);
-        expect(serviceContainer.rootScopedContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
+        expect(serviceContainer.rootInjectorContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
         expect(bootstrapMainCalledConfig).toBeInstanceOf(ExchangeConfig);
     }
 
@@ -314,7 +314,7 @@ test('module with config object', () => {
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
-        expect(serviceContainer.rootScopedContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
+        expect(serviceContainer.rootInjectorContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
         expect(bootstrapMainCalledConfig).toBeInstanceOf(ExchangeConfig);
     }
 
@@ -331,7 +331,7 @@ test('module with config object', () => {
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
-        expect(serviceContainer.rootScopedContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
+        expect(serviceContainer.rootInjectorContext.get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
         expect(bootstrapMainCalledConfig).toBeInstanceOf(ExchangeConfig);
         expect(bootstrapMainCalledConfig).toBe(changedConfig);
     }
@@ -372,7 +372,7 @@ test('exported module', () => {
         expect(copy.getImports()[0].id).toBe(FSModule.id);
 
         const serviceContainer = new ServiceContainer(MyModule);
-        const rootInjector = serviceContainer.rootScopedContext.getInjector(0);
+        const rootInjector = serviceContainer.rootInjectorContext.getInjector(0);
 
         expect(rootInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
 

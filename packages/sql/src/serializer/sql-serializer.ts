@@ -106,10 +106,18 @@ sqlSerializer.fromClass.register('uuid', (property: PropertyCompilerSchema, stat
     );
 });
 
+sqlSerializer.toClass.prepend('map', (property: PropertyCompilerSchema, state: CompilerState) => {
+    if (property.parent) return;
+
+    state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
+});
+
 sqlSerializer.toClass.prepend('class', (property: PropertyCompilerSchema, state: CompilerState) => {
     //when property is a reference, then we stored in the database the actual primary key and used this
     //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
     const classSchema = getClassSchema(property.resolveClassType!);
+
+    //note: jsonSerializer already calls JSON.parse if data is a string
 
     if (property.isReference) {
         const primary = classSchema.getPrimaryField();
@@ -144,6 +152,20 @@ sqlSerializer.fromClass.prepend('class', (property: PropertyCompilerSchema, stat
 
 sqlSerializer.fromClass.append('class', (property: PropertyCompilerSchema, state: CompilerState) => {
     if (property.isReference) return;
+
+    const schema = state.jitStack.currentSchema;
+
+    //we don't stringify non-root properties
+    if (property.parent) return;
+
+    //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
+    state.setContext({stringify: JSON.stringify});
+    state.addSetter(`stringify(${state.accessor})`);
+});
+
+sqlSerializer.fromClass.append('map', (property: PropertyCompilerSchema, state: CompilerState) => {
+    //we don't stringify non-root properties
+    if (property.parent) return;
 
     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
     state.setContext({stringify: JSON.stringify});

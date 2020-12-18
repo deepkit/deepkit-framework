@@ -347,7 +347,7 @@ export interface FieldDecoratorResultBase<T> {
     /**
      * Creates a PropertySchema object from the given definition.
      */
-    buildPropertySchema(name?: string): PropertySchema;
+    buildPropertySchema(name?: string, parent?: PropertySchema): PropertySchema;
 
     /**
      * Sets field (column) options for MySQL.

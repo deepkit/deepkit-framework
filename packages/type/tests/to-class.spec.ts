@@ -886,6 +886,9 @@ test('nullable container', () => {
         tagPartial: t.partial({name: t.string}).nullable,
     });
 
+    const s2 = s.getProperty('tagPartial').getResolvedClassSchema();
+    expect(s2.getProperty('name').type).toBe('string');
+
     expect(jsonSerializer.for(s).deserialize({tags: null, tagMap: null, tagPartial: null})).toEqual({tags: null, tagMap: null, tagPartial: null});
     expect(jsonSerializer.for(s).deserialize({})).toEqual({});
 });

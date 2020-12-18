@@ -1,0 +1,216 @@
+@import "../../scss/mixins";
+
+/*
+In macOS we have 4 types of buttons:
+ - default
+ - default.primary
+ - textured
+ - square
+ - window-toolbar
+*/
+
+:host {
+    vertical-align: middle;
+    position: relative;
+    font-weight: 500;
+    height: 21px;
+    color: var(--dui-button-text);
+    font-size: 12px;
+    line-height: 21px;
+    padding: 0 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    cursor: default;
+    user-select: none;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    border-radius: 4px;
+
+    &.square {
+        border-radius: 0;
+        border: 1px solid #b4b4b4;
+        box-shadow: none;
+        height: 21px;
+        line-height: 21px;
+
+        &:not(.disabled).active,
+        &:not(.disabled):active {
+            background-image: linear-gradient(180deg, #c1c1c1 0%, #b5b5b5 100%);
+        }
+    }
+}
+
+:host-context(.light) {
+    &:not(.disabled):not(.square):not(.textured):active {
+        color: white;
+        background-image: linear-gradient(180deg, #4990fe 0%, #005ee5 100%);
+        border-top: 1px solid #1f75f9;
+        border-bottom: 1px solid #0050d9;
+        border-left: 1px solid #1068f1;
+        border-right: 1px solid #1068f1;
+
+        ::ng-deep dui-icon {
+            color: white;
+        }
+    }
+}
+
+:host.highlighted {
+    color: var(--dui-selection);
+}
+
+:host.primary {
+    &:not(.disabled):not(.square) {
+        color: white;
+        //85% colors of :active above
+        background-image: linear-gradient(180deg, rgba(73, 144, 254, 0.85) 0%, rgba(0, 94, 229, 0.85) 100%);
+        border-top: 1px solid rgba(31, 117, 249, 0.86);
+        border-bottom: 1px solid rgba(0, 80, 217, 0.86);
+        border-left: 1px solid rgba(16, 104, 241, 0.85);
+        border-right: 1px solid rgba(16, 104, 241, 0.85);
+
+        ::ng-deep dui-icon {
+            color: white;
+        }
+    }
+}
+
+:host.disabled {
+    color: #adadad !important;
+    pointer-events: none;
+
+    ::ng-deep dui-icon {
+        color: #adadad !important;
+    }
+
+    &.square {
+        opacity: 0.6;
+    }
+}
+
+:host.icon {
+    padding: 0 10px;
+
+    &.square {
+        padding: 0;
+        min-width: 22px;
+    }
+
+    overflow: visible;
+}
+
+:host.tight {
+    padding: 0 1px;
+}
+
+:host.small {
+    padding: 0 2px;
+    font-size: 11px;
+    height: 18px;
+    line-height: 16px;
+    align-items: start;
+}
+
+:host-context(.light) {
+    background: white;
+    border-top: 1px solid #c9c9c9;
+    border-bottom: 1px solid #acacac;
+    border-left: 1px solid #c2c2c2;
+    border-right: 1px solid #c2c2c2;
+    box-shadow: 0 1px 0 #e5e5e5aa;
+
+    &.textured {
+        @include box-textured;
+
+        &:not(.disabled).active,
+        &:not(.disabled):active {
+            @include box-textured-active;
+        }
+    }
+}
+
+:host-context(.light) {
+    &:not(.disabled):not(.primary):not(.square).active {
+        color: white;
+        background-image: linear-gradient(-180deg, #6C6D6D 0%, #646464 100%);
+        border-top: 1px solid #686869;
+        border-bottom: 1px solid #5a5a59;
+        border-left: 1px solid #666666;
+        border-right: 1px solid #666666;
+
+        &:active {
+            background-image: linear-gradient(-180deg, #575857 0%, #505151 100%);
+            border-top: 1px solid #535353;
+            border-bottom: 1px solid #474747;
+            border-left: 1px solid #515151;
+            border-right: 1px solid #515151;
+        }
+    }
+}
+
+:host-context(.dark) {
+    color: white;
+    background-image: linear-gradient(-180deg, #787878 1px, #696969 1px, #696969 95%);
+    border-top: 1px solid #313131;
+    border-bottom: 1px solid #2a2a2a;
+    border-left: 1px solid #303030;
+    border-right: 1px solid #303030;
+    box-shadow: 0 1px 0 #2c353d;
+
+    &.highlighted {
+        color: #3fb2ff;
+    }
+
+    &:not(.disabled):not(.square):not(.textured):active {
+        background-image: linear-gradient(-180deg, #5183F1 0%, #4274EF 1px, #3C6CE1 100%);
+        color: white;
+        box-shadow: 0 1px 0 #232a31;
+    }
+
+    &.square {
+        background-image: linear-gradient(-180deg, #515151 0%, #4B4B4B 100%);
+        border: 1px solid #656565;
+
+        &:not(.disabled).active,
+        &:not(.disabled):active {
+            background-image: linear-gradient(-180deg, #656565 0%, #5C5C5C 100%);
+        }
+    }
+
+    &:not(.disabled):not(.primary):not(.square).active {
+        color: var(--dui-button-text);
+        background-image: linear-gradient(-180deg, #C6C9CC 0%, #C2C5C8 100%, #C1C4C7 100%);
+        border-top: 1px solid #1c1d1f;
+        border-bottom: 1px solid #1a1b1d;
+        border-left: 1px solid #484c50;
+        border-right: 1px solid #484c50;
+
+        &:active {
+            background-image: linear-gradient(-180deg, #E9ECEF 0%, #E4E8EA 100%);
+        }
+    }
+}
+
+
+:host-context(.dark).textured {
+    background-color: #62696f;
+    box-shadow: none;
+
+    &.active,
+    &:active {
+        background: #7e7e7d;
+    }
+}
+
+.label {
+    position: absolute;
+    top: 100%;
+    font-size: 11px;
+    font-weight: 500;
+}

@@ -18,7 +18,7 @@
 
 import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@deepkit/type';
 import {getInstanceState} from './identity-map';
-import {empty} from '@deepkit/core';
+import {empty, getObjectKeysSize} from '@deepkit/core';
 import {getJITConverterForSnapshot} from './converter';
 import {Changes, changeSetSymbol, ItemChanges} from './changes';
 
@@ -101,6 +101,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             `;
 
         } else if (property.isMap || property.isPartial) {
+            context.set('getObjectKeysSize', getObjectKeysSize);
             const i = reserveVariable(context, 'i');
             return `
                 if (!${has(changedName)}) {
@@ -109,7 +110,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
                     changes.${changedName} = item.${changedName};
                     ${onChanged}
-                } else if (${current}.length !== ${last}.length) {
+                } else if (getObjectKeysSize(${current}) !== getObjectKeysSize(${last})) {
                     changes.${changedName} = item.${changedName};
                     ${onChanged}
                 } else {
