@@ -1,0 +1,44 @@
+{
+  "name": "@deepkit/rpc",
+  "version": "1.0.1-alpha.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "AGPL-3.0-only",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
+    "tsc-watch": "rm -rf dist && tsc --watch"
+  },
+  "peerDependencies": {
+    "@deepkit/type": "^1.0.1-alpha.0",
+    "rxjs": "~6.6.0"
+  },
+  "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.1",
+    "@deepkit/type": "^1.0.1-alpha.1",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.1",
+    "@deepkit/bson": "^1.0.1-alpha.1",
+    "dot-prop": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/dot-prop": "^5.0.1",
+    "@types/fs-extra": "^9.0.1",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "~6.6.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

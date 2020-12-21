@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Collection, CollectionSort, ConnectionWriter, EntityPatches, EntitySubject, ExchangeEntity, IdInterface} from '@deepkit/framework-shared';
+import {Collection, EntitySubject, IdInterface, ConnectionWriter} from '@deepkit/rpc';
 import {injectable} from '../injector/injector';
 import {AsyncEventSubscription, asyncOperation, ClassType, eachPair} from '@deepkit/core';
 import {ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward} from '@deepkit/type';
@@ -38,6 +38,7 @@ import {
     UnitOfWorkUpdateEvent
 } from '@deepkit/orm';
 import {AsyncSubscription} from '@deepkit/core-rxjs';
+import { CollectionSort } from '@deepkit/rpc';
 
 interface SentState {
     lastSentVersion?: number;
@@ -130,7 +131,7 @@ class SubscriptionHandler {
 
         const entityName = this.classSchema.getName();
 
-        this.entitySubscription = this.exchange.subscribeEntity(this.classSchema, (message: ExchangeEntity) => {
+        this.entitySubscription = this.exchange.subscribeEntity(this.classSchema, (message: any) => {
             if (message.type === 'removeMany') {
                 for (const id of message.ids) {
                     this.rmSentState(id);
@@ -184,7 +185,7 @@ class SubscriptionHandlers {
     protected handler = new Map<ClassSchema, SubscriptionHandler>();
 
     constructor(
-        protected writer: ConnectionWriter,
+        protected writer: any,
         protected databases: DatabaseRegistry,
         protected exchange: Exchange,
     ) {
@@ -842,7 +843,7 @@ export class LiveDatabase {
             const serialized = jsonSerializer.for(event.classSchema);
 
             for (const changeSet of event.changeSets) {
-                const jsonPatch: EntityPatches = {
+                const jsonPatch: any = {
                     $set: changeSet.changes.$set ? serialized.partialSerialize(changeSet.changes.$set) : undefined,
                     $inc: changeSet.changes.$inc,
                     $unset: changeSet.changes.$unset,

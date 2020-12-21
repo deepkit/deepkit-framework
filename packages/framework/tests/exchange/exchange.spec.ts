@@ -158,109 +158,60 @@ test('test get/set', async () => {
     expect((await client.get('myKey2', type))).toBeUndefined();
 });
 
-// test('version benchmark', async () => {
-//     // this is slower than real-world benchmarks, since we
-//     // dont utilize the bandwidth and essentially only measure the tcp latency.
+
+// test('test subscribe entity fields', async () => {
 //     const client = await createExchange();
-//
-//     const bench = new BenchSuite('exchange version');
-//     bench.addAsync('version', async () => {
-//         await client.version();
-//     });
-//     await bench.runAsync();
-// });
-//
-// test('test get/set benchmark', async () => {
-//     const client = await createExchange();
-//     const type = t.schema({nix: t.string});
-//
-//     const bench = new BenchSuite('exchange set/get');
-//     await client.set('peter', type, {nix: 'data'});
-//
-//     bench.addAsync('get', async () => {
-//         await client.get('peter', type);
-//     });
-//
-//     bench.addAsync('set', async () => {
-//         await client.set('peter', type, {nix: 'data'});
-//     });
-//
-//     await bench.runAsync();
-// });
-//
-// test('entity fields benchmark', async () => {
-//     const client = await createExchange();
-//     const type = t.schema({nix: t.string});
-//
-//     const bench = new BenchSuite('exchange entity-fields');
+
 //     const schema = t.schema({
 //         id: t.string,
 //         title: t.string,
 //         username: t.string,
 //         logins: t.number,
 //     }, {name: 'test'});
-//
-//     bench.addAsync('publishUsedEntityFields', async () => {
-//         await client.publishUsedEntityFields(schema, ['id', 'title']);
-//     });
-//
-//     await bench.runAsync();
+
+//     const subject = client.getUsedEntityFields(schema);
+
+//     const usageSub = await client.publishUsedEntityFields(schema, ['id', 'title']);
+//     expect(subject.value).toEqual(['id', 'title']);
+
+//     await usageSub.unsubscribe();
+//     await subject.nextStateChange;
+//     expect(subject.value).toEqual([]);
+
+//     await client.disconnect();
 // });
 
+// test('test subscribe entity fields multi', async () => {
+//     const client = await createExchange();
 
-test('test subscribe entity fields', async () => {
-    const client = await createExchange();
+//     const schema = t.schema({
+//         id: t.string,
+//         title: t.string,
+//         username: t.string,
+//         logins: t.number,
+//     }, {name: 'test'});
 
-    const schema = t.schema({
-        id: t.string,
-        title: t.string,
-        username: t.string,
-        logins: t.number,
-    }, {name: 'test'});
+//     const subject = client.getUsedEntityFields(schema);
 
-    const subject = client.getUsedEntityFields(schema);
+//     const usageSub1 = await client.publishUsedEntityFields(schema, ['id', 'title']);
+//     expect(subject.value).toEqual(['id', 'title']);
 
-    const usageSub = await client.publishUsedEntityFields(schema, ['id', 'title']);
-    expect(subject.value).toEqual(['id', 'title']);
+//     const usageSub2 = await client.publishUsedEntityFields(schema, ['id', 'title', 'username']);
+//     expect(subject.value).toEqual(['id', 'title', 'username']);
 
-    await usageSub.unsubscribe();
-    await subject.nextStateChange;
-    expect(subject.value).toEqual([]);
+//     await usageSub1.unsubscribe();
+//     await subject.nextStateChange;
+//     expect(subject.value).toEqual(['id', 'title', 'username']);
 
-    await client.disconnect();
-});
+//     const usageSub3 = await client.publishUsedEntityFields(schema, ['logins']);
 
-test('test subscribe entity fields multi', async () => {
-    const client = await createExchange();
+//     await usageSub2.unsubscribe();
+//     await subject.nextStateChange;
+//     expect(subject.value).toEqual(['logins']);
 
-    const schema = t.schema({
-        id: t.string,
-        title: t.string,
-        username: t.string,
-        logins: t.number,
-    }, {name: 'test'});
+//     await usageSub3.unsubscribe();
+//     await subject.nextStateChange;
+//     expect(subject.value).toEqual([]);
 
-    const subject = client.getUsedEntityFields(schema);
-
-    const usageSub1 = await client.publishUsedEntityFields(schema, ['id', 'title']);
-    expect(subject.value).toEqual(['id', 'title']);
-
-    const usageSub2 = await client.publishUsedEntityFields(schema, ['id', 'title', 'username']);
-    expect(subject.value).toEqual(['id', 'title', 'username']);
-
-    await usageSub1.unsubscribe();
-    await subject.nextStateChange;
-    expect(subject.value).toEqual(['id', 'title', 'username']);
-
-    const usageSub3 = await client.publishUsedEntityFields(schema, ['logins']);
-
-    await usageSub2.unsubscribe();
-    await subject.nextStateChange;
-    expect(subject.value).toEqual(['logins']);
-
-    await usageSub3.unsubscribe();
-    await subject.nextStateChange;
-    expect(subject.value).toEqual([]);
-
-    await client.disconnect();
-});
+//     await client.disconnect();
+// });

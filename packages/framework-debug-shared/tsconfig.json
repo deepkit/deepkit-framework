@@ -28,9 +28,6 @@
   ],
   "references": [
     {
-      "path": "../framework-shared/tsconfig.json"
-    },
-    {
       "path": "../core/tsconfig.json"
     },
     {

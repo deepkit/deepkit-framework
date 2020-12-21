@@ -28,7 +28,7 @@ import {
     RpcActionParameter,
     Workflow
 } from '@deepkit/framework-debug-shared';
-import {Collection, rpc, rpcClass} from '@deepkit/framework-shared';
+import {Collection, rpc, rpcClass} from '@deepkit/rpc';
 import {getClassSchema, t} from '@deepkit/type';
 import {ServiceContainer} from '../service-container';
 import {parseRouteControllerAction, Router} from '../router';

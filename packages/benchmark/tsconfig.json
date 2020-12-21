@@ -34,6 +34,9 @@
       "path": "../type/tsconfig.dist.json"
     },
     {
+      "path": "../bson/tsconfig.json"
+    },
+    {
       "path": "../topsort/tsconfig.json"
     }
   ]

@@ -94,8 +94,8 @@ export class HttpWorkflowEvent {
         return this.stopped;
     }
 
-    public nextState: any = undefined;
-    public nextStateEvent: any = undefined;
+    public nextState?: any;
+    public nextStateEvent?: any;
 
     /**
      * @see WorkflowNextEvent.next
@@ -310,6 +310,7 @@ export class HttpListener {
         if (event.response.finished) return;
         event.response.writeHead(404);
         event.response.end('Not found.');
+        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
     }
 
     @eventDispatcher.listen(httpWorkflow.onAuth)
@@ -328,6 +329,7 @@ export class HttpListener {
         if (event.response.finished) return;
         event.response.writeHead(403);
         event.response.end('Access denied');
+        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
     }
 
     @eventDispatcher.listen(httpWorkflow.onController)
@@ -350,6 +352,7 @@ export class HttpListener {
         this.logger.error('Controller error', event.error);
         event.response.writeHead(500);
         event.response.end('Internal error');
+        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
     }
 
     @eventDispatcher.listen(httpWorkflow.onControllerResponse)

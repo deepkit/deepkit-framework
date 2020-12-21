@@ -28,10 +28,7 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
-      "path": "../framework-shared/tsconfig.json"
-    },
-    {
-      "path": "../framework-client/tsconfig.json"
+      "path": "../rpc/tsconfig.json"
     },
     {
       "path": "../framework/tsconfig.json"

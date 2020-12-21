@@ -97,7 +97,7 @@ export function base64ToArrayBuffer(base64: string): ArrayBuffer {
  *
  * This makes a copy.
  */
-export function nodeBufferToArrayBuffer<K>(buf: Buffer): ArrayBuffer {
+export function nodeBufferToArrayBuffer<K>(buf: Uint8Array): ArrayBuffer {
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 

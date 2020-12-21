@@ -35,8 +35,8 @@ import {
     BSON_DATA_UNDEFINED,
     digitByteSize
 } from './utils';
-import {CachedKeyDecoder, decodeUTF8} from './strings';
-import {nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap} from '@deepkit/type';
+import { CachedKeyDecoder, decodeUTF8, decodeUTF8Parser } from './strings';
+import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
 
 const TWO_PWR_32_DBL_N = (1n << 16n) * (1n << 16n);
 
@@ -52,7 +52,7 @@ export class BaseParser {
     public size: number;
     public dataView: DataView;
 
-    constructor(public buffer: Buffer, public offset: number = 0) {
+    constructor(public buffer: Uint8Array, public offset: number = 0) {
         this.size = buffer.byteLength;
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
@@ -150,7 +150,7 @@ export class BaseParser {
             + hexTable[b[offset + 9]]
             + hexTable[b[offset + 10]]
             + hexTable[b[offset + 11]]
-        ;
+            ;
 
         this.seek(12);
         return o;
@@ -180,7 +180,7 @@ export class BaseParser {
             + hexTable[b[offset + 13]]
             + hexTable[b[offset + 14]]
             + hexTable[b[offset + 15]]
-        ;
+            ;
 
         this.seek(16);
         return o;
@@ -203,7 +203,7 @@ export class BaseParser {
     eatObjectPropertyName() {
         let end = this.offset;
         while (this.buffer[end] !== 0) end++;
-        const s = this.buffer.toString('utf8', this.offset, end);
+        const s = decodeUTF8(this.buffer, this.offset, end);
         this.offset = end + 1;
         return s;
     }
@@ -233,7 +233,7 @@ export class BaseParser {
 
     eatString(size): string {
         this.offset += size;
-        return this.buffer.toString('utf8', this.offset - size, this.offset - 1);
+        return decodeUTF8(this.buffer, this.offset - size, this.offset - 1);
     }
 }
 
@@ -263,17 +263,14 @@ export class ParserV2 extends BaseParser {
             return string;
         }
 
-        const s = this.buffer.toString('utf8', this.offset, end);
+        const s = decodeUTF8(this.buffer, this.offset, end);
         this.offset = end + 1;
+
         return s;
     }
 
     eatString(size): string {
-        if (size > 14) {
-            this.offset += size;
-            return this.buffer.toString('utf8', this.offset - size, this.offset - 1);
-        }
-        return decodeUTF8(this, size);
+        return decodeUTF8Parser(this, size);
     }
 }
 
@@ -296,11 +293,11 @@ export class ParserV3 extends BaseParser {
     }
 
     eatString(size): string {
-        if (size > 14) {
-            this.offset += size;
-            return this.buffer.toString('utf8', this.offset - size, this.offset - 1);
-        }
-        return decodeUTF8(this, size);
+        // if (size > 14) {
+        //     this.offset += size;
+        //     return this.buffer.toString('utf8', this.offset - size, this.offset - 1);
+        // }
+        return decodeUTF8Parser(this, size);
     }
 }
 
@@ -336,4 +333,7 @@ export function parseArray(parser: BaseParser): any[] {
     return result;
 }
 
+export function deserialize(buffer: Uint8Array, offset = 0) {
+    return parseObject(new ParserV2(buffer, offset));
+}
 

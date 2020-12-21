@@ -17,7 +17,6 @@
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.1",
     "@deepkit/framework": "^1.0.1-alpha.1",
-    "@deepkit/framework-shared": "^1.0.1-alpha.1",
     "@deepkit/orm": "^1.0.1-alpha.1",
     "@deepkit/type": "^1.0.1-alpha.1",
     "fs-extra": "^9.0.1",

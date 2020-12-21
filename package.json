@@ -46,7 +46,7 @@
       "packages/sql",
       "packages/framework-integration",
       "packages/framework",
-      "packages/framework-shared",
+      "packages/rpc",
       "packages/topsort"
     ]
   }

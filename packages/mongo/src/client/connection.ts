@@ -391,9 +391,11 @@ export class ResponseParser {
     }
 
     public feed(data: Buffer) {
+        if (!data.byteLength) return;
+
         if (!this.currentMessage) {
             this.currentMessage = data;
-            this.currentMessageSize = new DataView(data.buffer, this.currentMessage.byteOffset).getInt32(0, true);
+            this.currentMessageSize = new DataView(data.buffer, this.currentMessage.byteOffset).getUint32(0, true);
         } else {
             this.currentMessage = Buffer.concat([this.currentMessage, data]);
             if (!this.currentMessageSize) {
@@ -401,7 +403,7 @@ export class ResponseParser {
                     //not enough data to read the header. Wait for next onData
                     return;
                 }
-                this.currentMessageSize = new DataView(this.currentMessage.buffer, this.currentMessage.byteOffset).getInt32(0, true);
+                this.currentMessageSize = new DataView(this.currentMessage.buffer, this.currentMessage.byteOffset).getUint32(0, true);
             }
         }
 
@@ -411,6 +413,8 @@ export class ResponseParser {
         while (currentBuffer) {
             if (currentSize > currentBuffer.byteLength) {
                 //message not completely loaded, wait for next onData
+                this.currentMessage = currentBuffer;
+                this.currentMessageSize = currentSize;
                 return;
             }
 

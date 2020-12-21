@@ -17,11 +17,7 @@
  */
 
 import {ProcessLocker} from '@deepkit/core';
-import {InternalClient} from './rpc/internal-client';
 import {SessionStack} from './session';
-import {ClientConnection} from './rpc/client-connection';
-import {ConnectionMiddleware} from '@deepkit/framework-shared';
-import {RpcSecurityStrategy} from './rpc/security';
 import {Router} from './router';
 import {HttpKernel, HttpListener, httpWorkflow, serveStaticListener} from './http';
 import {ServerListenController} from './cli/server-listen';
@@ -36,7 +32,6 @@ import {ExchangeModule} from './exchange/exchange.module';
 import {kernelConfig} from './kernel.config';
 import {EnvConfiguration} from './configuration';
 import {WebWorkerFactory} from './worker';
-import {rpcWorkflow} from './rpc/rpc';
 import {registerDebugHttpController} from './debug/http-debug.controller';
 import {Zone} from './zone';
 import {HttpRequestDebugCollector, Debugger} from './debug/debugger';
@@ -72,8 +67,8 @@ export const KernelModule = createModule({
     config: kernelConfig,
     providers: [
         ProcessLocker,
-        InternalClient,
-        RpcSecurityStrategy,
+        // InternalClient,
+        // RpcSecurityStrategy,
         ApplicationServer,
         Router,
         HttpKernel,
@@ -82,15 +77,15 @@ export const KernelModule = createModule({
         ConsoleTransport,
         Logger,
         {provide: SessionStack, scope: 'rpc'},
-        {provide: ClientConnection, scope: 'rpc'},
-        {provide: ConnectionMiddleware, scope: 'rpc'},
+        // {provide: ClientConnection, scope: 'rpc'},
+        // {provide: ConnectionMiddleware, scope: 'rpc'},
         {provide: LiveDatabase, scope: 'rpc'},
         {provide: HttpListener},
         {provide: HttpRequestDebugCollector, scope: 'http'},
     ],
     workflows: [
         httpWorkflow,
-        rpcWorkflow,
+        // rpcWorkflow,
     ],
     listeners: [
         HttpListener,

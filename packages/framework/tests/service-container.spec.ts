@@ -2,7 +2,7 @@ import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {ServiceContainer} from '../src/service-container';
 import {injectable} from '../src/injector/injector';
-import {rpc} from '@deepkit/framework-shared';
+import {rpc} from '@deepkit/rpc';
 import {createModule} from '../src/module';
 
 test('controller', () => {

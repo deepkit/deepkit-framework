@@ -8,6 +8,7 @@
     "deprecation": {
       "severity": "warn"
     },
+    "object-curly-spacing": false,
     "eofline": true,
     "forin": true,
     "import-blacklist": [
@@ -15,7 +16,7 @@
       "rxjs",
       "rxjs/Rx"
     ],
-    "import-spacing": true,
+    "import-spacing": false,
     "indent": [
       true,
       "spaces"
@@ -93,14 +94,7 @@
     ],
     "unified-signatures": true,
     "variable-name": false,
-    "whitespace": [
-      true,
-      "check-branch",
-      "check-decl",
-      "check-operator",
-      "check-separator",
-      "check-type"
-    ],
+    "whitespace": false,
     "directive-selector": [
       true,
       "attribute",

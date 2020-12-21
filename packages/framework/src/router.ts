@@ -19,7 +19,7 @@
 import {asyncOperation, ClassType, CompilerContext} from '@deepkit/core';
 import {join} from 'path';
 import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema} from '@deepkit/type';
-import {ValidationError, ValidationErrorItem} from '@deepkit/framework-shared';
+import {ValidationError, ValidationErrorItem} from '@deepkit/rpc';
 import {httpClass} from './decorator';
 import {BasicInjector, injectable} from './injector/injector';
 import {Logger} from './logger';
@@ -429,10 +429,11 @@ export class Router {
         }
 
         return compiler.build(`
-            const _method = request.method.toLowerCase();
-            const _qPosition = request.url.indexOf('?');
-            const _path = _qPosition === -1 ? request.url : request.url.substr(0, _qPosition); 
-            const _query = _qPosition === -1 ? {} : parseQueryString(request.url.substr(_qPosition + 1));
+            const _method = request.getMethod().toLowerCase();
+            const _url = request.getUrl();
+            const _qPosition = _url.indexOf('?');
+            const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition); 
+            const _query = _qPosition === -1 ? {} : parseQueryString(_url.substr(_qPosition + 1));
             ${code.join('\n')}
         `, 'request') as any;
     }
@@ -470,9 +471,9 @@ export class Router {
     }
 
     public resolve(method: string, url: string): ResolvedController | undefined {
-        return this.resolveRequest(new class extends HttpRequest {
-            method = method;
-            url = url;
-        }(new Socket()));
+        return this.resolveRequest({
+            getUrl(){ return url},
+            getMethod(){ return method},
+        } as any);
     }
 }

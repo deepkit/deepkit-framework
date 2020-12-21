@@ -43,6 +43,7 @@ export interface DatabaseJoinModel<T, PARENT extends BaseQuery<any>> {
     foreignPrimaryKey: PropertySchema,
 }
 
+
 export type QuerySelector<T> = {
     // Comparison
     $eq?: T;

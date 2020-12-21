@@ -262,10 +262,9 @@ export function createBSONSizer(classSchema: ClassSchema, jitStack: JitStack = n
 }
 
 export class Writer {
-    public offset = 0;
     public dataView: DataView;
 
-    constructor(public buffer: Buffer) {
+    constructor(public buffer: Uint8Array, public offset: number = 0) {
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
 
@@ -292,9 +291,9 @@ export class Writer {
         this.buffer[this.offset++] = v;
     }
 
-    writeBuffer(buffer: Buffer) {
+    writeBuffer(buffer: Uint8Array, offset: number = 0) {
         // buffer.copy(this.buffer, this.buffer.byteOffset + this.offset);
-        for (let i = 0; i < buffer.byteLength; i++) {
+        for (let i = offset; i < buffer.byteLength; i++) {
             this.buffer[this.offset++] = buffer[i];
         }
         // this.offset += buffer.byteLength;
@@ -708,7 +707,7 @@ function getPropertySerializerCode(
         `;
 }
 
-function createBSONSerialize(classSchema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object) => Buffer {
+function createBSONSerialize(classSchema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object, writer?: Writer) => Buffer {
     const context = new Map<string, any>();
     const prepared = jitStack.prepare(classSchema);
 
@@ -753,7 +752,7 @@ function createBSONSerialize(classSchema: ClassSchema, jitStack: JitStack = new 
  * Note: The instances needs to be in the mongo format already since it does not resolve decorated properties.
  *       So call it with the result of classToMongo(Schema, item).
  */
-export function getBSONSerializer(schema: ClassSchema | ClassType): (data: any) => Buffer {
+export function getBSONSerializer(schema: ClassSchema | ClassType): (data: any, writer?: Writer) => Buffer {
     schema = getClassSchema(schema);
 
     const jit = schema.jit;

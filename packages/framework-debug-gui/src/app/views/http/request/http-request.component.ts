@@ -15,6 +15,17 @@ import {DebugRequest, Workflow} from '@deepkit/framework-debug-shared';
         <div class="text-selection">Response time: {{time(request.times['http'])}}</div>
       </div>
 
+      <div>
+        <dui-button-group>
+          <dui-tab-button [active]="true">Overview</dui-tab-button>
+          <dui-tab-button>Events (5)</dui-tab-button>
+          <dui-tab-button>Queries (5)</dui-tab-button>
+          <dui-tab-button>Mails</dui-tab-button>
+          <dui-tab-button>Message Bus</dui-tab-button>
+          <dui-tab-button>Logs</dui-tab-button>
+        </dui-button-group>
+      </div>
+
       <div class="workflow" style="height: 250px; margin-bottom: 10px; overflow: auto" class="overlay-scrollbar-small" *ngIf="httpWorkflow">
         <app-workflow [workflow]="httpWorkflow">
           <ng-container *ngFor="let placeName of httpWorkflow.places">
@@ -28,7 +39,6 @@ import {DebugRequest, Workflow} from '@deepkit/framework-debug-shared';
         </app-workflow>
       </div>
 
-      //total request time
       //total db time: split in query time & serialization time
       //total message bus time
       //workflow times

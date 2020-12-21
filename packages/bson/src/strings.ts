@@ -22,7 +22,7 @@ import {BaseParser} from './bson-parser';
  * This creates a JS string from a utf8 byte buffer. This is the fastest way possible to create
  * small strings (< 14chars). Everything else should be cached or created by Buffer.toString('utf8').
  */
-export function decodeUTF8(parser: BaseParser, size: number = parser.size - parser.offset) {
+export function decodeUTF8Parser(parser: BaseParser, size: number = parser.size - parser.offset) {
     let i = parser.offset, s = '';
     const end = parser.offset + size;
     while (i < end) {
@@ -61,6 +61,44 @@ export function decodeUTF8(parser: BaseParser, size: number = parser.size - pars
     return s;
 }
 
+export function decodeUTF8(buffer: Uint8Array, off: number = 0, end: number = Infinity) {
+    let s = '';
+    while (off < end) {
+        let c = buffer[off++];
+
+        if (c > 127) {
+            if (c > 191 && c < 224) {
+                if (off >= end)
+                    throw new Error('UTF-8 decode: incomplete 2-byte sequence');
+                c = (c & 31) << 6 | buffer[off++] & 63;
+            } else if (c > 223 && c < 240) {
+                if (off + 1 >= end)
+                    throw new Error('UTF-8 decode: incomplete 3-byte sequence');
+                c = (c & 15) << 12 | (buffer[off++] & 63) << 6 | buffer[off++] & 63;
+            } else if (c > 239 && c < 248) {
+                if (off + 2 >= end)
+                    throw new Error('UTF-8 decode: incomplete 4-byte sequence');
+                c = (c & 7) << 18 | (buffer[off++] & 63) << 12 | (buffer[off++] & 63) << 6 | buffer[off++] & 63;
+            } else throw new Error('UTF-8 decode: unknown multibyte start 0x' + c.toString(16) + ' at index ' + (off - 1));
+            if (c <= 0xffff) {
+                s += String.fromCharCode(c);
+            } else if (c <= 0x10ffff) {
+                c -= 0x10000;
+                s += String.fromCharCode(c >> 10 | 0xd800, c & 0x3FF | 0xdc00);
+            } else throw new Error('UTF-8 decode: code point 0x' + c.toString(16) + ' exceeds UTF-16 reach');
+        } else {
+            if (c === 0) {
+                off = off;
+                return s;
+            }
+
+            s += String.fromCharCode(c);
+        }
+    }
+    off = end;
+    return s;
+}
+
 interface KeyCacheRecord {
     readonly bytes: Uint8Array;
     readonly offset: number;
@@ -81,16 +119,16 @@ export class CachedKeyDecoder {
         }
     }
 
-    public get(bytes: Buffer, inputOffset: number, byteLength: number): string {
+    public get(bytes: Uint8Array, inputOffset: number, byteLength: number): string {
         if (byteLength > this.maxKeyLength) {
-            return bytes.toString('utf8', inputOffset, inputOffset + byteLength);
+            return decodeUTF8(bytes, inputOffset, inputOffset + byteLength);
         }
 
         return this.findCachedKey(bytes, inputOffset, byteLength, this.cachedValues[byteLength]);
     }
 
     private findCachedKey(
-        bytes: Buffer,
+        bytes: Uint8Array,
         inputOffset: number,
         byteLength: number,
         chunks: Array<KeyCacheRecord>,
@@ -127,7 +165,7 @@ export class CachedKeyDecoder {
             return chunk.key;
         }
 
-        const string = bytes.toString('utf8', inputOffset, inputOffset + byteLength);
+        const string = decodeUTF8(bytes, inputOffset, inputOffset + byteLength);
         chunks.push({
             bytes, hits: 0, key: string, offset: inputOffset,
         });

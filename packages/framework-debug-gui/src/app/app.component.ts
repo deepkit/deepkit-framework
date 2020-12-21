@@ -30,21 +30,21 @@ import {ControllerClient} from './client';
 
             <!--            <dui-list-item routerLink="/message-bus">Message bus</dui-list-item>-->
 
-            <!--            <dui-list-title>Database</dui-list-title>-->
-            <!--            <ng-container *ngIf="databases.length">-->
-            <!--              <ng-container *ngFor="let db of databases">-->
-            <!--                <dui-list-item style="padding-left: 10px;" routerLink="/database/{{db.name}}">-->
-            <!--                  <dui-icon style="position: relative; top: -1px; color: var(&#45;&#45;text-grey);" name="triangle_down"></dui-icon>-->
-            <!--                  {{db.name}} ({{db.adapter}})-->
-            <!--                </dui-list-item>-->
+                        <dui-list-title>Database</dui-list-title>
+                        <ng-container *ngIf="databases.length">
+                          <ng-container *ngFor="let db of databases">
+                            <dui-list-item routerLink="/database/{{db.name}}">
+<!--                              <dui-icon style="position: relative; top: -1px; color: var(&#45;&#45;text-grey);" name="triangle_down"></dui-icon>-->
+                              {{db.name}} ({{db.adapter}})
+                            </dui-list-item>
 
-            <!--                <ng-container>-->
-            <!--                  <dui-list-item-->
-            <!--                    *ngFor="let entity of db.entities"-->
-            <!--                    style="padding-left: 32px;">{{entity.className}} ({{entity.name}})</dui-list-item>-->
-            <!--                </ng-container>-->
-            <!--              </ng-container>-->
-            <!--            </ng-container>-->
+<!--                            <ng-container>-->
+<!--                              <dui-list-item-->
+<!--                                *ngFor="let entity of db.entities"-->
+<!--                                style="padding-left: 32px;">{{entity.className}} ({{entity.name}})</dui-list-item>-->
+<!--                            </ng-container>-->
+                          </ng-container>
+                        </ng-container>
 
             <!--            <dui-list-title>HTTP Requests</dui-list-title>-->
             <!--            <dui-list-item routerLink="/rpc-client/1">Request 3</dui-list-item>-->

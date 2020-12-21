@@ -39,12 +39,17 @@ export type ExtractDefinition<T extends FieldDecoratorResult<any>> = T extends F
 
 export type MergeSchemaAndBase<T extends PlainSchemaProps, BASE extends ClassSchema | ClassType | undefined> = BASE extends ClassSchema | ClassType ? ExtractType<BASE> & ExtractClassDefinition<T> : ExtractClassDefinition<T>;
 
-export type ExtractClassDefinition<T extends PlainSchemaProps> = {
-    [name in keyof T]:
-    T[name] extends PlainSchemaProps ? ExtractClassDefinition<T[name]> :
-        T[name] extends ClassSchema<infer K> ? K :
-            T[name] extends FieldDecoratorResult<any> ? ExtractDefinition<T[name]> : T
-};
+export type ExtractClassProperty<T> =
+    T extends PlainSchemaProps ? ExtractClassDefinition<T> :
+        T extends ClassSchema<infer K> ? K :
+            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T
+
+export type OptionalProps<T> = { [name in keyof T]: undefined extends T[name] ? name : never }[keyof T];
+export type RequiredProps<T> = { [name in keyof T]: undefined extends T[name] ? never : name }[keyof T];
+
+export type MakeUndefinedOptional<T> = { [name in RequiredProps<T>]: T[name]} & { [name in OptionalProps<T>]?: T[name]}
+
+export type ExtractClassDefinition<T extends PlainSchemaProps> = MakeUndefinedOptional<{ [name in keyof T]: ExtractClassProperty<T[name]> }>;
 
 /**
  * Used to define a entity name for an entity.
@@ -254,7 +259,6 @@ function createFieldDecoratorResult<T>(
                         const property = new PropertySchema(givenPropertyName);
                         property.methodName = 'constructor';
                         schema.registerProperty(property);
-                        schema.propertyNames.push(givenPropertyName);
                     }
 
                     propertySchema = schema.getClassProperties(false).get(givenPropertyName)!;
@@ -491,7 +495,7 @@ function createFieldDecoratorResult<T>(
                 } else if (isFieldDecorator(t)) {
                     //its a decorator @f()
                     //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
-                    const p = t.buildPropertySchema(name, );
+                    const p = t.buildPropertySchema(name,);
                     property.templateArgs.push(p);
                 } else if (t instanceof ClassSchema) {
                     property.templateArgs.push(fRaw.type(t.classType).buildPropertySchema(name, property));

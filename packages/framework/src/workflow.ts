@@ -39,8 +39,8 @@ export class WorkflowEvent {
         return this.stopped;
     }
 
-    public nextState: any = undefined;
-    public nextStateEvent: any = undefined;
+    public nextState?: any;
+    public nextStateEvent?: any;
 
     /**
      * @see WorkflowNextEvent.next

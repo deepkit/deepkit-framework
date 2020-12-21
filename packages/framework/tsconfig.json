@@ -41,10 +41,7 @@
   ],
   "references": [
     {
-      "path": "../framework-client/tsconfig.json"
-    },
-    {
-      "path": "../framework-shared/tsconfig.json"
+      "path": "../rpc/tsconfig.json"
     },
     {
       "path": "../framework-debug-shared/tsconfig.json"

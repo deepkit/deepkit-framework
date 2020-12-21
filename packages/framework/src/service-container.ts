@@ -22,7 +22,7 @@ import {EventDispatcher} from './event';
 import {Module, ModuleOptions} from './module';
 import {ConfiguredProviderRegistry, Injector, tokenLabel} from './injector/injector';
 import {ProviderWithScope} from './injector/provider';
-import {rpcClass} from '@deepkit/framework-shared';
+import {rpcClass} from '@deepkit/rpc';
 import {cli} from './command';
 import {HttpControllers} from './router';
 import {InjectorContext, Context, ContextRegistry} from './injector/injector';

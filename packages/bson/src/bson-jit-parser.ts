@@ -123,7 +123,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
 
 interface DecoderFn {
     buildId: number;
-    (parser: BaseParser): any;
+    (parser: BaseParser, offset?: number): any;
 }
 
 function createSchemaDecoder(classSchema: ClassSchema): DecoderFn {
@@ -151,9 +151,9 @@ function createSchemaDecoder(classSchema: ClassSchema): DecoderFn {
     // console.log('createBSONDecoder', classSchema.getClassName(), [...classSchema.getClassProperties().keys()]);
 
     const functionCode = `
-        return function(parser) {
+        return function(parser, offset) {
             var object = {};
-            parser.seek(4);
+            parser.seek((offset || 0) + 4);
 
             while (true) {
                 const elementType = parser.eatByte();
@@ -179,7 +179,7 @@ function createSchemaDecoder(classSchema: ClassSchema): DecoderFn {
 
 const parsers = new Map<ClassSchema, DecoderFn>();
 
-export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (parser: BaseParser) => T {
+export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (parser: BaseParser, offset?: number) => T {
     schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
 
     let parser = parsers.get(schema);
@@ -195,10 +195,10 @@ export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (pa
  * Note: This does not create the class instances of T nor does it resolve decorated properties, or unions.
  * Call mongoToClass() on the result to create the actual instance.
  */
-export function getBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (bson: Buffer) => T {
+export function getBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (bson: Uint8Array, offset?: number) => T {
     const fn = getRawBSONDecoder(schema);
 
-    return (bson) => {
-        return fn(new ParserV2(bson));
+    return (bson, offset = 0) => {
+        return fn(new ParserV2(bson), offset);
     };
 }

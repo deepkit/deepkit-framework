@@ -8,13 +8,30 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import uuidPkg from 'uuid';
+import {v4, stringify} from 'uuid';
 import {ClassType} from '@deepkit/core';
 import {ClassSchema} from './model';
 import {ExtractPrimaryKeyOrReferenceType, TypedArrays} from './types';
 
+/** 
+ * Returns a new UUID v4 as string.
+*/
 export function uuid(): string {
-    return uuidPkg.v4();
+    return v4();
+}
+
+/**
+ * Writes a new uuid v4 into an existing buffer, and returns the same buffer.
+ */
+export function writeUuid(buffer: Uint8Array, offset: number = 0): Uint8Array {
+    v4(undefined, buffer, offset);
+    return buffer;
+}
+/**
+ * Stringify an exising Uint8Array buffer.
+ */
+export function stringifyUuid(buffer: Uint8Array, offset: number = 0): string {
+    return stringify(buffer, offset);
 }
 
 export function isArray(v: any): v is Array<any> {

@@ -14,6 +14,7 @@ import {extractMethod} from './code-parser';
 import getParameterNames from 'get-parameter-names';
 import {typedArrayMap, typedArrayNamesMap, Types} from './types';
 import {FieldDecoratorResult} from './field-decorator';
+import {ExtractClassDefinition, PlainSchemaProps, t} from './decorators';
 
 export enum UnpopulatedCheck {
     None,
@@ -82,13 +83,10 @@ export interface PropertySchemaSerialized {
     name: string;
     type: Types;
     literalValue?: string | number | boolean;
-    isArray?: true;
-    isMap?: true;
     isDecorated?: true;
     isParentReference?: true;
     isOptional?: true;
     isId?: true;
-    isPartial?: true;
     typeSet?: true;
     isDiscriminant?: true;
     allowLabelsAsValue?: true;
@@ -444,14 +442,11 @@ export class PropertySchema extends PropertyCompilerSchema {
         };
 
         if (this.literalValue !== undefined) props['literalValue'] = this.literalValue;
-        if (this.isArray) props['isArray'] = true;
-        if (this.isMap) props['isMap'] = true;
         if (this.isDecorated) props['isDecorated'] = true;
         if (this.isDiscriminant) props['isDiscriminant'] = true;
         if (this.isParentReference) props['isParentReference'] = true;
         if (this.isOptional) props['isOptional'] = true;
         if (this.isId) props['isId'] = true;
-        if (this.isPartial) props['isPartial'] = true;
         if (this.allowLabelsAsValue) props['allowLabelsAsValue'] = true;
         if (this.typeSet) props['typeSet'] = true;
         if (this.methodName) props['methodName'] = this.methodName;
@@ -500,7 +495,7 @@ export class PropertySchema extends PropertyCompilerSchema {
             const entity = getGlobalStore().RegisteredEntities[props['classType']];
             if (!entity) {
                 throw new Error(`Could not unserialize type information for ${p.methodName || ''}:${p.name}, got entity name ${props['classType']}. ` +
-                    `Make sure given entity is loaded (imported at least once globally).`);
+                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name()`);
             }
             p.classType = getClassSchema(entity).classType;
         }
@@ -636,6 +631,16 @@ export class PropertySchema extends PropertyCompilerSchema {
 export interface EntityIndex {
     fields: string[],
     options: IndexOptions
+}
+
+export class ClassSchemaSlicer<T> {
+    constructor(public classSchema: ClassSchema<T>) {
+    }
+
+    exclude<K extends (keyof T)[]>(...properties: K): ClassSchema<Exclude<T, K[keyof K]>> {
+        const cloned = this.classSchema.clone();
+        return cloned as any;
+    }
 }
 
 export class ClassSchema<T = any> {
@@ -815,8 +820,8 @@ export class ClassSchema<T = any> {
         this.indices.set(name, {fields: fieldNames, options: options || {}});
     }
 
-    public clone(classType: ClassType): ClassSchema {
-        const s = new ClassSchema(classType);
+    public clone(classType?: ClassType): ClassSchema {
+        const s = new ClassSchema(classType || class {});
         s.name = this.name;
         s.collectionName = this.collectionName;
         s.databaseSchemaName = this.databaseSchemaName;
@@ -883,6 +888,7 @@ export class ClassSchema<T = any> {
             property.hasDefaultValue = true;
         }
 
+        this.propertyNames.push(property.name);
         this.classProperties.set(property.name, property);
     }
 
@@ -991,6 +997,21 @@ export class ClassSchema<T = any> {
         }
 
         return false;
+    }
+
+    public exclude<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Omit<T, K[number]>> {
+        const cloned = this.clone();
+        for (const name of properties) cloned.classProperties.delete(name);
+        return cloned as any;
+    }
+
+    public extend<E extends PlainSchemaProps>(props: E, options?: { name?: string, classType?: ClassType }): ClassSchema<T & ExtractClassDefinition<E>> {
+        const cloned = this.clone();
+        const schema = t.schema(props);
+        for (const property of schema.getClassProperties().values()) {
+            cloned.registerProperty(property);
+        }
+        return cloned as any;
     }
 
     protected initializeMethod(name: string) {

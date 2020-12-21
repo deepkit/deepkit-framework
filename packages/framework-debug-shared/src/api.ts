@@ -1,5 +1,5 @@
 import {entity, PropertySchema, t} from '@deepkit/type';
-import {Collection, ControllerSymbol} from '@deepkit/framework-shared';
+import {Collection, ControllerSymbol} from '@deepkit/rpc';
 import { DebugRequest } from './model';
 
 export class ConfigOption {

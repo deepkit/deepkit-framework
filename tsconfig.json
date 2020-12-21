@@ -8,12 +8,6 @@
       "path": "packages/core-rxjs/tsconfig.json"
     },
     {
-      "path": "packages/framework-shared/tsconfig.json"
-    },
-    {
-      "path": "packages/framework-client/tsconfig.json"
-    },
-    {
       "path": "packages/framework-debug-shared/tsconfig.json"
     },
     {
@@ -33,6 +27,9 @@
     },
     {
       "path": "packages/sql/tsconfig.json"
+    },
+    {
+      "path": "packages/rpc/tsconfig.json"
     },
     {
       "path": "packages/orm-integration/tsconfig.json"

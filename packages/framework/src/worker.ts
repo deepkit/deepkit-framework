@@ -16,65 +16,62 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClientConnection} from './rpc/client-connection';
-import {ClientMessageAll, ConnectionWriter, ConnectionWriterStream} from '@deepkit/framework-shared';
 import WebSocket from 'ws';
 import http from 'http';
 import {IncomingMessage, Server} from 'http';
 import https from 'https';
 import {HttpKernel} from './http';
 import {HttpRequest, HttpResponse} from './http-model';
-import {RpcInjectorContext} from './rpc/rpc';
 import {InjectorContext} from './injector/injector';
 import {Provider} from './injector/provider';
 import {injectable, Injector} from './injector/injector';
 
-export class WorkerConnection {
-    constructor(
-        protected connectionClient: ClientConnection,
-        protected onClose: () => Promise<void>
-    ) {
-    }
+// export class WorkerConnection {
+//     constructor(
+//         protected connectionClient: ClientConnection,
+//         protected onClose: () => Promise<void>
+//     ) {
+//     }
 
-    public async write(message: ClientMessageAll) {
-        await this.connectionClient.onMessage(message);
-    }
+//     public async write(message: any) {
+//         await this.connectionClient.onMessage(message);
+//     }
 
-    public async close() {
-        await this.onClose();
-    }
-}
+//     public async close() {
+//         await this.onClose();
+//     }
+// }
 
-export class BaseWorker {
-    constructor(
-        protected rootScopedContext: InjectorContext
-    ) {
-    }
+// export class BaseWorker {
+//     constructor(
+//         protected rootScopedContext: InjectorContext
+//     ) {
+//     }
 
-    createRpcConnection(writer: ConnectionWriterStream, remoteAddress: string = '127.0.0.1'): WorkerConnection {
-        let rpcScopedContext: RpcInjectorContext;
+//     createRpcConnection(writer: any, remoteAddress: string = '127.0.0.1'): WorkerConnection {
+//         let rpcScopedContext: RpcInjectorContext;
 
-        const providers: Provider[] = [
-            ClientConnection,
-            {provide: 'remoteAddress', useValue: remoteAddress},
-            {provide: RpcInjectorContext, useFactory: () => rpcScopedContext},
-            {
-                provide: ConnectionWriter, deps: [], useFactory: () => {
-                    return new ConnectionWriter(writer);
-                }
-            },
-        ];
+//         const providers: Provider[] = [
+//             ClientConnection,
+//             {provide: 'remoteAddress', useValue: remoteAddress},
+//             {provide: RpcInjectorContext, useFactory: () => rpcScopedContext},
+//             // {
+//             //     provide: ConnectionWriter, deps: [], useFactory: () => {
+//             //         return new ConnectionWriter(writer);
+//             //     }
+//             // },
+//         ];
 
-        const additionalInjector = new Injector(providers);
-        rpcScopedContext = this.rootScopedContext.createChildScope('rpc', additionalInjector);
+//         const additionalInjector = new Injector(providers);
+//         rpcScopedContext = this.rootScopedContext.createChildScope('rpc', additionalInjector);
 
-        const clientConnection = rpcScopedContext.get(ClientConnection);
+//         const clientConnection = rpcScopedContext.get(ClientConnection);
 
-        return new WorkerConnection(clientConnection, async () => {
-            await clientConnection.destroy();
-        });
-    }
-}
+//         return new WorkerConnection(clientConnection, async () => {
+//             await clientConnection.destroy();
+//         });
+//     }
+// }
 
 @injectable()
 export class WebWorkerFactory {
@@ -85,13 +82,13 @@ export class WebWorkerFactory {
         return new WebWorker(id, this.httpKernel, this.rootScopedContext, options);
     }
 
-    createBase() {
-        return new BaseWorker(this.rootScopedContext);
-    }
+    // createBase() {
+    //     return new BaseWorker(this.rootScopedContext);
+    // }
 }
 
 @injectable()
-export class WebWorker extends BaseWorker {
+export class WebWorker {
     protected wsServer?: WebSocket.Server;
     protected server?: http.Server | https.Server;
 
@@ -101,8 +98,6 @@ export class WebWorker extends BaseWorker {
         protected rootScopedContext: InjectorContext,
         options: { server?: Server, host: string, port: number },
     ) {
-        super(rootScopedContext);
-
         if (options.server) {
             this.server = options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
@@ -117,8 +112,8 @@ export class WebWorker extends BaseWorker {
             });
         }
 
-        this.wsServer = new WebSocket.Server({server: this.server});
-        this.wsServer.on('connection', this.onWsConnection.bind(this));
+        // this.wsServer = new WebSocket.Server({server: this.server});
+        // this.wsServer.on('connection', this.onWsConnection.bind(this));
     }
 
     close() {
@@ -127,38 +122,38 @@ export class WebWorker extends BaseWorker {
         }
     }
 
-    onWsConnection(ws: WebSocket, req: IncomingMessage) {
-        const connection = this.createRpcConnection(new class implements ConnectionWriterStream {
-            async send(v: string): Promise<boolean> {
-                ws.send(v, (err) => {
-                    if (err) {
-                        ws.close();
-                    }
-                });
-                return true;
-            }
+    // onWsConnection(ws: WebSocket, req: IncomingMessage) {
+    //     const connection = this.createRpcConnection(new class implements ConnectionWriterStream {
+    //         async send(v: string): Promise<boolean> {
+    //             ws.send(v, (err) => {
+    //                 if (err) {
+    //                     ws.close();
+    //                 }
+    //             });
+    //             return true;
+    //         }
 
-            bufferedAmount(): number {
-                return ws.bufferedAmount;
-            }
-        }, req.connection.remoteAddress);
+    //         bufferedAmount(): number {
+    //             return ws.bufferedAmount;
+    //         }
+    //     }, req.connection.remoteAddress);
 
-        ws.on('message', async (message: any) => {
-            const json = 'string' === typeof message ? message : Buffer.from(message).toString();
-            await connection.write(JSON.parse(json));
-        });
+    //     ws.on('message', async (message: any) => {
+    //         const json = 'string' === typeof message ? message : Buffer.from(message).toString();
+    //         await connection.write(JSON.parse(json));
+    //     });
 
-        ws.on('error', async (error: any) => {
-            console.error('Error in WS', error);
-        });
+    //     ws.on('error', async (error: any) => {
+    //         console.error('Error in WS', error);
+    //     });
 
-        const interval = setInterval(() => {
-            ws.ping();
-        }, 15_000);
+    //     const interval = setInterval(() => {
+    //         ws.ping();
+    //     }, 15_000);
 
-        ws.on('close', async () => {
-            clearInterval(interval);
-            await connection.close();
-        });
-    }
+    //     ws.on('close', async () => {
+    //         clearInterval(interval);
+    //         await connection.close();
+    //     });
+    // }
 }

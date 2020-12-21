@@ -18,7 +18,6 @@
 
 import {Subscription} from 'rxjs';
 import {ClassSchema} from '@deepkit/type';
-import {ExchangeEntity, StreamBehaviorSubject, StreamFileResult} from '@deepkit/framework-shared';
 import {asyncOperation, ClassType, ParsedHost, parseHost, sleep} from '@deepkit/core';
 import {decodeMessage, decodePayloadAsJson, encodeMessage, encodePayloadAsJSONArrayBuffer} from './exchange-prot';
 import {AsyncSubscription} from '@deepkit/core-rxjs';
@@ -26,6 +25,7 @@ import WebSocket from 'ws';
 import {inject, injectable} from '../injector/injector';
 import {getBSONDecoder, getBSONSerializer} from '@deepkit/bson';
 import {exchangeConfig} from './exchange.config';
+import { BehaviorSubject } from 'rxjs';
 
 type Callback<T> = (message: T) => void;
 
@@ -51,7 +51,7 @@ export class Exchange {
 
     protected host: ParsedHost = parseHost(this.listen);
 
-    protected usedEntityFieldsSubjects = new Map<string, StreamBehaviorSubject<string[]>>();
+    protected usedEntityFieldsSubjects = new Map<string, BehaviorSubject<string[]>>();
 
     constructor(
         @inject(exchangeConfig.token('listen')) protected listen: string,
@@ -213,28 +213,28 @@ export class Exchange {
         let subject = this.usedEntityFieldsSubjects.get(entityName);
         if (subject) return subject;
 
-        subject = new StreamBehaviorSubject<string[]>([]);
+        subject = new BehaviorSubject<string[]>([]);
         this.usedEntityFieldsSubjects.set(entityName, subject);
 
         return subject;
     }
 
-    public publishEntity<T>(classSchema: ClassSchema<T>, message: ExchangeEntity) {
+    public publishEntity<T>(classSchema: ClassSchema<T>, message: any) {
         const channelName = 'deepkit/entity/' + classSchema.getName();
         this.publish(channelName, message);
     }
 
-    public publishFile<T>(fileId: string, message: StreamFileResult) {
+    public publishFile<T>(fileId: string, message: any) {
         const channelName = 'deepkit/file/' + fileId;
         this.publish(channelName, message);
     }
 
-    public subscribeEntity<T>(classSchema: ClassSchema<T>, cb: Callback<ExchangeEntity>): Subscription {
+    public subscribeEntity<T>(classSchema: ClassSchema<T>, cb: Callback<any>): Subscription {
         const channelName = 'deepkit/entity/' + classSchema.getName();
         return this.subscribe(channelName, cb);
     }
 
-    public subscribeFile<T>(fileId: string | number, cb: Callback<StreamFileResult>): Subscription {
+    public subscribeFile<T>(fileId: string | number, cb: Callback<any>): Subscription {
         const channelName = 'deepkit/file/' + fileId;
         return this.subscribe(channelName, cb);
     }
