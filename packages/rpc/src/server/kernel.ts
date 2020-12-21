@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { uuidStringToByte } from '@deepkit/bson';
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, getClassSchema, jsonSerializer, PropertySchemaSerialized, stringifyUuid, writeUuid } from '@deepkit/type';
+import { ClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
 import { rpcClientId, rpcError, RpcInjector, rpcPeerRegister, RpcTypes, SimpleInjector } from '../model';
-import { createBuffer, createRpcMessage, createRpcMessagePeer, createRpcMessageSourceDest, readRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
+import { createBuffer, createRpcMessage, createRpcMessageSourceDest, readRpcMessage, rpcEncodeError, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
 import { RpcServerAction } from './action';
+
 
 export class RpcResponse {
     constructor(
@@ -36,28 +36,12 @@ export class RpcResponse {
     }
 
     error(error: Error | string): void {
-        let classType = '';
-        let properties: any;
+        const extracted = rpcEncodeError(error);
 
-        //todo: extract classType
-        if ('string' !== typeof error) {
-            const schema = getClassSchema(error['constructor'] as ClassType<typeof error>);
-            if (schema.name) {
-                classType = schema.name;
-                if (schema.getClassProperties().size) {
-                    properties = jsonSerializer.for(schema).serialize(error);
-                }
-            }
-        }
-
-        this.writer.write(this.messageFactory(this.id, RpcTypes.Error, rpcError, {
-            classType: classType,
-            message: 'string' === typeof error ? error : error.message,
-            properties
-        }));
+        this.writer.write(this.messageFactory(this.id, RpcTypes.Error, rpcError, extracted));
     }
 
-    reply<T>(type: number, schema: ClassSchema<T>, body: T): void {
+    reply<T>(type: number, schema?: ClassSchema<T>, body?: T): void {
         this.writer.write(this.messageFactory(this.id, type, schema, body));
     }
 }
@@ -191,9 +175,10 @@ export class RpcKernelConnection {
             switch (message.type) {
                 case RpcTypes.ActionType: return await this.actionHandler.handleActionTypes(message, response);
                 case RpcTypes.Action: return await this.actionHandler.handleAction(message, response);
+                default: return await this.actionHandler.handle(message, response);
             }
         } catch (error) {
-            console.log('Error handleMessage', message.type, error);
+            response.error(error);
         }
     }
 

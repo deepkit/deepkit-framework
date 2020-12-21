@@ -301,7 +301,7 @@ export class RpcClient {
 
     protected onMessage(buffer: Uint8Array) {
         const message = readRpcMessage(buffer);
-        // console.log('client: received message', RpcTypes[message.type], message.routeType);
+        // console.log('client: received message', message.id, RpcTypes[message.type], message.routeType);
 
         if (message.type === RpcTypes.Package) {
             //package, wait until complete. retrieve everything, then unpack, and call onMessage() again
@@ -417,10 +417,12 @@ export class RpcClient {
         const dontWaitForConnection = !!(options && options.dontWaitForConnection);
         const timeout = options && options.timeout ? options.timeout : 0;
 
-        const continuation = <T>(type: number, schema: ClassSchema<T>, body: T) => {
+        const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
             if (connectionId === this.transporter.connectionId) {
-                //send a message with the same id. Don't use sendMessage() again as this would lead to a memory
-                // this.sendMessage(type, schema, body, undefined, options);
+                //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
+                // and a new id generated. We want to use the same id.
+                const message = createRpcMessage(id, type, schema, body);
+                this.transporter.send(message);
             }
 
             // const nextSubject: RpcMessageSubject = new RpcMessageSubject(continuation);
@@ -449,6 +451,7 @@ export class RpcClient {
         const subject = new RpcMessageSubject(continuation, () => {
             this.replies.delete(id);
         });
+
         this.replies.set(id, (v: RpcMessage) => subject.next(v));
 
         // this.replies.set(id, (message) => {

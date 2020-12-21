@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType, eachKey, eachPair, getClassName, isClass, isFunction, isObject, isPlainObject, toFastProperties} from '@deepkit/core';
-import {isArray} from './utils';
-import {extractMethod} from './code-parser';
+import { ClassType, eachKey, eachPair, getClassName, isClass, isConstructable, isFunction, isObject, isPlainObject, toFastProperties } from '@deepkit/core';
+import { isArray } from './utils';
+import { extractMethod } from './code-parser';
 import getParameterNames from 'get-parameter-names';
-import {typedArrayMap, typedArrayNamesMap, Types} from './types';
-import {FieldDecoratorResult} from './field-decorator';
-import {ExtractClassDefinition, PlainSchemaProps, t} from './decorators';
+import { typedArrayMap, typedArrayNamesMap, Types } from './types';
+import { FieldDecoratorResult } from './field-decorator';
+import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
 
 export enum UnpopulatedCheck {
     None,
@@ -122,11 +122,13 @@ export function forwardRef<T>(forwardRef: () => T): ForwardRef<T> {
     return new ForwardRef(forwardRef);
 }
 
-function resolveForwardRef<T>(forwardRef: ForwardRefFn<T>): T {
+function resolveForwardRef<T>(forwardRef: ForwardRefFn<T>): T | undefined {
     if (forwardRef instanceof ForwardRef) {
         return forwardRef.forwardRef();
     } else {
-        return forwardRef();
+        try {
+            return forwardRef();
+        } catch { return undefined; }
     }
 }
 
@@ -537,20 +539,20 @@ export class PropertySchema extends PropertyCompilerSchema {
             && type !== 'any'
             && type !== Array
             && type !== Object
-        ;
+            ;
 
         if (isCustomObject) {
             this.type = 'class';
             this.classType = type as ClassType;
 
-            if (detectForwardRef && isFunction(type)) {
+            if (detectForwardRef && isFunction(type) && !isConstructable(type)) {
                 this.classTypeForwardRef = type;
-                delete this.classType;
+                this.classType = undefined;
             }
 
             if (type instanceof ForwardRef) {
                 this.classTypeForwardRef = type;
-                delete this.classType;
+                this.classType = undefined;
             }
             this.typeSet = true;
         }
@@ -631,16 +633,6 @@ export class PropertySchema extends PropertyCompilerSchema {
 export interface EntityIndex {
     fields: string[],
     options: IndexOptions
-}
-
-export class ClassSchemaSlicer<T> {
-    constructor(public classSchema: ClassSchema<T>) {
-    }
-
-    exclude<K extends (keyof T)[]>(...properties: K): ClassSchema<Exclude<T, K[keyof K]>> {
-        const cloned = this.classSchema.clone();
-        return cloned as any;
-    }
 }
 
 export class ClassSchema<T = any> {
@@ -817,11 +809,11 @@ export class ClassSchema<T = any> {
 
     public addIndex(fieldNames: (keyof T & string)[], name?: string, options?: IndexOptions) {
         name = name || fieldNames.join('_');
-        this.indices.set(name, {fields: fieldNames, options: options || {}});
+        this.indices.set(name, { fields: fieldNames, options: options || {} });
     }
 
     public clone(classType?: ClassType): ClassSchema {
-        const s = new ClassSchema(classType || class {});
+        const s = new ClassSchema(classType || class { });
         s.name = this.name;
         s.collectionName = this.collectionName;
         s.databaseSchemaName = this.databaseSchemaName;
@@ -850,12 +842,12 @@ export class ClassSchema<T = any> {
 
         s.indices = new Map;
         for (const [name, v] of this.indices.entries()) {
-            s.indices.set(name, {...v});
+            s.indices.set(name, { ...v });
         }
 
         s.onLoad = [];
         for (const v of this.onLoad) {
-            s.onLoad.push({...v});
+            s.onLoad.push({ ...v });
         }
         return s;
     }
@@ -1272,7 +1264,7 @@ export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any):
     const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
 
     if (!proto.hasOwnProperty(classSchemaSymbol)) {
-        Object.defineProperty(proto, classSchemaSymbol, {writable: true, enumerable: false});
+        Object.defineProperty(proto, classSchemaSymbol, { writable: true, enumerable: false });
     }
 
     // if (!ClassSchemas.has(proto)) {
@@ -1310,7 +1302,7 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object | ClassSche
     const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
     if (!classType.prototype.hasOwnProperty(classSchemaSymbol)) {
-        Object.defineProperty(classType.prototype, classSchemaSymbol, {writable: true, enumerable: false});
+        Object.defineProperty(classType.prototype, classSchemaSymbol, { writable: true, enumerable: false });
     }
 
     if (!classType.prototype[classSchemaSymbol]) {
@@ -1364,7 +1356,7 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
     const c = clazz || class {
     };
     if (name) {
-        Object.defineProperty(c, 'name', {value: name});
+        Object.defineProperty(c, 'name', { value: name });
     }
 
     const classSchema = getOrCreateEntitySchema(c);

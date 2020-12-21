@@ -1,4 +1,4 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import {
     asyncOperation,
     getClassName,
@@ -6,25 +6,27 @@ import {
     getPathValue,
     isArray,
     isClass,
+    isConstructable,
     isFunction,
     isObject,
     isPlainObject,
     isPromise,
+    isPrototypeOfBase,
     isUndefined,
     setPathValue,
     sleep
 } from '../src/core';
 
 class SimpleClass {
-    constructor(public name: string){}
+    constructor(public name: string) { }
 }
 
 test('helper getClassName', () => {
     class User {
-        constructor(public readonly name: string) {}
+        constructor(public readonly name: string) { }
     }
 
-    class MyError extends Error {}
+    class MyError extends Error { }
 
     expect(getClassName(new User('peter'))).toBe('User');
     expect(getClassName(User)).toBe('User');
@@ -39,8 +41,8 @@ test('helper isObject', () => {
     expect(isObject(true)).toBe(false);
     expect(isObject(null)).toBe(false);
     expect(isObject(undefined)).toBe(false);
-    expect(isObject(() => {})).toBe(false);
-    expect(isObject(function() {})).toBe(false);
+    expect(isObject(() => { })).toBe(false);
+    expect(isObject(function () { })).toBe(false);
     expect(isObject(1)).toBe(false);
     expect(isObject('1')).toBe(false);
 
@@ -55,15 +57,15 @@ test('helper isPromise', async () => {
     expect(isPromise(true)).toBe(false);
     expect(isPromise(null)).toBe(false);
     expect(isPromise(undefined)).toBe(false);
-    expect(isPromise(() => {})).toBe(false);
-    expect(isPromise(function() {})).toBe(false);
+    expect(isPromise(() => { })).toBe(false);
+    expect(isPromise(function () { })).toBe(false);
     expect(isPromise(1)).toBe(false);
     expect(isPromise('1')).toBe(false);
 
     function foo1() {
     }
 
-    const foo2 = () => {};
+    const foo2 = () => { };
     expect(isPromise(foo1())).toBe(false);
     expect(isPromise(foo2())).toBe(false);
 
@@ -78,7 +80,7 @@ test('helper isPromise', async () => {
     expect(isObject(foo3())).toBe(true);
     expect(isObject(foo4())).toBe(true);
     expect(isObject(await foo4())).toBe(false);
-    expect(isObject((async () => {})())).toBe(true);
+    expect(isObject((async () => { })())).toBe(true);
 });
 
 test('helper isFunction', () => {
@@ -94,10 +96,10 @@ test('helper isFunction', () => {
     expect(isFunction(new SimpleClass('asd'))).toBe(false);
 
     expect(isFunction(isFunction)).toBe(true);
-    expect(isFunction(() => {})).toBe(true);
-    expect(isFunction(async () => {})).toBe(true);
-    expect(isFunction(function() {})).toBe(true);
-    expect(isFunction(async function() {})).toBe(true);
+    expect(isFunction(() => { })).toBe(true);
+    expect(isFunction(async () => { })).toBe(true);
+    expect(isFunction(function () { })).toBe(true);
+    expect(isFunction(async function () { })).toBe(true);
 });
 
 test('helper isClass', () => {
@@ -112,10 +114,10 @@ test('helper isClass', () => {
     expect(isClass(new Date())).toBe(false);
     expect(isClass(new SimpleClass('asd'))).toBe(false);
     expect(isClass(isFunction)).toBe(false);
-    expect(isClass(() => {})).toBe(false);
-    expect(isClass(async () => {})).toBe(false);
-    expect(isClass(function() {})).toBe(false);
-    expect(isClass(async function() {})).toBe(false);
+    expect(isClass(() => { })).toBe(false);
+    expect(isClass(async () => { })).toBe(false);
+    expect(isClass(function () { })).toBe(false);
+    expect(isClass(async function () { })).toBe(false);
 
     expect(isClass(SimpleClass)).toBe(true);
 });
@@ -128,8 +130,8 @@ test('helper isPlainObject', () => {
     expect(isPlainObject(undefined)).toBe(false);
     expect(isPlainObject(1)).toBe(false);
     expect(isPlainObject('1')).toBe(false);
-    expect(isPlainObject(() => {})).toBe(false);
-    expect(isPlainObject(function() {})).toBe(false);
+    expect(isPlainObject(() => { })).toBe(false);
+    expect(isPlainObject(function () { })).toBe(false);
 
     expect(isPlainObject(new Date())).toBe(false);
     expect(isPlainObject(new SimpleClass('asd'))).toBe(false);
@@ -263,6 +265,39 @@ test('asyncOperation deep', async () => {
 
 test('getObjectKeysSize', async () => {
     expect(getObjectKeysSize({})).toBe(0);
-    expect(getObjectKeysSize({a: true})).toBe(1);
-    expect(getObjectKeysSize({a: 1, b: 1, c: 3, d: 4, e: {}})).toBe(5);
+    expect(getObjectKeysSize({ a: true })).toBe(1);
+    expect(getObjectKeysSize({ a: 1, b: 1, c: 3, d: 4, e: {} })).toBe(5);
+});
+
+
+test('isPrototypeOfBase', () => {
+    class Base { }
+
+    class Child1 extends Base { }
+    class Child2 extends Base { }
+
+    class Child1_1 extends Child1 { }
+    class Child1_1_1 extends Child1_1 { }
+
+    expect(isPrototypeOfBase(Base, Base)).toBe(true);
+    expect(isPrototypeOfBase(Child1, Base)).toBe(true);
+    expect(isPrototypeOfBase(Child2, Base)).toBe(true);
+    expect(isPrototypeOfBase(Child1_1, Base)).toBe(true);
+    expect(isPrototypeOfBase(Child1_1, Child1)).toBe(true);
+    expect(isPrototypeOfBase(Child1_1_1, Base)).toBe(true);
+    expect(isPrototypeOfBase(Child1_1_1, Child1_1)).toBe(true);
+});
+
+test('isConstructable', () => {
+    expect(isConstructable(class { })).toBe(true)
+    expect(isConstructable(class { }.bind(undefined))).toBe(true)
+    expect(isConstructable(function () { })).toBe(true)
+    expect(isConstructable(function () { }.bind(undefined))).toBe(true)
+    expect(isConstructable(() => { })).toBe(false)
+    expect(isConstructable((() => { }).bind(undefined))).toBe(false)
+    expect(isConstructable(async () => { })).toBe(false)
+    expect(isConstructable(async function () { })).toBe(false)
+    expect(isConstructable(function* () { })).toBe(false)
+    expect(isConstructable({ foo() { } }.foo)).toBe(false)
+    expect(isConstructable(URL)).toBe(true)
 });

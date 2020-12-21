@@ -16,8 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { getBSONDecoder, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import { ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getGlobalStore, jsonSerializer } from '@deepkit/type';
-import { getBSONDecoder, getBSONSerializer, getBSONSizer, uuidStringToByte, Writer } from '@deepkit/bson';
 import { rpcError, RpcTypes } from './model';
 
 export const enum RpcMessageRouteType {
@@ -112,45 +113,10 @@ export class RpcMessage {
         return this.buffer.slice(4 + 1 + 4 + 1 + 16, 4 + 1 + 4 + 1 + 16 + 16);
     }
 
-    // getDestination() {
-    //     if (!this.buffer) throw new Error('No buffer');
-    //     if (this.routeType !== RpcMessageRouteType.sourceDest) throw new Error(`Message is not routed via sourceDest, but ${this.routeType}`);
-    //     this.destination = '';
-    //     for (let i = 10; i < 10 + 16; i++) {
-    //         this.destination = String.fromCharCode(this.buffer[i]);
-    //     }
-    //     return this.destination;
-    // }
-
-    // getSource() {
-    //     if (!this.buffer) throw new Error('No buffer');
-    //     if (this.routeType !== RpcMessageRouteType.sourceDest) throw new Error(`Message is not routed via sourceDest, but ${this.routeType}`);
-    //     this.source = '';
-    //     for (let i = 10 + 16; i < 10 + 16 + 16; i++) {
-    //         this.source = String.fromCharCode(this.buffer[i]);
-    //     }
-    //     return this.source;
-    // }
-
     getError(): Error {
         if (!this.buffer) throw new Error('No buffer');
         const error = getBSONDecoder(rpcError)(this.buffer, this.bodyOffset);
-        if (error.classType) {
-            const entity = getGlobalStore().RegisteredEntities[error.classType];
-            if (!entity) {
-                throw new Error(`Could not find an entity named ${error.classType} for an error thrown. ` +
-                    `Make sure the class is loaded and correctly defined using @entity.name(${JSON.stringify(error.classType)})`);
-            }
-            const classType = getClassSchema(entity).classType!;
-            if (error.properties) {
-                return jsonSerializer.for(getClassSchema(entity)).deserialize(error.properties);
-            }
-
-            return new classType(error.message);
-            //todo: check if the given entity 
-        }
-
-        return new Error(error.message);
+        return rpcDecodeError(error);
     }
 
     isError(): boolean {
@@ -379,4 +345,49 @@ export class RpcMessageReader {
             }
         }
     }
+}
+
+
+export interface EncodedError {
+    classType: string;
+    message: string;
+    properties?: { [name: string]: any };
+}
+export function rpcEncodeError(error: Error | string): EncodedError {
+    let classType = '';
+    let properties: { [name: string]: any } | undefined;
+
+    if ('string' !== typeof error) {
+        const schema = getClassSchema(error['constructor'] as ClassType<typeof error>);
+        if (schema.name) {
+            classType = schema.name;
+            if (schema.getClassProperties().size) {
+                properties = jsonSerializer.for(schema).serialize(error);
+            }
+        }
+    }
+
+    return {
+        classType,
+        properties,
+        message: 'string' === typeof error ? error : error.message,
+    }
+}
+
+export function rpcDecodeError(error: EncodedError): Error {
+    if (error.classType) {
+        const entity = getGlobalStore().RegisteredEntities[error.classType];
+        if (!entity) {
+            throw new Error(`Could not find an entity named ${error.classType} for an error thrown. ` +
+                `Make sure the class is loaded and correctly defined using @entity.name(${JSON.stringify(error.classType)})`);
+        }
+        const classType = getClassSchema(entity).classType!;
+        if (error.properties) {
+            return jsonSerializer.for(getClassSchema(entity)).deserialize(error.properties);
+        }
+
+        return new classType(error.message);
+    }
+
+    return new Error(error.message);
 }

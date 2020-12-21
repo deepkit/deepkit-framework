@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, jsonSerializer, propertyDefinition, t } from '@deepkit/type';
 import { ClassType, CustomError } from '@deepkit/core';
-import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { tearDown } from '@deepkit/core-rxjs';
+import { arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, jsonSerializer, propertyDefinition, t } from '@deepkit/type';
+import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
 
 export interface IdInterface {
@@ -280,40 +280,6 @@ export class ValidationParameterError {
     }
 }
 
-export function getSerializedErrorPair(error: any): [string, any, any] {
-    if (error instanceof Error) {
-        return ['@error:default', error.message, error.stack];
-    } else if ('string' === typeof error) {
-        return ['@error:default', error, (new Error).stack];
-    } else if ('function' === typeof error['constructor']) {
-        const entityName = getClassSchema(error['constructor'] as ClassType<typeof error>).name;
-        if (entityName) {
-            return [entityName, jsonSerializer.for(error['constructor'] as ClassType<typeof error>).serialize(error), error ? error.stack : undefined];
-        }
-    }
-
-    return ['@error:default', error, undefined];
-}
-
-export function getUnserializedError(entityName: string, error: any, stack: any, info: string = ''): any {
-    if (!entityName || entityName === '@error:default') {
-        const errorObject = new Error(error);
-        if (stack) {
-            // console.log('error stack', errorObject.stack);
-            // console.log('server stack', stack);
-
-            errorObject.stack = errorObject.stack + `\n    at ORIGIN (${info})\n` + stack.substr(stack.indexOf('\n    at'));
-            // console.log('result', errorObject.stack);
-        }
-        return errorObject;
-    }
-
-    if (!hasClassSchemaByName(entityName)) {
-        throw new Error(`deepkit/type entity ${entityName} not known. (known: ${getKnownClassSchemasNames().join(',')})`);
-    }
-    return jsonSerializer.for(getClassSchemaByName(entityName).classType).deserialize(error);
-}
-
 /*
 Types:
 
@@ -386,6 +352,16 @@ export enum RpcTypes {
     ActionTypeResponse,
     ActionResponseSimple, //direct response that can be simple deserialized.
 
+    ActionObservableSubscribe,
+    ActionObservableUnsubscribe,
+    ActionObservableSubjectUnsubscribe,
+    ActionResponseObservable,
+    ActionResponseBehaviorSubject,
+    ActionResponseObservableNext,
+    ActionResponseObservableComplete,
+    ActionResponseObservableError,
+
+
     ActionResponseCollection,
     ActionResponseCollectionSet,
     ActionResponseCollectionAdd,
@@ -393,19 +369,32 @@ export enum RpcTypes {
 
     EntityPatch,
     EntityRemove,
-
-    ActionResponseObservable,
-    ActionResponseObservableNext,
 }
 
 export const rpcClientId = t.schema({
     id: t.type(Uint8Array)
 });
 
+export const rpcActionObservableSubscribeId = t.schema({
+    id: t.number,
+});
+
 export const rpcError = t.schema({
-    classType: t.string.optional,
+    classType: t.string,
     message: t.string,
     properties: t.map(t.any).optional,
+});
+
+export const rpcResponseActionObservableSubscriptionError = rpcError.extend({id: t.number});
+
+export enum ActionObservableTypes {
+    observable,
+    subject,
+    behaviorSubject,
+}
+
+export const rpcResponseActionObservable = t.schema({
+    type: t.enum(ActionObservableTypes)
 });
 
 export const rpcAuthenticate = t.schema({

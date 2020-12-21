@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {eachPair} from './iterators';
 import dotProp from 'dot-prop';
+import { eachPair } from './iterators';
 
 /**
  * Makes sure the error once printed using console.log contains the actual class name.
@@ -43,7 +43,7 @@ export interface ClassType<T = any> {
  * This type maintains the actual type, but erases the decoratorMetadata, which is requires in a circular reference for ECMAScript modules.
  * Basically fixes like "ReferenceError: Cannot access 'MyClass' before initialization"
  */
-export type Forward<T> = T & {__forward?: true};
+export type Forward<T> = T & { __forward?: true };
 
 /**
  * Returns the class name either of the class definition or of the class of an instance.
@@ -153,7 +153,7 @@ export function isClass(obj: any): obj is ClassType {
  *
  * @public
  */
-export function isObject(obj: any): obj is {[key: string]: any} {
+export function isObject(obj: any): obj is { [key: string]: any } {
     if (obj === null) {
         return false;
     }
@@ -531,4 +531,24 @@ export function getObjectKeysSize(obj: object): number {
     let size = 0;
     for (let i in obj) if (obj.hasOwnProperty(i)) size++;
     return size;
+}
+
+export function isConstructable(fn: any): boolean {
+    try {
+        new new Proxy(fn, { construct: () => ({}) });
+        return true;
+    } catch (err) {
+        return false;
+    }
+};
+
+export function isPrototypeOfBase(prototype: ClassType | undefined, base: ClassType): boolean {
+    if (!prototype) return false;
+    if (prototype === base) return true;
+    let currentProto = Object.getPrototypeOf(prototype);
+    while (currentProto && currentProto !== Object.prototype) {
+        if (currentProto === base) return true;
+        currentProto = Object.getPrototypeOf(currentProto);
+    }
+    return false;
 }

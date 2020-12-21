@@ -29,7 +29,7 @@ export class RpcMessageSubject {
     }
 
     constructor(
-        private continuation: <T>(type: number, schema: ClassSchema<T>, body: T,) => void,
+        private continuation: <T>(type: number, schema?: ClassSchema<T>, body?: T,) => void,
 
         /**
          * Releases this subject. It is necessary that eventually every created subject is released,
@@ -54,8 +54,8 @@ export class RpcMessageSubject {
      */
     public send<T>(
         type: number,
-        schema: ClassSchema<T>,
-        body: T,
+        schema?: ClassSchema<T>,
+        body?: T,
     ) {
         this.continuation(type, schema, body);
     }
