@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+import { domainToASCII } from 'url';
 import {
     asyncOperation,
     getClassName,
@@ -230,16 +231,22 @@ test('test setPathValue ', () => {
 
 
 test('asyncOperation', async () => {
+    class MyError extends Error {}
+
     let fetched = false;
     try {
-        await asyncOperation(async (resolve) => {
-            await sleep(0.2);
-            throw new Error('MyError1');
-        });
+        async function doIt() {
+            await asyncOperation(async (resolve) => {
+                await sleep(0.2);
+                throw new MyError('MyError1');
+            });
+        }
+        await doIt();
     } catch (error) {
         fetched = true;
+        expect(error).toBeInstanceOf(MyError);
         expect(error.stack).toContain('MyError1');
-        expect(error.stack).toContain('asyncOperation');
+        expect(error.stack).toContain('doIt');
     }
     expect(fetched).toBe(true);
 });
@@ -247,17 +254,24 @@ test('asyncOperation', async () => {
 test('asyncOperation deep', async () => {
     let fetched = false;
     try {
-        await asyncOperation(async (resolve) => {
-            await sleep(0.2);
+        async function doIt1() {
             await asyncOperation(async (resolve) => {
                 await sleep(0.2);
-                throw new Error('MyError2');
-            })
-        });
+                async function doIt2() {
+                    await asyncOperation(async (resolve) => {
+                        await sleep(0.2);
+                        throw new Error('MyError2');
+                    })
+                };
+                await doIt2();
+            });
+        }
+        await doIt1();
     } catch (error) {
         fetched = true;
         expect(error.stack).toContain('MyError2');
-        expect(error.stack).toContain('asyncOperation');
+        expect(error.stack).toContain('doIt1');
+        expect(error.stack).toContain('doIt2');
     }
     expect(fetched).toBe(true);
 });

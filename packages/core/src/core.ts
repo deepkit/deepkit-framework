@@ -395,7 +395,7 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
 }
 
 /**
- * A better alternative to "new Promise()" that supports error handling and maintains the stack trace.
+ * A better alternative to "new Promise()" that supports error handling and maintains the stack trace for Error.stack.
  *
  * When you use `new Promise()` you need to wrap your code inside a try-catch to call `reject` on error.
  * asyncOperation() does this automatically.
@@ -415,14 +415,24 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  *
  * @public
  */
-export function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
-    return mergePromiseStack(new Promise<T>(async (resolve, reject) => {
-        try {
-            await executor(resolve, reject);
-        } catch (e) {
-            reject(e);
-        }
-    }));
+export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
+    let error: any, async: any;
+    try {
+        async = await new Promise<T>(async (resolve, reject) => {
+            try {
+                await executor(resolve, reject);
+            } catch (e) {
+                reject(e);
+            }
+        })
+    } catch (e) {
+        error = e;
+    }
+    if (error) {
+        mergeStack(error, createStack());
+        throw error;
+    }
+    return async;
 }
 
 /**
