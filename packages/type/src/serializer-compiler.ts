@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {PropertyCompilerSchema} from './model';
+import {PropertySchema} from './model';
 import {JitStack} from './jit';
 import {SerializerCompilers} from './serializer';
 
@@ -76,7 +76,7 @@ export class CompilerState {
 }
 
 export type TypeConverterCompiler = (
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     compiler: CompilerState
 ) => void;
 
@@ -100,7 +100,7 @@ export function executeCompiler(
     compiler: TypeConverterCompiler,
     setter: string,
     getter: string,
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     serializerCompilers: SerializerCompilers
 ): string {
     const state = new CompilerState(setter, getter, rootContext, jitStack, serializerCompilers);
@@ -111,7 +111,7 @@ export function executeCompiler(
 export function getDataConverterJS(
     setter: string,
     accessor: string,
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     serializerCompilers: SerializerCompilers,
     rootContext: TypeConverterCompilerContext,
     jitStack: JitStack,

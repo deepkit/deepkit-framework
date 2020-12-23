@@ -9,13 +9,13 @@
  */
 
 import {ClassType, isPlainObject} from '@deepkit/core';
-import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol} from './model';
+import {ClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol} from './model';
 import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
 import {reserveVariable} from './serializer-compiler';
-import {JitStack, resolvePropertyCompilerSchema} from './jit';
+import {JitStack, resolvePropertySchema} from './jit';
 
 const jitFunctions = new WeakMap<ClassSchema, any>();
-const CacheJitPropertyMap = new Map<PropertyCompilerSchema, any>();
+const CacheJitPropertyMap = new Map<PropertySchema, any>();
 const CacheValidatorInstances = new Map<ClassType<PropertyValidator>, PropertyValidator>();
 
 
@@ -56,7 +56,7 @@ export class PropertyValidatorError {
 }
 
 export function handleCustomValidator<T>(
-    propSchema: PropertyCompilerSchema,
+    propSchema: PropertySchema,
     validator: PropertyValidator,
     value: any,
     propertyPath: string,
@@ -77,7 +77,7 @@ export function handleCustomValidator<T>(
 export function getDataCheckerJS(
     path: string,
     accessor: string,
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     rootContext: TypeCheckerCompilerContext,
     jitStack: JitStack
 ): string {
@@ -222,7 +222,7 @@ export function getDataCheckerJS(
     }
 }
 
-export function jitValidateProperty(property: PropertyCompilerSchema, classType?: ClassType): (value: any, path?: string, errors?: ValidationFailedItem[], overwritePah?: string) => ValidationFailedItem[] {
+export function jitValidateProperty(property: PropertySchema, classType?: ClassType): (value: any, path?: string, errors?: ValidationFailedItem[], overwritePah?: string) => ValidationFailedItem[] {
     if (property.type === 'class') {
         const foreignSchema = getClassSchema(property.resolveClassType!);
         if (foreignSchema.decorator) {
@@ -350,7 +350,7 @@ export function jitValidatePartial<T, K extends keyof T>(
         if (!partial.hasOwnProperty(i)) continue;
         const thisPath = path ? path + '.' + i : i;
         jitValidateProperty(
-            schema.getClassProperties().get(i) || resolvePropertyCompilerSchema(schema, i),
+            schema.getClassProperties().get(i) || resolvePropertySchema(schema, i),
             classType,
         )(partial[i],
             '',

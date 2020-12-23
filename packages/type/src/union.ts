@@ -9,9 +9,9 @@
  */
 
 //sort by type group (literal, type, generic primitive, any)
-import {PropertyCompilerSchema} from './model';
+import {PropertySchema} from './model';
 import {Types} from './types';
-import {JSONTypeGuard, jsonTypeGuards} from './json-typeguards';
+import {JSONTypeGuard, JSONTypeGuardFactory, jsonTypeGuards} from './json-typeguards';
 
 const sorts: { [type in Types]: number } = {
     literal: 1,
@@ -44,7 +44,9 @@ const sorts: { [type in Types]: number } = {
     any: 5,
 };
 
-export function getSortedUnionTypes(property: PropertyCompilerSchema): {property: PropertyCompilerSchema, guard: JSONTypeGuard}[] {
+export type UnionTypeGuard<T> = (p: PropertySchema) => T;
+
+export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Types, UnionTypeGuard<T>>): {property: PropertySchema, guard: T}[] {
     const sorted = property.templateArgs.slice(0);
 
     sorted.sort((a, b) => {
@@ -53,9 +55,9 @@ export function getSortedUnionTypes(property: PropertyCompilerSchema): {property
         return 0;
     });
 
-    const result: {property: PropertyCompilerSchema, guard: JSONTypeGuard}[] = [];
+    const result: {property: PropertySchema, guard: T}[] = [];
     for (const type of sorted) {
-        const guardFactory = jsonTypeGuards.get(type.type);
+        const guardFactory = guards.get(type.type);
         if (!guardFactory) {
             throw new Error(`No type guard for ${type.type} found`);
         }

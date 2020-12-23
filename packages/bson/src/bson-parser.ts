@@ -20,23 +20,12 @@ import bson from 'bson';
 import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_BINARY_SUBTYPE_UUID,
-    BSON_DATA_ARRAY,
-    BSON_DATA_BINARY,
-    BSON_DATA_BOOLEAN,
-    BSON_DATA_DATE,
-    BSON_DATA_INT,
-    BSON_DATA_LONG,
-    BSON_DATA_NULL,
-    BSON_DATA_NUMBER,
-    BSON_DATA_OBJECT,
-    BSON_DATA_OID,
-    BSON_DATA_STRING,
-    BSON_DATA_TIMESTAMP,
-    BSON_DATA_UNDEFINED,
+    BSONType,
     digitByteSize
 } from './utils';
-import { CachedKeyDecoder, decodeUTF8, decodeUTF8Parser } from './strings';
-import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
+import {decodeUTF8, decodeUTF8Parser} from './strings';
+import {nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap} from '@deepkit/type';
+import {seekElementSize} from './continuation';
 
 const TWO_PWR_32_DBL_N = (1n << 16n) * (1n << 16n);
 
@@ -57,32 +46,39 @@ export class BaseParser {
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
 
+    peek(elementType: number, property?: PropertySchema) {
+        const offset = this.offset;
+        const v = this.parse(elementType, property);
+        this.offset = offset;
+        return v;
+    }
+
     parse(elementType: number, property?: PropertySchema) {
         switch (elementType) {
-            case BSON_DATA_STRING:
+            case BSONType.STRING:
                 return this.parseString();
-            case BSON_DATA_NUMBER:
+            case BSONType.NUMBER:
                 return this.parseNumber();
-            case BSON_DATA_OID:
+            case BSONType.OID:
                 return this.parseOid();
-            case BSON_DATA_INT:
+            case BSONType.INT:
                 return this.parseInt();
-            case BSON_DATA_DATE:
+            case BSONType.DATE:
                 return this.parseDate();
-            case BSON_DATA_LONG:
-            case BSON_DATA_TIMESTAMP:
+            case BSONType.LONG:
+            case BSONType.TIMESTAMP:
                 return this.parseLong();
-            case BSON_DATA_BOOLEAN:
+            case BSONType.BOOLEAN:
                 return this.parseBoolean();
-            case BSON_DATA_NULL:
+            case BSONType.NULL:
                 return null;
-            case BSON_DATA_UNDEFINED:
+            case BSONType.UNDEFINED:
                 return undefined;
-            case BSON_DATA_BINARY:
+            case BSONType.BINARY:
                 return this.parseBinary(property);
-            case BSON_DATA_OBJECT:
+            case BSONType.OBJECT:
                 return parseObject(this);
-            case BSON_DATA_ARRAY:
+            case BSONType.ARRAY:
                 return parseArray(this);
             default:
                 throw new Error('Unsupported BSON type ' + elementType);
@@ -150,7 +146,7 @@ export class BaseParser {
             + hexTable[b[offset + 9]]
             + hexTable[b[offset + 10]]
             + hexTable[b[offset + 11]]
-            ;
+        ;
 
         this.seek(12);
         return o;
@@ -180,7 +176,7 @@ export class BaseParser {
             + hexTable[b[offset + 13]]
             + hexTable[b[offset + 14]]
             + hexTable[b[offset + 15]]
-            ;
+        ;
 
         this.seek(16);
         return o;
@@ -274,31 +270,26 @@ export class ParserV2 extends BaseParser {
     }
 }
 
-/**
- * This is a parser using speculative property names parsing. Its way faster than ParserV2, however only in cases
- * where property names are relatively constant and have low variance. For example in a document with many (same) sub-documents in an array.
- * If the object is small and has unique property names, this is slower as ParserV2.
- */
-export class ParserV3 extends BaseParser {
-    protected cachedKeyDecoder = new CachedKeyDecoder(32);
+export function findValueInObject(parser: BaseParser, checker: (elementType: BSONType, name: string) => boolean): any {
+    const offset = parser.offset;
+    parser.seek(4);
 
-    eatObjectPropertyName() {
-        let end = this.offset;
-        let size = 0;
-        while (this.buffer[end++] !== 0) size++;
+    while (true) {
+        const elementType = parser.eatByte();
+        if (elementType === 0) break;
 
-        const s = this.cachedKeyDecoder.get(this.buffer, this.offset, size);
-        this.offset = end;
-        return s;
+        const name = parser.eatObjectPropertyName();
+        if (checker(elementType, name)) {
+            const v = parser.parse(elementType);
+            parser.offset = offset;
+            return v;
+        } else {
+            seekElementSize(elementType, parser);
+        }
     }
-
-    eatString(size): string {
-        // if (size > 14) {
-        //     this.offset += size;
-        //     return this.buffer.toString('utf8', this.offset - size, this.offset - 1);
-        // }
-        return decodeUTF8Parser(this, size);
-    }
+    
+    parser.offset = offset;
+    return undefined;
 }
 
 export function parseObject(parser: BaseParser): any {

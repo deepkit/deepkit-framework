@@ -49,8 +49,8 @@ test('Int8Array', async () => {
     expect(getClassSchema(Clazz).getProperty('ints').type).toBe('Int8Array');
 
     const plain = jsonSerializer.for(Clazz).serialize(clazz);
-    expect(typeof plain.ints).toBe('string');
-    expect(plain.ints).toBe('YW0=');
+    expect(typeof plain.ints.data).toBe('string');
+    expect(plain.ints.data).toBe('YW0=');
 
     const clazz2 = jsonSerializer.for(Clazz).deserialize(plain);
     expect(clazz2.ints).toBeInstanceOf(Int8Array);
@@ -82,8 +82,8 @@ test('Float32Array', async () => {
     expect(base64ToTypedArray('AACAQ+Tqs0Y=', Float32Array).length).toBe(2);
 
     const plain = jsonSerializer.for(Clazz).serialize(clazz);
-    expect(typeof plain.floats).toBe('string');
-    expect(plain.floats).toBe('AACAQ+Tqs0Y=');
+    expect(typeof plain.floats.data).toBe('string');
+    expect(plain.floats.data).toBe('AACAQ+Tqs0Y=');
 
 
     //this errors since Buffer.buffer is corrupt
@@ -133,8 +133,8 @@ test('arrayBuffer', async () => {
     expect(new Int8Array(clazz.ints!)[1]).toBe(64);
 
     const plain = jsonSerializer.for(Clazz).serialize(clazz);
-    expect(typeof plain.ints).toBe('string');
-    expect(plain.ints).toBe('AUA=');
+    expect(typeof plain.ints.data).toBe('string');
+    expect(plain.ints.data).toBe('AUA=');
 
     const clazz2 = jsonSerializer.for(Clazz).deserialize(plain);
     expect(clazz2.ints).not.toBeInstanceOf(Int8Array);
@@ -159,5 +159,5 @@ test('Buffer compat', () => {
 
     expect((p.isTypedArray)).toBe(true);
     expect(transport.encoding.type).toBe('Uint8Array');
-    expect(transport.value).toBe(v.toString('base64'));
+    expect(transport.value.data).toBe(v.toString('base64'));
 });

@@ -2,7 +2,7 @@ import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
 import {isExcluded} from '../src/mapper';
-import {getClassSchema, OnLoad, jsonSerializer, resolvePropertyCompilerSchema, t, uuid, validate, cloneClass} from '../index';
+import {getClassSchema, OnLoad, jsonSerializer, resolvePropertySchema, t, uuid, validate, cloneClass} from '../index';
 import {ClassWithUnmetParent, DocumentClass} from './document-scenario/DocumentClass';
 import {PageClass} from './document-scenario/PageClass';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
@@ -393,22 +393,22 @@ test('test decorator complex', async () => {
 });
 
 test('test @Decorated with parent', async () => {
-    expect(resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages')).toMatchObject({
+    expect(resolvePropertySchema(getClassSchema(DocumentClass), 'pages')).toMatchObject({
         type: 'class',
         resolveClassType: DocumentClass.PageCollection
     });
-    expect(resolvePropertyCompilerSchema(getClassSchema(DocumentClass.PageCollection), 'pages')).toMatchObject({
+    expect(resolvePropertySchema(getClassSchema(DocumentClass.PageCollection), 'pages')).toMatchObject({
         type: 'array',
     });
-    expect(resolvePropertyCompilerSchema(getClassSchema(DocumentClass.PageCollection), 'pages.123')).toMatchObject({
+    expect(resolvePropertySchema(getClassSchema(DocumentClass.PageCollection), 'pages.123')).toMatchObject({
         type: 'class',
         resolveClassType: PageClass
     });
-    expect(resolvePropertyCompilerSchema(getClassSchema(PageClass), 'parent')).toMatchObject({
+    expect(resolvePropertySchema(getClassSchema(PageClass), 'parent')).toMatchObject({
         type: 'class',
         resolveClassType: PageClass
     });
-    expect(resolvePropertyCompilerSchema(getClassSchema(PageClass), 'children')).toMatchObject({
+    expect(resolvePropertySchema(getClassSchema(PageClass), 'children')).toMatchObject({
         type: 'class',
         resolveClassType: PageClass.PageCollection
     });

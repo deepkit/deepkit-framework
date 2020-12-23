@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Collection, EntitySubject, IdInterface, ConnectionWriter} from '@deepkit/rpc';
+import {Collection, EntitySubject, IdVersionInterface, ConnectionWriter} from '@deepkit/rpc';
 import {injectable} from '../injector/injector';
 import {AsyncEventSubscription, asyncOperation, ClassType, eachPair} from '@deepkit/core';
 import {ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward} from '@deepkit/type';
@@ -268,7 +268,7 @@ function extractJoinedClassSchemaInfos(model: DatabaseQueryModel<any>, result: J
 }
 
 
-class LiveCollection<T extends IdInterface> {
+class LiveCollection<T extends IdVersionInterface> {
     protected joinedClassSchemas: JoinedClassSchemaInfo[] = [];
 
     protected rootFields: string[] = [];
@@ -557,7 +557,7 @@ class LiveCollection<T extends IdInterface> {
     }
 }
 
-export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
+export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
     public model = this.createModel<T>();
 
     constructor(
@@ -628,7 +628,7 @@ export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
         });
     }
 
-    public count<T extends IdInterface>(): Observable<number> {
+    public count<T extends IdVersionInterface>(): Observable<number> {
         const rootFields = exportQueryFilterFieldNames(this.classSchema, this.model.filter || {});
         let currentQuery = replaceQueryFilterParameter(this.classSchema, this.model.filter || {}, this.model.parameters);
 
@@ -744,7 +744,7 @@ export class LiveQuery<T extends IdInterface> extends BaseQuery<T> {
     /**
      * Returns a new Observable that resolves the id as soon as an item in the database of given filter criteria is found.
      */
-    public onCreation<T extends IdInterface>(
+    public onCreation<T extends IdVersionInterface>(
         initialCheck: boolean = true,
         stopOnFind: boolean = true,
     ): Observable<string | number> {
@@ -790,7 +790,7 @@ export class LiveDatabase {
     ) {
     }
 
-    public disableChangeFeed<T extends IdInterface>(classType: ClassType<T> | ClassSchema<T>) {
+    public disableChangeFeed<T extends IdVersionInterface>(classType: ClassType<T> | ClassSchema<T>) {
         const schema = getClassSchema(classType);
         const subscriptions = this.entitySubscriptions.get(schema);
         if (!subscriptions) return;
@@ -798,7 +798,7 @@ export class LiveDatabase {
         this.entitySubscriptions.delete(schema);
     }
 
-    public enableChangeFeed(...classTypes: (ClassType<IdInterface> | ClassSchema<IdInterface>)[]) {
+    public enableChangeFeed(...classTypes: (ClassType<IdVersionInterface> | ClassSchema<IdVersionInterface>)[]) {
         for (const classType of classTypes) {
             this.setupListeners(classType);
         }
@@ -815,7 +815,7 @@ export class LiveDatabase {
 
         const subscriptions: AsyncEventSubscription[] = [];
 
-        subscriptions.push(database.unitOfWorkEvents.onInsertPost.subscribe((event: UnitOfWorkEvent<IdInterface>) => {
+        subscriptions.push(database.unitOfWorkEvents.onInsertPost.subscribe((event: UnitOfWorkEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
 
             const serialized = jsonSerializer.for(event.classSchema);
@@ -830,7 +830,7 @@ export class LiveDatabase {
             }
         }));
 
-        subscriptions.push(database.unitOfWorkEvents.onUpdatePre.subscribe((event: UnitOfWorkUpdateEvent<IdInterface>) => {
+        subscriptions.push(database.unitOfWorkEvents.onUpdatePre.subscribe((event: UnitOfWorkUpdateEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
 
             for (const changeSet of event.changeSets) {
@@ -838,7 +838,7 @@ export class LiveDatabase {
             }
         }));
 
-        subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe((event: UnitOfWorkUpdateEvent<IdInterface>) => {
+        subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe((event: UnitOfWorkUpdateEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
             const serialized = jsonSerializer.for(event.classSchema);
 
@@ -865,7 +865,7 @@ export class LiveDatabase {
             }
         }));
 
-        subscriptions.push(database.unitOfWorkEvents.onDeletePost.subscribe((event: UnitOfWorkEvent<IdInterface>) => {
+        subscriptions.push(database.unitOfWorkEvents.onDeletePost.subscribe((event: UnitOfWorkEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
             const ids: (string | number)[] = [];
             for (const item of event.items) ids.push(item.id);
@@ -875,7 +875,7 @@ export class LiveDatabase {
             });
         }));
 
-        subscriptions.push(database.queryEvents.onDeletePost.subscribe((event: QueryDatabaseDeleteEvent<IdInterface>) => {
+        subscriptions.push(database.queryEvents.onDeletePost.subscribe((event: QueryDatabaseDeleteEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
 
             this.exchange.publishEntity(event.classSchema, {
@@ -922,7 +922,7 @@ export class LiveDatabase {
         this.entitySubscriptions.set(schema, subscriptions);
     }
 
-    public query<T extends IdInterface>(classType: ClassType<T> | ClassSchema<T>) {
+    public query<T extends IdVersionInterface>(classType: ClassType<T> | ClassSchema<T>) {
         return new LiveQuery(
             this.writer,
             getClassSchema(classType),

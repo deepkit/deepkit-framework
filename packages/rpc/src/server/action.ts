@@ -19,8 +19,9 @@
 import { ClassType, getClassName, getClassPropertyName, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
 import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { Collection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
-import { ActionObservableTypes, rpcActionObservableSubscribeId, rpcActionType, rpcActionTypeResponse, RpcInjector, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, RpcTypes, ValidationError } from '../model';
+import { ActionObservableTypes, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollection, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcResponse } from './kernel';
 
@@ -31,6 +32,7 @@ export type ActionTypes = {
     parametersDeserialize: (value: any) => any,
     parametersValidate: (value: any, path?: string, errors?: ValidationFailedItem[]) => ValidationFailedItem[],
     observableNextSchema: ClassSchema,
+    collectionSchema?: ClassSchema,
 };
 
 export class RpcServerAction {
@@ -59,7 +61,7 @@ export class RpcServerAction {
         const body = message.parseBody(rpcActionType);
         const types = this.loadTypes(body.controller, body.method);
 
-        response.reply(RpcTypes.ActionTypeResponse, rpcActionTypeResponse, {
+        response.reply(RpcTypes.ResponseActionType, rpcResponseActionType, {
             parameters: types.parameters.map(v => v.toJSON()),
             result: types.resultSchema.getProperty('v').toJSON(),
         });
@@ -95,21 +97,28 @@ export class RpcServerAction {
         }
 
         const resultSchema = createClassSchema();
-        const resultProperty = getClassSchema(classType).getMethod(method).clone();
-        resultProperty.name = 'v';
+        let resultProperty = getClassSchema(classType).getMethod(method).clone();
 
         let observableNextSchema: ClassSchema | undefined;
-        if (resultProperty.classType && isPrototypeOfBase(resultProperty.classType, Observable)) {
-            //we need to change that to any
-            console.log(`Warning: Your method ${getClassPropertyName(classType, method)} returns ${getClassName(resultProperty.classType)} and you have not specified a return type using @t decorator. ` +
-            `Please define the generic type of your Observable<T> as returnType, e.g. @t.type(T), where T is your actual type. Any is now used, which is much slower to serialize.` +
-            `\nExample:` +
-            `\n   @t.string`+
-            `\n   ${method}(): ${getClassName(resultProperty.classType)}<string> {}`
-            );
-            resultProperty.setType('any');
-            resultProperty.classType = undefined;
+        if (resultProperty.classType && (isPrototypeOfBase(resultProperty.classType, Observable) || isPrototypeOfBase(resultProperty.classType, Collection))) {
+            const generic = resultProperty.templateArgs[0];
+
+            if (!generic) {
+                //we need to change that to any
+                const className = getClassName(resultProperty.classType);
+                throw new Error(`Your method ${getClassPropertyName(classType, method)} returns ${className} and you have not specified a generic type using @t.generic() decorator. ` +
+                    `Please define the generic type of your ${className}<T>, e.g. @t.generic(T), where T is your actual type. Any is now used, which is much slower to serialize and produces no class instances.` +
+                    `\nExample:` +
+                    `\n   @t.generic(t.string)` +
+                    `\n   ${method}(): ${className}<string> {}` +
+                    `\n   @t.generic(MyModel)` +
+                    `\n   ${method}(): ${className}<MyModel> {}`
+                );
+            }
+            resultProperty = generic.clone();
         }
+
+        resultProperty.name = 'v';
 
         observableNextSchema = rpcActionObservableSubscribeId.clone();
         observableNextSchema.registerProperty(resultProperty);
@@ -141,15 +150,15 @@ export class RpcServerAction {
 
             sub.sub = observable.observable.subscribe((next) => {
                 if (!sub.active) return;
-                response.reply(RpcTypes.ActionResponseObservableNext, observable.observableNextSchema, {
+                response.reply(RpcTypes.ResponseActionObservableNext, observable.observableNextSchema, {
                     id: body.id,
                     v: next
                 });
             }, (error) => {
                 const extracted = rpcEncodeError(error);
-                response.reply(RpcTypes.ActionResponseObservableError, rpcResponseActionObservableSubscriptionError, { ...extracted, id: body.id });
+                response.reply(RpcTypes.ResponseActionObservableError, rpcResponseActionObservableSubscriptionError, { ...extracted, id: body.id });
             }, () => {
-                response.reply(RpcTypes.ActionResponseObservableComplete, rpcActionObservableSubscribeId, {
+                response.reply(RpcTypes.ResponseActionObservableComplete, rpcActionObservableSubscribeId, {
                     id: body.id
                 });
             });
@@ -182,12 +191,12 @@ export class RpcServerAction {
         if (!classType) throw new Error(`No controller registered for id ${body.controller}`);
 
         const types = this.loadTypes(body.controller, body.method);
-
         const value = message.parseBody(types.parameterSchema);
 
         const controller = this.injector.get(classType);
         const converted = types.parametersDeserialize(value.args);
         const errors = types.parametersValidate(converted);
+
         if (errors.length) {
             return response.error(new ValidationError(errors));
         }
@@ -196,7 +205,55 @@ export class RpcServerAction {
             const result = await controller[body.method](...Object.values(converted));
 
             //todo: handle collection, observable, EntitySubject.
-            if (result instanceof Observable) {
+            if (result instanceof Collection) {
+                const collection = result;
+
+                //send it's a collection
+                //send its items, T (which can be sent again)
+                //send its parameters, T (which can be sent again)
+                //----
+                // event: addEntity, item: T
+                // event: removeEntity, id: (number | string)[]
+                // event: sort, id[]: number | string
+
+                if (!types.collectionSchema) {
+                    types.collectionSchema = createClassSchema();
+                    const v = new PropertySchema('v');
+                    v.setType('array');
+                    v.templateArgs.push(types.resultSchema.getProperty('v'));
+                    types.collectionSchema.registerProperty(v);
+                }
+
+                response.replyComposite([
+                    {
+                        type: RpcTypes.ResponseActionCollection, 
+                        schema: rpcResponseActionCollection, 
+                        body: {
+                            active: collection.pagination.isActive(),
+                            itemsPerPage: collection.pagination.getItemsPerPage(),
+                            page: collection.pagination.getPage(),
+                            total: collection.pagination.getTotal(),
+                            sort: collection.pagination.getSort(),
+                            parameters: collection.pagination.getParameters(),
+                        }
+                    },
+                    {
+                        type: RpcTypes.ResponseActionCollectionSet, 
+                        schema: types.collectionSchema, 
+                        body: {
+                            v: collection.all(),
+                        }
+                    }
+                ]);
+                // response.reply(RpcTypes.ResponseActionCollection, rpcResponseActionCollection, {
+                //     active: collection.pagination.isActive(),
+                //     itemsPerPage: collection.pagination.getItemsPerPage(),
+                //     page: collection.pagination.getPage(),
+                //     total: collection.pagination.getTotal(),
+                //     sort: collection.pagination.getSort(),
+                //     parameters: collection.pagination.getParameters(),
+                // });
+            } else if (result instanceof Observable) {
                 this.observables[message.id] = { observable: result, subscriptions: {}, observableNextSchema: types.observableNextSchema };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
@@ -205,15 +262,15 @@ export class RpcServerAction {
 
                     this.observableSubjects[message.id] = {
                         subscription: result.subscribe((next) => {
-                            response.reply(RpcTypes.ActionResponseObservableNext, types.observableNextSchema, {
+                            response.reply(RpcTypes.ResponseActionObservableNext, types.observableNextSchema, {
                                 id: message.id,
                                 v: next
                             });
                         }, (error) => {
                             const extracted = rpcEncodeError(error);
-                            response.reply(RpcTypes.ActionResponseObservableError, rpcResponseActionObservableSubscriptionError, { ...extracted, id: message.id });
+                            response.reply(RpcTypes.ResponseActionObservableError, rpcResponseActionObservableSubscriptionError, { ...extracted, id: message.id });
                         }, () => {
-                            response.reply(RpcTypes.ActionResponseObservableComplete, rpcActionObservableSubscribeId, {
+                            response.reply(RpcTypes.ResponseActionObservableComplete, rpcActionObservableSubscribeId, {
                                 id: message.id
                             });
                         })
@@ -221,18 +278,12 @@ export class RpcServerAction {
 
                     if (result instanceof BehaviorSubject) {
                         type = ActionObservableTypes.behaviorSubject;
-                    //     //todo, we need to send the initial value with `rpcResponseActionObservable`, or create a new `rpcResponseActionObservableBehaviorSubject`.
-                    //     response.reply(RpcTypes.ActionResponseBehaviorSubject, types.observableNextSchema, {
-                    //         id: message.id,
-                    //         v: result.getValue()
-                    //     });
-                    //     return;
                     }
                 }
 
-                response.reply(RpcTypes.ActionResponseObservable, rpcResponseActionObservable, { type });
+                response.reply(RpcTypes.ResponseActionObservable, rpcResponseActionObservable, { type });
             } else {
-                response.reply(RpcTypes.ActionResponseSimple, types.resultSchema, { v: result });
+                response.reply(RpcTypes.ResponseActionSimple, types.resultSchema, { v: result });
             }
         } catch (error) {
             response.error(error);

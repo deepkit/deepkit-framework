@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, PropertyCompilerSchema} from './model';
+import {getClassSchema, PropertySchema} from './model';
 import {isValidEnumValue} from '@deepkit/core';
 import {typedArrayNamesMap, Types} from './types';
 
 export type JSONTypeGuard = (v: any) => boolean;
-export type JSONTypeGuardFactory = (property: PropertyCompilerSchema) => JSONTypeGuard;
+export type JSONTypeGuardFactory = (property: PropertySchema) => JSONTypeGuard;
 
 export const jsonTypeGuards = new Map<Types, JSONTypeGuardFactory>();
 
@@ -21,7 +21,7 @@ export function registerJSONTypeGuard(type: Types, factory: JSONTypeGuardFactory
     jsonTypeGuards.set(type, factory);
 }
 
-registerJSONTypeGuard('class', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('class', (property: PropertySchema) => {
     const schema = getClassSchema(property.resolveClassType!);
     if (schema.discriminant) {
         const discriminant = schema.getProperty(schema.discriminant);
@@ -44,94 +44,98 @@ registerJSONTypeGuard('class', (property: PropertyCompilerSchema) => {
         };
     }
 
-    throw new Error(`Type of property ${property.name} has no discriminant or literal set. Could not discriminate the value.`);
-
+    throw new Error(`Type of property ${property.name} (${property.toString()}) has no discriminant or literal set. Could not discriminate the value.`);
 });
 
-registerJSONTypeGuard('string', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('string', (property: PropertySchema) => {
     return (v: any) => {
         return 'string' === typeof v;
     };
 });
 
-registerJSONTypeGuard('enum', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('enum', (property: PropertySchema) => {
     return (v: any) => {
         return undefined !== v && !isValidEnumValue(property.resolveClassType, v, property.allowLabelsAsValue);
     };
 });
 
-registerJSONTypeGuard('objectId', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('objectId', (property: PropertySchema) => {
     return (v: any) => {
-        return 'string' === typeof v;
+        return 'string' === typeof v && v.length === 24;
     };
 });
 
-registerJSONTypeGuard('uuid', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('uuid', (property: PropertySchema) => {
     return (v: any) => {
-        return 'string' === typeof v;
+        return 'string' === typeof v && v.length === 36 && v[23] === '-' && v[19] === '-' && v[13] === '-' && v[8] === '-';
     };
 });
 
-function typedArrayGuard(property: PropertyCompilerSchema) {
+registerJSONTypeGuard('arrayBuffer', (property: PropertySchema) => {
     return (v: any) => {
-        return 'string' === typeof v;
+        return v instanceof ArrayBuffer || (v && v['∏type'] === 'binary');
+    };
+});
+
+function typedArrayGuard(property: PropertySchema) {
+    return (v: any) => {
+        return ArrayBuffer.isView(v) || (v && v['∏type'] === 'binary');
     };
 }
 
-registerJSONTypeGuard('arrayBuffer', typedArrayGuard);
 for (const name of typedArrayNamesMap.keys()) {
     registerJSONTypeGuard(name, typedArrayGuard);
 }
 
 const date = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$/;
 
-registerJSONTypeGuard('date', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('date', (property: PropertySchema) => {
     return (v: any) => {
-        return 'string' === typeof v && date.exec(v) !== null;
+        return v instanceof Date || 'string' === typeof v && date.exec(v) !== null;
     };
 });
 
-registerJSONTypeGuard('any', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('any', (property: PropertySchema) => {
     return (v: any) => {
         return true;
     };
 });
 
-registerJSONTypeGuard('union', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('union', (property: PropertySchema) => {
     throw new Error('Union typechecking not implemented. Nested unions thus not supported yet.');
 });
 
-registerJSONTypeGuard('array', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('array', (property: PropertySchema) => {
     return (v: any) => {
         return v && v.length !== undefined && 'string' !== typeof v || 'function' === typeof v.slice;
     };
 });
 
-registerJSONTypeGuard('map', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('map', (property: PropertySchema) => {
     return (v: any) => {
         return v && 'object' === typeof v && 'function' !== typeof v.slice;
     };
 });
 
-registerJSONTypeGuard('partial', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('partial', (property: PropertySchema) => {
     return (v: any) => {
         return v && 'object' === typeof v && 'function' !== typeof v.slice;
     };
 });
 
-registerJSONTypeGuard('number', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('number', (property: PropertySchema) => {
     return (v: any) => {
         return 'number' === typeof v;
     };
 });
 
-registerJSONTypeGuard('boolean', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('boolean', (property: PropertySchema) => {
     return (v: any) => {
         return 'boolean' === typeof v;
     };
 });
 
-registerJSONTypeGuard('literal', (property: PropertyCompilerSchema) => {
+registerJSONTypeGuard('literal', (property: PropertySchema) => {
     if ('number' === typeof property.literalValue) {
         return (v: any) => {
             return 0 + v === property.literalValue;

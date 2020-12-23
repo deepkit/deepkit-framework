@@ -8,13 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, PropertyCompilerSchema} from './model';
+import {getClassSchema, PropertySchema} from './model';
 import {registerCheckerCompiler} from './jit-validation-registry';
 import {getDataCheckerJS, jitValidate} from './jit-validation';
 import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
 import {getSortedUnionTypes} from './union';
+import {jsonTypeGuards} from './json-typeguards';
 
-registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('number', (accessor: string, property: PropertySchema, utils) => {
     return `
     if ('number' !== typeof ${accessor}) {
         if ('string' === typeof ${accessor}) {
@@ -30,11 +31,11 @@ registerCheckerCompiler('number', (accessor: string, property: PropertyCompilerS
     `;
 });
 
-registerCheckerCompiler('string', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('string', (accessor: string, property: PropertySchema, utils) => {
     return `if ('string' !== typeof ${accessor}) ${utils.raise('invalid_string', 'No string given')};`;
 });
 
-registerCheckerCompiler('enum', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('enum', (accessor: string, property: PropertySchema, utils) => {
     //this is a candidate where we can extract ENUM information during build time and check very fast during
     //runtime, so we don't need a call to getResolvedClassTypeForValidType(), isValidEnumValue(), etc in runtime anymore.
     const allowLabelsAsValue = property.allowLabelsAsValue;
@@ -63,7 +64,7 @@ registerCheckerCompiler('enum', (accessor: string, property: PropertyCompilerSch
     };
 });
 
-registerCheckerCompiler('boolean', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('boolean', (accessor: string, property: PropertySchema, utils) => {
     return `
     if ('boolean' !== typeof ${accessor}) {
         if (${accessor} === '1' || ${accessor} === '0' || ${accessor} === 'true' || ${accessor} === 'false' || ${accessor} === 0 || ${accessor} === 1) {
@@ -73,7 +74,7 @@ registerCheckerCompiler('boolean', (accessor: string, property: PropertyCompiler
     }`;
 });
 
-registerCheckerCompiler('uuid', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('uuid', (accessor: string, property: PropertySchema, utils) => {
     return {
         template: `
         if ('string' !== typeof ${accessor} || !${accessor}.match(uuidValidation)) {
@@ -86,7 +87,7 @@ registerCheckerCompiler('uuid', (accessor: string, property: PropertyCompilerSch
     };
 });
 
-registerCheckerCompiler('objectId', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('objectId', (accessor: string, property: PropertySchema, utils) => {
     return {
         template: `
         if ('string' !== typeof ${accessor} || !${accessor}.match(objectIdValidation)) {
@@ -99,7 +100,7 @@ registerCheckerCompiler('objectId', (accessor: string, property: PropertyCompile
     };
 });
 
-registerCheckerCompiler('date', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('date', (accessor: string, property: PropertySchema, utils) => {
     return `
     if (${accessor} instanceof Date) {
         if (isNaN(new Date(${accessor}).getTime())) {
@@ -113,7 +114,7 @@ registerCheckerCompiler('date', (accessor: string, property: PropertyCompilerSch
     `;
 });
 
-registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSchema, utils, jitStack) => {
+registerCheckerCompiler('class', (accessor: string, property: PropertySchema, utils, jitStack) => {
     const jitValidateThis = utils.reserveVariable('jitValidate');
     const classSchema = getClassSchema(property.resolveClassType!);
 
@@ -133,17 +134,17 @@ registerCheckerCompiler('class', (accessor: string, property: PropertyCompilerSc
     };
 });
 
-registerCheckerCompiler('literal', (accessor: string, property: PropertyCompilerSchema, utils) => {
+registerCheckerCompiler('literal', (accessor: string, property: PropertySchema, utils) => {
     //todo. really necessary? Because we force set the literal value always, no matter what value comes in.
     return '';
 });
 
-registerCheckerCompiler('union', (accessor: string, property: PropertyCompilerSchema, utils, jitStack) => {
+registerCheckerCompiler('union', (accessor: string, property: PropertySchema, utils, jitStack) => {
     const context = new Map<string, any>();
 
     let discriminator: string[] = [`if (false) { }`];
 
-    for (const unionType of getSortedUnionTypes(property)) {
+    for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
         const guardVar = utils.reserveVariable('guard_' + unionType.property.type);
         context.set(guardVar, unionType.guard);
 

@@ -24,6 +24,9 @@ import { skip } from 'rxjs/operators';
 
 export interface IdInterface {
     id: string | number;
+}
+
+export interface IdVersionInterface extends IdInterface {
     version: number;
 }
 
@@ -257,7 +260,7 @@ export class ValidationError extends CustomError {
     constructor(
         @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
     ) {
-        super('Validation error: ' + errors.map(v => `${v.path}: ${v.message} (${v.code})`).join(','));
+        super(errors.map(v => `${v.path}(${v.code}): ${v.message}`).join(','));
     }
 
     static from(errors: { path: string, message: string, code?: string }[]) {
@@ -280,58 +283,16 @@ export class ValidationParameterError {
     }
 }
 
-/*
-Types:
-
-Both:
-    //A batch package. Used when a single message exceeds a certain size. It's split up in multiple messages and send with slight delay, allowing to track progress,
-    //cancel. Allows to send shorter messages between to not block the connection.
-    Package
-    Ping
-    Ack
-    Error
-
-Client->Server
-    ActionType
-    Action<T> //T is the parameter type [t.string, t.number, ...] (typed arrays not supported yet)
-
-    ControllerRegister<>
-    PeerRegister<>
-    PeerUnregister<>
-
-    Authenticate<> //used a token to authenticate the current connection
-
-    Subscribe //subscribe to an received Observable<>
-    Unsubscribe //unsubscribe to a created subscription via Subscribe<>
-
-    CollectionUnsubscribe //unsubscribe an received Collection<>
-    CollectionParameters //changes the parameters of an received Collection<>
-
-    EntityUnsubscribe //unsubscribe an received Entity<T>
-
-Server->Client
-    ActionTypeResponse
-    ActionResponse<T> //T is the return type
-
-    Observable<T>
-    ObservableComplete<T>
-    ObservableError<T>
-    Collection<T>
-
-    CollectionItemAdded<T> //batch or a single
-    CollectionItemRemoved<> //batch or a single
-    CollectionSet<T> //complete set of all items at once
-
-    Entity<T> //when a single entity item has been received
-
-    EntityRemoved<> //when an sent Entity<> has been removed
-    EntityPatched<T> //when a sent Entity<> has been patched
-*/
 export enum RpcTypes {
-    //A batch package. Used when a single message exceeds a certain size. It's split up in multiple messages and send with slight delay, allowing to track progress,
-    //cancel. Allows to send shorter messages between to not block the connection.
-    //both ways
-    Package,
+    //A batched chunk. Used when a single message exceeds a certain size. It's split up in multiple messages and send with slight delay, allowing to track progress,
+    //cancel. Allows to send shorter messages between to not block the connection. Both ways
+    Chunk,
+
+    //a composite message is a message that consists of multiple other messages
+    //this is useful to batch send multiple messages at once. The chunker then splits them correctly in the most efficient package sizes.
+    //also the client receives only one response, which means it can track the download progress accordingly.
+    Composite,
+
     Ping,
     Pong,
 
@@ -349,24 +310,25 @@ export enum RpcTypes {
     Ack,
     Error,
     AuthenticateResponse,
-    ActionTypeResponse,
-    ActionResponseSimple, //direct response that can be simple deserialized.
+    ResponseActionType,
+    ResponseActionSimple, //direct response that can be simple deserialized.
 
     ActionObservableSubscribe,
     ActionObservableUnsubscribe,
     ActionObservableSubjectUnsubscribe,
-    ActionResponseObservable,
-    ActionResponseBehaviorSubject,
-    ActionResponseObservableNext,
-    ActionResponseObservableComplete,
-    ActionResponseObservableError,
 
+    ResponseActionObservable,
+    ResponseActionBehaviorSubject,
+    ResponseActionObservableNext,
+    ResponseActionObservableComplete,
+    ResponseActionObservableError,
 
-    ActionResponseCollection,
-    ActionResponseCollectionSet,
-    ActionResponseCollectionAdd,
-    ActionResponseCollectionRemove,
+    ResponseActionCollection,
+    ResponseActionCollectionSet,
+    ResponseActionCollectionAdd,
+    ResponseActionCollectionRemove,
 
+    Entity,
     EntityPatch,
     EntityRemove,
 }
@@ -382,6 +344,7 @@ export const rpcActionObservableSubscribeId = t.schema({
 export const rpcError = t.schema({
     classType: t.string,
     message: t.string,
+    stack: t.string,
     properties: t.map(t.any).optional,
 });
 
@@ -392,6 +355,11 @@ export enum ActionObservableTypes {
     subject,
     behaviorSubject,
 }
+
+export const rpcSort = t.schema({
+    field: t.string,
+    direction: t.union('asc', 'desc'),
+})
 
 export const rpcResponseActionObservable = t.schema({
     type: t.enum(ActionObservableTypes)
@@ -411,7 +379,7 @@ export const rpcActionType = t.schema({
     method: t.string,
 });
 
-export const rpcActionTypeResponse = t.schema({
+export const rpcResponseActionType = t.schema({
     parameters: t.array(propertyDefinition),
     result: t.type(propertyDefinition),
 });
@@ -422,4 +390,13 @@ export const rpcPeerRegister = t.schema({
 
 export const rpcPeerDeregister = t.schema({
     id: t.string,
+});
+
+export const rpcResponseActionCollection = t.schema({
+    active: t.boolean,
+    itemsPerPage: t.number,
+    page: t.number,
+    total: t.number,
+    sort: t.array(rpcSort),
+    parameters: t.map(t.any),
 });

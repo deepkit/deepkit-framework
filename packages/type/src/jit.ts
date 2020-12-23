@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, getGlobalStore, PropertyCompilerSchema, PropertySchema, UnpopulatedCheck} from './model';
+import {ClassSchema, getClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck} from './model';
 import {isExcluded} from './mapper';
 import {ClassType, toFastProperties} from '@deepkit/core';
 import {getDataConverterJS, reserveVariable} from './serializer-compiler';
@@ -27,15 +27,15 @@ export function findParent<T>(parents: any[], parentType: ClassType<T>): T | voi
     }
 }
 
-const resolvedReflectionCaches = new Map<ClassType, { [path: string]: PropertyCompilerSchema }>();
+const resolvedReflectionCaches = new Map<ClassType, { [path: string]: PropertySchema }>();
 
 /**
- * This resolves the PropertyCompilerSchema for a property path.
+ * This resolves the PropertySchema for a property path.
  *
  * A property path can be a deep path, separated with dots. This function makes sure to return the
- * correct PropertyCompilerSchema so that a correct compiler can be built to convert this type.
+ * correct PropertySchema so that a correct compiler can be built to convert this type.
  */
-export function resolvePropertyCompilerSchema<T>(schema: ClassSchema<T>, propertyPath: string): PropertyCompilerSchema {
+export function resolvePropertySchema<T>(schema: ClassSchema<T>, propertyPath: string): PropertySchema {
     if (schema.getClassProperties().has(propertyPath)) return schema.getClassProperties().get(propertyPath)!;
 
     let cache = resolvedReflectionCaches.get(schema.classType);
@@ -68,23 +68,23 @@ export function resolvePropertyCompilerSchema<T>(schema: ClassSchema<T>, propert
         if (prop.isMap || prop.isArray) {
             if (prop.getSubType().type === 'class') {
                 if (names[i + 2]) {
-                    return cache[propertyPath] = resolvePropertyCompilerSchema(
+                    return cache[propertyPath] = resolvePropertySchema(
                         getClassSchema(prop.getSubType().getResolvedClassType()),
                         names.slice(i + 2).join('.')
                     );
                 } else if (names[i + 1]) {
                     //we got a name or array index
-                    return cache[propertyPath] = PropertyCompilerSchema.createFromPropertySchema(prop.getSubType());
+                    return cache[propertyPath] = prop.getSubType();
                 }
             } else {
                 if (names[i + 1]) {
                     //we got a name or array index
-                    return cache[propertyPath] = PropertyCompilerSchema.createFromPropertySchema(prop.getSubType());
+                    return cache[propertyPath] = prop.getSubType();
                 }
             }
         } else {
             if (prop.type === 'class') {
-                return cache[propertyPath] = resolvePropertyCompilerSchema(getClassSchema(prop.getResolvedClassType()), names.slice(i + 1).join('.'));
+                return cache[propertyPath] = resolvePropertySchema(getClassSchema(prop.getResolvedClassType()), names.slice(i + 1).join('.'));
             } else {
                 //`Property ${getClassPropertyName(classType, name)} is not an array or map, so can not resolve ${propertyPath}.`
                 throw new Error(`Invalid path ${propertyPath} in class ${schema.getClassName()}.`);
@@ -118,7 +118,7 @@ export interface JitConverterOptions {
 }
 
 export function getPropertyClassToXFunction(
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     serializer: Serializer
 ): (value: any, options?: JitConverterOptions) => any {
     const jit = property.jit;
@@ -131,7 +131,7 @@ export function getPropertyClassToXFunction(
 }
 
 export function getPropertyXtoClassFunction(
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     serializer: Serializer
 ): (value: any, parents?: any[], options?: JitConverterOptions) => any {
     const jit = property.jit;
@@ -147,7 +147,7 @@ export function getPropertyXtoClassFunction(
  * Creates a new JIT compiled function to convert given property schema. Deep paths are not allowed.
  */
 export function createPropertyClassToXFunction(
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     serializer: Serializer
 ): (value: any, parents?: any[]) => any {
     const context = new Map<any, any>();
@@ -172,7 +172,7 @@ export function createPropertyClassToXFunction(
  * Creates a new JIT compiled function to convert given property schema. Deep paths are not allowed.
  */
 export function createPropertyXToClassFunction(
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     serializer: Serializer
 ): (value: any, parents?: any[], options?: JitConverterOptions) => any {
     const context = new Map<any, any>();
@@ -197,7 +197,7 @@ export function createPropertyXToClassFunction(
     return compiled.bind(undefined, ...context.values())();
 }
 
-function getParentResolverJS<T>(
+export function getParentResolverJS<T>(
     schema: ClassSchema<T>,
     setter: string,
     property: PropertySchema,
@@ -254,15 +254,14 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
     const context = new Map<string, any>();
     const prepared = jitStack.prepare(schema);
 
-    const decoratorName = schema.decorator;
     let functionCode = '';
-    if (decoratorName) {
-        const property = schema.getProperty(decoratorName);
+    if (schema.decorator) {
+        const property = schema.getProperty(schema.decorator);
 
         functionCode = `
         return function(_instance, _options) {
             var result, _state;
-            ${getDataConverterJS(`result`, `_instance.${decoratorName}`, property, serializer.fromClass, context, jitStack)}
+            ${getDataConverterJS(`result`, `_instance.${schema.decorator}`, property, serializer.fromClass, context, jitStack)}
             return result;
         }
         `;
@@ -290,7 +289,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         }
 
         functionCode = `
-        return function(_instance, _options) {
+        return function self(_instance, _options) {
             var _data = {};
             var _oldUnpopulatedCheck = _global.unpopulatedCheck;
             _global.unpopulatedCheck = UnpopulatedCheckNone;
@@ -306,10 +305,15 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
     context.set('isGroupAllowed', isGroupAllowed);
     context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
-    const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled(...context.values());
-    prepared(fn);
-    return fn;
+    try {
+        const compiled = new Function(...context.keys(), functionCode);
+        const fn = compiled(...context.values());
+        prepared(fn);
+        return fn;
+    } catch (error) {
+        console.log('jit code', functionCode);
+        throw error;
+    }
 }
 
 export function getClassToXFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack?: JitStack)
@@ -480,10 +484,15 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
     context.set('_classType', schema.classType);
     context.set('ToClassState', ToClassState);
     context.set('isGroupAllowed', isGroupAllowed);
-    const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled(...context.values());
-    prepared(fn);
-    return fn;
+    try {
+        const compiled = new Function(...context.keys(), functionCode);
+        const fn = compiled(...context.values());
+        prepared(fn);
+        return fn;
+    } catch (error) {
+        console.log('jit code', functionCode);
+        throw error;
+    }
 }
 
 export function getXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack?: JitStack)

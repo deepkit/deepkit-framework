@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {PropertyCompilerSchema} from './model';
+import {PropertySchema} from './model';
 import {Types} from './types';
 import {reserveVariable} from './serializer-compiler';
 import {JitStack} from './jit';
@@ -16,7 +16,7 @@ import {JitStack} from './jit';
 export type TypeCheckerCompilerContext = Map<string, any>;
 export type TypeCheckerCompiler = (
     accessor: string,
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
     utils: { reserveVariable: (name?: string) => string, path: string, context: TypeCheckerCompilerContext, raise: (code: string, message: string) => string },
     jitStack: JitStack,
 ) => string | { template: string, context: { [name: string]: any } | Map<string, any> };
@@ -36,7 +36,7 @@ export function executeCheckerCompiler(
     jitStack: JitStack,
     compiler: TypeCheckerCompiler,
     getter: string,
-    property: PropertyCompilerSchema,
+    property: PropertySchema,
 ): string {
     const res = compiler(
         getter,

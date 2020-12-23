@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, isArray, resolvePropertyCompilerSchema, Serializer} from '@deepkit/type';
+import {ClassSchema, isArray, resolvePropertySchema, Serializer} from '@deepkit/type';
 import {isPlainObject} from '@deepkit/core';
 
 type Filter = { [name: string]: any };
@@ -68,7 +68,7 @@ export class SQLFilterBuilder {
         else throw new Error(`Comparator ${comparison} not supported.`);
 
         if (value[0] !== '$') {
-            const property = resolvePropertyCompilerSchema(this.schema, fieldName);
+            const property = resolvePropertySchema(this.schema, fieldName);
             if (!property.isArray && (comparison === 'in' || comparison === 'nin') && isArray(value)) {
                 value = value.map(v => this.quoteValue(this.serializer.serializeProperty(property, v)));
             } else {

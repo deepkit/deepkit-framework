@@ -280,7 +280,6 @@ function createFieldDecoratorResult<T>(
 
                 if (!schema.getClassProperties(false).has(givenPropertyName)) {
                     schema.registerProperty(new PropertySchema(givenPropertyName));
-                    schema.propertyNames.push(givenPropertyName);
                 }
 
                 propertySchema = schema.getClassProperties(false).get(givenPropertyName)!;
@@ -483,7 +482,7 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.template = (...templateArgs: (ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]) => {
+    fn.generic = fn.template = (...templateArgs: (ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.templateArgs = [];

@@ -19,8 +19,9 @@
 import { toFastProperties } from '@deepkit/core';
 import { ClassSchema, createClassSchema, getXToClassFunction, jsonSerializer, PropertySchema, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
+import { Collection } from '../collection';
+import { ActionObservableTypes, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollection, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
 import { rpcDecodeError } from '../protocol';
-import { ActionObservableTypes, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcActionTypeResponse, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, RpcTypes } from '../model';
 import { RpcClient } from './client';
 
 type ControllerStateActionTypes = {
@@ -30,6 +31,7 @@ type ControllerStateActionTypes = {
     resultProperty: PropertySchema,
     resultDecoder: (value: any) => any,
     observableNextSchema: ClassSchema<{ id: number, v: any }>
+    collectionSchema?: ClassSchema<{ v: any[] }>
 };
 
 type ControllerStateActionState = {
@@ -75,6 +77,7 @@ export class RpcActionClient {
         return new Promise<any>(async (resolve, reject) => {
             try {
                 const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method);
+                // console.log('client types', types.parameterSchema.getProperty('args').getResolvedClassSchema().toString(), )
 
                 const argsObject: any = {};
 
@@ -89,6 +92,8 @@ export class RpcActionClient {
                 let firstObservableNextCalled = false;
                 let firstObservableNext: any; 
 
+                let collection: Collection<any> | undefined;
+
                 let subscriberId = 0;
                 const subscribers: { [id: number]: Subscriber<any> } = {};
 
@@ -100,14 +105,14 @@ export class RpcActionClient {
                     // console.log('answer', RpcTypes[next.type]);
 
                     switch (next.type) {
-                        case RpcTypes.ActionResponseSimple: {
+                        case RpcTypes.ResponseActionSimple: {
                             subject.release();
                             const result = next.parseBody(types.resultSchema);
                             resolve(decodeValue(types, result));
                             break;
                         }
 
-                        case RpcTypes.ActionResponseObservableError: {
+                        case RpcTypes.ResponseActionObservableError: {
                             const body = next.parseBody(rpcResponseActionObservableSubscriptionError);
                             const error = rpcDecodeError(body);
                             if (observable) {
@@ -119,7 +124,7 @@ export class RpcActionClient {
                             break;
                         }
 
-                        case RpcTypes.ActionResponseObservableComplete: {
+                        case RpcTypes.ResponseActionObservableComplete: {
                             const body = next.parseBody(rpcActionObservableSubscribeId);
 
                             if (observable) {
@@ -131,7 +136,7 @@ export class RpcActionClient {
                             break;
                         }
 
-                        case RpcTypes.ActionResponseObservableNext: {
+                        case RpcTypes.ResponseActionObservableNext: {
                             const body = next.parseBody(types.observableNextSchema);
                             const value = decodeValue(types, body);
 
@@ -148,7 +153,7 @@ export class RpcActionClient {
                             break;
                         }
 
-                        case RpcTypes.ActionResponseBehaviorSubject: {
+                        case RpcTypes.ResponseActionBehaviorSubject: {
                             const body = next.parseBody(types.observableNextSchema);
                             const value = decodeValue(types, body);
                             observableSubject = new BehaviorSubject(value);
@@ -156,7 +161,7 @@ export class RpcActionClient {
                             break;
                         }
 
-                        case RpcTypes.ActionResponseObservable: {
+                        case RpcTypes.ResponseActionObservable: {
                             if (observable) console.error('Already got ActionResponseObservable');
                             const body = next.parseBody(rpcResponseActionObservable);
 
@@ -198,10 +203,42 @@ export class RpcActionClient {
                             break;
                         }
 
+                        case RpcTypes.Composite: {
+                            const bodies = next.getBodies();
+                            const first = bodies[0];
+
+                            switch (first.type) {
+                                case RpcTypes.ResponseActionCollection: {
+                                    const body = first.parseBody(rpcResponseActionCollection);
+
+                                    if (!types.collectionSchema) {
+                                        types.collectionSchema = createClassSchema();
+                                        const v = new PropertySchema('v');
+                                        v.setType('array');
+                                        v.templateArgs.push(types.resultSchema.getProperty('v'));
+                                        types.collectionSchema.registerProperty(v);
+                                    }
+                                    
+                                    collection = new Collection(types.resultProperty.classType!);
+
+                                    //todo: set `body` options to collection
+                                    
+                                    const set = bodies[1];
+                                    if (set && set.type === RpcTypes.ResponseActionCollectionSet) {
+                                        collection.set(set.parseBody(types.collectionSchema).v);
+                                    }
+
+                                    resolve(collection);
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+
                         case RpcTypes.Error: {
                             subject.release();
                             const error = next.getError();
-                            console.debug('Client received error', error);
+                            // console.debug('Client received error', error);
                             reject(error);
                             break;
                         }
@@ -230,7 +267,7 @@ export class RpcActionClient {
                 const parsed = await this.client.sendMessage(RpcTypes.ActionType, rpcActionType, {
                     controller: controller.controller,
                     method: method,
-                }, { peerId: controller.peerId }).firstThenClose(RpcTypes.ActionTypeResponse, rpcActionTypeResponse);
+                }, { peerId: controller.peerId }).firstThenClose(RpcTypes.ResponseActionType, rpcResponseActionType);
 
                 const parameters: string[] = [];
                 const argsSchema = createClassSchema();

@@ -19,7 +19,7 @@
 import { ClassType } from '@deepkit/core';
 import { ClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
 import { rpcClientId, rpcError, RpcInjector, rpcPeerRegister, RpcTypes, SimpleInjector } from '../model';
-import { createBuffer, createRpcMessage, createRpcMessageSourceDest, readRpcMessage, rpcEncodeError, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
+import { createBuffer, createRpcCompositeMessage, createRpcCompositeMessageSourceDest, createRpcMessage, createRpcMessageSourceDest, readRpcMessage, RpcCreateMessageDef, rpcEncodeError, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
 import { RpcServerAction } from './action';
 
 
@@ -27,22 +27,42 @@ export class RpcResponse {
     constructor(
         protected writer: RpcKernelConnectionWriter,
         protected id: number,
-        protected messageFactory: <T>(id: number, type: RpcTypes, schema?: ClassSchema<T>, data?: T) => Uint8Array,
+        protected clientId: Uint8Array,
+        protected source?: Uint8Array,
     ) {
     }
 
+    protected messageFactory<T>(type: RpcTypes, schema?: ClassSchema<T>, data?: T): Uint8Array {
+        if (this.source) {
+            //we route pack accordingly
+            return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, schema, data);
+        } else {
+            return createRpcMessage(this.id, type, schema, data);
+        }
+    }
+
     ack(): void {
-        this.writer.write(this.messageFactory(this.id, RpcTypes.Ack));
+        this.writer.write(this.messageFactory(RpcTypes.Ack));
     }
 
     error(error: Error | string): void {
         const extracted = rpcEncodeError(error);
 
-        this.writer.write(this.messageFactory(this.id, RpcTypes.Error, rpcError, extracted));
+        this.writer.write(this.messageFactory(RpcTypes.Error, rpcError, extracted));
     }
 
     reply<T>(type: number, schema?: ClassSchema<T>, body?: T): void {
-        this.writer.write(this.messageFactory(this.id, type, schema, body));
+
+        this.writer.write(this.messageFactory(type, schema, body));
+    }
+
+    replyComposite(messages: RpcCreateMessageDef<any>[]) {
+        if (this.source) {
+            //we route pack accordingly
+            this.writer.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, messages));
+        } else {
+            this.writer.write(createRpcCompositeMessage(this.id, messages));
+        }
     }
 }
 
@@ -51,6 +71,10 @@ export class RpcPeerExchange {
 
     isRegistered(id: string): boolean {
         return this.registeredPeers.has(id);
+    }
+
+    deregister(id: string | Uint8Array) {
+        this.registeredPeers.delete('string' === typeof id ? id : stringifyUuid(id));
     }
 
     register(id: string | Uint8Array, writer: RpcKernelConnectionWriter) {
@@ -120,10 +144,6 @@ export class RpcKernelConnection {
         this.reader.feed(buffer);
     }
 
-    protected createRpcMessage<T>(id: number, type: RpcTypes, schema?: ClassSchema<T>, data?: T): Uint8Array {
-        return createRpcMessage(id, type, schema, data);
-    }
-
     async handleMessage(buffer: Uint8Array): Promise<void> {
         const message = readRpcMessage(buffer);
 
@@ -139,36 +159,15 @@ export class RpcKernelConnection {
             return;
         }
 
-        // if (message.recipient && message.recipient !== this.myPeerId) {
-        //     //if the message has a recipient and the recipient is me (myPeerId), then
-        //     //just handle it normally.
-        //     if (!this.registeredInExchangeForResponse) {
-        //         this.peerExchange.register(this.id, this.writer);
-        //         this.registeredInExchangeForResponse = true;
-        //     }
-
-        //     this.peerExchange.redirect(message);
-        //     return;
-        // }
-
-        let messageFactory = this.createRpcMessage;
-        if (message.routeType == RpcMessageRouteType.peer) {
-            // console.log('Handle peer message', RpcTypes[message.type]);
-            const source = message.getSource();
-            messageFactory = <T>(id: number, type: RpcTypes, schema?: ClassSchema<T>, data?: T) => {
-                return createRpcMessageSourceDest(id, type, this.id, source, schema, data);
-            }
-        } else {
-            // console.log('Handle regular message', RpcTypes[message.type]);
-        }
-
-        const response = new RpcResponse(this.writer, message.id, messageFactory);
+        //all outgoing replies need to be routed to the source via sourceDest messages.
+        const response = new RpcResponse(this.writer, message.id, this.id, message.routeType === RpcMessageRouteType.peer ? message.getSource() : undefined);
 
         try {
             if (message.routeType === RpcMessageRouteType.client) {
                 switch (message.type) {
                     case RpcTypes.ClientId: return response.reply(RpcTypes.ClientIdResponse, rpcClientId, { id: this.id });
                     case RpcTypes.PeerRegister: return this.registerAsPeer(message, response);
+                    case RpcTypes.PeerDeregister: return this.deregisterAsPeer(message, response);
                 }
             }
 
@@ -180,6 +179,16 @@ export class RpcKernelConnection {
         } catch (error) {
             response.error(error);
         }
+    }
+
+    protected deregisterAsPeer(message: RpcMessage, response: RpcResponse): void {
+        const body = message.parseBody(rpcPeerRegister);
+        if (this.peerExchange.isRegistered(body.id)) {
+            return response.error(new Error(`Peer ${body.id} already registereed`));
+        }
+        this.myPeerId = undefined;
+        this.peerExchange.deregister(body.id);
+        response.ack();
     }
 
     protected registerAsPeer(message: RpcMessage, response: RpcResponse): void {

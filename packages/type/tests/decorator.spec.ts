@@ -25,7 +25,7 @@ import {Buffer} from 'buffer';
 import {SimpleModel} from './entities';
 import {PageClass} from './document-scenario/PageClass';
 import {DocumentClass} from './document-scenario/DocumentClass';
-import {resolvePropertyCompilerSchema} from '../src/jit';
+import {resolvePropertySchema} from '../src/jit';
 
 
 test('getClassSchemaByName', async () => {
@@ -239,7 +239,7 @@ test('test decorator circular', () => {
         }
 
         expect(getClassSchema(Model).hasCircularDependency()).toBe(false);
-        const schema = resolvePropertyCompilerSchema(getClassSchema(Model), 'sub');
+        const schema = resolvePropertySchema(getClassSchema(Model), 'sub');
         expect(schema.type).toBe('class');
         expect(schema.resolveClassType).toBe(Sub);
     }
@@ -254,10 +254,10 @@ test('test decorator circular', () => {
         expect(getClassSchema(Model).getProperty('sub').getSubType().type).toBe('class');
         expect(getClassSchema(Model).getProperty('sub').getSubType().resolveClassType).toBe(Sub);
 
-        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({
+        expect(resolvePropertySchema(getClassSchema(Model), 'sub')).toMatchObject({
             type: 'map',
         });
-        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub.foo')).toMatchObject({
+        expect(resolvePropertySchema(getClassSchema(Model), 'sub.foo')).toMatchObject({
             type: 'class',
             resolveClassType: Sub
         });
@@ -270,11 +270,11 @@ test('test decorator circular', () => {
             sub?: Sub[];
         }
 
-        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub')).toMatchObject({
+        expect(resolvePropertySchema(getClassSchema(Model), 'sub')).toMatchObject({
             type: 'array',
         });
 
-        expect(resolvePropertyCompilerSchema(getClassSchema(Model), 'sub.0')).toMatchObject({
+        expect(resolvePropertySchema(getClassSchema(Model), 'sub.0')).toMatchObject({
             type: 'class',
             resolveClassType: Sub
         });
@@ -320,35 +320,35 @@ test('test properties', () => {
     expect(() => getClassSchema(Model).getDiscriminantPropertySchema()).toThrow('No discriminant property found');
 
     {
-        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), '_id');
+        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), '_id');
         expect(type).toBe('objectId');
         expect(resolveClassType).toBeUndefined();
     }
 
     {
-        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), 'data');
+        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), 'data');
         expect(type).toBe('class');
         expect(resolveClassType).toBe(DataValue);
     }
 
     expect(() => {
-        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), 'data2');
+        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), 'data2');
         expect(type).toBeUndefined();
         expect(resolveClassType).toBeUndefined();
     }).toThrow('Property Model.data2 not found');
 
     {
-        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(SubModel), '_id');
+        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(SubModel), '_id');
         expect(type).toBe('objectId');
         expect(resolveClassType).toBeUndefined();
     }
     {
-        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(SubModel), 'data');
+        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(SubModel), 'data');
         expect(type).toBe('class');
         expect(resolveClassType).toBe(DataValue);
     }
     {
-        const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(SubModel), 'data2');
+        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(SubModel), 'data2');
         expect(type).toBe('class');
         expect(resolveClassType).toBe(DataValue2);
     }
@@ -441,7 +441,7 @@ test('binary', () => {
         preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
-    const {type, resolveClassType} = resolvePropertyCompilerSchema(getClassSchema(Model), 'preview');
+    const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), 'preview');
     expect(type).toBe('arrayBuffer');
     expect(resolveClassType).toBeUndefined();
 
@@ -449,8 +449,8 @@ test('binary', () => {
     expect(Buffer.from(i.preview).toString('utf8')).toBe('FooBar');
 
     const plain = jsonSerializer.for(Model).serialize(i);
-    expect(plain.preview).toBe('Rm9vQmFy');
-    expect(plain.preview).toBe(Buffer.from('FooBar', 'utf8').toString('base64'));
+    expect(plain.preview.data).toBe('Rm9vQmFy');
+    expect(plain.preview.data).toBe(Buffer.from('FooBar', 'utf8').toString('base64'));
 
     const back = jsonSerializer.for(Model).deserialize(plain);
     expect(back.preview).toBeInstanceOf(ArrayBuffer);
@@ -736,9 +736,7 @@ test('old forwardRef struct for IE11', () => {
             children: t.type(Children)
         });
 
-        expect(() => {
-            schema.getProperty('children').resolveClassType;
-        }).toThrow('Cannot set property \'name\' of undefined');
+        expect(schema.getProperty('children').resolveClassType).toBe(Children);
     }
 
     {

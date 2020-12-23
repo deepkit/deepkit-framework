@@ -38,6 +38,30 @@ export const BSON_DATA_DECIMAL128 = 19;
 export const BSON_DATA_MIN_KEY = 0xff;
 export const BSON_DATA_MAX_KEY = 0x7f;
 
+export const enum BSONType {
+    NUMBER = 1,
+    STRING = 2,
+    OBJECT = 3,
+    ARRAY = 4,
+    BINARY = 5,
+    UNDEFINED = 6,
+    OID = 7,
+    BOOLEAN = 8,
+    DATE = 9,
+    NULL = 10,
+    REGEXP = 11,
+    DBPOINTER = 12,
+    CODE = 13,
+    SYMBOL = 14,
+    CODE_W_SCOPE = 15,
+    INT = 16,
+    TIMESTAMP = 17,
+    LONG = 18,
+    DECIMAL128 = 19,
+    MIN_KEY = 0xff,
+    MAX_KEY = 0x7f,
+}
+
 export const BSON_BINARY_SUBTYPE_DEFAULT = 0;
 export const BSON_BINARY_SUBTYPE_FUNCTION = 1;
 export const BSON_BINARY_SUBTYPE_BYTE_ARRAY = 2;

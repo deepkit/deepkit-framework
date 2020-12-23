@@ -296,7 +296,7 @@ test('test invalid @f', () => {
             @t.array(Config)
             config?: Config;
         }
-    }).toThrowError('User5::config type mismatch. Given Config[], but declared is Config.');
+    }).toThrowError('User5::config type mismatch. Given Array<Config>, but declared is Config.');
 
     expect(() => {
         class Model {
@@ -304,7 +304,7 @@ test('test invalid @f', () => {
             sub?: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Config[], but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Array<Config>, but declared is Config.');
 
     expect(() => {
         class Model {
@@ -312,7 +312,7 @@ test('test invalid @f', () => {
             sub?: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[], but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Array<ForwardedRef>, but declared is Config.');
 
     expect(() => {
         class Model {
@@ -457,3 +457,32 @@ test('date default', () => {
     expect(jsonSerializer.for(DateClass).validatedDeserialize({
     })).toEqual({value: new Date('2019-11-03T09:10:38.392Z')});
 });
+
+
+test('missing public in constructor', () => {
+    class User {
+        @t ready?: boolean;
+
+        @t.array(t.string) tags: string[] = [];
+
+        @t priority: number = 0;
+
+        constructor(
+            @t.primary id: number,
+            @t public name: string
+        ) {
+        }
+    }
+
+    const schema = getClassSchema(User);
+    expect(schema.getMethodProperties('constructor').length).toBe(2);
+    expect(schema.getClassProperties().size).toBe(5);
+    expect(schema.getProperty('id').methodName).toBe('constructor');
+    expect(schema.getProperty('name').methodName).toBe('constructor');
+
+    expect(schema.getMethodProperties('constructor')[0].name).toBe('id');
+    expect(schema.getMethodProperties('constructor')[1].name).toBe('name');
+
+    expect(schema.getMethodProperties('constructor')[0].methodName).toBe('constructor');
+    expect(schema.getMethodProperties('constructor')[1].methodName).toBe('constructor');
+})

@@ -1,6 +1,6 @@
 import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jsonSerializer, PropertyCompilerSchema, t, validate} from '../index';
+import {getClassSchema, jsonSerializer, PropertySchema, t, validate} from '../index';
 
 class ConfigA {
     @t.literal('a').discriminant
@@ -48,9 +48,6 @@ test('test discriminator schema', () => {
     expect(schemaConfigA.getProperty('myValue').isDiscriminant).toBe(false);
     expect(schemaConfigA.getProperty('myValue').isArray).toBe(false);
     expect(schemaConfigA.getProperty('myValue').type).toBe('string');
-
-    const compilerSchema = PropertyCompilerSchema.createFromPropertySchema(config);
-    expect(compilerSchema.templateArgs.map(v => v.resolveClassType)).toEqual([ConfigA, ConfigB]);
 });
 
 test('test discriminator class to plain', () => {

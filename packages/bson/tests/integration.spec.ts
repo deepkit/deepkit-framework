@@ -1,35 +1,63 @@
 import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
-import {FieldDecoratorResult, t, Types} from '@deepkit/type';
+import {entity, FieldDecoratorResult, t, Types} from '@deepkit/type';
 import bson from 'bson';
 import {createBSONSizer, getBSONSerializer, JS_INT_MAX, JS_INT_MIN} from '../src/bson-serialize';
 import {getBSONDecoder} from '../src/bson-jit-parser';
-const {calculateObjectSize, serialize} = bson;
+
+const {calculateObjectSize, serialize, deserialize} = bson;
 
 enum MyEnum {
     first, second, third,
 }
+
 enum MyEnum2 {
     first = 'first', second = 'second', third = 'third',
 }
 
 class DecoratedValue {
+    constructor(
+        @t.array(t.string).decorated
+        public c: string[] = []
+    ) {
+    }
+}
+
+class DecoratedValue2 {
     @t.array(t.string).decorated
-    items: string[] = []
+    public items: string[] = [];
+}
+
+@entity.name('myModel')
+class MyModel {
+    @t.literal('a').discriminant public type: string = 'a';
+
+    @t items: DecoratedValue = new DecoratedValue;
+
+    constructor(@t public name: string) {
+    }
 }
 
 const ab = new ArrayBuffer(2);
-const view = new Uint8Array(ab);
-view[0] = 11;
-view[1] = 22;
+const uint8Array = new Uint8Array(ab);
+
+uint8Array[0] = 11;
+uint8Array[1] = 22;
 
 test('compare ab', () => {
     const other = new Uint8Array([11, 22]).buffer;
     expect(ab).toEqual(other);
 });
 
-const types: [FieldDecoratorResult<any>, any, any?][] = [
-    [t.string, "Hello Peter"],
+const decoratedValue2 = new DecoratedValue2();
+decoratedValue2.items = ['a', 'b', 'c'];
+
+
+
+
+
+const types: [FieldDecoratorResult<any>, any, any?, true?][] = [
+    [t.string, 'Hello Peter'],
     [t.number, 1],
     [t.number, 0],
     [t.number, -1],
@@ -45,8 +73,8 @@ const types: [FieldDecoratorResult<any>, any, any?][] = [
     [t.uuid, 'bef8de96-41fe-442f-b70c-c3a150f8c96c'],
     [t.uuid, 'bef8de92-41fe-442f-b70c-c3a150f8c961'],
     [t.mongoId, '507f191e810c19729de860ea'],
-    [t.date, new Date("1987-10-12T00:00:00.000Z")],
-    [t.date, new Date("2020-08-09T19:02:28.397Z")],
+    [t.date, new Date('1987-10-12T00:00:00.000Z')],
+    [t.date, new Date('2020-08-09T19:02:28.397Z')],
     [t.enum(MyEnum), MyEnum.first],
     [t.enum(MyEnum), MyEnum.second],
     [t.enum(MyEnum), MyEnum.third],
@@ -54,24 +82,50 @@ const types: [FieldDecoratorResult<any>, any, any?][] = [
     [t.enum(MyEnum2), MyEnum2.second],
     [t.enum(MyEnum2), MyEnum2.third],
     [t.type({name: t.string}), {name: 'Peter'}],
-    [t.array(t.string), ['Peter']],
+    [t.union(t.string, MyModel), 'asd'],
+    [t.union(t.string, t.array(t.string)), 'asd'],
+    [t.union(t.string, t.array(t.string)), ['a', 'b']],
+    [t.union(t.string, t.uuid), 'asd'],
+    [t.union(t.string, t.uuid), '3c25985e-4e25-45db-9e8a-a487cc78929a'],
+    [t.union(t.string, t.mongoId), 'asd'],
+    [t.union(t.string, t.uuid), '507f191e810c19729de860ea'],
+    [t.union(t.string, t.uuid, t.date), '3c25985e-4e25-45db-9e8a-a487cc78929a'],
+    [t.union(t.string, t.uuid, t.date), 'asd'],
+    [t.union(t.string, t.map(t.string)), 'asd'],
+    [t.union(t.string, t.map(t.string)), {first: 'asd', second: 'asd'}],
+    [t.union(t.string, t.partial(t.string)), 'asd'],
+    [t.union(t.string, t.partial(t.string)), {first: 'asd', second: 'asd'}],
+    [t.union(t.string, t.type(ArrayBuffer)), 'asd'],
+    [t.union(t.string, t.type(ArrayBuffer)), ab, undefined, true],
+    [t.union(t.string, t.type(Uint8Array)), uint8Array, undefined, true],
+    [t.type(DecoratedValue), new DecoratedValue(['a', 'b']), undefined, true],
+    [t.type(DecoratedValue2), decoratedValue2, undefined, true],
+    [t.union(t.string, MyModel), {type: 'a', name: 'Peter', items: new DecoratedValue(['a', 'b']),}, undefined, true],
+    [t.array(t.string), ['Peter', 'b']],
+    [t.array(t.number.optional), [1, undefined, 2], undefined, true], //bson-js converts the undefined into null
+    [t.array(t.string.optional), ['Peter', undefined, 'Bar'], undefined, true], //bson-js converts the undefined into null
+    [t.array(t.string.nullable), ['Peter', null, 'Bar']],
+    [t.array(t.union(t.string, t.number)), ['Peter', 23, 'Bar']],
+    [t.array(t.union(t.boolean, t.number)), [false, 23, true]],
     [t.map(t.string), {name: 'Peter'}],
     [t.any, {name: 'Peter', ready: false}],
     [t.type(ArrayBuffer), ab],
     [t.type(Uint8Array), new Uint8Array([22, 44, 55, 66])],
     [t.type(Int16Array), new Int16Array([22, 44, 55, 66])],
-    [t.union(), {name: 'Peter'}],
+    [t.union(t.type({type: t.literal('m'), name: t.string})), {type: 'm', name: 'Peter'}],
     [t.partial({name: t.string}), {}],
     [t.partial({name: t.string}), {name: 'Peter'}],
-    [t.type(DecoratedValue), ['a', 'b', 'c']],
 ];
 
-test('nix', () => {});
+test('nix', () => {
+});
 
-for (const type of types) {
-    const [field, value, expected] = type;
+for (let i = 0; i < types.length; i++) {
+    const type = types[i];
+    const [field, value, expected, dontCompareToBSONJS] = type;
+    const property = (field as FieldDecoratorResult<any>).buildPropertySchema('test_' + i);
 
-    test(`types round-trip: ${field.toString()}: ${value}`, () => {
+    test(`types round-trip #${i} ${property.toString()}: ${value}`, () => {
         const s = t.schema({
             field: field
         });
@@ -90,16 +144,24 @@ for (const type of types) {
 
         const expectedObj = {
             field: expected ?? value
-        }
+        };
+
+        expect(sOptional.getProperty('field').isOptional).toBe(true);
+        expect(sNullable.getProperty('field').isNullable).toBe(true);
 
         const bsonDeepkit = getBSONSerializer(s)(obj);
+        console.log('back', obj, deserialize(bsonDeepkit));
 
         const decoded = getBSONDecoder(s)(bsonDeepkit);
         expect(decoded).toEqual(expectedObj);
 
         expect(getBSONDecoder(s)(getBSONSerializer(s)({}))).toEqual({});
         expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({}))).toEqual({});
-        expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({field: null}))).toEqual({field: null});
+        const bsonOptional = getBSONSerializer(sOptional)({field: null});
+        const decoderOptional = getBSONDecoder(sOptional);
+
+        decoderOptional(bsonOptional);
+        expect(decoderOptional(bsonOptional)).toEqual({field: null});
         expect(getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({field: null}))).toEqual({field: null});
 
         const type = field.buildPropertySchema().type;
@@ -112,12 +174,15 @@ for (const type of types) {
         ];
         if (blacklist.includes(type)) return;
 
+        if (dontCompareToBSONJS) return;
+
         expect(createBSONSizer(s)(obj)).toEqual(calculateObjectSize(obj));
 
         //official BSON serializer has a bug not serializing LONG correctly
         if (field.buildPropertySchema().type === 'number' && (value > JS_INT_MAX || value < JS_INT_MIN)) return;
 
         const bsonOfficial = serialize(obj);
+        expect(obj).toEqual(deserialize(serialize(obj)));
         expect(bsonDeepkit).toEqual(bsonOfficial);
     });
 }

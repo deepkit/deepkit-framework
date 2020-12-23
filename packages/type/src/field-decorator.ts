@@ -152,6 +152,11 @@ export interface FieldDecoratorResultBase<T> {
     autoIncrement: FieldDecoratorResult<T | undefined>;
 
     /**
+     * @deprecated use `generic` instead
+     */
+    template(...templateArgs: (ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]): this;
+
+    /** 
      * Defines template arguments of a generic class. Very handy for types like Observables.
      *
      * ```typescript
@@ -159,7 +164,7 @@ export interface FieldDecoratorResultBase<T> {
      * }
      *
      * class Page {
-     *     @t.template(Stuff)
+     *     @t.generic(Stuff)
      *     downloadStuff(): Observable<Stuff> {
      *          return new Observable<Stuff>((observer) => {
      *              observer.next(new Stuff());
@@ -167,7 +172,7 @@ export interface FieldDecoratorResultBase<T> {
      *     }
      *
      *     //or more verbose way if the type is more complex.
-     *     @t.template(f.type(Stuff).optional)
+     *     @t.generic(f.type(Stuff).optional)
      *     downloadStuffWrapper(): Observable<Stuff | undefined> {
      *          return new Observable<Stuff>((observer) => {
      *              observer.next(new Stuff());
@@ -175,8 +180,8 @@ export interface FieldDecoratorResultBase<T> {
      *     }
      * }
      * ```
-     */
-    template(...templateArgs: (ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]): this;
+    */
+    generic(...templateArgs: (ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]): this;
 
     /**
      * Used to define an index on a field.

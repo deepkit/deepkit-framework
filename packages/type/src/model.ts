@@ -165,11 +165,43 @@ export function isRegisteredEntity<T>(classType: ClassType<T>): boolean {
 }
 
 /**
- * Contains all resolved information from PropertySchema necessary to feed compiler functions.
- *
- * Internal note: It's on purpose aligned with PropertySchema.
+ * Represents a class property or method argument/return-type definition.
  */
-export class PropertyCompilerSchema {
+export class PropertySchema {
+    /**
+     * Returns true when user manually set a default value via PropertySchema/decorator.
+     */
+    hasManualDefaultValue(): boolean {
+        return !this.hasDefaultValue && this.defaultValue !== undefined;
+    }
+
+    hasCircularDependency(lookingFor: ClassSchema, classSchemaStack: ClassSchema[] = [], propertyStack: PropertySchema[] = []): boolean {
+        if (this.isParentReference) return false;
+
+        if (this.type === 'class') {
+            const s = getClassSchema(this.resolveClassType!);
+            return s === lookingFor || s.hasCircularDependency(lookingFor, classSchemaStack);
+        }
+
+        if (propertyStack.includes(this)) return true;
+        propertyStack.push(this);
+
+        for (const arg of this.templateArgs) {
+            if (arg.hasCircularDependency(lookingFor, classSchemaStack, propertyStack)) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns true when `undefined` or a missing value is allowed.
+     * This is now only true when `optional` is set, but alos when type is `any`,
+     * or when the property has an actual default value (then a undefined value sets the default value instead).
+     */
+    public isUndefinedAllowed(): boolean {
+        return this.isOptional || this.type === 'any' || this.hasManualDefaultValue() || this.hasDefaultValue;
+    }
+
     type: Types = 'any';
 
     literalValue?: string | number | boolean;
@@ -239,7 +271,7 @@ export class PropertyCompilerSchema {
      */
     defaultValue: any;
 
-    templateArgs: PropertyCompilerSchema[] = [];
+    templateArgs: PropertySchema[] = [];
 
     /**
      * The getClassName() when the given classType is not registered using a @entity.name
@@ -249,108 +281,6 @@ export class PropertyCompilerSchema {
 
     classType?: ClassType;
 
-    constructor(
-        public name: string,
-        public parent?: PropertyCompilerSchema,
-    ) {
-    }
-
-    /**
-     * Returns true when user manually set a default value via PropertySchema/decorator.
-     */
-    hasManualDefaultValue(): boolean {
-        return !this.hasDefaultValue && this.defaultValue !== undefined;
-    }
-
-    toString(): string {
-        let affix = this.isOptional ? '?' : '';
-        if (this.isNullable) affix += '|null';
-
-        if (this.type === 'array') {
-            return `Array<${this.templateArgs[0]}}>${affix}`;
-        }
-        if (this.type === 'map') {
-            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
-        }
-        if (this.type === 'partial') {
-            return `Partial<${this.templateArgs[0]}>${affix}`;
-        }
-        if (this.type === 'union') {
-            return this.templateArgs.map(v => v.toString()).join(' | ') + affix;
-        }
-        if (this.type === 'class') {
-            if (this.classTypeName) return this.classTypeName + affix;
-            return getClassName(this.resolveClassType || class {
-            }) + affix;
-        }
-        return `${this.type}${affix}`;
-    }
-
-    hasCircularDependency(lookingFor: ClassSchema, classSchemaStack: ClassSchema[] = [], propertyStack: PropertyCompilerSchema[] = []): boolean {
-        if (this.isParentReference) return false;
-
-        if (this.type === 'class') {
-            const s = getClassSchema(this.resolveClassType!);
-            return s === lookingFor || s.hasCircularDependency(lookingFor, classSchemaStack);
-        }
-
-        if (propertyStack.includes(this)) return true;
-        propertyStack.push(this);
-
-        for (const arg of this.templateArgs) {
-            if (arg.hasCircularDependency(lookingFor, classSchemaStack, propertyStack)) return true;
-        }
-
-        return false;
-    }
-
-    getSubType(): PropertyCompilerSchema {
-        if (this.type === 'partial') return this.templateArgs[0]!;
-        if (this.type === 'array') return this.templateArgs[0]!;
-        if (this.type === 'map') return this.templateArgs[1]!;
-        throw new Error('No array or map type');
-    }
-
-    get resolveClassType(): ClassType | undefined {
-        return this.classType;
-    }
-
-    /**
-     * Returns true when `undefined` or a missing value is allowed.
-     * This is now only true when `optional` is set, but alos when type is `any`,
-     * or when the property has an actual default value (then a undefined value sets the default value instead).
-     */
-    public isUndefinedAllowed(): boolean {
-        return this.isOptional || this.type === 'any' || this.hasManualDefaultValue() || this.hasDefaultValue;
-    }
-
-    static createFromPropertySchema(
-        propertySchema: PropertySchema,
-        parent?: PropertyCompilerSchema,
-    ): PropertyCompilerSchema {
-        const i = new PropertyCompilerSchema(
-            propertySchema.name,
-            parent
-        );
-        i.classType = propertySchema.getResolvedClassTypeForValidType();
-        i.type = propertySchema.type;
-        i.literalValue = propertySchema.literalValue;
-        i.validators = propertySchema.validators;
-        i.isOptional = propertySchema.isOptional;
-        i.isDiscriminant = propertySchema.isDiscriminant;
-        i.allowLabelsAsValue = propertySchema.allowLabelsAsValue;
-        i.isReference = propertySchema.isReference;
-        i.isParentReference = propertySchema.isParentReference;
-        i.hasDefaultValue = propertySchema.hasDefaultValue;
-        i.templateArgs = propertySchema.templateArgs;
-        return i;
-    }
-}
-
-/**
- * Represents a class property or method argument definition.
- */
-export class PropertySchema extends PropertyCompilerSchema {
     /**
      * Whether its a back reference.
      */
@@ -394,12 +324,9 @@ export class PropertySchema extends PropertyCompilerSchema {
     protected classTypeForwardRef?: ForwardRefFn<any>;
     protected classTypeResolved?: ClassType;
 
-    templateArgs: PropertySchema[] = [];
-
     description: string = '';
 
-    constructor(name: string, public parent?: PropertySchema) {
-        super(name, parent);
+    constructor(public name: string, public parent?: PropertySchema) {
     }
 
     setType(type: Types) {
@@ -407,11 +334,22 @@ export class PropertySchema extends PropertyCompilerSchema {
         this.typeSet = true;
     }
 
-    toString() {
-        const affix = this.isOptional ? '?' : '';
+    toString(): string {
+        let affix = this.isOptional ? '?' : '';
         if (!this.typeSet) return 'undefined';
+        if (this.isNullable) affix += '|null';
+
         if (this.type === 'array') {
-            return `${this.templateArgs[0]}[]${affix}`;
+            return `Array<${this.templateArgs[0]}>${affix}`;
+        }
+        if (this.type === 'map') {
+            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
+        }
+        if (this.type === 'partial') {
+            return `Partial<${this.templateArgs[0]}>${affix}`;
+        }
+        if (this.type === 'union') {
+            return this.templateArgs.map(v => v.toString()).join(' | ') + affix;
         }
         if (this.type === 'class') {
             if (this.classTypeName) return this.classTypeName + affix;
@@ -423,7 +361,7 @@ export class PropertySchema extends PropertyCompilerSchema {
                 return getClassName(this.getResolvedClassType()) + affix;
             }
         }
-        return super.toString();
+        return `${this.type}${affix}`;
     }
 
     getSubType(): PropertySchema {
@@ -648,10 +586,6 @@ export class ClassSchema<T = any> {
     collectionName?: string;
     databaseSchemaName?: string;
 
-    hashGenerator() {
-
-    };
-
     /**
      * Name of the property which this class is decorating.
      * As soon as someone use this class, the actual value of this property is used to serialize.
@@ -717,6 +651,17 @@ export class ClassSchema<T = any> {
         this.classType = classType;
 
         this.loadDefaults();
+    }
+
+    /**
+     * Whether this schema annotated an actual custom class.
+    */
+    public isCustomClass(): boolean {
+        return (this.classType as any) !== Object;
+    }
+
+    toString() {
+        return `<ClassSchema ${this.getClassName()}>\n` + [...this.getClassProperties().values()].map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
     }
 
     /**

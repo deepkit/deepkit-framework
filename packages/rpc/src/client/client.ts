@@ -19,9 +19,9 @@
 import { asyncOperation, ClassType, sleep } from '@deepkit/core';
 import { ClassSchema } from '@deepkit/type';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { RpcKernel } from '../server/kernel';
-import { ControllerDefinition, rpcPeerRegister, rpcPeerDeregister, RpcTypes, rpcClientId } from '../model';
+import { ControllerDefinition, rpcClientId, rpcPeerDeregister, rpcPeerRegister, RpcTypes } from '../model';
 import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, readRpcMessage, RpcMessage, RpcMessageRouteType } from '../protocol';
+import { RpcKernel } from '../server/kernel';
 import { RpcActionClient, RpcControllerState } from './action';
 import { RpcMessageSubject } from './message-subject';
 
@@ -303,19 +303,13 @@ export class RpcClient {
         const message = readRpcMessage(buffer);
         // console.log('client: received message', message.id, RpcTypes[message.type], message.routeType);
 
-        if (message.type === RpcTypes.Package) {
+        if (message.type === RpcTypes.Chunk) {
             //package, wait until complete. retrieve everything, then unpack, and call onMessage() again
         } else if (message.routeType === RpcMessageRouteType.peer) {
-            if (!this.kernel) {
-                console.log('received peer package, but not registered');
-                return;
-            }
+            if (!this.kernel) return;
 
             const peerId = message.getPeerId();
-            if (this.registeredAsPeer !== peerId) {
-                console.log('received peer package, but invalid peer id');
-                return;
-            }
+            if (this.registeredAsPeer !== peerId) return;
 
             let connection = this.peerKernelConnection.get(peerId);
             if (!connection) {
@@ -326,6 +320,8 @@ export class RpcClient {
                         this.transporter.send(answer);
                     }
                 };
+
+                //todo: set up timeout for idle detection. Make the timeout configurable
 
                 connection = this.kernel.createConnection(writer);
                 connection.myPeerId = peerId; //necesary so that the kernel does not redirect the package again.

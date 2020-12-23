@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertyCompilerSchema} from './model';
+import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema} from './model';
 import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
 import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions} from './jit';
 import {ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
@@ -18,6 +18,7 @@ import {Serializer} from './serializer';
 import {typedArrayNamesMap} from './types';
 import {ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 import {validate, ValidationFailed} from './validation';
+import {jsonTypeGuards} from './json-typeguards';
 
 export class JSONSerializer extends Serializer {
     constructor() {
@@ -27,7 +28,7 @@ export class JSONSerializer extends Serializer {
 
 export const jsonSerializer = new JSONSerializer();
 
-export function compilerToString(property: PropertyCompilerSchema, state: CompilerState) {
+export function compilerToString(property: PropertySchema, state: CompilerState) {
     state.addSetter(`typeof ${state.accessor} === 'string' ? ${state.accessor} : ''+${state.accessor};`);
 }
 
@@ -86,6 +87,10 @@ export function validatedPlainToClass<T extends ClassType | ClassSchema>(
     return plainToClass(classType, data, options);
 }
 
+export function isBinaryJSON(v: any): boolean {
+    return v && v['∏type'] === 'binary' && typeof v.data === 'string';
+}
+
 /**
  * Clones a class instance deeply.
  */
@@ -97,14 +102,14 @@ export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
 
 jsonSerializer.toClass.register('string', compilerToString);
 
-export function compilerToNumber(property: PropertyCompilerSchema, state: CompilerState) {
+export function compilerToNumber(property: PropertySchema, state: CompilerState) {
     state.addSetter(`typeof ${state.accessor} === 'number' ? ${state.accessor} : +${state.accessor};`);
 }
 
 jsonSerializer.toClass.register('number', compilerToNumber);
 jsonSerializer.fromClass.register('number', compilerToNumber);
 
-jsonSerializer.toClass.register('literal', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.toClass.register('literal', (property: PropertySchema, state: CompilerState) => {
     const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
     state.addSetter(literalValue);
 });
@@ -117,18 +122,18 @@ jsonSerializer.toClass.prepend('undefined', (property, state: CompilerState) => 
     return;
 });
 
-jsonSerializer.toClass.prepend('null', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.toClass.prepend('null', (property: PropertySchema, state: CompilerState) => {
     if (property.type === 'literal' && !property.isNullable) {
         const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
         state.addSetter(literalValue);
     }
 });
 
-jsonSerializer.toClass.register('date', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.toClass.register('date', (property: PropertySchema, state: CompilerState) => {
     state.addSetter(`new Date(${state.accessor});`);
 });
 
-jsonSerializer.toClass.register('boolean', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.toClass.register('boolean', (property: PropertySchema, state: CompilerState) => {
     state.addCodeForSetter(`
     if ('boolean' === typeof ${state.accessor}) {
         ${state.setter} = ${state.accessor};
@@ -139,7 +144,7 @@ jsonSerializer.toClass.register('boolean', (property: PropertyCompilerSchema, st
     `);
 });
 
-jsonSerializer.toClass.register('enum', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.toClass.register('enum', (property: PropertySchema, state: CompilerState) => {
     //this a candidate where we can extract ENUM information during build time and check very fast during
     //runtime, so we don't need a call to getResolvedClassTypeForValidType(), isValidEnumValue(), etc in runtime anymore.
     const allowLabelsAsValue = property.allowLabelsAsValue;
@@ -166,34 +171,38 @@ jsonSerializer.toClass.register('enum', (property: PropertyCompilerSchema, state
     `);
 });
 
-jsonSerializer.toClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
-    state.setContext({base64ToTypedArray, typedArrayNamesMap});
-    state.addSetter(`base64ToTypedArray(${state.accessor}, typedArrayNamesMap.get('${property.type}'))`);
+jsonSerializer.toClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
+    state.setContext({base64ToTypedArray});
+    state.setContext({isBinaryJSON});
+    //property.type maps to global type constructor names
+    state.addSetter(`${state.accessor} instanceof ${property.type} ? ${state.accessor} : (isBinaryJSON(${state.accessor}) ? base64ToTypedArray(${state.accessor}.data, ${property.type}) : new ${property.type}())`);
 });
 
-jsonSerializer.toClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
     state.setContext({base64ToArrayBuffer});
-    state.addSetter(`base64ToArrayBuffer(${state.accessor})`);
+    state.setContext({isBinaryJSON});
+    state.addSetter(`${state.accessor} instanceof ArrayBuffer ? ${state.accessor} : (isBinaryJSON(${state.accessor}) ? base64ToArrayBuffer(${state.accessor}.data): new ArrayBuffer())`);
 });
 
-jsonSerializer.fromClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
+//we need to add '∏type' to make union with auto-detection work
+jsonSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
     state.setContext({typedArrayToBase64});
-    state.addSetter(`typedArrayToBase64(${state.accessor});`);
+    state.addSetter(`{'∏type': 'binary', data: typedArrayToBase64(${state.accessor})}`);
 });
 
-jsonSerializer.fromClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
     state.setContext({arrayBufferToBase64});
-    state.addSetter(`arrayBufferToBase64(${state.accessor})`);
+    state.addSetter(`{'∏type': 'binary', data: arrayBufferToBase64(${state.accessor})}`);
 });
 
-const convertToPlainUsingToJson = (property: PropertyCompilerSchema, state: CompilerState) => {
+const convertToPlainUsingToJson = (property: PropertySchema, state: CompilerState) => {
     state.addSetter(`${state.accessor}.toJSON();`);
 };
 
 jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
 
 
-function convertArray(property: PropertyCompilerSchema, state: CompilerState) {
+function convertArray(property: PropertySchema, state: CompilerState) {
     const a = state.setVariable('a');
     const l = state.setVariable('l');
     let setDefault = property.isOptional ? '' : `${state.setter} = [];`;
@@ -225,7 +234,7 @@ function convertArray(property: PropertyCompilerSchema, state: CompilerState) {
 jsonSerializer.fromClass.register('array', convertArray);
 jsonSerializer.toClass.register('array', convertArray);
 
-function convertMap(property: PropertyCompilerSchema, state: CompilerState) {
+function convertMap(property: PropertySchema, state: CompilerState) {
     const a = state.setVariable('a');
     const i = state.setVariable('i');
     let setDefault = property.isOptional ? '' : `${state.setter} = {};`;
@@ -251,14 +260,14 @@ function convertMap(property: PropertyCompilerSchema, state: CompilerState) {
 jsonSerializer.fromClass.register('map', convertMap);
 jsonSerializer.toClass.register('map', convertMap);
 
-jsonSerializer.fromClass.register('class', (property: PropertyCompilerSchema, state: CompilerState) => {
+jsonSerializer.fromClass.register('class', (property: PropertySchema, state: CompilerState) => {
     const classSchema = getClassSchema(property.resolveClassType!);
     const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
 
     state.addSetter(`${classToX}.fn(${state.accessor}, _options)`);
 });
 
-jsonSerializer.toClass.register('class', (property: PropertyCompilerSchema, state) => {
+jsonSerializer.toClass.register('class', (property: PropertySchema, state) => {
     if (!property.resolveClassType) {
         throw new Error(`Property ${property.name} has no classType defined`);
     }
@@ -286,9 +295,12 @@ jsonSerializer.toClass.register('class', (property: PropertyCompilerSchema, stat
     `);
 });
 
-jsonSerializer.toClass.register('union', (property: PropertyCompilerSchema, state) => {
+jsonSerializer.toClass.register('union', (property: PropertySchema, state) => {
     let discriminator: string[] = [`if (false) { }`];
     const discriminants: string[] = [];
+    for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
+        discriminants.push(unionType.property.type);
+    }
     let elseBranch = `throw new Error('No valid discriminant was found, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
 
     if (property.isOptional) {
@@ -300,9 +312,8 @@ jsonSerializer.toClass.register('union', (property: PropertyCompilerSchema, stat
         elseBranch = `${state.setter} = ${defaultVar};`;
     }
 
-    for (const unionType of getSortedUnionTypes(property)) {
+    for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
         const guardVar = state.setVariable('guard_' + unionType.property.type, unionType.guard);
-        discriminants.push(unionType.property.type);
 
         discriminator.push(`
                 //guard:${unionType.property.type}
@@ -320,9 +331,12 @@ jsonSerializer.toClass.register('union', (property: PropertyCompilerSchema, stat
     `);
 });
 
-jsonSerializer.fromClass.register('union', (property: PropertyCompilerSchema, state) => {
+jsonSerializer.fromClass.register('union', (property: PropertySchema, state) => {
     let discriminator: string[] = [`if (false) { }`];
     const discriminants: string[] = [];
+    for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
+        discriminants.push(unionType.property.type);
+    }
     let elseBranch = `throw new Error('No valid discriminant was found, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
 
     if (property.isOptional) {
@@ -334,9 +348,8 @@ jsonSerializer.fromClass.register('union', (property: PropertyCompilerSchema, st
         elseBranch = `${state.setter} = ${defaultVar};`;
     }
 
-    for (const unionType of getSortedUnionTypes(property)) {
+    for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
         const guardVar = state.setVariable('guard_' + unionType.property.type, unionType.guard);
-        discriminants.push(unionType.property.type);
 
         discriminator.push(`
                 //guard:${unionType.property.type}

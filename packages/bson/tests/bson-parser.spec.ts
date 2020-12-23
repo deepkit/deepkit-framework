@@ -1,9 +1,11 @@
 import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import bson from 'bson';
-import {parseObject, ParserV2} from '../src/bson-parser';
+import {findValueInObject, parseObject, ParserV2} from '../src/bson-parser';
 import {t} from '@deepkit/type';
 import {getBSONDecoder} from '../src/bson-jit-parser';
+import {BSONType} from '../src/utils';
+
 const {deserialize, serialize} = bson;
 
 test('basic', () => {
@@ -18,6 +20,22 @@ test('basic', () => {
 
     const items = parseObject(new ParserV2(bson));
     expect(items).toEqual(obj);
+
+    expect(findValueInObject(new ParserV2(bson), (elementType, name) => {
+        return name === 'id';
+    })).toBe(123);
+    
+    expect(findValueInObject(new ParserV2(bson), (elementType, name) => {
+        return elementType === BSONType.INT;
+    })).toBe(123);
+    
+    expect(findValueInObject(new ParserV2(bson), (elementType, name) => {
+        return elementType === BSONType.STRING;
+    })).toBe('Peter 1');
+    
+    expect(findValueInObject(new ParserV2(bson), (elementType, name) => {
+        return elementType === BSONType.STRING;
+    })).toBe('Peter 1');
 });
 
 test('createBSONParser', () => {
@@ -55,12 +73,12 @@ test('invalidation', () => {
     });
 
     {
-        expect(getBSONDecoder(schema)(serialize({username: "Peter", foo: "bar"}))).toEqual({username: "Peter"});
+        expect(getBSONDecoder(schema)(serialize({username: 'Peter', foo: 'bar'}))).toEqual({username: 'Peter'});
     }
 
     {
         schema.addProperty('foo', t.string);
-        const obj = {username: "Peter", foo: "bar"};
+        const obj = {username: 'Peter', foo: 'bar'};
         expect(getBSONDecoder(schema)(serialize(obj))).toEqual(obj);
     }
 });
@@ -73,14 +91,14 @@ test('undefined array', () => {
     });
 
     {
-        const bson = serialize({username: "Peter"});
+        const bson = serialize({username: 'Peter'});
         //organisations stays undefined
-        expect(getBSONDecoder(schema)(bson)).toEqual({username: "Peter"});
+        expect(getBSONDecoder(schema)(bson)).toEqual({username: 'Peter'});
     }
 
     {
-        const bson = serialize({username: "Peter", organisations: []});
+        const bson = serialize({username: 'Peter', organisations: []});
         //organisations stays undefined
-        expect(getBSONDecoder(schema)(bson)).toEqual({username: "Peter", organisations: []});
+        expect(getBSONDecoder(schema)(bson)).toEqual({username: 'Peter', organisations: []});
     }
 });

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, getGlobalStore, JitStack, PropertySchema, reserveVariable} from '@deepkit/type';
-import {ClassType, isArray, isObject, toFastProperties} from '@deepkit/core';
+import {ClassSchema, getClassSchema, getDataConverterJS, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, reserveVariable} from '@deepkit/type';
+import {ClassType, CompilerContext, isArray, isObject, toFastProperties} from '@deepkit/core';
 import {seekElementSize} from './continuation';
 import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
@@ -35,9 +35,14 @@ import {
     BSON_DATA_OID,
     BSON_DATA_REGEXP,
     BSON_DATA_STRING,
+    BSON_DATA_UNDEFINED,
     digitByteSize
 } from './utils';
 import bson from 'bson';
+
+export function createBuffer(size: number): Uint8Array {
+    return 'undefined' !== typeof Buffer ? Buffer.allocUnsafe(size) : new Uint8Array(size);
+}
 
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
@@ -156,43 +161,45 @@ export function getValueSize(value: any): number {
     return 0;
 }
 
-function getPropertySizer(context: Map<string, any>, property: PropertySchema, accessor, jitStack: JitStack): string {
+function getPropertySizer(compiler: CompilerContext, property: PropertySchema, accessor, jitStack: JitStack): string {
     if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
         property = property.getResolvedClassSchema().getDecoratedPropertySchema();
+        accessor = `(${accessor} && ${accessor}.${property.name})`;
     }
 
-    context.set('getValueSize', getValueSize);
+    compiler.context.set('getValueSize', getValueSize);
     let code = `size += getValueSize(${accessor});`;
 
     if (property.type === 'array') {
-        context.set('digitByteSize', digitByteSize);
-        const i = reserveVariable(context, 'i');
+        compiler.context.set('digitByteSize', digitByteSize);
+        const i = compiler.reserveVariable('i');
         code = `
         size += 4; //array size
         for (let ${i} = 0; ${i} < ${accessor}.length; ${i}++) {
             size += 1; //element type
             size += digitByteSize(${i}); //element name
-            ${getPropertySizer(context, property.getSubType(), `${accessor}[${i}]`, jitStack)}
+            ${getPropertySizer(compiler, property.getSubType(), `${accessor}[${i}]`, jitStack)}
         }
         size += 1; //null
         `;
     } else if (property.type === 'map') {
-        context.set('stringByteLength', stringByteLength);
-        const i = reserveVariable(context, 'i');
+        compiler.context.set('stringByteLength', stringByteLength);
+        const i = compiler.reserveVariable('i');
         code = `
         size += 4; //object size
         for (${i} in ${accessor}) {
             if (!${accessor}.hasOwnProperty(${i})) continue;
+            if (${accessor}[${i}] === undefined) continue;
             size += 1; //element type
             size += stringByteLength(${i}) + 1; //element name + null;
-            ${getPropertySizer(context, property.getSubType(), `${accessor}[${i}]`, jitStack)}
+            ${getPropertySizer(compiler, property.getSubType(), `${accessor}[${i}]`, jitStack)}
         }
         size += 1; //null
         `;
     } else if (property.type === 'class' && !property.isReference) {
         const sizer = '_sizer_' + property.name;
         const sizerFn = jitStack.getOrCreate(property.getResolvedClassSchema(), () => createBSONSizer(property.getResolvedClassSchema(), jitStack));
-        context.set(sizer, sizerFn);
+        compiler.context.set(sizer, sizerFn);
         code = `size += ${sizer}.fn(${accessor});`;
     } else if (property.type === 'date') {
         code = `size += 8;`;
@@ -210,16 +217,58 @@ function getPropertySizer(context: Map<string, any>, property: PropertySchema, a
                 size += ${accessor}.byteLength;
             }
         `;
+    } else if (property.type === 'union') {
+        let discriminator: string[] = [`if (false) {\n}`];
+        const discriminants: string[] = [];
+        for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
+            discriminants.push(unionType.property.type);
+        }
+        let elseBranch = `throw new Error('No valid discriminant was found for ${property.name}, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
+
+        if (property.isOptional) {
+            elseBranch = '';
+        } else if (property.isNullable) {
+            elseBranch = `
+            // size += 0;
+            `;
+        } else if (property.hasManualDefaultValue()) {
+            //we omit default values in BSON. That's only necesary for decoding
+            elseBranch = '';
+        }
+
+        for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
+            const guardVar = compiler.reserveVariable('guard_' + unionType.property.type, unionType.guard);
+
+            discriminator.push(`
+                //guard:${unionType.property.type}
+                else if (${guardVar}(${accessor})) {
+                    ${getPropertySizer(compiler, unionType.property, `${accessor}`, jitStack)}
+                }
+            `);
+        }
+
+        code = `
+            ${discriminator.join('\n')}
+            else {
+                ${elseBranch}
+            }
+        `;
     }
 
-    return code;
+    return `
+    if (${accessor} === null || ${accessor} === undefined) {
+        // size += 0;
+    } else {
+        ${code}
+    }
+    `;
 }
 
 /**
  * Creates a JIT compiled function that allows to get the BSON buffer size of a certain object.
  */
 export function createBSONSizer(classSchema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object) => number {
-    const context = new Map<string, any>();
+    const compiler = new CompilerContext;
     let getSizeCode: string[] = [];
     const prepared = jitStack.prepare(classSchema);
 
@@ -233,26 +282,25 @@ export function createBSONSizer(classSchema: ClassSchema, jitStack: JitStack = n
                 } else {
                     size += 1; //type
                     size += ${property.name.length} + 1; //property name
-                    ${getPropertySizer(context, property, `obj.${property.name}`, jitStack)}
+                    ${getPropertySizer(compiler, property, `obj.${property.name}`, jitStack)}
                 }
             }
         `);
     }
 
+    compiler.context.set('seekElementSize', seekElementSize);
+
     const functionCode = `
-        return function(obj) {
-            let size = 4; //object size
-            
-            ${getSizeCode.join('\n')}
-            size += 1; //null
-            
-            return size;
-        }
+        let size = 4; //object size
+        
+        ${getSizeCode.join('\n')}
+        size += 1; //null
+        
+        return size;
     `;
 
     try {
-        const compiled = new Function('Buffer', 'seekElementSize', ...context.keys(), functionCode);
-        const fn = compiled.bind(undefined, Buffer, seekElementSize, ...context.values())();
+        const fn = compiler.build(functionCode, 'obj');
         prepared(fn);
         return fn;
     } catch (error) {
@@ -480,6 +528,11 @@ export class Writer {
             if (value.global) this.writeByte(0x73); // s
             if (value.multiline) this.writeByte(0x6d); // m
             this.writeNull();
+        } else if (value === undefined) {
+            if (nameWriter) {
+                this.writeByte(BSON_DATA_UNDEFINED);
+                nameWriter();
+            }
         } else if (value === null) {
             if (nameWriter) {
                 this.writeByte(BSON_DATA_NULL);
@@ -495,6 +548,7 @@ export class Writer {
 
             for (let i in value) {
                 if (!value.hasOwnProperty(i)) continue;
+                if (value[i] === undefined) continue;
                 this.write(value[i], () => {
                     this.writeString(i);
                     this.writeByte(0);
@@ -508,22 +562,26 @@ export class Writer {
 
 function getPropertySerializerCode(
     property: PropertySchema,
-    context: Map<string, any>,
+    compiler: CompilerContext,
     accessor: string,
     jitStack: JitStack,
     nameAccessor?: string,
 ): string {
+    if (property.isParentReference) return '';
+
     let nameWriter = `
         writer.writeAsciiString(${nameAccessor});
         writer.writeByte(0); 
     `;
+
     if (!nameAccessor) {
         const nameSetter: string[] = [];
         for (let i = 0; i < property.name.length; i++) {
             nameSetter.push(`writer.buffer[writer.offset++] = ${property.name.charCodeAt(i)};`);
         }
         nameWriter = `
-        ${nameSetter.join('\n')};
+        //write name: '${property.name}'
+        ${nameSetter.join('\n')}
         writer.writeByte(0); //null
      `;
     }
@@ -535,11 +593,12 @@ function getPropertySerializerCode(
     //important to put it after nameWriter and nullable check, since we want to keep the name
     if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
         property = property.getResolvedClassSchema().getDecoratedPropertySchema();
+        accessor = `(${accessor} && ${accessor}.${property.name})`;
     }
 
     function numberSerializer() {
-        context.set('Long', bson.Long);
-        context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
+        compiler.context.set('Long', bson.Long);
+        compiler.context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         return `
             if ('bigint' === typeof ${accessor}) {
                 //long
@@ -577,7 +636,7 @@ function getPropertySerializerCode(
     if (property.type === 'class' && !property.isReference) {
         const propertySerializer = `_serializer_${property.name}`;
         const serializerFn = jitStack.getOrCreate(property.getResolvedClassSchema(), () => createBSONSerialize(property.getResolvedClassSchema(), jitStack));
-        context.set(propertySerializer, serializerFn);
+        compiler.context.set(propertySerializer, serializerFn);
 
         code = `
             writer.writeByte(${BSON_DATA_OBJECT});
@@ -601,7 +660,7 @@ function getPropertySerializerCode(
             writer.writeByte(${accessor} ? 1 : 0);
         `;
     } else if (property.type === 'date') {
-        context.set('Long', bson.Long);
+        compiler.context.set('Long', bson.Long);
         code = `
             writer.writeByte(${BSON_DATA_DATE});
             ${nameWriter}
@@ -613,8 +672,8 @@ function getPropertySerializerCode(
             writer.writeUint32(long.getHighBits());
         `;
     } else if (property.type === 'objectId') {
-        context.set('hexToByte', hexToByte);
-        context.set('ObjectId', bson.ObjectId);
+        compiler.context.set('hexToByte', hexToByte);
+        compiler.context.set('ObjectId', bson.ObjectId);
         code = `
             writer.writeByte(${BSON_DATA_OID});
             ${nameWriter}
@@ -622,8 +681,8 @@ function getPropertySerializerCode(
             writer.writeObjectId(${accessor});
         `;
     } else if (property.type === 'uuid') {
-        context.set('uuidStringToByte', uuidStringToByte);
-        context.set('Binary', bson.Binary);
+        compiler.context.set('uuidStringToByte', uuidStringToByte);
+        compiler.context.set('Binary', bson.Binary);
         code = `
             writer.writeByte(${BSON_DATA_BINARY});
             ${nameWriter}
@@ -663,7 +722,7 @@ function getPropertySerializerCode(
     } else if (property.type === 'number') {
         code = numberSerializer();
     } else if (property.type === 'array') {
-        const i = reserveVariable(context, 'i');
+        const i = compiler.reserveVariable('i');
         code = `
             writer.writeByte(${BSON_DATA_ARRAY});
             ${nameWriter}
@@ -671,14 +730,14 @@ function getPropertySerializerCode(
             writer.offset += 4; //size
             
             for (let ${i} = 0; ${i} < ${accessor}.length; ${i}++) {
-                //${property.getSubType().type}
-                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[${i}]`, jitStack, `''+${i}`)}
+                //${property.getSubType().name} (${property.getSubType().type})
+                ${getPropertySerializerCode(property.getSubType(), compiler, `${accessor}[${i}]`, jitStack, `''+${i}`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
         `;
     } else if (property.type === 'map') {
-        const i = reserveVariable(context, 'i');
+        const i = compiler.reserveVariable('i');
         code = `
             writer.writeByte(${BSON_DATA_OBJECT});
             ${nameWriter}
@@ -687,61 +746,102 @@ function getPropertySerializerCode(
             
             for (let ${i} in ${accessor}) {
                 if (!${accessor}.hasOwnProperty(${i})) continue;
-                //${property.getSubType().type}
-                ${getPropertySerializerCode(property.getSubType(), context, `${accessor}[${i}]`, jitStack, `${i}`)}
+                if (${accessor}[${i}] === undefined) continue;
+                //${property.getSubType().name} (${property.getSubType().type})
+                ${getPropertySerializerCode(property.getSubType(), compiler, `${accessor}[${i}]`, jitStack, `${i}`)}
             }
             writer.writeNull();
             writer.writeDelayedSize(writer.offset - start, start);
         `;
+    } else if (property.type === 'union') {
+        let discriminator: string[] = [`if (false) {\n}`];
+        const discriminants: string[] = [];
+        for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
+            discriminants.push(unionType.property.type);
+        }
+        let elseBranch = `throw new Error('No valid discriminant was found for ${property.name}, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
+
+        if (property.isOptional) {
+            elseBranch = `
+            writer.writeByte(${BSON_DATA_UNDEFINED});
+            ${nameWriter}
+            `;
+        } else if (property.isNullable) {
+            elseBranch = `
+            writer.writeByte(${BSON_DATA_NULL});
+            ${nameWriter}
+            `;
+        } else if (property.hasManualDefaultValue()) {
+            //we omit default values in BSON. That's only necesary for decoding
+            elseBranch = '';
+        }
+
+        for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
+            const guardVar = compiler.reserveVariable('guard_' + unionType.property.type, unionType.guard);
+
+            discriminator.push(`
+                //guard
+                else if (${guardVar}(${accessor})) {
+                    //${unionType.property.name} (${unionType.property.type})
+                    ${getPropertySerializerCode(unionType.property, compiler, `${accessor}`, jitStack, nameAccessor || JSON.stringify(property.name))}
+                }
+            `);
+        }
+
+        code = `
+            ${discriminator.join('\n')}
+            else {
+                ${elseBranch}
+            }
+        `;
     }
 
     return `
-    if (${accessor} !== undefined) {
-        if (${accessor} === null) {
-            writer.writeByte(${BSON_DATA_NULL});
-            ${nameWriter}
-        } else {
-            ${code}
-        }
+    if (${accessor} === undefined) {
+        writer.writeByte(${BSON_DATA_UNDEFINED});
+        ${nameWriter}
+    } else if (${accessor} === null) {
+        writer.writeByte(${BSON_DATA_NULL});
+        ${nameWriter}
+    } else {
+        ${code}
     }
         `;
 }
 
-function createBSONSerialize(classSchema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object, writer?: Writer) => Buffer {
-    const context = new Map<string, any>();
-    const prepared = jitStack.prepare(classSchema);
+function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object, writer?: Writer) => Buffer {
+    const compiler = new CompilerContext();
+    const prepared = jitStack.prepare(schema);
+    compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('_sizer', getBSONSizer(schema));
+    compiler.context.set('Writer', Writer);
+    compiler.context.set('seekElementSize', seekElementSize);
+    compiler.context.set('createBuffer', createBuffer);
+
+    let functionCode = '';
 
     let getPropertyCode: string[] = [];
-
-    for (const property of classSchema.getClassProperties().values()) {
+    for (const property of schema.getClassProperties().values()) {
         getPropertyCode.push(`
             //${property.name}:${property.type}
-            ${getPropertySerializerCode(property, context, `obj.${property.name}`, jitStack)}
+            if (obj.${property.name} !== undefined) {
+                ${getPropertySerializerCode(property, compiler, `obj.${property.name}`, jitStack)}
+            }
         `);
     }
 
-    const functionCode = `
-        return function(obj, writer) {
-            const size = _sizer(obj);
-            writer = writer || new Writer(Buffer.allocUnsafe(size));
-            writer.writeUint32(size);
-            
-            ${getPropertyCode.join('\n')}
-            writer.writeNull();
-            
-            return writer.buffer;
-        }
+    functionCode = `
+        const size = _sizer(obj);
+        writer = writer || new Writer(createBuffer(size));
+        writer.writeUint32(size);
+        
+        ${getPropertyCode.join('\n')}
+        writer.writeNull();
+        
+        return writer.buffer;
     `;
 
-    // console.log('functionCode', functionCode);
-
-    context.set('_global', getGlobalStore());
-    context.set('_sizer', getBSONSizer(classSchema));
-    context.set('Writer', Writer);
-    context.set('seekElementSize', seekElementSize);
-
-    const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, ...context.values())();
+    const fn = compiler.build(functionCode, 'obj', 'writer');
     prepared(fn);
     return fn;
 }

@@ -35,7 +35,7 @@ export class CompilerContext {
         return new Function(...this.context.keys(), functionCode)(...this.context.values());
     }
 
-    build(functionCode: string, ...args: string[]): Function {
+    build(functionCode: string, ...args: string[]): any {
         functionCode = `
             ${this.preCode}
             return function self(${args.join(', ')}){ 

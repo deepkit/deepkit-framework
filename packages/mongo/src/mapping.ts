@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, JSONEntity, jsonSerializer, resolvePropertyCompilerSchema, TypedArrays,} from '@deepkit/type';
+import {ClassSchema, getClassSchema, JSONEntity, jsonSerializer, resolvePropertySchema, TypedArrays,} from '@deepkit/type';
 import {ClassType} from '@deepkit/core';
 import './mongo-serializer';
 import {Binary} from 'bson';
@@ -64,7 +64,7 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
     customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
     return convertQueryFilter(classType, target, (convertClassType: ClassSchema, path: string, value: any) => {
-        const property = resolvePropertyCompilerSchema(convertClassType, path);
+        const property = resolvePropertySchema(convertClassType, path);
         const classValue = jsonSerializer.deserializeProperty(property, value);
         return mongoSerializer.serializeProperty(property, classValue);
     }, fieldNamesMap, customMapping);

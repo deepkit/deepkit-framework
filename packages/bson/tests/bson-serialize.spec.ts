@@ -1,11 +1,12 @@
 import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {createBSONSizer, getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte} from '../src/bson-serialize';
-import {f, jsonSerializer, t} from '@deepkit/type';
+import {ExtractClassType, f, getClassSchema, jsonSerializer, nodeBufferToArrayBuffer, t} from '@deepkit/type';
 import bson from 'bson';
 import {getBSONDecoder} from '../src/bson-jit-parser';
 import {randomBytes} from 'crypto';
 import {parseObject, ParserV2} from '../src/bson-parser';
+
 const {Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize} = bson;
 
 test('hexToByte', () => {
@@ -28,8 +29,7 @@ test('hexToByte', () => {
     expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 4)).toBe(16 * 4 + 1);
 
     expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 6)).toBe(16 * 4 + 4);
-    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 7)).toBe(16 * 2 + 15)
-    ;
+    expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 7)).toBe(16 * 2 + 15);
     expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 8)).toBe(16 * 11 + 7);
     expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 10)).toBe(16 * 12 + 3);
     expect(uuidStringToByte('bef8de96-41fe-442f-b70c-c3a150f8c96c', 11)).toBe(16 * 10 + 1);
@@ -295,7 +295,7 @@ test('basic binary', () => {
 
 
 test('basic arrayBuffer', () => {
-    const arrayBuffer = new ArrayBuffer(5)
+    const arrayBuffer = new ArrayBuffer(5);
     const view = new Uint8Array(arrayBuffer);
     view[0] = 22;
     view[1] = 44;
@@ -723,6 +723,10 @@ test('model 1, missing `public`', () => {
         }
     }
 
+    const schema = getClassSchema(User);
+    expect(schema.getMethodProperties('constructor').length).toBe(2);
+    expect(schema.getClassProperties().size).toBe(5);
+
     {
         const user = new User(1, 'Peter ' + 1);
         user.ready = true;
@@ -733,8 +737,9 @@ test('model 1, missing `public`', () => {
         const size = getBSONSizer(User)(user);
         expect(size).toBe(calculateObjectSize(user));
 
-        console.log('deserialize', deserialize(bson));
-        expect(getBSONDecoder(User)(bson)).toEqual(deserialize(bson));
+        const s = getBSONDecoder(User);
+        const o = s(bson);
+        expect(o).toEqual(deserialize(bson));
     }
 
     {
@@ -746,17 +751,22 @@ test('model 1, missing `public`', () => {
             name: 'Peter 1',
         };
         const bson = getBSONSerializer(User)(user);
-        expect(getBSONDecoder(User)(bson)).toEqual(deserialize(bson));
+        const s = getBSONDecoder(User);
+        const o = s(bson);
+        expect(o).not.toEqual(deserialize(bson)); //because bson-js includes `id`, but we drop it since it's not assigned in the constructor
     }
 });
 
 test('decorated', () => {
     class DecoratedValue {
-        @t.array(t.string).decorated
-        items: string[] = [];
+        constructor(
+            @t.array(t.string).decorated
+            public items: string[] = []
+        ) {
+        }
     }
 
-    const object = {v: ['Peter3']};
+    const object = {v: new DecoratedValue(['Peter3'])};
 
     const expectedSize =
         4 //size uint32
@@ -775,20 +785,27 @@ test('decorated', () => {
         + 1 //object null
     ;
 
-    expect(calculateObjectSize(object)).toBe(expectedSize);
+    expect(calculateObjectSize({v: ['Peter3']})).toBe(expectedSize);
 
     const schema = t.schema({
         v: t.type(DecoratedValue),
     });
 
-    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
+    const bson = getBSONSerializer(schema)(object);
+
+    const officialDeserialize = deserialize(bson);
+    console.log('officialDeserialize', officialDeserialize);
+    expect(officialDeserialize.v).toEqual(['Peter3']);
+
+    expect(bson.byteLength).toBe(expectedSize);
     expect(createBSONSizer(schema)(object)).toBe(expectedSize);
 
-    const bson = getBSONSerializer(schema)(object);
-    expect(bson).toEqual(serialize(object));
+    expect(bson).toEqual(serialize({v: ['Peter3']}));
 
-    expect(getBSONDecoder(schema)(bson)).toEqual(object);
-
+    const back = getBSONDecoder(schema)(bson);
+    expect(back.v).toBeInstanceOf(DecoratedValue);
+    expect(back.v.items).toEqual(['Peter3']);
+    expect(back).toEqual(object);
 });
 
 test('reference', () => {
@@ -883,12 +900,12 @@ test('arrayBuffer', () => {
         name: t.string,
         secondId: t.mongoId,
         preview: t.type(ArrayBuffer),
-    })
+    });
 
     const message = jsonSerializer.for(schema).deserialize({
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
-        preview: 'QmFhcg==', //Baar
+        preview: nodeBufferToArrayBuffer(Buffer.from('Baar', 'utf8'))
     });
 
     expect(Buffer.from(message.preview).toString('utf8')).toBe('Baar');
@@ -897,7 +914,7 @@ test('arrayBuffer', () => {
         name: message.name,
         secondId: new ObjectId(message.secondId),
         preview: new Binary(Buffer.from(message.preview)),
-    }
+    };
     const size = getBSONSizer(schema)(message);
     expect(size).toBe(calculateObjectSize(mongoMessage));
 
@@ -915,12 +932,12 @@ test('typed array', () => {
         name: t.string,
         secondId: t.mongoId,
         preview: t.type(Uint16Array),
-    })
+    });
 
     const message = jsonSerializer.for(schema).deserialize({
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
-        preview: 'LAA3AEIATQBYAA==', //44, 55, 66, 77, 88
+        preview: new Uint16Array(nodeBufferToArrayBuffer(Buffer.from('LAA3AEIATQBYAA==', 'base64'))), //44, 55, 66, 77, 88
     });
 
     expect(message.preview).toBeInstanceOf(Uint16Array);
@@ -930,7 +947,7 @@ test('typed array', () => {
         name: message.name,
         secondId: new ObjectId(message.secondId),
         preview: new Binary(Buffer.from(new Uint8Array(message.preview.buffer, message.preview.byteOffset, message.preview.byteLength))),
-    }
+    };
     const size = getBSONSizer(schema)(message);
     expect(size).toBe(calculateObjectSize(mongoMessage));
 
@@ -945,7 +962,7 @@ test('typed array', () => {
 test('typed any and undefined', () => {
     const schema = t.schema({
         data: t.any,
-    })
+    });
 
     const message = jsonSerializer.for(schema).deserialize({
         data: {
@@ -1003,4 +1020,163 @@ test('test array array', () => {
 
     expect(bson).toEqual(serialize(message));
     expect(getBSONDecoder(schema)(bson)).toEqual(message);
+});
+
+test('test array optional', () => {
+    const schema = t.schema({
+        data: t.array(t.date.optional),
+    });
+
+    {
+        const message = {data: [new Date, undefined]};
+        const size = getBSONSizer(schema)(message);
+        expect(size).toBe(calculateObjectSize(message));
+    }
+});
+
+test('test map optional', () => {
+    const schema = t.schema({
+        data: t.map(t.date.optional),
+    });
+
+    {
+        const message = {data: {first: new Date, second: undefined}};
+        const size = getBSONSizer(schema)(message);
+        expect(size).toBe(calculateObjectSize(message));
+
+        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
+        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
+    }
+});
+
+test('test map optional', () => {
+    const schema = t.schema({
+        data: t.map(t.date.optional),
+    });
+
+    {
+        const message = {data: {first: new Date, second: undefined}};
+        const size = getBSONSizer(schema)(message);
+        expect(size).toBe(calculateObjectSize(message));
+        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
+        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
+    }
+});
+
+test('test union optional', () => {
+    const schema = t.schema({
+        data: t.union('foo', 'bar').optional
+    });
+
+    {
+        const message = {data: 'foo'};
+        const size = getBSONSizer(schema)(message);
+        expect(size).toBe(calculateObjectSize(message));
+
+        const serializer = getBSONSerializer(schema);
+        const bson = serializer(message);
+        expect(bson).toEqual(serialize(message));
+        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
+    }
+
+    {
+        const message = {data: undefined};
+        const size = getBSONSizer(schema)(message);
+        expect(size).toBe(calculateObjectSize(message));
+        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
+        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
+    }
+
+    {
+        const message = {data: 'bar'};
+        const size = getBSONSizer(schema)(message);
+        expect(size).toBe(calculateObjectSize(message));
+        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
+        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
+    }
+});
+
+test('test object', () => {
+    class MyModel {
+        excluded = true;
+
+        @t type: string = '';
+
+        constructor(
+            @t public name: string
+        ) {
+        }
+    }
+
+    const schema = t.schema({
+        data: t.type(MyModel),
+    });
+
+    {
+        const item = new MyModel('bar');
+        item.type = 'foo';
+        const message: ExtractClassType<typeof schema> = {data: item};
+        expect(getBSONSizer(schema)(message)).not.toBe(calculateObjectSize(message)); //should bee different, since we do not include `excluded`, but official bson does
+        const bson = getBSONSerializer(schema)(message);
+
+        const backOfficial = deserialize(bson);
+        expect(backOfficial.data.excluded).toBe(undefined); //`excluded` should not be part of the BSON
+
+        expect(bson).not.toEqual(serialize(message)); //should not be equal, since MyModel does not serialize `excluded`
+
+        const back = getBSONDecoder(schema)(bson);
+        expect(back.data).toBeInstanceOf(MyModel);
+        expect(back.data.name).toBe('bar');
+        expect(back.data.type).toBe('foo');
+        expect(back).toEqual(message);
+    }
+});
+
+test('test union deep object', () => {
+    class MyModel {
+        excluded = true;
+
+        @t.literal('model') d: 'model' = 'model';
+
+        @t type: string = '';
+
+        constructor(
+            @t public name: string
+        ) {
+        }
+    }
+
+    const schema = t.schema({
+        data: t.union(t.string, MyModel),
+    });
+
+    {
+        const message: ExtractClassType<typeof schema> = {data: 'peter'};
+
+        expect(getBSONSizer(schema)(message)).toBe(calculateObjectSize(message));
+
+        const bson = getBSONSerializer(schema)(message);
+
+        expect(bson).toEqual(serialize(message));
+        expect(getBSONDecoder(schema)(bson)).toEqual(message);
+    }
+
+    {
+        const item = new MyModel('bar');
+        item.type = 'foo';
+        const message: ExtractClassType<typeof schema> = {data: item};
+        expect(getBSONSizer(schema)(message)).not.toBe(calculateObjectSize(message)); //should bee different, since we do not include `excluded`, but official bson does
+        const bson = getBSONSerializer(schema)(message);
+
+        const backOfficial = deserialize(bson);
+        expect(backOfficial.data.excluded).toBe(undefined); //`excluded` should not be part of the BSON
+
+        expect(bson).not.toEqual(serialize(message)); //should not be equal, since MyModel does not serialize `excluded`
+
+        const back = getBSONDecoder(schema)(bson);
+        expect(back.data).toBeInstanceOf(MyModel);
+        expect((back.data as MyModel).name).toBe('bar');
+        expect((back.data as MyModel).type).toBe('foo');
+        expect(back).toEqual(message);
+    }
 });

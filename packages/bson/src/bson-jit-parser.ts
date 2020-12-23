@@ -16,32 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, PropertySchema, reserveVariable} from '@deepkit/type';
-import {BSON_BINARY_SUBTYPE_UUID, BSON_DATA_ARRAY, BSON_DATA_BINARY, BSON_DATA_NULL, BSON_DATA_OBJECT, digitByteSize} from './utils';
-import {ClassType} from '@deepkit/core';
+import {ClassType, CompilerContext} from '@deepkit/core';
+import {ClassSchema, getClassSchema, getDataConverterJS, getSortedUnionTypes, PropertySchema} from '@deepkit/type';
 import {BaseParser, ParserV2} from './bson-parser';
+import {bsonTypeGuards} from './bson-typeguards';
 import {seekElementSize} from './continuation';
+import {BSONType, BSON_BINARY_SUBTYPE_UUID, digitByteSize} from './utils';
 
-function createPropertyConverter(setter: string, property: PropertySchema, context: Map<string, any>, parentProperty?: PropertySchema) {
+function createPropertyConverter(setter: string, property: PropertySchema, compiler: CompilerContext, parentProperty?: PropertySchema) {
     //we want the isNullable value from the actual property, not the decorated.
     const nullOrSeek = `
-        if (elementType === ${BSON_DATA_NULL}) {
+        if (elementType === ${BSONType.NULL}) {
             ${setter} = null;
         } else {
             seekElementSize(elementType, parser);
         }
     `;
 
-    if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
-        property = property.getResolvedClassSchema().getDecoratedPropertySchema();
-    }
+    // if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
+    //     property = property.getResolvedClassSchema().getDecoratedPropertySchema();
+    // }
 
     const propertyVar = '_property_' + property.name;
-    context.set(propertyVar, property);
+    compiler.context.set(propertyVar, property);
 
     if (property.type === 'uuid') {
         return `
-            if (elementType === ${BSON_DATA_BINARY}) {
+            if (elementType === ${BSONType.BINARY}) {
                 parser.eatUInt32(); //size
                 const subType = parser.eatByte();
                 if (subType !== ${BSON_BINARY_SUBTYPE_UUID}) throw new Error('${property.name} BSON binary type invalid. Expected UUID(4), but got ' + subType); 
@@ -51,29 +52,58 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
             }
             `;
     } else if (property.type === 'class') {
+        const schema = property.getResolvedClassSchema();
+
         if (property.isReference || property.backReference || (parentProperty && (parentProperty.backReference || parentProperty.isReference))) {
-            const schema = property.getResolvedClassSchema();
             const primary = schema.getPrimaryField();
-            return createPropertyConverter(setter, primary, context);
+            return createPropertyConverter(setter, primary, compiler);
+        }
+
+        if (schema.decorator) {
+            //we need to create the instance and assign
+            const forwardProperty = schema.getDecoratedPropertySchema();
+            const decoratedVar = compiler.reserveVariable('decorated');
+            const classTypeVar = compiler.reserveVariable('classType', property.classType);
+            let arg = '';
+            const propertyAssign: string[] = [];
+            if (forwardProperty.methodName === 'constructor') {
+                arg = decoratedVar;
+            } else {
+                propertyAssign.push(`${setter}.${forwardProperty.name} = ${decoratedVar};`);
+            }
+
+            return `
+            if (elementType === ${BSONType.NULL}) {
+                ${setter} = null;
+            } else {
+                ${decoratedVar} = undefined;
+                ${createPropertyConverter(decoratedVar, schema.getDecoratedPropertySchema(), compiler)}
+                
+                ${setter} = new ${classTypeVar}(${arg});
+                ${propertyAssign.join('\n')}
+            }
+            `;
+
+            return createPropertyConverter(setter, schema.getDecoratedPropertySchema(), compiler);
         }
 
         const propertySchema = '_propertySchema_' + property.name;
-        context.set('getRawBSONDecoder', getRawBSONDecoder);
-        context.set(propertySchema, property.getResolvedClassSchema());
+        compiler.context.set('getRawBSONDecoder', getRawBSONDecoder);
+        compiler.context.set(propertySchema, property.getResolvedClassSchema());
 
         return `
-            if (elementType === ${BSON_DATA_OBJECT}) {
+            if (elementType === ${BSONType.OBJECT}) {
                 ${setter} = getRawBSONDecoder(${propertySchema})(parser);
             } else {
                 ${nullOrSeek}
             }
             `;
     } else if (property.isArray) {
-        context.set('digitByteSize', digitByteSize);
-        const v = reserveVariable(context, 'v');
+        compiler.context.set('digitByteSize', digitByteSize);
+        const v = compiler.reserveVariable('v');
 
         return `
-        if (elementType === ${BSON_DATA_ARRAY}) {
+        if (elementType === ${BSONType.ARRAY}) {
             ${setter} = [];
             parser.seek(4);
             for (let i = 0; ; i++) {
@@ -84,7 +114,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
                 parser.seek(digitByteSize(i));
         
                 let ${v} = undefined;
-                ${createPropertyConverter(v, property.getSubType(), context, property)}
+                ${createPropertyConverter(v, property.getSubType(), compiler, property)}
                 ${setter}.push(${v});
             }
         } else {
@@ -92,10 +122,10 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
         }
         `;
     } else if (property.isMap) {
-        const name = reserveVariable(context, 'propertyName');
+        const name = compiler.reserveVariable('propertyName');
 
         return `
-        if (elementType === ${BSON_DATA_OBJECT}) {
+        if (elementType === ${BSONType.OBJECT}) {
             ${setter} = {};
             parser.seek(4);
             while (true) {
@@ -104,16 +134,60 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
 
                 ${name} = parser.eatObjectPropertyName();
 
-                ${createPropertyConverter(`${setter}[${name}]`, property.getSubType(), context)}
+                ${createPropertyConverter(`${setter}[${name}]`, property.getSubType(), compiler)}
             }
         } else {
             ${nullOrSeek}
         }
         `;
+    } else if (property.type === 'union') {
+        let discriminator: string[] = [`if (false) {\n}`];
+        const discriminants: string[] = [];
+        for (const unionType of getSortedUnionTypes(property, bsonTypeGuards)) {
+            discriminants.push(unionType.property.type);
+        }
+        let elseBranch = `throw new Error('No valid discriminant for property ${property.name} was found, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
+
+        if (property.isOptional) {
+            elseBranch = `
+            //isOptional
+            // ${setter} = undefined;
+            ${nullOrSeek}
+            `;
+        } else if (property.isNullable) {
+            elseBranch = `
+            //isNullable
+            // ${setter} = null;
+            ${nullOrSeek}
+            `;
+        } else if (property.hasManualDefaultValue()) {
+            const defaultVar = compiler.reserveVariable('default', property.defaultValue);
+            //we omit default values in BSON. That's only necesary for decoding
+            elseBranch = `
+                ${setter} = ${defaultVar};
+            `;
+        }
+
+        for (const unionType of getSortedUnionTypes(property, bsonTypeGuards)) {
+            const guardVar = compiler.reserveVariable('guard_' + unionType.property.type, unionType.guard);
+            discriminator.push(`
+                //guard:${unionType.property.type}
+                else if (${guardVar}(elementType, parser)) {
+                    ${createPropertyConverter(setter, unionType.property, compiler, property)}
+                }
+            `);
+        }
+
+        return `
+            ${discriminator.join('\n')}
+            else {
+                ${elseBranch}
+            }
+        `;
     }
 
     return `
-        if (elementType === ${BSON_DATA_NULL}) {
+        if (elementType === ${BSONType.NULL}) {
             ${setter} = null;
         } else {
             ${setter} = parser.parse(elementType, ${propertyVar});
@@ -123,15 +197,20 @@ function createPropertyConverter(setter: string, property: PropertySchema, conte
 
 interface DecoderFn {
     buildId: number;
+
     (parser: BaseParser, offset?: number): any;
 }
 
-function createSchemaDecoder(classSchema: ClassSchema): DecoderFn {
-    const context = new Map<string, any>();
-    context.set('seekElementSize', seekElementSize);
+function createSchemaDecoder(schema: ClassSchema): DecoderFn {
+    const compiler = new CompilerContext();
+    compiler.context.set('seekElementSize', seekElementSize);
+
+    const setProperties: string[] = [];
+    const constructorArgumentNames: string[] = [];
+    const constructorParameter = schema.getMethodProperties('constructor');
 
     let propertyCode: string[] = [];
-    for (const property of classSchema.getClassProperties().values()) {
+    for (const property of schema.getClassProperties().values()) {
         //todo, support non-ascii names
         const bufferCompare: string[] = [];
         for (let i = 0; i < property.name.length; i++) {
@@ -139,62 +218,69 @@ function createSchemaDecoder(classSchema: ClassSchema): DecoderFn {
         }
         bufferCompare.push(`parser.buffer[parser.offset + ${property.name.length}] === 0`);
 
+        if (property.methodName === 'constructor') {
+            constructorArgumentNames[constructorParameter.indexOf(property)] = `object.${property.name}`;
+        } else {
+            if (property.isParentReference) {
+                throw new Error('Parent references not supported in BSON.');
+            } else {
+                setProperties.push(`_instance.${property.name} = object.${property.name};`);
+            }
+        }
+
         propertyCode.push(`
+            //property ${property.name} (${property.type})
             if (${bufferCompare.join(' && ')}) {
                 parser.offset += ${property.name.length} + 1;
-                ${createPropertyConverter(`object.${property.name}`, property, context)};
+                ${createPropertyConverter(`object.${property.name}`, property, compiler)}
                 continue;
             }
         `);
     }
 
-    // console.log('createBSONDecoder', classSchema.getClassName(), [...classSchema.getClassProperties().keys()]);
-
+    let instantiate = '';
+    if (schema.isCustomClass()) {
+        compiler.context.set('_classType', schema.classType);
+        instantiate = `
+            _instance = new _classType(${constructorArgumentNames.join(', ')});
+            ${setProperties.join('\n')}
+            return _instance;
+        `;
+    }
     const functionCode = `
-        return function(parser, offset) {
-            var object = {};
-            parser.seek((offset || 0) + 4);
+        var object = {};
+        ${schema.isCustomClass() ? 'var _instance;' : ''}
+        parser.seek((offset || 0) + 4);
 
-            while (true) {
-                const elementType = parser.eatByte();
-                if (elementType === 0) break;
+        while (true) {
+            const elementType = parser.eatByte();
+            if (elementType === 0) break;
 
-                ${propertyCode.join('\n')};
+            ${propertyCode.join('\n')}
 
-                //jump over this property when not registered in schema
-                while (parser.buffer[parser.offset++] != 0);
-                //seek property value
-                seekElementSize(elementType, parser);
-            }
-            
-            return object;
+            //jump over this property when not registered in schema
+            while (parser.buffer[parser.offset++] != 0);
+            //seek property value
+            seekElementSize(elementType, parser);
         }
+
+        ${schema.isCustomClass() ? instantiate : 'return object;'}
     `;
 
-    const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, ...context.values())();
-    fn.buildId = classSchema.buildId;
+    const fn = compiler.build(functionCode, 'parser', 'offset', '_options');
+    fn.buildId = schema.buildId;
     return fn;
 }
-
-const parsers = new Map<ClassSchema, DecoderFn>();
 
 export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (parser: BaseParser, offset?: number) => T {
     schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
 
-    let parser = parsers.get(schema);
-    if (parser && parser.buildId === schema.buildId) return parser;
+    if (schema.jit.rawBson) return schema.jit.rawBson;
+    schema.jit.rawBson = createSchemaDecoder(schema);
 
-    parser = createSchemaDecoder(schema);
-    parsers.set(schema, parser);
-
-    return parser;
+    return schema.jit.rawBson;
 }
 
-/**
- * Note: This does not create the class instances of T nor does it resolve decorated properties, or unions.
- * Call mongoToClass() on the result to create the actual instance.
- */
 export function getBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (bson: Uint8Array, offset?: number) => T {
     const fn = getRawBSONDecoder(schema);
 

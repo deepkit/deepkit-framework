@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, PropertyCompilerSchema} from './model';
+import {ClassSchema, getClassSchema, PropertySchema} from './model';
 import {TypeConverterCompiler} from './serializer-compiler';
 import {ClassType} from '@deepkit/core';
 import {
@@ -19,7 +19,7 @@ import {
     getPropertyXtoClassFunction,
     getXToClassFunction,
     JitConverterOptions,
-    resolvePropertyCompilerSchema
+    resolvePropertySchema
 } from './jit';
 import {AnyEntity, ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 import {validate, ValidationFailed} from './validation';
@@ -195,21 +195,21 @@ export class Serializer {
     /**
      * Serializes given class instance value to the serializer format.
      */
-    serializeProperty(property: PropertyCompilerSchema, value: any): any {
+    serializeProperty(property: PropertySchema, value: any): any {
         return getPropertyClassToXFunction(property, this)(value);
     }
 
     /**
      * Converts serialized value to class type.
      */
-    deserializeProperty(property: PropertyCompilerSchema, value: any): any {
+    deserializeProperty(property: PropertySchema, value: any): any {
         return getPropertyXtoClassFunction(property, this)(value);
     }
 
     /**
      * Converts given serialized data to the class instance.
      */
-    deserializeMethodResult(property: PropertyCompilerSchema, value: any): any {
+    deserializeMethodResult(property: PropertySchema, value: any): any {
         return getPropertyXtoClassFunction(property, this)(value);
     }
 }
@@ -307,7 +307,7 @@ export class ScopedSerializer<T extends ClassSchema> {
      * Property name is either a property name or a deep path (e.g. config.value)
      */
     serializeProperty(name: (keyof ExtractClassType<T> & string) | string, value: any): any {
-        const property = this.schema.getClassProperties().get(name) ?? resolvePropertyCompilerSchema(this.schema, name);
+        const property = this.schema.getClassProperties().get(name) ?? resolvePropertySchema(this.schema, name);
         return getPropertyClassToXFunction(property, this.serializer)(value);
     }
 
@@ -317,7 +317,7 @@ export class ScopedSerializer<T extends ClassSchema> {
      * Property name is either a property name or a deep path (e.g. config.value)
      */
     deserializeProperty(name: (keyof ExtractClassType<T> & string) | string, value: any) {
-        const property = this.schema.getClassProperties().get(name) ?? resolvePropertyCompilerSchema(this.schema, name);
+        const property = this.schema.getClassProperties().get(name) ?? resolvePropertySchema(this.schema, name);
         return getPropertyXtoClassFunction(property, this.serializer)(value);
     }
 
@@ -366,7 +366,7 @@ export class ScopedSerializer<T extends ClassSchema> {
         const result: Partial<{ [F in keyof R]: any }> = {};
         for (const i in partial) {
             if (!partial.hasOwnProperty(i)) continue;
-            const property = this.schema.getClassProperties().get(i) ?? resolvePropertyCompilerSchema(this.schema, i);
+            const property = this.schema.getClassProperties().get(i) ?? resolvePropertySchema(this.schema, i);
             result[i] = getPropertyXtoClassFunction(property, this.serializer)(partial[i], options?.parents ?? [], options);
         }
 
@@ -380,7 +380,7 @@ export class ScopedSerializer<T extends ClassSchema> {
         const result: Partial<{ [F in keyof R]: any }> = {};
         for (const i in partial) {
             if (!partial.hasOwnProperty(i)) continue;
-            const property = this.schema.getClassProperties().get(i) ?? resolvePropertyCompilerSchema(this.schema, i);
+            const property = this.schema.getClassProperties().get(i) ?? resolvePropertySchema(this.schema, i);
             result[i] = getPropertyClassToXFunction(property, this.serializer)(partial[i], options);
         }
 

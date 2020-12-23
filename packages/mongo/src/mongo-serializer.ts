@@ -24,7 +24,7 @@ import {
     jsonSerializer,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
-    PropertyCompilerSchema,
+    PropertySchema,
     typedArrayNamesMap,
     typedArrayToBuffer
 } from '@deepkit/type';
@@ -60,24 +60,24 @@ export function uuid4Stringify(binary: bson.Binary): string {
         ;
 }
 
-mongoSerializer.fromClass.register('undefined', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
     //mongo does not support 'undefined' as column type, so we convert automatically to null
     state.addSetter(`null`);
 });
 
-mongoSerializer.fromClass.register('null', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.register('null', (property: PropertySchema, state: CompilerState) => {
     //mongo does not support 'undefined' as column type, so we convert automatically to null
     state.addSetter(`null`);
 });
 
-mongoSerializer.toClass.register('null', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.toClass.register('null', (property: PropertySchema, state: CompilerState) => {
     //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
     //we convert back to undefined or keep it null
     if (property.isOptional) return state.addSetter(`undefined`);
     if (property.isNullable) return state.addSetter(`null`);
 });
 
-mongoSerializer.toClass.register('undefined', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.toClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
     //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
     //we convert back to undefined or keep it null
     if (property.isOptional) return state.addSetter(`undefined`);
@@ -85,11 +85,11 @@ mongoSerializer.toClass.register('undefined', (property: PropertyCompilerSchema,
 });
 
 //mongo BSON serializer does the job.
-mongoSerializer.fromClass.register('date', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.register('date', (property: PropertySchema, state: CompilerState) => {
     state.addSetter(`${state.accessor}`);
 });
 
-mongoSerializer.toClass.register('uuid', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.toClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
     state.setContext({uuid4Stringify});
     state.addCodeForSetter(`
         try {
@@ -102,7 +102,7 @@ mongoSerializer.toClass.register('uuid', (property: PropertyCompilerSchema, stat
     );
 });
 
-mongoSerializer.fromClass.register('uuid', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
     state.setContext({uuid4Binary});
     state.addCodeForSetter(`
         try {
@@ -114,7 +114,7 @@ mongoSerializer.fromClass.register('uuid', (property: PropertyCompilerSchema, st
     );
 });
 
-mongoSerializer.toClass.register('objectId', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.toClass.register('objectId', (property: PropertySchema, state: CompilerState) => {
     state.addCodeForSetter(`
         try {
             //deepkit/bson already returns a string for uuid
@@ -125,7 +125,7 @@ mongoSerializer.toClass.register('objectId', (property: PropertyCompilerSchema, 
     `);
 });
 
-mongoSerializer.fromClass.register('objectId', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.register('objectId', (property: PropertySchema, state: CompilerState) => {
     state.setContext({ObjectID: bson.ObjectID});
 
     state.addCodeForSetter(`
@@ -138,7 +138,7 @@ mongoSerializer.fromClass.register('objectId', (property: PropertyCompilerSchema
     );
 });
 
-mongoSerializer.toClass.prepend('class', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.toClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
     //when property is a reference, then we stored in the database the actual primary key and used this
     //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
     const classSchema = getClassSchema(property.resolveClassType!);
@@ -150,7 +150,7 @@ mongoSerializer.toClass.prepend('class', (property: PropertyCompilerSchema, stat
     }
 });
 
-mongoSerializer.fromClass.prepend('class', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
     //When property is a reference we store the actual primary (as foreign key) of the referenced instance instead of the actual instance.
     //This way we implemented basically relations in mongodb
     const classSchema = getClassSchema(property.resolveClassType!);
@@ -172,22 +172,22 @@ mongoSerializer.fromClass.prepend('class', (property: PropertyCompilerSchema, st
     return;
 });
 
-mongoSerializer.fromClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
     state.setContext({typedArrayToBuffer, Binary: bson.Binary});
     state.addSetter(`new Binary(typedArrayToBuffer(${state.accessor}))`);
 });
 
-mongoSerializer.toClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.toClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
     state.setContext({typedArrayNamesMap, nodeBufferToTypedArray});
     state.addSetter(`nodeBufferToTypedArray(${state.accessor}.buffer, typedArrayNamesMap.get('${property.type}'))`);
 });
 
-mongoSerializer.toClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
     state.setContext({nodeBufferToArrayBuffer});
     state.addSetter(`nodeBufferToArrayBuffer(${state.accessor}.buffer)`);
 });
 
-mongoSerializer.fromClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+mongoSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
     state.setContext({Buffer, Binary: bson.Binary});
     state.addSetter(`new Binary(Buffer.from(${state.accessor}))`);
 });

@@ -23,7 +23,7 @@ import {
     jsonSerializer,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
-    PropertyCompilerSchema,
+    PropertySchema,
     typedArrayNamesMap,
     typedArrayToBuffer
 } from '@deepkit/type';
@@ -53,24 +53,24 @@ export function uuid4Stringify(buffer: Buffer): string {
         ;
 }
 
-sqlSerializer.fromClass.register('undefined', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
     //sql does not support 'undefined' as column type, so we convert automatically to null
     state.addSetter(`null`);
 });
 
-sqlSerializer.fromClass.register('null', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.register('null', (property: PropertySchema, state: CompilerState) => {
     //sql does not support 'undefined' as column type, so we convert automatically to null
     state.addSetter(`null`);
 });
 
-sqlSerializer.toClass.register('null', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.toClass.register('null', (property: PropertySchema, state: CompilerState) => {
     //sql does not support 'undefined' as column type, so we store always null. depending on the property definition
     //we convert back to undefined or keep it null
     if (property.isOptional) return state.addSetter(`undefined`);
     if (property.isNullable) return state.addSetter(`null`);
 });
 
-sqlSerializer.toClass.register('undefined', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.toClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
     //sql does not support 'undefined' as column type, so we store always null. depending on the property definition
     //we convert back to undefined or keep it null
     if (property.isOptional) return state.addSetter(`undefined`);
@@ -78,11 +78,11 @@ sqlSerializer.toClass.register('undefined', (property: PropertyCompilerSchema, s
 });
 
 //SQL escape does the job.
-sqlSerializer.fromClass.register('date', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.register('date', (property: PropertySchema, state: CompilerState) => {
     state.addSetter(`${state.accessor}`);
 });
 
-sqlSerializer.toClass.register('uuid', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.toClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
     state.setContext({uuid4Stringify});
     state.addCodeForSetter(`
         try {
@@ -94,7 +94,7 @@ sqlSerializer.toClass.register('uuid', (property: PropertyCompilerSchema, state:
     );
 });
 
-sqlSerializer.fromClass.register('uuid', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
     state.setContext({uuid4Binary});
     state.addCodeForSetter(`
         try {
@@ -106,13 +106,13 @@ sqlSerializer.fromClass.register('uuid', (property: PropertyCompilerSchema, stat
     );
 });
 
-sqlSerializer.toClass.prepend('map', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.toClass.prepend('map', (property: PropertySchema, state: CompilerState) => {
     if (property.parent) return;
 
     state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
 });
 
-sqlSerializer.toClass.prepend('class', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.toClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
     //when property is a reference, then we stored in the database the actual primary key and used this
     //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
     const classSchema = getClassSchema(property.resolveClassType!);
@@ -128,7 +128,7 @@ sqlSerializer.toClass.prepend('class', (property: PropertyCompilerSchema, state:
     return;
 });
 
-sqlSerializer.fromClass.prepend('class', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
     //When property is a reference we store the actual primary (as foreign key) of the referenced instance instead of the actual instance.
     //This way we implemented basically relations in the database
     const classSchema = getClassSchema(property.resolveClassType!);
@@ -150,7 +150,7 @@ sqlSerializer.fromClass.prepend('class', (property: PropertyCompilerSchema, stat
     }
 });
 
-sqlSerializer.fromClass.append('class', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.append('class', (property: PropertySchema, state: CompilerState) => {
     if (property.isReference) return;
 
     const schema = state.jitStack.currentSchema;
@@ -163,7 +163,7 @@ sqlSerializer.fromClass.append('class', (property: PropertyCompilerSchema, state
     state.addSetter(`stringify(${state.accessor})`);
 });
 
-sqlSerializer.fromClass.append('map', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.append('map', (property: PropertySchema, state: CompilerState) => {
     //we don't stringify non-root properties
     if (property.parent) return;
 
@@ -172,22 +172,22 @@ sqlSerializer.fromClass.append('map', (property: PropertyCompilerSchema, state: 
     state.addSetter(`stringify(${state.accessor})`);
 });
 
-sqlSerializer.fromClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
     state.setContext({typedArrayToBuffer});
     state.addSetter(`typedArrayToBuffer(${state.accessor})`);
 });
 
-sqlSerializer.toClass.registerForBinary((property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.toClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
     state.setContext({typedArrayNamesMap, nodeBufferToTypedArray});
     state.addSetter(`nodeBufferToTypedArray(${state.accessor}, typedArrayNamesMap.get('${property.type}'))`);
 });
 
-sqlSerializer.toClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
     state.setContext({nodeBufferToArrayBuffer});
     state.addSetter(`nodeBufferToArrayBuffer(${state.accessor})`);
 });
 
-sqlSerializer.fromClass.register('arrayBuffer', (property: PropertyCompilerSchema, state: CompilerState) => {
+sqlSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
     state.setContext({Buffer});
     state.addSetter(`Buffer.from(${state.accessor})`);
 });

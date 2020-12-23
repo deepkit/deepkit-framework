@@ -2,7 +2,7 @@ import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
 import {DocumentClass} from './document-scenario/DocumentClass';
-import {resolvePropertyCompilerSchema} from '../src/jit';
+import {resolvePropertySchema} from '../src/jit';
 import {getClassSchema} from '../index';
 import {jsonSerializer} from '../src/json-serializer';
 import {PageClass} from './document-scenario/PageClass';
@@ -68,7 +68,7 @@ test('partial document', () => {
     expect(document['pages.0.children'].get(0).name).toBe('7');
 
     {
-        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.name');
+        const prop = resolvePropertySchema(getClassSchema(DocumentClass), 'pages.0.name');
         expect(prop.type).toBe('string');
         expect(prop.resolveClassType).toBe(undefined);
         expect(prop.isPartial).toBe(false);
@@ -77,7 +77,7 @@ test('partial document', () => {
     }
 
     {
-        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children');
+        const prop = resolvePropertySchema(getClassSchema(DocumentClass), 'pages.0.children');
         expect(prop.type).toBe('class');
         expect(prop.resolveClassType).toBe(PageClass.PageCollection);
         expect(prop.isPartial).toBe(false);
@@ -86,7 +86,7 @@ test('partial document', () => {
     }
 
     {
-        const prop = resolvePropertyCompilerSchema(getClassSchema(DocumentClass), 'pages.0.children.0.name');
+        const prop = resolvePropertySchema(getClassSchema(DocumentClass), 'pages.0.children.0.name');
         expect(prop.type).toBe('string');
         expect(prop.resolveClassType).toBe(undefined);
         expect(prop.isPartial).toBe(false);

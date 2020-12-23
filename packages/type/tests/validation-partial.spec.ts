@@ -1,6 +1,6 @@
 import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jitValidatePartial, jitValidateProperty, resolvePropertyCompilerSchema, t} from '../index';
+import {getClassSchema, jitValidatePartial, jitValidateProperty, resolvePropertySchema, t} from '../index';
 
 test('test partial @f.map(any)', async () => {
     const p = t.map(t.any).buildPropertySchema();
@@ -38,20 +38,20 @@ test('test partial @f.map(any) on class', async () => {
     expect(schema.getProperty('any').type).toBe('any');
 
     {
-        const p = resolvePropertyCompilerSchema(schema, 'values');
+        const p = resolvePropertySchema(schema, 'values');
         expect(p.name).toBe('values');
         expect(p.isMap).toBe(true);
         expect(p.getSubType().type).toBe('any');
     }
 
     {
-        const p = resolvePropertyCompilerSchema(schema, 'values.peter');
+        const p = resolvePropertySchema(schema, 'values.peter');
         expect(p.isMap).toBe(false);
         expect(p.type).toBe('any');
     }
 
     {
-        const p = resolvePropertyCompilerSchema(schema, 'values.peter.deep');
+        const p = resolvePropertySchema(schema, 'values.peter.deep');
         expect(p.isMap).toBe(false);
         expect(p.type).toBe('any');
     }

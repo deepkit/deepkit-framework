@@ -9,6 +9,10 @@ test('slice exclude', () => {
         created: t.date,
     });
 
+    expect(schema.hasProperty('password')).toBe(true);
+    expect(schema.hasProperty('username')).toBe(true);
+    expect(schema.hasProperty('created')).toBe(true);
+
     const pub = schema.exclude('password');
     expect(pub.hasProperty('password')).toBe(false);
     expect(pub.hasProperty('username')).toBe(true);
