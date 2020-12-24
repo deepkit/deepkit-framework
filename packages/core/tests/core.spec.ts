@@ -2,6 +2,7 @@ import { expect, test } from '@jest/globals';
 import { domainToASCII } from 'url';
 import {
     asyncOperation,
+    collectForMicrotask,
     getClassName,
     getObjectKeysSize,
     getPathValue,
@@ -314,4 +315,24 @@ test('isConstructable', () => {
     expect(isConstructable(function* () { })).toBe(false)
     expect(isConstructable({ foo() { } }.foo)).toBe(false)
     expect(isConstructable(URL)).toBe(true)
+});
+
+test('collectForMicrotask', async () => {
+    let got: string[] = [];
+    const collected = (strings: string[]) => {
+        got.length = 0;
+        got.push(...strings);
+    };
+    const fn = collectForMicrotask(collected);
+
+    fn('a');
+    fn('b');
+    fn('c');
+
+    await sleep(0.1);
+    expect(got).toEqual(['a', 'b', 'c']);
+    fn('d');
+
+    await sleep(0.1);
+    expect(got).toEqual(['d']);
 });

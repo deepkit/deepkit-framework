@@ -483,6 +483,23 @@ export function mergeStack(error: Error, stack: string) {
     }
 }
 
+export function collectForMicrotask<T>(callback: (args: T[]) => void): (arg: T) => void {
+    let items: T[] = [];
+    let taskScheduled = false;
+
+    return (arg: T) => {
+        items.push(arg);
+        if (!taskScheduled) {
+            taskScheduled = true;
+            queueMicrotask(() => {
+                taskScheduled = false;
+                callback(items);
+                items.length = 0;
+            });
+        }
+    };
+}
+
 /**
  * Returns the current time as seconds.
  *
