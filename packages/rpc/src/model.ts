@@ -18,12 +18,15 @@
 
 import { ClassType, CustomError } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
-import { arrayBufferTo, Entity, getClassSchema, getClassSchemaByName, getKnownClassSchemasNames, hasClassSchemaByName, jsonSerializer, propertyDefinition, t } from '@deepkit/type';
+import { arrayBufferTo, Entity, propertyDefinition, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
+import { CollectionQueryModel, CollectionState } from './collection';
+
+export type IdType = string | number;
 
 export interface IdInterface {
-    id: string | number;
+    id: IdType;
 }
 
 export interface IdVersionInterface extends IdInterface {
@@ -148,15 +151,15 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         }
     }
 
-    async unsubscribe(): Promise<void> {
+    unsubscribe(): void {
         if (this.unsubscribed) return;
         this.unsubscribed = true;
 
         for (const teardown of this.teardowns) {
-            await tearDown(teardown);
+            tearDown(teardown);
         }
 
-        await super.unsubscribe();
+        super.unsubscribe();
     }
 }
 
@@ -288,11 +291,6 @@ export enum RpcTypes {
     //cancel. Allows to send shorter messages between to not block the connection. Both ways
     Chunk,
 
-    //a composite message is a message that consists of multiple other messages
-    //this is useful to batch send multiple messages at once. The chunker then splits them correctly in the most efficient package sizes.
-    //also the client receives only one response, which means it can track the download progress accordingly.
-    Composite,
-
     Ping,
     Pong,
 
@@ -324,11 +322,18 @@ export enum RpcTypes {
     ResponseActionObservableError,
 
     ResponseActionCollection,
+    ResponseActionCollectionUnsubscribe,
+    ResponseActionCollectionModel,
+    ResponseActionCollectionState,
+    
+    ResponseActionCollectionChange,
     ResponseActionCollectionSet,
     ResponseActionCollectionAdd,
     ResponseActionCollectionRemove,
 
-    Entity,
+    ResponseEntity, //single entity sent
+
+    Entity, //change feed as composite, containing all Entity*
     EntityPatch,
     EntityRemove,
 }
@@ -392,11 +397,14 @@ export const rpcPeerDeregister = t.schema({
     id: t.string,
 });
 
-export const rpcResponseActionCollection = t.schema({
-    active: t.boolean,
-    itemsPerPage: t.number,
-    page: t.number,
-    total: t.number,
-    sort: t.array(rpcSort),
-    parameters: t.map(t.any),
+export const rpcResponseActionCollectionModel = t.schema({
+    model: t.type(CollectionQueryModel),
+});
+
+export const rpcResponseActionCollectionState = t.schema({
+    state: t.type(CollectionState),
+});
+
+export const rpcResponseActionCollectionRemove = t.schema({
+    ids: t.array(t.union(t.string, t.number)),
 });

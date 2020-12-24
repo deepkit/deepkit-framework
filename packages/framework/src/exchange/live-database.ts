@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Collection, EntitySubject, IdVersionInterface, ConnectionWriter} from '@deepkit/rpc';
-import {injectable} from '../injector/injector';
-import {AsyncEventSubscription, asyncOperation, ClassType, eachPair} from '@deepkit/core';
-import {ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward} from '@deepkit/type';
-import {Observable, Subscription} from 'rxjs';
-import {Exchange} from './exchange';
-import {findQuerySatisfied} from '../utils';
-import {DatabaseRegistry} from '../database/database-registry';
+import { Collection, EntitySubject, IdVersionInterface, ConnectionWriter, CollectionState } from '@deepkit/rpc';
+import { injectable } from '../injector/injector';
+import { AsyncEventSubscription, asyncOperation, ClassType, eachPair } from '@deepkit/core';
+import { ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward } from '@deepkit/type';
+import { Observable, Subscription } from 'rxjs';
+import { Exchange } from './exchange';
+import { findQuerySatisfied } from '../utils';
+import { DatabaseRegistry } from '../database/database-registry';
 import {
     BaseQuery,
     Database,
@@ -37,7 +37,7 @@ import {
     UnitOfWorkEvent,
     UnitOfWorkUpdateEvent
 } from '@deepkit/orm';
-import {AsyncSubscription} from '@deepkit/core-rxjs';
+import { AsyncSubscription } from '@deepkit/core-rxjs';
 import { CollectionSort } from '@deepkit/rpc';
 
 interface SentState {
@@ -174,7 +174,7 @@ class SubscriptionHandler {
                         version: message.version,
                     });
                 } else if (message.type === 'add') {
-                    //nothing to do.
+                    //nothing to do, because that's handled by Collection
                 }
             }
         });
@@ -203,16 +203,8 @@ class SubscriptionHandlers {
 }
 
 class LiveDatabaseQueryModel<T> extends DatabaseQueryModel<T, FilterQuery<T>, Sort<T, any>> {
-    public pagination: { enabled: boolean, page: number, itemsPerPage: number } = {
-        enabled: false,
-        page: 1,
-        itemsPerPage: 10,
-    };
-
     clone(parentQuery?: BaseQuery<T>): this {
         const m = super.clone(parentQuery);
-        m.pagination = {...this.pagination};
-
         return m;
     }
 
@@ -227,7 +219,7 @@ class LiveDatabaseQueryModel<T> extends DatabaseQueryModel<T, FilterQuery<T>, So
         if (!this.sort) return sort;
 
         for (const [name, direction] of Object.entries(this.sort as Sort<T>)) {
-            sort.push({field: name, direction: direction as 'asc' | 'desc'});
+            sort.push({ field: name, direction: direction as 'asc' | 'desc' });
         }
         return sort;
     }
@@ -371,15 +363,15 @@ class LiveCollection<T extends IdVersionInterface> {
 
         //- query the database and put all items in our list
         const query = this.database.query(this.classSchema);
-        query.model = this.model.clone(query);
 
+        query.model = this.model.clone(query);
         query.model.limit = undefined;
         query.model.skip = undefined;
         const total = await query.count();
 
-        this.applyPagination(query);
+        query.model = this.model;
+
         const items = await query.find();
-        this.collection.batchStart();
         const copiedKnownIds = new Set(this.knownIDs.values());
 
         for (const item of items) {
@@ -402,39 +394,20 @@ class LiveCollection<T extends IdVersionInterface> {
         if (idsToRemove.length > 0) this.collection.removeMany(idsToRemove);
 
         //todo, call it only when really changed
-        this.collection.setSort(items.map(v => v.id));
+        // this.collection.setSort(items.map(v => v.id));
 
-        if (this.collection.pagination.getTotal() !== total) {
-            this.collection.pagination.setTotal(total);
-            this.collection.pagination.event.next({type: 'internal_server_change'});
+        if (this.collection.state.total !== total) {
+            const state = new CollectionState();
+            state.total = total;
+            this.collection.setState(state);
         }
-        this.collection.batchEnd();
     }
 
     protected async getItem(id: string | number): Promise<T | undefined> {
         const query = this.database.query(this.classSchema);
         query.model = this.model.clone(query);
-        query.filter({id: id});
+        query.filter({ id: id });
         return query.findOneOrUndefined();
-    }
-
-    protected applyPagination(query: GenericQuery<T>) {
-        if (!this.collection.pagination.isActive()) {
-            query.model.limit = this.model.limit;
-            query.model.skip = this.model.skip;
-            return;
-        }
-
-        query.limit(this.collection.pagination.getItemsPerPage());
-        query.skip((this.collection.pagination.getPage() * this.collection.pagination.getItemsPerPage()) - this.collection.pagination.getItemsPerPage());
-
-        if (this.collection.pagination.hasSort()) {
-            const sort: Sort<T> = {};
-            for (const order of this.collection.pagination.getSort()) {
-                sort[order.field as keyof T & string] = order.direction;
-            }
-            query.sort(sort);
-        }
     }
 
     public async startSync() {
@@ -453,10 +426,14 @@ class LiveCollection<T extends IdVersionInterface> {
 
         let currentQuery = replaceQueryFilterParameter(this.classSchema, this.model.filter || {}, this.model.parameters);
 
+        function requiresFullUpdate(collection: Collection<any>): boolean {
+            return collection.model.hasPaging() || collection.model.hasSort();
+        }
+
         const scopedSerializer = jsonSerializer.for(this.classSchema);
         this.entitySubscription = this.exchange.subscribeEntity(this.classSchema, async (message) => {
             if (message.type === 'removeMany') {
-                if (this.collection.pagination.isActive()) {
+                if (requiresFullUpdate(this.collection)) {
                     await this.updateCollection(true);
                     return;
                 }
@@ -469,7 +446,7 @@ class LiveCollection<T extends IdVersionInterface> {
             }
 
             if (message.type === 'add' && !this.knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
-                if (this.collection.pagination.isActive()) {
+                if (requiresFullUpdate(this.collection)) {
                     await this.updateCollection(true);
                     return;
                 }
@@ -483,7 +460,7 @@ class LiveCollection<T extends IdVersionInterface> {
                 const querySatisfied = findQuerySatisfied(message.item, currentQuery);
 
                 if (this.knownIDs.has(message.id) && !querySatisfied) {
-                    if (this.collection.pagination.isActive()) {
+                    if (requiresFullUpdate(this.collection)) {
                         await this.updateCollection(true);
                     } else {
                         //got invalid after updates?
@@ -492,7 +469,7 @@ class LiveCollection<T extends IdVersionInterface> {
                         this.collection.remove(message.id);
                     }
                 } else if (!this.knownIDs.has(message.id) && querySatisfied) {
-                    if (this.collection.pagination.isActive()) {
+                    if (requiresFullUpdate(this.collection)) {
                         await this.updateCollection(true);
                     } else {
                         //got valid after updates?
@@ -510,7 +487,7 @@ class LiveCollection<T extends IdVersionInterface> {
             }
 
             if (message.type === 'remove' && this.knownIDs.has(message.id)) {
-                if (this.collection.pagination.isActive()) {
+                if (requiresFullUpdate(this.collection)) {
                     await this.updateCollection();
                 } else {
                     this.knownIDs.delete(message.id);
@@ -520,32 +497,37 @@ class LiveCollection<T extends IdVersionInterface> {
             }
         });
 
-        this.collection.pagination.event.subscribe(async (event) => {
-            if (event.type === 'client:apply' || event.type === 'apply') {
-                //its important to not reassign a new object ref to this.model.parameters, since the ref
-                //is stored in joined query models as well.
-                const newParameters = this.collection.pagination.getParameters();
-                for (const [i, value] of eachPair(newParameters)) {
-                    this.model.parameters[i] = value;
-                }
-                currentQuery = replaceQueryFilterParameter(this.classSchema, this.model.filter || {}, this.model.parameters);
-
-                await this.updateCollection();
-
-                if (event.type === 'client:apply') this.collection.pagination.event.next({type: 'server:apply/finished'});
-                if (event.type === 'apply') this.collection.pagination._applyFinished();
-            }
+        this.model.change.subscribe(() => {
+            this.updateCollection().catch(console.error);
         });
 
-        const query = this.database.query(this.classSchema);
-        query.model = this.model;
+        // this.collection.pagination.event.subscribe(async (event) => {
+        //     if (event.type === 'client:apply' || event.type === 'apply') {
+        //         //its important to not reassign a new object ref to this.model.parameters, since the ref
+        //         //is stored in joined query models as well.
+        //         const newParameters = this.collection.pagination.getParameters();
+        //         for (const [i, value] of eachPair(newParameters)) {
+        //             this.model.parameters[i] = value;
+        //         }
+        //         currentQuery = replaceQueryFilterParameter(this.classSchema, this.model.filter || {}, this.model.parameters);
 
+        //         await this.updateCollection();
+
+        //         if (event.type === 'client:apply') this.collection.pagination.event.next({type: 'server:apply/finished'});
+        //         if (event.type === 'apply') this.collection.pagination._applyFinished();
+        //     }
+        // });
+
+        const query = this.database.query(this.classSchema);
+
+        query.model = this.model.clone(query);
         query.model.limit = undefined;
         query.model.skip = undefined;
         const total = await query.count();
-        this.collection.pagination.setTotal(total);
 
-        this.applyPagination(query);
+        this.collection.state.total = total;
+
+        query.model = this.model;
         const items = await query.find();
 
         for (const item of items) {
@@ -570,24 +552,8 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
         super(classSchema);
     }
 
-    enablePagination(): this {
-        this.model.pagination.enabled = true;
-        return this;
-    }
-
     disableEntityChangeFeed(): this {
         this.model.disableEntityChangeFeed = true;
-        return this;
-    }
-
-    itemsPerPage(items: number): this {
-        this.model.pagination.itemsPerPage = items;
-        return this;
-    }
-
-    page(page: number): this {
-        this.model.pagination.enabled = true;
-        this.model.pagination.page = page;
         return this;
     }
 
@@ -724,13 +690,11 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
     async find(): Promise<Collection<T>> {
         const collection = new Collection(this.classSchema.classType);
 
-        if (this.model.pagination.enabled) {
-            collection.pagination._activate();
-            collection.pagination.setPage(this.model.pagination.page);
-            collection.pagination.setItemsPerPage(this.model.pagination.itemsPerPage);
-        }
-        collection.pagination.setSort(this.model.getCollectionSort());
-        collection.pagination.setParameters(this.model.parameters);
+        //forward all events on collection to 
+        collection.model.change.subscribe(() => {
+            Object.assign(this.model, collection.model);
+            this.model.changed();
+        });
 
         const liveCollection = new LiveCollection(collection, this.model, this.exchange, this.database, this.subscriptionHandler, this.writer);
         collection.addTeardown(async () => {

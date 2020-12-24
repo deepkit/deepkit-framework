@@ -17,11 +17,39 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
+import { ClassSchema, getClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
 import { rpcClientId, rpcError, RpcInjector, rpcPeerRegister, RpcTypes, SimpleInjector } from '../model';
 import { createBuffer, createRpcCompositeMessage, createRpcCompositeMessageSourceDest, createRpcMessage, createRpcMessageSourceDest, readRpcMessage, RpcCreateMessageDef, rpcEncodeError, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
 import { RpcServerAction } from './action';
 
+export class RpcResponseComposite {
+    protected messages: RpcCreateMessageDef<any>[] = [];
+
+    constructor(
+        public type: number,
+        protected id: number,
+        protected clientId: Uint8Array,
+        protected writer: RpcKernelConnectionWriter,
+        protected source?: Uint8Array,
+    ) {
+    }
+
+    add<T>(type: number, schema?: ClassSchema<T> | ClassType<T>, body?: T): this {
+        this.messages.push({type, schema: schema ? getClassSchema(schema) : undefined, body});
+        return this;
+    }
+
+    send() {
+        if (!this.messages.length) return;
+
+        if (this.source) {
+            //we route back accordingly
+            this.writer.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, this.type, this.messages));
+        } else {
+            this.writer.write(createRpcCompositeMessage(this.id, this.type, this.messages));
+        }
+    }
+}
 
 export class RpcResponse {
     constructor(
@@ -56,16 +84,15 @@ export class RpcResponse {
         this.writer.write(this.messageFactory(type, schema, body));
     }
 
-    replyComposite(messages: RpcCreateMessageDef<any>[]) {
-        if (this.source) {
-            //we route pack accordingly
-            this.writer.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, messages));
-        } else {
-            this.writer.write(createRpcCompositeMessage(this.id, messages));
-        }
+    composite(type: number): RpcResponseComposite {
+        return new RpcResponseComposite(type, this.id, this.clientId, this.writer, this.source);
     }
 }
 
+/**
+ * This is a reference implementation and only works in a single process. 
+ * A real-life implementation would use an external message-bus, like Redis & co.
+ */
 export class RpcPeerExchange {
     protected registeredPeers = new Map<string, RpcKernelConnectionWriter>();
 
@@ -119,10 +146,6 @@ export class RpcKernelConnection {
     protected actionHandler = new RpcServerAction(this.controllers, this.injector);
     public myPeerId?: string;
 
-    //todo, change to binary representation. Does this change much?
-    //v4 string 8b58969c-0640-4b43-a65b-423830117700 = 36 - 4 dashes = 32 byte.
-    //one byte stores 0-9a-f => hex => 16states, but we have 255 possible in 8 bits.
-    // protected id: string = uuid();
     protected messageId: number = 0;
 
     protected id: Uint8Array = writeUuid(createBuffer(16));
@@ -220,7 +243,7 @@ export class RpcKernel {
         this.controllers.set(id, controller);
     }
 
-    createConnection(writer: RpcKernelConnectionWriter) {
-        return new RpcKernelConnection(writer, this.controllers, this.injector, this.peerExchange);
+    createConnection(writer: RpcKernelConnectionWriter, injector?: RpcInjector) {
+        return new RpcKernelConnection(writer, this.controllers, injector || this.injector, this.peerExchange);
     }
 }

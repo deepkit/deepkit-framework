@@ -17,17 +17,18 @@
  */
 
 import { toFastProperties } from '@deepkit/core';
-import { ClassSchema, createClassSchema, getXToClassFunction, jsonSerializer, PropertySchema, t } from '@deepkit/type';
+import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jsonSerializer, PropertySchema, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
-import { Collection } from '../collection';
-import { ActionObservableTypes, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollection, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
-import { rpcDecodeError } from '../protocol';
+import { Collection, CollectionState } from '../collection';
+import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionModel, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
+import { rpcDecodeError, RpcMessage } from '../protocol';
 import { RpcClient } from './client';
+import { EntityState, EntitySubjectStore } from './entity-state';
 
 type ControllerStateActionTypes = {
     parameters: string[],
     parameterSchema: ClassSchema,
-    resultSchema: ClassSchema<{ v: any }>,
+    resultSchema: ClassSchema<{ v?: any }>,
     resultProperty: PropertySchema,
     resultDecoder: (value: any) => any,
     observableNextSchema: ClassSchema<{ id: number, v: any }>
@@ -58,18 +59,9 @@ export class RpcControllerState {
     }
 }
 
-function decodeValue(types: ControllerStateActionTypes, result: { v: any }): any {
-    const type = types.resultProperty.type;
-
-    if (type === 'string' || type === 'number' || type === 'boolean') {
-        return result.v;
-    } else {
-        //everything else needs full jsonSerialize
-        return types.resultDecoder(result).v;
-    }
-}
-
 export class RpcActionClient {
+    protected entityState = new EntityState;
+
     constructor(protected client: RpcClient) {
     }
 
@@ -90,9 +82,10 @@ export class RpcActionClient {
 
                 //necessary for BehaviorSubject, since we get ObservableNext before the Observable type call
                 let firstObservableNextCalled = false;
-                let firstObservableNext: any; 
+                let firstObservableNext: any;
 
                 let collection: Collection<any> | undefined;
+                let collectionEntityStore: EntitySubjectStore<any> | undefined;
 
                 let subscriberId = 0;
                 const subscribers: { [id: number]: Subscriber<any> } = {};
@@ -101,19 +94,28 @@ export class RpcActionClient {
                     controller: controller.controller,
                     method: method,
                     args: argsObject
-                }, { peerId: controller.peerId }).onReply((next) => {
-                    // console.log('answer', RpcTypes[next.type]);
+                }, { peerId: controller.peerId }).onReply((reply) => {
+                    // console.log('answer', RpcTypes[reply.type]);
 
-                    switch (next.type) {
+                    switch (reply.type) {
+                        case RpcTypes.ResponseEntity:
+                            resolve(this.entityState.createEntitySubject(types.resultProperty.getResolvedClassSchema(), types.resultSchema, reply));
+
+                            break;
+
+                        case RpcTypes.Entity:
+                            this.entityState.handle(reply);
+                            break;
+
                         case RpcTypes.ResponseActionSimple: {
                             subject.release();
-                            const result = next.parseBody(types.resultSchema);
-                            resolve(decodeValue(types, result));
+                            const result = reply.parseBody(types.resultSchema);
+                            resolve(result.v);
                             break;
                         }
 
                         case RpcTypes.ResponseActionObservableError: {
-                            const body = next.parseBody(rpcResponseActionObservableSubscriptionError);
+                            const body = reply.parseBody(rpcResponseActionObservableSubscriptionError);
                             const error = rpcDecodeError(body);
                             if (observable) {
                                 if (!subscribers[body.id]) return; //we silently ignore this
@@ -125,7 +127,7 @@ export class RpcActionClient {
                         }
 
                         case RpcTypes.ResponseActionObservableComplete: {
-                            const body = next.parseBody(rpcActionObservableSubscribeId);
+                            const body = reply.parseBody(rpcActionObservableSubscribeId);
 
                             if (observable) {
                                 if (!subscribers[body.id]) return; //we silently ignore this
@@ -137,16 +139,15 @@ export class RpcActionClient {
                         }
 
                         case RpcTypes.ResponseActionObservableNext: {
-                            const body = next.parseBody(types.observableNextSchema);
-                            const value = decodeValue(types, body);
+                            const body = reply.parseBody(types.observableNextSchema);
 
                             if (observable) {
                                 if (!subscribers[body.id]) return; //we silently ignore this
-                                subscribers[body.id].next(value);
+                                subscribers[body.id].next(body.v);
                             } else if (observableSubject) {
-                                observableSubject.next(value);
+                                observableSubject.next(body.v);
                             } else {
-                                firstObservableNext = value;
+                                firstObservableNext = body.v;
                                 firstObservableNextCalled = true;
                             }
 
@@ -154,16 +155,15 @@ export class RpcActionClient {
                         }
 
                         case RpcTypes.ResponseActionBehaviorSubject: {
-                            const body = next.parseBody(types.observableNextSchema);
-                            const value = decodeValue(types, body);
-                            observableSubject = new BehaviorSubject(value);
+                            const body = reply.parseBody(types.observableNextSchema);
+                            observableSubject = new BehaviorSubject(body.v);
                             resolve(observableSubject);
                             break;
                         }
 
                         case RpcTypes.ResponseActionObservable: {
                             if (observable) console.error('Already got ActionResponseObservable');
-                            const body = next.parseBody(rpcResponseActionObservable);
+                            const body = reply.parseBody(rpcResponseActionObservable);
 
                             //this observable can be subscribed multiple times now
                             // each time we need to call the server again, since its not a Subject
@@ -203,48 +203,49 @@ export class RpcActionClient {
                             break;
                         }
 
-                        case RpcTypes.Composite: {
-                            const bodies = next.getBodies();
-                            const first = bodies[0];
+                        case RpcTypes.ResponseActionCollectionChange: {
+                            if (!collection) throw new Error('No collection loaded yet');
+                            if (!types.collectionSchema) throw new Error('no collectionSchema loaded yet');
+                            if (!collectionEntityStore) throw new Error('no collectionEntityStore loaded yet');
 
-                            switch (first.type) {
-                                case RpcTypes.ResponseActionCollection: {
-                                    const body = first.parseBody(rpcResponseActionCollection);
+                            this.handleCollection(collectionEntityStore, types, collection, reply.getBodies());
 
-                                    if (!types.collectionSchema) {
-                                        types.collectionSchema = createClassSchema();
-                                        const v = new PropertySchema('v');
-                                        v.setType('array');
-                                        v.templateArgs.push(types.resultSchema.getProperty('v'));
-                                        types.collectionSchema.registerProperty(v);
-                                    }
-                                    
-                                    collection = new Collection(types.resultProperty.classType!);
+                            break;
+                        }
 
-                                    //todo: set `body` options to collection
-                                    
-                                    const set = bodies[1];
-                                    if (set && set.type === RpcTypes.ResponseActionCollectionSet) {
-                                        collection.set(set.parseBody(types.collectionSchema).v);
-                                    }
-
-                                    resolve(collection);
-                                    break;
-                                }
+                        case RpcTypes.ResponseActionCollection: {
+                            if (!types.collectionSchema) {
+                                types.collectionSchema = createClassSchema();
+                                const v = new PropertySchema('v');
+                                v.setType('array');
+                                v.templateArgs.push(types.resultSchema.getProperty('v'));
+                                types.collectionSchema.registerProperty(v);
                             }
+
+                            const classType = types.resultProperty.classType!;
+                            collection = new Collection(classType);
+                            collectionEntityStore = this.entityState.getStore(classType);
+
+                            collection.addTeardown(() => {
+                                subject.send(RpcTypes.ResponseActionCollectionUnsubscribe);
+                            });
+
+                            this.handleCollection(collectionEntityStore, types, collection, reply.getBodies());
+
+                            resolve(collection);
                             break;
                         }
 
                         case RpcTypes.Error: {
                             subject.release();
-                            const error = next.getError();
+                            const error = reply.getError();
                             // console.debug('Client received error', error);
                             reject(error);
                             break;
                         }
 
                         default: {
-                            console.log(`Unexpected type received ${next.type}`);
+                            console.log(`Unexpected type received ${reply.type}`);
                         }
                     };
                 });
@@ -252,6 +253,68 @@ export class RpcActionClient {
                 reject(error);
             }
         });
+    }
+
+    protected handleCollection(entityStore: EntitySubjectStore<any>, types: ControllerStateActionTypes, collection: Collection<any>, messages: RpcMessage[]) {
+        for (const next of messages) {
+            switch (next.type) {
+                case RpcTypes.ResponseActionCollectionState: {
+                    const state = next.parseBody(getClassSchema(CollectionState));
+                    collection.setState(state);
+                    break;
+                }
+
+                case RpcTypes.ResponseActionCollectionModel: {
+                    collection.model = next.parseBody(rpcResponseActionCollectionModel).model;
+                    break;
+                }
+
+                case RpcTypes.ResponseActionCollectionAdd: {
+                    if (!types.collectionSchema) continue;
+                    const incomingItems = next.parseBody(types.collectionSchema).v as IdInterface[];
+                    const items: IdInterface[] = [];
+
+                    for (const item of incomingItems) {
+                        if (!entityStore.isRegistered(item.id)) entityStore.register(item);
+                        const fork = entityStore.createFork(item.id);
+                        collection.entitySubjects.set(item.id, fork);
+                        items.push(fork.value);
+                    }
+
+                    collection.add(items);
+                    break;
+                }
+
+                case RpcTypes.ResponseActionCollectionRemove: {
+                    //todo, use entity-state
+                    const ids = next.parseBody(rpcResponseActionCollectionRemove).ids;
+                    collection.remove(ids); //this unsubscribes its EntitySubject as well
+                    break;
+                }
+
+                case RpcTypes.ResponseActionCollectionSet: {
+                    if (!types.collectionSchema) continue;
+                    const incomingItems = next.parseBody(types.collectionSchema).v as IdInterface[];
+                    const items: IdInterface[] = [];
+                    for (const item of incomingItems) {
+                        if (!entityStore.isRegistered(item.id)) entityStore.register(item);
+                        const fork = entityStore.createFork(item.id);
+                        collection.entitySubjects.set(item.id, fork);
+                        items.push(fork.value);
+                    }
+
+                    collection.set(items);
+                    break;
+                }
+
+                case RpcTypes.ResponseActionCollectionState: {
+                    const state = next.parseBody(getClassSchema(CollectionState));
+                    collection.setState(state);
+                    break;
+                }
+            }
+        }
+        collection.loaded();
     }
 
     public loadActionTypes(controller: RpcControllerState, method: string): ControllerStateActionTypes | Promise<ControllerStateActionTypes> {

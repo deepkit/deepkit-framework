@@ -43,7 +43,6 @@ export interface DatabaseJoinModel<T, PARENT extends BaseQuery<any>> {
     foreignPrimaryKey: PropertySchema,
 }
 
-
 export type QuerySelector<T> = {
     // Comparison
     $eq?: T;
@@ -86,14 +85,26 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
     public select: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
     public skip?: number;
+    public itemsPerPage: number = 50;
     public limit?: number;
     public parameters: { [name: string]: any } = {};
     public sort?: SORT;
     public readonly change = new Subject<void>();
     public returning: (keyof T & string)[] = [];
 
-    changed() {
+    changed(): void {
         this.change.next();
+    }
+
+    hasSort(): boolean {
+        return this.sort !== undefined;
+    }
+
+    /**
+     * Whether limit/skip is activated.
+    */
+    hasPaging(): boolean {
+        return this.limit !== undefined || this.skip !== undefined;
     }
 
     clone(parentQuery?: BaseQuery<T>): this {
@@ -177,6 +188,24 @@ export class BaseQuery<T extends Entity> {
 
     skip(value?: number): this {
         this.model.skip = value;
+        this.model.changed();
+        return this;
+    }
+
+    itemsPerPage(value: number): this {
+        this.model.itemsPerPage = value;
+        this.model.changed();
+        return this;
+    }
+
+    /**
+     * Applies limit/skip operations correctly to basically have a paging functionality.
+     * Make sure to call itemsPerPage() before you call page.
+     */
+    page(page: number): this {
+        const skip = (page * this.model.itemsPerPage) - this.model.itemsPerPage;
+        this.model.skip = skip;
+        this.model.limit = this.model.itemsPerPage;
         this.model.changed();
         return this;
     }

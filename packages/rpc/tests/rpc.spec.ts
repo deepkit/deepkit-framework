@@ -1,7 +1,6 @@
 import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { RpcTypes } from '../src/model';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
 import { createRpcCompositeMessage, createRpcCompositeMessageSourceDest, createRpcMessage, createRpcMessagePeer, createRpcMessageSourceDest, readRpcMessage, RpcMessageReader, RpcMessageRouteType } from '../src/protocol';
@@ -13,10 +12,22 @@ test('protocol basics', () => {
     });
 
     {
+        const message = createRpcMessage(1024, 123);
+        const parsed = readRpcMessage(message);
+        expect(parsed.id).toBe(1024);
+        expect(parsed.type).toBe(123);
+        expect(parsed.composite).toBe(false);
+        expect(parsed.routeType).toBe(RpcMessageRouteType.client);
+        expect(parsed.bodySize).toBe(0);
+        expect(() => parsed.parseBody(schema)).toThrowError('no body');
+    }
+
+    {
         const message = createRpcMessage(1024, 130, schema, { name: 'foo' });
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
+        expect(parsed.composite).toBe(false);
         expect(parsed.routeType).toBe(RpcMessageRouteType.client);
         const body = parsed.parseBody(schema);
         expect(body.name).toBe('foo');
@@ -27,6 +38,7 @@ test('protocol basics', () => {
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
+        expect(parsed.composite).toBe(false);
         expect(parsed.routeType).toBe(RpcMessageRouteType.server);
     }
 
@@ -37,6 +49,7 @@ test('protocol basics', () => {
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
+        expect(parsed.composite).toBe(false);
         expect(parsed.getPeerId()).toBe('myPeer');
 
         const body = parsed.parseBody(schema);
@@ -52,6 +65,7 @@ test('protocol basics', () => {
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
+        expect(parsed.composite).toBe(false);
         expect(parsed.getSource()[0]).toBe(16);
         expect(parsed.getDestination()[0]).toBe(20);
         const body = parsed.parseBody(schema);
@@ -65,26 +79,51 @@ test('protocol composite', () => {
     });
 
     {
-        const message = createRpcCompositeMessage(1024, [{ type: 4, schema, body: { name: 'foo' } }]);
+        const message = createRpcCompositeMessage(1024, 33, [{ type: 4, schema, body: { name: 'foo' } }]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
-        expect(parsed.type).toBe(RpcTypes.Composite);
+        expect(parsed.type).toBe(33);
+        expect(parsed.composite).toBe(true);
         expect(parsed.routeType).toBe(RpcMessageRouteType.client);
         expect(() => parsed.parseBody(schema)).toThrow('Composite message can not be read directly');
 
         const messages = parsed.getBodies();
         expect(messages.length).toBe(1);
         expect(messages[0].type).toBe(4);
+        expect(messages[0].bodySize).toBeGreaterThan(10);
         expect(messages[0].parseBody(schema).name).toBe('foo');
     }
 
+
     {
-        const message = createRpcCompositeMessage(1024, [{ type: 4, schema, body: { name: 'foo' } }, { type: 12, schema, body: { name: 'bar' } }]);
+        const message = createRpcCompositeMessage(1024, 5, [{ type: 4 }, { type: 5, schema, body: { name: 'foo' } }]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
-        expect(parsed.type).toBe(RpcTypes.Composite);
+        expect(parsed.type).toBe(5);
+        expect(parsed.composite).toBe(true);
+        expect(parsed.routeType).toBe(RpcMessageRouteType.client);
+        expect(() => parsed.parseBody(schema)).toThrow('Composite message can not be read directly');
+
+        const messages = parsed.getBodies();
+        expect(messages.length).toBe(2);
+        expect(messages[0].type).toBe(4);
+        expect(messages[0].bodySize).toBe(0);
+        expect(() => messages[0].parseBody(schema)).toThrow('no body');
+        
+        expect(messages[1].type).toBe(5);
+        expect(messages[1].bodySize).toBeGreaterThan(10);
+        expect(messages[1].parseBody(schema).name).toBe('foo');
+    }
+
+    {
+        const message = createRpcCompositeMessage(1024, 6, [{ type: 4, schema, body: { name: 'foo' } }, { type: 12, schema, body: { name: 'bar' } }]);
+
+        const parsed = readRpcMessage(message);
+        expect(parsed.id).toBe(1024);
+        expect(parsed.type).toBe(6);
+        expect(parsed.composite).toBe(true);
         expect(parsed.routeType).toBe(RpcMessageRouteType.client);
         expect(() => parsed.parseBody(schema)).toThrow('Composite message can not be read directly');
 
@@ -101,11 +140,12 @@ test('protocol composite', () => {
         source[0] = 16;
         const destination = Buffer.alloc(16);
         destination[0] = 20;
-        const message = createRpcCompositeMessageSourceDest(1024, source, destination, [{ type: 4, schema, body: { name: 'foo' } }, { type: 12, schema, body: { name: 'bar' } }]);
+        const message = createRpcCompositeMessageSourceDest(1024, source, destination, 55, [{ type: 4, schema, body: { name: 'foo' } }, { type: 12, schema, body: { name: 'bar' } }]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
-        expect(parsed.type).toBe(RpcTypes.Composite);
+        expect(parsed.type).toBe(55);
+        expect(parsed.composite).toBe(true);
         expect(parsed.routeType).toBe(RpcMessageRouteType.sourceDest);
         expect(parsed.getSource()[0]).toBe(16);
         expect(parsed.getDestination()[0]).toBe(20);

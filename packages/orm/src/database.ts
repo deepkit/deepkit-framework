@@ -113,6 +113,14 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * Use a DatabaseSession (createSession()) with its query() in your workflow to enable
      * identity map.
+     * 
+     * ```typescript
+     * const session = database.createSession();
+     * 
+     * const item = await session.query(MyType).findOne();
+     * item.name = 'changed';
+     * session.commit(); //only necessary when you changed items received by this session
+     * ```
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
 

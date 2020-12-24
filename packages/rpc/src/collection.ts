@@ -21,13 +21,14 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import {ReplaySubject, Subject, TeardownLogic} from 'rxjs';
-import {IdInterface} from './model';
-import {tearDown} from '@deepkit/core-rxjs';
-import {ClassType, each, getClassName} from '@deepkit/core';
-import {EntitySubject} from './model';
+import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
+import { IdInterface } from './model';
+import { tearDown } from '@deepkit/core-rxjs';
+import { ClassType, each, getClassName, isArray } from '@deepkit/core';
+import { EntitySubject } from './model';
+import { ClassSchema, t } from '@deepkit/type';
 
-export type FilterParameters = {[name: string]: any | undefined};
+export type FilterParameters = { [name: string]: any | undefined };
 
 export type QuerySelector<T> = {
     // Comparison
@@ -60,46 +61,37 @@ type RegExpForString<T> = T extends string ? (RegExp | T) : T;
 type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
 export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
+//should be in sync with @deepkit/orm
 export type FilterQuery<T> = {
     [P in keyof T & string]?: Condition<T[P]>;
 } &
     RootQuerySelector<T>;
 
+//should be in sync with @deepkit/orm
+export type SORT_ORDER = 'asc' | 'desc' | any;
+export type Sort<T, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
-export interface CollectionBatchStart {
-    type: 'batch/start';
-}
-
-export interface CollectionBatchEnd {
-    type: 'batch/end';
-}
-
-export interface CollectionAdd {
+export interface CollectionEventAdd<T> {
     type: 'add';
-    item: any;
+    items: T[];
 }
 
-export interface CollectionRemove {
+export interface CollectionEventState {
+    type: 'state';
+    state: CollectionState;
+}
+
+export interface CollectionEventRemove {
     type: 'remove';
-    id: string | number;
+    ids: (string | number)[];
 }
 
-export interface CollectionSetSort {
-    type: 'sort';
-    ids: (string|number)[];
-}
-
-export interface CollectionRemoveMany {
-    type: 'removeMany';
-    ids: (string|number)[];
-}
-
-export interface CollectionSet {
+export interface CollectionEventSet {
     type: 'set';
     items: any[];
 }
 
-export type CollectionEvent = CollectionBatchStart | CollectionBatchEnd | CollectionAdd | CollectionSetSort | CollectionRemove | CollectionRemoveMany | CollectionSet;
+export type CollectionEvent<T> = CollectionEventAdd<T> | CollectionEventRemove | CollectionEventSet | CollectionEventState;
 
 export type CollectionSortDirection = 'asc' | 'desc';
 
@@ -108,197 +100,61 @@ export interface CollectionSort {
     direction: CollectionSortDirection;
 }
 
-export interface CollectionPaginationEventApplyFinished {
-    type: 'server:apply/finished';
-}
-
-export interface CollectionPaginationEventInternalChange {
-    type: 'internal_server_change';
-}
-
-export interface CollectionPaginationEventChange {
-    type: 'server:change';
-    order: { field: string, direction: 'asc' | 'desc' }[];
-    parameters: FilterParameters;
-    itemsPerPage: number;
-    total: number;
-    page: number;
-}
-
-export interface CollectionPaginationEventApply {
-    type: 'apply';
-}
-
-export interface CollectionPaginationEventClientApply {
-    type: 'client:apply';
-}
-
-export type CollectionPaginationEvent = CollectionPaginationEventApplyFinished
-    | CollectionPaginationEventChange
-    | CollectionPaginationEventInternalChange
-    | CollectionPaginationEventClientApply
-    | CollectionPaginationEventApply;
-
-export class CollectionPagination<T extends IdInterface> {
-    public readonly event = new Subject<CollectionPaginationEvent>();
-
-    public _parameters: FilterParameters = {};
-
-    constructor(private collection: Collection<T>) {
-    }
-
-    protected page = 1;
-
-    protected total = 0;
-    protected itemsPerPage = 50;
-
-    protected sort: CollectionSort[] = [];
-
-    protected active = false;
-
-    protected applyPromise?: Promise<void>;
-    protected applyPromiseResolver?: () => void;
-
-    public setParameters(values?: FilterParameters): CollectionPagination<T> {
-        this._parameters = values || {};
-        return this;
-    }
-
-    public resetParameters(): CollectionPagination<T> {
-        this._parameters = {};
-        return this;
-    }
-
-    public setParameter(name: string, value?: any): CollectionPagination<T> {
-        this._parameters[name] = value;
-        return this;
-    }
-
-    public getParameter(name: string): any {
-        return this._parameters[name];
-    }
-
-    public getParameters(): FilterParameters {
-        return this._parameters;
-    }
-
-    public getHash(): string {
-        return JSON.stringify([
-            this.page, this.itemsPerPage, this.sort, this._parameters
-        ]);
-    }
-
-    public getPagingHash(): string {
-        return JSON.stringify([
-            this.page, this.itemsPerPage, this.sort
-        ]);
-    }
-
-    public getParametersHash(): string {
-        return JSON.stringify([
-            this._parameters
-        ]);
-    }
-
-    public setPage(page: number): CollectionPagination<T> {
-        this.page = page;
-        return this;
-    }
-
-    public hasSort(): boolean {
-        return this.sort.length > 0;
-    }
-
-    public getSort(): CollectionSort[] {
-        return this.sort;
-    }
-
-    public setSort(order: CollectionSort[]): CollectionPagination<T> {
-        this.sort = order;
-        return this;
-    }
-
-    public orderByField(field: string, direction: CollectionSortDirection = 'asc'): CollectionPagination<T> {
-        this.sort = [{field: field, direction: direction}];
-        return this;
-    }
-
-    /**
-     * Sends current pagination setting to the server and refreshes the collection if necessary.
-     */
-    public apply(): Promise<void> {
-        this.applyPromise = new Promise((resolve, reject) => {
-            this.applyPromiseResolver = resolve;
-            this.event.next({type: 'apply'});
-        });
-
-        return this.applyPromise;
-    }
-
-    /**
-     * Triggered from the server when the apply() finished. Doesn't matter if we got actual updates or not. It's important
-     * to distinguish because collection.nextStateChange is not reliable enough
-     * (as entity updates could happen between apply and applyFinish, which would trigger nextStateChange).
-     *
-     * @private
-     */
-    public _applyFinished() {
-        if (this.applyPromiseResolver) {
-            this.applyPromiseResolver();
-            delete this.applyPromise;
-            delete this.applyPromiseResolver;
-        }
-    }
-
-    public setTotal(total: number): CollectionPagination<T> {
-        this.total = total;
-        return this;
-    }
-
-    public setItemsPerPage(items: number): CollectionPagination<T> {
-        this.itemsPerPage = items;
-        return this;
-    }
-
-    public isActive(): boolean {
-        return this.active;
-    }
-
-    /**
-     * It's not possible to activate this later on. This is set on the server side only.
-     */
-    public _activate(): CollectionPagination<T> {
-        this.active = true;
-        return this;
-    }
-
-    public getPage(): number {
-        return this.page;
-    }
-
-    public getItemsPerPage(): number {
-        return this.itemsPerPage;
-    }
-
-    public getTotal(): number {
-        return this.total;
-    }
-
-    public getPages(): number {
-        return Math.ceil(this.getTotal() / this.getItemsPerPage());
-    }
-
-    public isPageValid(): boolean {
-        return this.page > this.getPages();
-    }
-}
-
 export interface CollectionEntitySubjectFetcher {
     fetch<T extends IdInterface>(classType: ClassType<T>, id: string | number): EntitySubject<T>;
 }
 
+/**
+ * internal note: This is aligned with @deepit/orm `DatabaseQueryModel`
+ */
+export class CollectionQueryModel<T> {
+    @t.map(t.any).optional
+    filter?: FilterQuery<T>;
+
+    @t.number.optional
+    skip?: number;
+
+    @t.number
+    itemsPerPage: number = 50;
+
+    @t.number.optional
+    limit?: number;
+
+    @t.map(t.any)
+    parameters: { [name: string]: any } = {};
+
+    @t.map(t.any).optional
+    sort?: Sort<T>;
+
+    public readonly change = new Subject<void>();
+
+    changed(): void {
+        this.change.next();
+    }
+
+    hasSort(): boolean {
+        return this.sort !== undefined;
+    }
+
+    /**
+     * Whether limit/skip is activated.
+    */
+    hasPaging(): boolean {
+        return this.limit !== undefined || this.skip !== undefined;
+    }
+}
+
+export class CollectionState {
+    /**
+     * Total count in the database for the current query, regardless of paging (skip/limit) count.
+     * 
+     * Use count() to get the items count on the current page (which is equal to all().length)
+     */
+    @t total: number = 0;
+}
+
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
-    public readonly event: Subject<CollectionEvent> = new Subject;
+    public readonly event: Subject<CollectionEvent<T>> = new Subject;
 
     public readonly removed = new Subject<T>();
     public readonly added = new Subject<T>();
@@ -306,19 +162,22 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     protected readonly teardowns: TeardownLogic[] = [];
 
     protected items: T[] = [];
-    protected itemsMapped: { [id: string]: T } = {};
+    protected itemsMap = new Map<string | number, T>();
+
+    public state: CollectionState = new CollectionState();
 
     public readonly deepChange = new Subject<T>();
 
-    protected nextChange?: Subject<void>;
+    protected nextChange?: Promise<void>;
+    protected nextChangeResolver?: () => void;
 
-    public readonly pagination: CollectionPagination<T> = new CollectionPagination(this);
+    // public readonly pagination: CollectionPagination<T> = new CollectionPagination(this);
 
-    protected batchActive = false;
-    protected batchNeedLoaded = false;
     protected entitySubjectFetcher?: CollectionEntitySubjectFetcher;
 
-    public readonly entitySubjects: {[id: string]: EntitySubject<T>} = {};
+    public model: CollectionQueryModel<T> = new CollectionQueryModel();
+
+    public readonly entitySubjects = new Map<string | number, EntitySubject<T>>();
 
     constructor(
         public readonly classType: ClassType<T>,
@@ -326,31 +185,22 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         super(1);
     }
 
-    public getEntitySubject(idOrItem: string | number | T): EntitySubject<T> {
+    public getEntitySubject(idOrItem: string | number | T): EntitySubject<T> | undefined {
         const id: string | number = idOrItem instanceof this.classType ? idOrItem.id : String(idOrItem);
-        return this.entitySubjects[id];
+        return this.entitySubjects.get(id);
     }
 
     public has(id: string | number) {
-        return 'undefined' !== typeof this.itemsMapped[id];
+        return this.itemsMap.has(id);
     }
 
     public get(id: string | number): T | undefined {
-        return this.itemsMapped[id];
+        return this.itemsMap.get(id);
     }
 
-    public batchStart() {
-        this.batchActive = true;
-        this.event.next({type: 'batch/start'});
-    }
-
-    public batchEnd() {
-        this.batchActive = false;
-        if (this.batchNeedLoaded) {
-            this.loaded();
-        }
-        this.batchNeedLoaded = false;
-        this.event.next({type: 'batch/end'});
+    public setState(state: CollectionState) {
+        this.state = state;
+        this.event.next({ type: 'state', state });
     }
 
     /**
@@ -358,23 +208,23 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
      */
     get nextStateChange(): Promise<void> {
         if (!this.nextChange) {
-            this.nextChange = new Subject<void>();
+            this.nextChange = new Promise((resolve) => {
+                this.nextChangeResolver = resolve;
+            });
         }
-        return this.nextChange.toPromise();
+        return this.nextChange;
     }
 
-    /**
-     * Unsubscribe from the backend stream.
-     */
-    public async unsubscribe() {
-        await super.unsubscribe();
-        this.pagination.event.unsubscribe();
+    public unsubscribe() {
+        super.unsubscribe();
 
-        for (const teardown of this.teardowns) {
-            await tearDown(teardown);
+        for (const teardown of this.teardowns) tearDown(teardown);
+
+        for (const subject of this.entitySubjects.values()) {
+            subject.unsubscribe();
         }
 
-        this.teardowns.splice(0, this.teardowns.length);
+        this.teardowns.length = 0;
     }
 
     public addTeardown(teardown: TeardownLogic) {
@@ -398,19 +248,23 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public reset() {
         this.items = [];
-        this.itemsMapped = {};
+        this.entitySubjects.clear();
+        this.itemsMap.clear();
     }
 
     public all(): T[] {
         return this.items;
     }
 
+    /**
+     * Count of current page if paging is used, otherwise total count.
+     */
     public count() {
         return this.items.length;
     }
 
-    public ids(): (string|number)[] {
-        const ids: (string|number)[] = [];
+    public ids(): (string | number)[] {
+        const ids: (string | number)[] = [];
         for (const i of this.items) {
             ids.push(i.id);
         }
@@ -422,128 +276,123 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         return 0 === this.items.length;
     }
 
+    /**
+     * All items from id -> value map.
+     */
     public map() {
-        return this.itemsMapped;
+        return this.itemsMap;
     }
 
     public loaded() {
-        if (this.batchActive) {
-            this.batchNeedLoaded = true;
-            return;
-        }
-
-        this.batchNeedLoaded = false;
         if (this.isStopped) {
             throw new Error('Collection already unsubscribed');
         }
         this.next(this.items);
 
-        if (this.nextChange) {
-            this.nextChange.complete();
-            delete this.nextChange;
-        }
-    }
-
-    public seItem(id: string | number, item: T) {
-        if (this.itemsMapped[item.id]) {
-            const index = this.items.indexOf(this.itemsMapped[item.id]);
-            this.items[index] = item;
-            this.itemsMapped[item.id] = item;
-        } else {
-            this.items.push(item);
-            this.itemsMapped[item.id] = item;
+        if (this.nextChangeResolver) {
+            this.nextChangeResolver();
+            this.nextChangeResolver = undefined;
+            this.nextChange = undefined;
         }
     }
 
     public set(items: T[], withEvent = true) {
         for (const item of items) {
-            if (!this.itemsMapped[item.id]) {
+            if (!this.itemsMap.has(item.id)) {
                 this.added.next(item);
             }
-            delete this.itemsMapped[item.id];
+            this.itemsMap.delete(item.id);
         }
 
-        for (const deleted of each(this.itemsMapped)) {
+        //remaining items will be deleted
+        for (const deleted of this.itemsMap.values()) {
             this.removed.next(deleted);
+            const subject = this.entitySubjects.get(deleted.id);
+            if (subject) {
+                subject.unsubscribe();
+                this.entitySubjects.delete(deleted.id);
+            }
         }
 
-        this.itemsMapped = {};
+        this.itemsMap.clear();
         this.items = items;
 
         for (const item of items) {
-            this.itemsMapped[item.id] = item;
+            this.itemsMap.set(item.id, item);
         }
 
         if (withEvent) {
-            this.event.next({type: 'set', items: items});
-            this.loaded();
+            this.event.next({ type: 'set', items: items });
         }
     }
 
-    public setSort(ids: (string | number)[]) {
-        this.items.splice(0, this.items.length);
+    public removeMany(ids: (string | number)[], withEvent = true) {
         for (const id of ids) {
-            this.items.push(this.itemsMapped[id]);
-        }
-
-        this.event.next({type: 'sort', ids: ids});
-        this.loaded();
-    }
-
-    public removeMany(ids: (string|number)[], withEvent = true) {
-        for (const id of ids) {
-            const item = this.itemsMapped[id];
-            delete this.itemsMapped[id];
-            const index = this.items.indexOf(item);
-            if (-1 !== index) {
-                this.removed.next(this.items[index]);
-                this.items.splice(index, 1);
+            const item = this.itemsMap.get(id);
+            this.itemsMap.delete(id);
+            if (item) {
+                const index = this.items.indexOf(item);
+                if (-1 !== index) {
+                    this.removed.next(this.items[index]);
+                    this.items.splice(index, 1);
+                }
+            }
+            const subject = this.entitySubjects.get(id);
+            if (subject) {
+                subject.unsubscribe();
+                this.entitySubjects.delete(id);
             }
         }
 
         if (withEvent) {
-            this.event.next({type: 'removeMany', ids: ids});
-            this.loaded();
+            this.event.next({ type: 'remove', ids: ids });
         }
     }
 
-    public add(item: T, withEvent = true) {
-        if (!item) {
+    public add(items: T | T[], withEvent = true) {
+        if (!items) {
             throw new Error(`Trying to insert a ${getClassName(this.classType)} collection item without value`);
         }
 
-        this.added.next(item);
+        items = isArray(items) ? items : [items];
 
-        if (this.itemsMapped[item.id]) {
-            const index = this.items.indexOf(this.itemsMapped[item.id]);
-            this.items[index] = item;
-            this.itemsMapped[item.id] = item;
-        } else {
-            this.items.push(item);
-            this.itemsMapped[item.id] = item;
+        for (const item of items) {
+            this.added.next(item);
+
+            if (this.itemsMap.has(item.id)) {
+                const index = this.items.indexOf(this.itemsMap.get(item.id) as any);
+                this.items[index] = item;
+                this.itemsMap.set(item.id, item);
+            } else {
+                this.items.push(item);
+                this.itemsMap.set(item.id, item);
+            }
         }
 
         if (withEvent) {
-            this.event.next({type: 'add', item: item});
-            this.loaded();
+            this.event.next({ type: 'add', items });
         }
     }
 
-    public remove(id: string | number, withEvent = true) {
-        if (this.itemsMapped[id]) {
-            const item = this.itemsMapped[id];
-            delete this.itemsMapped[id];
+    public remove(ids: (string | number) | (string | number)[], withEvent = true) {
+        ids = isArray(ids) ? ids : [ids];
+        for (const id of ids) {
+            const item = this.itemsMap.get(id);
+            if (!item) continue;
+
+            this.itemsMap.delete(id);
 
             const index = this.items.indexOf(item);
             if (-1 !== index) {
                 this.items.splice(index, 1);
             }
-
             if (withEvent) {
-                this.event.next({type: 'remove', id: item.id});
                 this.removed.next(item);
-                this.loaded();
             }
+        }
+
+        if (withEvent) {
+            this.event.next({ type: 'remove', ids: ids });
         }
     }
 }
