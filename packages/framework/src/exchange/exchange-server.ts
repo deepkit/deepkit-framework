@@ -310,6 +310,7 @@ export class ExchangeServer {
         for (const [ws, state] of this.statePerConnection.entries()) {
             promises.push(new Promise((resolve) => {
                 state.ackEntityFields = resolve;
+                //timeout needed
             }));
             ws.send(message, {binary: true});
         }

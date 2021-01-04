@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2018",
+    "module": "es2020",
+    "esModuleInterop": true,
+
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true
+  },
+  "include": [
+    "src",
+    "tests",
+    "index.ts"
+  ],
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.dist.json"
+    },
+    {
+      "path": "../bson/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    }
+  ]
+}

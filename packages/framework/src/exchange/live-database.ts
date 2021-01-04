@@ -30,7 +30,6 @@ import {
     DatabaseQueryModel,
     exportQueryFilterFieldNames,
     FilterQuery,
-    GenericQuery,
     QueryDatabaseDeleteEvent,
     replaceQueryFilterParameter,
     Sort,
@@ -815,7 +814,7 @@ export class LiveDatabase {
 
                 const fields: Partial<any> = {};
 
-                for (const field of this.exchange.getUsedEntityFields(event.classSchema).value) {
+                for (const field of this.exchange.getUsedEntityFields(event.classSchema)) {
                     fields[field] = (changeSet.item as any)[field];
                 }
 
@@ -850,8 +849,8 @@ export class LiveDatabase {
 
         subscriptions.push(database.queryEvents.onPatchPre.subscribe(async (event) => {
             if (schema !== event.classSchema) return;
-            event.patch.increase('version', 1);
-            for (const field of this.exchange.getUsedEntityFields(event.classSchema).value) {
+            event.patch.increase('version', 1);            
+            for (const field of this.exchange.getUsedEntityFields(event.classSchema)) {
                 if (!event.returning.includes(field)) event.returning.push(field);
             }
         }));
@@ -868,7 +867,7 @@ export class LiveDatabase {
             for (let i = 0; i < event.patchResult.primaryKeys.length; i++) {
                 const fields: Partial<any> = {};
 
-                for (const field of this.exchange.getUsedEntityFields(event.classSchema).value) {
+                for (const field of this.exchange.getUsedEntityFields(event.classSchema)) {
                     if (!(event.patchResult.returning as any)[field]) continue;
                     fields[field] = (event.patchResult.returning as any)[field][i];
                 }

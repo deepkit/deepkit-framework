@@ -1,6 +1,6 @@
 import { arrayRemoveItem, ClassType, getObjectKeysSize } from "@deepkit/core";
 import { ClassSchema, getClassSchema } from "@deepkit/type";
-import { RpcMessage } from "src/protocol";
+import { RpcMessage } from "../protocol";
 import { EntitySubject, IdInterface, RpcTypes, IdType } from "../model";
 
 export class EntitySubjectStore<T extends IdInterface> {

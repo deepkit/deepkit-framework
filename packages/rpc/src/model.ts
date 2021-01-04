@@ -287,6 +287,9 @@ export class ValidationParameterError {
 }
 
 export enum RpcTypes {
+    Ack,
+    Error,
+
     //A batched chunk. Used when a single message exceeds a certain size. It's split up in multiple messages and send with slight delay, allowing to track progress,
     //cancel. Allows to send shorter messages between to not block the connection. Both ways
     Chunk,
@@ -305,8 +308,6 @@ export enum RpcTypes {
     //server -> client
     ClientId,
     ClientIdResponse,
-    Ack,
-    Error,
     AuthenticateResponse,
     ResponseActionType,
     ResponseActionSimple, //direct response that can be simple deserialized.

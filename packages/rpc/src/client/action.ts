@@ -22,7 +22,7 @@ import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { Collection, CollectionState } from '../collection';
 import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionModel, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
-import { RpcClient } from './client';
+import { RpcBaseClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
 
 type ControllerStateActionTypes = {
@@ -62,7 +62,7 @@ export class RpcControllerState {
 export class RpcActionClient {
     protected entityState = new EntityState;
 
-    constructor(protected client: RpcClient) {
+    constructor(protected client: RpcBaseClient) {
     }
 
     public action<T>(controller: RpcControllerState, method: string, args: any[], recipient?: string) {

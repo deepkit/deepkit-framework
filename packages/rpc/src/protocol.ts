@@ -40,7 +40,7 @@ export class RpcMessageRoute {
 }
 
 /*
- * A websocket message is a binary message and has the following structure:
+ * A message is a binary message and has the following structure:
  *
  * <size> <version> <id> <route>[<routeConfig>] <composite> <messageBody>
  *
@@ -49,10 +49,10 @@ export class RpcMessageRoute {
  * id: uint32 //message id
  * 
  * //type of routing: 
- * //0=client (context from client -> server), //client initiated a message context (message id created no client)
+ * //0=client (context from client -> server), //client initiated a message context (message id created on client)
  * //1=server (context from server -> client), //server initiated a message context (message id created on server)
  * //2=sourceDest //route this message to a specific client using its client id
- * //4=peer //route this message to a client using a peer alias (the peer alias needs to be registered). message will be rewritten to sourceDest
+ * //4=peer //route this message to a client using a peer alias (the peer alias needs to be registered). replies will be rewritten to sourceDest
  * 
  * //when route=0
  * routeConfig: not defined
@@ -309,6 +309,29 @@ export function createRpcMessage<T>(
     return writer.buffer;
 }
 
+export function createRpcMessageForBody<T>(
+    id: number, type: number,
+    body: Uint8Array,
+    routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
+): Uint8Array {
+    const bodySize = body.byteLength;
+    //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
+    const messageSize = 4 + 1 + 4 + 1 + 1 + 1 + bodySize;
+
+    const writer = new Writer(createBuffer(messageSize));
+    writer.writeUint32(messageSize);
+    writer.writeByte(1); //version
+    writer.writeUint32(id);
+
+    writer.writeByte(routeType);
+    writer.writeByte(0); //composite=false
+    writer.writeByte(type);
+
+    writer.writeBuffer(body);
+
+    return writer.buffer;
+}
+
 export function createRpcMessagePeer<T>(
     id: number, type: number,
     source: Uint8Array,
@@ -436,13 +459,13 @@ export class RpcMessageReader {
     }
 }
 
-
 export interface EncodedError {
     classType: string;
     message: string;
     stack: string;
     properties?: { [name: string]: any };
 }
+
 export function rpcEncodeError(error: Error | string): EncodedError {
     let classType = '';
     let stack = '';

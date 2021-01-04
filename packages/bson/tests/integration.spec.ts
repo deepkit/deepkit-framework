@@ -150,7 +150,7 @@ for (let i = 0; i < types.length; i++) {
         expect(sNullable.getProperty('field').isNullable).toBe(true);
 
         const bsonDeepkit = getBSONSerializer(s)(obj);
-        console.log('back', obj, deserialize(bsonDeepkit));
+        console.log('back', obj, deserialize(Buffer.from(bsonDeepkit)));
 
         const decoded = getBSONDecoder(s)(bsonDeepkit);
         expect(decoded).toEqual(expectedObj);

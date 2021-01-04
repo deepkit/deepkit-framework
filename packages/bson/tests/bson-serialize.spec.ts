@@ -648,7 +648,7 @@ test('any objectId', () => {
         const bsonOfficial = serialize(doc);
 
         expect(bson).toEqual(bsonOfficial);
-        const parsed = deserialize(bson);
+        const parsed = deserialize(Buffer.from(bson));
         expect(parsed._id).toBeInstanceOf(ObjectId);
         expect(parsed._id.toHexString()).toBe('507f191e810c19729de860ea');
 
@@ -662,7 +662,7 @@ test('any objectId', () => {
         const bsonOfficial = serialize(doc);
 
         expect(bson).toEqual(bsonOfficial);
-        const parsed = deserialize(bson);
+        const parsed = deserialize(Buffer.from(bson));
         expect(parsed.q.id).toBeInstanceOf(ObjectId);
         expect(parsed.q.id.toHexString()).toBe('507f191e810c19729de860ea');
 
@@ -683,7 +683,7 @@ test('objectId string', () => {
         const bsonOfficial = serialize({id: new ObjectId('507f191e810c19729de860ea')});
         expect(bson).toEqual(bsonOfficial);
 
-        const parsed = deserialize(bson);
+        const parsed = deserialize(Buffer.from(bson));
         expect(parsed.id).toBeInstanceOf(ObjectId);
         expect(parsed.id.toHexString()).toBe('507f191e810c19729de860ea');
 
@@ -698,7 +698,7 @@ test('objectId string', () => {
         const bsonOfficial = serialize({id: new ObjectId('507f191e810c19729de860ea')});
         expect(bson).toEqual(bsonOfficial);
 
-        const parsed = deserialize(bson);
+        const parsed = deserialize(Buffer.from(bson));
         expect(parsed.id).toBeInstanceOf(ObjectId);
         expect(parsed.id.toHexString()).toBe('507f191e810c19729de860ea');
 
@@ -739,7 +739,7 @@ test('model 1, missing `public`', () => {
 
         const s = getBSONDecoder(User);
         const o = s(bson);
-        expect(o).toEqual(deserialize(bson));
+        expect(o).toEqual(deserialize(Buffer.from(bson)));
     }
 
     {
@@ -753,7 +753,7 @@ test('model 1, missing `public`', () => {
         const bson = getBSONSerializer(User)(user);
         const s = getBSONDecoder(User);
         const o = s(bson);
-        expect(o).not.toEqual(deserialize(bson)); //because bson-js includes `id`, but we drop it since it's not assigned in the constructor
+        expect(o).not.toEqual(deserialize(Buffer.from(bson))); //because bson-js includes `id`, but we drop it since it's not assigned in the constructor
     }
 });
 
@@ -793,7 +793,7 @@ test('decorated', () => {
 
     const bson = getBSONSerializer(schema)(object);
 
-    const officialDeserialize = deserialize(bson);
+    const officialDeserialize = deserialize(Buffer.from(bson));
     console.log('officialDeserialize', officialDeserialize);
     expect(officialDeserialize.v).toEqual(['Peter3']);
 
@@ -828,7 +828,7 @@ test('reference', () => {
         (object as any).manager = null;
 
         const bson = getBSONSerializer(User)(object);
-        expect(getBSONDecoder(User)(bson)).toEqual(deserialize(bson));
+        expect(getBSONDecoder(User)(bson)).toEqual(deserialize(Buffer.from(bson)));
         expect(bson).toEqual(serialize(object));
     }
 
@@ -856,7 +856,7 @@ test('reference', () => {
 
         expect(getBSONSizer(updateSchema)(object)).toBe(calculateObjectSize(object));
         const bson = getBSONSerializer(updateSchema)(object);
-        expect(getBSONDecoder(updateSchema)(bson)).toEqual(deserialize(bson));
+        expect(getBSONDecoder(updateSchema)(bson)).toEqual(deserialize(Buffer.from(bson)));
     }
 });
 
@@ -1119,7 +1119,7 @@ test('test object', () => {
         expect(getBSONSizer(schema)(message)).not.toBe(calculateObjectSize(message)); //should bee different, since we do not include `excluded`, but official bson does
         const bson = getBSONSerializer(schema)(message);
 
-        const backOfficial = deserialize(bson);
+        const backOfficial = deserialize(Buffer.from(bson));
         expect(backOfficial.data.excluded).toBe(undefined); //`excluded` should not be part of the BSON
 
         expect(bson).not.toEqual(serialize(message)); //should not be equal, since MyModel does not serialize `excluded`
@@ -1168,7 +1168,7 @@ test('test union deep object', () => {
         expect(getBSONSizer(schema)(message)).not.toBe(calculateObjectSize(message)); //should bee different, since we do not include `excluded`, but official bson does
         const bson = getBSONSerializer(schema)(message);
 
-        const backOfficial = deserialize(bson);
+        const backOfficial = deserialize(Buffer.from(bson));
         expect(backOfficial.data.excluded).toBe(undefined); //`excluded` should not be part of the BSON
 
         expect(bson).not.toEqual(serialize(message)); //should not be equal, since MyModel does not serialize `excluded`

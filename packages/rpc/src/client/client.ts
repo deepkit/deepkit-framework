@@ -133,15 +133,19 @@ export class RpcClientTransporter {
         }
     }
 
-    public async onHandshake(): Promise<Uint8Array> {
-        throw new Error('No handshake implemented');
+    /**
+     * Optional handshake. 
+     * When peer messages are allowed, this needs to request the client id and returns id.
+     */
+    public async onHandshake(): Promise<Uint8Array | undefined> {
+        return undefined;
     }
 
     public async onAuthenticate(): Promise<boolean> {
-        return false;
+        return true;
     }
 
-    public onMessage(buffer: Uint8Array) {
+    public onMessage(message: RpcMessage) {
     }
 
     protected async doConnect(): Promise<void> {
@@ -184,7 +188,8 @@ export class RpcClientTransporter {
                     },
 
                     onMessage: (buffer: Uint8Array) => {
-                        this.onMessage(buffer);
+                        //todo, use RpcMessageReader since data could come in tpc chunks
+                        this.onMessage(readRpcMessage(buffer));
                     },
                 });
             } catch (error) {
@@ -255,7 +260,7 @@ export class RpcClientPeer {
     }
 }
 
-export class RpcClient {
+export class RpcBaseClient {
     protected messageId: number = 1;
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
 
@@ -268,9 +273,105 @@ export class RpcClient {
     ) {
         this.transporter = new RpcClientTransporter(this.transport);
         this.transporter.onMessage = this.onMessage.bind(this);
-        this.transporter.onAuthenticate = this.onAuthenticate.bind(this);
         this.transporter.onHandshake = this.onHandshake.bind(this);
+        this.transporter.onAuthenticate = this.onAuthenticate.bind(this);
     }
+
+    /**
+     * The connection process is only finished when this method returns a boolean.
+     * If false is returned an authentication error is thrown.
+     * 
+     * Use this.sendMessage(type, schema, body, {dontWaitForConnection: true}) during handshake.
+     */
+    protected async onAuthenticate(): Promise<boolean> {
+        return true;
+    }
+
+    /**
+     * Use this.sendMessage(type, schema, body, {dontWaitForConnection: true}) during handshake.
+     */
+    protected async onHandshake(): Promise<Uint8Array | undefined> {
+        return undefined;
+    }
+
+    public getId(): Uint8Array {
+        throw new Error('RpcBaseClient does not load its client id, and thus does not support peer message');
+    }
+
+    protected onMessage(message: RpcMessage) {
+        // console.log('client: received message', message.id, RpcTypes[message.type], message.routeType);
+
+        if (message.type === RpcTypes.Chunk) {
+            //package, wait until complete. retrieve everything, then unpack, and call onMessage() again
+        } else {
+            const callback = this.replies.get(message.id);
+            if (callback) callback(message);
+        }
+    }
+
+    public sendMessage<T>(
+        type: number,
+        schema?: ClassSchema<T>,
+        body?: T,
+        options: {
+            dontWaitForConnection?: boolean,
+            connectionId?: number,
+            peerId?: string,
+            timeout?: number
+        } = {}
+    ): RpcMessageSubject {
+        const id = this.messageId++;
+        const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
+        const dontWaitForConnection = !!(options && options.dontWaitForConnection);
+        const timeout = options && options.timeout ? options.timeout : 0;
+
+        const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
+            if (connectionId === this.transporter.connectionId) {
+                //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
+                // and a new id generated. We want to use the same id.
+                const message = createRpcMessage(id, type, schema, body);
+                this.transporter.send(message);
+            }
+        };
+
+        const subject = new RpcMessageSubject(continuation, () => {
+            this.replies.delete(id);
+        });
+
+        this.replies.set(id, (v: RpcMessage) => subject.next(v));
+
+        if (dontWaitForConnection || this.transporter.isConnected()) {
+            const message = options && options.peerId
+                ? createRpcMessagePeer(id, type, this.getId(), options.peerId, schema, body)
+                : createRpcMessage(id, type, schema, body);
+            this.transporter.send(message);
+        } else {
+            this.transporter.connect().then(
+                () => {
+                    //this.getId() only now available
+                    const message = options && options.peerId
+                        ? createRpcMessagePeer(id, type, this.getId(), options.peerId, schema, body)
+                        : createRpcMessage(id, type, schema, body);
+
+                    this.transporter.send(message);
+                },
+                (e) => subject.next(new ErroredRpcMessage(id, e))
+            );
+        }
+
+        return subject;
+    }
+
+    async connect(): Promise<this> {
+        await this.transporter.connect();
+        return this;
+    }
+}
+
+export class RpcClient extends RpcBaseClient {
+    protected registeredAsPeer?: string;
+    protected kernel?: RpcKernel;
+    protected peerConnections = new Map<string, RpcClientPeer>();
 
     protected async onHandshake(): Promise<Uint8Array> {
         const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, { dontWaitForConnection: true })
@@ -299,13 +400,8 @@ export class RpcClient {
 
     protected peerKernelConnection = new Map<string, any>();
 
-    protected onMessage(buffer: Uint8Array) {
-        const message = readRpcMessage(buffer);
-        // console.log('client: received message', message.id, RpcTypes[message.type], message.routeType);
-
-        if (message.type === RpcTypes.Chunk) {
-            //package, wait until complete. retrieve everything, then unpack, and call onMessage() again
-        } else if (message.routeType === RpcMessageRouteType.peer) {
+    protected onMessage(message: RpcMessage) {
+        if (message.routeType === RpcMessageRouteType.peer) {
             if (!this.kernel) return;
 
             const peerId = message.getPeerId();
@@ -328,15 +424,11 @@ export class RpcClient {
                 this.peerKernelConnection.set(peerId, connection);
             }
 
-            connection.handleMessage(buffer);
+            connection.handleMessage(message.buffer);
         } else {
-            const callback = this.replies.get(message.id);
-            if (callback) callback(message);
+            super.onMessage(message);
         }
     }
-
-    protected registeredAsPeer?: string;
-    protected kernel?: RpcKernel;
 
     public getId(): Uint8Array {
         if (!this.transporter.id) throw new Error('Not fully connected yet');
@@ -365,8 +457,6 @@ export class RpcClient {
             }
         }
     }
-
-    protected peerConnections = new Map<string, RpcClientPeer>();
 
     /**
      * Creates a new peer connection, or re-uses an existing non-disconnected one.
@@ -397,101 +487,4 @@ export class RpcClient {
         }) as any as RemoteController<T>;
     }
 
-    public sendMessage<T>(
-        type: number,
-        schema?: ClassSchema<T>,
-        body?: T,
-        options: {
-            dontWaitForConnection?: boolean,
-            connectionId?: number,
-            peerId?: string,
-            timeout?: number
-        } = {}
-    ): RpcMessageSubject {
-        const id = this.messageId++;
-        const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
-        const dontWaitForConnection = !!(options && options.dontWaitForConnection);
-        const timeout = options && options.timeout ? options.timeout : 0;
-
-        const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
-            if (connectionId === this.transporter.connectionId) {
-                //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
-                // and a new id generated. We want to use the same id.
-                const message = createRpcMessage(id, type, schema, body);
-                this.transporter.send(message);
-            }
-
-            // const nextSubject: RpcMessageSubject = new RpcMessageSubject(continuation);
-            // nextSubject.error(new Error('Connection used in this message subject dropped meanwhile'));
-
-            // return nextSubject;
-        };
-
-        // let timer: any;
-        // if (timeout) {
-        //     timer = setTimeout(() => {
-        //         if (!subject.isStopped) {
-        //             subject.error('Server timed out after ' + timeout + 'seconds');
-        //         }
-        //     }, timeout * 1000);
-        // }
-
-        // const sub = this.transporter.disconnect.subscribe((disconnectedConnectionId: number) => {
-        //     if (disconnectedConnectionId === connectionId) {
-        //         if (!subject.isStopped) {
-        //             subject.error(new OfflineError);
-        //         }
-        //     }
-        // });
-
-        const subject = new RpcMessageSubject(continuation, () => {
-            this.replies.delete(id);
-        });
-
-        this.replies.set(id, (v: RpcMessage) => subject.next(v));
-
-        // this.replies.set(id, (message) => {
-        // if (!subject.isStopped) {
-        //     subject.next(new RpcMessageSubjectReply(message));
-        // }
-        // });
-
-        // const subjectClosed = () => {
-        //     clearTimeout(timer);
-        //     this.replies.delete(id);
-        //     // if (!sub.closed) sub.unsubscribe();
-        // };
-
-        // subject.subscribe({
-        //     next: () => clearTimeout(timer),
-        //     complete: subjectClosed,
-        //     error: subjectClosed
-        // }).add(subjectClosed);
-
-        if (dontWaitForConnection || this.transporter.isConnected()) {
-            const message = options && options.peerId
-                ? createRpcMessagePeer(id, type, this.getId(), options.peerId, schema, body)
-                : createRpcMessage(id, type, schema, body);
-            this.transporter.send(message);
-        } else {
-            this.transporter.connect().then(
-                () => {
-                    //this.getId() only now available
-                    const message = options && options.peerId
-                        ? createRpcMessagePeer(id, type, this.getId(), options.peerId, schema, body)
-                        : createRpcMessage(id, type, schema, body);
-
-                    this.transporter.send(message);
-                },
-                (e) => subject.next(new ErroredRpcMessage(id, e))
-            );
-        }
-
-        return subject;
-    }
-
-    async connect(): Promise<this> {
-        await this.transporter.connect();
-        return this;
-    }
 }

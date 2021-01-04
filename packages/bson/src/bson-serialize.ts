@@ -809,7 +809,7 @@ function getPropertySerializerCode(
         `;
 }
 
-function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object, writer?: Writer) => Buffer {
+function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitStack()): (data: object, writer?: Writer) => Uint8Array {
     const compiler = new CompilerContext();
     const prepared = jitStack.prepare(schema);
     compiler.context.set('_global', getGlobalStore());
@@ -852,7 +852,7 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
  * Note: The instances needs to be in the mongo format already since it does not resolve decorated properties.
  *       So call it with the result of classToMongo(Schema, item).
  */
-export function getBSONSerializer(schema: ClassSchema | ClassType): (data: any, writer?: Writer) => Buffer {
+export function getBSONSerializer(schema: ClassSchema | ClassType): (data: any, writer?: Writer) => Uint8Array {
     schema = getClassSchema(schema);
 
     const jit = schema.jit;

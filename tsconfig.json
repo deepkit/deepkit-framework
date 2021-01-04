@@ -36,6 +36,9 @@
     },
     {
       "path": "packages/angular-universal/tsconfig.json"
+    },
+    {
+      "path": "packages/broker/tsconfig.json"
     }
   ]
 }

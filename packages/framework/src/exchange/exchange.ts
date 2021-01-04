@@ -25,7 +25,6 @@ import WebSocket from 'ws';
 import {inject, injectable} from '../injector/injector';
 import {getBSONDecoder, getBSONSerializer} from '@deepkit/bson';
 import {exchangeConfig} from './exchange.config';
-import { BehaviorSubject } from 'rxjs';
 
 type Callback<T> = (message: T) => void;
 
@@ -51,7 +50,7 @@ export class Exchange {
 
     protected host: ParsedHost = parseHost(this.listen);
 
-    protected usedEntityFieldsSubjects = new Map<string, BehaviorSubject<string[]>>();
+    protected usedEntityFieldsSubjects = new Map<string, string[]>();
 
     constructor(
         @inject(exchangeConfig.token('listen')) protected listen: string,
@@ -129,7 +128,8 @@ export class Exchange {
 
         if (m.type === 'entity-fields') {
             const [entityName, fields] = m.arg;
-            this.getUsedEntityFields(entityName).next(fields);
+            const fieldArray = this.getUsedEntityFields(entityName);
+            fieldArray.splice(0, fieldArray.length, ...fieldArray);
             this.send('ack-entity-fields', true).catch(console.error);
         }
 
@@ -208,12 +208,12 @@ export class Exchange {
         });
     }
 
-    public getUsedEntityFields(classSchema: ClassSchema | string) {
+    public getUsedEntityFields(classSchema: ClassSchema | string): string[] {
         const entityName = 'string' === typeof classSchema ? classSchema : classSchema.getName();
         let subject = this.usedEntityFieldsSubjects.get(entityName);
         if (subject) return subject;
 
-        subject = new BehaviorSubject<string[]>([]);
+        subject = [];
         this.usedEntityFieldsSubjects.set(entityName, subject);
 
         return subject;

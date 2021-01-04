@@ -18,6 +18,7 @@
 
 import { CustomError } from '@deepkit/core';
 import { ClassSchema, ExtractClassType } from '@deepkit/type';
+import { RpcTypes } from '../model';
 import { RpcMessage } from '../protocol';
 
 export class UnexpectedMessageType extends CustomError {
@@ -56,27 +57,52 @@ export class RpcMessageSubject {
         type: number,
         schema?: ClassSchema<T>,
         body?: T,
-    ) {
+    ): this {
         this.continuation(type, schema, body);
+        return this;
     }
 
-    // async firstOrUndefinedThenClose(): Promise<RpcMessageSubjectReply | undefined> {
-    //     if (this.closed) {
-    //         return undefined;
-    //     }
+    async ackThenClose(): Promise<undefined> {
+        return new Promise<undefined>((resolve, reject) => {
+            this.onReplyCallback = (next) => {
+                this.release();
 
-    //     return new Promise<RpcMessageSubjectReply | undefined>((resolve) => {
-    //         this.pipe(first()).subscribe((next) => {
-    //             resolve(next);
-    //         }, (error) => {
-    //             resolve(undefined);
-    //         }, () => {
-    //             //complete
-    //         }).add(() => {
-    //             this.complete();
-    //         });
-    //     });
-    // }
+                if (next.type === RpcTypes.Ack) {
+                    return resolve(undefined);
+                }
+
+                if (next.isError()) {
+                    return reject(next.getError());
+                }
+
+                reject(new UnexpectedMessageType(`Expected message type Ack, but received ${next.type}`));
+            };
+        });
+    }
+
+    async waitNextMessage<T extends ClassSchema>(): Promise<RpcMessage> {
+        return new Promise<any>((resolve, reject) => {
+            this.onReplyCallback = (next) => {
+                return resolve(next);
+            };
+        });
+    }
+
+    async waitNext<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
+        return new Promise<any>((resolve, reject) => {
+            this.onReplyCallback = (next) => {
+                if (next.type === type) {
+                    return resolve(schema ? next.parseBody(schema) : undefined);
+                }
+
+                if (next.isError()) {
+                    return reject(next.getError());
+                }
+
+                reject(new UnexpectedMessageType(`Expected message type ${type}, but received ${next.type}`));
+            };
+        });
+    }
 
     async firstThenClose<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
         return new Promise<any>((resolve, reject) => {

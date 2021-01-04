@@ -14,6 +14,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {
+    "@deepkit/broker": "^1.0.1-alpha.0",
     "@deepkit/bson": "^1.0.1-alpha.0",
     "@deepkit/core": "^1.0.1-alpha.0",
     "@deepkit/framework": "^1.0.1-alpha.0",

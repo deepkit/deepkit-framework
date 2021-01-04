@@ -141,7 +141,7 @@ export class ProcessLocker {
         return;
     }
 
-    public async isLocked(id: string): Promise<boolean> {
+    public isLocked(id: string): boolean {
         return !!LOCKS[id];
     }
 }
