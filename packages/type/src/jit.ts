@@ -99,6 +99,7 @@ export interface JitConverterOptions {
     /**
      * Which groups to include. If a property is not assigned to
      * a given group, it will be excluded.
+     * Use an empty array to include only non-grouped properties.
      */
     groups?: string[];
 
@@ -106,6 +107,7 @@ export interface JitConverterOptions {
      * Which groups to exclude. If a property is assigned to at least
      * one given group, it will be excluded. Basically the opposite of
      * `groups`, but you can combine both.
+     * Use an empty array to exclude only non-grouped properties.
      */
     groupsExclude?: string[];
 
@@ -228,17 +230,23 @@ export class ToClassState {
 function isGroupAllowed(options: JitConverterOptions, groupNames: string[]): boolean {
     if (!options.groups && !options.groupsExclude) return true;
 
-    if (options.groupsExclude && options.groupsExclude.length) {
-        for (const groupName of groupNames) {
-            if (options.groupsExclude.includes(groupName)) {
+    if (options.groupsExclude) {
+        if (options.groupsExclude.length === 0 && groupNames.length === 0) {
+            return false;
+        }
+        for (const group of options.groupsExclude) {
+            if (groupNames.includes(group)) {
                 return false;
             }
         }
     }
 
-    if (options.groups && options.groups.length) {
-        for (const groupName of groupNames) {
-            if (options.groups.includes(groupName)) {
+    if (options.groups) {
+        if (options.groups.length === 0 && groupNames.length === 0) {
+            return true;
+        }
+        for (const group of options.groups) {
+            if (groupNames.includes(group)) {
                 return true;
             }
         }

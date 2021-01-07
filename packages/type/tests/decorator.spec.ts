@@ -499,6 +499,16 @@ test('group', () => {
     }
 
     {
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: []});
+        expect(Object.keys(plain)).toEqual(['username', 'foo']);
+    }
+
+    {
+        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: []});
+        expect(Object.keys(plain)).toEqual(['password', 'config']);
+    }
+
+    {
         const plain = jsonSerializer.for(User).partialSerialize(user, {groups: ['confidential']});
         expect(Object.keys(plain)).toEqual(['password']);
     }

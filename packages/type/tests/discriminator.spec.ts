@@ -1,6 +1,7 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jsonSerializer, PropertySchema, t, validate} from '../index';
+import { jsonTypeGuards } from '../src/json-typeguards';
+import { getClassSchema, getSortedUnionTypes, jsonSerializer, PropertySchema, t, validate } from '../index';
 
 class ConfigA {
     @t.literal('a').discriminant
@@ -48,6 +49,32 @@ test('test discriminator schema', () => {
     expect(schemaConfigA.getProperty('myValue').isDiscriminant).toBe(false);
     expect(schemaConfigA.getProperty('myValue').isArray).toBe(false);
     expect(schemaConfigA.getProperty('myValue').type).toBe('string');
+
+    {
+        const b = getClassSchema(ConfigB);
+        expect(b.discriminant).toBe('kind');
+        const clone = b.clone();
+        expect(clone.discriminant).toBe(b.discriminant);
+        expect(b.getProperty('kind').isDiscriminant).toBe(true);
+        expect(b.getProperty('kind').type).toBe('literal');
+        expect(clone.getProperty('kind').isDiscriminant).toBe(true);
+        expect(clone.getProperty('kind').type).toBe('literal');
+    }
+
+    {
+        const config = schema.getProperty('config');
+        getSortedUnionTypes(config, jsonTypeGuards);
+
+        const a = getClassSchema(ConfigA);
+        const b = getClassSchema(ConfigB);
+        const u1 = t.union(a, b).buildPropertySchema();
+        expect(u1.templateArgs[1].getResolvedClassSchema().discriminant).toBe('kind');
+        getSortedUnionTypes(u1, jsonTypeGuards);
+
+        const u2 = t.union(a, b.clone()).buildPropertySchema();
+        expect(u2.templateArgs[1].getResolvedClassSchema().discriminant).toBe('kind');
+        getSortedUnionTypes(u2, jsonTypeGuards);
+    }
 });
 
 test('test discriminator class to plain', () => {
@@ -71,13 +98,13 @@ test('test discriminator class to plain', () => {
 
 test('test discriminator plain to class', () => {
     {
-        const plain = {config: {kind: 'a', myValue: 'abc'}};
+        const plain = { config: { kind: 'a', myValue: 'abc' } };
         const user = jsonSerializer.for(User).deserialize(plain);
         expect(user.config).toBeInstanceOf(ConfigA);
     }
 
     {
-        const plain = {config: {kind: 'b', myValue2: 'cdf'}};
+        const plain = { config: { kind: 'b', myValue2: 'cdf' } };
         const user = jsonSerializer.for(User).deserialize(plain);
         expect(user.config).toBeInstanceOf(ConfigB);
     }
@@ -142,38 +169,38 @@ test('test discriminator in map', () => {
 
 test('test discriminator validation', () => {
     {
-        const plain = {config: {kind: 'a', myValue: 'abc'}};
+        const plain = { config: { kind: 'a', myValue: 'abc' } };
         expect(validate(User, plain)).toEqual([]);
     }
 
     {
-        const plain = {config: {kind: 'b', myValue2: 'cdf'}};
+        const plain = { config: { kind: 'b', myValue2: 'cdf' } };
         expect(validate(User, plain)).toEqual([]);
     }
 
     {
-        const plain = {config: {kind: 'c', moep: 'nope'}};
+        const plain = { config: { kind: 'c', moep: 'nope' } };
         expect(validate(User, plain)).toEqual([
-            {code: 'invalid_union', message: 'No compatible type for union found', path: 'config'}
+            { code: 'invalid_union', message: 'No compatible type for union found', path: 'config' }
         ]);
     }
 });
 
 test('test discriminator validation in array', () => {
     {
-        const plain = {configs: [{kind: 'a', myValue: 'abc'}]};
+        const plain = { configs: [{ kind: 'a', myValue: 'abc' }] };
         expect(validate(UserWithConfigArray, plain)).toEqual([]);
     }
 
     {
-        const plain = {configs: [{kind: 'b', myValue: 'cdf'}]};
+        const plain = { configs: [{ kind: 'b', myValue: 'cdf' }] };
         expect(validate(UserWithConfigArray, plain)).toEqual([]);
     }
 
     {
-        const plain = {configs: [{kind: 'c', nope: 'nope'}]};
+        const plain = { configs: [{ kind: 'c', nope: 'nope' }] };
         expect(validate(UserWithConfigArray, plain)).toEqual([
-            {code: 'invalid_union', message: 'No compatible type for union found', path: 'configs.0'}
+            { code: 'invalid_union', message: 'No compatible type for union found', path: 'configs.0' }
         ]);
     }
 });

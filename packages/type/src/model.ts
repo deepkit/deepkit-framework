@@ -514,6 +514,7 @@ export class PropertySchema {
         for (const i of eachKey(this)) {
             (s as any)[i] = (this as any)[i];
         }
+        s.classTypeResolved = undefined;
         return s;
     }
 
@@ -758,11 +759,15 @@ export class ClassSchema<T = any> {
     }
 
     public clone(classType?: ClassType): ClassSchema {
-        const s = new ClassSchema(classType || class { });
+        classType ||= class {};
+        const s = new ClassSchema(classType);
+        classType.prototype[classSchemaSymbol] = s;
+        s.name = this.name;
         s.name = this.name;
         s.collectionName = this.collectionName;
         s.databaseSchemaName = this.databaseSchemaName;
         s.decorator = this.decorator;
+        s.discriminant = this.discriminant;
 
         s.classProperties = new Map();
         for (const [i, v] of this.classProperties.entries()) {
