@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema} from '@deepkit/type';
-import {Subject} from 'rxjs';
-import {ClassType, empty} from '@deepkit/core';
-import {FieldName, FlattenIfArray} from './utils';
-import {DatabaseSession} from './database-session';
-import {DatabaseAdapter} from './database';
-import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent} from './event';
-import {Changes, ChangesInterface} from './changes';
-import {DeleteResult, Entity, PatchResult} from './type';
-import {getSimplePrimaryKeyHashGenerator} from './converter';
+import { ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
+import { Subject } from 'rxjs';
+import { ClassType, empty } from '@deepkit/core';
+import { FieldName, FlattenIfArray } from './utils';
+import { DatabaseSession } from './database-session';
+import { DatabaseAdapter } from './database';
+import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
+import { Changes, ChangesInterface } from './changes';
+import { DeleteResult, Entity, PatchResult } from './type';
+import { getSimplePrimaryKeyHashGenerator } from './converter';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -107,7 +107,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
         return this.limit !== undefined || this.skip !== undefined;
     }
 
-    clone(parentQuery?: BaseQuery<T>): this {
+    clone(parentQuery: BaseQuery<T>): this {
         const constructor = this.constructor as ClassType<this>;
         const m = new constructor();
         m.filter = this.filter;
@@ -127,8 +127,8 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
 
         m.skip = this.skip;
         m.limit = this.limit;
-        m.parameters = {...this.parameters};
-        m.sort = this.sort ? {...this.sort} : undefined;
+        m.parameters = { ...this.parameters };
+        m.sort = this.sort ? { ...this.sort } : undefined;
 
         return m;
     }
@@ -160,6 +160,10 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
 export class ItemNotFound extends Error {
 }
 
+export interface QueryClassType<T> {
+    create(query: BaseQuery<any>): QueryClassType<T>;
+}
+
 export class BaseQuery<T extends Entity> {
     public format: 'class' | 'json' | 'raw' = 'class';
 
@@ -177,25 +181,25 @@ export class BaseQuery<T extends Entity> {
     select(...fields: FieldName<T>[]): this;
     select(fields: string[] | (FieldName<T>)[]): this;
     select(fields: string[] | FieldName<T>[] | FieldName<T>, ...moreFields: FieldName<T>[]): this {
+        const c = this.clone();
         if ('string' === typeof fields) {
-            this.model.select = new Set([fields as string, ...(moreFields as string[])]);
+            c.model.select = new Set([fields as string, ...(moreFields as string[])]);
         } else {
-            this.model.select = new Set([...fields as string[], ...(moreFields as string[])]);
+            c.model.select = new Set([...fields as string[], ...(moreFields as string[])]);
         }
-        this.model.changed();
-        return this;
+        return c;
     }
 
     skip(value?: number): this {
-        this.model.skip = value;
-        this.model.changed();
-        return this;
+        const c = this.clone();
+        c.model.skip = value;
+        return c;
     }
 
     itemsPerPage(value: number): this {
-        this.model.itemsPerPage = value;
-        this.model.changed();
-        return this;
+        const c = this.clone();
+        c.model.itemsPerPage = value;
+        return c;
     }
 
     /**
@@ -203,29 +207,29 @@ export class BaseQuery<T extends Entity> {
      * Make sure to call itemsPerPage() before you call page.
      */
     page(page: number): this {
-        const skip = (page * this.model.itemsPerPage) - this.model.itemsPerPage;
-        this.model.skip = skip;
-        this.model.limit = this.model.itemsPerPage;
-        this.model.changed();
-        return this;
+        const c = this.clone();
+        const skip = (page * c.model.itemsPerPage) - c.model.itemsPerPage;
+        c.model.skip = skip;
+        c.model.limit = c.model.itemsPerPage;
+        return c;
     }
 
     limit(value?: number): this {
-        this.model.limit = value;
-        this.model.changed();
-        return this;
+        const c = this.clone();
+        c.model.limit = value;
+        return c;
     }
 
     parameter(name: string, value: any): this {
-        this.model.parameters[name] = value;
-        this.model.changed();
-        return this;
+        const c = this.clone();
+        c.model.parameters[name] = value;
+        return c;
     }
 
     parameters(parameters: { [name: string]: any }): this {
-        this.model.parameters = parameters;
-        this.model.changed();
-        return this;
+        const c = this.clone();
+        c.model.parameters = parameters;
+        return c;
     }
 
     /**
@@ -236,27 +240,52 @@ export class BaseQuery<T extends Entity> {
      * This disabled entity tracking, forcing always to create new entity instances.
      */
     disableIdentityMap(): this {
-        this.model.withIdentityMap = false;
-        return this;
+        const c = this.clone();
+        c.model.withIdentityMap = false;
+        return c;
     }
 
+    // use(query: QueryClassType): ReturnType<typeof query['create']> {
+    //     return query.create(this);
+    // }
+
+
+    // use2(query: { create: <T>() => T }): ReturnType<typeof query['create']> {
+    //     return query.create(this);
+
+    //     interface P<T> {
+    //         create(): T
+    //     }
+
+    //     interface P2<T> {
+    //         create(): P<T>
+    //     }
+    // }
+
     filter(filter?: this['model']['filter'] | T): this {
+        const c = this.clone();
         if (filter && !Object.keys(filter as object).length) filter = undefined;
 
         if (filter instanceof this.classSchema.classType) {
             const primaryKey = this.classSchema.getPrimaryField();
-            this.model.filter = {[primaryKey.name]: filter[primaryKey.name as FieldName<T>]} as this['model']['filter'];
+            c.model.filter = { [primaryKey.name]: filter[primaryKey.name as FieldName<T>] } as this['model']['filter'];
         } else {
-            this.model.filter = filter;
+            c.model.filter = filter;
         }
-        this.model.changed();
-        return this;
+        return c;
+    }
+
+    addFilter<K extends keyof T & string>(name: K, value: FilterQuery<T>[K]): this {
+        const c = this.clone();
+        if (!c.model.filter) c.model.filter = {};
+        c.model.filter[name] = value;
+        return c;
     }
 
     sort(sort?: this['model']['sort']): this {
-        this.model.sort = sort;
-        this.model.changed();
-        return this;
+        const c = this.clone();
+        c.model.sort = sort;
+        return c;
     }
 
     clone(): this {
@@ -275,17 +304,17 @@ export class BaseQuery<T extends Entity> {
         if (!propertySchema.isReference && !propertySchema.backReference) {
             throw new Error(`Field ${field} is not marked as reference. Use @f.reference()`);
         }
+        const c = this.clone();
 
-        const query = new JoinDatabaseQuery<ENTITY, this>(propertySchema.getResolvedClassSchema(), this);
-        query.model.parameters = this.model.parameters;
+        const query = new JoinDatabaseQuery<ENTITY, this>(propertySchema.getResolvedClassSchema(), c, field as string);
+        query.model.parameters = c.model.parameters;
 
-        this.model.joins.push({
+        c.model.joins.push({
             propertySchema, query, populate, type,
             foreignPrimaryKey: propertySchema.getResolvedClassSchema().getPrimaryField(),
             classSchema: this.classSchema,
         });
-        this.model.changed();
-        return this;
+        return c;
     }
 
     /**
@@ -294,8 +323,8 @@ export class BaseQuery<T extends Entity> {
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        this.join(field, 'left');
-        return this.model.joins[this.model.joins.length - 1].query;
+        const c = this.join(field, 'left');
+        return c.model.joins[c.model.joins.length - 1].query;
     }
 
     /**
@@ -310,8 +339,8 @@ export class BaseQuery<T extends Entity> {
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useJoinWith<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        this.join(field, 'left', true);
-        return this.model.joins[this.model.joins.length - 1].query;
+        const c = this.join(field, 'left', true);
+        return c.model.joins[c.model.joins.length - 1].query;
     }
 
     getJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
@@ -333,8 +362,8 @@ export class BaseQuery<T extends Entity> {
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useInnerJoinWith<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        this.join(field, 'inner', true);
-        return this.model.joins[this.model.joins.length - 1].query;
+        const c = this.join(field, 'inner', true);
+        return c.model.joins[c.model.joins.length - 1].query;
     }
 
     /**
@@ -351,8 +380,8 @@ export class BaseQuery<T extends Entity> {
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useInnerJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        this.join(field, 'inner');
-        return this.model.joins[this.model.joins.length - 1].query;
+        const c = this.join(field, 'inner');
+        return c.model.joins[c.model.joins.length - 1].query;
     }
 }
 
@@ -382,50 +411,71 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
  * All query implementations should extend this since db agnostic consumers are probably
  * coded against this interface via Database<DatabaseAdapter> which uses this GenericQuery.
  */
-export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQueryResolver<T, DatabaseAdapter, DatabaseQueryModel<T>> = GenericQueryResolver<T, DatabaseAdapter, DatabaseQueryModel<T>>> extends BaseQuery<T> {
-    protected abstract resolver: RESOLVER;
-
-    constructor(classSchema: ClassSchema<T>, protected databaseSession: DatabaseSession<DatabaseAdapter>) {
+export class GenericQuery<T extends Entity> extends BaseQuery<T> {
+    item!: T;
+    
+    constructor(
+        classSchema: ClassSchema<T>,
+        protected databaseSession: DatabaseSession<DatabaseAdapter>,
+        protected resolver: GenericQueryResolver<T>
+    ) {
         super(classSchema);
     }
 
+    static create<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): InstanceType<T> & B {
+        const result = (new this(base.classSchema, base.databaseSession, base.resolver)) as InstanceType<T> & B;
+        result.model = base.model.clone(result);
+        result.format = base.format;
+        return result;
+    }
+
+    protected async callQueryEvent(): Promise<this> {
+        const hasEvents = this.databaseSession.queryEmitter.onFetch.hasSubscriptions();
+        if (!hasEvents) return this;
+
+        const event = new QueryDatabaseEvent(this.databaseSession, this.classSchema, this);
+        await this.databaseSession.queryEmitter.onFetch.emit(event);
+        return event.query as this;
+    }
+
     clone(): this {
-        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession);
+        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.resolver);
         cloned.model = this.model.clone(cloned) as this['model'];
         cloned.format = this.format;
-        cloned.resolver = this.resolver;
         return cloned;
     }
 
     public async count(): Promise<number> {
-        return this.resolver.count(this.model);
+        const query = await this.callQueryEvent();
+        return await query.resolver.count(query.model);
     }
 
     public async find(): Promise<T[]> {
-        return this.resolver.find(this.model);
+        const query = await this.callQueryEvent();
+        return await query.resolver.find(query.model);
     }
 
     public async findOneOrUndefined(): Promise<T | undefined> {
-        return this.resolver.findOneOrUndefined(this.model);
+        const query = await this.callQueryEvent();
+        return await query.resolver.findOneOrUndefined(query.model);
     }
 
     public async findOne(): Promise<T> {
-        const item = await this.resolver.findOneOrUndefined(this.model);
+        const query = await this.callQueryEvent();
+        const item = await query.resolver.findOneOrUndefined(query.model);
         if (!item) throw new ItemNotFound('Item not found');
         return item;
     }
 
     public async deleteMany(): Promise<DeleteResult<T>> {
-        return this.delete(this.model);
+        return this.delete(this);
     }
 
     public async deleteOne(): Promise<DeleteResult<T>> {
-        const model = this.model.clone();
-        model.limit = 1;
-        return this.delete(model);
+        return this.delete(this.limit(1));
     }
 
-    protected async delete(model: this['model']): Promise<DeleteResult<T>> {
+    protected async delete(query: this): Promise<DeleteResult<T>> {
         const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions();
 
         const deleteResult: DeleteResult<T> = {
@@ -434,18 +484,19 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
         };
 
         if (!hasEvents) {
-            await this.resolver.delete(model, deleteResult);
+            await this.resolver.delete(query.model, deleteResult);
             this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
             return deleteResult;
         }
-        const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, deleteResult);
+        const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, query, deleteResult);
 
         if (this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions()) {
             await this.databaseSession.queryEmitter.onDeletePre.emit(event);
             if (event.stopped) return deleteResult;
         }
 
-        await this.resolver.delete(model, deleteResult);
+        //whe need to use event.query in case someone overwrite it
+        await event.query.resolver.delete(event.query.model, deleteResult);
         this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
 
         if (deleteResult.primaryKeys.length && this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions()) {
@@ -457,16 +508,14 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
     }
 
     public async patchMany(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
-        return this.patch(this.model, patch);
+        return this.patch(this, patch);
     }
 
     public async patchOne(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
-        const model = this.model.clone();
-        model.limit = 1;
-        return this.patch(model, patch);
+        return this.patch(this.limit(1), patch);
     }
 
-    protected async patch(model: this['model'], patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+    protected async patch(query: this, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
         const changes: Changes<T> = new Changes<T>({
             $set: (patch as Changes<T>).$set || {},
             $inc: (patch as Changes<T>).$inc,
@@ -487,22 +536,23 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
 
         const hasEvents = this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions() || this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions();
         if (!hasEvents) {
-            await this.resolver.patch(model, changes, patchResult);
+            await this.resolver.patch(query.model, changes, patchResult);
             return patchResult;
         }
 
-        const event = new QueryDatabasePatchEvent<T>(this.databaseSession, this.classSchema, changes, patchResult);
+        const event = new QueryDatabasePatchEvent<T>(this.databaseSession, this.classSchema, query, changes, patchResult);
         if (this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions()) {
             await this.databaseSession.queryEmitter.onPatchPre.emit(event);
             if (event.stopped) return patchResult;
         }
 
         for (const field of event.returning) {
-            if (!model.returning.includes(field)) model.returning.push(field);
+            if (!event.query.model.returning.includes(field)) event.query.model.returning.push(field);
         }
-        model.returning.push(...event.returning);
+        event.query.model.returning.push(...event.returning);
 
-        await this.resolver.patch(model, changes, patchResult);
+        //whe need to use event.query in case someone overwrite it
+        await event.query.resolver.patch(event.query.model, changes, patchResult);
 
         const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
         for (let i = 0; i < patchResult.primaryKeys.length; i++) {
@@ -565,20 +615,24 @@ export abstract class GenericQuery<T extends Entity, RESOLVER extends GenericQue
 export class JoinDatabaseQuery<T extends Entity, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
     constructor(
         public readonly foreignClassSchema: ClassSchema,
-        public readonly parentQuery?: PARENT,
+        public parentQuery?: PARENT,
+        public field?: string,
     ) {
         super(foreignClassSchema);
-        if (parentQuery) this.model.change.subscribe(parentQuery.model.change);
     }
 
     clone(parentQuery?: PARENT): this {
-        const query: this = new (this['constructor'] as ClassType<this>)(this.foreignClassSchema, parentQuery);
-        query.model = this.model.clone(query);
-        return query;
+        const c = super.clone();
+        c.parentQuery = parentQuery || this.parentQuery;
+        c.field = this.field;
+        return c;
     }
 
     end(): PARENT {
         if (!this.parentQuery) throw new Error('Join has no parent query');
+        if (!this.field) throw new Error('Join has no field');
+        //the parentQuery has not the updated JoinDatabaseQuery stuff, we need to move it now to there
+        this.parentQuery.getJoin(this.field).model = this.model;
         return this.parentQuery;
     }
 }

@@ -251,16 +251,14 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 }
 
-export class SQLDatabaseQuery<T extends Entity> extends GenericQuery<T, SQLQueryResolver<T>> {
-    protected resolver = new SQLQueryResolver(this.connectionPool, this.platform, this.classSchema, this.databaseSession);
-
+export class SQLDatabaseQuery<T extends Entity> extends GenericQuery<T> {
     constructor(
         classSchema: ClassSchema<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
     ) {
-        super(classSchema, databaseSession);
+        super(classSchema, databaseSession, new SQLQueryResolver(connectionPool, platform, classSchema, databaseSession));
         if (!databaseSession.withIdentityMap) this.disableIdentityMap();
     }
 

@@ -21,6 +21,7 @@
     "@deepkit/core": "^1.0.1-alpha.1",
     "@deepkit/topsort": "^1.0.1-alpha.1",
     "@deepkit/type": "^1.0.1-alpha.1",
+    "sift": "^7.0.1",
     "sqlstring": "^2.3.2"
   },
   "devDependencies": {

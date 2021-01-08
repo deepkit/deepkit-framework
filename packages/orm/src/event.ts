@@ -17,11 +17,12 @@
  */
 
 import {AsyncEmitterEvent, AsyncEventEmitter, ClassType} from '@deepkit/core';
-import {ClassSchema} from '@deepkit/type';
+import {ClassSchema, ExtractPrimaryKeyType, PrimaryKey} from '@deepkit/type';
 import {DatabasePersistenceChangeSet} from './database';
 import {DatabaseSession} from './database-session';
 import {Changes} from './changes';
 import {DeleteResult, PatchResult} from './type';
+import { GenericQuery } from './query';
 
 export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     constructor(
@@ -34,6 +35,15 @@ export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
 
     isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is UnitOfWorkEvent<T> {
         return this.classSchema.isSchemaOf(classTypeOrSchema);
+    }
+
+    getPrimaryKeys(): ExtractPrimaryKeyType<T>[] {
+        const ids: ExtractPrimaryKeyType<T>[] = [];
+        const primaryKeyField = this.classSchema.getPrimaryFieldName();
+        for (const item of this.items) {
+            ids.push(item[primaryKeyField] as any);
+        }
+        return ids;
     }
 }
 
@@ -69,10 +79,25 @@ export class UnitOfWorkDatabaseEmitter {
     }
 }
 
+export class QueryDatabaseEvent<T> extends AsyncEmitterEvent {
+    constructor(
+        public readonly databaseSession: DatabaseSession<any>,
+        public readonly classSchema: ClassSchema<T>,
+        public query: GenericQuery<T>
+    ) {
+        super()
+    }
+
+    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseDeleteEvent<T> {
+        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    }
+}
+
 export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
+        public query: GenericQuery<T>,
         public readonly deleteResult: DeleteResult<T>
     ) {
         super()
@@ -89,6 +114,7 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
+        public query: GenericQuery<T>,
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>
     ) {
@@ -101,6 +127,11 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
 }
 
 export class QueryDatabaseEmitter {
+    /** 
+     * For all queries related to fetching data like: find, findOne, count, has.
+    */
+    public readonly onFetch: AsyncEventEmitter<QueryDatabaseEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
+
     public readonly onDeletePre: AsyncEventEmitter<QueryDatabaseDeleteEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
     public readonly onDeletePost: AsyncEventEmitter<QueryDatabaseDeleteEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePost);
 

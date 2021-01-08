@@ -453,7 +453,7 @@ test('hasMethod and templateArgs', () => {
     expect(s.hasMethod('foo')).toBe(false);
     expect(s.hasMethod('foo2')).toBe(true);
     expect(s.hasMethod('foo3')).toBe(true);
-    expect(s.hasMethod('foo4')).toBe(false);
+    expect(s.hasMethod('foo4')).toBe(true);
 
     expect(s.getMethod('foo3').getTemplateArg(0)!.type).toBe('boolean');
     expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
@@ -615,7 +615,7 @@ test('set array result', () => {
     }
 
     {
-        expect(s.getMethod('items2')).toBeUndefined();
+        expect(s.getMethod('items2').classType).toBe(Promise);
     }
 
     {

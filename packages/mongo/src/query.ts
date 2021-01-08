@@ -22,12 +22,9 @@ import {MongoQueryResolver} from './query.resolver';
 import {ClassSchema} from '@deepkit/type';
 
 export class MongoDatabaseQuery<T extends Entity,
-    MODEL extends MongoQueryModel<T> = MongoQueryModel<T>> extends GenericQuery<T, MongoQueryResolver<T>> {
-    protected resolver = new MongoQueryResolver(this.classSchema, this.databaseSession);
-
+    MODEL extends MongoQueryModel<T> = MongoQueryModel<T>> extends GenericQuery<T> {
     constructor(classSchema: ClassSchema<T>, protected databaseSession: DatabaseSession<any>) {
-        super(classSchema, databaseSession);
+        super(classSchema, databaseSession, new MongoQueryResolver(classSchema, databaseSession));
         if (!databaseSession.withIdentityMap) this.disableIdentityMap();
     }
-
 }

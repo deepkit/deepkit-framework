@@ -334,10 +334,24 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: 1 } = {};
 
-        if (changes.$set) for (const i in changes.$set) {
-            if (!changes.$set.hasOwnProperty(i)) continue;
+        const scopeSerializer = this.platform.serializer.for(this.classSchema);
+        const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
+        const set: string[] = [];
+
+        if ($set) for (const i in $set) {
+            if (!$set.hasOwnProperty(i)) continue;
+            if ($set[i] === undefined || $set[i] === null) {
+            set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
+            } else {
+                fieldsSet[i] = 1;
+                select.push(`${this.platform.quoteValue($set[i])} as ${this.platform.quoteIdentifier(i)}`);
+            }
+        }
+
+        if (changes.$unset) for (const i in changes.$unset) {
+            if (!changes.$unset.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            select.push(this.platform.quoteIdentifier(i));
+            select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
@@ -347,7 +361,6 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
-        const set: string[] = [];
         for (const i in fieldsSet) {
             set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
         }

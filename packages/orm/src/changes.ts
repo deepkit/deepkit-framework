@@ -22,17 +22,17 @@ import {inspect} from 'util';
 export type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T]
 export type Expression<T> = { [P in keyof T & string]?: string; }
 export type Partial<T> = { [P in keyof T & string]?: T[P] }
-export type Unset<T> = { [P in keyof T & string]?: 1 | 0 }
+// export type Unset<T> = { [P in keyof T & string]?: number }
 
 export interface ChangesInterface<T> {
     $set?: Partial<T> | T;
-    $unset?: Unset<T>;
+    $unset?: { [path: string]: number };
     $inc?: Partial<Pick<T, NumberFields<T>>>;
 }
 
 export class Changes<T> {
     $set?: Partial<T> | T;
-    $unset?: Unset<T>;
+    $unset?: { [path: string]: number };
     $inc?: Partial<Pick<T, NumberFields<T>>>;
     empty = true;
 

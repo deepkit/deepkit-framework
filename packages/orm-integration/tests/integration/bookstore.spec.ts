@@ -1,12 +1,12 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {entity, getClassSchema, t} from '@deepkit/type';
-import {createEnvSetup} from './setup';
-import {User} from './user';
-import {UserCredentials} from './user-credentials';
-import {SQLitePlatform} from '@deepkit/sql';
-import {atomicChange, getInstanceState} from '@deepkit/orm';
-import {isArray} from '@deepkit/core';
+import { entity, getClassSchema, t } from '@deepkit/type';
+import { createEnvSetup } from './setup';
+import { User } from './user';
+import { UserCredentials } from './user-credentials';
+import { SQLitePlatform } from '@deepkit/sql';
+import { atomicChange, getInstanceState } from '@deepkit/orm';
+import { isArray } from '@deepkit/core';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
@@ -130,11 +130,11 @@ test('basics', async () => {
 
     {
         const session = database.createSession();
-        const peter = await session.query(User).filter({name: 'Peter'}).findOne();
+        const peter = await session.query(User).filter({ name: 'Peter' }).findOne();
         expect(peter).toBeInstanceOf(User);
         expect(peter.name).toBe('Peter');
 
-        const books = await session.query(Book).filter({author: peter}).find();
+        const books = await session.query(Book).filter({ author: peter }).find();
         expect(books.length).toBe(1);
         const book = books[0];
         expect(book).toBeInstanceOf(Book);
@@ -145,7 +145,7 @@ test('basics', async () => {
     {
         const session = database.createSession();
         const ref = session.getReference(User, 1);
-        const books = await session.query(Book).filter({author: ref}).find();
+        const books = await session.query(Book).filter({ author: ref }).find();
         expect(books.length).toBe(1);
         const book = books[0];
         expect(book.author).toBe(ref);
@@ -164,11 +164,11 @@ test('basics', async () => {
 
     {
         const session = database.createSession();
-        const peter = await session.query(User).filter({name: 'Peter'}).findOne();
+        const peter = await session.query(User).filter({ name: 'Peter' }).findOne();
         session.remove(peter);
 
         await session.commit();
-        expect(await session.query(User).filter({name: 'Peter'}).has()).toBe(false);
+        expect(await session.query(User).filter({ name: 'Peter' }).has()).toBe(false);
         expect(await session.query(User).count()).toBe(1);
 
         //cascade foreign key deletes also the book
@@ -195,7 +195,7 @@ test('sub documents', async () => {
     await session.commit();
 
     {
-        const book1DB = await database.query(Book).filter({author: peter}).findOne();
+        const book1DB = await database.query(Book).filter({ author: peter }).findOne();
         expect(book1DB.title).toBe('Peters book');
         expect(book1DB.moderation === book1.moderation).toBe(false);
         expect(book1DB.moderation).toBeInstanceOf(BookModeration);
@@ -203,7 +203,7 @@ test('sub documents', async () => {
     }
 
     {
-        const book2DB = await database.query(Book).filter({author: herbert}).findOne();
+        const book2DB = await database.query(Book).filter({ author: herbert }).findOne();
         expect(book2DB.title).toBe('Herberts book');
         expect(book2DB.moderation).toBeInstanceOf(BookModeration);
         expect(book2DB.moderation.locked).toBe(false);
@@ -211,7 +211,7 @@ test('sub documents', async () => {
     }
 
     {
-        const books = await database.query(Book).filter({'moderation.locked': true}).find();
+        const books = await database.query(Book).filter({ 'moderation.locked': true }).find();
         expect(books.length).toBe(1);
     }
 });
@@ -269,14 +269,16 @@ test('user account', async () => {
 
     {
         const session = database.createSession();
-        const user1 = await session.query(User).filter({name: 'peter'}).useInnerJoinWith('credentials').filter({password: 'secret1'}).end().findOne();
+        const user1 = await session.query(User).filter({ name: 'peter' }).useInnerJoinWith('credentials').filter({ password: 'secret1' }).end().findOne();
         expect(user1.id).toBe(1);
         expect(user1.credentials!.password).toBe('secret1');
 
-        const userWrongPw = await session.query(User).filter({name: 'peter'}).useInnerJoinWith('credentials').filter({password: 'wrongPassword'}).end().findOneOrUndefined();
+        const query = session.query(User).filter({ name: 'peter' }).useInnerJoinWith('credentials').filter({ password: 'wrongPassword' }).end();
+        expect(query.getJoin('credentials').model.filter).toEqual({ password: 'wrongPassword' });
+        const userWrongPw = await query.findOneOrUndefined();
         expect(userWrongPw).toBeUndefined();
 
-        const userWrongPwButLeftJoin = await session.query(User).filter({name: 'peter'}).useJoinWith('credentials').filter({password: 'wrongPassword'}).end().findOne();
+        const userWrongPwButLeftJoin = await session.query(User).filter({ name: 'peter' }).useJoinWith('credentials').filter({ password: 'wrongPassword' }).end().findOne();
         expect(userWrongPwButLeftJoin.id).toBe(1);
         expect(userWrongPwButLeftJoin.credentials).toBeUndefined();
     }
@@ -367,13 +369,25 @@ test('events', async () => {
         await session.commit();
         expect(user.version).toBe(2);
 
-        await session.query(User).filter(user).patchOne({name: 'Changed3'});
-        expect(user.name).toBe('Changed3');
-        expect(user.version).toBe(3);
+        {
+            await session.query(User).filter(user).patchOne({ name: 'Changed3' });
+            expect(user.name).toBe('Changed3');
+            expect(user.version).toBe(3);
 
-        await session.query(User).filter(user).patchOne({$inc: {logins: 10}});
-        expect(user.logins).toBe(10);
-        expect(user.version).toBe(4);
+            const userDB = await database.query(User).filter(user).findOne();
+            expect(userDB.name).toBe('Changed3');
+            expect(userDB.version).toBe(3);
+        }
+
+        {
+            await session.query(User).filter(user).patchOne({ $inc: { logins: 10 } });
+            expect(user.logins).toBe(10);
+            expect(user.version).toBe(4);
+
+            const userDB = await database.query(User).filter(user).findOne();
+            expect(userDB.logins).toBe(10);
+            expect(userDB.version).toBe(4);
+        }
 
         sub1.unsubscribe();
         sub2.unsubscribe();
@@ -400,7 +414,7 @@ test('atomic operations', async () => {
         user.logins = 1;
         await database.persist(user);
 
-        const changes = await database.query(User).filter(user).patchOne({logins: 10});
+        const changes = await database.query(User).filter(user).patchOne({ logins: 10 });
         expect(changes.modified).toBe(1);
         expect(changes.primaryKeys[0]).toBe(user.id);
     }
@@ -412,7 +426,7 @@ test('atomic operations', async () => {
 
         atomicChange(user).increase('logins', 2);
 
-        const changes = await database.query(User).filter(user).patchOne({$inc: {logins: 10}});
+        const changes = await database.query(User).filter(user).patchOne({ $inc: { logins: 10 } });
         expect(changes.modified).toBe(1);
         expect(changes.primaryKeys[0]).toBe(user.id);
         expect(changes.returning['logins']![0]).toBe(11);

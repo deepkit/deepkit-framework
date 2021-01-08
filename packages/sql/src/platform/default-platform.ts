@@ -68,7 +68,7 @@ export abstract class DefaultPlatform {
     }
 
     quoteValue(value: any): string {
-        if (isObject(value) || isArray(value)) return sqlstring.escape(JSON.stringify(value));
+        if (!(value instanceof Date) && (isObject(value) || isArray(value))) return sqlstring.escape(JSON.stringify(value));
         return sqlstring.escape(value);
     }
 

@@ -11,3 +11,4 @@ export * from './src/active-record';
 export * from './src/type';
 export * from './src/event';
 export * from './src/changes';
+export * from './src/plugin/soft-delete';

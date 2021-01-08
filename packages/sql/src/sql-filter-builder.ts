@@ -67,17 +67,21 @@ export class SQLFilterBuilder {
         else if (comparison === 'nin') cmpSign = 'NOT IN';
         else throw new Error(`Comparator ${comparison} not supported.`);
 
-        if (value[0] !== '$') {
+        const isReference = 'string' === typeof value && value[0] === '$';
+        if (!isReference) {
             const property = resolvePropertySchema(this.schema, fieldName);
             if (!property.isArray && (comparison === 'in' || comparison === 'nin') && isArray(value)) {
                 value = value.map(v => this.quoteValue(this.serializer.serializeProperty(property, v)));
             } else {
+                if (value === undefined || value === null) {
+                    cmpSign = 'IS';
+                }
                 value = this.quoteValue(this.serializer.serializeProperty(property, value));
             }
         }
 
         let rvalue = value;
-        if (value[0] === '$') rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`;
+        if (isReference) rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`;
         if (comparison === 'in' || comparison === 'nin') rvalue = '(' + rvalue + ')';
 
         if (fieldName.includes('.')) {

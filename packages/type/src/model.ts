@@ -879,6 +879,10 @@ export class ClassSchema<T = any> {
     public getMethod(name: string): PropertySchema {
         this.initializeMethod(name);
 
+        if (!this.methods[name]) {
+            throw new Error(`Method ${name} not found on ${this.getClassName()}`);
+        }
+
         return this.methods[name];
     }
 
@@ -891,6 +895,10 @@ export class ClassSchema<T = any> {
         }
 
         return this.getProperty(this.idField);
+    }
+
+    public getPrimaryFieldName(): keyof T & string {
+        return this.getPrimaryField().name as keyof T & string;
     }
 
     public getAutoIncrementField(): PropertySchema | undefined {
@@ -964,12 +972,8 @@ export class ClassSchema<T = any> {
 
             if (name !== 'constructor' && !this.methods[name]) {
                 const returnType = Reflect.getMetadata && Reflect.getMetadata('design:returntype', this.classType.prototype, name);
-                if (returnType !== Promise) {
-                    //Promise is not a legit returnType as this is automatically the case for async functions
-                    //we assume no meta data is given when Promise is defined, as it basically tells us nothing.
-                    this.methods[name] = new PropertySchema(name);
-                    this.methods[name].setFromJSType(returnType);
-                }
+                this.methods[name] = new PropertySchema(name);
+                this.methods[name].setFromJSType(returnType);
             }
 
             const properties = this.getOrCreateMethodProperties(name);

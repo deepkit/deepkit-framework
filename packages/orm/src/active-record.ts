@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {getClassName} from '@deepkit/core';
-import {Database} from './database';
-import {getClassSchema} from '@deepkit/type';
-import {GenericQuery} from './query';
+import { getClassName } from '@deepkit/core';
+import { getClassSchema } from '@deepkit/type';
+import { Database } from './database';
+import { GenericQuery } from './query';
 
 export interface ActiveRecordType {
     new(...args: any[]): ActiveRecord;
@@ -56,7 +56,7 @@ export class ActiveRecord {
         await db.remove(this);
     }
 
-    public static query<T>(): GenericQuery<T> {
+    public static create<T extends typeof ActiveRecord>(this: T): GenericQuery<InstanceType<T>> {
         return this.getDatabase().query(this);
     }
 }

@@ -84,7 +84,8 @@ export class PostgresPlatform extends DefaultPlatform {
     }
 
     quoteValue(value: any): string {
-        if (isObject(value) || isArray(value)) return escapeLiteral(JSON.stringify(value));
+        if (!(value instanceof Date) && (isObject(value) || isArray(value))) return escapeLiteral(JSON.stringify(value));
+        if (value instanceof Date) return 'TIMESTAMP ' + sqlstring.escape(value);
         return escapeLiteral(value);
     }
 
