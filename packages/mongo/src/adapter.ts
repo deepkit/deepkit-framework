@@ -23,6 +23,7 @@ import {MongoDatabaseQuery} from './query';
 import {MongoPersistence} from './persistence';
 import {MongoClient} from './client/client';
 import {DeleteCommand} from './client/command/delete';
+import { MongoQueryResolver } from './query.resolver';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -35,7 +36,8 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     createQuery<T extends Entity>(
         classType: ClassType<T> | ClassSchema<T>
     ): MongoDatabaseQuery<T> {
-        return new MongoDatabaseQuery(getClassSchema(classType), this.databaseSession);
+        const schema = getClassSchema(classType);
+        return new MongoDatabaseQuery(schema, this.databaseSession, new MongoQueryResolver(schema, this.databaseSession));
     }
 }
 

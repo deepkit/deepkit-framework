@@ -16,15 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DatabaseSession, Entity, GenericQuery} from '@deepkit/orm';
-import {MongoQueryModel} from './query.model';
-import {MongoQueryResolver} from './query.resolver';
-import {ClassSchema} from '@deepkit/type';
+import { Entity, GenericQuery } from '@deepkit/orm';
+import { MongoQueryModel } from './query.model';
 
 export class MongoDatabaseQuery<T extends Entity,
     MODEL extends MongoQueryModel<T> = MongoQueryModel<T>> extends GenericQuery<T> {
-    constructor(classSchema: ClassSchema<T>, protected databaseSession: DatabaseSession<any>) {
-        super(classSchema, databaseSession, new MongoQueryResolver(classSchema, databaseSession));
-        if (!databaseSession.withIdentityMap) this.disableIdentityMap();
-    }
 }

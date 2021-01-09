@@ -56,7 +56,7 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
             sort: this.sort,
             limit: this.limit,
             skip: this.skip,
-            batchSize: 200_000, //todo make configurable
+            batchSize: 1_000_000, //todo make configurable
         };
 
         const jit = schema.jit;
@@ -74,7 +74,7 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
         }
 
         const res = await this.sendAndWait(findSchema, cmd, specialisedResponse) as { cursor: { id: BigInt, firstBatch: any[], nextBatch: any[] } };
-        //todo: implement fetchMore
+        //todo: implement fetchMore and decrease batchSize
         return res.cursor.firstBatch;
     }
 

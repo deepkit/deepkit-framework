@@ -1,13 +1,10 @@
 import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
-import {arrayBufferFrom, Entity, getClassSchema, getEntityName, jsonSerializer, t, uuid,} from '@deepkit/type';
+import {arrayBufferFrom, Entity, getClassSchema, getEntityName, jsonSerializer, nodeBufferToArrayBuffer, t, uuid,} from '@deepkit/type';
 import bson from 'bson';
 import {getInstanceState} from '@deepkit/orm';
 import {SimpleModel, SuperSimple} from './entities';
 import {createDatabase} from './utils';
-import {mongoSerializer} from '../src/mongo-serializer';
-
-const {Binary, ObjectID} = bson;
 
 test('test save undefined values', async () => {
     const session = await createDatabase('test save undefined values');
@@ -50,6 +47,8 @@ test('test save model', async () => {
     const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
     });
+    expect(instance).toBeInstanceOf(SimpleModel);
+    expect(instance.name).toBe('myName');
 
     session.add(instance);
     await session.commit();
@@ -66,15 +65,6 @@ test('test save model', async () => {
     expect(await session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOneOrUndefined()).toBeUndefined();
 
     await expect(session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOne()).rejects.toThrowError('Item not found');
-
-    // const collection = await session.adapter.connection.getCollection(getClassSchema(SimpleModel));
-    // const mongoItem = await collection.find().toArray();
-    //
-    // expect(mongoItem.length).toBe(1);
-    // expect(mongoItem[0].name).toBe('myName');
-    // expect(mongoItem[0]._id).toBeInstanceOf(mongodb.ObjectID);
-    // expect(mongoItem[0].id).toBeInstanceOf(mongodb.Binary);
-    // expect(uuid4Stringify(mongoItem[0].id)).toBe(instance.id);
 
     const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();
     expect(found).toBeInstanceOf(SimpleModel);
@@ -304,27 +294,10 @@ test('second object id', async () => {
         secondId?: string;
     }
 
-    {
-        const instance = mongoSerializer.for(SecondObjectId).from(jsonSerializer, {
-            _id: '5c8a99d8fdfafb2c8dd59ad6',
-            name: 'peter',
-            secondId: '5bf4a1ccce060e0b38864c9e',
-            preview: 'QmFhcg==', //Baar
-        });
-        expect(instance._id).toBeInstanceOf(ObjectID);
-        expect(instance._id).toEqual(new ObjectID('5c8a99d8fdfafb2c8dd59ad6'));
-        expect(instance.secondId).toBeInstanceOf(ObjectID);
-        expect(instance.secondId).toEqual(new ObjectID('5bf4a1ccce060e0b38864c9e'));
-        expect(instance.name).toBe('peter');
-        expect(instance.preview).toBeInstanceOf(Binary);
-        expect(instance.preview.toString()).toBe('Baar');
-    }
-
-
     const instance = jsonSerializer.for(SecondObjectId).deserialize({
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
-        preview: 'QmFhcg==', //Baar
+        preview: nodeBufferToArrayBuffer(Buffer.from('QmFhcg==', 'base64')), //Baar
     });
 
     session.add(instance);
