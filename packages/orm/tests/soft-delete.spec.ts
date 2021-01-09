@@ -36,22 +36,26 @@ test('soft-delete', async () => {
     expect((store.items.get(2) as any).deletedAt).toBeInstanceOf(Date);
     expect(await database.query(s).count()).toBe(1);
 
-    await SoftDeleteQuery.create(database.query(s).filter({id: 1})).restoreOne();
+    await SoftDeleteQuery.from(database.query(s).filter({id: 1})).restoreOne();
 
     expect(store.items.size).toBe(3);
     expect((store.items.get(1) as any).deletedAt).toBe(undefined);
     expect(await database.query(s).count()).toBe(2);
 
-    await SoftDeleteQuery.create(database.query(s)).restoreMany();
+    await SoftDeleteQuery.from(database.query(s)).restoreMany();
     expect(store.items.size).toBe(3);
     expect((store.items.get(2) as any).deletedAt).toBe(undefined);
     expect(await database.query(s).count()).toBe(3);
 
+    //soft delete everything
     await database.query(s).deleteMany();
     expect(store.items.size).toBe(3);
     expect(await database.query(s).count()).toBe(0);
-
-    await SoftDeleteQuery.create(database.query(s)).withSoftDeleted().deleteMany();
+    expect(await SoftDeleteQuery.from(database.query(s)).withSoftDeleted().count()).toBe(3);
+    
+    //hard delete everything
+    await SoftDeleteQuery.from(database.query(s)).withSoftDeleted().deleteMany();
     expect(store.items.size).toBe(0);
     expect(await database.query(s).count()).toBe(0);
+    expect(await SoftDeleteQuery.from(database.query(s)).withSoftDeleted().count()).toBe(0);
 });

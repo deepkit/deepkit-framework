@@ -423,7 +423,7 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         this.model.withIdentityMap = databaseSession.withIdentityMap;
     }
 
-    static create<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): InstanceType<T> & B {
+    static from<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): InstanceType<T> & B {
         const result = (new this(base.classSchema, base.databaseSession, base.resolver)) as InstanceType<T> & B;
         result.model = base.model.clone(result);
         result.format = base.format;
