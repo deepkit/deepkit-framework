@@ -64,7 +64,7 @@ test('test save model', async () => {
     expect(await session.query(SimpleModel).filter({name: 'myName'}).findOneOrUndefined()).not.toBeUndefined();
     expect(await session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOneOrUndefined()).toBeUndefined();
 
-    await expect(session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOne()).rejects.toThrowError('Item not found');
+    await expect(session.query(SimpleModel).filter({name: 'myNameNOTEXIST'}).findOne()).rejects.toThrowError('not found');
 
     const found = await session.query(SimpleModel).filter({id: instance.id}).findOne();
     expect(found).toBeInstanceOf(SimpleModel);

@@ -19,7 +19,19 @@ let asyncId = 0;
 export class AsyncEmitterEvent {
     public readonly id = asyncId++;
     public stopped = false;
+    public propagationStopped = false;
 
+    /**
+     * Stop propagating the event to subsequent event listeners.
+     */
+    stopPropagation() {
+        this.propagationStopped = true;
+    }
+
+    /**
+     * Signal the emitter that you want to abort.
+     * Subsequent event listeners will still be called.
+     */
     stop() {
         this.stopped = true;
     }
@@ -43,11 +55,11 @@ export class AsyncEventEmitter<T extends AsyncEmitterEvent> {
 
     public async emit(event: T): Promise<void> {
         if (this.parent) await this.parent.emit(event);
-        if (event.stopped) return;
+        if (event.propagationStopped) return;
 
         for (const subscriber of this.subscribers) {
             await subscriber(event);
-            if (event.stopped) return;
+            if (event.propagationStopped) return;
         }
     }
 

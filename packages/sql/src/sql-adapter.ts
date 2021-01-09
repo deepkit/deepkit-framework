@@ -259,7 +259,7 @@ export class SQLDatabaseQuery<T extends Entity> extends GenericQuery<T> {
         protected platform: DefaultPlatform,
     ) {
         super(classSchema, databaseSession, new SQLQueryResolver(connectionPool, platform, classSchema, databaseSession));
-        if (!databaseSession.withIdentityMap) this.disableIdentityMap();
+        if (!databaseSession.withIdentityMap) this.model.withIdentityMap = false;
     }
 
     clone(): this {

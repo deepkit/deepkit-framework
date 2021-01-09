@@ -1,4 +1,4 @@
-import {entity, PropertySchema, t} from '@deepkit/type';
+import {entity, PropertySchema, PropertySchemaSerialized, t} from '@deepkit/type';
 import {Collection, ControllerSymbol} from '@deepkit/rpc';
 import { DebugRequest } from './model';
 
@@ -54,9 +54,15 @@ export class Route {
         @t.array(RouteParameter) public parameters: RouteParameter[],
         @t.array(t.string) public groups: string[],
         @t.string public category: string,
-        @t.any public bodySchema?: any,
+        @t.any public bodySchema?: PropertySchemaSerialized,
     ) {
         if (bodySchema) {
+            if (bodySchema.classType) {
+                //we don't and can't instantiate the full PropertySchema, since the
+                //type is not available at runtime.
+                bodySchema.classTypeName = bodySchema.classType;
+                bodySchema.classType = undefined;
+            }
             this.bodyPropertySchema = PropertySchema.fromJSON(bodySchema);
         }
     }

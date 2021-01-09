@@ -16,18 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet} from './database';
-import {DatabaseValidationError, Entity} from './type';
-import {ClassType, CustomError} from '@deepkit/core';
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate} from '@deepkit/type';
-import {GroupArraySort} from '@deepkit/topsort';
-import {getInstanceState, getNormalizedPrimaryKey, IdentityMap} from './identity-map';
-import {getClassSchemaInstancePairs} from './utils';
-import {HydratorFn, markAsHydrated} from './formatter';
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor} from './converter';
-import {getReference} from './reference';
-import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent} from './event';
-import {getJitChangeDetector} from './change-detector';
+import { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database';
+import { DatabaseValidationError, Entity } from './type';
+import { ClassType, CustomError } from '@deepkit/core';
+import { ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
+import { GroupArraySort } from '@deepkit/topsort';
+import { getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
+import { getClassSchemaInstancePairs } from './utils';
+import { HydratorFn, markAsHydrated } from './formatter';
+import { getJITConverterForSnapshot, getPrimaryKeyExtractor } from './converter';
+import { getReference } from './reference';
+import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
+import { getJitChangeDetector } from './change-detector';
 
 let SESSION_IDS = 0;
 
@@ -125,6 +125,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             if (this.emitter.onDeletePre.hasSubscriptions()) {
                 const event = new UnitOfWorkEvent(classSchema, this.session, items);
                 await this.emitter.onDeletePre.emit(event);
+                if (event.stopped) return;
             }
 
             await persistence.remove(classSchema, items);
@@ -172,7 +173,9 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                         const lastSnapshot = state.getSnapshot();
                         const currentSnapshot = doSnapshot(item);
                         const changeSet = changeDetector(lastSnapshot, currentSnapshot, item);
-                        if (!changeSet) continue;
+                        if (!changeSet) {
+                            continue;
+                        }
                         changeSets.push({
                             changes: changeSet,
                             item: item,
@@ -184,24 +187,34 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                 }
 
                 if (inserts.length) {
+                    let doInsert = true;
                     if (this.emitter.onInsertPre.hasSubscriptions()) {
-                        await this.emitter.onInsertPre.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+                        const event = new UnitOfWorkEvent(group.type, this.session, inserts);
+                        await this.emitter.onInsertPre.emit(event);
+                        if (event.stopped) doInsert = false;
                     }
-                    await persistence.insert(group.type, inserts);
-                    if (this.emitter.onInsertPost.hasSubscriptions()) {
-                        await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+                    if (doInsert) {
+                        await persistence.insert(group.type, inserts);
+                        if (this.emitter.onInsertPost.hasSubscriptions()) {
+                            await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+                        }
                     }
                 }
 
                 if (changeSets.length) {
+                    let doUpdate = true;
                     if (this.emitter.onUpdatePre.hasSubscriptions()) {
-                        await this.emitter.onUpdatePre.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
+                        const event = new UnitOfWorkUpdateEvent(group.type, this.session, changeSets);
+                        await this.emitter.onUpdatePre.emit(event);
+                        if (event.stopped) doUpdate = false;
                     }
 
-                    await persistence.update(group.type, changeSets);
+                    if (doUpdate) {
+                        await persistence.update(group.type, changeSets);
 
-                    if (this.emitter.onUpdatePost.hasSubscriptions()) {
-                        await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
+                        if (this.emitter.onUpdatePost.hasSubscriptions()) {
+                            await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
+                        }
                     }
                 }
 
@@ -214,6 +227,13 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 }
 
 export class SessionClosedException extends CustomError {
+}
+
+export interface DatabaseSessionHookConstructor<C> {
+    new <T extends DatabaseSession<DatabaseAdapter>>(session: T): C;
+}
+
+export interface DatabaseSessionHook<T extends DatabaseSession<DatabaseAdapter>> {
 }
 
 export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
@@ -242,6 +262,10 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);
+    }
+
+    from<T>(hook: DatabaseSessionHookConstructor<T>): T {
+        return new hook(this);
     }
 
     /**
@@ -354,10 +378,15 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
         this.commitDepth++;
 
+        if (this.unitOfWorkEmitter.onCommitPre.hasSubscriptions()) {
+            const event = new UnitOfWorkCommitEvent(this);
+            await this.unitOfWorkEmitter.onCommitPre.emit(event);
+            if (event.stopped) return;
+        }
+
         //we need to iterate via for i, because hooks might add additional rounds dynamically
         for (let i = 0; i < this.rounds.length; i++) {
             const round = this.rounds[i];
-
             if (round.isCommitted() || round.isInCommit()) continue;
 
             try {

@@ -18,7 +18,6 @@ test('observable basics', async () => {
 
     class Controller {
         @rpc.action()
-        @t.generic(t.string)
         strings(): Observable<string> {
             return new Observable<string>((observer) => {
                 observer.next('first');
@@ -29,7 +28,6 @@ test('observable basics', async () => {
         }
 
         @rpc.action()
-        @t.generic(t.string)
         errors(): Observable<string> {
             return new Observable<string>((observer) => {
                 observer.error(new Error('Jupp'));
@@ -37,7 +35,6 @@ test('observable basics', async () => {
         }
 
         @rpc.action()
-        @t.generic(MyModel)
         myModel(): Observable<MyModel> {
             return new Observable<MyModel>((observer) => {
                 observer.next(new MyModel('Peter'));
@@ -92,7 +89,6 @@ test('observable basics', async () => {
 test('Subject', async () => {
     class Controller {
         @rpc.action()
-        @t.generic(t.string)
         strings(): Subject<string> {
             const subject = new Subject<string>();
             (async () => {
@@ -122,13 +118,11 @@ test('Subject', async () => {
 test('Behavior', async () => {
     class Controller {
         @rpc.action()
-        @t.generic(t.string)
         initial(): BehaviorSubject<string> {
             return new BehaviorSubject<string>('initial');
         }
 
         @rpc.action()
-        @t.generic(t.string)
         strings(): BehaviorSubject<string> {
             const subject = new BehaviorSubject<string>('initial');
             (async () => {
@@ -166,7 +160,6 @@ test('observable complete', async () => {
 
     class Controller {
         @rpc.action()
-        @t.generic(t.number)
         numberGenerator(max: number): Observable<number> {
             return new Observable<number>((observer) => {
                 let done = false;

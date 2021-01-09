@@ -346,8 +346,12 @@ export class RpcBaseClient {
     protected onMessage(message: RpcMessage) {
         // console.log('client: received message', message.id, RpcTypes[message.type], message.routeType);
 
-        const callback = this.replies.get(message.id);
-        if (callback) callback(message);
+        if (message.type === RpcTypes.Entity) {
+            this.actionClient.entityState.handle(message);
+        } else {
+            const callback = this.replies.get(message.id);
+            if (callback) callback(message);
+        }
     }
 
     public sendMessage<T>(

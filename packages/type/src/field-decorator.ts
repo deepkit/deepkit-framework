@@ -128,13 +128,18 @@ export interface FieldDecoratorResultBase<T> {
     discriminant: this;
 
     /**
-     * Used to define a field as excluded when serialized from class to different targets (like mongo or plain).
-     * PlainToClass or mongoToClass is not effected by this.
-     * This exclusion is during compile time, if you need a runtime exclude/include mechanism,
-     * please use @t.group('groupName') and use in classToPain/partialClassToPlain the options
-     * argument to filter, e.g. {groupsExclude: ['groupName']}.
+     * Mark the field as excluded from deserializing.
+     * Serializing is not effected by this.
+     * The given serializerName is the name of your serializer. `jsonSerializer` (classToPlain) has as name 'json'.
+     * You find the name of the serializer using its `.name` attribute.
+     * 
+     * A special name of 'all' excludes this field for all serializers.
+     * 
+     * This exclusion is during compile time and can not be changed at runtime.
+     * If you need a runtime exclude/include mechanism, use @t.group('groupName') and use in serialize method
+     * the options to filter, e.g. serialize(item, {groupsExclude: ['groupName']}).
      */
-    exclude(t?: 'all' | 'database' | 'plain' | string): this;
+    exclude(serializerName?: 'all' | 'json' | string): this;
 
     /**
      * Marks this field as an ID aka primary.

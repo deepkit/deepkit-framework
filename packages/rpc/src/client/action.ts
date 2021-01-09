@@ -17,7 +17,7 @@
  */
 
 import { asyncOperation, toFastProperties } from '@deepkit/core';
-import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jsonSerializer, PropertySchema, t } from '@deepkit/type';
+import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jsonSerializer, propertyDefinition, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { ClientProgress } from '../writer';
 import { Collection, CollectionState } from '../collection';
@@ -25,6 +25,7 @@ import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubsc
 import { rpcDecodeError, RpcMessage } from '../protocol';
 import { RpcBaseClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
+import { deserialize } from '@deepkit/bson';
 
 type ControllerStateActionTypes = {
     parameters: string[],
@@ -59,8 +60,27 @@ export class RpcControllerState {
     }
 }
 
+function setReturnType(types: ControllerStateActionTypes, prop: PropertySchemaSerialized) {
+    const resultProperty = PropertySchema.fromJSON(prop);
+    resultProperty.name = 'v';
+    const resultSchema = createClassSchema();
+    resultSchema.registerProperty(resultProperty);
+    types.resultProperty = resultProperty;
+    types.resultSchema = resultSchema;
+
+    types.collectionSchema = createClassSchema();
+    const v = new PropertySchema('v');
+    v.setType('array');
+    v.templateArgs.push(resultProperty);
+    types.collectionSchema.registerProperty(v);
+
+    const observableNextSchema = rpcActionObservableSubscribeId.clone();
+    observableNextSchema.registerProperty(resultProperty);
+    types.observableNextSchema = observableNextSchema;
+}
+
 export class RpcActionClient {
-    protected entityState = new EntityState;
+    public entityState = new EntityState;
 
     constructor(protected client: RpcBaseClient) {
     }
@@ -97,159 +117,175 @@ export class RpcActionClient {
                     method: method,
                     args: argsObject
                 }, { peerId: controller.peerId }).onReply((reply) => {
-                    // console.log('answer', RpcTypes[reply.type]);
+                    try {
+                        // console.log('client: answer', RpcTypes[reply.type], reply.composite);
 
-                    switch (reply.type) {
-                        case RpcTypes.ResponseEntity:
-                            resolve(this.entityState.createEntitySubject(types.resultProperty.getResolvedClassSchema(), types.resultSchema, reply));
-
-                            break;
-
-                        case RpcTypes.Entity:
-                            this.entityState.handle(reply);
-                            break;
-
-                        case RpcTypes.ResponseActionSimple: {
-                            subject.release();
-                            const result = reply.parseBody(types.resultSchema);
-                            resolve(result.v);
-                            break;
-                        }
-
-                        case RpcTypes.ResponseActionObservableError: {
-                            const body = reply.parseBody(rpcResponseActionObservableSubscriptionError);
-                            const error = rpcDecodeError(body);
-                            if (observable) {
-                                if (!subscribers[body.id]) return; //we silently ignore this
-                                subscribers[body.id].error(error);
-                            } else if (observableSubject) {
-                                observableSubject.error(error);
-                            }
-                            break;
-                        }
-
-                        case RpcTypes.ResponseActionObservableComplete: {
-                            const body = reply.parseBody(rpcActionObservableSubscribeId);
-
-                            if (observable) {
-                                if (!subscribers[body.id]) return; //we silently ignore this
-                                subscribers[body.id].complete();
-                            } else if (observableSubject) {
-                                observableSubject.complete();
-                            }
-                            break;
-                        }
-
-                        case RpcTypes.ResponseActionObservableNext: {
-                            const body = reply.parseBody(types.observableNextSchema);
-
-                            if (observable) {
-                                if (!subscribers[body.id]) return; //we silently ignore this
-                                subscribers[body.id].next(body.v);
-                            } else if (observableSubject) {
-                                observableSubject.next(body.v);
+                        if (reply.type === RpcTypes.ResponseActionResult) {
+                            const bodies = reply.getBodies();
+                            if (bodies.length === 2) {
+                                //we got returnType
+                                if (bodies[0].type !== RpcTypes.ResponseActionReturnType) return reject(new Error('RpcTypes.ResponseActionResult should contain as first body RpcTypes.ResponseActionReturnType'));
+                                setReturnType(types, bodies[0].parseBody(propertyDefinition));
+                                reply = bodies[1];
                             } else {
-                                firstObservableNext = body.v;
-                                firstObservableNextCalled = true;
+                                reply = bodies[0];
+                            }
+                        }
+
+                        switch (reply.type) {
+                            case RpcTypes.ResponseEntity:
+                                resolve(this.entityState.createEntitySubject(types.resultProperty.getResolvedClassSchema(), types.resultSchema, reply));
+
+                                break;
+
+                            case RpcTypes.ResponseActionSimple: {
+                                subject.release();
+                                const result = reply.parseBody(types.resultSchema);
+                                resolve(result.v);
+                                break;
                             }
 
-                            break;
-                        }
+                            case RpcTypes.ResponseActionReturnType: {
+                                setReturnType(types, reply.parseBody(propertyDefinition));
+                                break;
+                            }
 
-                        case RpcTypes.ResponseActionBehaviorSubject: {
-                            const body = reply.parseBody(types.observableNextSchema);
-                            observableSubject = new BehaviorSubject(body.v);
-                            resolve(observableSubject);
-                            break;
-                        }
-
-                        case RpcTypes.ResponseActionObservable: {
-                            if (observable) console.error('Already got ActionResponseObservable');
-                            const body = reply.parseBody(rpcResponseActionObservable);
-
-                            //this observable can be subscribed multiple times now
-                            // each time we need to call the server again, since its not a Subject
-                            if (body.type === ActionObservableTypes.observable) {
-                                observable = new Observable((observer) => {
-                                    const id = subscriberId++;
-                                    subscribers[id] = observer;
-                                    subject.send(RpcTypes.ActionObservableSubscribe, rpcActionObservableSubscribeId, { id });
-
-                                    return {
-                                        unsubscribe: () => {
-                                            delete subscribers[id];
-                                            subject.send(RpcTypes.ActionObservableUnsubscribe, rpcActionObservableSubscribeId, { id });
-                                        }
-                                    }
-                                });
-                                resolve(observable);
-                            } else if (body.type === ActionObservableTypes.subject) {
-                                observableSubject = new Subject<any>();
-                                observableSubject.subscribe().add(() => {
-                                    subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
-                                });
-                                if (firstObservableNextCalled) {
-                                    observableSubject.next(firstObservableNext);
-                                    firstObservableNext = undefined;
+                            case RpcTypes.ResponseActionObservableError: {
+                                const body = reply.parseBody(rpcResponseActionObservableSubscriptionError);
+                                const error = rpcDecodeError(body);
+                                if (observable) {
+                                    if (!subscribers[body.id]) return; //we silently ignore this
+                                    subscribers[body.id].error(error);
+                                } else if (observableSubject) {
+                                    observableSubject.error(error);
                                 }
+                                break;
+                            }
+
+                            case RpcTypes.ResponseActionObservableComplete: {
+                                const body = reply.parseBody(rpcActionObservableSubscribeId);
+
+                                if (observable) {
+                                    if (!subscribers[body.id]) return; //we silently ignore this
+                                    subscribers[body.id].complete();
+                                } else if (observableSubject) {
+                                    observableSubject.complete();
+                                }
+                                break;
+                            }
+
+                            case RpcTypes.ResponseActionObservableNext: {
+                                const body = reply.parseBody(types.observableNextSchema);
+
+                                if (observable) {
+                                    if (!subscribers[body.id]) return; //we silently ignore this
+                                    subscribers[body.id].next(body.v);
+                                } else if (observableSubject) {
+                                    observableSubject.next(body.v);
+                                } else {
+                                    firstObservableNext = body.v;
+                                    firstObservableNextCalled = true;
+                                }
+
+                                break;
+                            }
+
+                            case RpcTypes.ResponseActionBehaviorSubject: {
+                                const body = reply.parseBody(types.observableNextSchema);
+                                observableSubject = new BehaviorSubject(body.v);
                                 resolve(observableSubject);
-                            } else if (body.type === ActionObservableTypes.behaviorSubject) {
-                                observableSubject = new BehaviorSubject<any>(firstObservableNext);
-                                firstObservableNext = undefined;
-                                observableSubject.subscribe().add(() => {
-                                    subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                                break;
+                            }
+
+                            case RpcTypes.ResponseActionObservable: {
+                                if (observable) console.error('Already got ActionResponseObservable');
+                                const body = reply.parseBody(rpcResponseActionObservable);
+
+                                //this observable can be subscribed multiple times now
+                                // each time we need to call the server again, since its not a Subject
+                                if (body.type === ActionObservableTypes.observable) {
+                                    observable = new Observable((observer) => {
+                                        const id = subscriberId++;
+                                        subscribers[id] = observer;
+                                        subject.send(RpcTypes.ActionObservableSubscribe, rpcActionObservableSubscribeId, { id });
+
+                                        return {
+                                            unsubscribe: () => {
+                                                delete subscribers[id];
+                                                subject.send(RpcTypes.ActionObservableUnsubscribe, rpcActionObservableSubscribeId, { id });
+                                            }
+                                        }
+                                    });
+                                    resolve(observable);
+                                } else if (body.type === ActionObservableTypes.subject) {
+                                    observableSubject = new Subject<any>();
+                                    observableSubject.subscribe().add(() => {
+                                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                                    });
+                                    if (firstObservableNextCalled) {
+                                        observableSubject.next(firstObservableNext);
+                                        firstObservableNext = undefined;
+                                    }
+                                    resolve(observableSubject);
+                                } else if (body.type === ActionObservableTypes.behaviorSubject) {
+                                    observableSubject = new BehaviorSubject<any>(firstObservableNext);
+                                    firstObservableNext = undefined;
+                                    observableSubject.subscribe().add(() => {
+                                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                                    });
+                                    resolve(observableSubject);
+                                }
+
+                                break;
+                            }
+
+                            case RpcTypes.ResponseActionCollectionChange: {
+                                if (!collection) throw new Error('No collection loaded yet');
+                                if (!types.collectionSchema) throw new Error('no collectionSchema loaded yet');
+                                if (!collectionEntityStore) throw new Error('no collectionEntityStore loaded yet');
+
+                                this.handleCollection(collectionEntityStore, types, collection, reply.getBodies());
+
+                                break;
+                            }
+
+                            case RpcTypes.ResponseActionCollection: {
+                                const bodies = reply.getBodies();
+
+                                if (bodies[0].type === RpcTypes.ResponseActionReturnType) {
+                                    setReturnType(types, bodies[0].parseBody(propertyDefinition));
+                                }
+
+                                const classType = types.resultProperty.getResolvedClassType();
+                                collection = new Collection(classType);
+                                collectionEntityStore = this.entityState.getStore(classType);
+
+                                collection.addTeardown(() => {
+                                    subject.send(RpcTypes.ResponseActionCollectionUnsubscribe);
                                 });
-                                resolve(observableSubject);
+
+                                this.handleCollection(collectionEntityStore, types, collection, bodies);
+
+                                resolve(collection);
+                                break;
                             }
 
-                            break;
-                        }
-
-                        case RpcTypes.ResponseActionCollectionChange: {
-                            if (!collection) throw new Error('No collection loaded yet');
-                            if (!types.collectionSchema) throw new Error('no collectionSchema loaded yet');
-                            if (!collectionEntityStore) throw new Error('no collectionEntityStore loaded yet');
-
-                            this.handleCollection(collectionEntityStore, types, collection, reply.getBodies());
-
-                            break;
-                        }
-
-                        case RpcTypes.ResponseActionCollection: {
-                            if (!types.collectionSchema) {
-                                types.collectionSchema = createClassSchema();
-                                const v = new PropertySchema('v');
-                                v.setType('array');
-                                v.templateArgs.push(types.resultSchema.getProperty('v'));
-                                types.collectionSchema.registerProperty(v);
+                            case RpcTypes.Error: {
+                                subject.release();
+                                const error = reply.getError();
+                                // console.debug('Client received error', error);
+                                reject(error);
+                                break;
                             }
 
-                            const classType = types.resultProperty.classType!;
-                            collection = new Collection(classType);
-                            collectionEntityStore = this.entityState.getStore(classType);
-
-                            collection.addTeardown(() => {
-                                subject.send(RpcTypes.ResponseActionCollectionUnsubscribe);
-                            });
-
-                            this.handleCollection(collectionEntityStore, types, collection, reply.getBodies());
-
-                            resolve(collection);
-                            break;
-                        }
-
-                        case RpcTypes.Error: {
-                            subject.release();
-                            const error = reply.getError();
-                            // console.debug('Client received error', error);
-                            reject(error);
-                            break;
-                        }
-
-                        default: {
-                            console.log(`Unexpected type received ${reply.type}`);
-                        }
-                    };
+                            default: {
+                                console.log(`Unexpected type received ${reply.type}`);
+                            }
+                        };
+                    } catch (error) {
+                        console.debug('reply error', error);
+                        reject(error);
+                    }
                 });
             } catch (error) {
                 reject(error);
@@ -341,13 +377,19 @@ export class RpcActionClient {
                     parameters.push(property.name);
                 }
 
-                const resultSchema = createClassSchema();
                 const resultProperty = PropertySchema.fromJSON(parsed.result);
                 resultProperty.name = 'v';
+                const resultSchema = createClassSchema();
                 resultSchema.registerProperty(resultProperty);
 
                 const observableNextSchema = rpcActionObservableSubscribeId.clone();
                 observableNextSchema.registerProperty(resultProperty);
+
+                const collectionSchema = createClassSchema();
+                const v = new PropertySchema('v');
+                v.setType('array');
+                v.templateArgs.push(resultProperty);
+                collectionSchema.registerProperty(v);
 
                 state.types = {
                     parameters: parameters,
@@ -355,6 +397,7 @@ export class RpcActionClient {
                     resultProperty,
                     resultSchema,
                     observableNextSchema,
+                    collectionSchema,
                 };
 
                 resolve(state.types);

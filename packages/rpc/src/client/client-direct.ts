@@ -16,22 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
+import { RpcInjector } from '../model';
 import { RpcKernel } from '../server/kernel';
-import { readRpcMessage } from '../protocol';
+import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
 
 export class DirectClient extends RpcClient {
-    constructor(rpcKernel: RpcKernel) {
-        super(new RpcDirectClientAdapter(rpcKernel));
+    constructor(rpcKernel: RpcKernel, injector?: RpcInjector) {
+        super(new RpcDirectClientAdapter(rpcKernel, injector));
     }
 }
 
 export class RpcDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel) {
+    constructor(public rpcKernel: RpcKernel, protected injector?: RpcInjector) {
     }
 
     public async connect(connection: TransportConnectionHooks) {
-        const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onMessage(buffer) });
+        const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onMessage(buffer) }, this.injector);
 
         connection.onConnected({
             disconnect() {

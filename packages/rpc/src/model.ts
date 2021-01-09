@@ -167,11 +167,10 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
     /**
      * Patches are in class format.
      */
-    public readonly patches = new Subject<{ [path: string]: any }>();
+    public readonly patches = new Subject<EntityPatch>();
     public readonly delete = new Subject<boolean>();
 
     public deleted: boolean = false;
-
 
     get id(): string | number {
         return this.value.id;
@@ -311,7 +310,9 @@ export enum RpcTypes {
     ClientIdResponse,
     AuthenticateResponse,
     ResponseActionType,
+    ResponseActionReturnType,
     ResponseActionSimple, //direct response that can be simple deserialized.
+    ResponseActionResult, //composite message, first optional ResponseActionType, second ResponseAction*
 
     ActionObservableSubscribe,
     ActionObservableUnsubscribe,
@@ -425,6 +426,12 @@ export const rpcEntityRemove = t.schema({
     entityName: t.string,
     ids: t.array(t.union(t.string, t.number)),
 });
+
+export interface EntityPatch {
+    $set?: {[path: string]: any},
+    $unset?: {[path: string]: number}
+    $inc?: {[path: string]: number}
+}
 
 export const rpcEntityPatch = t.schema({
     entityName: t.string,

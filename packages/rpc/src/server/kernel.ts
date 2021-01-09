@@ -46,7 +46,7 @@ import {
 import { RpcServerAction } from './action';
 import { RpcKernelSecurity, Session, SessionState } from './security';
 
-export class RpcResponseComposite {
+export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];
 
     constructor(
@@ -75,7 +75,7 @@ export class RpcResponseComposite {
     }
 }
 
-export class RpcResponse {
+export class RpcMessageBuilder {
     constructor(
         protected writer: RpcConnectionWriter,
         protected id: number,
@@ -108,8 +108,8 @@ export class RpcResponse {
         this.writer.write(this.messageFactory(type, schema, body));
     }
 
-    composite(type: number): RpcResponseComposite {
-        return new RpcResponseComposite(type, this.id, this.writer, this.clientId, this.source);
+    composite(type: number): RpcCompositeMessage {
+        return new RpcCompositeMessage(type, this.id, this.writer, this.clientId, this.source);
     }
 }
 
@@ -195,6 +195,10 @@ export abstract class RpcKernelBaseConnection {
         })
     }
 
+    createMessageBuilder(): RpcMessageBuilder {
+        return new RpcMessageBuilder(this.writer, this.messageId++);
+    }
+
     /**
      * Creates a regular timer using setTimeout() and automatically cancel it once the connection breaks or server stops.
      */
@@ -227,11 +231,11 @@ export abstract class RpcKernelBaseConnection {
             }
         }
 
-        const response = new RpcResponse(this.writer, message.id);
+        const response = new RpcMessageBuilder(this.writer, message.id);
         this.onMessage(message, response);
     }
 
-    abstract onMessage(message: RpcMessage, response: RpcResponse): void | Promise<void>;
+    abstract onMessage(message: RpcMessage, response: RpcMessageBuilder): void | Promise<void>;
 
     public sendMessage<T>(
         type: number,
@@ -290,7 +294,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         if (message.routeType == RpcMessageRouteType.peer && message.getPeerId() !== this.myPeerId) {
             // console.log('Redirect peer message', RpcTypes[message.type]);
             if (!await this.security.isAllowedToSendToPeer(this.sessionState.getSession(), message.getPeerId())) {
-                new RpcResponse(this.writer, message.id).error(new Error('Access denied'));
+                new RpcMessageBuilder(this.writer, message.id).error(new Error('Access denied'));
                 return;
             }
             this.peerExchange.redirect(message);
@@ -304,7 +308,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         }
 
         //all outgoing replies need to be routed to the source via sourceDest messages.
-        const response = new RpcResponse(this.writer, message.id, this.id, message.routeType === RpcMessageRouteType.peer ? message.getSource() : undefined);
+        const response = new RpcMessageBuilder(this.writer, message.id, this.id, message.routeType === RpcMessageRouteType.peer ? message.getSource() : undefined);
 
         try {
             if (message.routeType === RpcMessageRouteType.client) {
@@ -333,14 +337,14 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         }
     }
 
-    protected async authenticate(message: RpcMessage, response: RpcResponse) {
+    protected async authenticate(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcAuthenticate);
         const session = await this.security.authenticate(body.token);
         this.sessionState.setSession(session);
         response.reply(RpcTypes.AuthenticateResponse, rpcResponseAuthenticate, { username: session.username });
     }
 
-    protected async deregisterAsPeer(message: RpcMessage, response: RpcResponse) {
+    protected async deregisterAsPeer(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcPeerRegister);
         if (body.id !== this.myPeerId) {
             return response.error(new Error(`Not registered as that peer`));
@@ -350,7 +354,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         response.ack();
     }
 
-    protected async registerAsPeer(message: RpcMessage, response: RpcResponse) {
+    protected async registerAsPeer(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcPeerRegister);
         if (await this.peerExchange.isRegistered(body.id)) {
             return response.error(new Error(`Peer ${body.id} already registereed`));

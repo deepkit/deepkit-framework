@@ -532,6 +532,13 @@ export function setPathValue(bag: object, parameterPath: string, value: any) {
 }
 
 /**
+ * @public
+ */
+export function deletePathValue(bag: object, parameterPath: string) {
+    dotProp.delete(bag, parameterPath);
+}
+
+/**
  * Returns the human readable byte representation.
  *
  * @public

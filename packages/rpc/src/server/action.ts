@@ -16,22 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
-import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
+import { ClassType, collectForMicrotask, getClassPropertyName, isArray, isPlainObject, toFastProperties } from '@deepkit/core';
+import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
 import { BehaviorSubject, isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
 import { ActionObservableTypes, EntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
-import { RpcResponse } from './kernel';
+import { RpcMessageBuilder } from './kernel';
 import { RpcKernelSecurity, Session, SessionState } from './security';
 
 export type ActionTypes = {
     parameters: PropertySchema[],
     parameterSchema: ClassSchema,
-    resultSchema: ClassSchema<{v?: any}>,
     parametersDeserialize: (value: any) => any,
     parametersValidate: (value: any, path?: string, errors?: ValidationFailedItem[]) => ValidationFailedItem[],
+
+    //those might change in the actual action call
+    resultProperty: PropertySchema,
+    resultPropertyChanged: number,
+    resultSchema: ClassSchema<{ v?: any }>,
     observableNextSchema: ClassSchema,
     collectionSchema?: ClassSchema<{ v: any[] }>,
 };
@@ -53,8 +57,10 @@ export class RpcServerAction {
     protected observables: {
         [id: number]: {
             observable: Observable<any>,
+            classType: ClassType,
+            method: string,
+            types: ActionTypes,
             subscriptions: { [id: number]: { sub?: Subscription, active: boolean } },
-            observableNextSchema: ClassSchema<{ id: number, v: any }>,
         }
     } = {};
 
@@ -66,7 +72,7 @@ export class RpcServerAction {
     ) {
     }
 
-    public async handleActionTypes(message: RpcMessage, response: RpcResponse) {
+    public async handleActionTypes(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcActionType);
         const types = await this.loadTypes(body.controller, body.method);
 
@@ -76,7 +82,7 @@ export class RpcServerAction {
         });
     }
 
-    protected async loadTypes(controller: string, method: string) {
+    protected async loadTypes(controller: string, method: string): Promise<ActionTypes> {
         const cacheId = controller + '!' + method;
         let types = this.cachedActionsTypes[cacheId];
         if (types) return types;
@@ -103,28 +109,10 @@ export class RpcServerAction {
             argSchema.registerProperty(parameters[i]);
         }
 
-        const resultSchema = createClassSchema();
         let resultProperty = getClassSchema(classType).getMethod(method).clone();
 
-        let observableNextSchema: ClassSchema | undefined;
         if (resultProperty.classType) {
             const generic = resultProperty.templateArgs[0];
-
-            if (!generic && (isPrototypeOfBase(resultProperty.classType, Observable) || isPrototypeOfBase(resultProperty.classType, Collection)
-                    || isPrototypeOfBase(resultProperty.classType, Promise))) {
-                //we need to change that to any
-                const className = getClassName(resultProperty.classType);
-                throw new Error(`Your method ${getClassPropertyName(classType, method)} returns ${className} and you have not specified a generic type using @t.generic() decorator. ` +
-                    `Please define the generic type of your ${className}<T>, e.g. @t.generic(T), where T is your actual type. Any is now used, which is much slower to serialize and produces no class instances.` +
-                    `\nExample:` +
-                    `\n   @t.generic(t.string)` +
-                    `\n   ${method}(): ${className}<string> {}` +
-                    `\n   @t.generic(MyModel)` +
-                    `\n   ${method}(): ${className}<MyModel> {}` +
-                    `\n   @t.generic(MyModel)` +
-                    `\n   ${method}(): ${className}<Collection<MyModel>> {}`
-                );
-            }
 
             if (generic) {
                 resultProperty = generic.clone();
@@ -134,15 +122,18 @@ export class RpcServerAction {
         resultProperty.name = 'v';
         resultProperty.isOptional = true;
 
-        observableNextSchema = rpcActionObservableSubscribeId.clone();
+        const observableNextSchema = rpcActionObservableSubscribeId.clone();
         observableNextSchema.registerProperty(resultProperty);
 
+        const resultSchema = createClassSchema();
         resultSchema.registerProperty(resultProperty);
 
         types = this.cachedActionsTypes[cacheId] = {
             parameters: parameters,
             parameterSchema: t.schema({ args: argSchema }),
             resultSchema: resultSchema,
+            resultProperty: resultProperty,
+            resultPropertyChanged: 0,
             parametersDeserialize: getXToClassFunction(argSchema, jsonSerializer),
             parametersValidate: jitValidate(argSchema),
             observableNextSchema
@@ -152,12 +143,13 @@ export class RpcServerAction {
         return types;
     }
 
-    public async handle(message: RpcMessage, response: RpcResponse) {
+    public async handle(message: RpcMessage, response: RpcMessageBuilder) {
         switch (message.type) {
 
             case RpcTypes.ActionObservableSubscribe: {
                 const observable = this.observables[message.id];
                 if (!observable) return response.error(new Error('No observable found'));
+                const { types, classType, method } = observable;
                 const body = message.parseBody(rpcActionObservableSubscribeId);
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
 
@@ -165,8 +157,20 @@ export class RpcServerAction {
                 observable.subscriptions[body.id] = sub;
 
                 sub.sub = observable.observable.subscribe((next) => {
+                    const newProperty = createNewPropertySchemaIfNecessary(next, types.resultProperty);
+                    if (newProperty) {
+                        types.observableNextSchema = rpcActionObservableSubscribeId.clone();
+                        types.observableNextSchema.registerProperty(newProperty);
+                        types.resultProperty = newProperty;
+                        types.resultPropertyChanged++;
+                        if (types.resultPropertyChanged === 10) {
+                            console.warn(`The emitted next value of the Observable of method ${getClassPropertyName(classType, method)} changed 10 times. You should add a @t.union() annotation to improve serialization performance.`);
+                        }
+                        response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                    }
+
                     if (!sub.active) return;
-                    response.reply(RpcTypes.ResponseActionObservableNext, observable.observableNextSchema, {
+                    response.reply(RpcTypes.ResponseActionObservableNext, types.observableNextSchema, {
                         id: body.id,
                         v: next
                     });
@@ -214,7 +218,7 @@ export class RpcServerAction {
         }
     }
 
-    public async handleAction(message: RpcMessage, response: RpcResponse) {
+    public async handleAction(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcActionType);
 
         const classType = this.controllers.get(body.controller);
@@ -235,19 +239,34 @@ export class RpcServerAction {
             const result = await controller[body.method](...Object.values(converted));
 
             if (result instanceof EntitySubject) {
-                response.reply(RpcTypes.ResponseEntity, types.resultSchema, { v: result });
+                const newProperty = createNewPropertySchemaIfNecessary(result.value, types.resultProperty);
+                if (newProperty) {
+                    types.resultSchema = createClassSchema();
+                    types.resultSchema.registerProperty(newProperty);
+                    types.resultProperty = newProperty;
+                    types.resultPropertyChanged++;
+                    response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                }
+                response.reply(RpcTypes.ResponseEntity, types.resultSchema, { v: result.value });
             } else if (result instanceof Collection) {
                 const collection = result;
 
-                if (!types.collectionSchema) {
-                    types.collectionSchema = createClassSchema();
-                    const v = new PropertySchema('v');
-                    v.setType('array');
-                    v.templateArgs.push(types.resultSchema.getProperty('v'));
-                    types.collectionSchema.registerProperty(v);
-                }
+                const newProperty = new PropertySchema('v');
+                newProperty.setFromJSType(collection.classType);
+                types.resultSchema = createClassSchema();
+                types.resultSchema.registerProperty(newProperty);
+                types.resultProperty = newProperty;
+
+                types.collectionSchema = createClassSchema();
+                const v = new PropertySchema('v');
+                v.setType('array');
+                v.templateArgs.push(newProperty);
+                types.collectionSchema.registerProperty(v);
+
+                types.resultPropertyChanged++;
 
                 response.composite(RpcTypes.ResponseActionCollection)
+                    .add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON())
                     .add(RpcTypes.ResponseActionCollectionModel, CollectionQueryModel, collection.model)
                     .add(RpcTypes.ResponseActionCollectionState, CollectionState, collection.state)
                     .add(RpcTypes.ResponseActionCollectionSet, types.collectionSchema, { v: collection.all() })
@@ -287,7 +306,7 @@ export class RpcServerAction {
                 };
 
             } else if (isObservable(result)) {
-                this.observables[message.id] = { observable: result, subscriptions: {}, observableNextSchema: types.observableNextSchema };
+                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType, method: body.method };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
                 if (result instanceof Subject) {
@@ -295,6 +314,18 @@ export class RpcServerAction {
 
                     this.observableSubjects[message.id] = {
                         subscription: result.subscribe((next) => {
+                            const newProperty = createNewPropertySchemaIfNecessary(next, types.resultProperty);
+                            if (newProperty) {
+                                types.observableNextSchema = rpcActionObservableSubscribeId.clone();
+                                types.observableNextSchema.registerProperty(newProperty);
+                                types.resultProperty = newProperty;
+                                types.resultPropertyChanged++;
+                                if (types.resultPropertyChanged === 10) {
+                                    console.warn(`The emitted next value of the Observable of method ${getClassPropertyName(classType, body.method)} changed 10 times. You should add a @t.union() annotation to improve serialization performance.`);
+                                }
+                                response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                            }
+
                             response.reply(RpcTypes.ResponseActionObservableNext, types.observableNextSchema, {
                                 id: message.id,
                                 v: next
@@ -316,10 +347,60 @@ export class RpcServerAction {
 
                 response.reply(RpcTypes.ResponseActionObservable, rpcResponseActionObservable, { type });
             } else {
-                response.reply(RpcTypes.ResponseActionSimple, types.resultSchema, { v: result });
+                const newProperty = createNewPropertySchemaIfNecessary(result, types.resultProperty);
+                if (newProperty) {
+                    types.resultSchema = createClassSchema();
+                    types.resultSchema.registerProperty(newProperty);
+                    types.resultProperty = newProperty;
+                    types.resultPropertyChanged++;
+                    if (types.resultPropertyChanged === 10) {
+                        console.warn(`The result type of method ${getClassPropertyName(classType, body.method)} changed 10 times. You should add a @t annotation to improve serialization performance.`);
+                    }
+
+                    const composite = response.composite(RpcTypes.ResponseActionResult);
+                    composite.add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                    composite.add(RpcTypes.ResponseActionSimple, types.resultSchema, { v: result });
+                    composite.send();
+                } else {
+                    response.reply(RpcTypes.ResponseActionSimple, types.resultSchema, { v: result });
+                }
             }
         } catch (error) {
             response.error(error);
         }
     }
+}
+
+export function createNewPropertySchemaIfNecessary(result: any, property: PropertySchema): PropertySchema | undefined {
+    if (isResultTypeDifferent(result, property)) {
+        const newProperty = new PropertySchema('v');
+        newProperty.setFromJSValue(result);
+        return newProperty;
+    }
+    return undefined;
+}
+
+export function isResultTypeDifferent(result: any, property: PropertySchema): boolean {
+    if (result === null || result === undefined) return false;
+
+    if (property.type === 'number' && (typeof result !== 'number' && typeof result !== 'bigint')) return true;
+    if (property.type === 'string' && (typeof result !== 'string')) return true;
+    if (property.type === 'uuid' && (typeof result !== 'string')) return true;
+    if (property.type === 'objectId' && (typeof result !== 'string')) return true;
+    if (property.type === 'boolean' && (typeof result !== 'boolean')) return true;
+    if (property.type === 'date' && !(result instanceof Date)) return true;
+    if (property.type === 'arrayBuffer' && !(result instanceof ArrayBuffer)) return true;
+    if (property.type === 'map' && !isPlainObject(result)) return true;
+    if (property.type === 'array' && !isArray(result)) return true;
+
+    if (property.type === 'any') {
+        //means not defined probably
+    }
+
+    if (property.type === 'class') {
+        //could be Promise, Observable, Collection, ...
+        if (!(result instanceof property.getResolvedClassType())) return true;
+    }
+
+    return false;
 }

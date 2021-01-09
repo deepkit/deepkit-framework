@@ -348,7 +348,7 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.exclude = (target: 'all' | 'mongo' | 'plain' | string = 'all') => {
+    fn.exclude = (target: 'all' | 'mongo' | 'json' | string = 'all') => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Exclude(target)]);
     };

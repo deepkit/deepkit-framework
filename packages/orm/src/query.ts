@@ -447,7 +447,7 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
     public async findOne(): Promise<T> {
         const query = await this.callQueryEvent();
         const item = await query.resolver.findOneOrUndefined(query.model);
-        if (!item) throw new ItemNotFound('Item not found');
+        if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found (for filter ${JSON.stringify(this.model.filter)})`);
         return item;
     }
 
@@ -538,17 +538,19 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         //whe need to use event.query in case someone overwrite it
         await event.query.resolver.patch(event.query.model, changes, patchResult);
 
-        const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
-        for (let i = 0; i < patchResult.primaryKeys.length; i++) {
-            const item = this.databaseSession.identityMap.getByHash(this.classSchema, pkHashGenerator(patchResult.primaryKeys[i]));
-            if (!item) continue;
+        if (query.model.withIdentityMap) {
+            const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
+            for (let i = 0; i < patchResult.primaryKeys.length; i++) {
+                const item = this.databaseSession.identityMap.getByHash(this.classSchema, pkHashGenerator(patchResult.primaryKeys[i]));
+                if (!item) continue;
 
-            if (changes.$set) for (const name in changes.$set) {
-                (item as any)[name] = (changes.$set as any)[name];
-            }
+                if (changes.$set) for (const name in changes.$set) {
+                    (item as any)[name] = (changes.$set as any)[name];
+                }
 
-            for (const name in patchResult.returning) {
-                (item as any)[name] = (patchResult.returning as any)[name][i];
+                for (const name in patchResult.returning) {
+                    (item as any)[name] = (patchResult.returning as any)[name][i];
+                }
             }
         }
 

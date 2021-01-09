@@ -312,7 +312,7 @@ test('joins', async () => {
     }
 
     {
-        await expect(session.query(User).innerJoin('organisations').filter({name: 'notexisting'}).findOneField('name')).rejects.toThrow('Item not found');
+        await expect(session.query(User).innerJoin('organisations').filter({name: 'notexisting'}).findOneField('name')).rejects.toThrow('not found');
     }
 
     {

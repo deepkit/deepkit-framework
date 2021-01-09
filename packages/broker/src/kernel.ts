@@ -1,5 +1,5 @@
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
-import { createRpcMessage, RpcKernelBaseConnection, RpcConnectionWriter, RpcMessage, RpcMessageRouteType, RpcResponse, RpcKernelConnections } from '@deepkit/rpc';
+import { createRpcMessage, RpcKernelBaseConnection, RpcConnectionWriter, RpcMessage, RpcMessageRouteType, RpcMessageBuilder, RpcKernelConnections } from '@deepkit/rpc';
 import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
 
 export class BrokerConnection extends RpcKernelBaseConnection {
@@ -39,7 +39,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
         await Promise.all(promises);
     }
 
-    async onMessage(message: RpcMessage, response: RpcResponse): Promise<void> {
+    async onMessage(message: RpcMessage, response: RpcMessageBuilder): Promise<void> {
         switch (message.type) {
             case BrokerType.PublishEntityFields: {
                 const body = message.parseBody(brokerEntityFields);

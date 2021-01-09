@@ -24,6 +24,14 @@ import {Changes} from './changes';
 import {DeleteResult, PatchResult} from './type';
 import { GenericQuery } from './query';
 
+export class UnitOfWorkCommitEvent<T> extends AsyncEmitterEvent {
+    constructor(
+        public readonly databaseSession: DatabaseSession<any>
+    ) {
+        super();
+    }
+}
+
 export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly classSchema: ClassSchema<T>,
@@ -70,6 +78,8 @@ export class UnitOfWorkDatabaseEmitter {
 
     public readonly onDeletePre: AsyncEventEmitter<UnitOfWorkEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
     public readonly onDeletePost: AsyncEventEmitter<UnitOfWorkEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePost);
+
+    public readonly onCommitPre: AsyncEventEmitter<UnitOfWorkCommitEvent<any>> = new AsyncEventEmitter(this.parent?.onCommitPre);
 
     constructor(protected parent?: UnitOfWorkDatabaseEmitter) {
     }

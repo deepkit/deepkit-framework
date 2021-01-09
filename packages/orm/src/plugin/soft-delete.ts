@@ -3,6 +3,7 @@ import { ClassSchema, getClassSchema, t } from "@deepkit/type";
 import { Entity } from "../type";
 import { Database, DatabaseAdapter } from "../database";
 import { GenericQuery } from "../query";
+import { DatabaseSession } from "src/database-session";
 
 interface SoftDeleteEntity extends Entity {
     deletedAt?: Date;
@@ -10,6 +11,41 @@ interface SoftDeleteEntity extends Entity {
 }
 
 const deletedAtName = 'deletedAt';
+
+export class SoftDeleteSession {
+    protected deletedBy = new Map<ClassSchema, any>();
+    protected restoreItems: SoftDeleteEntity[] = [];
+
+    constructor(protected session: DatabaseSession<any>) {
+        session.unitOfWorkEmitter.onDeletePre.subscribe(event => {
+            const deletedBy = this.deletedBy.get(event.classSchema);
+            if (!deletedBy) return;
+            for (const item of event.items) {
+                item.deletedBy = deletedBy;
+            }
+        });
+
+        session.unitOfWorkEmitter.onCommitPre.subscribe(event => {
+            for (const item of this.restoreItems) {
+                item.deletedAt = undefined;
+                item.deletedBy = undefined;
+            }
+
+            event.databaseSession.add(...this.restoreItems);
+            this.restoreItems.length = 0;
+        });
+    }
+
+    setDeletedBy<T extends SoftDeleteEntity>(classType: ClassType<T> | ClassSchema<T>, deletedBy: T['deletedBy']): this {
+        this.deletedBy.set(getClassSchema(classType), deletedBy);
+        return this;
+    }
+
+    restore<T extends SoftDeleteEntity>(item: T): this {
+        this.restoreItems.push(item);
+        return this;
+    }
+}
 
 export class SoftDeleteQuery<T extends SoftDeleteEntity> extends GenericQuery<T> {
     includeSoftDeleted: boolean = false;
@@ -116,7 +152,7 @@ export class SoftDelete {
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
             if (event.query instanceof SoftDeleteQuery && event.query.includeSoftDeleted === true) return;
 
-            //stop actual query delete query and all subsequent running event listener
+            //stop actual query delete query
             event.stop();
 
             const patch = { [deletedAtName]: new Date } as Partial<T>;
@@ -130,17 +166,17 @@ export class SoftDelete {
         const uowDelete = this.database.unitOfWorkEvents.onDeletePre.subscribe(async event => {
             if (event.classSchema !== schema) return; //do nothing
 
-            //stop actual query delete query and all subsequent running event listener
+            //stop actual query delete query
             event.stop();
 
-            const patch = { [deletedAtName]: new Date } as Partial<T>;
-            if (hasDeletedBy) {
-                // patch.deletedBy = 
+            //instead of removing, we move it into the current session (creating a new SessionRound)
+            //to let the current commit know we want to rather update it, instead of deleting.
+            for (const item of event.items) {
+                item[deletedAtName] = new Date;
             }
 
-            await event.databaseSession.query(schema).filter({
-                [schema.getPrimaryFieldName()]: event.getPrimaryKeys()
-            }).patchMany(patch);
+            //this creates a new SessionRound, and commits automatically once the current is done (in the same transaction).
+            event.databaseSession.add(...event.items);
         });
 
         this.listeners.set(schema, { queryFetch, queryPatch, queryDelete, uowDelete });

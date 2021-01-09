@@ -132,6 +132,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     ) {
         this.query = (classType: ClassType | ClassSchema) => {
             const session = this.createSession();
+            session.withIdentityMap = false;
             return session.query(classType);
         };
         this.registerEntity(...schemas);

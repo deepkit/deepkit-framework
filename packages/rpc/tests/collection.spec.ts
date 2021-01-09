@@ -18,7 +18,6 @@ test('collection basic', () => {
         ) { }
     }
 
-
     const collection = new Collection(Item);
     const item1 = new Item(1, 'Item 1');
     const item2 = new Item(2, 'Item 2');
@@ -70,7 +69,6 @@ test('collection state', async () => {
         protected collection = new Collection(MyModel);
 
         @rpc.action()
-        @t.generic(MyModel)
         fix(): Collection<MyModel> {
             this.collection.set([
                 plainToClass(MyModel, { id: 1 }),

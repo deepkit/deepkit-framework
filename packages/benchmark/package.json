@@ -32,6 +32,7 @@
     "@prisma/client": "^2.6.2",
     "ajv": "^6.12.4",
     "benchmark": "^2.1.4",
+    "mongoose": "5.11.11",
     "cerialize": "^2.0.1",
     "class-transformer": "^0.3.1",
     "fast-glob": "^3.2.4",
@@ -45,6 +46,7 @@
     "typeorm": "^0.2.26"
   },
   "devDependencies": {
-    "@types/node-fetch": "^2.5.7"
+    "@types/node-fetch": "^2.5.7",
+    "@types/mongoose": "5.10.3"
   }
 }

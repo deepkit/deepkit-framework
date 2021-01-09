@@ -19,6 +19,7 @@
 import {ClassType} from '@deepkit/core';
 import {
     ClassDecoratorResult,
+    ClassSchema,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     getClassSchema,

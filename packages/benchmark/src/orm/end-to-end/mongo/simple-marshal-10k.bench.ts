@@ -17,13 +17,13 @@
  */
 
 import 'reflect-metadata';
-import {Entity, t} from '@deepkit/type';
-import {Database} from '@deepkit/orm';
-import {MongoDatabaseAdapter} from '@deepkit/mongo';
-import {BenchSuite} from '../../../bench';
+import { Entity, t } from '@deepkit/type';
+import { Database } from '@deepkit/orm';
+import { MongoDatabaseAdapter } from '@deepkit/mongo';
+import { BenchSuite } from '../../../bench';
 
 @Entity('deepkit')
-export class DeepkitModel {
+export class Model {
     @t.mongoId.primary public _id?: string;
     @t ready?: boolean;
 
@@ -45,12 +45,12 @@ export async function main() {
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
         const session = database.createSession();
-        await session.query(DeepkitModel).deleteMany();
+        await session.query(Model).deleteMany();
         const bench = new BenchSuite('deepkit');
 
         await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {
-                const user = new DeepkitModel(i, 'Peter ' + i);
+                const user = new Model(i, 'Peter ' + i);
                 user.ready = true;
                 user.priority = 5;
                 user.tags = ['a', 'b', 'c'];
@@ -61,10 +61,10 @@ export async function main() {
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            await session.query(DeepkitModel).disableIdentityMap().find();
+            await session.query(Model).disableIdentityMap().find();
         });
 
-        const dbItems = await session.query(DeepkitModel).find();
+        const dbItems = await session.query(Model).find();
         for (const item of dbItems) {
             item.priority++;
         }
@@ -73,12 +73,20 @@ export async function main() {
             await session.commit();
         });
 
+        await bench.runAsyncFix(1, 'update-query', async () => {
+            await database.query(Model).disableIdentityMap().patchMany({ $inc: { priority: 1 } });
+        });
+
         await bench.runAsyncFix(1, 'remove', async () => {
             for (const item of dbItems) {
                 session.remove(item);
             }
 
             await session.commit();
+        });
+
+        await bench.runAsyncFix(1, 'remove-query', async () => {
+            await database.query(Model).deleteMany();
         });
     }
 
