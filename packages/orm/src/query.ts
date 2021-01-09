@@ -420,6 +420,7 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         protected resolver: GenericQueryResolver<T>
     ) {
         super(classSchema);
+        this.model.withIdentityMap = databaseSession.withIdentityMap;
     }
 
     static create<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): InstanceType<T> & B {

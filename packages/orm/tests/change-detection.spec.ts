@@ -243,7 +243,7 @@ test('change-detection typedArray', () => {
 
     {
         const item = jsonSerializer.for(s).deserialize({id: 1, buffer: new Uint16Array(10)});
-        expect(item.buffer.byteLength).toBe(10);
+        expect(item.buffer.byteLength).toBe(20);
         getInstanceState(item).markAsPersisted();
         expect(buildChanges(item)).toMatchObject({});
 
