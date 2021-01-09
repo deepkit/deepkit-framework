@@ -17,15 +17,16 @@
  */
 
 import {each, getClassName} from '@deepkit/core';
-import {WebWorker, WebWorkerFactory} from './worker';
+import {createRpcConnection, WebWorker, WebWorkerFactory} from './worker';
 import {RpcControllers} from './service-container';
 import {EventDispatcher, BaseEvent, eventDispatcher, EventToken} from './event';
 import cluster from 'cluster';
-import {injectable} from './injector/injector';
+import {inject, injectable, InjectorContext} from './injector/injector';
 import {Logger} from './logger';
 import {kernelConfig} from './kernel.config';
 import {HttpControllers} from './router';
 import {httpClass} from './decorator';
+import { DirectClient, RpcClient, RpcKernel } from '@deepkit/rpc';
 
 export class ServerBootstrapEvent extends BaseEvent {}
 
@@ -138,7 +139,6 @@ export class ApplicationServer {
             this.logger.log(`Start HTTP server, using ${this.config.workers} workers.`);
         }
 
-
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
                 await this.bootstrap();
@@ -163,5 +163,45 @@ export class ApplicationServer {
             this.masterWorker = this.webWorkerFactory.create(1, this.config);
             await this.bootstrapDone();
         }
+    }
+}
+
+@injectable()
+export class InMemoryApplicationServer extends ApplicationServer {
+    protected kernel?: RpcKernel;
+
+    @inject()
+    protected rootScopedContext!: InjectorContext;
+
+    async start(): Promise<void> {
+        this.kernel = this.webWorkerFactory.createRpcKernel();
+        await this.bootstrap();
+    }
+
+    async close(): Promise<void> {
+        await this.shutdown();
+    }
+
+    public createClient() {
+        if (!this.kernel) throw new Error('Not started');
+        const context = this.rootScopedContext;
+        const kernel = this.kernel;
+
+        return new RpcClient({
+            connect(connection) {
+                const kernelConnection = createRpcConnection(context, kernel, { write: (buffer) => connection.onMessage(buffer) });
+
+                connection.onConnected({
+                    disconnect() {
+                        kernelConnection.close();
+                    },
+                    send(message) {
+                        queueMicrotask(() => {
+                            kernelConnection.feed(message);
+                        });
+                    }
+                });
+            }
+        });
     }
 }

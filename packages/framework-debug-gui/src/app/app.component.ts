@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
 import {observe} from '@deepkit/desktop-ui';
 import {Database, DebugRequest} from '@deepkit/framework-debug-shared';
-import {Collection} from '@deepkit/framework-shared';
+import {Collection} from '@deepkit/rpc';
 import {Observable} from 'rxjs';
 import {ControllerClient} from './client';
 

@@ -18,10 +18,33 @@
 
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
+import { RpcMessageWriter } from '../writer';
 import { RpcMessageSubject } from '../client/message-subject';
-import { rpcClientId, rpcError, RpcInjector, rpcPeerRegister, RpcTypes, SimpleInjector } from '../model';
-import { createBuffer, createRpcCompositeMessage, createRpcCompositeMessageSourceDest, createRpcMessage, createRpcMessageSourceDest, readRpcMessage, RpcCreateMessageDef, rpcEncodeError, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
+import {
+    rpcAuthenticate,
+    rpcClientId,
+    rpcError,
+    RpcInjector,
+    rpcPeerRegister,
+    rpcResponseAuthenticate,
+    RpcTypes,
+    SimpleInjector
+} from '../model';
+import {
+    createBuffer,
+    createRpcCompositeMessage,
+    createRpcCompositeMessageSourceDest,
+    createRpcMessage,
+    createRpcMessageSourceDest,
+    readRpcMessage,
+    RpcCreateMessageDef,
+    rpcEncodeError,
+    RpcMessage,
+    RpcMessageReader,
+    RpcMessageRouteType
+} from '../protocol';
 import { RpcServerAction } from './action';
+import { RpcKernelSecurity, Session, SessionState } from './security';
 
 export class RpcResponseComposite {
     protected messages: RpcCreateMessageDef<any>[] = [];
@@ -29,7 +52,7 @@ export class RpcResponseComposite {
     constructor(
         public type: number,
         protected id: number,
-        protected writer: RpcKernelConnectionWriter,
+        protected writer: RpcConnectionWriter,
         protected clientId?: Uint8Array,
         protected source?: Uint8Array,
     ) {
@@ -54,7 +77,7 @@ export class RpcResponseComposite {
 
 export class RpcResponse {
     constructor(
-        protected writer: RpcKernelConnectionWriter,
+        protected writer: RpcConnectionWriter,
         protected id: number,
         protected clientId?: Uint8Array,
         protected source?: Uint8Array,
@@ -91,21 +114,21 @@ export class RpcResponse {
 }
 
 /**
- * This is a reference implementation and only works in a single process. 
+ * This is a reference implementation and only works in a single process.
  * A real-life implementation would use an external message-bus, like Redis & co.
  */
 export class RpcPeerExchange {
-    protected registeredPeers = new Map<string, RpcKernelConnectionWriter>();
+    protected registeredPeers = new Map<string, RpcConnectionWriter>();
 
-    isRegistered(id: string): boolean {
+    async isRegistered(id: string): Promise<boolean> {
         return this.registeredPeers.has(id);
     }
 
-    deregister(id: string | Uint8Array) {
+    async deregister(id: string | Uint8Array): Promise<void> {
         this.registeredPeers.delete('string' === typeof id ? id : stringifyUuid(id));
     }
 
-    register(id: string | Uint8Array, writer: RpcKernelConnectionWriter) {
+    async register(id: string | Uint8Array, writer: RpcConnectionWriter): Promise<void> {
         this.registeredPeers.set('string' === typeof id ? id : stringifyUuid(id), writer);
     }
 
@@ -138,26 +161,55 @@ export class RpcPeerExchange {
 }
 
 //this will not be responsible for packaging. We pack in the transporter.
-export interface RpcKernelConnectionWriter {
+export interface RpcConnectionWriter {
     write(buffer: Uint8Array): void;
+
+    bufferedAmount?(): number;
 }
 
 export abstract class RpcKernelBaseConnection {
     protected messageId: number = 0;
-    protected reader = new RpcMessageReader(this.handleMessage.bind(this));
+    protected reader = new RpcMessageReader(
+        this.handleMessage.bind(this),
+        (id: number) => {
+            this.writer.write(createRpcMessage(id, RpcTypes.ChunkAck));
+        }
+    );
 
     protected id: Uint8Array = writeUuid(createBuffer(16));
 
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
+    public writer: RpcMessageWriter = new RpcMessageWriter(this.transportWriter, this.reader);
+
+    protected timeoutTimers: any[] = [];
+    public readonly onClose: Promise<void>;
+    protected onCloseResolve?: Function;
 
     constructor(
-        public writer: RpcKernelConnectionWriter,
+        protected transportWriter: RpcConnectionWriter,
         protected connections: RpcKernelConnections,
     ) {
         this.connections.connections.push(this);
+        this.onClose = new Promise((resolve) => {
+            this.onCloseResolve = resolve;
+        })
+    }
+
+    /**
+     * Creates a regular timer using setTimeout() and automatically cancel it once the connection breaks or server stops.
+     */
+    public setTimeout(cb: () => void, timeout: number): any {
+        const timer = setTimeout(() => {
+            cb();
+            arrayRemoveItem(this.timeoutTimers, timer);
+        }, timeout);
+        this.timeoutTimers.push(timer);
+        return timer;
     }
 
     public close(): void {
+        for (const timeout of this.timeoutTimers) clearTimeout(timeout);
+        if (this.onCloseResolve) this.onCloseResolve();
         arrayRemoveItem(this.connections.connections, this);
     }
 
@@ -165,8 +217,7 @@ export abstract class RpcKernelBaseConnection {
         this.reader.feed(buffer);
     }
 
-    public handleMessage(buffer: Uint8Array): void {
-        const message = readRpcMessage(buffer);
+    public handleMessage(message: RpcMessage): void {
         if (message.routeType === RpcMessageRouteType.server) {
             //initiated by the server, so we check replies
             const callback = this.replies.get(message.id);
@@ -185,13 +236,7 @@ export abstract class RpcKernelBaseConnection {
     public sendMessage<T>(
         type: number,
         schema?: ClassSchema<T>,
-        body?: T,
-        options: {
-            dontWaitForConnection?: boolean,
-            connectionId?: number,
-            peerId?: string,
-            timeout?: number
-        } = {}
+        body?: T
     ): RpcMessageSubject {
         const id = this.messageId++;
         const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
@@ -225,13 +270,15 @@ export class RpcKernelConnections {
 }
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
-    protected actionHandler = new RpcServerAction(this.controllers, this.injector);
     public myPeerId?: string;
+    protected sessionState = new SessionState<Session>();
+    protected actionHandler = new RpcServerAction(this.controllers, this.injector, this.security, this.sessionState);
 
     constructor(
-        writer: RpcKernelConnectionWriter,
+        writer: RpcConnectionWriter,
         connections: RpcKernelConnections,
         protected controllers: Map<string, ClassType>,
+        protected security = new RpcKernelSecurity<Session>(),
         protected injector: RpcInjector,
         protected peerExchange: RpcPeerExchange,
     ) {
@@ -242,6 +289,10 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     async onMessage(message: RpcMessage): Promise<void> {
         if (message.routeType == RpcMessageRouteType.peer && message.getPeerId() !== this.myPeerId) {
             // console.log('Redirect peer message', RpcTypes[message.type]);
+            if (!await this.security.isAllowedToSendToPeer(this.sessionState.getSession(), message.getPeerId())) {
+                new RpcResponse(this.writer, message.id).error(new Error('Access denied'));
+                return;
+            }
             this.peerExchange.redirect(message);
             return;
         }
@@ -258,43 +309,64 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         try {
             if (message.routeType === RpcMessageRouteType.client) {
                 switch (message.type) {
-                    case RpcTypes.ClientId: return response.reply(RpcTypes.ClientIdResponse, rpcClientId, { id: this.id });
-                    case RpcTypes.PeerRegister: return this.registerAsPeer(message, response);
-                    case RpcTypes.PeerDeregister: return this.deregisterAsPeer(message, response);
+                    case RpcTypes.ClientId:
+                        return response.reply(RpcTypes.ClientIdResponse, rpcClientId, { id: this.id });
+                    case RpcTypes.PeerRegister:
+                        return await this.registerAsPeer(message, response);
+                    case RpcTypes.PeerDeregister:
+                        return this.deregisterAsPeer(message, response);
                 }
             }
 
             switch (message.type) {
-                case RpcTypes.ActionType: return await this.actionHandler.handleActionTypes(message, response);
-                case RpcTypes.Action: return await this.actionHandler.handleAction(message, response);
-                default: return await this.actionHandler.handle(message, response);
+                case RpcTypes.Authenticate:
+                    return await this.authenticate(message, response);
+                case RpcTypes.ActionType:
+                    return await this.actionHandler.handleActionTypes(message, response);
+                case RpcTypes.Action:
+                    return await this.actionHandler.handleAction(message, response);
+                default:
+                    return await this.actionHandler.handle(message, response);
             }
         } catch (error) {
             response.error(error);
         }
     }
 
-    protected deregisterAsPeer(message: RpcMessage, response: RpcResponse): void {
+    protected async authenticate(message: RpcMessage, response: RpcResponse) {
+        const body = message.parseBody(rpcAuthenticate);
+        const session = await this.security.authenticate(body.token);
+        this.sessionState.setSession(session);
+        response.reply(RpcTypes.AuthenticateResponse, rpcResponseAuthenticate, { username: session.username });
+    }
+
+    protected async deregisterAsPeer(message: RpcMessage, response: RpcResponse) {
         const body = message.parseBody(rpcPeerRegister);
-        if (this.peerExchange.isRegistered(body.id)) {
-            return response.error(new Error(`Peer ${body.id} already registereed`));
+        if (body.id !== this.myPeerId) {
+            return response.error(new Error(`Not registered as that peer`));
         }
         this.myPeerId = undefined;
-        this.peerExchange.deregister(body.id);
+        await this.peerExchange.deregister(body.id);
         response.ack();
     }
 
-    protected registerAsPeer(message: RpcMessage, response: RpcResponse): void {
+    protected async registerAsPeer(message: RpcMessage, response: RpcResponse) {
         const body = message.parseBody(rpcPeerRegister);
-        if (this.peerExchange.isRegistered(body.id)) {
+        if (await this.peerExchange.isRegistered(body.id)) {
             return response.error(new Error(`Peer ${body.id} already registereed`));
         }
 
+        if (!await this.security.isAllowedToRegisterAsPeer(this.sessionState.getSession(), body.id)) {
+            response.error(new Error('Access denied'));
+            return;
+        }
+
+        await this.peerExchange.register(body.id, this.writer);
         this.myPeerId = body.id;
-        this.peerExchange.register(body.id, this.writer);
         response.ack();
     }
 }
+
 
 /**
  * The kernel is responsible for parsing the message header, redirecting to peer if necessary, loading the body parser,
@@ -306,7 +378,8 @@ export class RpcKernel {
     protected connections = new RpcKernelConnections;
 
     constructor(
-        protected injector: RpcInjector = new SimpleInjector
+        protected injector: RpcInjector = new SimpleInjector,
+        protected security = new RpcKernelSecurity<Session>(),
     ) {
     }
 
@@ -314,7 +387,7 @@ export class RpcKernel {
         this.controllers.set(id, controller);
     }
 
-    createConnection(writer: RpcKernelConnectionWriter, injector?: RpcInjector) {
-        return new RpcKernelConnection(writer, this.connections, this.controllers, injector || this.injector, this.peerExchange);
+    createConnection(writer: RpcConnectionWriter, injector?: RpcInjector): RpcKernelConnection {
+        return new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector || this.injector, this.peerExchange);
     }
 }

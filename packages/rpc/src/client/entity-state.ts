@@ -77,6 +77,10 @@ export class EntitySubjectStore<T extends IdInterface> {
         const store = this.store.get(id);
         return store ? store.forks.length : 0;
     }
+
+    public getEntitySubjectCount(): number {
+        return this.store.size;
+    }
 }
 
 export class EntityState {

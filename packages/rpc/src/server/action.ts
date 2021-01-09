@@ -18,12 +18,13 @@
 
 import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
 import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
-import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { BehaviorSubject, isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
 import { ActionObservableTypes, EntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcResponse } from './kernel';
+import { RpcKernelSecurity, Session, SessionState } from './security';
 
 export type ActionTypes = {
     parameters: PropertySchema[],
@@ -60,12 +61,14 @@ export class RpcServerAction {
     constructor(
         protected controllers: Map<string, ClassType>,
         protected injector: RpcInjector,
+        protected security: RpcKernelSecurity<Session>,
+        protected sessionState: SessionState<Session>,
     ) {
     }
 
     public async handleActionTypes(message: RpcMessage, response: RpcResponse) {
         const body = message.parseBody(rpcActionType);
-        const types = this.loadTypes(body.controller, body.method);
+        const types = await this.loadTypes(body.controller, body.method);
 
         response.reply(RpcTypes.ResponseActionType, rpcResponseActionType, {
             parameters: types.parameters.map(v => v.toJSON()),
@@ -73,7 +76,7 @@ export class RpcServerAction {
         });
     }
 
-    protected loadTypes(controller: string, method: string) {
+    protected async loadTypes(controller: string, method: string) {
         const cacheId = controller + '!' + method;
         let types = this.cachedActionsTypes[cacheId];
         if (types) return types;
@@ -83,11 +86,9 @@ export class RpcServerAction {
             throw new Error(`No controller registered for id ${controller}`);
         }
 
-        //todo: implement again
-        // const access = await this.security.hasAccess(this.sessionStack.getSessionOrUndefined(), classType, message.method);
-        // if (!access) {
-        //     throw new Error(`Access denied to action ` + action);
-        // }
+        if (!await this.security.hasControllerAccess(this.sessionState.getSession(), classType, method)) {
+            throw new Error(`Access denied to action ${method}`);
+        }
 
         const actions = getActions(classType);
 
@@ -106,12 +107,11 @@ export class RpcServerAction {
         let resultProperty = getClassSchema(classType).getMethod(method).clone();
 
         let observableNextSchema: ClassSchema | undefined;
-        if (resultProperty.classType
-            && (isPrototypeOfBase(resultProperty.classType, Observable) || isPrototypeOfBase(resultProperty.classType, Collection)
-                || isPrototypeOfBase(resultProperty.classType, Promise))) {
+        if (resultProperty.classType) {
             const generic = resultProperty.templateArgs[0];
 
-            if (!generic) {
+            if (!generic && (isPrototypeOfBase(resultProperty.classType, Observable) || isPrototypeOfBase(resultProperty.classType, Collection)
+                    || isPrototypeOfBase(resultProperty.classType, Promise))) {
                 //we need to change that to any
                 const className = getClassName(resultProperty.classType);
                 throw new Error(`Your method ${getClassPropertyName(classType, method)} returns ${className} and you have not specified a generic type using @t.generic() decorator. ` +
@@ -120,10 +120,15 @@ export class RpcServerAction {
                     `\n   @t.generic(t.string)` +
                     `\n   ${method}(): ${className}<string> {}` +
                     `\n   @t.generic(MyModel)` +
-                    `\n   ${method}(): ${className}<MyModel> {}`
+                    `\n   ${method}(): ${className}<MyModel> {}` +
+                    `\n   @t.generic(MyModel)` +
+                    `\n   ${method}(): ${className}<Collection<MyModel>> {}`
                 );
             }
-            resultProperty = generic.clone();
+
+            if (generic) {
+                resultProperty = generic.clone();
+            }
         }
 
         resultProperty.name = 'v';
@@ -215,7 +220,7 @@ export class RpcServerAction {
         const classType = this.controllers.get(body.controller);
         if (!classType) throw new Error(`No controller registered for id ${body.controller}`);
 
-        const types = this.loadTypes(body.controller, body.method);
+        const types = await this.loadTypes(body.controller, body.method);
         const value = message.parseBody(types.parameterSchema);
 
         const controller = this.injector.get(classType);
@@ -231,7 +236,6 @@ export class RpcServerAction {
 
             if (result instanceof EntitySubject) {
                 response.reply(RpcTypes.ResponseEntity, types.resultSchema, { v: result });
-
             } else if (result instanceof Collection) {
                 const collection = result;
 
@@ -282,7 +286,7 @@ export class RpcServerAction {
                     }
                 };
 
-            } else if (result instanceof Observable) {
+            } else if (isObservable(result)) {
                 this.observables[message.id] = { observable: result, subscriptions: {}, observableNextSchema: types.observableNextSchema };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;

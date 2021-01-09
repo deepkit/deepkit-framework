@@ -185,8 +185,52 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         super(1);
     }
 
+    public getTotal() {
+        return this.state.total;
+    }
+
+    public getItemsPerPage() {
+        return this.model.itemsPerPage;
+    }
+
+    public getPages() {
+        return Math.ceil(this.getTotal() / this.getItemsPerPage());
+    }
+
+    public getSort() {
+        return this.model.sort;
+    }
+
+    public getParameter(name: string) {
+        return this.model.parameters[name];
+    }
+
+    public setParameter(name: string, value: any): this {
+        this.model.parameters[name] = value;
+        return this;
+    }
+
+    public orderByField(name: keyof T & string, order: SORT_ORDER = 'asc') {
+        this.model.sort = {[name]: order} as Sort<T>;
+        return this;
+    }
+
+    public setPage(page: number) {
+        this.model.skip = this.getItemsPerPage() * page;
+        return this;
+    }
+
+    public getPage() {
+        return Math.floor((this.model.skip || 0) / this.getItemsPerPage());
+    }
+
+    public apply() {
+        this.model.changed();
+        return this.nextStateChange;
+    }
+
     public getEntitySubject(idOrItem: string | number | T): EntitySubject<T> | undefined {
-        const id: string | number = idOrItem instanceof this.classType ? idOrItem.id : String(idOrItem);
+        const id: any = idOrItem instanceof this.classType ? idOrItem.id : idOrItem;
         return this.entitySubjects.get(id);
     }
 

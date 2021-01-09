@@ -1,7 +1,6 @@
 #!/usr/bin/env -S node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
 import 'reflect-metadata';
 import {entity, t} from '@deepkit/type';
-
 import {Application, BodyValidation, DatabaseModule, http, KernelModule, Logger, Redirect} from '@deepkit/framework';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';

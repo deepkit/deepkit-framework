@@ -16,8 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClientTransportAdapter, RpcClient, TransportConnectionHooks} from './client';
-import {RpcKernel} from '../server/kernel';
+import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
+import { RpcKernel } from '../server/kernel';
+import { readRpcMessage } from '../protocol';
 
 export class DirectClient extends RpcClient {
     constructor(rpcKernel: RpcKernel) {
@@ -30,7 +31,7 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
     }
 
     public async connect(connection: TransportConnectionHooks) {
-        const kernelConnection = this.rpcKernel.createConnection({write: (buffer) => connection.onMessage(buffer)});
+        const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onMessage(buffer) });
 
         connection.onConnected({
             disconnect() {
@@ -38,7 +39,7 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
             },
             send(message) {
                 queueMicrotask(() => {
-                    kernelConnection.handleMessage(message);
+                    kernelConnection.feed(message);
                 });
             }
         });

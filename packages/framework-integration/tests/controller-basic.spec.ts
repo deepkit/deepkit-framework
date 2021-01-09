@@ -1,14 +1,13 @@
 import {afterAll, expect, test} from '@jest/globals';
 import 'reflect-metadata';
-import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@deepkit/framework-shared';
+import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@deepkit/rpc';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from './util';
 import {Observable} from 'rxjs';
 import {bufferCount, first, skip} from 'rxjs/operators';
 import {Entity, getClassSchema, PropertySchema, t} from '@deepkit/type';
 import {ObserverTimer} from '@deepkit/core-rxjs';
 import {isArray} from '@deepkit/core';
-import {ClientProgress} from '@deepkit/framework-client';
-import {rpc} from '@deepkit/framework-shared';
+import {ClientProgress, rpc} from '@deepkit/rpc';
 import {fail} from 'assert';
 import ws from 'ws';
 
@@ -82,21 +81,6 @@ test('basic setup and methods', async () => {
     }
 
     const {client, close} = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
-    {
-        const types = await client.getActionTypes('test', 'names');
-        expect(types.parameters[0].type).toBe('string');
-    }
-
-    {
-        const types = await client.getActionTypes('test', 'user');
-        expect(types.parameters[0].type).toBe('string');
-    }
-
-    {
-        const types = await client.getActionTypes('test', 'validationError');
-        expect(types.parameters[0].type).toBe('class');
-        expect(types.parameters[0].classType).toBe(User);
-    }
 
     const test = client.controller<TestController>('test');
 
@@ -141,44 +125,15 @@ test('basic setup and methods', async () => {
             const error = await test.validationError(user);
             fail('should error');
         } catch (error) {
-            expect(error).toBeInstanceOf(ValidationParameterError);
+            expect(error).toBeInstanceOf(ValidationError);
             expect((error as ValidationError).errors[0]).toBeInstanceOf(ValidationErrorItem);
-            expect((error as ValidationError).errors[0]).toEqual({code: 'required', message: 'Required value is undefined', path: 'validationError#0.name'});
+            expect((error as ValidationError).errors[0]).toEqual({code: 'required', message: 'Required value is undefined', path: 'user.name'});
         }
     }
 
     const user = await test.user('pete');
     expect(user).toBeInstanceOf(User);
     expect(user.name).toEqual('pete');
-
-    await close();
-});
-
-
-test('basic serialisation: primitives', async () => {
-    @rpc.controller('test')
-    class TestController {
-        @rpc.action()
-        @t.array(t.string)
-        names(last: string): string[] {
-            return ['a', 'b', 'c', "15", last];
-        }
-    }
-
-    const {client, close} = await createServerClientPair('basic setup primitives', appModuleForControllers([TestController]));
-
-    const test = client.controller<TestController>('test');
-
-    try {
-        await test.names(16 as any as string);
-        fail('should fail');
-    } catch (error) {
-        expect(error.message).toContain('names#0: No string given');
-    }
-
-    const names = await test.names("16");
-
-    expect(names).toEqual(['a', 'b', 'c', "15", "16"]);
 
     await close();
 });
@@ -205,18 +160,14 @@ test('basic serialisation return: entity', async () => {
         }
 
         @rpc.action()
-        async notAnnotatedUser(name: string): Promise<User> {
-            return new User(name);
-        }
-
-        @rpc.action()
         @t.any
         async allowPlainObject(name: string): Promise<{mowla: boolean, name: string, date: Date}> {
             return {mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z')};
         }
 
         @rpc.action()
-        async notAnnotatedObservable(name: string): Promise<Observable<User>> {
+        @t.generic(User)
+        async observable(name: string): Promise<Observable<User>> {
             return new Observable((observer) => {
                 observer.next(new User(name));
             });
@@ -247,15 +198,9 @@ test('basic serialisation return: entity', async () => {
     expect(struct.date).toBeInstanceOf(Date);
     expect(struct.date).toEqual(new Date('1987-12-12T11:00:00.000Z'));
 
-    {
-        //this should work because returnType is dynamic every time
-        const u = await test.notAnnotatedUser('peter');
-        expect(u).toBeInstanceOf(User);
-    }
 
     {
-        //this should work because returnType is dynamic every time
-        const u = await (await test.notAnnotatedObservable('peter')).pipe(first()).toPromise();
+        const u = await (await test.observable('peter')).pipe(first()).toPromise();
         expect(u).toBeInstanceOf(User);
     }
 
@@ -386,6 +331,7 @@ test('test observable', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
+        @t.generic(t.string)
         observer(): Observable<string> {
             return new Observable((observer) => {
                 observer.next('a');
@@ -407,7 +353,7 @@ test('test observable', async () => {
         }
 
         @rpc.action()
-        @t.template(User)
+        @t.generic(User)
         user(name: string): Observable<User> {
             return new Observable((observer) => {
                 observer.next(new User('first'));
@@ -480,20 +426,19 @@ test('test batcher', async () => {
     const {client, close} = await createServerClientPair('test batcher', appModuleForControllers([TestController]));
     const test = client.controller<TestController>('test');
 
-    const progress = ClientProgress.trackDownload();
+    const progress = ClientProgress.track();
     let hit = 0;
-    progress.pipe(skip(1)).subscribe((p) => {
-        console.log(p.progress, p.total);
-        expect(p.total).toBeGreaterThan(0);
-        expect(p.current).toBeLessThanOrEqual(p.total);
-        expect(progress.progress).toBeLessThanOrEqual(1);
+    progress.download.pipe(skip(1)).subscribe(() => {
+        expect(progress.download.total).toBeGreaterThan(0);
+        expect(progress.download.current).toBeLessThanOrEqual(progress.download.total);
+        expect(progress.download.progress).toBeLessThanOrEqual(1);
         hit++;
     });
     const file = await test.downloadBig();
     expect(file.length).toBe(650_000);
     expect(hit).toBeGreaterThan(3);
-    expect(progress.done).toBe(true);
-    expect(progress.progress).toBe(1);
+    expect(progress.download.done).toBe(true);
+    expect(progress.download.progress).toBe(1);
 
     const uploadFile = new Buffer(550_000);
 

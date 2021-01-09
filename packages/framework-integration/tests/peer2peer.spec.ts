@@ -5,7 +5,7 @@ import {appModuleForControllers, closeAllCreatedServers, createServerClientPair}
 import {createModule, InternalClient, RpcSecurityStrategy, Session} from '@deepkit/framework';
 import {Observable} from 'rxjs';
 import {sleep} from '@deepkit/core';
-import {rpc} from '@deepkit/framework-shared';
+import {rpc} from '@deepkit/rpc';
 import {fail} from 'assert';
 import ws from 'ws';
 

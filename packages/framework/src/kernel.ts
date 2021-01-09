@@ -24,11 +24,11 @@ import {ServerListenController} from './cli/server-listen';
 import {eventDispatcher} from './event';
 import {ApplicationServer, ApplicationServerListener} from './application-server';
 import {ConsoleTransport, Logger} from './logger';
-import {LiveDatabase} from './exchange/live-database';
+import {LiveDatabase} from './broker/live-database';
 import {injectable, injectorReference} from './injector/injector';
 import {DebugController} from './debug/debug.controller';
 import {createModule} from './module';
-import {ExchangeModule} from './exchange/exchange.module';
+import {BrokerModule} from './broker/broker.module';
 import {kernelConfig} from './kernel.config';
 import {EnvConfiguration} from './configuration';
 import {WebWorkerFactory} from './worker';
@@ -43,6 +43,7 @@ import {dirname} from 'path';
 import {DebugRouterController} from './cli/router-debug';
 import {DebugRequest} from '@deepkit/framework-debug-shared';
 import { DebugDIController } from './cli/router-di';
+import { DeepkitRpcSecurity } from './rpc';
 
 @injectable()
 class HttpLogger {
@@ -76,11 +77,10 @@ export const KernelModule = createModule({
         WebWorkerFactory,
         ConsoleTransport,
         Logger,
-        {provide: SessionStack, scope: 'rpc'},
-        // {provide: ClientConnection, scope: 'rpc'},
-        // {provide: ConnectionMiddleware, scope: 'rpc'},
+        DeepkitRpcSecurity,
         {provide: LiveDatabase, scope: 'rpc'},
         {provide: HttpListener},
+        {provide: SessionStack, scope: 'http'},
         {provide: HttpRequestDebugCollector, scope: 'http'},
     ],
     workflows: [
@@ -97,7 +97,7 @@ export const KernelModule = createModule({
         DebugDIController,
     ],
     imports: [
-        ExchangeModule,
+        BrokerModule,
     ],
 }).setup((module, config) => {
     if (config.httpLog) {

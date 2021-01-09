@@ -37,7 +37,7 @@ import {EventDispatcher, isEventListenerContainerEntryService} from '../event';
 import {DatabaseRegistry} from '../database/database-registry';
 import {inject} from '../injector/injector';
 import {DatabaseAdapter} from '@deepkit/orm';
-import {LiveDatabase} from '../exchange/live-database';
+import {LiveDatabase} from '../broker/live-database';
 
 
 @rpc.controller(DebugControllerInterface)
@@ -218,6 +218,7 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
+    @t.generic(DebugRequest)
     httpRequests(): Promise<Collection<DebugRequest>> {
         return this.liveDatabase.query(DebugRequest).find();
     }

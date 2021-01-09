@@ -34,7 +34,7 @@ export interface IdVersionInterface extends IdInterface {
 }
 
 export class ConnectionWriter {
-    write(buffer: any) {
+    write(buffer: Uint8Array) {
 
     }
 }
@@ -172,7 +172,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
 
     public deleted: boolean = false;
 
-    
+
     get id(): string | number {
         return this.value.id;
     }
@@ -290,9 +290,10 @@ export enum RpcTypes {
     Ack,
     Error,
 
-    //A batched chunk. Used when a single message exceeds a certain size. It's split up in multiple messages and send with slight delay, allowing to track progress,
-    //cancel. Allows to send shorter messages between to not block the connection. Both ways
+    //A batched chunk. Used when a single message exceeds a certain size. It's split up in multiple packages, allowing to track progress,
+    //cancel, and safe memory. Allows to send shorter messages between to not block the connection. Both ways.
     Chunk,
+    ChunkAck,
 
     Ping,
     Pong,
@@ -301,7 +302,7 @@ export enum RpcTypes {
     Authenticate,
     ActionType,
     Action, //T is the parameter type [t.string, t.number, ...] (typed arrays not supported yet)
-    
+
     PeerRegister,
     PeerDeregister,
 
@@ -326,7 +327,7 @@ export enum RpcTypes {
     ResponseActionCollectionUnsubscribe,
     ResponseActionCollectionModel,
     ResponseActionCollectionState,
-    
+
     ResponseActionCollectionChange,
     ResponseActionCollectionSet,
     ResponseActionCollectionAdd,
@@ -343,6 +344,12 @@ export const rpcClientId = t.schema({
     id: t.type(Uint8Array)
 });
 
+export const rpcChunk = t.schema({
+    id: t.number, //chunk id
+    total: t.number, //size in bytes
+    v: t.type(Uint8Array),
+});
+
 export const rpcActionObservableSubscribeId = t.schema({
     id: t.number,
 });
@@ -354,7 +361,7 @@ export const rpcError = t.schema({
     properties: t.map(t.any).optional,
 });
 
-export const rpcResponseActionObservableSubscriptionError = rpcError.extend({id: t.number});
+export const rpcResponseActionObservableSubscriptionError = rpcError.extend({ id: t.number });
 
 export enum ActionObservableTypes {
     observable,
@@ -372,7 +379,11 @@ export const rpcResponseActionObservable = t.schema({
 });
 
 export const rpcAuthenticate = t.schema({
-    token: t.string,
+    token: t.any,
+});
+
+export const rpcResponseAuthenticate = t.schema({
+    username: t.string,
 });
 
 export const rpcAction = t.schema({
@@ -408,4 +419,20 @@ export const rpcResponseActionCollectionState = t.schema({
 
 export const rpcResponseActionCollectionRemove = t.schema({
     ids: t.array(t.union(t.string, t.number)),
+});
+
+export const rpcEntityRemove = t.schema({
+    entityName: t.string,
+    ids: t.array(t.union(t.string, t.number)),
+});
+
+export const rpcEntityPatch = t.schema({
+    entityName: t.string,
+    id: t.union(t.string, t.number),
+    version: t.number,
+    patch: t.type({
+        $set: t.map(t.any).optional,
+        $unset: t.map(t.number).optional,
+        $inc: t.map(t.number).optional,
+    })
 });

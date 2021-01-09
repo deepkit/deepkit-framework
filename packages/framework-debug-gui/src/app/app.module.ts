@@ -15,9 +15,6 @@ import {
   DuiListModule,
   DuiTableModule,
   DuiAppModule,
-  DuiDialogModule,
-  DuiSliderModule,
-  DuiEmojiModule,
 } from '@deepkit/desktop-ui';
 import {ConfigurationComponent} from './views/configuration/configuration.component';
 import {HttpComponent} from './views/http/http.component';
@@ -26,7 +23,7 @@ import {FormsModule} from '@angular/forms';
 import {RpcComponent} from './views/rpc/rpc.component';
 import {WorkflowCardComponent, WorkflowComponent} from './components/workflow.component';
 import {EventsComponent} from './views/events/events.component';
-import {DeepkitClient} from '@deepkit/framework-client';
+import {DeepkitClient} from '@deepkit/rpc';
 import {OverlayModule} from '@angular/cdk/overlay';
 import {HttpRequestComponent} from './views/http/request/http-request.component';
 

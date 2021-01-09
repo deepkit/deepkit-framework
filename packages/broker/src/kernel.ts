@@ -1,6 +1,6 @@
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
-import { createRpcMessage, RpcKernelBaseConnection, RpcKernelConnectionWriter, RpcMessage, RpcMessageRouteType, RpcResponse, RpcKernelConnections } from '@deepkit/rpc';
-import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerPublish, brokerResponseGet, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
+import { createRpcMessage, RpcKernelBaseConnection, RpcConnectionWriter, RpcMessage, RpcMessageRouteType, RpcResponse, RpcKernelConnections } from '@deepkit/rpc';
+import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
 
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];
@@ -8,11 +8,11 @@ export class BrokerConnection extends RpcKernelBaseConnection {
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
 
     constructor(
-        public writer: RpcKernelConnectionWriter,
+        transportWriter: RpcConnectionWriter,
         protected connections: RpcKernelConnections,
         protected state: BrokerState,
     ) {
-        super(writer, connections);
+        super(transportWriter, connections);
     }
 
     public close(): void {
@@ -75,26 +75,33 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.Lock: {
                 const body = message.parseBody(brokerLock);
-                this.state.lock(body.id).then(lock => {
+                this.state.lock(body.id, body.ttl, body.timeout).then(lock => {
                     this.locks.set(message.id, lock);
                     response.reply(BrokerType.ResponseLock);
+                }, (error) => {
+                    response.error(error);
                 });
                 break;
             }
             case BrokerType.Unlock: {
                 const lock = this.locks.get(message.id);
-                if (lock) lock.unlock();
-                response.ack();
+                if (lock) {
+                    this.locks.delete(message.id);
+                    lock.unlock();
+                    response.ack();
+                } else {
+                    response.error(new Error('Unknown lock for message id ' + message.id));
+                }
                 break;
             }
             case BrokerType.IsLocked: {
-                const body = message.parseBody(brokerLock);
+                const body = message.parseBody(brokerLockId);
                 response.reply(BrokerType.ResponseIsLock, brokerResponseIsLock, { v: this.state.isLocked(body.id) });
                 break;
             }
             case BrokerType.TryLock: {
                 const body = message.parseBody(brokerLock);
-                this.state.tryLock(body.id).then(lock => {
+                this.state.tryLock(body.id, body.ttl).then(lock => {
                     if (lock) {
                         this.locks.set(message.id, lock);
                         response.reply(BrokerType.ResponseLock);
@@ -199,12 +206,12 @@ export class BrokerState {
         return changed;
     }
 
-    public lock(id: string): Promise<ProcessLock> {
-        return this.locker.acquireLock(id);
+    public lock(id: string, ttl: number, timeout: number = 0): Promise<ProcessLock> {
+        return this.locker.acquireLock(id, ttl, timeout);
     }
 
-    public tryLock(id: string): Promise<ProcessLock | undefined> {
-        return this.locker.tryLock(id);
+    public tryLock(id: string, ttl: number = 0): Promise<ProcessLock | undefined> {
+        return this.locker.tryLock(id, ttl);
     }
 
     public isLocked(id: string): boolean {
@@ -264,7 +271,7 @@ export class BrokerKernel {
     protected state: BrokerState = new BrokerState;
     protected connections = new RpcKernelConnections();
 
-    createConnection(writer: RpcKernelConnectionWriter): BrokerConnection {
+    createConnection(writer: RpcConnectionWriter): BrokerConnection {
         return new BrokerConnection(writer, this.connections, this.state);
     }
 }

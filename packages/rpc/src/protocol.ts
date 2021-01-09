@@ -19,7 +19,8 @@
 import { getBSONDecoder, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getGlobalStore, jsonSerializer } from '@deepkit/type';
-import { rpcError, RpcTypes } from './model';
+import { Progress, SingleProgress } from './writer';
+import { rpcChunk, rpcError, RpcTypes } from './model';
 
 export const enum RpcMessageRouteType {
     client = 0,
@@ -36,7 +37,8 @@ export class RpcMessageRoute {
 
     constructor(
         public type: RpcMessageRouteType = 0,
-    ) { }
+    ) {
+    }
 }
 
 /*
@@ -136,7 +138,6 @@ export class RpcMessage {
     parseBody<T>(schema: ClassSchema<T>): T {
         if (!this.bodySize) throw new Error('Message has no body');
         if (!this.buffer) throw new Error('No buffer');
-        if (this.type === RpcTypes.Chunk) throw new Error('Chunked message can not be read directly. Use getBodies()');
         if (this.composite) throw new Error('Composite message can not be read directly');
         return getBSONDecoder(schema)(this.buffer, this.bodyOffset);
     }
@@ -180,7 +181,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     const size = view.getUint32(0, true);
     if (size !== buffer.byteLength) throw new Error(`Message buffer size wrong. Message size=${size}, buffer size=${buffer.byteLength}`);
-
+    
     const id = view.getUint32(5, true);
 
     let offset = 9;
@@ -188,7 +189,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
 
     if (routeType === RpcMessageRouteType.peer) {
         offset += 16; //<source>
-        while (buffer[offset++] !== 0); //feed until \0 byte
+        while (buffer[offset++] !== 0) ; //feed until \0 byte
     } else if (routeType === RpcMessageRouteType.sourceDest) {
         offset += 16 + 16; //uuid is each 16 bytes
     }
@@ -196,7 +197,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
     const composite = buffer[offset++] === 1;
     const type = buffer[offset++];
 
-    return new RpcMessage(id, composite, type, routeType, offset, size-offset, buffer);
+    return new RpcMessage(id, composite, type, routeType, offset, size - offset, buffer);
 }
 
 export function createBuffer(size: number): Uint8Array {
@@ -340,7 +341,7 @@ export function createRpcMessagePeer<T>(
 ): Uint8Array {
     const bodySize = schema && body ? getBSONSizer(schema)(body) : 0;
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
-    const messageSize = 4 + 1 + 4 + 1 + (16 + peerId.length + 1) + 1+ 1 + bodySize;
+    const messageSize = 4 + 1 + 4 + 1 + (16 + peerId.length + 1) + 1 + 1 + bodySize;
 
     const writer = new Writer(createBuffer(messageSize));
     writer.writeUint32(messageSize);
@@ -391,6 +392,70 @@ export function createRpcMessageSourceDest<T>(
 }
 
 export class RpcMessageReader {
+    protected chunks = new Map<number, { loaded: number, buffers: Uint8Array[] }>();
+    protected progress = new Map<number, SingleProgress>();
+    protected chunkAcks = new Map<number, Function>();
+    protected bufferReader = new RpcBufferReader(this.gotMessage.bind(this));
+
+    constructor(
+        protected readonly onMessage: (response: RpcMessage) => void,
+        protected readonly onChunk?: (id: number) => void,
+    ) {
+    }
+
+    public onChunkAck(id: number, callback: Function) {
+        this.chunkAcks.set(id, callback);
+    }
+
+    public registerProgress(id: number, progress: SingleProgress) {
+        this.progress.set(id, progress);
+    }
+
+    public feed(buffer: Uint8Array) {
+        this.bufferReader.feed(buffer);
+    }
+
+    protected gotMessage(buffer: Uint8Array) {
+        const message = readRpcMessage(buffer);
+        // console.log('reader got', message.id, RpcTypes[message.type]);
+
+        if (message.type === RpcTypes.ChunkAck) {
+            const ack = this.chunkAcks.get(message.id);
+            if (ack) ack();
+        } else if (message.type === RpcTypes.Chunk) {
+            const progress = this.progress.get(message.id);
+            
+            const body = message.parseBody(rpcChunk);
+            let chunks = this.chunks.get(body.id);
+            if (!chunks) {
+                chunks = { buffers: [], loaded: 0 };
+                this.chunks.set(body.id, chunks);
+            }
+            chunks.buffers.push(body.v);
+            chunks.loaded += body.v.byteLength;
+            if (this.onChunk) this.onChunk(message.id);
+            if (progress) progress.set(body.total, chunks.loaded);
+            
+            if (chunks.loaded === body.total) {
+                //we're done
+                this.progress.delete(message.id);
+                this.chunks.delete(body.id);
+                this.chunkAcks.delete(body.id);
+                let offset = 0;
+                const newBuffer = createBuffer(body.total);
+                for (const buffer of chunks.buffers) {
+                    newBuffer.set(buffer, offset);
+                    offset += buffer.byteLength;
+                }
+                this.onMessage(readRpcMessage(newBuffer));
+            }
+        } else {
+            this.onMessage(message);
+        }
+    }
+}
+
+export class RpcBufferReader {
     protected currentMessage?: Uint8Array;
     protected currentMessageSize: number = 0;
 
@@ -433,9 +498,9 @@ export class RpcMessageReader {
 
             if (currentSize === currentBuffer.byteLength) {
                 //current buffer is exactly the message length
-                this.onMessage(currentBuffer);
                 this.currentMessageSize = 0;
                 this.currentMessage = undefined;
+                this.onMessage(currentBuffer);
                 return;
             }
 

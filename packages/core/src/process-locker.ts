@@ -22,6 +22,7 @@ const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
  */
 export class ProcessLock {
     private holding = false;
+    protected ttlTimeout: any;
 
     constructor(
         public readonly id: string,
@@ -32,6 +33,7 @@ export class ProcessLock {
         if (this.holding) {
             throw new Error('Lock already acquired');
         }
+
         return new Promise<void>((resolve, reject) => {
             const ourTake = () => {
                 LOCKS[this.id].time = Date.now() / 1000;
@@ -40,7 +42,7 @@ export class ProcessLock {
                 resolve();
 
                 if (ttl) {
-                    setTimeout(() => {
+                    this.ttlTimeout = setTimeout(() => {
                         this.unlock();
                     }, ttl * 1000);
                 }
@@ -66,7 +68,7 @@ export class ProcessLock {
                 resolve();
 
                 if (ttl) {
-                    setTimeout(() => {
+                    this.ttlTimeout = setTimeout(() => {
                         this.unlock();
                     }, ttl * 1000);
                 }
@@ -78,7 +80,7 @@ export class ProcessLock {
         return this.holding;
     }
 
-    public tryLock(timeout?: number) {
+    public tryLock(ttl: number = 0) {
         this.holding = false;
 
         if (!LOCKS[this.id]) {
@@ -88,10 +90,10 @@ export class ProcessLock {
             };
             this.holding = true;
 
-            if (timeout) {
-                setTimeout(() => {
+            if (ttl) {
+                this.ttlTimeout = setTimeout(() => {
                     this.unlock();
-                }, timeout * 1000);
+                }, ttl * 1000);
             }
         }
 
@@ -99,6 +101,8 @@ export class ProcessLock {
     }
 
     public unlock() {
+        clearTimeout(this.ttlTimeout);
+
         if (!this.holding) {
             return;
         }
@@ -131,10 +135,10 @@ export class ProcessLocker {
         return lock;
     }
 
-    public async tryLock(id: string, timeout?: number): Promise<ProcessLock | undefined> {
+    public async tryLock(id: string, ttl: number = 0): Promise<ProcessLock | undefined> {
         const lock = new ProcessLock(id);
 
-        if (lock.tryLock(timeout)) {
+        if (lock.tryLock(ttl)) {
             return lock;
         }
 

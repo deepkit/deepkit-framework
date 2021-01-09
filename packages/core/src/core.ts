@@ -39,6 +39,8 @@ export interface ClassType<T = any> {
     new(...args: any[]): T;
 }
 
+export type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
+
 /**
  * This type maintains the actual type, but erases the decoratorMetadata, which is requires in a circular reference for ECMAScript modules.
  * Basically fixes like "ReferenceError: Cannot access 'MyClass' before initialization"

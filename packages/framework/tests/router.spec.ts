@@ -73,7 +73,7 @@ test('router parameters', async () => {
 
     expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toBe('peter');
     expect(await httpHandler.handleRequestFor('GET', '/user-id/123')).toBe(123);
-    await expect(httpHandler.handleRequestFor('GET', '/user-id/asd')).rejects.toThrow('Validation error');
+    await expect(httpHandler.handleRequestFor('GET', '/user-id/asd')).rejects.toThrow('No number given');
     expect(await httpHandler.handleRequestFor('GET', '/boolean/1')).toBe(true);
     expect(await httpHandler.handleRequestFor('GET', '/boolean/false')).toBe(false);
 

@@ -11,12 +11,13 @@ export async function main() {
     const schema = t.schema({ v: t.number });
 
     const bench = new BenchSuite('broker');
+    const channel = client.channel('id', schema);
 
     let count = 0;
-    await client.subscribe('id', schema, (next) => { count++; });
+    await channel.subscribe((next) => { count++; });
 
     bench.addAsync('publish subscribed', async () => {
-        await client.publish('id', schema, { v: 123 });
+        await channel.publish({ v: 123 });
     });
 
     await bench.runAsync();

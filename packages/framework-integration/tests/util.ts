@@ -1,9 +1,8 @@
 import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
 import {KernelModule, Application, ApplicationServer, createModule, DatabaseModule, Module} from '@deepkit/framework';
-import {RemoteController} from '@deepkit/framework-shared';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
-import {DeepkitClient} from '@deepkit/framework-client';
+import {DeepkitClient, RemoteController} from '@deepkit/rpc';
 import {Database} from '@deepkit/orm';
 import {MongoDatabaseAdapter} from '@deepkit/mongo';
 import {performance} from 'perf_hooks';

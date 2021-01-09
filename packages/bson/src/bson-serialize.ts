@@ -359,6 +359,7 @@ export class Writer {
 
     writeString(str: string) {
         if (!str) return;
+        if (typeof str !== 'string') return;
         for (let i = 0; i < str.length; i++) {
             const c = str.charCodeAt(i);
             if (c < 128) {
@@ -665,6 +666,7 @@ function getPropertySerializerCode(
             writer.writeByte(${BSON_DATA_DATE});
             ${nameWriter}
             if (!(${accessor} instanceof Date)) {
+                console.debug('got', typeof ${accessor}, ${accessor});
                 throw new Error(${JSON.stringify(accessor)} + " not a Date object");
             }
             const long = Long.fromNumber(${accessor}.getTime());

@@ -15,7 +15,6 @@ import {ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumV
 import {CompilerState, getDataConverterJS, reserveVariable} from './serializer-compiler';
 import {getSortedUnionTypes} from './union';
 import {Serializer} from './serializer';
-import {typedArrayNamesMap} from './types';
 import {ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
 import {validate, ValidationFailed} from './validation';
 import {jsonTypeGuards} from './json-typeguards';

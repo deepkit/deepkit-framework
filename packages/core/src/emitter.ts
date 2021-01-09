@@ -20,7 +20,7 @@ export class AsyncEmitterEvent {
     public readonly id = asyncId++;
     public stopped = false;
 
-    stopPropagation() {
+    stop() {
         this.stopped = true;
     }
 }

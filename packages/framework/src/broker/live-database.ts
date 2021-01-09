@@ -16,14 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Collection, EntitySubject, IdVersionInterface, ConnectionWriter, CollectionState } from '@deepkit/rpc';
-import { injectable } from '../injector/injector';
-import { AsyncEventSubscription, asyncOperation, ClassType, eachPair } from '@deepkit/core';
-import { ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward } from '@deepkit/type';
-import { Observable, Subscription } from 'rxjs';
-import { Exchange } from './exchange';
-import { findQuerySatisfied } from '../utils';
-import { DatabaseRegistry } from '../database/database-registry';
+import { AsyncEventSubscription, asyncOperation, ClassType } from '@deepkit/core';
+import { AsyncSubscription } from '@deepkit/core-rxjs';
 import {
     BaseQuery,
     Database,
@@ -36,8 +30,24 @@ import {
     UnitOfWorkEvent,
     UnitOfWorkUpdateEvent
 } from '@deepkit/orm';
-import { AsyncSubscription } from '@deepkit/core-rxjs';
-import { CollectionSort } from '@deepkit/rpc';
+import {
+    Collection,
+    CollectionSort,
+    CollectionState,
+    ConnectionWriter,
+    EntitySubject,
+    IdVersionInterface,
+    rpcEntityPatch,
+    rpcEntityRemove,
+    RpcKernelBaseConnection,
+    RpcTypes
+} from '@deepkit/rpc';
+import { ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward } from '@deepkit/type';
+import { Observable } from 'rxjs';
+import { DatabaseRegistry } from '../database/database-registry';
+import { injectable } from '../injector/injector';
+import { findQuerySatisfied } from '../utils';
+import { Broker, EntityChannelMessageType, EntityPatches } from './broker';
 
 interface SentState {
     lastSentVersion?: number;
@@ -46,7 +56,7 @@ interface SentState {
 
 class SubscriptionHandler {
     protected sentEntities: { [id: string]: SentState } = {};
-    protected entitySubscription?: Subscription;
+    protected entitySubscription?: Promise<AsyncSubscription>;
 
     /**
      * Which fields other subscriber in the topology require so
@@ -60,10 +70,10 @@ class SubscriptionHandler {
     public usedFields: string[] = [];
 
     constructor(
-        protected writer: ConnectionWriter,
+        protected connection: RpcKernelBaseConnection,
         protected classSchema: ClassSchema,
         protected database: Database,
-        protected exchange: Exchange,
+        protected broker: Broker,
     ) {
     }
 
@@ -78,7 +88,7 @@ class SubscriptionHandler {
         delete this.sentEntities[id];
         if (Object.keys(this.sentEntities).length === 0) {
             if (this.entitySubscription) {
-                this.entitySubscription.unsubscribe();
+                this.entitySubscription.then(v => v.unsubscribe());
                 this.entitySubscription = undefined;
             }
         }
@@ -130,51 +140,33 @@ class SubscriptionHandler {
 
         const entityName = this.classSchema.getName();
 
-        this.entitySubscription = this.exchange.subscribeEntity(this.classSchema, (message: any) => {
-            if (message.type === 'removeMany') {
+        this.entitySubscription = this.broker.entityChannel(this.classSchema).subscribe((message) => {
+            if (message.type === EntityChannelMessageType.remove) {
                 for (const id of message.ids) {
                     this.rmSentState(id);
                 }
 
-                this.writer.write({
-                    type: 'entity/removeMany',
+                this.connection.sendMessage(RpcTypes.EntityRemove, rpcEntityRemove, {
                     entityName: entityName,
                     ids: message.ids,
-                });
+                }).release();
                 return;
             }
 
             // useful debugging lines
             // const state = this.getSentState(classType, message.id);
 
-            if (this.needsToBeSend(message.id, message.version)) {
+            if (message.type === EntityChannelMessageType.patch && this.needsToBeSend(message.id, message.version)) {
                 this.setSent(message.id, message.version);
 
-                if (message.type === 'patch') {
-                    this.writer.write({
-                        type: 'entity/patch',
-                        entityName: entityName,
-                        id: message.id,
-                        version: message.version,
-                        patch: message.patch
-                    });
-                } else if (message.type === 'remove') {
-                    //we remove it from our sentState, so we stop syncing changes
-                    //this works, since subscribeEntity() and findOne() is always made
-                    //on the same connection. If a different connection calls findOne()
-                    //it also calls subscribeEntity.
+                this.connection.sendMessage(RpcTypes.EntityPatch, rpcEntityPatch, {
+                    entityName: entityName,
+                    id: message.id,
+                    version: message.version,
+                    patch: message.patch
+                }).release();
 
-                    this.rmSentState(message.id);
-
-                    this.writer.write({
-                        type: 'entity/remove',
-                        entityName: entityName,
-                        id: message.id,
-                        version: message.version,
-                    });
-                } else if (message.type === 'add') {
-                    //nothing to do, because that's handled by Collection
-                }
+                //nothing to do for ADD, because that's handled by Collection
             }
         });
     }
@@ -186,14 +178,14 @@ class SubscriptionHandlers {
     constructor(
         protected writer: any,
         protected databases: DatabaseRegistry,
-        protected exchange: Exchange,
+        protected broker: Broker,
     ) {
     }
 
     get(classSchema: ClassSchema): SubscriptionHandler {
         let handler = this.handler.get(classSchema);
         if (!handler) {
-            handler = new SubscriptionHandler(this.writer, classSchema, this.databases.getDatabaseForEntity(classSchema), this.exchange);
+            handler = new SubscriptionHandler(this.writer, classSchema, this.databases.getDatabaseForEntity(classSchema), this.broker);
             this.handler.set(classSchema, handler);
         }
 
@@ -202,11 +194,6 @@ class SubscriptionHandlers {
 }
 
 class LiveDatabaseQueryModel<T> extends DatabaseQueryModel<T, FilterQuery<T>, Sort<T, any>> {
-    clone(parentQuery?: BaseQuery<T>): this {
-        const m = super.clone(parentQuery);
-        return m;
-    }
-
     public disableEntityChangeFeed = false;
 
     isChangeFeedActive() {
@@ -229,7 +216,7 @@ type JoinedClassSchemaInfo = {
     fields: string[],
     filter: FilterQuery<any>,
     usedEntityFieldsSubscription?: AsyncSubscription,
-    entitySubscription?: Subscription,
+    entitySubscription?: AsyncSubscription,
 };
 
 
@@ -264,7 +251,7 @@ class LiveCollection<T extends IdVersionInterface> {
 
     protected rootFields: string[] = [];
     protected rootUsedEntityFieldsSubscription?: AsyncSubscription;
-    protected entitySubscription?: Subscription;
+    protected entitySubscription?: AsyncSubscription;
 
     protected knownIDs = new Set<string | number>();
 
@@ -273,7 +260,7 @@ class LiveCollection<T extends IdVersionInterface> {
     constructor(
         protected collection: Collection<any>,
         protected model: LiveDatabaseQueryModel<T>,
-        protected exchange: Exchange,
+        protected broker: Broker,
         protected database: Database,
         protected subscriptionHandler: SubscriptionHandler,
         protected writer: ConnectionWriter,
@@ -286,11 +273,11 @@ class LiveCollection<T extends IdVersionInterface> {
     protected async publishUseEntityFields() {
         const promises: Promise<any>[] = [];
 
-        if (this.rootFields.length) promises.push(this.exchange.publishUsedEntityFields(this.classSchema, this.rootFields).then(v => this.rootUsedEntityFieldsSubscription = v));
+        if (this.rootFields.length) promises.push(this.broker.publishEntityFields(this.classSchema, this.rootFields).then(v => this.rootUsedEntityFieldsSubscription = v));
 
         for (const info of this.joinedClassSchemas) {
             if (!info.fields.length) continue;
-            promises.push(this.exchange.publishUsedEntityFields(info.classSchema, info.fields).then(sub => {
+            promises.push(this.broker.publishEntityFields(info.classSchema, info.fields).then(sub => {
                 info.usedEntityFieldsSubscription = sub;
             }));
         }
@@ -417,7 +404,7 @@ class LiveCollection<T extends IdVersionInterface> {
         for (const info of this.joinedClassSchemas) {
             if (info.entitySubscription) continue;
             //if its part of our join filter, we reload the collection
-            info.entitySubscription = this.exchange.subscribeEntity(info.classSchema, (message) => {
+            info.entitySubscription = await this.broker.entityChannel(info.classSchema).subscribe((message) => {
                 //todo: check if item belongs to the join criteria
                 this.updateCollection(true);
             });
@@ -430,8 +417,8 @@ class LiveCollection<T extends IdVersionInterface> {
         }
 
         const scopedSerializer = jsonSerializer.for(this.classSchema);
-        this.entitySubscription = this.exchange.subscribeEntity(this.classSchema, async (message) => {
-            if (message.type === 'removeMany') {
+        this.entitySubscription = await this.broker.entityChannel(this.classSchema).subscribe(async (message) => {
+            if (message.type === EntityChannelMessageType.remove) {
                 if (requiresFullUpdate(this.collection)) {
                     await this.updateCollection(true);
                     return;
@@ -444,7 +431,7 @@ class LiveCollection<T extends IdVersionInterface> {
                 this.collection.removeMany(message.ids);
             }
 
-            if (message.type === 'add' && !this.knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
+            if (message.type === EntityChannelMessageType.add && !this.knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
                 if (requiresFullUpdate(this.collection)) {
                     await this.updateCollection(true);
                     return;
@@ -455,7 +442,7 @@ class LiveCollection<T extends IdVersionInterface> {
                 this.collection.add(scopedSerializer.deserialize(message.item));
             }
 
-            if (message.type === 'patch') {
+            if (message.type === EntityChannelMessageType.patch) {
                 const querySatisfied = findQuerySatisfied(message.item, currentQuery);
 
                 if (this.knownIDs.has(message.id) && !querySatisfied) {
@@ -482,16 +469,6 @@ class LiveCollection<T extends IdVersionInterface> {
                             await this.updateCollection(true);
                         }
                     }
-                }
-            }
-
-            if (message.type === 'remove' && this.knownIDs.has(message.id)) {
-                if (requiresFullUpdate(this.collection)) {
-                    await this.updateCollection();
-                } else {
-                    this.knownIDs.delete(message.id);
-                    if (this.model.isChangeFeedActive()) this.subscriptionHandler.decreaseUsage(message.id);
-                    this.collection.remove(message.id);
                 }
             }
         });
@@ -545,7 +522,7 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
         protected writer: ConnectionWriter,
         public classSchema: ClassSchema<T>,
         protected database: Database,
-        protected exchange: Exchange,
+        protected broker: Broker,
         protected subscriptionHandler: SubscriptionHandler,
     ) {
         super(classSchema);
@@ -601,17 +578,17 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
         extractJoinedClassSchemaInfos(this.model, joinedClassSchemas);
 
         return new Observable((observer) => {
-            let rootEntitySub: Subscription;
+            let rootEntitySub: AsyncSubscription;
             let usedEntityFieldsSub: AsyncSubscription;
 
             (async () => {
-                usedEntityFieldsSub = await this.exchange.publishUsedEntityFields(this.classSchema, rootFields);
+                usedEntityFieldsSub = await this.broker.publishEntityFields(this.classSchema, rootFields);
 
                 const knownIDs = new Set<string | number>();
                 let counter = 0;
 
-                rootEntitySub = await this.exchange.subscribeEntity(this.classSchema, (message) => {
-                    if (message.type === 'add') {
+                rootEntitySub = await this.broker.entityChannel(this.classSchema).subscribe((message) => {
+                    if (message.type === EntityChannelMessageType.add) {
                         if (!knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
                             counter++;
                             knownIDs.add(message.id);
@@ -619,7 +596,7 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
                         }
                     }
 
-                    if (message.type === 'patch') {
+                    if (message.type === EntityChannelMessageType.patch) {
                         if (knownIDs.has(message.id) && !findQuerySatisfied(message.item, currentQuery)) {
                             counter--;
                             knownIDs.delete(message.id);
@@ -631,15 +608,7 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
                         }
                     }
 
-                    if (message.type === 'remove') {
-                        if (knownIDs.has(message.id)) {
-                            counter--;
-                            knownIDs.delete(message.id);
-                            observer.next(counter);
-                        }
-                    }
-
-                    if (message.type === 'removeMany') {
+                    if (message.type === EntityChannelMessageType.remove) {
                         for (const id of message.ids) {
                             if (knownIDs.has(id)) {
                                 counter--;
@@ -665,7 +634,7 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
                 for (const info of joinedClassSchemas) {
                     if (info.entitySubscription) continue;
                     //if its part of our join filter, we reload the collection
-                    info.entitySubscription = this.exchange.subscribeEntity(info.classSchema, (message) => {
+                    info.entitySubscription = await this.broker.entityChannel(info.classSchema).subscribe((message) => {
                         //todo: check if item belongs to the join criteria
                         updateAll();
                     });
@@ -695,7 +664,7 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
             this.model.changed();
         });
 
-        const liveCollection = new LiveCollection(collection, this.model, this.exchange, this.database, this.subscriptionHandler, this.writer);
+        const liveCollection = new LiveCollection(collection, this.model, this.broker, this.database, this.subscriptionHandler, this.writer);
         collection.addTeardown(async () => {
             await liveCollection.stopSync();
         });
@@ -712,12 +681,12 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
         stopOnFind: boolean = true,
     ): Observable<string | number> {
         return new Observable((observer) => {
-            let sub: Subscription | undefined;
+            let sub: AsyncSubscription | undefined;
             const filter = this.model.filter || {};
 
             (async () => {
-                sub = await this.exchange.subscribeEntity(this.classSchema, (message) => {
-                    if (message.type === 'add' && findQuerySatisfied(message.item, filter)) {
+                sub = await this.broker.entityChannel(this.classSchema).subscribe((message) => {
+                    if (message.type === EntityChannelMessageType.add && findQuerySatisfied(message.item, filter)) {
                         observer.next(message.id);
                         if (stopOnFind && sub) sub.unsubscribe();
                     }
@@ -743,12 +712,12 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
 
 @injectable()
 export class LiveDatabase {
-    protected subscriptionHandler = new SubscriptionHandlers(this.writer, this.databases, this.exchange);
+    protected subscriptionHandler = new SubscriptionHandlers(this.writer, this.databases, this.broker);
     protected entitySubscriptions = new Map<ClassSchema, AsyncEventSubscription[]>();
 
     constructor(
         protected databases: DatabaseRegistry,
-        protected exchange: Exchange,
+        protected broker: Broker,
         protected writer: ConnectionWriter,
     ) {
     }
@@ -784,12 +753,7 @@ export class LiveDatabase {
             const serialized = jsonSerializer.for(event.classSchema);
 
             for (const item of event.items) {
-                this.exchange.publishEntity(event.classSchema, {
-                    type: 'add',
-                    id: item.id,
-                    version: item.version,
-                    item: serialized.serialize(item)
-                });
+                this.broker.entityChannel(event.classSchema).publishAdd(item);
             }
         }));
 
@@ -801,30 +765,29 @@ export class LiveDatabase {
             }
         }));
 
-        subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe((event: UnitOfWorkUpdateEvent<IdVersionInterface>) => {
+        subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe(async (event: UnitOfWorkUpdateEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
             const serialized = jsonSerializer.for(event.classSchema);
 
             for (const changeSet of event.changeSets) {
                 const jsonPatch: any = {
-                    $set: changeSet.changes.$set ? serialized.partialSerialize(changeSet.changes.$set) : undefined,
+                    $set: changeSet.changes.$set,
                     $inc: changeSet.changes.$inc,
                     $unset: changeSet.changes.$unset,
                 };
 
                 const fields: Partial<any> = {};
 
-                for (const field of this.exchange.getUsedEntityFields(event.classSchema)) {
+                for (const field of await this.broker.getEntityFields(event.classSchema)) {
                     fields[field] = (changeSet.item as any)[field];
                 }
 
-                this.exchange.publishEntity(event.classSchema, {
-                    type: 'patch',
-                    id: changeSet.item.id,
-                    version: changeSet.item.version,
-                    item: fields,
-                    patch: jsonPatch
-                });
+                this.broker.entityChannel(event.classSchema).publishPatch(
+                    changeSet.item.id,
+                    changeSet.item.version,
+                    jsonPatch,
+                    fields,
+                );
             }
         }));
 
@@ -832,34 +795,27 @@ export class LiveDatabase {
             if (schema !== event.classSchema) return;
             const ids: (string | number)[] = [];
             for (const item of event.items) ids.push(item.id);
-            this.exchange.publishEntity(event.classSchema, {
-                type: 'removeMany',
-                ids: ids
-            });
+            this.broker.entityChannel(event.classSchema).publishRemove(ids);
         }));
 
         subscriptions.push(database.queryEvents.onDeletePost.subscribe((event: QueryDatabaseDeleteEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
 
-            this.exchange.publishEntity(event.classSchema, {
-                type: 'removeMany',
-                ids: event.deleteResult.primaryKeys
-            });
+            this.broker.entityChannel(event.classSchema).publishRemove(event.deleteResult.primaryKeys);
         }));
 
         subscriptions.push(database.queryEvents.onPatchPre.subscribe(async (event) => {
             if (schema !== event.classSchema) return;
-            event.patch.increase('version', 1);            
-            for (const field of this.exchange.getUsedEntityFields(event.classSchema)) {
+            event.patch.increase('version', 1);
+            for (const field of await this.broker.getEntityFields(event.classSchema)) {
                 if (!event.returning.includes(field)) event.returning.push(field);
             }
         }));
 
         subscriptions.push(database.queryEvents.onPatchPost.subscribe(async (event) => {
             if (schema !== event.classSchema) return;
-            const serialized = jsonSerializer.for(event.classSchema);
-            const jsonPatch = {
-                $set: event.patch.$set ? serialized.partialSerialize(event.patch.$set) : undefined,
+            const jsonPatch: EntityPatches = {
+                $set: event.patch.$set,
                 $inc: event.patch.$inc,
                 $unset: event.patch.$unset,
             };
@@ -867,18 +823,17 @@ export class LiveDatabase {
             for (let i = 0; i < event.patchResult.primaryKeys.length; i++) {
                 const fields: Partial<any> = {};
 
-                for (const field of this.exchange.getUsedEntityFields(event.classSchema)) {
+                for (const field of await this.broker.getEntityFields(event.classSchema)) {
                     if (!(event.patchResult.returning as any)[field]) continue;
                     fields[field] = (event.patchResult.returning as any)[field][i];
                 }
 
-                this.exchange.publishEntity(event.classSchema, {
-                    type: 'patch',
-                    id: event.patchResult.primaryKeys[i],
-                    version: (event.patchResult.returning as any)['version'][i],
-                    item: fields,
-                    patch: jsonPatch,
-                });
+                this.broker.entityChannel(event.classSchema).publishPatch(
+                    event.patchResult.primaryKeys[i],
+                    (event.patchResult.returning as any)['version'][i],
+                    jsonPatch,
+                    fields,
+                );
             }
         }));
 
@@ -890,7 +845,7 @@ export class LiveDatabase {
             this.writer,
             getClassSchema(classType),
             this.databases.getDatabaseForEntity(classType),
-            this.exchange,
+            this.broker,
             this.subscriptionHandler.get(getClassSchema(classType))
         );
     }

@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { toFastProperties } from '@deepkit/core';
+import { asyncOperation, toFastProperties } from '@deepkit/core';
 import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jsonSerializer, PropertySchema, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
+import { ClientProgress } from '../writer';
 import { Collection, CollectionState } from '../collection';
 import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionModel, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
@@ -30,7 +31,6 @@ type ControllerStateActionTypes = {
     parameterSchema: ClassSchema,
     resultSchema: ClassSchema<{ v?: any }>,
     resultProperty: PropertySchema,
-    resultDecoder: (value: any) => any,
     observableNextSchema: ClassSchema<{ id: number, v: any }>
     collectionSchema?: ClassSchema<{ v: any[] }>
 };
@@ -66,8 +66,9 @@ export class RpcActionClient {
     }
 
     public action<T>(controller: RpcControllerState, method: string, args: any[], recipient?: string) {
-        return new Promise<any>(async (resolve, reject) => {
+        return asyncOperation<any>(async (resolve, reject) => {
             try {
+                const progress = ClientProgress.getNext();
                 const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method);
                 // console.log('client types', types.parameterSchema.getProperty('args').getResolvedClassSchema().toString(), )
 
@@ -90,6 +91,7 @@ export class RpcActionClient {
                 let subscriberId = 0;
                 const subscribers: { [id: number]: Subscriber<any> } = {};
 
+                ClientProgress.nextProgress = progress;
                 const subject = this.client.sendMessage(RpcTypes.Action, types.parameterSchema, {
                     controller: controller.controller,
                     method: method,
@@ -317,7 +319,7 @@ export class RpcActionClient {
         collection.loaded();
     }
 
-    public loadActionTypes(controller: RpcControllerState, method: string): ControllerStateActionTypes | Promise<ControllerStateActionTypes> {
+    public async loadActionTypes(controller: RpcControllerState, method: string): Promise<ControllerStateActionTypes> {
         const state = controller.getState(method);
         if (state.types) return state.types;
 
@@ -325,7 +327,7 @@ export class RpcActionClient {
             return state.promise;
         }
 
-        state.promise = new Promise<ControllerStateActionTypes>(async (resolve, reject) => {
+        state.promise = asyncOperation<ControllerStateActionTypes>(async (resolve, reject) => {
             try {
                 const parsed = await this.client.sendMessage(RpcTypes.ActionType, rpcActionType, {
                     controller: controller.controller,
@@ -350,7 +352,6 @@ export class RpcActionClient {
                 state.types = {
                     parameters: parameters,
                     parameterSchema: rpcAction.extend({ args: t.type(argsSchema) }),
-                    resultDecoder: getXToClassFunction(resultSchema, jsonSerializer),
                     resultProperty,
                     resultSchema,
                     observableNextSchema,
@@ -362,7 +363,12 @@ export class RpcActionClient {
             }
         });
 
-        return state.promise;
+        try {
+            return await state.promise;
+        } catch (error) {
+            state.promise = undefined;
+            throw error;
+        }
     }
 
 }

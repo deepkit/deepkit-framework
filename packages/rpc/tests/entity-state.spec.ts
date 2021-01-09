@@ -49,16 +49,75 @@ test('EntitySubjectStore multi', () => {
 test('controller', async () => {
     @entity.name('collection/simple/model')
     class MyModel {
+        @t version: number = 0;
+
         constructor(
-            @t public id: number = 0
+            @t public id: number
         ) { }
     }
 
     class Controller {
         @rpc.action()
         @t.generic(MyModel)
-        getModel(id: number): EntitySubject<MyModel> {
-            return new EntitySubject(new MyModel(id));
+        async getModel(id: number): Promise<EntitySubject<MyModel>> {
+            //basically like a query to a database, where we know the ID only after resolving the query
+            const subject = new EntitySubject(new MyModel(id));
+
+            //data could come from database, file system, API (s3, etc)
+            //we need to fix the issue with the race-condition between loading the data and subscribing to the entity-feed,
+            //when each entity id gets its own pub/sub channel. This has major drawbacks tho when loading
+            //tenthousand items in a Collection.
+
+            //Either
+            //1. The whole entity has a single channel
+            //2. Each entity item gets its own channel
+
+            //3. Use a single /patch channel, but filter sending to a subscriber based on what IDs he want
+            //   This requires us to decode each message and read its content.
+            //3.1. Use a single /add channel for subscribers interested in created items satisfying a certain filter
+
+
+
+            //first idea: 
+            // 1. load source, 
+            // 2. subscribe to feed & retrieve last version from last known update
+            // 3. if last version is different from loaded source, then 
+            // 3.1. queue up all incoming updates
+            // 3.2. load source again, just same query again
+            // 3.3. apply valid queued updates
+            // 4. now it's definitely the newest version on the client
+            // - the question with this approach is: How likely is it that we need to enter 3?
+            //   -> very likely when the item is changed frequently 
+            //   -> at least 1 query, worst-case 2 full queries
+
+            //second idea:
+            // 1. load ID
+            // 2. subscribe to feed & queue up all incoming updates
+            // 3. load source
+            // 4. send data, and send all valid queued updates as well
+            // 5. now it's definitely the newest version on the client
+            // - at least 2 queries, worst-case 2 as well.
+
+
+            //third idea:
+            // 1. load source
+            // 2. subscribe to feed with the id & version.
+            // 2.1. the feed holds in memory the last x operations, and sends whatever operation is necessary so that the subscriber has at the end the newest version
+            //    This requires that the feed reads the message content
+            // - at least 1 queries, worse-case 2 as well, but it should be very rare. We could log this and mitigate it by increasing the last-x-operations amount.
+            // more cpu and memory usage on the broker.
+            // => Does this work when I have 50k items in a collection? First I have to send 50k primary keys, which is for uuid 16byte in total 781kB. A LOT.
+
+
+            //fourth idea
+            // 1. Subscribe to entity change feed, cache all patches
+            // 2. load entity
+            // 3. send entity and forward outstanding patches from the change-feed
+
+            //this sends change-feed now in the background
+            //bla.subscribe(MyModel, id);
+
+            return subject;
         }
     }
 

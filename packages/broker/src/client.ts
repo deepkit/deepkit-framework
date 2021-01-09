@@ -1,14 +1,84 @@
-import { getBSONDecoder, getBSONSerializer } from "@deepkit/bson";
+import { deserialize, getBSONDecoder, getBSONSerializer } from "@deepkit/bson";
 import { arrayRemoveItem, asyncOperation, ClassType } from "@deepkit/core";
 import { AsyncSubscription } from "@deepkit/core-rxjs";
 import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, TransportConnectionHooks } from "@deepkit/rpc";
-import { ClassSchema } from "@deepkit/type";
+import { ClassSchema, FieldDecoratorResult, getClassSchema, isFieldDecorator, PropertySchema, t } from "@deepkit/type";
 import { BrokerKernel } from "./kernel";
-import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerPublish, brokerResponseGet, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from "./model";
+import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from "./model";
+
+export class BrokerChannel<T> {
+    protected listener: number = 0;
+    protected callbacks: ((next: Uint8Array) => void)[] = [];
+    protected wrapped: boolean = false;
+    protected schema: ClassSchema;
+
+    constructor(
+        public channel: string,
+        protected decoratorOrSchema: FieldDecoratorResult<T> | ClassSchema<T> | ClassType<T>,
+        protected client: BrokerClient,
+    ) {
+        const extracted = this.getPubSubMessageSchema(decoratorOrSchema);
+        this.wrapped = extracted.wrapped;
+        this.schema = extracted.schema;
+    }
+
+    protected getPubSubMessageSchema<T>(decoratorOrSchema: FieldDecoratorResult<T> | ClassSchema<T> | ClassType<T>): { schema: ClassSchema, wrapped: boolean } {
+        if (isFieldDecorator(decoratorOrSchema)) {
+            const propertySchema: PropertySchema = (decoratorOrSchema as any)._lastPropertySchema ||= decoratorOrSchema.buildPropertySchema('v');
+            const schema = propertySchema.type === 'class' ? propertySchema.getResolvedClassSchema() : t.schema({ v: decoratorOrSchema });
+            const wrapped = propertySchema.type !== 'class';
+
+            return { schema, wrapped }
+        }
+        return { schema: getClassSchema(decoratorOrSchema), wrapped: false };
+    }
+
+    public async publish(data: T) {
+        const serializer = getBSONSerializer(this.schema);
+
+        const v = this.wrapped ? serializer({ v: data }) : serializer(data);
+        await this.client.sendMessage(BrokerType.Publish, brokerPublish, { c: this.channel, v: v })
+            .ackThenClose();
+
+        return undefined;
+    }
+
+    next(data: Uint8Array) {
+        for (const callback of this.callbacks) {
+            callback(data);
+        }
+    }
+
+    async subscribe(callback: (next: T) => void): Promise<AsyncSubscription> {
+        const decoder = getBSONDecoder(this.schema);
+
+        const parsedCallback = (next: Uint8Array) => {
+            const parsed = decoder(next);
+            callback(this.wrapped ? parsed.v : parsed);
+        };
+
+        this.listener++;
+        this.callbacks.push(parsedCallback);
+
+        if (this.listener === 1) {
+            await this.client.sendMessage(BrokerType.Subscribe, brokerSubscribe, { c: this.channel })
+                .ackThenClose();
+        }
+
+        return new AsyncSubscription(async () => {
+            this.listener--;
+            arrayRemoveItem(this.callbacks, parsedCallback);
+            if (this.listener === 0) {
+                await this.client.sendMessage(BrokerType.Unsubscribe, brokerSubscribe, { c: this.channel })
+                    .ackThenClose();
+            }
+        });
+    }
+}
 
 export class BrokerClient extends RpcBaseClient {
-    protected channelSubscriptions = new Map<string, { listener: number, callbacks: ((next: Uint8Array) => void)[] }>();
-    protected entityFields = new Map<string, string[]>();
+    protected activeChannels = new Map<string, BrokerChannel<any>>();
+    protected knownEntityFields = new Map<string, string[]>();
     protected publishedEntityFields = new Map<string, Map<string, number>>();
 
     /**
@@ -32,7 +102,7 @@ export class BrokerClient extends RpcBaseClient {
                 if (answer.type === BrokerType.AllEntityFields) {
                     for (const body of answer.getBodies()) {
                         const fields = body.parseBody(brokerEntityFields);
-                        this.entityFields.set(fields.name, fields.fields);
+                        this.knownEntityFields.set(fields.name, fields.fields);
                     }
                 }
                 this.entityFieldsPromise = undefined;
@@ -43,33 +113,24 @@ export class BrokerClient extends RpcBaseClient {
             await this.entityFieldsPromise;
         }
 
-        return this.entityFields.get(entityName) || [];
+        return this.knownEntityFields.get(entityName) || [];
     }
 
     protected onMessage(message: RpcMessage) {
         if (message.routeType === RpcMessageRouteType.server) {
             if (message.type === BrokerType.EntityFields) {
                 const fields = message.parseBody(brokerEntityFields);
-                this.entityFields.set(fields.name, fields.fields);
+                this.knownEntityFields.set(fields.name, fields.fields);
                 this.transporter.send(createRpcMessage(message.id, BrokerType.Ack, undefined, undefined, RpcMessageRouteType.server));
             } else if (message.type === BrokerType.ResponseSubscribeMessage) {
                 const body = message.parseBody(brokerResponseSubscribeMessage);
-                const subs = this.channelSubscriptions.get(body.c);
-                if (!subs) return;
-                for (const callback of subs.callbacks) {
-                    callback(body.v);
-                }
+                const channel = this.activeChannels.get(body.c);
+                if (!channel) return;
+                channel.next(body.v);
             }
         } else {
             super.onMessage(message);
         }
-    }
-
-    public async publish<T>(channel: string, schema: ClassSchema<T> | ClassType<T>, data: T) {
-        await this.sendMessage(BrokerType.Publish, brokerPublish, { c: channel, v: getBSONSerializer(schema)(data) })
-            .ackThenClose();
-
-        return undefined;
     }
 
     public async publishEntityFields<T>(classSchema: ClassSchema | string, fields: string[]): Promise<AsyncSubscription> {
@@ -81,19 +142,23 @@ export class BrokerClient extends RpcBaseClient {
         }
 
         let changed = false;
+        const newFields: string[] = [];
 
         for (const field of fields) {
             const v = store.get(field);
-            if (v === undefined) changed = true;
+            if (v === undefined) {
+                changed = true;
+                newFields.push(field);
+            };
             store.set(field, v === undefined ? 1 : v + 1);
         }
 
         if (changed) {
             const response = await this.sendMessage(
                 BrokerType.PublishEntityFields, brokerEntityFields,
-                { name: entityName, fields: Array.from(store.keys()) }
+                { name: entityName, fields: newFields }
             ).firstThenClose(BrokerType.EntityFields, brokerEntityFields);
-            this.entityFields.set(response.name, response.fields);
+            this.knownEntityFields.set(response.name, response.fields);
         }
 
         return new AsyncSubscription(async () => {
@@ -107,7 +172,7 @@ export class BrokerClient extends RpcBaseClient {
                 if (v === 0) {
                     store.delete(field);
                     unsubscribed.push(field);
-                    //we can't remove it from knownFields, because we don't know whether another
+                    //we can't remove it from knownEntityFields, because we don't know whether another
                     //its still used by another client.
                 } else {
                     store.set(field, v);
@@ -118,13 +183,21 @@ export class BrokerClient extends RpcBaseClient {
                     BrokerType.UnsubscribeEntityFields, brokerEntityFields,
                     { name: entityName, fields: unsubscribed }
                 ).firstThenClose(BrokerType.EntityFields, brokerEntityFields);
-                this.entityFields.set(response.name, response.fields);
+
+                this.knownEntityFields.set(response.name, response.fields);
             }
         });
     }
 
-    public async tryLock(id: string): Promise<AsyncSubscription | undefined> {
-        const subject = this.sendMessage(BrokerType.TryLock, brokerLock, { id });
+    /** 
+     * Tries to lock an id on the broker. If the id is already locked, it returns immediately undefined without locking anything
+     * 
+     * ttl (time to life) defines how long the given lock is allowed to stay active. Per default each lock is automatically unlocked
+     * after 30 seconds. If you haven't released the lock until then, another lock aquisition is allowed to receive it anyways.
+     * ttl of 0 disables ttl and keeps the lock alive until you manually unlock it (or the process dies).
+    */
+    public async tryLock(id: string, ttl: number = 30): Promise<AsyncSubscription | undefined> {
+        const subject = this.sendMessage(BrokerType.TryLock, brokerLock, { id, ttl });
         const message = await subject.waitNextMessage();
         if (message.type === BrokerType.ResponseLockFailed) {
             return undefined;
@@ -139,9 +212,17 @@ export class BrokerClient extends RpcBaseClient {
         throw new Error(`Invalid message returned. Expected Lock, but got ${message.type}`);
     }
 
-    public async lock(id: string): Promise<AsyncSubscription> {
-        const subject = this.sendMessage(BrokerType.Lock, brokerLock, { id });
-        await subject.waitNext(BrokerType.ResponseLock);
+    /** 
+     * Locks an id on the broker. If the id is already locked, it waits until it is released. If timeout is specified,
+     * the lock acquisation should take maximum `timeout` seconds. 0 means it waits without limit.
+     * 
+     * ttl (time to life) defines how long the given lock is allowed to stay active. Per default each lock is automatically unlocked
+     * after 30 seconds. If you haven't released the lock until then, another lock aquisition is allowed to receive it anyways.
+     * ttl of 0 disables ttl and keeps the lock alive until you manually unlock it (or the process dies).
+    */
+    public async lock(id: string, ttl: number = 30, timeout: number = 0): Promise<AsyncSubscription> {
+        const subject = this.sendMessage(BrokerType.Lock, brokerLock, { id, ttl, timeout });
+        await subject.waitNext(BrokerType.ResponseLock); //or throw error
 
         return new AsyncSubscription(async () => {
             await subject.send(BrokerType.Unlock).ackThenClose();
@@ -149,40 +230,19 @@ export class BrokerClient extends RpcBaseClient {
     }
 
     public async isLocked(id: string): Promise<boolean> {
-        const subject = this.sendMessage(BrokerType.IsLocked, brokerLock, { id });
+        const subject = this.sendMessage(BrokerType.IsLocked, brokerLockId, { id });
         const lock = await subject.firstThenClose(BrokerType.ResponseIsLock, brokerResponseIsLock);
         return lock.v;
     }
 
-    public async subscribe<T>(channel: string, schema: ClassSchema<T> | ClassType<T>, callback: (next: T) => void): Promise<AsyncSubscription> {
-        let subs = this.channelSubscriptions.get(channel);
-        const decoder = getBSONDecoder(schema);
-
-        const parsedCallback = (next: Uint8Array) => callback(decoder(next));
-
-        if (!subs) {
-            subs = { listener: 1, callbacks: [parsedCallback] };
-            this.channelSubscriptions.set(channel, subs);
-        } else {
-            subs.listener++;
-            subs.callbacks.push(parsedCallback);
+    public channel<T>(channel: string, decoratorOrSchema: FieldDecoratorResult<T> | ClassSchema<T> | ClassType<T>): BrokerChannel<T> {
+        let brokerChannel = this.activeChannels.get(channel);
+        if (!brokerChannel) {
+            brokerChannel = new BrokerChannel(channel, decoratorOrSchema, this);
+            this.activeChannels.set(channel, brokerChannel);
         }
 
-        if (subs.listener === 1) {
-            await this.sendMessage(BrokerType.Subscribe, brokerSubscribe, { c: channel })
-                .ackThenClose();
-        }
-
-        return new AsyncSubscription(async () => {
-            if (!subs) return;
-            subs.listener--;
-            arrayRemoveItem(subs.callbacks, parsedCallback);
-            if (subs.listener === 0) {
-                this.channelSubscriptions.delete(channel);
-                await this.sendMessage(BrokerType.Unsubscribe, brokerSubscribe, { c: channel })
-                    .ackThenClose();
-            }
-        });
+        return brokerChannel;
     }
 
     public async getOrUndefined<T>(id: string, schema: ClassSchema<T> | ClassType<T>): Promise<T | undefined> {
@@ -251,7 +311,7 @@ export class BrokerDirectClientAdapter implements ClientTransportAdapter {
             },
             send(message) {
                 queueMicrotask(() => {
-                    kernelConnection.handleMessage(message);
+                    kernelConnection.feed(message);
                 });
             }
         });

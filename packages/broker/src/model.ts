@@ -68,8 +68,14 @@ export const brokerResponseSubscribeMessage = t.schema({
     v: t.type(Uint8Array),
 });
 
+export const brokerLockId = t.schema({
+    id: t.string,
+});
+
 export const brokerLock = t.schema({
     id: t.string,
+    ttl: t.number,
+    timeout: t.number.optional,
 });
 
 export const brokerResponseIsLock = t.schema({

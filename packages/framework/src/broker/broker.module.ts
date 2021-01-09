@@ -16,56 +16,55 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ExchangeServer} from './exchange-server';
-import {Exchange} from './exchange';
 import {AppLocker} from './app-locker';
 import {createModule} from '../module';
 import {inject, injectable} from '../injector/injector';
 import {eventDispatcher} from '../event';
 import {onServerMainBootstrap, onServerMainShutdown} from '../application-server';
-import {exchangeConfig} from './exchange.config';
+import {brokerConfig} from './broker.config';
+import { Broker, BrokerTcpServer } from './broker';
 
 @injectable()
-export class ExchangeListener {
-    protected exchangeServer?: ExchangeServer;
+export class BrokerListener {
+    protected brokerServer?: BrokerTcpServer;
 
     constructor(
-        protected exchange: Exchange,
-        @inject(exchangeConfig.token('listen')) protected listen: string,
-        @inject(exchangeConfig.token('startOnBootstrap')) protected startOnBootstrap: boolean,
+        protected broker: Broker,
+        @inject(brokerConfig.token('listen')) protected listen: string,
+        @inject(brokerConfig.token('startOnBootstrap')) protected startOnBootstrap: boolean,
     ) {
     }
 
     @eventDispatcher.listen(onServerMainBootstrap)
-    async onBootstrap() {
+    async onMainBootstrap() {
         if (this.startOnBootstrap) {
-            this.exchangeServer = new ExchangeServer(this.listen);
-            await this.exchangeServer.start();
+            this.brokerServer = new BrokerTcpServer(this.listen);
+            await this.brokerServer.start();
         }
     }
 
     @eventDispatcher.listen(onServerMainShutdown)
-    async onShutdown() {
-        if (this.startOnBootstrap && this.exchangeServer) {
-            this.exchangeServer.close();
-            this.exchangeServer = undefined;
+    async onMainShutdown() {
+        if (this.startOnBootstrap && this.brokerServer) {
+            this.brokerServer.close();
+            this.brokerServer = undefined;
         }
-        await this.exchange.disconnect();
+        await this.broker.disconnect();
     }
 }
 
-export const ExchangeModule = createModule({
+export const BrokerModule = createModule({
     name: 'exchange',
     listeners: [
-        ExchangeListener
+        BrokerListener
     ],
-    config: exchangeConfig,
+    config: brokerConfig,
     providers: [
-        Exchange,
+        Broker,
         AppLocker,
     ],
     exports: [
-        Exchange,
+        Broker,
         AppLocker,
     ]
 }).forRoot();

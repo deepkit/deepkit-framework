@@ -1,7 +1,7 @@
 import {Injectable} from '@angular/core';
-import {DeepkitClient} from '@deepkit/framework-client';
+import {DeepkitClient} from '@deepkit/rpc';
 import {Workflow, DebugControllerInterface, DebugRequest} from '@deepkit/framework-debug-shared';
-import {Collection} from '@deepkit/framework-shared';
+import {Collection} from '@deepkit/rpc';
 
 @Injectable()
 export class ControllerClient {

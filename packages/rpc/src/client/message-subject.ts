@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { CustomError } from '@deepkit/core';
+import { asyncOperation, CustomError } from '@deepkit/core';
 import { ClassSchema, ExtractClassType } from '@deepkit/type';
 import { RpcTypes } from '../model';
 import { RpcMessage } from '../protocol';
@@ -63,7 +63,7 @@ export class RpcMessageSubject {
     }
 
     async ackThenClose(): Promise<undefined> {
-        return new Promise<undefined>((resolve, reject) => {
+        return asyncOperation<undefined>((resolve, reject) => {
             this.onReplyCallback = (next) => {
                 this.release();
 
@@ -81,7 +81,7 @@ export class RpcMessageSubject {
     }
 
     async waitNextMessage<T extends ClassSchema>(): Promise<RpcMessage> {
-        return new Promise<any>((resolve, reject) => {
+        return asyncOperation<any>((resolve, reject) => {
             this.onReplyCallback = (next) => {
                 return resolve(next);
             };
@@ -89,7 +89,7 @@ export class RpcMessageSubject {
     }
 
     async waitNext<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
-        return new Promise<any>((resolve, reject) => {
+        return asyncOperation<any>((resolve, reject) => {
             this.onReplyCallback = (next) => {
                 if (next.type === type) {
                     return resolve(schema ? next.parseBody(schema) : undefined);
@@ -105,7 +105,7 @@ export class RpcMessageSubject {
     }
 
     async firstThenClose<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
-        return new Promise<any>((resolve, reject) => {
+        return asyncOperation<any>((resolve, reject) => {
             this.onReplyCallback = (next) => {
                 this.release();
 

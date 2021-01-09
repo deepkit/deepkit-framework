@@ -24,7 +24,7 @@ export function registerBSONTypeGuard(type: Types, factory: BSONTypeGuardFactory
 
 
 registerBSONTypeGuard('class', (property: PropertySchema) => {
-    const schema = getClassSchema(property.resolveClassType!);
+    const schema = property.getResolvedClassSchema();
     if (schema.discriminant) {
         const discriminant = schema.getProperty(schema.discriminant);
         const discriminantValue = discriminant.type === 'literal' ? discriminant.literalValue : discriminant.defaultValue;
@@ -58,7 +58,7 @@ registerBSONTypeGuard('class', (property: PropertySchema) => {
         };
     }
 
-    throw new Error(`Type of property ${property.name} (${property.toString()}) has no discriminant or literal set. Could not discriminate the value.`);
+    throw new Error(`Type of property ${property.name} (${property.toString()}, ${schema.getClassName()}) has no discriminant or literal set. Could not discriminate the value.`);
 });
 
 registerBSONTypeGuard('string', (property: PropertySchema) => {

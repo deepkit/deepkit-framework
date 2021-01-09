@@ -1,7 +1,7 @@
 import {jest, beforeAll, expect, test, afterAll} from '@jest/globals';
 import 'reflect-metadata';
-import {Collection, EntitySubject, IdInterface, rpc} from '@deepkit/framework-shared';
-import {ClientConnection, LiveDatabase} from '@deepkit/framework';
+import { Collection, EntitySubject, IdInterface, rpc, RpcKernelConnection } from '@deepkit/rpc';
+import {LiveDatabase} from '@deepkit/framework';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
 import {Entity, getClassSchema, t, uuid} from '@deepkit/type';
 import {BehaviorSubject, Observable} from 'rxjs';
@@ -10,6 +10,7 @@ import {sleep} from '@deepkit/core';
 import {Database} from '@deepkit/orm';
 import {fail} from 'assert';
 import ws from 'ws';
+import { EntityState } from "@deepkit/rpc";
 
 // @ts-ignore
 global['WebSocket'] = ws;
@@ -58,6 +59,7 @@ test('test increase', async () => {
         }
 
         @rpc.action()
+        @t.generic(User)
         async user(): Promise<EntitySubject<User>> {
             return await this.liveDatabase.query(User).findOne();
         }
@@ -161,14 +163,11 @@ test('test entity sync list', async () => {
     expect(users.count()).toBe(3);
     expect(users.all()[0].name).toBe('Peter patched');
 
-    console.log('wat?');
     const testController2 = createControllerClient<TestController>('test');
-    console.log('wat?2');
     await testController2.addUser('Peter 20');
 
     await users.nextStateChange;
     expect(users.count()).toBe(4);
-    console.log('unsubscribed');
     await users.unsubscribe();
 
     //unsubscribe is sent async, so we wait a bit.
@@ -347,7 +346,7 @@ test('test entity sync item undefined', async () => {
     @rpc.controller('test')
     class TestController {
         constructor(
-            private connection: ClientConnection,
+            private connection: RpcKernelConnection,
             private liveDatabase: LiveDatabase,
             private database: Database,
         ) {
@@ -386,7 +385,7 @@ test('test entity sync count', async () => {
     @rpc.controller('test')
     class TestController {
         constructor(
-            private connection: ClientConnection,
+            private connection: RpcKernelConnection,
             private liveDatabase: LiveDatabase,
             private database: Database,
         ) {
@@ -474,7 +473,6 @@ test('test entity sync count', async () => {
 
 
 test('test entity collection unsubscribe + findOne', async () => {
-
     @Entity('jobTest')
     class Job implements IdInterface {
         @t.primary.uuid
@@ -492,7 +490,7 @@ test('test entity collection unsubscribe + findOne', async () => {
     @rpc.controller('test')
     class TestController {
         constructor(
-            private connection: ClientConnection,
+            private connection: RpcKernelConnection,
             private liveDatabase: LiveDatabase,
             private database: Database,
         ) {
@@ -546,90 +544,91 @@ test('test entity collection unsubscribe + findOne', async () => {
 
     const {client, close} = await createServerClientPair('test entity collection unsubscribe + findOne', appModuleForControllers([TestController], [Job]));
     const test = client.controller<TestController>('test');
+    const entityState: EntityState = (client as any).actionClient.entityState;
 
     await test.init();
 
     try {
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
 
         const jobs = await test.getJobs();
 
         expect(jobs.count()).toBe(3);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
 
         const firstId = jobs.all()[0].id;
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(1);
 
         const firstJob = await test.getJob(firstId);
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(2);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(2);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
 
         expect(firstJob.getValue()).toBeInstanceOf(Job);
         expect(jobs.get(firstId) === jobs.all()[0]).toBe(true);
 
         await firstJob.unsubscribe();
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(1);
 
         await jobs.unsubscribe();
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(0);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(0);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
     } catch (e) {
         fail(e);
     }
 
     try {
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
         const jobs = await test.getJobs();
 
         expect(jobs.count()).toBe(3);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
 
         const firstId = jobs.all()[0].id;
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(1);
 
         const firstJob = await test.getJob(firstId);
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(2);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(2);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
 
         expect(firstJob.getValue()).toBeInstanceOf(Job);
         expect(jobs.get(firstId) === jobs.all()[0]).toBe(true);
 
         await jobs.unsubscribe();
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(1);
 
         await firstJob.unsubscribe();
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(0);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(0);
     } catch (e) {
         fail(e);
     }
 
     try {
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
         const jobs = await test.getJobs();
 
         expect(jobs.count()).toBe(3);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
 
         const firstId = jobs.all()[0].id;
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(1);
 
         const firstJob1 = await test.getJob(firstId);
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(2);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(2);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
 
         const firstJob2 = await test.getJob(firstId);
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(3);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(3);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(3);
 
         const firstJob3 = await test.getJobByName('Marie 1');
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(3);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(4);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(3);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(4);
 
         await firstJob1.unsubscribe();
         await firstJob2.unsubscribe();
 
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(4);
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(1);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(4);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(1);
 
         test.addJob('Peter 10');
         await jobs.nextStateChange;
@@ -640,11 +639,11 @@ test('test entity collection unsubscribe + findOne', async () => {
         expect(jobs.count()).toBe(3);
 
         await jobs.unsubscribe();
-        expect(client.entityState.getStore(Job).getForkCount(firstId)).toBe(0);
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(1);
+        expect(entityState.getStore(Job).getForkCount(firstId)).toBe(0);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(1);
 
         await firstJob3.unsubscribe();
-        expect(client.entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
+        expect(entityState.getStore(Job).getEntitySubjectCount()).toBe(0);
     } catch (e) {
         fail(e);
     }
@@ -697,7 +696,7 @@ test('test entity collection reactive find', async () => {
     @rpc.controller('test')
     class TestController {
         constructor(
-            private connection: ClientConnection,
+            private connection: RpcKernelConnection,
             private liveDatabase: LiveDatabase,
             private database: Database,
         ) {
@@ -800,7 +799,7 @@ test('test entity collection reactive find', async () => {
         console.log('members loaded');
 
         console.log('apply Team B');
-        await teamMembers.pagination.setParameter('teamName', 'Team b').apply();
+        await teamMembers.setParameter('teamName', 'Team b').apply();
         console.log('Team B loaded');
         expect(teamMembers.count()).toBe(1);
         expect(teamMembers.all()[0].id).toBe(marieId);
@@ -859,7 +858,7 @@ test('test entity collection pagination', async () => {
     @rpc.controller('test')
     class TestController {
         constructor(
-            private connection: ClientConnection,
+            private connection: RpcKernelConnection,
             private liveDatabase: LiveDatabase,
             private database: Database
         ) {
@@ -900,7 +899,6 @@ test('test entity collection pagination', async () => {
             return this.liveDatabase.query(Item)
                 .filter({clazz: {$parameter: 'clazz'}})
                 .parameter('clazz', clazz)
-                .enablePagination()
                 .itemsPerPage(10)
                 .sort({nr: 'asc'})
                 .find();
@@ -950,9 +948,9 @@ test('test entity collection pagination', async () => {
 
     {
         const items = await test.findByOwnerPaged('3f63154d-4121-4f5c-a297-afc1f8f453fd');
-        expect(items.pagination.getPage()).toBe(2);
-        expect(items.pagination.getTotal()).toBe(50);
-        expect(items.pagination.getItemsPerPage()).toBe(30);
+        expect(items.getPage()).toBe(2);
+        expect(items.getTotal()).toBe(50);
+        expect(items.getItemsPerPage()).toBe(30);
         expect(items.count()).toBe(20); //we got 50 total, 30 per page. 30,20, we are at second page.
 
         test.add('a', 1001);
@@ -967,28 +965,28 @@ test('test entity collection pagination', async () => {
 
     {
         const items = await test.findByClass('a');
-        expect(items.pagination.getTotal()).toBe(34);
-        expect(items.pagination.getItemsPerPage()).toBe(10);
-        expect(items.pagination.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
-        expect(items.pagination.getParameter('clazz')).toBe('a');
+        expect(items.getTotal()).toBe(34);
+        expect(items.getItemsPerPage()).toBe(10);
+        expect(items.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
+        expect(items.getParameter('clazz')).toBe('a');
 
         expect(items.all()[0].nr).toBe(0);
         expect(items.all()[9].nr).toBe(27);
         expect(items.count()).toBe(10);
-        expect(items.pagination.getTotal()).toBe(34);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
-        await items.pagination.setParameter('clazz', 'b').apply();
-        expect(items.pagination.getTotal()).toBe(33);
-        expect(items.pagination.getItemsPerPage()).toBe(10);
-        expect(items.pagination.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
-        expect(items.pagination.getParameter('clazz')).toBe('b');
+        await items.setParameter('clazz', 'b').apply();
+        expect(items.getTotal()).toBe(33);
+        expect(items.getItemsPerPage()).toBe(10);
+        expect(items.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
+        expect(items.getParameter('clazz')).toBe('b');
 
         expect(items.all()[0].nr).toBe(1);
         expect(items.all()[9].nr).toBe(28);
         expect(items.count()).toBe(10);
-        expect(items.pagination.getTotal()).toBe(33);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(33);
+        expect(items.getPages()).toBe(4);
         await items.unsubscribe();
     }
 
@@ -998,40 +996,40 @@ test('test entity collection pagination', async () => {
         expect(items.all()[0].nr).toBe(0);
         expect(items.all()[9].nr).toBe(27);
         expect(items.count()).toBe(10);
-        expect(items.pagination.getTotal()).toBe(34);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
         //swap order
-        items.pagination.orderByField('nr', 'desc');
-        await items.pagination.apply();
+        items.orderByField('nr', 'desc');
+        await items.apply();
         expect(items.all()[0].nr).toBe(99);
         expect(items.all()[9].nr).toBe(72);
         expect(items.count()).toBe(10);
-        expect(items.pagination.getTotal()).toBe(34);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
         //swap order back
-        items.pagination.orderByField('nr');
-        await items.pagination.apply();
+        items.orderByField('nr');
+        await items.apply();
         expect(items.all()[0].nr).toBe(0);
         expect(items.all()[9].nr).toBe(27);
         expect(items.count()).toBe(10);
-        expect(items.pagination.getTotal()).toBe(34);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
         test.remove('name_27');
         await items.nextStateChange;
         expect(items.all()[0].nr).toBe(0);
         expect(items.all()[9].nr).toBe(30);
-        expect(items.pagination.getTotal()).toBe(33);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(33);
+        expect(items.getPages()).toBe(4);
 
         test.remove('name_0');
         await items.nextStateChange;
         expect(items.all()[0].nr).toBe(3);
         expect(items.all()[9].nr).toBe(33);
-        expect(items.pagination.getTotal()).toBe(32);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(32);
+        expect(items.getPages()).toBe(4);
 
         //shouldn't change anything
         test.add('a', 101);
@@ -1039,25 +1037,25 @@ test('test entity collection pagination', async () => {
         expect(items.all()[0].nr).toBe(3);
         expect(items.all()[9].nr).toBe(33);
         expect(items.count()).toBe(10);
-        expect(items.pagination.getTotal()).toBe(33);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(33);
+        expect(items.getPages()).toBe(4);
 
         //should change a lot
         test.add('a', -1);
         await items.nextStateChange;
         expect(items.all()[0].nr).toBe(-1);
         expect(items.all()[9].nr).toBe(30);
-        expect(items.pagination.getTotal()).toBe(34);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
-        items.pagination.setPage(2);
-        items.pagination.apply();
+        items.setPage(2);
+        items.apply();
         await items.nextStateChange;
         expect(items.count()).toBe(10);
         expect(items.all()[0].nr).toBe(33);
         expect(items.all()[9].nr).toBe(60);
-        expect(items.pagination.getTotal()).toBe(34);
-        expect(items.pagination.getPages()).toBe(4);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
         await items.unsubscribe();
     }
 

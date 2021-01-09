@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {ControllerClient} from '../../../client';
-import {EntitySubject} from '@deepkit/framework-shared';
+import {EntitySubject} from '@deepkit/rpc';
 import {DebugRequest, Workflow} from '@deepkit/framework-debug-shared';
 
 @Component({
@@ -91,7 +91,7 @@ export class HttpRequestComponent {
     protected cd: ChangeDetectorRef,
   ) {
     activatedRoute.params.subscribe((p) => {
-      setTimeout(() => this.loadRequest(p.id));
+      setTimeout(() => this.loadRequest(Number(p.id)));
     });
   }
 
@@ -102,8 +102,8 @@ export class HttpRequestComponent {
   }
 
   protected async loadRequest(id: number) {
-    const request = await this.controllerClient.getHttpRequests();
-    this.request = request.getEntitySubject(id);
+    const requests = await this.controllerClient.getHttpRequests();
+    this.request = requests.getEntitySubject(id);
 
     this.httpWorkflow = await this.controllerClient.getWorkflow('http');
 
