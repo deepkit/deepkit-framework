@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
 import 'reflect-metadata';
-import {entity, t} from '@deepkit/type';
+import {entity, sliceClass, t} from '@deepkit/type';
 import {Application, BodyValidation, DatabaseModule, http, KernelModule, Logger, Redirect} from '@deepkit/framework';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
@@ -24,12 +24,10 @@ class SQLiteDatabase extends Database {
     }
 }
 
-class AddUserDto {
-    @t.minLength(3) username!: string;
-}
+class AddUserDto extends sliceClass(User).exclude('id', 'created') {};
 
 async function UserList({error}: {error?: string} = {}) {
-    const users = await User.query<User>().find();
+    const users = await User.query().find();
     return <Website title="Users">
         <h1>Users</h1>
 
@@ -59,7 +57,7 @@ class HelloWorldController {
 
     @http.GET('/api/users')
     async users() {
-        return await User.query<User>().find();
+        return await User.query().find();
     }
 
     @http.POST('/add').description('Adds a new user')
@@ -84,4 +82,3 @@ Application.create({
         DatabaseModule.configure({databases: [SQLiteDatabase], migrateOnStartup: true})
     ]
 }).run();
-

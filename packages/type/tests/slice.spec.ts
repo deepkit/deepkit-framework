@@ -31,6 +31,35 @@ test('slice exclude', () => {
     }
 });
 
+test('slice include', () => {
+    const schema = t.schema({
+        username: t.string,
+        password: t.string,
+        created: t.date,
+    });
+
+    expect(schema.hasProperty('password')).toBe(true);
+    expect(schema.hasProperty('username')).toBe(true);
+    expect(schema.hasProperty('created')).toBe(true);
+
+    const pub = schema.include('username');
+    expect(pub.hasProperty('password')).toBe(false);
+    expect(pub.hasProperty('username')).toBe(true);
+    expect(pub.hasProperty('created')).toBe(false);
+
+    {
+        const instance = plainToClass(pub, {username: 'Peter'});
+        expect(instance.username).toBe('Peter');
+        expect((instance as any).password).toBe(undefined);
+    }
+
+    {
+        const instance = plainToClass(pub, {username: 'Peter', password: 'asdasd'});
+        expect(instance.username).toBe('Peter');
+        expect((instance as any).password).toBe(undefined);
+    }
+});
+
 test('slice extend', () => {
     const schema = t.schema({
         username: t.string,

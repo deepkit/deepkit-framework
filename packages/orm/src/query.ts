@@ -245,23 +245,6 @@ export class BaseQuery<T extends Entity> {
         return c;
     }
 
-    // use(query: QueryClassType): ReturnType<typeof query['create']> {
-    //     return query.create(this);
-    // }
-
-
-    // use2(query: { create: <T>() => T }): ReturnType<typeof query['create']> {
-    //     return query.create(this);
-
-    //     interface P<T> {
-    //         create(): T
-    //     }
-
-    //     interface P2<T> {
-    //         create(): P<T>
-    //     }
-    // }
-
     filter(filter?: this['model']['filter'] | T): this {
         const c = this.clone();
         if (filter && !Object.keys(filter as object).length) filter = undefined;
@@ -423,8 +406,8 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         this.model.withIdentityMap = databaseSession.withIdentityMap;
     }
 
-    static from<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): InstanceType<T> & B {
-        const result = (new this(base.classSchema, base.databaseSession, base.resolver)) as InstanceType<T> & B;
+    static from<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): B & InstanceType<T> {
+        const result = (new this(base.classSchema, base.databaseSession, base.resolver)) as B & InstanceType<T>;
         result.model = base.model.clone(result);
         result.format = base.format;
         return result;

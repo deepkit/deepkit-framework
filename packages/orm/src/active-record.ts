@@ -36,6 +36,8 @@ export function isActiveRecordType(entity: any): entity is ActiveRecordType {
 }
 
 export class ActiveRecord {
+    constructor(...args: any[]) {}
+
     public static getDatabase(): Database<any> {
         const database = getClassSchema(this).data['orm.database'] as Database<any> | undefined;
         if (!database) throw new Error(`No database assigned to ${getClassName(this)}. Use Database.registerEntity(${getClassName(this)}) first.`);
@@ -56,7 +58,7 @@ export class ActiveRecord {
         await db.remove(this);
     }
 
-    public static create<T extends typeof ActiveRecord>(this: T): GenericQuery<InstanceType<T>> {
+    public static query<T extends typeof ActiveRecord>(this: T): GenericQuery<InstanceType<T>> {
         return this.getDatabase().query(this);
     }
 }

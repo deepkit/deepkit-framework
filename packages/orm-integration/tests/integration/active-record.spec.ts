@@ -1,11 +1,11 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {User, UserGroup} from './user';
-import {createEnvSetup} from './setup';
-import {Book} from './active-record/book';
-import {Tag} from './active-record/tag';
-import {BookTag} from './active-record/book-tag';
-import {Group} from './group';
+import { User, UserGroup } from './user';
+import { createEnvSetup } from './setup';
+import { Book } from './active-record/book';
+import { Tag } from './active-record/tag';
+import { BookTag } from './active-record/book-tag';
+import { Group } from './group';
 
 
 test('basic operations', async () => {
@@ -13,6 +13,8 @@ test('basic operations', async () => {
     const user1 = new User('peter');
     const book1 = new Book(user1, 'My book');
     await book1.save();
+
+    expect(await Book.query().count()).toBe(1);
 
     expect(await database.query(Book).count()).toBe(1);
     expect(await database.query(User).count()).toBe(1);

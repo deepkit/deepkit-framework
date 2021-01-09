@@ -1,8 +1,8 @@
-import {entity, PrimaryKey, Reference, t} from '@deepkit/type';
-import {ActiveRecord} from '@deepkit/orm';
-import {User} from '../user';
-import {Tag} from './tag';
-import {BookTag} from './book-tag';
+import { ActiveRecord } from '@deepkit/orm';
+import { entity, t } from '@deepkit/type';
+import { User } from '../user';
+import { BookTag } from './book-tag';
+import { Tag } from './tag';
 
 @entity.name('book')
 export class Book extends ActiveRecord {

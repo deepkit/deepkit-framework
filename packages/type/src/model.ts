@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, eachKey, eachPair, getClassName, isClass, isConstructable, isFunction, isObject, isPlainObject, toFastProperties } from '@deepkit/core';
+import { arrayRemoveItem, ClassType, eachKey, eachPair, getClassName, isClass, isConstructable, isFunction, isObject, isPlainObject, toFastProperties } from '@deepkit/core';
 import { isArray } from './utils';
 import { extractMethod } from './code-parser';
 import getParameterNames from 'get-parameter-names';
@@ -825,6 +825,11 @@ export class ClassSchema<T = any> {
         this.resetCache();
     }
 
+    public removeProperty(name: string) {
+        this.classProperties.delete(name);
+        arrayRemoveItem(this.propertyNames, name);
+    }
+
     public registerProperty(property: PropertySchema) {
         if (!property.methodName && this.detectedDefaultValueProperties.includes(property.name)) {
             property.hasDefaultValue = true;
@@ -952,6 +957,15 @@ export class ClassSchema<T = any> {
     public exclude<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Omit<T, K[number]>> {
         const cloned = this.clone();
         for (const name of properties) cloned.classProperties.delete(name);
+        return cloned as any;
+    }
+
+    public include<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Pick<T, K[number]>> {
+        const cloned = this.clone();
+        for (const name of this.classProperties.keys()) {
+            if (properties.includes(name as keyof T & string)) continue;
+            cloned.classProperties.delete(name);
+        }
         return cloned as any;
     }
 
@@ -1181,6 +1195,34 @@ export class ClassSchema<T = any> {
     }
 }
 
+export class ClassSlicer<T> {
+    constructor(protected schema: ClassSchema<T>) {}
+
+    public exclude<K extends (keyof T & string)[]>(...properties: K): ClassType<Omit<T, K[number]>> {
+        for (const name of properties) this.schema.removeProperty(name);
+        return this.schema.classType as any;
+    }
+
+    public include<K extends (keyof T & string)[]>(...properties: K): ClassType<Pick<T, K[number]>> {
+        for (const name of this.schema.getClassProperties().keys()) {
+            if (properties.includes(name as keyof T & string)) continue;
+            this.schema.removeProperty(name);
+        }
+        return this.schema.classType as any;
+    }
+
+    public extend<E extends PlainSchemaProps>(props: E, options?: { name?: string, classType?: ClassType }): ClassType<T & ExtractClassDefinition<E>> {
+        const schema = t.schema(props);
+        for (const property of schema.getClassProperties().values()) {
+            this.schema.registerProperty(property);
+        }
+        return this.schema.classType as any;
+    }
+}
+
+export function sliceClass<T>(classType: ClassType<T> | ClassSchema<T>): ClassSlicer<T> {
+    return new ClassSlicer(getClassSchema(classType).clone());
+}
 
 /**
  * Returns true if there is a class annotated with @Entity(name).

@@ -519,6 +519,43 @@ test('PropertySchema setFromJSValue', () => {
 
     {
         const p = new PropertySchema('');
+        p.setFromJSValue('2');
+        expect(p.type).toBe('string');
+    }
+
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue(true);
+        expect(p.type).toBe('boolean');
+    }
+
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue({});
+        expect(p.type).toBe('any');
+    }
+
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue(new Uint8Array());
+        expect(p.type).toBe('Uint8Array');
+    }
+
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue(new ArrayBuffer(0));
+        expect(p.type).toBe('arrayBuffer');
+    }
+
+    {
+        const p = new PropertySchema('');
+        p.setFromJSValue([]);
+        expect(p.type).toBe('array');
+        expect(p.getSubType().type).toBe('any');
+    }
+
+    {
+        const p = new PropertySchema('');
         p.setFromJSValue(null);
         expect(p.type).toBe('any');
     }
