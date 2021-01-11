@@ -156,6 +156,7 @@ export class ApplicationServer {
             } else {
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
                 this.worker = this.webWorkerFactory.create(cluster.worker.id, this.config);
+                this.worker.start();
 
                 cluster.on('exit', (w) => {
                     this.logger.warning(`Worker ${w.id} died.`);
@@ -166,6 +167,7 @@ export class ApplicationServer {
             await this.bootstrap();
             await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
             this.worker = this.webWorkerFactory.create(1, this.config);
+            this.worker.start();
             await this.bootstrapDone();
         }
     }

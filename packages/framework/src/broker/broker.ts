@@ -128,15 +128,15 @@ type EntityChannelMessage<T extends IdInterface> = EntityChannelMessageAdd<T>
 
 export class EntityBrokerChannel<T extends IdInterface> extends BrokerChannel<EntityChannelMessage<T>> {
     publishAdd(item: T) {
-        this.publish({ type: EntityChannelMessageType.add, id: item.id, item });
+        return this.publish({ type: EntityChannelMessageType.add, id: item.id, item });
     }
 
     publishRemove(ids: (string | number)[]) {
-        this.publish({ type: EntityChannelMessageType.remove, ids });
+        return this.publish({ type: EntityChannelMessageType.remove, ids });
     }
 
     publishPatch(id: string | number, version: number, patch: EntityPatches, item: Partial<T>) {
-        this.publish({ type: EntityChannelMessageType.patch, id, version, patch, item });
+        return this.publish({ type: EntityChannelMessageType.patch, id, version, patch, item });
     }
 }
 

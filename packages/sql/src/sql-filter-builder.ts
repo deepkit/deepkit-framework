@@ -98,7 +98,7 @@ export class SQLFilterBuilder {
                 value = null;
             }
 
-            if (property.type === 'class' || property.type === 'map' || property.type === 'array') {
+            if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
                 value = JSON.stringify(value);
             }
 

@@ -38,7 +38,6 @@ import {SqlBuilder} from './sql-builder';
 import {SqlFormatter} from './sql-formatter';
 import {sqlSerializer} from './serializer/sql-serializer';
 import {DatabaseComparator, DatabaseModel} from './schema/table';
-import { inspect } from 'util';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };

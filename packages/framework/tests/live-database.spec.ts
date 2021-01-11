@@ -2,14 +2,18 @@ import { sleep } from '@deepkit/core';
 import { nextValue } from '@deepkit/core-rxjs';
 import { Database } from '@deepkit/orm';
 import { Collection, EntityState, EntitySubject, IdInterface, rpc, RpcKernelConnection } from '@deepkit/rpc';
-import { ClassSchema, Entity, getClassSchema, jsonSerializer, t, uuid } from '@deepkit/type';
+import { Entity, getClassSchema, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { fail } from 'assert';
 import 'reflect-metadata';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Broker, DirectBroker } from '../src/broker/broker';
-import { LiveDatabase } from '../src/broker/live-database';
-import { createTestingApp } from '../src/testing';
+import { LiveDatabase } from '../src/database/live-database';
+import { createTestingApp as createTestingAppOriginal } from '../src/testing';
+
+// make it overwrideable
+declare var createTestingApp: typeof createTestingAppOriginal;
+global['createTestingApp'] ||= createTestingAppOriginal;
 
 class UserBase implements IdInterface {
     @t.primary.uuid
@@ -24,7 +28,7 @@ class UserBase implements IdInterface {
 
 test('test broker', async () => {
     @Entity('user_broker_test')
-    class User extends UserBase {}
+    class User extends UserBase { }
 
     const testing = createTestingApp({});
     await testing.startServer();
@@ -37,11 +41,11 @@ test('test broker', async () => {
         subject.next(v);
     });
 
-    await broker.entityChannel(User).publishPatch(1, 1, {$set: {username: true}}, {});
+    await broker.entityChannel(User).publishPatch(1, 1, { $set: { username: true } }, {});
     await sleep(0);
     expect(subject.value).not.toBe(undefined);
     expect(subject.value.id).toBe(1);
-    expect(subject.value.patch).toEqual({$set: {username: true}});
+    expect(subject.value.patch).toEqual({ $set: { username: true } });
 });
 
 
@@ -67,7 +71,7 @@ test('test increase', async () => {
 
         @rpc.action()
         async increase(i: number) {
-            await this.database.query(User).patchOne({$inc: {connections: i}});
+            await this.database.query(User).patchOne({ $inc: { connections: i } });
         }
 
         @rpc.action()
@@ -76,8 +80,8 @@ test('test increase', async () => {
             return await this.liveDatabase.query(User).findOne();
         }
     }
-    
-    const testing = createTestingApp({controllers: [TestController]}, [User]);
+
+    const testing = createTestingApp({ controllers: [TestController] }, [User]);
     await testing.startServer();
     const client = testing.createRpcClient();
 
@@ -140,11 +144,11 @@ test('test entity sync list', async () => {
 
             setTimeout(async () => {
                 console.log('Peter 1 patched');
-                await this.database.query(User).filter({id: peter.id}).patchOne({name: 'Peter patched'});
+                await this.database.query(User).filter({ id: peter.id }).patchOne({ name: 'Peter patched' });
             }, 1000);
 
             return await this.liveDatabase.query(User).filter({
-                name: {$regex: /Peter/}
+                name: { $regex: /Peter/ }
             }).find();
         }
 
@@ -155,7 +159,7 @@ test('test entity sync list', async () => {
         }
     }
 
-    const testing = createTestingApp({controllers: [TestController]}, [User]);
+    const testing = createTestingApp({ controllers: [TestController] }, [User]);
     await testing.startServer();
     const client = testing.createRpcClient();
     const testController = client.controller<TestController>('test');
@@ -215,7 +219,7 @@ test('test entity sync list: remove', async () => {
             await this.database.persist(new User('Peter 2'));
 
             return await this.liveDatabase.query(User).filter({
-                name: {$regex: /Peter/}
+                name: { $regex: /Peter/ }
             }).find();
         }
 
@@ -226,7 +230,7 @@ test('test entity sync list: remove', async () => {
 
         @rpc.action()
         async remove(id: string) {
-            await this.database.query(User).filter({id}).deleteOne();
+            await this.database.query(User).filter({ id }).deleteOne();
         }
 
         @rpc.action()
@@ -237,7 +241,7 @@ test('test entity sync list: remove', async () => {
         }
     }
 
-    const testing = createTestingApp({controllers: [TestController]}, [User]);
+    const testing = createTestingApp({ controllers: [TestController] }, [User]);
     await testing.startServer();
     const client = testing.createRpcClient();
     const testController = client.controller<TestController>('test');
@@ -272,86 +276,86 @@ test('test entity sync list: remove', async () => {
     console.log('done');
 });
 
-// // test('test entity sync item', async () => {
-// //     @Entity('user3')
-// //     class User extends UserBase {
-// //     }
-// //
-// //     @rpc.controller('test')
-// //     class TestController {
-// //         constructor(
-// //             private connection: ClientConnection,
-// //             private liveDatabase: LiveDatabase,
-// //             private database: Database
-// //         ) {
-// //             this.liveDatabase.enableChangeFeed(User);
-// //         }
-// //
-// //         @rpc.action()
-// //         async user(): Promise<EntitySubject<User>> {
-// //             await this.database.query(User).deleteMany();
-// //             await this.database.persist(new User('Guschdl'));
-// //
-// //             const peter = new User('Peter 1');
-// //             await this.database.persist(peter);
-// //
-// //             this.connection.setTimeout(async () => {
-// //                 await this.database.query(User).filter({id: peter.id}).patchOne({name: 'Peter patched'});
-// //             }, 20);
-// //
-// //             this.connection.setTimeout(async () => {
-// //                 await this.database.query(User).filter({id: peter.id}).deleteOne();
-// //             }, 280);
-// //
-// //             return await this.liveDatabase.query(User).filter({
-// //                 name: {$regex: /Peter/}
-// //             }).findOne();
-// //         }
-// //     }
-// //
-// //     const {client, close, app} = await createServerClientPair('test entity sync item', [TestController], [User]);
-// //     const test = client.controller<TestController>('test');
-// //
-// //     {
-// //         const user = await test.user();
-// //         expect(user).toBeInstanceOf(EntitySubject);
-// //         expect(user.getValue()).toBeInstanceOf(User);
-// //         expect(user.getValue().name).toBe('Peter 1');
-// //         const userId = user.getValue().id;
-// //
-// //         const entityStorage = app.lastConnectionInjector!.get(EntityStorage);
-// //         await user.nextStateChange;
-// //         expect(user.getValue().name).toBe('Peter patched');
-// //         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(true);
-// //
-// //         await user.nextStateChange;
-// //         expect(user.deleted).toBe(true);
-// //
-// //         // there are two ways to stop syncing that entity:
-// //         // call user.unsubscribe() or when server sent next(undefined), which means it got deleted.
-// //         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(false);
-// //     }
-// //
-// //     {
-// //         const user = await test.user();
-// //         expect(user).toBeInstanceOf(EntitySubject);
-// //         expect(user.getValue()).toBeInstanceOf(User);
-// //         expect(user.getValue().name).toBe('Peter 1');
-// //         const userId = user.getValue().id;
-// //
-// //         const entityStorage = app.lastConnectionInjector!.get(EntityStorage);
-// //         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(true);
-// //
-// //         //this happens async, since we sent a message to the server that
-// //         //we want to stop syncing.
-// //         user.unsubscribe();
-// //         await sleep(0.1);
-// //
-// //         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(false);
-// //     }
-// //
-// //     await close();
-// // });
+// test('test entity sync item', async () => {
+//     @Entity('user3')
+//     class User extends UserBase {
+//     }
+
+//     @rpc.controller('test')
+//     class TestController {
+//         constructor(
+//             private connection: RpcKernelConnection,
+//             private liveDatabase: LiveDatabase,
+//             private database: Database
+//         ) {
+//             this.liveDatabase.enableChangeFeed(User);
+//         }
+
+//         @rpc.action()
+//         async user(): Promise<EntitySubject<User>> {
+//             await this.database.query(User).deleteMany();
+//             await this.database.persist(new User('Guschdl'));
+
+//             const peter = new User('Peter 1');
+//             await this.database.persist(peter);
+
+//             this.connection.setTimeout(async () => {
+//                 await this.database.query(User).filter({id: peter.id}).patchOne({name: 'Peter patched'});
+//             }, 20);
+
+//             this.connection.setTimeout(async () => {
+//                 await this.database.query(User).filter({id: peter.id}).deleteOne();
+//             }, 280);
+
+//             return await this.liveDatabase.query(User).filter({
+//                 name: {$regex: /Peter/}
+//             }).findOne();
+//         }
+//     }
+
+//     const {client, close, app} = await createServerClientPair('test entity sync item', [TestController], [User]);
+//     const test = client.controller<TestController>('test');
+
+//     {
+//         const user = await test.user();
+//         expect(user).toBeInstanceOf(EntitySubject);
+//         expect(user.getValue()).toBeInstanceOf(User);
+//         expect(user.getValue().name).toBe('Peter 1');
+//         const userId = user.getValue().id;
+
+//         const entityStorage = app.lastConnectionInjector!.get(EntityStorage);
+//         await user.nextStateChange;
+//         expect(user.getValue().name).toBe('Peter patched');
+//         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(true);
+
+//         await user.nextStateChange;
+//         expect(user.deleted).toBe(true);
+
+//         // there are two ways to stop syncing that entity:
+//         // call user.unsubscribe() or when server sent next(undefined), which means it got deleted.
+//         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(false);
+//     }
+
+//     {
+//         const user = await test.user();
+//         expect(user).toBeInstanceOf(EntitySubject);
+//         expect(user.getValue()).toBeInstanceOf(User);
+//         expect(user.getValue().name).toBe('Peter 1');
+//         const userId = user.getValue().id;
+
+//         const entityStorage = app.lastConnectionInjector!.get(EntityStorage);
+//         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(true);
+
+//         //this happens async, since we sent a message to the server that
+//         //we want to stop syncing.
+//         user.unsubscribe();
+//         await sleep(0.1);
+
+//         expect(entityStorage.needsToBeSend(User, userId, 10000)).toBe(false);
+//     }
+
+//     await close();
+// });
 
 test('test entity sync item undefined', async () => {
     @Entity('user4')
@@ -376,12 +380,12 @@ test('test entity sync item undefined', async () => {
             await this.database.persist(peter);
 
             return await this.liveDatabase.query(User).filter({
-                name: {$regex: /Marie/}
+                name: { $regex: /Marie/ }
             }).findOneOrUndefined();
         }
     }
 
-    const testing = createTestingApp({controllers: [TestController]}, [User]);
+    const testing = createTestingApp({ controllers: [TestController] }, [User]);
     await testing.startServer();
     const client = testing.createRpcClient();
     const controller = client.controller<TestController>('test');
@@ -424,16 +428,16 @@ test('test entity sync count', async () => {
 
             this.connection.setTimeout(async () => {
                 console.log('remove peter1');
-                await this.database.query(User).filter({id: peter1.id}).deleteOne();
+                await this.database.query(User).filter({ id: peter1.id }).deleteOne();
             }, 200);
 
             return await this.liveDatabase.query(User).filter({
-                name: {$regex: /Peter/}
+                name: { $regex: /Peter/ }
             }).count();
         }
     }
 
-    const testing = createTestingApp({controllers: [TestController]}, [User]);
+    const testing = createTestingApp({ controllers: [TestController] }, [User]);
     await testing.startServer();
     const client = testing.createRpcClient();
     const controller = client.controller<TestController>('test');
@@ -524,7 +528,7 @@ test('test entity collection unsubscribe + findOne', async () => {
         @rpc.action()
         async getJobs(): Promise<Collection<Job>> {
             return await this.liveDatabase.query(Job).filter({
-                name: {$regex: /Peter/}
+                name: { $regex: /Peter/ }
             }).find();
         }
 
@@ -555,7 +559,7 @@ test('test entity collection unsubscribe + findOne', async () => {
         }
     }
 
-    const testing = createTestingApp({controllers: [TestController]}, [Job]);
+    const testing = createTestingApp({ controllers: [TestController] }, [Job]);
     await testing.startServer();
     const client = testing.createRpcClient();
     const controller = client.controller<TestController>('test');
@@ -665,227 +669,226 @@ test('test entity collection unsubscribe + findOne', async () => {
 });
 
 
-// test('test entity collection pagination', async () => {
-//     @Entity('paginate/item')
-//     class Item implements IdInterface {
-//         @t.primary.uuid
-//         id: string = uuid();
+test('test entity collection pagination', async () => {
+    @Entity('paginate/item')
+    class Item implements IdInterface {
+        @t.primary.uuid
+        id: string = uuid();
 
-//         @t
-//         version: number = 0;
+        @t
+        version: number = 0;
 
-//         constructor(
-//             @t public name: string,
-//             @t public nr: number = 0,
-//             @t public clazz: string = 'a',
-//             @t.uuid public owner: string
-//         ) {
-//         }
-//     }
+        constructor(
+            @t public name: string,
+            @t public nr: number = 0,
+            @t public clazz: string = 'a',
+            @t.uuid public owner: string
+        ) {
+        }
+    }
 
-//     @rpc.controller('test')
-//     class TestController {
-//         constructor(
-//             private connection: RpcKernelConnection,
-//             private liveDatabase: LiveDatabase,
-//             private database: Database
-//         ) {
-//             this.liveDatabase.enableChangeFeed(Item);
-//         }
+    @rpc.controller('test')
+    class TestController {
+        constructor(
+            private connection: RpcKernelConnection,
+            private liveDatabase: LiveDatabase,
+            private database: Database
+        ) {
+            this.liveDatabase.enableChangeFeed(Item);
+        }
 
-//         @rpc.action()
-//         async init() {
-//             await this.database.query(Item).deleteMany();
+        @rpc.action()
+        async init() {
+            await this.database.query(Item).deleteMany();
 
-//             const promises: Promise<any>[] = [];
-//             const clazzes = ['a', 'b', 'c'];
-//             const owners = ['3f63154d-4121-4f5c-a297-afc1f8f453fd', '4c349fe0-fa33-4e10-bb17-e25f13e4740e'];
+            const promises: Promise<any>[] = [];
+            const clazzes = ['a', 'b', 'c'];
+            const owners = ['3f63154d-4121-4f5c-a297-afc1f8f453fd', '4c349fe0-fa33-4e10-bb17-e25f13e4740e'];
 
-//             for (let i = 0; i < 100; i++) {
-//                 promises.push(this.database.persist(new Item('name_' + i, i, clazzes[i % 3], owners[i % 2])));
-//             }
+            for (let i = 0; i < 100; i++) {
+                promises.push(this.database.persist(new Item('name_' + i, i, clazzes[i % 3], owners[i % 2])));
+            }
 
-//             await Promise.all(promises);
-//             console.log('init done!');
-//             const c = await this.database.query(Item).count();
-//             expect(c).toBe(100);
-//         }
+            await Promise.all(promises);
+            console.log('init done!');
+            const c = await this.database.query(Item).count();
+            expect(c).toBe(100);
+        }
 
-//         @rpc.action()
-//         async add(clazz: string, nr: number): Promise<void> {
-//             const item = new Item('name_' + nr, nr, clazz, '3f63154d-4121-4f5c-a297-afc1f8f453fd');
-//             await this.database.persist(item);
-//         }
+        @rpc.action()
+        async add(clazz: string, nr: number): Promise<void> {
+            const item = new Item('name_' + nr, nr, clazz, '3f63154d-4121-4f5c-a297-afc1f8f453fd');
+            await this.database.persist(item);
+        }
 
-//         @rpc.action()
-//         async remove(name: string): Promise<void> {
-//             await this.database.query(Item).filter({name}).deleteOne();
-//         }
+        @rpc.action()
+        async remove(name: string): Promise<void> {
+            await this.database.query(Item).filter({ name }).deleteOne();
+        }
 
-//         @rpc.action()
-//         async findByClass(clazz: string): Promise<Collection<Item>> {
-//             return this.liveDatabase.query(Item)
-//                 .filter({clazz: {$parameter: 'clazz'}})
-//                 .parameter('clazz', clazz)
-//                 .itemsPerPage(10)
-//                 .sort({nr: 'asc'})
-//                 .find();
-//         }
+        @rpc.action()
+        async findByClass(clazz: string): Promise<Collection<Item>> {
+            return this.liveDatabase.query(Item)
+                .filter({ clazz: { $parameter: 'clazz' } })
+                .parameter('clazz', clazz)
+                .itemsPerPage(10)
+                .page(1)
+                .sort({ nr: 'asc' })
+                .find();
+        }
 
-//         @rpc.action()
-//         async findByOwner(owner: string): Promise<Collection<Item>> {
-//             return this.liveDatabase.query(Item)
-//                 .filter({owner: owner})
-//                 .find();
-//         }
+        @rpc.action()
+        async findByOwner(owner: string): Promise<Collection<Item>> {
+            return this.liveDatabase.query(Item)
+                .filter({ owner: owner })
+                .find();
+        }
 
-//         @rpc.action()
-//         async findByOwnerPaged(owner: string): Promise<Collection<Item>> {
-//             return this.liveDatabase.query(Item)
-//                 .filter({owner: owner})
-//                 .itemsPerPage(30)
-//                 .page(2)
-//                 .find();
-//         }
-//     }
+        @rpc.action()
+        async findByOwnerPaged(owner: string): Promise<Collection<Item>> {
+            return this.liveDatabase.query(Item)
+                .filter({ owner: owner })
+                .itemsPerPage(30)
+                .page(2)
+                .find();
+        }
+    }
 
-//     const {client, close} = await createServerClientPair('test entity collection pagination', appModuleForControllers([TestController], [Item]));
-//     const test = client.controller<TestController>('test');
+    const testing = createTestingApp({ controllers: [TestController] }, [Item]);
+    await testing.startServer();
+    const client = testing.createRpcClient();
+    const controller = client.controller<TestController>('test');
 
-//     await test.init();
-//     console.log('test.init done');
+    await controller.init();
+    console.log('test.init done');
 
-//     {
-//         console.log('findByOwner');
-//         const items = await test.findByOwner('3f63154d-4121-4f5c-a297-afc1f8f453fd');
-//         console.log('findByOwner done');
-//         expect(items.count()).toBe(50);
+    {
+        console.log('findByOwner');
+        const items = await controller.findByOwner('3f63154d-4121-4f5c-a297-afc1f8f453fd');
+        expect(items.getPage()).toBe(1);
+        console.log('findByOwner done');
+        expect(items.count()).toBe(50);
 
-//         test.add('a', 1000);
-//         console.log('item added a');
-//         await items.nextStateChange;
-//         console.log('done');
-//         expect(items.count()).toBe(51);
+        controller.add('a', 1000);
+        console.log('item added a');
+        await items.nextStateChange;
+        console.log('done');
+        expect(items.count()).toBe(51);
 
-//         test.remove('name_1000');
-//         console.log('item removed name_1000');
-//         await items.nextStateChange;
-//         console.log('done');
-//         expect(items.count()).toBe(50);
-//     }
+        controller.remove('name_1000');
+        console.log('item removed name_1000');
+        await items.nextStateChange;
+        console.log('done');
+        expect(items.count()).toBe(50);
+    }
 
-//     {
-//         const items = await test.findByOwnerPaged('3f63154d-4121-4f5c-a297-afc1f8f453fd');
-//         expect(items.getPage()).toBe(2);
-//         expect(items.getTotal()).toBe(50);
-//         expect(items.getItemsPerPage()).toBe(30);
-//         expect(items.count()).toBe(20); //we got 50 total, 30 per page. 30,20, we are at second page.
+    {
+        const items = await controller.findByOwnerPaged('3f63154d-4121-4f5c-a297-afc1f8f453fd');
+        console.log('items.model', items.model);
+        expect(items.getPage()).toBe(2);
+        expect(items.getTotal()).toBe(50);
+        expect(items.getItemsPerPage()).toBe(30);
+        expect(items.count()).toBe(20); //we got 50 total, 30 per page. 30,20, we are at second page.
 
-//         test.add('a', 1001);
-//         await items.nextStateChange;
-//         expect(items.count()).toBe(21);
+        controller.add('a', 1001);
+        await items.nextStateChange;
+        expect(items.count()).toBe(21);
 
-//         test.remove('name_1001');
-//         await items.nextStateChange;
-//         expect(items.count()).toBe(20);
-//         await items.unsubscribe();
-//     }
+        controller.remove('name_1001');
+        await items.nextStateChange;
+        expect(items.count()).toBe(20);
+        await items.unsubscribe();
+    }
 
-//     {
-//         const items = await test.findByClass('a');
-//         expect(items.getTotal()).toBe(34);
-//         expect(items.getItemsPerPage()).toBe(10);
-//         expect(items.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
-//         expect(items.getParameter('clazz')).toBe('a');
+    {
+        const items = await controller.findByClass('a');
+        expect(items.getTotal()).toBe(34);
+        expect(items.getItemsPerPage()).toBe(10);
+        expect(items.getSort()).toEqual({"nr": "asc"});
+        expect(items.getParameter('clazz')).toBe('a');
 
-//         expect(items.all()[0].nr).toBe(0);
-//         expect(items.all()[9].nr).toBe(27);
-//         expect(items.count()).toBe(10);
-//         expect(items.getTotal()).toBe(34);
-//         expect(items.getPages()).toBe(4);
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(27);
+        expect(items.count()).toBe(10);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
-//         await items.setParameter('clazz', 'b').apply();
-//         expect(items.getTotal()).toBe(33);
-//         expect(items.getItemsPerPage()).toBe(10);
-//         expect(items.getSort()).toEqual([{field: 'nr', direction: 'asc'}]);
-//         expect(items.getParameter('clazz')).toBe('b');
+        await items.setParameter('clazz', 'b').apply();
+        expect(items.getTotal()).toBe(33);
+        expect(items.getItemsPerPage()).toBe(10);
+        expect(items.getSort()).toEqual({"nr": "asc"});
+        expect(items.getParameter('clazz')).toBe('b');
 
-//         expect(items.all()[0].nr).toBe(1);
-//         expect(items.all()[9].nr).toBe(28);
-//         expect(items.count()).toBe(10);
-//         expect(items.getTotal()).toBe(33);
-//         expect(items.getPages()).toBe(4);
-//         await items.unsubscribe();
-//     }
+        expect(items.all()[0].nr).toBe(1);
+        expect(items.all()[9].nr).toBe(28);
+        expect(items.count()).toBe(10);
+        expect(items.getTotal()).toBe(33);
+        expect(items.getPages()).toBe(4);
+        await items.unsubscribe();
+    }
 
-//     {
-//         const items = await test.findByClass('a');
+    {
+        const items = await controller.findByClass('a');
 
-//         expect(items.all()[0].nr).toBe(0);
-//         expect(items.all()[9].nr).toBe(27);
-//         expect(items.count()).toBe(10);
-//         expect(items.getTotal()).toBe(34);
-//         expect(items.getPages()).toBe(4);
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(27);
+        expect(items.count()).toBe(10);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
-//         //swap order
-//         items.orderByField('nr', 'desc');
-//         await items.apply();
-//         expect(items.all()[0].nr).toBe(99);
-//         expect(items.all()[9].nr).toBe(72);
-//         expect(items.count()).toBe(10);
-//         expect(items.getTotal()).toBe(34);
-//         expect(items.getPages()).toBe(4);
+        console.log('swap order');
+        await items.orderByField('nr', 'desc').apply();
+        expect(items.all()[0].nr).toBe(99);
+        expect(items.all()[9].nr).toBe(72);
+        expect(items.count()).toBe(10);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
-//         //swap order back
-//         items.orderByField('nr');
-//         await items.apply();
-//         expect(items.all()[0].nr).toBe(0);
-//         expect(items.all()[9].nr).toBe(27);
-//         expect(items.count()).toBe(10);
-//         expect(items.getTotal()).toBe(34);
-//         expect(items.getPages()).toBe(4);
+        console.log('swap order back');
+        await items.orderByField('nr').apply();
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(27);
+        expect(items.count()).toBe(10);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
-//         test.remove('name_27');
-//         await items.nextStateChange;
-//         expect(items.all()[0].nr).toBe(0);
-//         expect(items.all()[9].nr).toBe(30);
-//         expect(items.getTotal()).toBe(33);
-//         expect(items.getPages()).toBe(4);
+        controller.remove('name_27');
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(0);
+        expect(items.all()[9].nr).toBe(30);
+        expect(items.getTotal()).toBe(33);
+        expect(items.getPages()).toBe(4);
 
-//         test.remove('name_0');
-//         await items.nextStateChange;
-//         expect(items.all()[0].nr).toBe(3);
-//         expect(items.all()[9].nr).toBe(33);
-//         expect(items.getTotal()).toBe(32);
-//         expect(items.getPages()).toBe(4);
+        controller.remove('name_0');
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(3);
+        expect(items.all()[9].nr).toBe(33);
+        expect(items.getTotal()).toBe(32);
+        expect(items.getPages()).toBe(4);
 
-//         //shouldn't change anything
-//         test.add('a', 101);
-//         await items.nextStateChange;
-//         expect(items.all()[0].nr).toBe(3);
-//         expect(items.all()[9].nr).toBe(33);
-//         expect(items.count()).toBe(10);
-//         expect(items.getTotal()).toBe(33);
-//         expect(items.getPages()).toBe(4);
+        //shouldn't change anything
+        controller.add('a', 101);
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(3);
+        expect(items.all()[9].nr).toBe(33);
+        expect(items.count()).toBe(10);
+        expect(items.getTotal()).toBe(33);
+        expect(items.getPages()).toBe(4);
 
-//         //should change a lot
-//         test.add('a', -1);
-//         await items.nextStateChange;
-//         expect(items.all()[0].nr).toBe(-1);
-//         expect(items.all()[9].nr).toBe(30);
-//         expect(items.getTotal()).toBe(34);
-//         expect(items.getPages()).toBe(4);
+        //should change a lot
+        controller.add('a', -1);
+        await items.nextStateChange;
+        expect(items.all()[0].nr).toBe(-1);
+        expect(items.all()[9].nr).toBe(30);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
 
-//         items.setPage(2);
-//         items.apply();
-//         await items.nextStateChange;
-//         expect(items.count()).toBe(10);
-//         expect(items.all()[0].nr).toBe(33);
-//         expect(items.all()[9].nr).toBe(60);
-//         expect(items.getTotal()).toBe(34);
-//         expect(items.getPages()).toBe(4);
-//         await items.unsubscribe();
-//     }
-
-//     await close();
-// });
+        await items.setPage(2).apply();
+        expect(items.count()).toBe(10);
+        expect(items.all()[0].nr).toBe(33);
+        expect(items.all()[9].nr).toBe(60);
+        expect(items.getTotal()).toBe(34);
+        expect(items.getPages()).toBe(4);
+        items.unsubscribe();
+    }
+});

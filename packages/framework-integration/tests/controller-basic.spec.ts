@@ -1,6 +1,6 @@
 import {afterAll, expect, test} from '@jest/globals';
 import 'reflect-metadata';
-import {JSONError, ValidationError, ValidationErrorItem, ValidationParameterError} from '@deepkit/rpc';
+import {JSONError, ValidationError, ValidationErrorItem} from '@deepkit/rpc';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from './util';
 import {Observable} from 'rxjs';
 import {bufferCount, first, skip} from 'rxjs/operators';
@@ -82,14 +82,14 @@ test('basic setup and methods', async () => {
 
     const {client, close} = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
 
-    const test = client.controller<TestController>('test');
+    const controller = client.controller<TestController>('test');
 
-    const names = await test.names('d');
+    const names = await controller.names('d');
     expect(names).toEqual(['a', 'b', 'c', 'd']);
 
     {
         try {
-            const error = await test.myErrorNormal();
+            const error = await controller.myErrorNormal();
             fail('should error');
         } catch (error) {
             expect(error).toBeInstanceOf(Error);
@@ -99,7 +99,7 @@ test('basic setup and methods', async () => {
 
     {
         try {
-            const error = await test.myErrorJson();
+            const error = await controller.myErrorJson();
             fail('should error');
         } catch (error) {
             expect(error).toBeInstanceOf(JSONError);
@@ -109,7 +109,7 @@ test('basic setup and methods', async () => {
 
     {
         try {
-            const error = await test.myErrorCustom();
+            const error = await controller.myErrorCustom();
             fail('should error');
         } catch (error) {
             expect(error).toBeInstanceOf(MyCustomError);
@@ -122,7 +122,7 @@ test('basic setup and methods', async () => {
         try {
             const user = new User('asd');
             (user as any).name = undefined;
-            const error = await test.validationError(user);
+            const error = await controller.validationError(user);
             fail('should error');
         } catch (error) {
             expect(error).toBeInstanceOf(ValidationError);
@@ -131,7 +131,7 @@ test('basic setup and methods', async () => {
         }
     }
 
-    const user = await test.user('pete');
+    const user = await controller.user('pete');
     expect(user).toBeInstanceOf(User);
     expect(user.name).toEqual('pete');
 
@@ -173,23 +173,23 @@ test('basic serialisation return: entity', async () => {
 
     const {client, close} = await createServerClientPair('basic serialisation entity', appModuleForControllers([TestController]));
 
-    const test = client.controller<TestController>('test');
-    const user = await test.user('peter');
+    const controller = client.controller<TestController>('test');
+    const user = await controller.user('peter');
     expect(user).toBeInstanceOf(User);
 
-    const users = await test.users('peter');
+    const users = await controller.users('peter');
     expect(users.length).toBe(1);
     expect(users[0]).toBeInstanceOf(User);
     expect(users[0].name).toBe('peter');
 
-    const optionalUser = await test.optionalUser();
+    const optionalUser = await controller.optionalUser();
     expect(optionalUser).toBeUndefined();
 
-    const optionalUser2 = await test.optionalUser(true);
+    const optionalUser2 = await controller.optionalUser(true);
     expect(optionalUser2).toBeInstanceOf(User);
     expect(optionalUser2!.name).toBe('optional');
 
-    const struct = await test.allowPlainObject('peter');
+    const struct = await controller.allowPlainObject('peter');
     expect(struct.mowla).toBe(true);
     expect(struct.name).toBe('peter');
     expect(struct.date).toBeInstanceOf(Date);
@@ -197,7 +197,7 @@ test('basic serialisation return: entity', async () => {
 
 
     {
-        const u = await (await test.observable('peter')).pipe(first()).toPromise();
+        const u = await (await controller.observable('peter')).pipe(first()).toPromise();
         expect(u).toBeInstanceOf(User);
     }
 
@@ -215,8 +215,8 @@ test('basic serialisation param: entity', async () => {
 
     const {client, close} = await createServerClientPair('serialisation param: entity', appModuleForControllers([TestController]));
 
-    const test = client.controller<TestController>('test');
-    const userValid = await test.user(new User('peter2'));
+    const controller = client.controller<TestController>('test');
+    const userValid = await controller.user(new User('peter2'));
     expect(userValid).toBe(true);
 
     await close();
@@ -267,7 +267,7 @@ test('basic serialisation partial param: entity', async () => {
 
     const {client, close} = await createServerClientPair('serialisation partial param: entity', appModuleForControllers([TestController]));
 
-    const test = client.controller<TestController>('test');
+    const controller = client.controller<TestController>('test');
     //
     // try {
     //     await test.failUser({name: 'asd'});
@@ -285,7 +285,7 @@ test('basic serialisation partial param: entity', async () => {
     //     expect(e.message).toMatch('test::failPartialUser result is an Object with unknown structure.');
     // }
 
-    const a = await test.user({name: 'peter2'});
+    const a = await controller.user({name: 'peter2'});
     expect(a).toBeTruthy();
 
     // const partialUser = await test.partialUser('peter2', date);
@@ -312,12 +312,12 @@ test('test basic promise', async () => {
     }
 
     const {client, close} = await createServerClientPair('test basic promise', appModuleForControllers([TestController]));
-    const test = client.controller<TestController>('test');
+    const controller = client.controller<TestController>('test');
 
-    const names = await test.names('d');
+    const names = await controller.names('d');
     expect(names).toEqual(['a', 'b', 'c', 'd']);
 
-    const user = await test.user('pete');
+    const user = await controller.user('pete');
     expect(user).toBeInstanceOf(User);
     expect(user.name).toEqual('pete');
 
@@ -365,15 +365,15 @@ test('test observable', async () => {
     }
 
     const {client, close} = await createServerClientPair('test observable', appModuleForControllers([TestController]));
-    const test = client.controller<TestController>('test');
+    const controller = client.controller<TestController>('test');
 
-    const observable = await test.observer();
+    const observable = await controller.observer();
 
     await subscribeAndWait(observable.pipe(bufferCount(3)), async (next) => {
         expect(next).toEqual(['a', 'b', 'c']);
     });
 
-    await subscribeAndWait((await test.user('pete')).pipe(bufferCount(2)), async (next) => {
+    await subscribeAndWait((await controller.user('pete')).pipe(bufferCount(2)), async (next) => {
         expect(next[0]).toBeInstanceOf(User);
         expect(next[1]).toBeInstanceOf(User);
         expect(next[0].name).toEqual('first');
@@ -398,9 +398,9 @@ test('test param serialization', async () => {
     }
 
     const {client, close} = await createServerClientPair('test param serialization', appModuleForControllers([TestController]));
-    const test = client.controller<TestController>('test');
+    const controller = client.controller<TestController>('test');
 
-    expect(await test.actionArray(['b'])).toBe(true);
+    expect(await controller.actionArray(['b'])).toBe(true);
 
     await close();
 });
@@ -421,7 +421,7 @@ test('test batcher', async () => {
     }
 
     const {client, close} = await createServerClientPair('test batcher', appModuleForControllers([TestController]));
-    const test = client.controller<TestController>('test');
+    const controller = client.controller<TestController>('test');
 
     const progress = ClientProgress.track();
     let hit = 0;
@@ -431,7 +431,7 @@ test('test batcher', async () => {
         expect(progress.download.progress).toBeLessThanOrEqual(1);
         hit++;
     });
-    const file = await test.downloadBig();
+    const file = await controller.downloadBig();
     expect(file.length).toBe(650_000);
     expect(hit).toBeGreaterThan(3);
     expect(progress.download.done).toBe(true);

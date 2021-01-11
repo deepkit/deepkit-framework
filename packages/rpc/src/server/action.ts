@@ -21,7 +21,7 @@ import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, ji
 import { BehaviorSubject, isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
-import { ActionObservableTypes, EntitySubject, isEntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
+import { ActionObservableTypes, EntitySubject, isEntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
 import { RpcKernelSecurity, Session, SessionState } from './security';
@@ -314,6 +314,8 @@ export class RpcServerAction {
                             composite.add(RpcTypes.ResponseActionCollectionSet, types.collectionSchema, { v: collection.all(), });
                         } else if (event.type === 'state') {
                             composite.add(RpcTypes.ResponseActionCollectionState, CollectionState, collection.state);
+                        } else if (event.type === 'sort') {
+                            composite.add(RpcTypes.ResponseActionCollectionSort, rpcResponseActionCollectionSort, { ids: event.ids, });
                         }
                     }
                     composite.send();

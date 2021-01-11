@@ -16,16 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import WebSocket from 'ws';
-import http from 'http';
-import { IncomingMessage, Server } from 'http';
+import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '@deepkit/rpc';
+import http, { Server } from 'http';
 import https from 'https';
+import WebSocket from 'ws';
 import { HttpKernel } from './http';
 import { HttpRequest, HttpResponse } from './http-model';
-import { InjectorContext } from './injector/injector';
+import { injectable, Injector, InjectorContext } from './injector/injector';
 import { Provider } from './injector/provider';
-import { injectable, Injector } from './injector/injector';
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '@deepkit/rpc';
 import { DeepkitRpcSecurity, RpcInjectorContext } from './rpc';
 import { RpcControllers } from './service-container';
 
@@ -99,7 +97,7 @@ export class WebWorker {
             );
             this.server.keepAliveTimeout = 5000;
             this.server.listen(this.options.port, this.options.host, () => {
-                // console.log(`Worker #${id} listening on ${options.host}:${options.port}.`);
+                // console.log(`Worker listening on ${this.options.host}:${this.options.port}.`);
             });
         }
 

@@ -21,7 +21,7 @@ import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, js
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { ClientProgress } from '../writer';
 import { Collection, CollectionQueryModel, CollectionState } from '../collection';
-import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionModel, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
+import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionModel, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
 import { RpcBaseClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
@@ -305,6 +305,12 @@ export class RpcActionClient {
                 case RpcTypes.ResponseActionCollectionState: {
                     const state = next.parseBody(getClassSchema(CollectionState));
                     collection.setState(state);
+                    break;
+                }
+
+                case RpcTypes.ResponseActionCollectionSort: {
+                    const body = next.parseBody(rpcResponseActionCollectionSort);
+                    collection.setSort(body.ids);
                     break;
                 }
 

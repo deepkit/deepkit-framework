@@ -22,7 +22,7 @@ import fs from 'fs-extra';
 import { dirname } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server';
 import { BrokerModule } from './broker/broker.module';
-import { LiveDatabase } from './broker/live-database';
+import { LiveDatabase } from './database/live-database';
 import { DebugRouterController } from './cli/router-debug';
 import { DebugDIController } from './cli/router-di';
 import { ServerListenController } from './cli/server-listen';

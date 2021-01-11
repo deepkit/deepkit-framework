@@ -1,6 +1,6 @@
 import { ClassType } from '@deepkit/core';
 import { Application, createModule, createTestingApp as createTestingAppOriginal, DatabaseRegistry, LiveDatabase, Module, ModuleOptions, TestingFascade } from '@deepkit/framework';
-import { Database, getInstanceState } from '@deepkit/orm';
+import { Database } from '@deepkit/orm';
 import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sql';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
@@ -17,6 +17,8 @@ export function createTestingApp<O extends ModuleOptions<NAME>, NAME extends str
 
     return createTestingAppOriginal(module);
 }
+
+(global as any)['createTestingApp'] ||= createTestingApp;
 
 test('test entity collection reactive find', async () => {
     @Entity('entitySyncTeam')
@@ -101,6 +103,7 @@ test('test entity collection reactive find', async () => {
             if (!user) throw new Error(`User ${userName} not found`);
             if (!team) throw new Error(`Team ${teamName} not found`);
 
+            console.log('unassigned', user.name, 'from', team.name);
             await this.database.query(UserTeam).filter({ user: user, team: team }).deleteMany();
         }
 
@@ -121,7 +124,6 @@ test('test entity collection reactive find', async () => {
             if (!user) throw new Error(`User ${userName} not found`);
             if (!team) throw new Error(`Team ${teamName} not found`);
 
-            console.log('team', team);
             await this.database.persist(new UserTeam(team, user));
         }
 
@@ -199,6 +201,6 @@ test('test entity collection reactive find', async () => {
         console.log('Team deleted');
         expect(teamMembers.count()).toBe(0);
         expect(teamMembers.get(marieId)).toBeUndefined();
-        await teamMembers.unsubscribe();
+        teamMembers.unsubscribe();
     }
 });

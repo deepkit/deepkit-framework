@@ -91,7 +91,12 @@ export interface CollectionEventSet {
     items: any[];
 }
 
-export type CollectionEvent<T> = CollectionEventAdd<T> | CollectionEventRemove | CollectionEventSet | CollectionEventState;
+export interface CollectionSetSort {
+    type: 'sort';
+    ids: (string | number)[];
+}
+
+export type CollectionEvent<T> = CollectionEventAdd<T> | CollectionEventRemove | CollectionEventSet | CollectionEventState | CollectionSetSort;
 
 export type CollectionSortDirection = 'asc' | 'desc';
 
@@ -117,6 +122,7 @@ export interface CollectionQueryModelInterface<T> {
  * internal note: This is aligned with @deepit/orm `DatabaseQueryModel`
  */
 export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T>  {
+    //filter is not used yet
     @t.map(t.any).optional
     filter?: FilterQuery<T>;
 
@@ -244,12 +250,12 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     public setPage(page: number) {
-        this.model.skip = this.getItemsPerPage() * page;
+        this.model.skip = this.getItemsPerPage() * (page - 1);
         return this;
     }
 
     public getPage() {
-        return Math.floor((this.model.skip || 0) / this.getItemsPerPage());
+        return Math.floor((this.model.skip || 0) / this.getItemsPerPage()) + 1;
     }
 
     public apply() {
@@ -273,6 +279,17 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public setState(state: CollectionState) {
         this.state = state;
         this.event.next({ type: 'state', state });
+    }
+
+    public setSort(ids: (string | number)[]) {
+        this.items.splice(0, this.items.length);
+        for (const id of ids) {
+            const item = this.itemsMap.get(id);
+            if (item) this.items.push(item);
+        }
+
+        this.event.next({ type: 'sort', ids: ids });
+        this.loaded();
     }
 
     /**

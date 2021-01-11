@@ -472,6 +472,10 @@ export class RpcClient extends RpcBaseClient {
         return this.transporter.id;
     }
 
+    /**
+     * Registers a new controller for the peer's RPC kernel.
+     * Use `registerAsPeer` first.
+     */
     public registerController<T>(nameOrDefinition: string | ControllerDefinition<T>, classType: ClassType<T>) {
         if (!this.kernel) throw new Error('Not registered as peer. Call registerAsPeer() first');
         this.kernel.registerController('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path, classType);

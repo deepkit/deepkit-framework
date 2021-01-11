@@ -225,6 +225,19 @@ test('configured provider', () => {
     });
 
     {
+        expect(AppModule.getConfiguredProviderCalls().size).toBe(0);
+        const fork = AppModule.clone();
+        fork.setupProvider(Logger).addTransport('first').addTransport('second');
+
+        expect(AppModule.getConfiguredProviderCalls().size).toBe(0);
+        expect(AppModule.getConfiguredProviderCalls().get(Logger)?.length).toBe(undefined);
+        expect(fork.getConfiguredProviderCalls().get(Logger)?.length).toBe(2);
+        
+        const clone = fork.clone();
+        expect(clone.getConfiguredProviderCalls().get(Logger)?.length).toBe(2);
+    }
+
+    {
         const logger = new ServiceContainer(AppModule.setup((module) => {
             module.setupProvider(Logger).addTransport('first').addTransport('second');
         })).getInjectorFor(AppModule).get(Logger);

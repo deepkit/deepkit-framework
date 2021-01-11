@@ -80,6 +80,16 @@ test('collection state', async () => {
         }
 
         @rpc.action()
+        changedModel(): Collection<MyModel> {
+            const collection = new Collection(MyModel);
+            collection.model.itemsPerPage = 30;
+            collection.model.skip = 30;
+            collection.model.limit = 5;
+            collection.model.sort = {id: 'asc'};
+            return collection;
+        }
+
+        @rpc.action()
         add(id: number): void {
             this.collection.add({ id });
         }
@@ -102,6 +112,14 @@ test('collection state', async () => {
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
 
+    {
+        const c = await controller.changedModel();
+        expect(c.model.itemsPerPage).toBe(30);
+        expect(c.model.skip).toBe(30);
+        expect(c.model.limit).toBe(5);
+        expect(c.model.sort).toEqual({id: 'asc'});
+    }
+    
     {
         const c = await controller.fix();
         expect(c.classType).toBe(MyModel);

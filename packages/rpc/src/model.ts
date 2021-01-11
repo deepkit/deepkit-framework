@@ -337,6 +337,7 @@ export enum RpcTypes {
     ActionCollectionModel, //when client updated model
     ResponseActionCollection,
     ResponseActionCollectionModel,
+    ResponseActionCollectionSort,
     ResponseActionCollectionState,
 
     ResponseActionCollectionChange,
@@ -429,6 +430,10 @@ export const rpcResponseActionCollectionState = t.schema({
 });
 
 export const rpcResponseActionCollectionRemove = t.schema({
+    ids: t.array(t.union(t.string, t.number)),
+});
+
+export const rpcResponseActionCollectionSort = t.schema({
     ids: t.array(t.union(t.string, t.number)),
 });
 

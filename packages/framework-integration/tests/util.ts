@@ -1,5 +1,5 @@
 import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
-import {KernelModule, Application, ApplicationServer, createModule, DatabaseModule, Module} from '@deepkit/framework';
+import {KernelModule, Application, ApplicationServer, createModule, Module} from '@deepkit/framework';
 import {Observable} from 'rxjs';
 import {createServer} from 'http';
 import {DeepkitClient, RemoteController} from '@deepkit/rpc';
@@ -46,7 +46,7 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
             {provide: Database, useClass: database},
         ],
         imports: [
-            DatabaseModule.configure({databases: [database]})
+            KernelModule.configure({databases: [database]})
         ]
     });
 }
@@ -73,10 +73,10 @@ export async function createServerClientPair(
     });
 
     const app = Application.create(
-        AppModule.addImport(KernelModule.configure({
+        AppModule.configure({kernel: {
             server: server,
             exchange: {listen: exchangeSocketPath},
-        }))
+        }})
     );
 
     const appServer = app.get(ApplicationServer);
@@ -94,7 +94,6 @@ export async function createServerClientPair(
             return;
         }
 
-        console.log('server close ...');
         // await db.dropDatabase(dbName);
         closed = true;
         server.close();

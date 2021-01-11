@@ -37,7 +37,7 @@ import {EventDispatcher, isEventListenerContainerEntryService} from '../event';
 import {DatabaseRegistry} from '../database-registry';
 import {inject} from '../injector/injector';
 import {DatabaseAdapter} from '@deepkit/orm';
-import {LiveDatabase} from '../broker/live-database';
+import {LiveDatabase} from '../database/live-database';
 
 
 @rpc.controller(DebugControllerInterface)

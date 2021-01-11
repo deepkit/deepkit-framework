@@ -138,6 +138,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
 
         m.skip = this.skip;
         m.limit = this.limit;
+        m.itemsPerPage = this.itemsPerPage;
         m.sort = this.sort ? { ...this.sort } : undefined;
 
         return m;
@@ -212,6 +213,9 @@ export class BaseQuery<T extends Entity> {
         return c;
     }
 
+    /** 
+     * Sets the page size when `page(x)` is used.
+    */
     itemsPerPage(value: number): this {
         const c = this.clone();
         c.model.itemsPerPage = value;

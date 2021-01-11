@@ -43,7 +43,6 @@
     "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/controller-basic.spec.ts",
-      "**/tests/**/peer2peer.spec.ts",
       "**/tests/**/live-database.spec.ts"
     ]
   }

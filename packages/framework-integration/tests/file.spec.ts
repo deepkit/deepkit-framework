@@ -1,11 +1,11 @@
 import {expect, test, beforeAll} from '@jest/globals';
-import {File, rpc, StreamBehaviorSubject} from '@deepkit/framework-shared';
 import {EntityStorage, FS} from '@deepkit/fs';
 import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
 import {sleep} from '@deepkit/core';
 import {Buffer} from 'buffer';
 import {arrayBufferTo} from '@deepkit/type';
 import ws from 'ws';
+import { rpc } from '@deepkit/rpc';
 
 // @ts-ignore
 global['WebSocket'] = ws;

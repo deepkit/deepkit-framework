@@ -24,7 +24,7 @@ import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, Data
 import { Changes } from './changes';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { findQueryList } from './utils';
-import { convertQueryFilter } from './query-filter';
+import { convertQueryFilter, replaceQueryFilterParameter } from './query-filter';
 import { Formatter } from './formatter';
 
 type SimpleStore<T> = { items: Map<any, T>, autoIncrement: number };
@@ -54,6 +54,24 @@ memorySerializer.toClass.register('null', (property: PropertySchema, state: Comp
     if (property.isOptional) return state.addSetter(`undefined`);
     if (property.isNullable) return state.addSetter(`null`);
 });
+
+function sortAsc(a: any, b: any) {
+    if (a > b) return +1;
+    if (a < b) return -1;
+    return 0;
+}
+
+function sortDesc(a: any, b: any) {
+    if (a > b) return -1;
+    if (a < b) return +1;
+    return 0;
+}
+
+function sort(items: any[], field: string, sortFn: typeof sortAsc|typeof sortAsc): void {
+    items.sort((a, b) => {
+        return sortFn(a[field], b[field]);
+    });
+}
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     protected store = new Map<ClassSchema, SimpleStore<any>>();
@@ -142,6 +160,13 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                 model.filter = convertQueryFilter(classSchema, model.filter, (convertClassType: ClassSchema, path: string, value: any) => {
                     //this is important to convert relations to its foreignKey value
                     return serializer.serializeProperty(path, value);
+                }, {}, {
+                    $parameter: (name, value) => {
+                        if (undefined === model.parameters[value]) {
+                            throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
+                        }
+                        return model.parameters[value];
+                    }
                 });
             }
 
@@ -149,6 +174,12 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
 
             if (model.hasJoins()) {
                 throw new Error('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
+            }
+
+            if (model.sort) {
+                for (const [name, direction] of Object.entries(model.sort)) {
+                    sort(filtered, name, direction === 'asc' ? sortAsc : sortDesc);
+                }
             }
 
             if (model.skip && model.limit) {

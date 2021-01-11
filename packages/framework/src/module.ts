@@ -16,15 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {EventListener} from './event';
-import {JSONPartial, jsonSerializer, ValidationFailed} from '@deepkit/type';
-import {ConfigDefinition, ConfiguredProviderCalls, InjectToken} from './injector/injector';
-import {ProviderWithScope} from './injector/provider';
-import {ClassType, CustomError} from '@deepkit/core';
-import {WorkflowDefinition} from './workflow';
+import { EventListener } from './event';
+import { JSONPartial, jsonSerializer, ValidationFailed } from '@deepkit/type';
+import { ConfigDefinition, ConfiguredProviderCalls, InjectToken } from './injector/injector';
+import { ProviderWithScope } from './injector/provider';
+import { ClassType, CustomError } from '@deepkit/core';
+import { WorkflowDefinition } from './workflow';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
-export type ExtractImportConfigs<T extends Array<Module<any>> | undefined> = T extends Array<any> ? { [M in T[number] as (ExtractModuleOptions<M>['name'] & string)]?: ExtractPartialConfigOfDefinition<DefaultObject<ExtractModuleOptions<M>['config']>> } : {};
+export type ExtractImportConfigs<T extends Array<Module<any>> | undefined> = T extends Array<any> ? { [M in T[number]as (ExtractModuleOptions<M>['name'] & string)]?: ExtractPartialConfigOfDefinition<DefaultObject<ExtractModuleOptions<M>['config']>> } : {};
 export type ExtractConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
 export type ExtractPartialConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? JSONPartial<C> : {};
 export type ExtractModuleOptions<T extends Module<any>> = T extends Module<infer O> ? O : never;
@@ -117,7 +117,7 @@ export interface ModuleOptions<NAME extends string | undefined> {
 }
 
 function cloneOptions<T extends ModuleOptions<any>>(options: T): T {
-    const copied = {...options};
+    const copied = { ...options };
     copied.imports = copied.imports?.slice(0);
     copied.exports = copied.exports?.slice(0);
     copied.providers = copied.providers?.slice(0);
@@ -126,7 +126,7 @@ function cloneOptions<T extends ModuleOptions<any>>(options: T): T {
     return copied;
 }
 
-export class ConfigurationInvalidError extends CustomError {}
+export class ConfigurationInvalidError extends CustomError { }
 
 let moduleId = 0;
 
@@ -217,12 +217,12 @@ export class Module<T extends ModuleOptions<any>> {
         const proxy = new Proxy({}, {
             get(target, prop) {
                 return (...args: any[]) => {
-                    calls!.push({type: 'call', methodName: prop, args: args});
+                    calls!.push({ type: 'call', methodName: prop, args: args });
                     return proxy;
                 };
             },
             set(target, prop, value) {
-                calls!.push({type: 'property', property: prop, value: value});
+                calls!.push({ type: 'property', property: prop, value: value });
                 return true;
             }
         });
@@ -272,7 +272,7 @@ export class Module<T extends ModuleOptions<any>> {
     }
 
     clone(): Module<T> {
-        const m = new Module(cloneOptions(this.options), {...this.configValues}, this.setups.slice(0), this.id);
+        const m = new Module(cloneOptions(this.options), { ...this.configValues }, this.setups.slice(0), this.id);
         m.root = this.root;
         m.parent = this.parent;
         m.configuredProviderCalls = new Map(this.configuredProviderCalls);
@@ -295,7 +295,7 @@ export class Module<T extends ModuleOptions<any>> {
     /**
      * Allows to change the module after the configuration has been loaded, right before the application bootstraps (thus loading all services/controllers/etc).
      *
-     * Returns a new forked module of this.
+     * Returns a new forked module of this with the changes applied.
      */
     setup(callback: (module: Module<T>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): Module<T> {
         const m = this.clone();
@@ -305,10 +305,10 @@ export class Module<T extends ModuleOptions<any>> {
 
     /**
      * Sets configured values that no longer are inherited from the parent.
-     * Returns a new forked module of this.
+     * Returns a new forked module of this with the changes applied.
      */
     configure(config: ModuleConfigOfOptions<T>): Module<T> {
-        const configValues: { [path: string]: any } = {...this.configValues};
+        const configValues: { [path: string]: any } = { ...this.configValues };
 
         if (this.options.imports) {
             for (const module of this.options.imports) {
@@ -337,7 +337,7 @@ export class Module<T extends ModuleOptions<any>> {
 
     /**
      * Makes all the providers, controllers, etc available at the root module, basically exporting everything.
-     * Returns a new forked module of this.
+     * Returns a new forked module of this with root enabled.
      */
     forRoot(): Module<T> {
         const m = this.clone();

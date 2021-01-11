@@ -1,12 +1,13 @@
-import {afterAll, expect, test} from '@jest/globals';
+import { afterAll, expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {Entity, f} from '@deepkit/type';
-import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {createModule, InternalClient, RpcSecurityStrategy, Session} from '@deepkit/framework';
-import {Observable} from 'rxjs';
-import {sleep} from '@deepkit/core';
-import {rpc} from '@deepkit/rpc';
-import {fail} from 'assert';
+import { Entity, f } from '@deepkit/type';
+import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util';
+import { createModule, Session } from '@deepkit/framework';
+import { Observable } from 'rxjs';
+import { sleep } from '@deepkit/core';
+import { rpc } from '@deepkit/rpc';
+import { fail } from 'assert';
+import { DeepkitRpcSecurity } from '@deepkit/framework';
 import ws from 'ws';
 
 // @ts-ignore
@@ -56,14 +57,14 @@ test('test peer2peer', async () => {
         controllers: [TestController],
         providers: [
             {
-                provide: RpcSecurityStrategy, useValue: new class extends RpcSecurityStrategy {
-                    async isAllowedToRegisterPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
-                        if (controllerName === 'forbiddenToRegister') return false;
+                provide: DeepkitRpcSecurity, useValue: new class extends DeepkitRpcSecurity {
+                    async isAllowedToRegisterAsPeer<T>(session: Session | undefined, peerId: string): Promise<boolean> {
+                        if (peerId === 'forbiddenToRegister') return false;
                         return true;
                     }
 
-                    async isAllowedToSendToPeerController<T>(session: Session | undefined, controllerName: string): Promise<boolean> {
-                        if (controllerName === 'forbiddenToSend') return false;
+                    async isAllowedToSendToPeer<T>(session: Session | undefined, peerId: string): Promise<boolean> {
+                        if (peerId === 'forbiddenToSend') return false;
                         return true;
                     }
                 }
@@ -71,12 +72,13 @@ test('test peer2peer', async () => {
         ]
     });
 
-    const {client, server, createClient, close} = await createServerClientPair('test peer2peer', AppModule);
+    const { client, server, createClient, close } = await createServerClientPair('test peer2peer', AppModule);
 
-    await client.registerController('test', new TestController);
+    await client.registerAsPeer('itsme');
+    client.registerController('test', TestController);
 
     const client2 = createClient();
-    const peerController = client2.peerController<TestController>('test');
+    const peerController = client2.peer('itsme').controller<TestController>('test');
 
     const result = await peerController.names('myName');
     expect(result).toEqual(['a', 'b', 'c', 'myName']);
@@ -158,7 +160,7 @@ test('test peer2peer internal client', async () => {
         }
     }
 
-    const {client, server, app, close} = await createServerClientPair('test peer2peer internal client', appModuleForControllers([TestController]));
+    const { client, server, app, close } = await createServerClientPair('test peer2peer internal client', appModuleForControllers([TestController]));
 
     await client.registerController('test', new TestController);
 
@@ -201,7 +203,7 @@ test('test peer2peer offline', async () => {
         }
     }
 
-    const {client, server, app, createClient, close} = await createServerClientPair('test peer2peer offline', appModuleForControllers([TestController]));
+    const { client, server, app, createClient, close } = await createServerClientPair('test peer2peer offline', appModuleForControllers([TestController]));
 
     const client2 = createClient();
 
