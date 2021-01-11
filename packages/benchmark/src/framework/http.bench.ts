@@ -34,9 +34,9 @@ import {
     ServiceContainer,
     WorkflowEvent
 } from '@deepkit/framework';
-import {BenchSuite} from '../bench';
-import {IncomingMessage, ServerResponse} from 'http';
-import {Socket} from 'net';
+import { BenchSuite } from '../bench';
+import { IncomingMessage, ServerResponse } from 'http';
+import { Socket } from 'net';
 
 export async function main() {
     const bench = new BenchSuite('http');
@@ -53,7 +53,7 @@ export async function main() {
     const app = createModule({
         controllers: [Controller],
         imports: [
-            KernelModule.configure({httpLog: false})
+            KernelModule.configure({ httpLog: false })
         ]
     });
 

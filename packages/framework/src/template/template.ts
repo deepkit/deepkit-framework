@@ -17,14 +17,14 @@
  */
 
 import 'reflect-metadata';
-import {ClassType, isClass} from '@deepkit/core';
-import {isArray} from '@deepkit/type';
+import { ClassType, isClass } from '@deepkit/core';
+import { isArray } from '@deepkit/type';
 import './optimize-tsx';
-import {BasicInjector} from '../injector/injector';
+import { BasicInjector } from '../injector/injector';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
-} & {children?: (ElementStruct | string)[] | ElementStruct | string};
+} & { children?: (ElementStruct | string)[] | ElementStruct | string };
 
 export abstract class ElementClass {
     constructor(protected attributes: Attributes) {
@@ -45,7 +45,7 @@ interface HtmlString {
  * to Cross-Side Scripting attacks.
  */
 export function html(string: string | HtmlString) {
-    return isHtmlString(string) ? string : {htmlString: string};
+    return isHtmlString(string) ? string : { htmlString: string };
 }
 
 function isHtmlString(obj: any): obj is HtmlString {
@@ -183,5 +183,5 @@ export async function render(injector: BasicInjector, struct: ElementStruct | st
 }
 
 export function createElement(element: Element, attributes?: Attributes | null, ...children: (string | ElementStruct | HtmlString)[]) {
-    return {render: element, attributes, children};
+    return { render: element, attributes, children };
 }

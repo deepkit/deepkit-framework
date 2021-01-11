@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DefaultPlatform, isSet} from './default-platform';
-import {postgresSerializer} from '../serializer/postgres-serializer';
-import {Column, Index, Table} from '../schema/table';
-import {ClassSchema, isArray, PostgresOptions, PropertySchema} from '@deepkit/type';
-import {parseType} from '../reverse/schema-parser';
-import {PostgresSchemaParser} from '../reverse/postgres-schema-parser';
-import {PostgreSQLFilterBuilder} from '../postgres/sql-filter-builder';
-import {isObject} from '@deepkit/core';
+import { DefaultPlatform, isSet } from './default-platform';
+import { postgresSerializer } from '../serializer/postgres-serializer';
+import { Column, Index, Table } from '../schema/table';
+import { ClassSchema, isArray, PostgresOptions, PropertySchema } from '@deepkit/type';
+import { parseType } from '../reverse/schema-parser';
+import { PostgresSchemaParser } from '../reverse/postgres-schema-parser';
+import { PostgreSQLFilterBuilder } from '../postgres/sql-filter-builder';
+import { isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring';
 
 function escapeLiteral(value: any): string {

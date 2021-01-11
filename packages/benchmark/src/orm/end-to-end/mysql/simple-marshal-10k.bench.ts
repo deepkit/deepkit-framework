@@ -17,10 +17,10 @@
  */
 
 import 'reflect-metadata';
-import {Entity, t} from '@deepkit/type';
-import {atomicChange, Database} from '@deepkit/orm';
-import {MySQLDatabaseAdapter} from '@deepkit/sql';
-import {BenchSuite} from '../../../bench';
+import { Entity, t } from '@deepkit/type';
+import { atomicChange, Database } from '@deepkit/orm';
+import { MySQLDatabaseAdapter } from '@deepkit/sql';
+import { BenchSuite } from '../../../bench';
 
 @Entity('deepkit')
 export class DeepkitModel {

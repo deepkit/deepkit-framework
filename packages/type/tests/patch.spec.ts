@@ -1,11 +1,11 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
-import {DocumentClass} from './document-scenario/DocumentClass';
-import {resolvePropertySchema} from '../src/jit';
-import {getClassSchema} from '../index';
-import {jsonSerializer} from '../src/json-serializer';
-import {PageClass} from './document-scenario/PageClass';
+import { CollectionWrapper, SimpleModel, StringCollectionWrapper, SubModel } from './entities';
+import { DocumentClass } from './document-scenario/DocumentClass';
+import { resolvePropertySchema } from '../src/jit';
+import { getClassSchema } from '../index';
+import { jsonSerializer } from '../src/json-serializer';
+import { PageClass } from './document-scenario/PageClass';
 
 
 test('partial 2', () => {
@@ -22,10 +22,10 @@ test('partial 2', () => {
 
     expect(jsonSerializer.for(SimpleModel).patchDeserialize({
         'children.0.label': 2
-    })).toEqual({'children.0.label': '2'});
+    })).toEqual({ 'children.0.label': '2' });
 
     const i2 = jsonSerializer.for(SimpleModel).patchDeserialize({
-        'children.0': {'label': 3}
+        'children.0': { 'label': 3 }
     });
     expect(i2['children.0']).toBeInstanceOf(SubModel);
     expect(i2['children.0'].label).toBe('3');
@@ -59,8 +59,8 @@ test('partial document', () => {
     const document = jsonSerializer.for(DocumentClass).patchDeserialize({
         'pages.0.name': 5,
         'pages.0.children.0.name': 6,
-        'pages.0.children': [{name: 7}],
-    }, {parents: [docParent]});
+        'pages.0.children': [{ name: 7 }],
+    }, { parents: [docParent] });
 
     expect(document['pages.0.name']).toBe('5');
     expect(document['pages.0.children.0.name']).toBe('6');
@@ -112,7 +112,7 @@ test('partial 2', () => {
     expect(plain['children.0'].label).toBe('Foo');
     expect(plain['stringChildrenCollection']).toEqual(['Foo', 'Bar']);
     expect(plain['stringChildrenCollection.0']).toEqual('Bar2');
-    expect(plain['childrenCollection']).toEqual([{label: 'Bar3'}]);
-    expect(plain['childrenCollection.1']).toEqual({label: 'Bar4'});
+    expect(plain['childrenCollection']).toEqual([{ label: 'Bar3' }]);
+    expect(plain['childrenCollection.1']).toEqual({ label: 'Bar4' });
     expect(plain['childrenCollection.2.label']).toEqual('Bar5');
 });

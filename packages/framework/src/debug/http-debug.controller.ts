@@ -16,15 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {http} from '../decorator';
-import {join} from 'path';
-import {readFileSync} from 'fs';
-import {HtmlResponse, httpWorkflow} from '../http';
-import {Module} from '../module';
-import {injectable} from '../injector/injector';
-import {eventDispatcher} from '../event';
+import { http } from '../decorator';
+import { join } from 'path';
+import { readFileSync } from 'fs';
+import { HtmlResponse, httpWorkflow } from '../http';
+import { Module } from '../module';
+import { injectable } from '../injector/injector';
+import { eventDispatcher } from '../event';
 import serveStatic from 'serve-static';
-import {normalizeDirectory} from '../utils';
+import { normalizeDirectory } from '../utils';
 
 function loadHtml(localPath: string, path: string): string {
     try {
@@ -54,7 +54,7 @@ export function registerDebugHttpController(module: Module<any>, path: string): 
 
     @injectable()
     class HttpDebugStaticServingListener {
-        protected serveStatic = serveStatic(localPath, {index: false});
+        protected serveStatic = serveStatic(localPath, { index: false });
 
         @eventDispatcher.listen(httpWorkflow.onRouteNotFound, -1)
         onRouteNotFound(event: typeof httpWorkflow.onRouteNotFound.event) {

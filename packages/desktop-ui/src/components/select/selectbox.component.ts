@@ -16,11 +16,11 @@ import {
     SkipSelf, TemplateRef,
     ViewChild
 } from "@angular/core";
-import {Subscription} from "rxjs";
-import {ngValueAccessor, ValueAccessorBase} from "../../core/form";
-import {Overlay} from "@angular/cdk/overlay";
-import {DropdownComponent} from "../button/dropdown.component";
-import {ButtonComponent} from "../button/button.component";
+import { Subscription } from "rxjs";
+import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
+import { Overlay } from "@angular/cdk/overlay";
+import { DropdownComponent } from "../button/dropdown.component";
+import { ButtonComponent } from "../button/button.component";
 
 /**
  * Necessary directive to get a dynamic rendered option.
@@ -51,13 +51,13 @@ export class DynamicOptionDirective {
 })
 export class OptionDirective {
     @Input() value: any;
-    @ContentChild(DynamicOptionDirective, {static: false}) dynamic?: DynamicOptionDirective;
+    @ContentChild(DynamicOptionDirective, { static: false }) dynamic?: DynamicOptionDirective;
 
     constructor(public readonly element: ElementRef) {
     }
 }
 
-class NotSelected {}
+class NotSelected { }
 
 @Component({
     selector: 'dui-select',
@@ -124,10 +124,10 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
      */
     @Input() small: boolean | '' = false;
 
-    @ContentChild(ButtonComponent, {static: false}) button?: ButtonComponent;
+    @ContentChild(ButtonComponent, { static: false }) button?: ButtonComponent;
 
-    @ContentChildren(OptionDirective, {descendants: true}) options?: QueryList<OptionDirective>;
-    @ViewChild('dropdown', {static: false}) dropdown!: DropdownComponent;
+    @ContentChildren(OptionDirective, { descendants: true }) options?: QueryList<OptionDirective>;
+    @ViewChild('dropdown', { static: false }) dropdown!: DropdownComponent;
 
     public label: string = '';
     public optionsValueMap = new Map<T | NotSelected, OptionDirective>();

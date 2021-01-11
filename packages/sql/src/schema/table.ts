@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {arrayRemoveItem} from '@deepkit/core';
-import {createHash} from 'crypto';
-import {PropertySchema} from '@deepkit/type';
-import {inspect} from 'util';
+import { arrayRemoveItem } from '@deepkit/core';
+import { createHash } from 'crypto';
+import { PropertySchema } from '@deepkit/type';
+import { inspect } from 'util';
 
 export class DatabaseModel {
     public schemaName: string = '';

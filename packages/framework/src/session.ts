@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {injectable} from './injector/injector';
+import { injectable } from './injector/injector';
 
 export class Session {
     constructor(

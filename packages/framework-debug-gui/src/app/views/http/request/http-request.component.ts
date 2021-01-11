@@ -1,8 +1,8 @@
-import {ChangeDetectorRef, Component} from '@angular/core';
-import {ActivatedRoute} from '@angular/router';
-import {ControllerClient} from '../../../client';
-import {EntitySubject} from '@deepkit/rpc';
-import {DebugRequest, Workflow} from '@deepkit/framework-debug-shared';
+import { ChangeDetectorRef, Component } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { ControllerClient } from '../../../client';
+import { EntitySubject } from '@deepkit/rpc';
+import { DebugRequest, Workflow } from '@deepkit/framework-debug-shared';
 
 @Component({
   template: `

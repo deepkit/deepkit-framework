@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent} from './event';
-import {ClassSchema, PropertySchema} from '@deepkit/type';
-import {Database} from './database';
+import { QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
+import { ClassSchema, PropertySchema } from '@deepkit/type';
+import { Database } from './database';
 
 type IncomingReference = { classSchema: ClassSchema, property: PropertySchema };
 
@@ -42,7 +42,7 @@ export class VirtualForeignKeyConstraint {
                 if (reference.referenceOptions.onDelete === 'NO ACTION') continue;
 
                 if (reference.getResolvedClassSchema().isSchemaOf(fromClassSchema)) {
-                    res.push({classSchema, property: reference});
+                    res.push({ classSchema, property: reference });
                 }
             }
         }
@@ -56,14 +56,14 @@ export class VirtualForeignKeyConstraint {
         if (!references.length) return;
         if (!event.deleteResult.primaryKeys.length) return;
 
-        for (const {classSchema, property} of references) {
-            const query = event.databaseSession.query(classSchema).filter({[property.name]: {$in: event.deleteResult.primaryKeys}});
+        for (const { classSchema, property } of references) {
+            const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.deleteResult.primaryKeys } });
             if (property.referenceOptions.onDelete === 'CASCADE') {
                 await query.deleteMany();
             } else if (property.referenceOptions.onDelete === 'SET NULL') {
-                await query.patchMany({[property.name]: null});
+                await query.patchMany({ [property.name]: null });
             } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                await query.patchMany({[property.name]: property.defaultValue});
+                await query.patchMany({ [property.name]: property.defaultValue });
             }
         }
     }
@@ -74,16 +74,16 @@ export class VirtualForeignKeyConstraint {
         if (!event.patchResult.primaryKeys.length) return;
         const primaryKeyName = event.classSchema.getPrimaryField().name;
 
-        for (const {classSchema, property} of references) {
+        for (const { classSchema, property } of references) {
             if (!event.patch.has(property.name)) continue;
 
-            const query = event.databaseSession.query(classSchema).filter({[property.name]: {$in: event.patchResult.primaryKeys}});
+            const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.patchResult.primaryKeys } });
             if (property.referenceOptions.onDelete === 'CASCADE') {
-                await query.patchMany({[property.name]: event.patch.$set[primaryKeyName]});
+                await query.patchMany({ [property.name]: event.patch.$set[primaryKeyName] });
             } else if (property.referenceOptions.onDelete === 'SET NULL') {
-                await query.patchMany({[property.name]: null});
+                await query.patchMany({ [property.name]: null });
             } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                await query.patchMany({[property.name]: property.defaultValue});
+                await query.patchMany({ [property.name]: property.defaultValue });
             }
         }
     }
@@ -98,14 +98,14 @@ export class VirtualForeignKeyConstraint {
             primaryKeys.push(item[primaryKeyName]);
         }
 
-        for (const {classSchema, property} of references) {
-            const query = event.databaseSession.query(classSchema).filter({[property.name]: {$in: primaryKeys}});
+        for (const { classSchema, property } of references) {
+            const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: primaryKeys } });
             if (property.referenceOptions.onDelete === 'CASCADE') {
                 await query.deleteMany();
             } else if (property.referenceOptions.onDelete === 'SET NULL') {
-                await query.patchMany({[property.name]: null});
+                await query.patchMany({ [property.name]: null });
             } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                await query.patchMany({[property.name]: property.defaultValue});
+                await query.patchMany({ [property.name]: property.defaultValue });
             }
             //RESTRICT needs to be handled in Pre
         }
@@ -127,16 +127,16 @@ export class VirtualForeignKeyConstraint {
             }
         }
 
-        for (const {classSchema, property} of references) {
-            for (const {oldPK, newPK} of primaryKeys) {
-                const query = await event.databaseSession.query(classSchema).filter({[property.name]: oldPK});
+        for (const { classSchema, property } of references) {
+            for (const { oldPK, newPK } of primaryKeys) {
+                const query = await event.databaseSession.query(classSchema).filter({ [property.name]: oldPK });
 
                 if (property.referenceOptions.onDelete === 'CASCADE') {
-                    await query.patchMany({[property.name]: newPK});
+                    await query.patchMany({ [property.name]: newPK });
                 } else if (property.referenceOptions.onDelete === 'SET NULL') {
-                    await query.patchMany({[property.name]: null});
+                    await query.patchMany({ [property.name]: null });
                 } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                    await query.patchMany({[property.name]: property.defaultValue});
+                    await query.patchMany({ [property.name]: property.defaultValue });
                 }
             }
             //RESTRICT needs to be handled in Pre

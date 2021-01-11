@@ -67,7 +67,7 @@ function sortDesc(a: any, b: any) {
     return 0;
 }
 
-function sort(items: any[], field: string, sortFn: typeof sortAsc|typeof sortAsc): void {
+function sort(items: any[], field: string, sortFn: typeof sortAsc | typeof sortAsc): void {
     items.sort((a, b) => {
         return sortFn(a[field], b[field]);
     });

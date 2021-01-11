@@ -232,7 +232,7 @@ test('test setPathValue ', () => {
 
 
 test('asyncOperation', async () => {
-    class MyError extends Error {}
+    class MyError extends Error { }
 
     let fetched = false;
     try {

@@ -17,7 +17,7 @@
  */
 
 import { t } from '@deepkit/type';
-import {createConfig} from '../injector/injector';
+import { createConfig } from '../injector/injector';
 
 export const brokerConfig = createConfig({
     listen: t.string.default('/tmp/deepkit-broker.sock').description('Unix socket path or host:port combination'),

@@ -1,8 +1,8 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {createWorkflow, WorkflowEvent} from '../src/workflow';
-import {eventDispatcher, EventDispatcher, EventToken} from '../src/event';
-import {injectable, InjectorContext} from '../src/injector/injector';
+import { createWorkflow, WorkflowEvent } from '../src/workflow';
+import { eventDispatcher, EventDispatcher, EventToken } from '../src/event';
+import { injectable, InjectorContext } from '../src/injector/injector';
 
 class EndEvent extends WorkflowEvent {
     test: string = 'hi';

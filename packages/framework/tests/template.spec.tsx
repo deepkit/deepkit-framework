@@ -1,10 +1,10 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import '../src/template/optimize-tsx';
-import {html, render} from '../src/template/template';
-import {Injector} from '../src/injector/injector';
-import {simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid} from './simple';
-import {convertJsxCodeToCreateElement, optimizeJSX} from '../src/template/optimize-tsx';
+import { html, render } from '../src/template/template';
+import { Injector } from '../src/injector/injector';
+import { simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid } from './simple';
+import { convertJsxCodeToCreateElement, optimizeJSX } from '../src/template/optimize-tsx';
 
 test('template simple', async () => {
     expect(await render(new Injector(), <div></div>)).toBe('<div></div>');
@@ -129,15 +129,15 @@ test('template simple import', async () => {
 });
 
 test('template render custom', async () => {
-    expect(await render(new Injector(), {render: 'div', attributes: {id: '123'}, children: 'Test'})).toBe('<div id="123">Test</div>');
-    expect(await render(new Injector(), {render: 'div', attributes: {id: '123'}, children: '<b>Test</b>'})).toBe('<div id="123">&lt;b&gt;Test&lt;/b&gt;</div>');
-    expect(await render(new Injector(), {render: 'div', attributes: {id: '123'}, children: html('Test')})).toBe('<div id="123">Test</div>');
-    expect(await render(new Injector(), {render: 'div', attributes: {id: '123'}, children: [html('Test')]})).toBe('<div id="123">Test</div>');
-    expect(await render(new Injector(), {render: 'div', attributes: {id: '123'}, children: [html('<b>Test</b>')]})).toBe('<div id="123"><b>Test</b></div>');
+    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: 'Test' })).toBe('<div id="123">Test</div>');
+    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: '<b>Test</b>' })).toBe('<div id="123">&lt;b&gt;Test&lt;/b&gt;</div>');
+    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: html('Test') })).toBe('<div id="123">Test</div>');
+    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: [html('Test')] })).toBe('<div id="123">Test</div>');
+    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: [html('<b>Test</b>')] })).toBe('<div id="123"><b>Test</b></div>');
 
-    expect(await render(new Injector(), {render: 'div', attributes: {id: '123'}, children: ["Hi ", html('Test')]})).toBe('<div id="123">Hi Test</div>');
-    expect(await render(new Injector(), {render: 'div', attributes: "", children: ["Hi ", html('Test')]})).toBe('<div>Hi Test</div>');
+    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: ["Hi ", html('Test')] })).toBe('<div id="123">Hi Test</div>');
+    expect(await render(new Injector(), { render: 'div', attributes: "", children: ["Hi ", html('Test')] })).toBe('<div>Hi Test</div>');
 
-    expect(await render(new Injector(), {render: 'div', attributes: "", children: ["Hi ", {render: 'div', attributes: "", children: html('Test')}]})).toBe('<div>Hi <div>Test</div></div>');
+    expect(await render(new Injector(), { render: 'div', attributes: "", children: ["Hi ", { render: 'div', attributes: "", children: html('Test') }] })).toBe('<div>Hi <div>Test</div></div>');
 
 });

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType} from '@deepkit/core';
+import { ClassType } from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
@@ -26,7 +26,7 @@ import {
     PropertyDecoratorResult,
     PropertySchema,
 } from '@deepkit/type';
-import {ControllerDefinition} from './model';
+import { ControllerDefinition } from './model';
 
 class RpcController {
     name?: string;

@@ -1,14 +1,14 @@
-import {afterAll, expect, test} from '@jest/globals';
+import { afterAll, expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {JSONError, ValidationError, ValidationErrorItem} from '@deepkit/rpc';
-import {appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait} from './util';
-import {Observable} from 'rxjs';
-import {bufferCount, first, skip} from 'rxjs/operators';
-import {Entity, getClassSchema, PropertySchema, t} from '@deepkit/type';
-import {ObserverTimer} from '@deepkit/core-rxjs';
-import {isArray} from '@deepkit/core';
-import {ClientProgress, rpc} from '@deepkit/rpc';
-import {fail} from 'assert';
+import { JSONError, ValidationError, ValidationErrorItem } from '@deepkit/rpc';
+import { appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait } from './util';
+import { Observable } from 'rxjs';
+import { bufferCount, first, skip } from 'rxjs/operators';
+import { Entity, getClassSchema, PropertySchema, t } from '@deepkit/type';
+import { ObserverTimer } from '@deepkit/core-rxjs';
+import { isArray } from '@deepkit/core';
+import { ClientProgress, rpc } from '@deepkit/rpc';
+import { fail } from 'assert';
 import ws from 'ws';
 
 // @ts-ignore
@@ -56,7 +56,7 @@ test('basic setup and methods', async () => {
 
         @rpc.action()
         myErrorJson() {
-            throw new JSONError([{path: 'name', name: 'missing'}]);
+            throw new JSONError([{ path: 'name', name: 'missing' }]);
         }
 
         @rpc.action()
@@ -77,10 +77,10 @@ test('basic setup and methods', async () => {
         expect(u).toBeInstanceOf(PropertySchema);
         expect(u.type).toBe('class');
         expect(u.classType).toBe(User);
-        expect(u.toJSON()).toMatchObject({name: 'user', type: 'class', classType: 'controller-basic/user'});
+        expect(u.toJSON()).toMatchObject({ name: 'user', type: 'class', classType: 'controller-basic/user' });
     }
 
-    const {client, close} = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
 
@@ -103,7 +103,7 @@ test('basic setup and methods', async () => {
             fail('should error');
         } catch (error) {
             expect(error).toBeInstanceOf(JSONError);
-            expect((error as JSONError).json).toEqual([{path: 'name', name: 'missing'}]);
+            expect((error as JSONError).json).toEqual([{ path: 'name', name: 'missing' }]);
         }
     }
 
@@ -127,7 +127,7 @@ test('basic setup and methods', async () => {
         } catch (error) {
             expect(error).toBeInstanceOf(ValidationError);
             expect((error as ValidationError).errors[0]).toBeInstanceOf(ValidationErrorItem);
-            expect((error as ValidationError).errors[0]).toEqual({code: 'required', message: 'Required value is undefined', path: 'user.name'});
+            expect((error as ValidationError).errors[0]).toEqual({ code: 'required', message: 'Required value is undefined', path: 'user.name' });
         }
     }
 
@@ -159,8 +159,8 @@ test('basic serialisation return: entity', async () => {
 
         @rpc.action()
         @t.any
-        async allowPlainObject(name: string): Promise<{mowla: boolean, name: string, date: Date}> {
-            return {mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z')};
+        async allowPlainObject(name: string): Promise<{ mowla: boolean, name: string, date: Date }> {
+            return { mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z') };
         }
 
         @rpc.action()
@@ -171,7 +171,7 @@ test('basic serialisation return: entity', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('basic serialisation entity', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('basic serialisation entity', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
     const user = await controller.user('peter');
@@ -213,7 +213,7 @@ test('basic serialisation param: entity', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('serialisation param: entity', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('serialisation param: entity', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
     const userValid = await controller.user(new User('peter2'));
@@ -265,7 +265,7 @@ test('basic serialisation partial param: entity', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('serialisation partial param: entity', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('serialisation partial param: entity', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
     //
@@ -285,7 +285,7 @@ test('basic serialisation partial param: entity', async () => {
     //     expect(e.message).toMatch('test::failPartialUser result is an Object with unknown structure.');
     // }
 
-    const a = await controller.user({name: 'peter2'});
+    const a = await controller.user({ name: 'peter2' });
     expect(a).toBeTruthy();
 
     // const partialUser = await test.partialUser('peter2', date);
@@ -311,7 +311,7 @@ test('test basic promise', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test basic promise', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('test basic promise', appModuleForControllers([TestController]));
     const controller = client.controller<TestController>('test');
 
     const names = await controller.names('d');
@@ -364,7 +364,7 @@ test('test observable', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test observable', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('test observable', appModuleForControllers([TestController]));
     const controller = client.controller<TestController>('test');
 
     const observable = await controller.observer();
@@ -397,7 +397,7 @@ test('test param serialization', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test param serialization', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('test param serialization', appModuleForControllers([TestController]));
     const controller = client.controller<TestController>('test');
 
     expect(await controller.actionArray(['b'])).toBe(true);
@@ -420,7 +420,7 @@ test('test batcher', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test batcher', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('test batcher', appModuleForControllers([TestController]));
     const controller = client.controller<TestController>('test');
 
     const progress = ClientProgress.track();

@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, isArray, PropertySchema} from '@deepkit/type';
-import {ClassType, isPlainObject} from '@deepkit/core';
-import {FilterQuery} from './query';
+import { ClassSchema, getClassSchema, isArray, PropertySchema } from '@deepkit/type';
+import { ClassType, isPlainObject } from '@deepkit/core';
+import { FilterQuery } from './query';
 
 export type Converter = (convertClassType: ClassSchema, path: string, value: any) => any;
 export type QueryFieldNames = { [name: string]: boolean };
@@ -30,7 +30,7 @@ export function exportQueryFilterFieldNames(classSchema: ClassSchema<any>, filte
     return Object.keys(filterFields);
 }
 
-export function replaceQueryFilterParameter<T>(classSchema: ClassSchema<T>, filter: FilterQuery<T>, parameters: {[name: string]: any}): any {
+export function replaceQueryFilterParameter<T>(classSchema: ClassSchema<T>, filter: FilterQuery<T>, parameters: { [name: string]: any }): any {
     return convertQueryFilter(classSchema, filter, (convertClassType: ClassSchema, path: string, value: any) => {
         return value;
     }, {}, {
@@ -53,7 +53,7 @@ function convertProperty(
     customMapping: QueryCustomFields = {},
 ) {
     if (isPlainObject(fieldValue)) {
-        fieldValue = {...fieldValue};
+        fieldValue = { ...fieldValue };
 
         for (const key in fieldValue) {
             if (!fieldValue.hasOwnProperty(key)) continue;

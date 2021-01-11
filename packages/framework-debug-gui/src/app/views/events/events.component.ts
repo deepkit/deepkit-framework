@@ -1,6 +1,6 @@
-import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
-import {ControllerClient} from '../../client';
-import {Event} from '@deepkit/framework-debug-shared';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ControllerClient } from '../../client';
+import { Event } from '@deepkit/framework-debug-shared';
 
 @Component({
   template: `

@@ -16,17 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {arrayRemoveItem, ClassType, getClassName, isClass} from '@deepkit/core';
-import {httpClass} from './decorator';
-import {EventDispatcher} from './event';
-import {Module, ModuleOptions} from './module';
-import {ConfiguredProviderRegistry, Injector, tokenLabel} from './injector/injector';
-import {ProviderWithScope} from './injector/provider';
-import {rpcClass} from '@deepkit/rpc';
-import {cli} from './command';
-import {HttpControllers} from './router';
-import {InjectorContext, Context, ContextRegistry} from './injector/injector';
-import {WorkflowDefinition} from './workflow';
+import { arrayRemoveItem, ClassType, getClassName, isClass } from '@deepkit/core';
+import { httpClass } from './decorator';
+import { EventDispatcher } from './event';
+import { Module, ModuleOptions } from './module';
+import { ConfiguredProviderRegistry, Injector, tokenLabel } from './injector/injector';
+import { ProviderWithScope } from './injector/provider';
+import { rpcClass } from '@deepkit/rpc';
+import { cli } from './command';
+import { HttpControllers } from './router';
+import { InjectorContext, Context, ContextRegistry } from './injector/injector';
+import { WorkflowDefinition } from './workflow';
 
 export interface OnInit {
     onInit: () => Promise<void>;
@@ -107,12 +107,12 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     ) {
         this.setupHook(appModule);
 
-        providers.push({provide: ServiceContainer, useValue: this});
-        providers.push({provide: EventDispatcher, useValue: this.eventListenerContainer});
-        providers.push({provide: HttpControllers, useValue: this.httpControllers});
-        providers.push({provide: CliControllers, useValue: this.cliControllers});
-        providers.push({provide: RpcControllers, useValue: this.rpcControllers});
-        providers.push({provide: InjectorContext, useValue: this.rootInjectorContext});
+        providers.push({ provide: ServiceContainer, useValue: this });
+        providers.push({ provide: EventDispatcher, useValue: this.eventListenerContainer });
+        providers.push({ provide: HttpControllers, useValue: this.httpControllers });
+        providers.push({ provide: CliControllers, useValue: this.cliControllers });
+        providers.push({ provide: RpcControllers, useValue: this.rpcControllers });
+        providers.push({ provide: InjectorContext, useValue: this.rootInjectorContext });
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
         return appModule;
@@ -223,10 +223,10 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
 
         for (const listener of listeners) {
             if (isClass(listener)) {
-                providers.unshift({provide: listener});
+                providers.unshift({ provide: listener });
                 this.eventListenerContainer.registerListener(listener, context);
             } else {
-                this.eventListenerContainer.add(listener.eventToken, {fn: listener.callback, order: listener.order});
+                this.eventListenerContainer.add(listener.eventToken, { fn: listener.callback, order: listener.order });
             }
         }
 
@@ -237,7 +237,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         for (const controller of controllers) {
             const rpcConfig = rpcClass._fetch(controller);
             if (rpcConfig) {
-                providers.unshift({provide: controller, scope: 'rpc'});
+                providers.unshift({ provide: controller, scope: 'rpc' });
                 (controller as any)[InjectorContext.contextSymbol] = context;
                 this.rpcControllers.controllers.set(rpcConfig.getPath(), controller);
                 continue;
@@ -245,7 +245,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
 
             const httpConfig = httpClass._fetch(controller);
             if (httpConfig) {
-                providers.unshift({provide: controller, scope: 'http'});
+                providers.unshift({ provide: controller, scope: 'http' });
                 (controller as any)[InjectorContext.contextSymbol] = context;
                 this.httpControllers.add(controller);
                 continue;
@@ -253,7 +253,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
 
             const cliConfig = cli._fetch(controller);
             if (cliConfig) {
-                providers.unshift({provide: controller, scope: 'cli'});
+                providers.unshift({ provide: controller, scope: 'cli' });
                 (controller as any)[InjectorContext.contextSymbol] = context;
                 this.cliControllers.controllers.set(cliConfig.name, controller);
                 continue;

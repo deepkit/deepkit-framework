@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {AppLocker} from './app-locker';
-import {createModule} from '../module';
-import {inject, injectable} from '../injector/injector';
-import {eventDispatcher} from '../event';
-import {onServerMainBootstrap, onServerMainShutdown} from '../application-server';
-import {brokerConfig} from './broker.config';
+import { AppLocker } from './app-locker';
+import { createModule } from '../module';
+import { inject, injectable } from '../injector/injector';
+import { eventDispatcher } from '../event';
+import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
+import { brokerConfig } from './broker.config';
 import { Broker, BrokerServer } from './broker';
 
 @injectable()

@@ -1,5 +1,5 @@
-import {expect, test} from '@jest/globals';
-import {atomicChange, Changes} from '../src/changes';
+import { expect, test } from '@jest/globals';
+import { atomicChange, Changes } from '../src/changes';
 
 
 test('atomic', () => {
@@ -16,12 +16,12 @@ test('changes', () => {
         const changes = new Changes<any>();
         expect(changes.empty).toBe(true);
 
-        changes.replaceSet({bla: 234});
+        changes.replaceSet({ bla: 234 });
         expect(changes.empty).toBe(false);
     }
 
     {
-        const changes = new Changes<any>({$set: {}});
+        const changes = new Changes<any>({ $set: {} });
         expect(changes.empty).toBe(true);
 
         changes.set('bla', 24);
@@ -29,7 +29,7 @@ test('changes', () => {
     }
 
     {
-        const changes = new Changes<any>({$set: {}});
+        const changes = new Changes<any>({ $set: {} });
         expect(changes.empty).toBe(true);
 
         changes.replaceSet({});

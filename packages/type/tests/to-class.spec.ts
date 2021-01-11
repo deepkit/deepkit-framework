@@ -1,11 +1,11 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
-import {isExcluded} from '../src/mapper';
-import {getClassSchema, OnLoad, jsonSerializer, resolvePropertySchema, t, uuid, validate, cloneClass} from '../index';
-import {ClassWithUnmetParent, DocumentClass} from './document-scenario/DocumentClass';
-import {PageClass} from './document-scenario/PageClass';
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
+import { CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel } from './entities';
+import { isExcluded } from '../src/mapper';
+import { getClassSchema, OnLoad, jsonSerializer, resolvePropertySchema, t, uuid, validate, cloneClass } from '../index';
+import { ClassWithUnmetParent, DocumentClass } from './document-scenario/DocumentClass';
+import { PageClass } from './document-scenario/PageClass';
+import { getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } from '@deepkit/core';
 
 test('test simple model', () => {
     const schema = getClassSchema(SimpleModel);
@@ -34,8 +34,8 @@ test('test simple model all fields', () => {
         yesNo: 'true',
         created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
         children: [
-            {label: 'fooo'},
-            {label: 'barr'},
+            { label: 'fooo' },
+            { label: 'barr' },
         ],
         childrenMap: {
             foo: {
@@ -96,8 +96,8 @@ test('test simple model all fields plainToMongo', () => {
         yesNo: '1',
         created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
         children: [
-            {label: 'fooo'},
-            {label: 'barr'},
+            { label: 'fooo' },
+            { label: 'barr' },
         ],
         childrenMap: {
             foo: {
@@ -153,7 +153,7 @@ test('test simple model with not mapped fields', () => {
         name: 'myName',
         type: 5,
         yesNo: '1',
-        notMapped: {a: 'foo'}
+        notMapped: { a: 'foo' }
     });
 
     expect(instance).toBeInstanceOf(SimpleModel);
@@ -171,7 +171,7 @@ test('test simple model with not mapped fields', () => {
         name: 'myName',
         type: 5,
         yesNo: 'eads',
-        notMapped: {a: 'foo'},
+        notMapped: { a: 'foo' },
         excludedForPlain: 'excludedForPlain'
     });
 
@@ -229,7 +229,7 @@ test('test @Decorated', async () => {
 test('test childrenMap', async () => {
     const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
-        childrenMap: {foo: {label: 'Foo'}, bar: {label: 'Bar'}}
+        childrenMap: { foo: { label: 'Foo' }, bar: { label: 'Bar' } }
     });
 
     expect(instance.childrenMap.foo).toBeInstanceOf(SubModel);
@@ -246,8 +246,8 @@ test('test allowNull', async () => {
     }
 
     expect(jsonSerializer.for(Model).deserialize({}).name).toBe(undefined);
-    expect(jsonSerializer.for(Model).deserialize({name: null}).name).toBe(undefined);
-    expect(jsonSerializer.for(Model).deserialize({name: undefined}).name).toBe(undefined);
+    expect(jsonSerializer.for(Model).deserialize({ name: null }).name).toBe(undefined);
+    expect(jsonSerializer.for(Model).deserialize({ name: undefined }).name).toBe(undefined);
 });
 
 test('test OnLoad', async () => {
@@ -272,7 +272,7 @@ test('test OnLoad', async () => {
             this.onLoadCallback(this);
         }
 
-        @OnLoad({fullLoad: true})
+        @OnLoad({ fullLoad: true })
         onFullLoad() {
             console.log('onFullLoad');
             this.onFullLoadCallback(this);
@@ -350,7 +350,7 @@ test('test setter/getter', async () => {
     }
 
     const instance = jsonSerializer.for(Model).deserialize({
-        fonts: [{name: 'Arial'}, {name: 'Verdana'}]
+        fonts: [{ name: 'Arial' }, { name: 'Verdana' }]
     });
 
     expect(instance.test).toBe(true);
@@ -368,7 +368,7 @@ test('test setter/getter', async () => {
 test('test decorator complex', async () => {
     const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
-        childrenCollection: [{label: 'Foo'}, {label: 'Bar'}]
+        childrenCollection: [{ label: 'Foo' }, { label: 'Bar' }]
     });
 
     expect(instance.name).toBe('myName');
@@ -385,11 +385,11 @@ test('test decorator complex', async () => {
     const plain = jsonSerializer.for(SimpleModel).serialize(instance);
 
     expect(plain.name).toBe('myName');
-    expect(plain.childrenCollection).toEqual([{label: 'Foo'}, {label: 'Bar'}, {label: 'Bar2'}]);
+    expect(plain.childrenCollection).toEqual([{ label: 'Foo' }, { label: 'Bar' }, { label: 'Bar2' }]);
 
     const mongo = jsonSerializer.for(SimpleModel).serialize(instance);
     expect(mongo.name).toBe('myName');
-    expect(mongo.childrenCollection).toEqual([{label: 'Foo'}, {label: 'Bar'}, {label: 'Bar2'}]);
+    expect(mongo.childrenCollection).toEqual([{ label: 'Foo' }, { label: 'Bar' }, { label: 'Bar2' }]);
 });
 
 test('test @Decorated with parent', async () => {
@@ -422,9 +422,9 @@ test('test @Decorated with parent', async () => {
         page: {
             name: 'RootPage',
             children: [
-                {name: 'RootPage.1'},
-                {name: 'RootPage.2'},
-                {name: 'RootPage.3'},
+                { name: 'RootPage.1' },
+                { name: 'RootPage.2' },
+                { name: 'RootPage.3' },
             ]
         },
         pages: [
@@ -434,14 +434,14 @@ test('test @Decorated with parent', async () => {
                     {
                         name: 'Foo.1',
                         children: [
-                            {name: 'Foo.1.1'},
-                            {name: 'Foo.1.2'},
-                            {name: 'Foo.1.3'},
+                            { name: 'Foo.1.1' },
+                            { name: 'Foo.1.2' },
+                            { name: 'Foo.1.3' },
                         ]
                     }
                 ]
             },
-            {name: 'Bar'}
+            { name: 'Bar' }
         ]
     });
 
@@ -493,7 +493,7 @@ test('test @Decorated with parent', async () => {
     expect(foo_1_2!.parent!.name).toBe('Foo.1');
     expect(foo_1_3!.parent!.name).toBe('Foo.1');
 
-    const clone = cloneClass(instance.page, {parents: [instance]});
+    const clone = cloneClass(instance.page, { parents: [instance] });
     expect(clone).toBeInstanceOf(PageClass);
     expect(clone!.parent).toBeUndefined();
 
@@ -529,19 +529,19 @@ test('simple string + number + boolean', () => {
     expect(instance.name).toBe('1');
     expect(instance.age).toBe(2);
 
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 'false'}).yesNo).toBe(false);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: '0'}).yesNo).toBe(false);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: false}).yesNo).toBe(false);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 0}).yesNo).toBe(false);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 'nothing'}).yesNo).toBeUndefined();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: null}).yesNo).toBeUndefined();
-    expect(jsonSerializer.for(Model).deserialize({yesNo: undefined}).yesNo).toBeUndefined();
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: 'false' }).yesNo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: '0' }).yesNo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: false }).yesNo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: 0 }).yesNo).toBe(false);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: 'nothing' }).yesNo).toBeUndefined();
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: null }).yesNo).toBeUndefined();
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: undefined }).yesNo).toBeUndefined();
 
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 'true'}).yesNo).toBe(true);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: '1'}).yesNo).toBe(true);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: true}).yesNo).toBe(true);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: 1}).yesNo).toBe(true);
-    expect(jsonSerializer.for(Model).deserialize({yesNo: null}).yesNo).toBeUndefined();
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: 'true' }).yesNo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: '1' }).yesNo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: true }).yesNo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: 1 }).yesNo).toBe(true);
+    expect(jsonSerializer.for(Model).deserialize({ yesNo: null }).yesNo).toBeUndefined();
 });
 
 
@@ -578,17 +578,17 @@ test('cloneClass', () => {
     const instance = jsonSerializer.for(Model).deserialize({
         data: data,
         dataStruct: dataStruct,
-        subs: [{name: 'foo'}],
+        subs: [{ name: 'foo' }],
     });
 
-    expect(instance.data).toEqual({a: 'true'});
+    expect(instance.data).toEqual({ a: 'true' });
     expect(instance.data).toBe(data); //any doesnt clone
     expect(instance.dataStruct!.name).toBe('Foo');
     expect(instance.dataStruct).toEqual(dataStruct);
     expect(instance.dataStruct).not.toBe(dataStruct);
 
     const cloned = cloneClass(instance);
-    expect(cloned.data).toEqual({a: 'true'});
+    expect(cloned.data).toEqual({ a: 'true' });
     expect(cloned.data).toBe(data); //any doesnt clone
     expect(cloned.dataStruct!.name).toBe('Foo');
     expect(cloned.dataStruct).toEqual(dataStruct);
@@ -848,7 +848,7 @@ test('enums arrays', () => {
     expect(validate(Model, {
         enum2: ['nope']
     })).toEqual([
-        {code: 'invalid_enum', message: 'Invalid enum value received. Allowed: z,x', path: 'enum2.0'}
+        { code: 'invalid_enum', message: 'Invalid enum value received. Allowed: z,x', path: 'enum2.0' }
     ]);
 });
 
@@ -859,12 +859,12 @@ test('nullable', () => {
         optional: t.string.optional,
     });
 
-    expect(jsonSerializer.for(s).deserialize({username: 'asd'})).toEqual({username: 'asd'});
-    expect(jsonSerializer.for(s).deserialize({username: 'asd', password: null})).toEqual({username: 'asd', password: null});
-    expect(jsonSerializer.for(s).deserialize({username: 'asd', password: 'null'})).toEqual({username: 'asd', password: 'null'});
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd' })).toEqual({ username: 'asd' });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', password: null })).toEqual({ username: 'asd', password: null });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', password: 'null' })).toEqual({ username: 'asd', password: 'null' });
 
-    expect(jsonSerializer.for(s).deserialize({username: 'asd', optional: null})).toEqual({username: 'asd'});
-    expect(jsonSerializer.for(s).deserialize({username: 'asd', optional: 'null'})).toEqual({username: 'asd', optional: 'null'});
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', optional: null })).toEqual({ username: 'asd' });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', optional: 'null' })).toEqual({ username: 'asd', optional: 'null' });
 });
 
 
@@ -874,21 +874,21 @@ test('nullable with default', () => {
         password: t.string.nullable.default(null),
     });
 
-    expect(jsonSerializer.for(s).deserialize({username: 'asd'})).toEqual({username: 'asd', password: null});
-    expect(jsonSerializer.for(s).deserialize({username: 'asd', password: null})).toEqual({username: 'asd', password: null});
-    expect(jsonSerializer.for(s).deserialize({username: 'asd', password: 'foo'})).toEqual({username: 'asd', password: 'foo'});
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd' })).toEqual({ username: 'asd', password: null });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', password: null })).toEqual({ username: 'asd', password: null });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', password: 'foo' })).toEqual({ username: 'asd', password: 'foo' });
 });
 
 test('nullable container', () => {
     const s = t.schema({
         tags: t.array(t.string).nullable,
         tagMap: t.map(t.string).nullable,
-        tagPartial: t.partial({name: t.string}).nullable,
+        tagPartial: t.partial({ name: t.string }).nullable,
     });
 
     const s2 = s.getProperty('tagPartial').getResolvedClassSchema();
     expect(s2.getProperty('name').type).toBe('string');
 
-    expect(jsonSerializer.for(s).deserialize({tags: null, tagMap: null, tagPartial: null})).toEqual({tags: null, tagMap: null, tagPartial: null});
+    expect(jsonSerializer.for(s).deserialize({ tags: null, tagMap: null, tagPartial: null })).toEqual({ tags: null, tagMap: null, tagPartial: null });
     expect(jsonSerializer.for(s).deserialize({})).toEqual({});
 });

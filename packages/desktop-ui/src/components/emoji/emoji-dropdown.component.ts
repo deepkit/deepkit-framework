@@ -10,8 +10,8 @@ import {
     ViewContainerRef
 } from "@angular/core";
 import * as emojis from './emojis';
-import {EmojiCategory} from './emojis';
-import {DropdownComponent} from "../button";
+import { EmojiCategory } from './emojis';
+import { DropdownComponent } from "../button";
 
 @Component({
     selector: 'dui-emoji-dropdown',
@@ -81,7 +81,7 @@ export class EmojiDropdownComponent implements AfterViewInit {
     @Input() emoji: string = '';
     @Output() emojiChange = new EventEmitter();
 
-    @ViewChild(DropdownComponent, {static: true}) dropdown!: DropdownComponent;
+    @ViewChild(DropdownComponent, { static: true }) dropdown!: DropdownComponent;
 
     emojis = emojis;
 
@@ -124,7 +124,7 @@ export class EmojiDropdownComponent implements AfterViewInit {
         if (this.emoji) {
             const element = document.getElementById('emoji_' + this.emoji);
             if (element) {
-                element.scrollIntoView({behavior: 'smooth', block: 'center'});
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
     }

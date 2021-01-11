@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, ExtractClassType, getClassSchema, t} from '@deepkit/type';
-import {asyncOperation, ClassType} from '@deepkit/core';
-import {getBSONDecoder} from '@deepkit/bson';
-import {MongoError} from '../error';
-import {MongoClientConfig} from '../client';
-import {Host} from '../host';
+import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
+import { asyncOperation, ClassType } from '@deepkit/core';
+import { getBSONDecoder } from '@deepkit/bson';
+import { MongoError } from '../error';
+import { MongoClientConfig } from '../client';
+import { Host } from '../host';
 import bson from 'bson';
 
 
@@ -67,7 +67,7 @@ export abstract class Command {
         this.sender(schema, message);
 
         return asyncOperation((resolve, reject) => {
-            this.current = {resolve, reject, response};
+            this.current = { resolve, reject, response };
         });
     }
 

@@ -1,9 +1,9 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {Entity, MultiIndex, t} from '../src/decorators';
-import {getClassSchema} from '../index';
-import {uuid} from '../src/utils';
-import {getCollectionName} from '../src/mapper';
+import { Entity, MultiIndex, t } from '../src/decorators';
+import { getClassSchema } from '../index';
+import { uuid } from '../src/utils';
+import { getCollectionName } from '../src/mapper';
 
 
 @Entity('user2')
@@ -11,7 +11,7 @@ class User {
     @t.uuid.primary
     id: string = uuid();
 
-    @t.array(() => Organisation).backReference({via: () => OrganisationMembership})
+    @t.array(() => Organisation).backReference({ via: () => OrganisationMembership })
     organisations: Organisation[] = [];
 
     //self reference
@@ -30,7 +30,7 @@ class Organisation {
     @t.uuid.primary
     id: string = uuid();
 
-    @t.array(User).backReference({mappedBy: 'organisations', via: () => OrganisationMembership})
+    @t.array(User).backReference({ mappedBy: 'organisations', via: () => OrganisationMembership })
     users: User[] = [];
 
     constructor(

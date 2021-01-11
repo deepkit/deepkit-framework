@@ -1,5 +1,5 @@
-import {t} from '../../src/decorators';
-import {ClassType} from '@deepkit/core';
+import { t } from '../../src/decorators';
+import { ClassType } from '@deepkit/core';
 
 export interface CollectionConstructor<T> {
     new(pages?: T[]): Collection<T>;

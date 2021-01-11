@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {arrayRemoveItem, asyncOperation, ClassType, sleep} from '@deepkit/core';
-import {Host} from './host';
-import {createConnection, Socket} from 'net';
-import {connect as createTLSConnection, TLSSocket} from 'tls';
-import {Command} from './command/command';
-import {ClassSchema} from '@deepkit/type';
-import {getBSONSerializer, getBSONSizer, Writer} from '@deepkit/bson';
-import {HandshakeCommand} from './command/handshake';
-import {MongoClientConfig} from './client';
-import {MongoError} from './error';
+import { arrayRemoveItem, asyncOperation, ClassType, sleep } from '@deepkit/core';
+import { Host } from './host';
+import { createConnection, Socket } from 'net';
+import { connect as createTLSConnection, TLSSocket } from 'tls';
+import { Command } from './command/command';
+import { ClassSchema } from '@deepkit/type';
+import { getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import { HandshakeCommand } from './command/handshake';
+import { MongoClientConfig } from './client';
+import { MongoError } from './error';
 import bson from 'bson';
 
 export enum MongoConnectionStatus {
@@ -289,7 +289,7 @@ export class MongoConnection {
             await this.lastCommand.promise;
         }
 
-        this.lastCommand = {command};
+        this.lastCommand = { command };
         this.activeCommands++;
         this.executedCommands++;
         command.sender = this.sendMessage.bind(this);

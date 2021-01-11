@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {good} from './validation';
+import { good } from './validation';
 import Ajv from 'ajv';
-import {BenchSuite} from '../../bench';
+import { BenchSuite } from '../../bench';
 
 //todo: note deeplyNested is missing, so not complete validation yet.
 
@@ -26,18 +26,18 @@ const schema = {
     "$id": "http://example.com/schemas/defs.json",
     "type": "object",
     "properties": {
-        "number": {"type": "integer"},
-        "negNumber": {"type": "integer", "maximum": 0},
-        "maxNumber": {"type": "integer", "maximum": 550},
-        "strings": {"type": "array", "items": { "type": "string" }},
-        "longString": {"type": "string"},
-        "boolean": {"type": "boolean"},
+        "number": { "type": "integer" },
+        "negNumber": { "type": "integer", "maximum": 0 },
+        "maxNumber": { "type": "integer", "maximum": 550 },
+        "strings": { "type": "array", "items": { "type": "string" } },
+        "longString": { "type": "string" },
+        "boolean": { "type": "boolean" },
         "deeplyNested": {
             "type": "object",
             "properties": {
-                "foo": {"type": "string"},
-                "num": {"type": "integer"},
-                "bool": {"type": "boolean"},
+                "foo": { "type": "string" },
+                "num": { "type": "integer" },
+                "bool": { "type": "boolean" },
             },
             "required": ["foo", "num", "bool"],
         },

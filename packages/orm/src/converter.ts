@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getDataConverterJS, getGlobalStore, JitStack, jsonSerializer, PropertySchema, Serializer, SerializerCompilers, UnpopulatedCheck} from '@deepkit/type';
-import {toFastProperties} from '@deepkit/core';
+import { ClassSchema, getDataConverterJS, getGlobalStore, JitStack, jsonSerializer, PropertySchema, Serializer, SerializerCompilers, UnpopulatedCheck } from '@deepkit/type';
+import { toFastProperties } from '@deepkit/core';
 
 function createJITConverterForSnapshot(
     classSchema: ClassSchema,

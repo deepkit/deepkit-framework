@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Entity, f, jsonSerializer} from '@deepkit/type';
-import {BenchSuite} from '../../bench';
+import { Entity, f, jsonSerializer } from '@deepkit/type';
+import { BenchSuite } from '../../bench';
 
 
 @Entity('sub')
@@ -87,8 +87,8 @@ export async function main() {
         name: 'name',
         type: 2,
         plan: Plan.ENTERPRISE,
-        children: [{label: 'label'}],
-        childrenMap: {'sub': {label: 'label'}},
+        children: [{ label: 'label' }],
+        childrenMap: { 'sub': { label: 'label' } },
         types: ['a', 'b', 'c']
     };
 

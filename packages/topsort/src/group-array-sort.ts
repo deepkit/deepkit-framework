@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {BaseImplementation, ElementNotFoundException} from './base';
+import { BaseImplementation, ElementNotFoundException } from './base';
 
 interface ItemElement<T, TYPE> {
     item: T;
@@ -142,7 +142,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
         const groups: { type: TYPE, items: T[] }[] = [];
 
         for (const group of this.groups) {
-            groups.push({type: group.type, items: this.sorted.slice(group.position, group.position + group.length)});
+            groups.push({ type: group.type, items: this.sorted.slice(group.position, group.position + group.length) });
         }
 
         return groups;

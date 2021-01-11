@@ -1,10 +1,10 @@
 #!/usr/bin/env -S node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
 import 'reflect-metadata';
-import {entity, sliceClass, t} from '@deepkit/type';
-import {Application, BodyValidation, http, KernelModule, Logger, Redirect} from '@deepkit/framework';
-import {Website} from './views/website';
-import {ActiveRecord, Database} from '@deepkit/orm';
-import {SQLiteDatabaseAdapter} from '@deepkit/sql';
+import { entity, sliceClass, t } from '@deepkit/type';
+import { Application, BodyValidation, http, KernelModule, Logger, Redirect } from '@deepkit/framework';
+import { Website } from './views/website';
+import { ActiveRecord, Database } from '@deepkit/orm';
+import { SQLiteDatabaseAdapter } from '@deepkit/sql';
 
 @entity.name('user')
 class User extends ActiveRecord {
@@ -24,9 +24,9 @@ class SQLiteDatabase extends Database {
     }
 }
 
-class AddUserDto extends sliceClass(User).exclude('id', 'created') {};
+class AddUserDto extends sliceClass(User).exclude('id', 'created') { };
 
-async function UserList({error}: {error?: string} = {}) {
+async function UserList({ error }: { error?: string } = {}) {
     const users = await User.query().find();
     return <Website title="Users">
         <h1>Users</h1>
@@ -37,7 +37,7 @@ async function UserList({error}: {error?: string} = {}) {
         </div>
 
         <form action="/add" method="post">
-            <input type="text" name="username" /><br/>
+            <input type="text" name="username" /><br />
             {error ? <div style="color: red">Error: {error}</div> : ''}
             <button>Send</button>
         </form>
@@ -52,7 +52,7 @@ class HelloWorldController {
     @http.GET('/').name('startPage').description('List all users')
     startPage() {
         this.logger.log('Hi!');
-        return <UserList/>;
+        return <UserList />;
     }
 
     @http.GET('/api/users')
@@ -62,7 +62,7 @@ class HelloWorldController {
 
     @http.POST('/add').description('Adds a new user')
     async add(@http.body() body: AddUserDto, bodyValidation: BodyValidation) {
-        if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')}/>;
+        if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')} />;
 
         await new User(body.username).save();
         return Redirect.toRoute('startPage');

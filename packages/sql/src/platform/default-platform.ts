@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff} from '../schema/table';
-import {binaryTypes, ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types} from '@deepkit/type';
+import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff } from '../schema/table';
+import { binaryTypes, ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types } from '@deepkit/type';
 import sqlstring from 'sqlstring';
-import {ClassType, isObject} from '@deepkit/core';
-import {sqlSerializer} from '../serializer/sql-serializer';
-import {SchemaParser} from '../reverse/schema-parser';
-import {SQLFilterBuilder} from '../sql-filter-builder';
+import { ClassType, isObject } from '@deepkit/core';
+import { sqlSerializer } from '../serializer/sql-serializer';
+import { SchemaParser } from '../reverse/schema-parser';
+import { SQLFilterBuilder } from '../sql-filter-builder';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -79,7 +79,7 @@ export abstract class DefaultPlatform {
     }
 
     addType(marshalType: Types, sqlType: string, size?: number, scale?: number) {
-        this.typeMapping.set(marshalType, {sqlType, size, scale});
+        this.typeMapping.set(marshalType, { sqlType, size, scale });
     }
 
     getColumnListDDL(columns: Column[]) {

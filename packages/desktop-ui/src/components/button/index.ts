@@ -1,12 +1,12 @@
-import {NgModule} from "@angular/core";
+import { NgModule } from "@angular/core";
 import {
     ButtonComponent,
     ButtonGroupComponent,
     ButtonGroupsComponent,
     FileChooserDirective, FileDropDirective, FilePickerDirective
 } from "./button.component";
-import {CommonModule} from "@angular/common";
-import {DuiIconModule} from "../icon";
+import { CommonModule } from "@angular/common";
+import { DuiIconModule } from "../icon";
 import {
     DropdownComponent,
     DropdownItemComponent,
@@ -14,8 +14,8 @@ import {
     OpenDropdownDirective,
     ContextDropdownDirective,
 } from "./dropdown.component";
-import {FormsModule} from "@angular/forms";
-import {TabButtonComponent} from './tab-button.component'
+import { FormsModule } from "@angular/forms";
+import { TabButtonComponent } from './tab-button.component'
 
 export * from "./dropdown.component";
 export * from './button.component'

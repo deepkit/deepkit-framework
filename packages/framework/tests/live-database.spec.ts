@@ -804,7 +804,7 @@ test('test entity collection pagination', async () => {
         const items = await controller.findByClass('a');
         expect(items.getTotal()).toBe(34);
         expect(items.getItemsPerPage()).toBe(10);
-        expect(items.getSort()).toEqual({"nr": "asc"});
+        expect(items.getSort()).toEqual({ "nr": "asc" });
         expect(items.getParameter('clazz')).toBe('a');
 
         expect(items.all()[0].nr).toBe(0);
@@ -816,7 +816,7 @@ test('test entity collection pagination', async () => {
         await items.setParameter('clazz', 'b').apply();
         expect(items.getTotal()).toBe(33);
         expect(items.getItemsPerPage()).toBe(10);
-        expect(items.getSort()).toEqual({"nr": "asc"});
+        expect(items.getSort()).toEqual({ "nr": "asc" });
         expect(items.getParameter('clazz')).toBe('b');
 
         expect(items.all()[0].nr).toBe(1);

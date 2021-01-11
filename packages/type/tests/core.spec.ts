@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
-import {arrayBufferTo, base64ToArrayBuffer, nodeBufferToTypedArray} from '../index';
-import {Buffer} from 'buffer';
+import { expect, test } from '@jest/globals';
+import { arrayBufferTo, base64ToArrayBuffer, nodeBufferToTypedArray } from '../index';
+import { Buffer } from 'buffer';
 
 test('base64ToArrayBuffer', () => {
     const buffer = Buffer.from('foo:bar', 'utf8');

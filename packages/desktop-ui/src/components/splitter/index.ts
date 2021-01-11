@@ -1,6 +1,6 @@
-import {NgModule} from '@angular/core';
+import { NgModule } from '@angular/core';
 
-import {SplitterComponent} from './splitter.component';
+import { SplitterComponent } from './splitter.component';
 
 export * from './splitter.component';
 

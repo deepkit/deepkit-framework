@@ -1,5 +1,5 @@
-import {Observable, Subscription} from "rxjs";
-import {ChangeDetectorRef, EventEmitter} from "@angular/core";
+import { Observable, Subscription } from "rxjs";
+import { ChangeDetectorRef, EventEmitter } from "@angular/core";
 
 const electron = (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
@@ -150,6 +150,6 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
             target.ownerDocument!.removeEventListener('focusout', onFocusOut as any);
         }
 
-        return {unsubscribe: unsubscribe};
+        return { unsubscribe: unsubscribe };
     });
 }

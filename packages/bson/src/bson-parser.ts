@@ -24,9 +24,9 @@ import {
     digitByteSize,
     TWO_PWR_32_DBL_N
 } from './utils';
-import {decodeUTF8, decodeUTF8Parser} from './strings';
-import {nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap} from '@deepkit/type';
-import {seekElementSize} from './continuation';
+import { decodeUTF8, decodeUTF8Parser } from './strings';
+import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
+import { seekElementSize } from './continuation';
 
 export const hexTable: string[] = [];
 for (let i = 0; i < 256; i++) {
@@ -151,7 +151,7 @@ export class BaseParser {
             + hexTable[b[offset + 9]]
             + hexTable[b[offset + 10]]
             + hexTable[b[offset + 11]]
-        ;
+            ;
 
         this.seek(12);
         return o;
@@ -181,7 +181,7 @@ export class BaseParser {
             + hexTable[b[offset + 13]]
             + hexTable[b[offset + 14]]
             + hexTable[b[offset + 15]]
-        ;
+            ;
 
         this.seek(16);
         return o;
@@ -298,7 +298,7 @@ export function findValueInObject(parser: BaseParser, checker: (elementType: BSO
             seekElementSize(elementType, parser);
         }
     }
-    
+
     parser.offset = offset;
     return undefined;
 }

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {empty} from '@deepkit/core';
-import {inspect} from 'util';
+import { empty } from '@deepkit/core';
+import { inspect } from 'util';
 
 export type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T]
 export type Expression<T> = { [P in keyof T & string]?: string; }
@@ -37,7 +37,7 @@ export class Changes<T> {
     empty = true;
 
     constructor(
-        {$set, $unset, $inc}: ChangesInterface<T> = {}
+        { $set, $unset, $inc }: ChangesInterface<T> = {}
     ) {
         this.$set = empty($set) ? undefined : $set;
         this.$unset = empty($unset) ? undefined : $unset;

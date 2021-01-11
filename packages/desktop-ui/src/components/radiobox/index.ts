@@ -1,5 +1,5 @@
-import {NgModule} from "@angular/core";
-import {RadioboxComponent} from "./radiobox.component";
+import { NgModule } from "@angular/core";
+import { RadioboxComponent } from "./radiobox.component";
 
 export * from './radiobox.component';
 

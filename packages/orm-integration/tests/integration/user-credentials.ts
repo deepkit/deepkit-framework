@@ -1,5 +1,5 @@
-import {entity, PrimaryKey, Reference, t} from '@deepkit/type';
-import {User} from './user';
+import { entity, PrimaryKey, Reference, t } from '@deepkit/type';
+import { User } from './user';
 
 
 @entity.name('user-credentials')

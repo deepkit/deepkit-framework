@@ -85,7 +85,7 @@ test('collection state', async () => {
             collection.model.itemsPerPage = 30;
             collection.model.skip = 30;
             collection.model.limit = 5;
-            collection.model.sort = {id: 'asc'};
+            collection.model.sort = { id: 'asc' };
             return collection;
         }
 
@@ -117,9 +117,9 @@ test('collection state', async () => {
         expect(c.model.itemsPerPage).toBe(30);
         expect(c.model.skip).toBe(30);
         expect(c.model.limit).toBe(5);
-        expect(c.model.sort).toEqual({id: 'asc'});
+        expect(c.model.sort).toEqual({ id: 'asc' });
     }
-    
+
     {
         const c = await controller.fix();
         expect(c.classType).toBe(MyModel);
@@ -142,12 +142,12 @@ test('collection state', async () => {
         expect(c.all()[1].id).toBe(3);
         expect(c.all()[2].id).toBe(4);
 
-        controller.set([10, 11, ]);
+        controller.set([10, 11,]);
         await c.nextStateChange;
         expect(c.all().length).toBe(2);
         expect(c.all()[0].id).toBe(10);
         expect(c.all()[1].id).toBe(11);
-        
+
         c.unsubscribe();
         controller.set([55]);
         await sleep(0.1);

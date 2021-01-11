@@ -1,8 +1,8 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {t} from '../src/decorators';
-import {getClassToXFunction} from '../src/jit';
-import {jsonSerializer} from '../src/json-serializer';
+import { t } from '../src/decorators';
+import { getClassToXFunction } from '../src/jit';
+import { jsonSerializer } from '../src/json-serializer';
 
 test('test invalidation plainToClass', () => {
     const schema = t.schema({
@@ -11,12 +11,12 @@ test('test invalidation plainToClass', () => {
 
     const startBuildId = schema.buildId;
 
-    expect(jsonSerializer.for(schema).deserialize({username: 'peter', foo: 'bar'})).toEqual({username: 'peter'});
+    expect(jsonSerializer.for(schema).deserialize({ username: 'peter', foo: 'bar' })).toEqual({ username: 'peter' });
 
     schema.addProperty('foo', t.string);
     expect(schema.buildId).toBe(startBuildId + 1);
 
-    expect(jsonSerializer.for(schema).deserialize({username: 'peter', foo: 'bar'})).toEqual({username: 'peter', foo: 'bar'});
+    expect(jsonSerializer.for(schema).deserialize({ username: 'peter', foo: 'bar' })).toEqual({ username: 'peter', foo: 'bar' });
 });
 
 test('test invalidation classToPlain', () => {
@@ -26,10 +26,10 @@ test('test invalidation classToPlain', () => {
 
     const startBuildId = schema.buildId;
 
-    expect(getClassToXFunction(schema, jsonSerializer)({username: 'peter', foo: 'bar'} as any)).toEqual({username: 'peter'});
+    expect(getClassToXFunction(schema, jsonSerializer)({ username: 'peter', foo: 'bar' } as any)).toEqual({ username: 'peter' });
 
     schema.addProperty('foo', t.string);
     expect(schema.buildId).toBe(startBuildId + 1);
 
-    expect(getClassToXFunction(schema, jsonSerializer)({username: 'peter', foo: 'bar'} as any)).toEqual({username: 'peter', foo: 'bar'});
+    expect(getClassToXFunction(schema, jsonSerializer)({ username: 'peter', foo: 'bar' } as any)).toEqual({ username: 'peter', foo: 'bar' });
 });

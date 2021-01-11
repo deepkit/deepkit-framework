@@ -63,7 +63,7 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
         { provide: RpcInjectorContext, useFactory: () => rpcScopedContext },
         { provide: RpcKernelConnection, useFactory: () => connection },
         { provide: RpcKernelBaseConnection, useFactory: () => connection },
-        { provide: ConnectionWriter, useValue: writer},
+        { provide: ConnectionWriter, useValue: writer },
     ];
     const additionalInjector = new Injector(providers);
     rpcScopedContext = rootScopedContext.createChildScope('rpc', additionalInjector);
@@ -130,5 +130,5 @@ export class WebWorker {
 }
 
 export class WebMemoryWorker extends WebWorker {
-    start() {}
+    start() { }
 }

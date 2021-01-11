@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {FsConfig} from './fs.config';
-import {Database, DatabaseAdapter} from '@deepkit/orm';
-import {createModule, injectable} from '@deepkit/framework';
-import {DeepkitFile} from '@deepkit/framework-shared';
+import { FsConfig } from './fs.config';
+import { Database, DatabaseAdapter } from '@deepkit/orm';
+import { createModule, injectable } from '@deepkit/framework';
+import { DeepkitFile } from '@deepkit/framework-shared';
 
 @injectable()
 export class FsModuleBootstrap {

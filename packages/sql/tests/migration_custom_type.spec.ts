@@ -1,20 +1,20 @@
-import {expect, test} from '@jest/globals';
-import {jest} from '@jest/globals'
+import { expect, test } from '@jest/globals';
+import { jest } from '@jest/globals'
 import 'reflect-metadata';
-import {t} from '@deepkit/type';
-import {schemaMigrationRoundTrip} from './setup';
-import {MySQLDatabaseAdapter} from '../src/mysql-adapter';
-import {PostgresDatabaseAdapter} from '../src/postgres-adapter';
-import {SQLiteDatabaseAdapter} from '../src/sqlite-adapter';
+import { t } from '@deepkit/type';
+import { schemaMigrationRoundTrip } from './setup';
+import { MySQLDatabaseAdapter } from '../src/mysql-adapter';
+import { PostgresDatabaseAdapter } from '../src/postgres-adapter';
+import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 
 test('mysql custom type', async () => {
     const post = t.schema({
         id: t.number.autoIncrement.primary,
-        slug: t.string.mysql({type: 'VARCHAR(255)'}),
+        slug: t.string.mysql({ type: 'VARCHAR(255)' }),
         content: t.string,
-    }, {name: 'post'});
+    }, { name: 'post' });
 
-    const adapter = new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'});
+    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' });
     const [postTable] = adapter.platform.createTables([post]);
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
@@ -25,11 +25,11 @@ test('mysql custom type', async () => {
 test('postgres custom type', async () => {
     const post = t.schema({
         id: t.number.autoIncrement.primary,
-        slug: t.string.postgres({type: 'VARCHAR(255)'}),
-        content: t.string.postgres({type: 'text'}),
-    }, {name: 'post'});
+        slug: t.string.postgres({ type: 'VARCHAR(255)' }),
+        content: t.string.postgres({ type: 'text' }),
+    }, { name: 'post' });
 
-    const adapter = new PostgresDatabaseAdapter({host: '127.0.0.1', database: 'postgres'});
+    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres' });
     const [postTable] = adapter.platform.createTables([post]);
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
@@ -42,10 +42,10 @@ test('postgres custom type', async () => {
 test('sqlite custom type', async () => {
     const post = t.schema({
         id: t.number.autoIncrement.primary,
-        slug: t.string.sqlite({type: 'text'}),
+        slug: t.string.sqlite({ type: 'text' }),
         content: t.string,
-        size: t.number.sqlite({type: 'integer(4)'})
-    }, {name: 'post'});
+        size: t.number.sqlite({ type: 'integer(4)' })
+    }, { name: 'post' });
 
     const adapter = new SQLiteDatabaseAdapter(':memory:');
     const [postTable] = adapter.platform.createTables([post]);

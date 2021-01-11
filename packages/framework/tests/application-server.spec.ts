@@ -11,7 +11,7 @@ import { Logger } from '../src/logger';
 test('testing app api', async () => {
     @rpc.controller('test')
     class MyController {
-        constructor(protected logger: Logger) {}
+        constructor(protected logger: Logger) { }
 
         @rpc.action()
         foo() {
@@ -20,7 +20,7 @@ test('testing app api', async () => {
         }
     }
 
-    const testing = createTestingApp({controllers: [MyController]});
+    const testing = createTestingApp({ controllers: [MyController] });
     await testing.startServer();
 
     const client = testing.createRpcClient();

@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
-import {createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, isDecoratorContext, mergeDecorator} from '../src/decorator-builder';
-import {entity, getClassSchema, t} from '../index';
+import { expect, test } from '@jest/globals';
+import { createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, isDecoratorContext, mergeDecorator } from '../src/decorator-builder';
+import { entity, getClassSchema, t } from '../index';
 
 test('without host', () => {
     class Dec1Model {

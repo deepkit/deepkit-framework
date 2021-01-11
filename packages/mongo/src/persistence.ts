@@ -16,18 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState} from '@deepkit/orm';
-import {ClassSchema} from '@deepkit/type';
-import {convertClassQueryToMongo} from './mapping';
-import {FilterQuery} from './query.model';
-import {MongoClient} from './client/client';
-import {InsertCommand} from './client/command/insert';
-import {UpdateCommand} from './client/command/update';
-import {DeleteCommand} from './client/command/delete';
-import {mongoSerializer} from './mongo-serializer';
-import {FindAndModifyCommand} from './client/command/find-and-modify';
-import {empty} from '@deepkit/core';
-import {FindCommand} from './client/command/find';
+import { DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState } from '@deepkit/orm';
+import { ClassSchema } from '@deepkit/type';
+import { convertClassQueryToMongo } from './mapping';
+import { FilterQuery } from './query.model';
+import { MongoClient } from './client/client';
+import { InsertCommand } from './client/command/insert';
+import { UpdateCommand } from './client/command/update';
+import { DeleteCommand } from './client/command/delete';
+import { mongoSerializer } from './mongo-serializer';
+import { FindAndModifyCommand } from './client/command/find-and-modify';
+import { empty } from '@deepkit/core';
+import { FindCommand } from './client/command/find';
 import bson from 'bson';
 
 export class MongoPersistence extends DatabasePersistence {
@@ -52,13 +52,13 @@ export class MongoPersistence extends DatabasePersistence {
                 const converted = scopeSerializer.partialSerialize(getInstanceState(item).getLastKnownPK());
                 ids.push(converted[pkName]);
             }
-            await this.client.execute(new DeleteCommand(classSchema, {[pkName]: {$in: ids}}));
+            await this.client.execute(new DeleteCommand(classSchema, { [pkName]: { $in: ids } }));
         } else {
             const fields: any[] = [];
             for (const item of items) {
                 fields.push(scopeSerializer.partialSerialize(getInstanceState(item).getLastKnownPK()));
             }
-            await this.client.execute(new DeleteCommand(classSchema, {$or: fields}));
+            await this.client.execute(new DeleteCommand(classSchema, { $or: fields }));
         }
     }
 
@@ -72,8 +72,8 @@ export class MongoPersistence extends DatabasePersistence {
         if (autoIncrement) {
             const command = new FindAndModifyCommand(
                 this.ormSequences,
-                {name: classSchema.getCollectionName(),},
-                {$inc: {value: items.length}}
+                { name: classSchema.getCollectionName(), },
+                { $inc: { value: items.length } }
             );
             command.returnNew = true;
             command.fields = ['value'];
@@ -117,7 +117,7 @@ export class MongoPersistence extends DatabasePersistence {
                     if (!changeSet.changes.$inc.hasOwnProperty(i)) continue;
 
                     if (!assignReturning[id]) {
-                        assignReturning[id] = {item: changeSet.item, names: []};
+                        assignReturning[id] = { item: changeSet.item, names: [] };
                     }
                     projection[i] = 1;
 
@@ -139,7 +139,7 @@ export class MongoPersistence extends DatabasePersistence {
         const res = await this.client.execute(new UpdateCommand(classSchema, updates));
 
         if (res > 0 && hasAtomic) {
-            const returnings = await this.client.execute(new FindCommand(classSchema, {[primaryKeyName]: {$in: pks}}, projection));
+            const returnings = await this.client.execute(new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection));
             for (const returning of returnings) {
                 const r = assignReturning[returning[primaryKeyName]];
 

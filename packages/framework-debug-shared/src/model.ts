@@ -1,4 +1,4 @@
-import {entity, t} from '@deepkit/type';
+import { entity, t } from '@deepkit/type';
 
 @entity.name('debugRequest')
 export class DebugRequest {
@@ -8,7 +8,7 @@ export class DebugRequest {
     @t.optional statusCode?: number;
     @t logs: number = 0;
 
-    @t.map(t.number) times: {[name: string]: number} = {};
+    @t.map(t.number) times: { [name: string]: number } = {};
 
     constructor(
         @t public method: string,

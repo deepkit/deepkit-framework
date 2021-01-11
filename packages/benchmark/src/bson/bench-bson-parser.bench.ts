@@ -19,10 +19,10 @@
 import 'reflect-metadata';
 import bson from 'bson';
 import BSON from 'bson-ext';
-import {BenchSuite} from '../bench';
-import {t} from '@deepkit/type';
-import {getBSONDecoder, ParserV3, parseObject, ParserV2, BaseParser} from '@deepkit/bson';
-const {deserialize, ObjectId, serialize} = bson;
+import { BenchSuite } from '../bench';
+import { t } from '@deepkit/type';
+import { getBSONDecoder, ParserV3, parseObject, ParserV2, BaseParser } from '@deepkit/bson';
+const { deserialize, ObjectId, serialize } = bson;
 // buildStringIndex(Buffer.from('abcdefgh!'));
 // process.exit(1);
 
@@ -77,8 +77,8 @@ export async function main() {
         }
     });
 
-    const bson = serialize({cursor: {firstBatch: items}});
-    const json = JSON.stringify({cursor: {firstBatch: items}});
+    const bson = serialize({ cursor: { firstBatch: items } });
+    const json = JSON.stringify({ cursor: { firstBatch: items } });
     const suite = new BenchSuite(`BSON Parser array with ${count} objects`);
 
     const parser = getBSONDecoder(schema);

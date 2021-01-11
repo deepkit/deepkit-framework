@@ -1,7 +1,7 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jsonSerializer, t} from '../index';
-import {Plan, SimpleModel, SubModel} from './entities';
+import { getClassSchema, jsonSerializer, t } from '../index';
+import { Plan, SimpleModel, SubModel } from './entities';
 
 test('test simple model', () => {
     const instance = new SimpleModel('myName');
@@ -57,17 +57,17 @@ test('nullable', () => {
     const item = new s.classType;
     item.username = 'asd';
 
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd'});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd' });
 
     item.password = null;
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.optional = undefined;
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.optional = 'yes';
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: null, optional: 'yes'});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null, optional: 'yes' });
 
     item.password = 'secret';
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({username: 'asd', password: 'secret', optional: 'yes'});
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: 'secret', optional: 'yes' });
 });

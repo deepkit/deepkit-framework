@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck} from './model';
-import {isExcluded} from './mapper';
-import {ClassType, toFastProperties} from '@deepkit/core';
-import {getDataConverterJS, reserveVariable} from './serializer-compiler';
-import {Serializer} from './serializer';
+import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck } from './model';
+import { isExcluded } from './mapper';
+import { ClassType, toFastProperties } from '@deepkit/core';
+import { getDataConverterJS, reserveVariable } from './serializer-compiler';
+import { Serializer } from './serializer';
 
 /**
  * This is used withing JIT functions.
@@ -370,7 +370,7 @@ export class JitStack {
     getOrCreate(schema: ClassSchema, create: () => Function): { fn: Function | undefined } {
         const stack = this.getStack();
         if (stack.has(schema)) return stack.get(schema)!;
-        const entry = {fn: create()};
+        const entry = { fn: create() };
         stack.set(schema, entry);
         return entry;
     }
@@ -383,7 +383,7 @@ export class JitStack {
         if (this.getStack().has(schema)) throw new Error('Circular jit building detected: ' + schema.getClassName());
         this.schemaStack.push(schema);
 
-        const entry: { fn: Function | undefined } = {fn: undefined};
+        const entry: { fn: Function | undefined } = { fn: undefined };
         this.getStack().set(schema, entry);
         return (fn: Function) => {
             this.schemaStack.pop();

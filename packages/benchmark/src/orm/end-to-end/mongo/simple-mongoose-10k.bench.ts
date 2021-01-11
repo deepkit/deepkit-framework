@@ -55,7 +55,7 @@ export async function main() {
 
         await Model.deleteMany();
         await bench.runAsyncFix(1, 'insert (lean)', async () => {
-            await Model.insertMany(items, {lean: true});
+            await Model.insertMany(items, { lean: true });
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
@@ -63,15 +63,15 @@ export async function main() {
         });
 
         await bench.runAsyncFix(10, 'fetch (lean)', async () => {
-            await Model.find({}, {}, {lean: true});
+            await Model.find({}, {}, { lean: true });
         });
 
         await bench.runAsyncFix(1, 'update-query', async () => {
-            await Model.updateMany({}, {$inc: {priority: 1}}, {multi: true});
+            await Model.updateMany({}, { $inc: { priority: 1 } }, { multi: true });
         });
 
         await bench.runAsyncFix(1, 'update-query (lean)', async () => {
-            await Model.updateMany({}, {$inc: {priority: 1}}, {multi: true, lean: true});
+            await Model.updateMany({}, { $inc: { priority: 1 } }, { multi: true, lean: true });
         });
 
         await bench.runAsyncFix(1, 'remove-query', async () => {
@@ -79,7 +79,7 @@ export async function main() {
         });
 
         await bench.runAsyncFix(1, 'remove-query (lean)', async () => {
-            await Model.deleteMany({}, {lean: true});
+            await Model.deleteMany({}, { lean: true });
         });
     }
 

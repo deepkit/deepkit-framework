@@ -49,7 +49,7 @@ test('authentication', async () => {
         await expect(client.connect()).rejects.toThrowError('Authentication failed');
         await expect(client.connect()).rejects.toThrowError('Authentication failed');
         await expect(controller.test('asd')).rejects.toThrowError('Authentication failed');
-        
+
         client.token.set('secret');
         await client.connect();
 

@@ -1,9 +1,9 @@
-import {expect, test, beforeAll} from '@jest/globals';
-import {EntityStorage, FS} from '@deepkit/fs';
-import {appModuleForControllers, closeAllCreatedServers, createServerClientPair} from './util';
-import {sleep} from '@deepkit/core';
-import {Buffer} from 'buffer';
-import {arrayBufferTo} from '@deepkit/type';
+import { expect, test, beforeAll } from '@jest/globals';
+import { EntityStorage, FS } from '@deepkit/fs';
+import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util';
+import { sleep } from '@deepkit/core';
+import { Buffer } from 'buffer';
+import { arrayBufferTo } from '@deepkit/type';
 import ws from 'ws';
 import { rpc } from '@deepkit/rpc';
 
@@ -53,12 +53,12 @@ test('test file list', async () => {
         @rpc.action()
         async files() {
             return this.storage.collection(File).filter({
-                path: {$regex: /^test2/}
+                path: { $regex: /^test2/ }
             }).find();
         }
     }
 
-    const {client, close} = await createServerClientPair('test file list', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('test file list', appModuleForControllers([TestController]));
     const test = client.controller<TestController>('test');
     await test.init();
 
@@ -107,7 +107,7 @@ test('test file stream', async () => {
         }
     }
 
-    const {client, close} = await createServerClientPair('test file stream', appModuleForControllers([TestController]));
+    const { client, close } = await createServerClientPair('test file stream', appModuleForControllers([TestController]));
     const test = client.controller<TestController>('test');
     await test.init();
 

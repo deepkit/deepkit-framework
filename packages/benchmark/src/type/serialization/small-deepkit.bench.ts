@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {f, jsonSerializer} from '@deepkit/type';
-import {BenchSuite} from '../../bench';
+import { f, jsonSerializer } from '@deepkit/type';
+import { BenchSuite } from '../../bench';
 
 class Model {
     @f ready?: boolean;

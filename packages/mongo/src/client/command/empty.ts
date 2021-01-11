@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Command} from './command';
+import { Command } from './command';
 
 
 export class EmptyCommand extends Command {

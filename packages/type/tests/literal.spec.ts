@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {jsonSerializer, t, validate} from '../index';
+import { jsonSerializer, t, validate } from '../index';
 
 test('literal', () => {
     const s = t.schema({
@@ -40,9 +40,9 @@ test('literal string', () => {
     }
 
     {
-        const item = jsonSerializer.for(s).deserialize({type: null});
+        const item = jsonSerializer.for(s).deserialize({ type: null });
         expect(item.type).toBe('a');
     }
 
-    validate(s, {type: 'd'});
+    validate(s, { type: 'd' });
 });

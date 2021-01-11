@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {classToPlain, Exclude as ctExclude, plainToClass, Transform, Type} from 'class-transformer';
-import {BenchSuite} from '../../bench';
+import { classToPlain, Exclude as ctExclude, plainToClass, Transform, Type } from 'class-transformer';
+import { BenchSuite } from '../../bench';
 
 export class SubModel {
     label: string;
@@ -65,7 +65,7 @@ export class Model {
     @ctExclude()
     excluded: string = 'default';
 
-    @ctExclude({toPlainOnly: true})
+    @ctExclude({ toPlainOnly: true })
     excludedForPlain: string = 'excludedForPlain';
 }
 
@@ -75,8 +75,8 @@ export async function main() {
         name: 'name',
         type: 2,
         plan: Plan.ENTERPRISE,
-        children: [{label: 'label'}],
-        childrenMap: {'sub': {label: 'label'}},
+        children: [{ label: 'label' }],
+        childrenMap: { 'sub': { label: 'label' } },
         types: ['a', 'b', 'c']
     };
 

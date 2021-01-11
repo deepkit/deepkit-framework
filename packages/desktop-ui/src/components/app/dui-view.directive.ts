@@ -1,5 +1,5 @@
-import {Directive, EmbeddedViewRef, Injectable, Input, OnDestroy, TemplateRef, ViewContainerRef} from "@angular/core";
-import {detectChangesNextFrame, scheduleWindowResizeEvent} from "./utils";
+import { Directive, EmbeddedViewRef, Injectable, Input, OnDestroy, TemplateRef, ViewContainerRef } from "@angular/core";
+import { detectChangesNextFrame, scheduleWindowResizeEvent } from "./utils";
 
 let i = 0;
 
@@ -18,7 +18,7 @@ export class ViewState {
 
 @Directive({
     selector: '[duiView]',
-    providers: [{provide: ViewState, useClass: ViewState}]
+    providers: [{ provide: ViewState, useClass: ViewState }]
 })
 export class ViewDirective implements OnDestroy {
     protected view?: EmbeddedViewRef<any>;

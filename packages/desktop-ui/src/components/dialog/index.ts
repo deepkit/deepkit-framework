@@ -1,5 +1,5 @@
-import {NgModule} from "@angular/core";
-import {DuiWindowModule} from "../window";
+import { NgModule } from "@angular/core";
+import { DuiWindowModule } from "../window";
 import {
     CloseDialogDirective,
     DialogActionsComponent,
@@ -8,14 +8,14 @@ import {
     DialogErrorComponent,
     DialogWrapperComponent,
 } from "./dialog.component";
-import {OverlayModule} from "@angular/cdk/overlay";
-import {CommonModule} from "@angular/common";
-import {DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt} from "./dialog";
-import {DuiButtonModule} from "../button";
-import {DuiCoreModule} from "../core";
-import {DuiInputModule} from "../input";
-import {FormsModule} from "@angular/forms";
-import {DuiDialogProgress} from "./progress-dialog.component";
+import { OverlayModule } from "@angular/cdk/overlay";
+import { CommonModule } from "@angular/common";
+import { DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt } from "./dialog";
+import { DuiButtonModule } from "../button";
+import { DuiCoreModule } from "../core";
+import { DuiInputModule } from "../input";
+import { FormsModule } from "@angular/forms";
+import { DuiDialogProgress } from "./progress-dialog.component";
 
 export * from "./dialog.component";
 export * from "./dialog";

@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '@deepkit/orm';
-import {BenchSuite} from '../bench';
+import { getClassSchema, jsonSerializer, t } from '@deepkit/type';
+import { getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '@deepkit/orm';
+import { BenchSuite } from '../bench';
 
 class Image {
     @t title: string = '';
@@ -41,7 +41,7 @@ export async function main() {
 
     const schema = getClassSchema(User);
 
-    const item = {id: 22, title: 'Peter', image: new Image(3)};
+    const item = { id: 22, title: 'Peter', image: new Image(3) };
 
     suite.add('primaryKeyExtractor-getter', () => {
         getPrimaryKeyExtractor(schema);

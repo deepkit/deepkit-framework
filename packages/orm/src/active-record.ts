@@ -36,7 +36,7 @@ export function isActiveRecordType(entity: any): entity is ActiveRecordType {
 }
 
 export class ActiveRecord {
-    constructor(...args: any[]) {}
+    constructor(...args: any[]) { }
 
     public static getDatabase(): Database<any> {
         const database = getClassSchema(this).data['orm.database'] as Database<any> | undefined;

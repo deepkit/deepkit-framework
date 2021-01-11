@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BaseResponse, Command} from './command';
-import {ClassSchema, getClassSchema, t} from '@deepkit/type';
-import {ClassType} from '@deepkit/core';
+import { BaseResponse, Command } from './command';
+import { ClassSchema, getClassSchema, t } from '@deepkit/type';
+import { ClassType } from '@deepkit/core';
 
 class UpdateResponse extends t.extendClass(BaseResponse, {
     n: t.number,
@@ -39,7 +39,7 @@ const updateSchema = t.schema({
 export class UpdateCommand<T extends ClassSchema | ClassType> extends Command {
     constructor(
         public classSchema: T,
-        public updates: {q: any, u: any, multi: boolean}[] = [],
+        public updates: { q: any, u: any, multi: boolean }[] = [],
     ) {
         super();
     }

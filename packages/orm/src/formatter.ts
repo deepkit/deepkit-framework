@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getGlobalStore, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol} from '@deepkit/type';
-import {DatabaseQueryModel} from './query';
-import {ClassType} from '@deepkit/core';
-import {getInstanceState, IdentityMap, PKHash} from './identity-map';
-import {getPrimaryKeyHashGenerator} from './converter';
-import {createReferenceClass, getReference} from './reference';
+import { ClassSchema, getGlobalStore, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
+import { DatabaseQueryModel } from './query';
+import { ClassType } from '@deepkit/core';
+import { getInstanceState, IdentityMap, PKHash } from './identity-map';
+import { getPrimaryKeyHashGenerator } from './converter';
+import { createReferenceClass, getReference } from './reference';
 
 const sessionHydratorSymbol = Symbol('sessionHydratorSymbol');
 
@@ -145,7 +145,7 @@ export class Formatter {
 
         //note: foreign keys only support currently a single foreign key ...
         const foreignPrimaryFields = foreignSchema.getPrimaryFields();
-        const foreignPrimaryKey = {[foreignPrimaryFields[0].name]: dbRecord[fkName]};
+        const foreignPrimaryKey = { [foreignPrimaryFields[0].name]: dbRecord[fkName] };
         const foreignPrimaryKeyAsClass = this.serializer.for(classSchema).partialDeserialize(foreignPrimaryKey);
 
         const ref = getReference(

@@ -20,12 +20,12 @@ import {
     ViewChild,
     ViewContainerRef
 } from "@angular/core";
-import {Overlay, OverlayRef} from "@angular/cdk/overlay";
-import {ComponentPortal} from "@angular/cdk/portal";
-import {WindowRegistry} from "../window/window-state";
-import {WindowComponent} from "../window/window.component";
-import {RenderComponentDirective} from "../core/render-component.directive";
-import {IN_DIALOG} from "../app/token";
+import { Overlay, OverlayRef } from "@angular/cdk/overlay";
+import { ComponentPortal } from "@angular/cdk/portal";
+import { WindowRegistry } from "../window/window-state";
+import { WindowComponent } from "../window/window.component";
+import { RenderComponentDirective } from "../core/render-component.directive";
+import { IN_DIALOG } from "../app/token";
 
 @Component({
     template: `
@@ -65,7 +65,7 @@ export class DialogWrapperComponent {
     container?: TemplateRef<any> | undefined;
     content?: TemplateRef<any> | undefined;
 
-    @ViewChild(RenderComponentDirective, {static: false}) renderComponentDirective?: RenderComponentDirective;
+    @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
     constructor(
         protected cd: ChangeDetectorRef,
@@ -118,7 +118,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     @Output() closed = new EventEmitter<any>();
     @Output() open = new EventEmitter<any>();
 
-    @ViewChild('template', {static: true}) template?: TemplateRef<any>;
+    @ViewChild('template', { static: true }) template?: TemplateRef<any>;
 
     actions?: TemplateRef<any> | undefined;
     container?: TemplateRef<any> | undefined;
@@ -225,9 +225,9 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         const injector = Injector.create({
             parent: this.injector,
             providers: [
-                {provide: DialogComponent, useValue: this},
-                {provide: WindowComponent, useValue: window},
-                {provide: IN_DIALOG, useValue: true},
+                { provide: DialogComponent, useValue: this },
+                { provide: WindowComponent, useValue: window },
+                { provide: IN_DIALOG, useValue: true },
             ],
         });
 
@@ -304,7 +304,7 @@ export class DialogDirective {
     template: '<ng-template #template><ng-content></ng-content></ng-template>'
 })
 export class DialogActionsComponent implements AfterViewInit, OnDestroy {
-    @ViewChild('template', {static: true}) template!: TemplateRef<any>;
+    @ViewChild('template', { static: true }) template!: TemplateRef<any>;
 
     constructor(protected dialog: DialogComponent) {
     }

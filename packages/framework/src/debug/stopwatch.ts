@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import {performance} from 'perf_hooks';
+import { performance } from 'perf_hooks';
 
 export class Stopwatch {
     public times: { [name: string]: { stack: number[], time: number } } = {};
@@ -24,7 +24,7 @@ export class Stopwatch {
         if (this.times[name]) {
             this.times[name].stack.push(performance.now());
         }
-        this.times[name] = {stack: [performance.now()], time: 0};
+        this.times[name] = { stack: [performance.now()], time: 0 };
     }
 
     public end(name: string) {

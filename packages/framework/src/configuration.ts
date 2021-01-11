@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {join} from 'path';
-import {existsSync, readFileSync} from 'fs';
+import { join } from 'path';
+import { existsSync, readFileSync } from 'fs';
 
 class ConfigOptionNotFound extends Error {
 }

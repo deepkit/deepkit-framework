@@ -1,4 +1,4 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import pg from 'pg';
 
 test('count', async () => {
@@ -10,7 +10,7 @@ test('count', async () => {
     pg.types.setTypeParser(1700, parseFloat);
     pg.types.setTypeParser(20, BigInt);
 
-    (BigInt.prototype as any).toJSON = function() {
+    (BigInt.prototype as any).toJSON = function () {
         return this.toString();
     };
 

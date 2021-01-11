@@ -1,5 +1,5 @@
-import {NgModule} from "@angular/core";
-import {RenderComponentDirective} from "./render-component.directive";
+import { NgModule } from "@angular/core";
+import { RenderComponentDirective } from "./render-component.directive";
 
 export * from './render-component.directive'
 

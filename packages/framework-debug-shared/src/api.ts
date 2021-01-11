@@ -1,5 +1,5 @@
-import {entity, PropertySchema, PropertySchemaSerialized, t} from '@deepkit/type';
-import {Collection, ControllerSymbol} from '@deepkit/rpc';
+import { entity, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
+import { Collection, ControllerSymbol } from '@deepkit/rpc';
 import { DebugRequest } from './model';
 
 export class ConfigOption {
@@ -13,7 +13,7 @@ export class ConfigOption {
 @entity.name('debug/workflow')
 export class Workflow {
     @t.array(t.string) places!: string[];
-    @t.array(t.schema({from: t.string, to: t.string, label: t.string.optional})) transitions!: { from: string, to: string, label?: string; }[];
+    @t.array(t.schema({ from: t.string, to: t.string, label: t.string.optional })) transitions!: { from: string, to: string, label?: string; }[];
 }
 
 @entity.name('debug/database/entity')

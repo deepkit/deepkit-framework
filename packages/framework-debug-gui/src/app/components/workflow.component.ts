@@ -1,6 +1,6 @@
-import {AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Input, OnChanges, QueryList, SimpleChanges, TemplateRef, ViewChild} from '@angular/core';
-import {Workflow} from '@deepkit/framework-debug-shared';
-import {graphlib, layout, Node} from 'dagre';
+import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Input, OnChanges, QueryList, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
+import { Workflow } from '@deepkit/framework-debug-shared';
+import { graphlib, layout, Node } from 'dagre';
 
 @Component({
   selector: 'app-workflow-card',
@@ -14,7 +14,7 @@ export class WorkflowCardComponent {
 
   @Input('class') class!: string;
 
-  @ViewChild('templateRef', {static: false}) template!: TemplateRef<any>;
+  @ViewChild('templateRef', { static: false }) template!: TemplateRef<any>;
 }
 
 @Component({
@@ -90,7 +90,7 @@ export class WorkflowComponent implements OnChanges, AfterViewInit {
   protected loadGraph() {
     if (!this.workflow) return;
 
-    const g = new graphlib.Graph({directed: true, compound: true, multigraph: false});
+    const g = new graphlib.Graph({ directed: true, compound: true, multigraph: false });
     g.setGraph({
       nodesep: 10,
       ranksep: 25,
@@ -98,14 +98,14 @@ export class WorkflowComponent implements OnChanges, AfterViewInit {
       // ranker: 'longest-path'
     });
     g.setDefaultEdgeLabel(() => {
-      return {labelpos: 'c', labeloffset: 0};
+      return { labelpos: 'c', labeloffset: 0 };
     });
 
     const width = this.nodeWidth;
     const height = this.nodeHeight;
 
     for (const node of this.workflow.places) {
-      g.setNode(node, {label: node, width, height});
+      g.setNode(node, { label: node, width, height });
     }
 
     for (const transition of this.workflow.transitions) {

@@ -1,7 +1,7 @@
-import {entity, MultiIndex, t} from '@deepkit/type';
-import {ActiveRecord} from '@deepkit/orm';
-import {Book} from './book';
-import {Tag} from './tag';
+import { entity, MultiIndex, t } from '@deepkit/type';
+import { ActiveRecord } from '@deepkit/orm';
+import { Book } from './book';
+import { Tag } from './tag';
 
 @entity.name('book-tag')
 @MultiIndex(['book', 'tag'])

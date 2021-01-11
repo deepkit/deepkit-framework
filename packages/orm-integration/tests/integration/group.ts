@@ -1,4 +1,4 @@
-import {entity, t} from '@deepkit/type';
+import { entity, t } from '@deepkit/type';
 
 @entity.name('group')
 export class Group {

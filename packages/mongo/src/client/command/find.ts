@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BaseResponse, Command} from './command';
-import {ClassSchema, ExtractClassType, getClassSchema, t} from '@deepkit/type';
-import {ClassType, toFastProperties} from '@deepkit/core';
-import {DEEP_SORT} from '../../query.model';
+import { BaseResponse, Command } from './command';
+import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
+import { ClassType, toFastProperties } from '@deepkit/core';
+import { DEEP_SORT } from '../../query.model';
 
 const findSchema = t.schema({
     find: t.string,
@@ -36,8 +36,8 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
 
     constructor(
         public classSchema: T,
-        public filter: {[name: string]: any} = {},
-        public projection?: {[name: string]: 1 | 0},
+        public filter: { [name: string]: any } = {},
+        public projection?: { [name: string]: 1 | 0 },
         public sort?: DEEP_SORT<any>,
         public limit: number = 0,
         public skip: number = 0,

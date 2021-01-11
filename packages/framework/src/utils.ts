@@ -17,7 +17,7 @@
  */
 
 import sift from 'sift';
-import {FilterQuery} from '@deepkit/rpc';
+import { FilterQuery } from '@deepkit/rpc';
 
 export function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: FilterQuery<T>): boolean {
     //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."

@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {addHook} from 'pirates';
-import {CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, UnaryExpression} from 'estree';
+import { addHook } from 'pirates';
+import { CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, UnaryExpression } from 'estree';
 import abstractSyntaxTree from 'abstract-syntax-tree';
-import {inDebugMode} from '../utils';
+import { inDebugMode } from '../utils';
 
-const {parse, generate, replace} = abstractSyntaxTree;
+const { parse, generate, replace } = abstractSyntaxTree;
 
 export function transform(code: string, filename: string) {
     if (inDebugMode()) return code;
@@ -30,7 +30,7 @@ export function transform(code: string, filename: string) {
     return optimized;
 }
 
-addHook(transform, {exts: ['.js', '.tsx']});
+addHook(transform, { exts: ['.js', '.tsx'] });
 
 class NotSerializable {
 }
@@ -60,7 +60,7 @@ function optimizeAttributes(node: ObjectExpression): any {
         value.push(keyName + '="' + serializeValue(p.value) + '"');
     }
 
-    return {type: 'Literal', value: value.join(' ')};
+    return { type: 'Literal', value: value.join(' ') };
 }
 
 /**
@@ -135,8 +135,8 @@ function optimizeNode(node: Expression): any {
         return {
             type: 'CallExpression', callee: {
                 type: 'MemberExpression',
-                object: {type: 'Identifier', name: '_jsx'}, computed: false, property: {type: 'Identifier', name: 'html'}
-            }, arguments: [{type: 'Literal', value: value}]
+                object: { type: 'Identifier', name: '_jsx' }, computed: false, property: { type: 'Identifier', name: 'html' }
+            }, arguments: [{ type: 'Literal', value: value }]
         };
     }
 
@@ -191,7 +191,7 @@ function convertNodeToCreateElement(node: Expression): Expression {
     //rewrite to _jsx.createElement
     node.callee = {
         type: 'MemberExpression',
-        object: {type: 'Identifier', name: '_jsx'}, computed: false, property: {type: 'Identifier', name: 'createElement'}
+        object: { type: 'Identifier', name: '_jsx' }, computed: false, property: { type: 'Identifier', name: 'createElement' }
     } as MemberExpression;
 
     node.arguments.splice(2); //remove void 0
@@ -221,7 +221,7 @@ function convertNodeToCreateElement(node: Expression): Expression {
             objectAssignsArgs.splice(objectAssignsArgs.length - 1, 1);
         } else {
             if (objectAssignsArgs[0].type === 'ObjectExpression') {
-                node.arguments[1] = {type: 'ObjectExpression', properties: objectAssignsArgs[0].properties};
+                node.arguments[1] = { type: 'ObjectExpression', properties: objectAssignsArgs[0].properties };
             }
         }
     } else if (node.arguments[1].type === 'ObjectExpression') {

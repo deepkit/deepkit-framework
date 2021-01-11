@@ -1,4 +1,4 @@
-import {html} from '../src/template/template';
+import { html } from '../src/template/template';
 
 export function simpleOnlyAttributes() {
     return <div id="123"></div>
@@ -25,7 +25,7 @@ export function simple4() {
 }
 
 export function spread() {
-    const props = {foo: true, bar: false};
+    const props = { foo: true, bar: false };
     return <div {...props} key="myKey"><b>TestBold</b>Test</div>
 }
 

@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType} from '@deepkit/core';
-import {GenericQuery} from './query';
-import {getDatabaseSessionHydrator, isHydrated} from './formatter';
-import {ClassSchema, getClassSchema, PrimaryKeyFields} from '@deepkit/type';
-import {DatabaseSession} from './database-session';
-import {isActiveRecordType} from './active-record';
-import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
-import {ItemChanges} from './changes';
-import {Entity} from './type';
-import {VirtualForeignKeyConstraint} from './virtual-foreign-key-constraint';
+import { ClassType } from '@deepkit/core';
+import { GenericQuery } from './query';
+import { getDatabaseSessionHydrator, isHydrated } from './formatter';
+import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
+import { DatabaseSession } from './database-session';
+import { isActiveRecordType } from './active-record';
+import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
+import { ItemChanges } from './changes';
+import { Entity } from './type';
+import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { getNormalizedPrimaryKey } from './identity-map';
 import { getReference } from './reference';
 

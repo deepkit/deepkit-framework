@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {SQLDatabaseAdapter, SqlMigrationHandler} from '@deepkit/sql';
-import {indent} from '@deepkit/core';
-import {cli, flag} from '../../command';
-import {Logger} from '../../logger';
-import {MigrationProvider} from '../migration-provider';
+import { SQLDatabaseAdapter, SqlMigrationHandler } from '@deepkit/sql';
+import { indent } from '@deepkit/core';
+import { cli, flag } from '../../command';
+import { Logger } from '../../logger';
+import { MigrationProvider } from '../migration-provider';
 
 @cli.controller('migration:down', {
     description: 'Executes down migration, reverting old migration files.'

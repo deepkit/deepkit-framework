@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema} from './model';
-import {ClassType, getClassName} from '@deepkit/core';
+import { ClassSchema, getClassSchema } from './model';
+import { ClassType, getClassName } from '@deepkit/core';
 
 /**
  * @hidden

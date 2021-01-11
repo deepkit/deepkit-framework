@@ -17,13 +17,13 @@
  */
 
 import 'reflect-metadata';
-import {injectable, Injector, InjectorContext} from '@deepkit/framework';
-import {BenchSuite} from '../bench';
+import { injectable, Injector, InjectorContext } from '@deepkit/framework';
+import { BenchSuite } from '../bench';
 
 export async function main() {
-    class Database {}
+    class Database { }
 
-    class Database2 {}
+    class Database2 { }
 
     @injectable()
     class MyService {

@@ -1,4 +1,4 @@
-import {Component, HostBinding, Input, OnChanges, OnInit} from '@angular/core';
+import { Component, HostBinding, Input, OnChanges, OnInit } from '@angular/core';
 
 @Component({
     selector: 'dui-icon',

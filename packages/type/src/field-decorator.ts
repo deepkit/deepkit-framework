@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType} from '@deepkit/core';
-import {validators} from './validation-decorator';
-import {BackReferenceOptions, ClassSchema, ForwardRefFn, IndexOptions, PropertySchema, PropertyValidator, ReferenceActions} from './model';
-import {BackReference, PrimaryKey, Reference} from './types';
-import {FlattenIfArray} from './utils';
-import {PlainSchemaProps} from './decorators';
+import { ClassType } from '@deepkit/core';
+import { validators } from './validation-decorator';
+import { BackReferenceOptions, ClassSchema, ForwardRefFn, IndexOptions, PropertySchema, PropertyValidator, ReferenceActions } from './model';
+import { BackReference, PrimaryKey, Reference } from './types';
+import { FlattenIfArray } from './utils';
+import { PlainSchemaProps } from './decorators';
 
 /**
  * @throws PropertyValidatorError when validation invalid

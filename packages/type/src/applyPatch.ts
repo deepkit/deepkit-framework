@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, getClassTypeFromInstance, isClassInstance} from './model';
-import {isArray, isObject} from '@deepkit/core';
+import { getClassSchema, getClassTypeFromInstance, isClassInstance } from './model';
+import { isArray, isObject } from '@deepkit/core';
 
 type Mutable<T> = { -readonly [P in keyof T]: T[P] extends Function ? T[P] : Mutable<T[P]> };
 
@@ -31,7 +31,7 @@ export function shallowCloneObject<T extends object>(item: T): T {
         }
         return value;
     } else {
-        return {...item};
+        return { ...item };
     }
 }
 

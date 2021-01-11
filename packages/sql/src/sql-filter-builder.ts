@@ -34,7 +34,7 @@ export class SQLFilterBuilder {
     ) {
     }
 
-    createPlaceholder(): string { 
+    createPlaceholder(): string {
         return '?'
     }
 
@@ -98,7 +98,7 @@ export class SQLFilterBuilder {
             } else {
                 rvalue = this.createPlaceholder();
                 const property = resolvePropertySchema(this.schema, fieldName);
-                
+
                 if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
                     value = JSON.stringify(value);
                 }

@@ -1,12 +1,12 @@
-import {expect, test} from '@jest/globals';
-import {BehaviorSubject, Subject, Subscription} from 'rxjs';
-import {nextValue, Subscriptions} from '../src/rxjs';
+import { expect, test } from '@jest/globals';
+import { BehaviorSubject, Subject, Subscription } from 'rxjs';
+import { nextValue, Subscriptions } from '../src/rxjs';
 
 test('nextValue subject', async () => {
     const subject = new Subject();
 
     setTimeout(() => {
-       subject.next(5);
+        subject.next(5);
     }, 10);
 
     const next = await nextValue(subject);
@@ -17,7 +17,7 @@ test('nextValue behaviorsubject', async () => {
     const subject = new BehaviorSubject(0);
 
     setTimeout(() => {
-       subject.next(5);
+        subject.next(5);
     }, 10);
 
     const next = await nextValue(subject);
@@ -28,8 +28,8 @@ test('nextValue behaviorsubject', async () => {
 test('Subscriptions unsubscribe', async () => {
     const subscriptions = new Subscriptions();
 
-    const sub1 = subscriptions.add = new Subscription(() => {});
-    const sub2 = subscriptions.add = new Subscription(() => {});
+    const sub1 = subscriptions.add = new Subscription(() => { });
+    const sub2 = subscriptions.add = new Subscription(() => { });
 
     expect(subscriptions.list.length).toBe(2);
     expect(sub1.closed).toBe(false);
@@ -45,8 +45,8 @@ test('Subscriptions unsubscribe', async () => {
 test('Subscriptions auto remove', async () => {
     const subscriptions = new Subscriptions();
 
-    const sub1 = subscriptions.add = new Subscription(() => {});
-    const sub2 = subscriptions.add = new Subscription(() => {});
+    const sub1 = subscriptions.add = new Subscription(() => { });
+    const sub2 = subscriptions.add = new Subscription(() => { });
 
     expect(subscriptions.list.length).toBe(2);
     expect(sub1.closed).toBe(false);

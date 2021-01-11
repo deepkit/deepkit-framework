@@ -12,13 +12,13 @@ import {
     SkipSelf,
     ViewContainerRef
 } from "@angular/core";
-import {WindowContentComponent} from "./window-content.component";
-import {WindowRegistry, WindowState} from "./window-state";
-import {DOCUMENT} from "@angular/common";
-import {WindowMenuState} from "./window-menu";
-import {WindowHeaderComponent} from "./window-header.component";
-import {ELECTRON_WINDOW, IN_DIALOG} from "../app/token";
-import {DuiApp} from "../app";
+import { WindowContentComponent } from "./window-content.component";
+import { WindowRegistry, WindowState } from "./window-state";
+import { DOCUMENT } from "@angular/common";
+import { WindowMenuState } from "./window-menu";
+import { WindowHeaderComponent } from "./window-header.component";
+import { ELECTRON_WINDOW, IN_DIALOG } from "../app/token";
+import { DuiApp } from "../app";
 
 /**
  * This is only for documentation purposes.
@@ -51,8 +51,8 @@ export class WindowFrameComponent {
 export class WindowComponent implements OnChanges, OnDestroy {
     public id = 0;
 
-    @ContentChild(WindowContentComponent, {static: false}) public content?: WindowContentComponent;
-    @ContentChild(WindowHeaderComponent, {static: false}) public header?: WindowHeaderComponent;
+    @ContentChild(WindowContentComponent, { static: false }) public content?: WindowContentComponent;
+    @ContentChild(WindowHeaderComponent, { static: false }) public header?: WindowHeaderComponent;
 
     @Input() closable = true;
     @Input() maximizable = true;

@@ -1,7 +1,7 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {Entity, jsonSerializer, t, uuid} from '../index';
-import {Channel, Job} from './big-entity';
+import { Entity, jsonSerializer, t, uuid } from '../index';
+import { Channel, Job } from './big-entity';
 
 @Entity('jobModelGraphSnapshotLayer')
 class JobModelGraphSnapshotLayer {

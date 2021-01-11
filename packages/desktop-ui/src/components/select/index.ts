@@ -1,9 +1,9 @@
-import {NgModule} from "@angular/core";
-import {DynamicOptionDirective, OptionDirective, SelectboxComponent} from "./selectbox.component";
-import {FormsModule} from "@angular/forms";
-import {CommonModule} from "@angular/common";
-import {DuiIconModule} from "../icon";
-import {DuiButtonModule} from "../button";
+import { NgModule } from "@angular/core";
+import { DynamicOptionDirective, OptionDirective, SelectboxComponent } from "./selectbox.component";
+import { FormsModule } from "@angular/forms";
+import { CommonModule } from "@angular/common";
+import { DuiIconModule } from "../icon";
+import { DuiButtonModule } from "../button";
 
 export * from "./selectbox.component";
 

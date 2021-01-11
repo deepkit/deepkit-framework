@@ -107,7 +107,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
         return this.limit !== undefined || this.skip !== undefined;
     }
 
-    setParameters(parameters: {[name: string]: any}) {
+    setParameters(parameters: { [name: string]: any }) {
         for (const [i, v] of Object.entries(parameters)) {
             this.parameters[i] = v;
         }
@@ -416,7 +416,7 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
  */
 export class GenericQuery<T extends Entity> extends BaseQuery<T> {
     item!: T;
-    
+
     constructor(
         classSchema: ClassSchema<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,

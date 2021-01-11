@@ -16,9 +16,9 @@ import {
     SimpleChanges,
     SkipSelf
 } from '@angular/core';
-import {NavigationEnd, Router, UrlTree} from '@angular/router';
-import {ngValueAccessor, ValueAccessorBase} from "../../core/form";
-import {Subscription} from "rxjs";
+import { NavigationEnd, Router, UrlTree } from '@angular/router';
+import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
+import { Subscription } from "rxjs";
 
 @Component({
     selector: 'dui-list-title',
@@ -55,7 +55,7 @@ export class ListComponent extends ValueAccessorBase<any> {
 
     @HostBinding('tabindex') tabIndex: number = 1;
 
-    @ContentChildren(forwardRef(() => ListItemComponent), {descendants: true}) list!: QueryList<ListItemComponent>;
+    @ContentChildren(forwardRef(() => ListItemComponent), { descendants: true }) list!: QueryList<ListItemComponent>;
 
     constructor(
         protected injector: Injector,

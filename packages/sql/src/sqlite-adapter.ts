@@ -28,12 +28,12 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from './sql-adapter';
-import {Changes, DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
-import {SQLitePlatform} from './platform/sqlite-platform';
-import {ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema} from '@deepkit/type';
-import {ClassType, empty} from '@deepkit/core';
-import {DefaultPlatform} from './platform/default-platform';
-import {SqlBuilder} from './sql-builder';
+import { Changes, DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { SQLitePlatform } from './platform/sqlite-platform';
+import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
+import { ClassType, empty } from '@deepkit/core';
+import { DefaultPlatform } from './platform/default-platform';
+import { SqlBuilder } from './sql-builder';
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected stmt: sqlite3.Statement) {
@@ -159,13 +159,13 @@ export class SQLitePersistence extends SQLPersistence {
                     }
 
                     if (!assignReturning[id]) {
-                        assignReturning[id] = {item: changeSet.item, names: []};
+                        assignReturning[id] = { item: changeSet.item, names: [] };
                     }
 
                     assignReturning[id].names.push(i);
                     setReturning[i] = 1;
 
-                    aggregateSelects[i].push({id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`});
+                    aggregateSelects[i].push({ id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}` });
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
@@ -263,14 +263,14 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const primaryKey = this.classSchema.getPrimaryField();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const sqlBuilder = new SqlBuilder(this.platform);
-        const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
-        
+
         const connection = this.connectionPool.getConnection();
         try {
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d;`);
             await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
-            
+
             const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (SELECT * FROM _tmp_d)`;
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
@@ -292,7 +292,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
-        const aggregateFields: { [name: string]: {converted: (v: any) => any} } = {};
+        const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
         const scopeSerializer = this.platform.serializer.for(this.classSchema);
         const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
@@ -310,14 +310,14 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         }
 
         for (const i of model.returning) {
-            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -327,7 +327,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         }
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const sql = `
               UPDATE 

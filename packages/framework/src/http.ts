@@ -245,7 +245,7 @@ export class JSONResponse {
 export function serveStaticListener(path: string): ClassType {
     @injectable()
     class HttpRequestStaticServingListener {
-        protected serveStatic = serveStatic(path, {index: false});
+        protected serveStatic = serveStatic(path, { index: false });
 
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise(resolve => {
@@ -269,7 +269,7 @@ export function serveStaticListener(path: string): ClassType {
                 stat(localPath, (err, stat) => {
                     if (stat && stat.isFile()) {
                         event.routeFound(
-                            new RouteConfig('angular', 'GET', event.url, {controller: HttpRequestStaticServingListener, methodName: 'serve'}),
+                            new RouteConfig('angular', 'GET', event.url, { controller: HttpRequestStaticServingListener, methodName: 'serve' }),
                             [path, event.request, event.response]
                         );
                     }
@@ -464,8 +464,8 @@ export class HttpKernel {
 
     async handleRequest(req: HttpRequest, res: HttpResponse) {
         const httpInjectorContext = this.injectorContext.createChildScope('http', new MemoryInjector([
-            {provide: HttpRequest, useValue: req},
-            {provide: HttpResponse, useValue: res},
+            { provide: HttpRequest, useValue: req },
+            { provide: HttpResponse, useValue: res },
         ]));
 
         const collector = this.debug ? httpInjectorContext.get(HttpRequestDebugCollector) : undefined;
@@ -476,7 +476,7 @@ export class HttpKernel {
                 await collector.init();
                 try {
                     collector.stopwatch.start('http');
-                    await Zone.run({collector: collector}, async () => {
+                    await Zone.run({ collector: collector }, async () => {
                         await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
                     });
                     collector.stopwatch.end('http');

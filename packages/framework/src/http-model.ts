@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {IncomingMessage, ServerResponse} from 'http';
+import { IncomingMessage, ServerResponse } from 'http';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {

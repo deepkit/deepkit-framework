@@ -1,6 +1,6 @@
-import {NgModule} from "@angular/core";
-import {CheckboxComponent} from "./checkbox.component";
-import {DuiIconModule} from "../icon";
+import { NgModule } from "@angular/core";
+import { CheckboxComponent } from "./checkbox.component";
+import { DuiIconModule } from "../icon";
 
 export * from './checkbox.component'
 

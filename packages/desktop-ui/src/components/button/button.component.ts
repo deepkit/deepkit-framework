@@ -17,10 +17,10 @@ import {
     Output,
     SkipSelf
 } from "@angular/core";
-import {WindowComponent} from "../window/window.component";
-import {WindowState} from "../window/window-state";
-import {FormComponent} from "../form/form.component";
-import {ngValueAccessor, ValueAccessorBase} from "../../core/form";
+import { WindowComponent } from "../window/window.component";
+import { WindowState } from "../window/window-state";
+import { FormComponent } from "../form/form.component";
+import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
 
 @Component({
     selector: 'dui-button',
@@ -356,7 +356,7 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
                         if (file) {
                             const uint8Array = await readFile(file);
                             if (uint8Array) {
-                                res.push({data: uint8Array, name: file.name});
+                                res.push({ data: uint8Array, name: file.name });
                             }
                         }
                     }
@@ -364,7 +364,7 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
                 } else {
                     const file = files.item(0);
                     if (file) {
-                        this.innerValue = {data: await readFile(file), name: file.name};
+                        this.innerValue = { data: await readFile(file), name: file.name };
                     }
                 }
                 this.duiFilePickerChange.emit(this.innerValue);
@@ -443,7 +443,7 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
                     if (file) {
                         const uint8Array = await readFile(file);
                         if (uint8Array) {
-                            res.push({data: uint8Array, name: file.name});
+                            res.push({ data: uint8Array, name: file.name });
                         }
                     }
                 }
@@ -455,7 +455,7 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
                 if (file) {
                     const uint8Array = await readFile(file);
                     if (uint8Array) {
-                        res.push({data: uint8Array, name: file.name});
+                        res.push({ data: uint8Array, name: file.name });
                     }
                 }
             }

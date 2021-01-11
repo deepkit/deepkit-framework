@@ -15,8 +15,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import {ClassType, isClass} from '@deepkit/core';
-import {isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider} from './injector';
+import { ClassType, isClass } from '@deepkit/core';
+import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider } from './injector';
 
 export interface ProviderBase {
     /**

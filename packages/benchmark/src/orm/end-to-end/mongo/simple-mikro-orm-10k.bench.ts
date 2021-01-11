@@ -17,10 +17,10 @@
  */
 
 import 'reflect-metadata';
-import {Entity as MikroEntity, MikroORM, PrimaryKey, Property, ReflectMetadataProvider} from 'mikro-orm';
-import {BenchSuite} from '../../../bench';
+import { Entity as MikroEntity, MikroORM, PrimaryKey, Property, ReflectMetadataProvider } from 'mikro-orm';
+import { BenchSuite } from '../../../bench';
 
-@MikroEntity({collection: 'mikro'})
+@MikroEntity({ collection: 'mikro' })
 export class MikroModel {
     @PrimaryKey()
     _id!: any;

@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType, isPlainObject} from '@deepkit/core';
-import {ClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol} from './model';
-import {executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry} from './jit-validation-registry';
-import {reserveVariable} from './serializer-compiler';
-import {JitStack, resolvePropertySchema} from './jit';
+import { ClassType, isPlainObject } from '@deepkit/core';
+import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol } from './model';
+import { executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry } from './jit-validation-registry';
+import { reserveVariable } from './serializer-compiler';
+import { JitStack, resolvePropertySchema } from './jit';
 
 const jitFunctions = new WeakMap<ClassSchema, any>();
 const CacheJitPropertyMap = new Map<PropertySchema, any>();

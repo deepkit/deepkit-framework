@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, classSchemaSymbol, getGlobalStore, jsonSerializer, UnpopulatedCheck, unpopulatedSymbol} from '@deepkit/type';
-import {ClassType} from '@deepkit/core';
-import {IdentityMap} from './identity-map';
-import {getPrimaryKeyHashGenerator} from './converter';
+import { ClassSchema, classSchemaSymbol, getGlobalStore, jsonSerializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
+import { ClassType } from '@deepkit/core';
+import { IdentityMap } from './identity-map';
+import { getPrimaryKeyHashGenerator } from './converter';
 
 export function createReferenceClass<T>(
     classSchema: ClassSchema<T>,
@@ -29,7 +29,7 @@ export function createReferenceClass<T>(
     const Reference = class extends type {
     };
 
-    Object.defineProperty(Reference.prototype, classSchemaSymbol, {writable: true, enumerable: false, value: classSchema});
+    Object.defineProperty(Reference.prototype, classSchemaSymbol, { writable: true, enumerable: false, value: classSchema });
 
     Reference.buildId = classSchema.buildId;
 

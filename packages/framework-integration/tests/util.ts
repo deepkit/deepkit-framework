@@ -1,11 +1,11 @@
-import {arrayRemoveItem, ClassType, sleep} from '@deepkit/core';
-import {KernelModule, Application, ApplicationServer, createModule, Module} from '@deepkit/framework';
-import {Observable} from 'rxjs';
-import {createServer} from 'http';
-import {DeepkitClient, RemoteController} from '@deepkit/rpc';
-import {Database} from '@deepkit/orm';
-import {MongoDatabaseAdapter} from '@deepkit/mongo';
-import {performance} from 'perf_hooks';
+import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
+import { KernelModule, Application, ApplicationServer, createModule, Module } from '@deepkit/framework';
+import { Observable } from 'rxjs';
+import { createServer } from 'http';
+import { DeepkitClient, RemoteController } from '@deepkit/rpc';
+import { Database } from '@deepkit/orm';
+import { MongoDatabaseAdapter } from '@deepkit/mongo';
+import { performance } from 'perf_hooks';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -43,10 +43,10 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
     return createModule({
         controllers: controllers,
         providers: [
-            {provide: Database, useClass: database},
+            { provide: Database, useClass: database },
         ],
         imports: [
-            KernelModule.configure({databases: [database]})
+            KernelModule.configure({ databases: [database] })
         ]
     });
 }
@@ -73,10 +73,12 @@ export async function createServerClientPair(
     });
 
     const app = Application.create(
-        AppModule.configure({kernel: {
-            server: server,
-            exchange: {listen: exchangeSocketPath},
-        }})
+        AppModule.configure({
+            kernel: {
+                server: server,
+                exchange: { listen: exchangeSocketPath },
+            }
+        })
     );
 
     const appServer = app.get(ApplicationServer);

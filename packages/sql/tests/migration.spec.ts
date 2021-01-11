@@ -1,28 +1,28 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {t} from '@deepkit/type';
-import {MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLiteDatabaseAdapter, SQLitePlatform} from '../index';
-import {Index} from '../src/schema/table';
-import {schemaMigrationRoundTrip} from './setup';
+import { t } from '@deepkit/type';
+import { MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLiteDatabaseAdapter, SQLitePlatform } from '../index';
+import { Index } from '../src/schema/table';
+import { schemaMigrationRoundTrip } from './setup';
 
 const user = t.schema({
     id: t.number.autoIncrement.primary,
-    username: t.string.index({unique: true}),
+    username: t.string.index({ unique: true }),
     created: t.date,
     deleted: t.boolean,
     logins: t.number,
-}, {name: 'user'});
-user.addIndex(['deleted'], '', {unique: true});
+}, { name: 'user' });
+user.addIndex(['deleted'], '', { unique: true });
 user.addIndex(['deleted', 'created']);
 
 const post = t.schema({
     id: t.number.autoIncrement.primary,
     user: t.type(user).reference(),
     created: t.date,
-    slag: t.string.index({unique: true}),
+    slag: t.string.index({ unique: true }),
     title: t.string,
     content: t.string,
-}, {name: 'post'});
+}, { name: 'post' });
 
 test('migration basic', async () => {
     const [tableUser, tablePost] = new SQLitePlatform().createTables([user, post]);
@@ -54,10 +54,10 @@ describe('migration round trip', () => {
     });
 
     test('mysql', async () => {
-        await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'}));
+        await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' }));
     });
 
     test('postgres', async () => {
-        await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres'}));
+        await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres' }));
     });
 });

@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {PropertyValidatorError} from './jit-validation';
-import {ClassType, eachPair, getClassName, isFunction, isNumber, isPlainObject,} from '@deepkit/core';
+import { PropertyValidatorError } from './jit-validation';
+import { ClassType, eachPair, getClassName, isFunction, isNumber, isPlainObject, } from '@deepkit/core';
 import getParameterNames from 'get-parameter-names';
-import {isArray} from './utils';
-import {ClassDecoratorResult, createClassDecoratorContext} from './decorator-builder';
+import { isArray } from './utils';
+import { ClassDecoratorResult, createClassDecoratorContext } from './decorator-builder';
 import {
     BackReferenceOptions,
     ClassSchema,
@@ -29,9 +29,9 @@ import {
     PropertyValidator,
     ReferenceActions
 } from './model';
-import {PartialField, Types} from './types';
-import {validators} from './validation-decorator';
-import {FieldDecoratorResult, isFieldDecorator, MySQLOptions, PostgresOptions, SqliteOptions, ValidatorFn} from './field-decorator';
+import { PartialField, Types } from './types';
+import { validators } from './validation-decorator';
+import { FieldDecoratorResult, isFieldDecorator, MySQLOptions, PostgresOptions, SqliteOptions, ValidatorFn } from './field-decorator';
 
 export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
 
@@ -41,13 +41,13 @@ export type MergeSchemaAndBase<T extends PlainSchemaProps, BASE extends ClassSch
 
 export type ExtractClassProperty<T> =
     T extends PlainSchemaProps ? ExtractClassDefinition<T> :
-        T extends ClassSchema<infer K> ? K :
-            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T
+    T extends ClassSchema<infer K> ? K :
+    T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T
 
 export type OptionalProps<T> = { [name in keyof T]: undefined extends T[name] ? name : never }[keyof T];
 export type RequiredProps<T> = { [name in keyof T]: undefined extends T[name] ? never : name }[keyof T];
 
-export type MakeUndefinedOptional<T> = { [name in RequiredProps<T>]: T[name]} & { [name in OptionalProps<T>]?: T[name]}
+export type MakeUndefinedOptional<T> = { [name in RequiredProps<T>]: T[name] } & { [name in OptionalProps<T>]?: T[name] }
 
 export type ExtractClassDefinition<T extends PlainSchemaProps> = MakeUndefinedOptional<{ [name in keyof T]: ExtractClassProperty<T[name]> }>;
 
@@ -856,7 +856,7 @@ fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cl
         } else if (prop instanceof ClassSchema) {
             schema.addProperty(name, fRaw.type(prop.classType));
         } else {
-            const subSchema = fRaw.schema(prop, {name});
+            const subSchema = fRaw.schema(prop, { name });
             schema.addProperty(name, fRaw.type(subSchema.classType));
         }
     }
@@ -923,8 +923,8 @@ type ExtractType<T> = T extends ForwardRef<infer K> ? ExtractSimpleType<K> :
 
 type ExtractSimpleType<T> = T extends ClassType<infer K> ? K :
     T extends ClassSchema<infer K> ? K :
-        T extends PlainSchemaProps ? ExtractClassDefinition<T> :
-            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
+    T extends PlainSchemaProps ? ExtractClassDefinition<T> :
+    T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
 
 type StandardEnum<T> = {
     [id: string]: T | string;
@@ -1207,7 +1207,7 @@ function Index(options?: IndexOptions, name?: string) {
             options = Object.assign({}, index.options, options);
         }
 
-        schema.indices.set(name, {fields, options});
+        schema.indices.set(name, { fields, options });
     };
 }
 
@@ -1230,6 +1230,6 @@ export function MultiIndex(fields: string[], options?: IndexOptions, name?: stri
         const classType = (target as any).prototype as ClassType;
         const schema = getOrCreateEntitySchema(classType);
 
-        schema.indices.set(name || fields.join('_'), {fields: fields as string[], options: options || {}});
+        schema.indices.set(name || fields.join('_'), { fields: fields as string[], options: options || {} });
     };
 }

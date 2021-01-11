@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {t} from './decorators';
-import {FieldDecoratorResult} from './field-decorator';
-import {Types} from './types';
-import {ClassSchema, PropertySchemaSerialized} from './model';
+import { t } from './decorators';
+import { FieldDecoratorResult } from './field-decorator';
+import { Types } from './types';
+import { ClassSchema, PropertySchemaSerialized } from './model';
 
 export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schema({
     name: t.string,

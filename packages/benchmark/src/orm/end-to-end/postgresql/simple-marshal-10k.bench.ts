@@ -17,10 +17,10 @@
  */
 
 import 'reflect-metadata';
-import {Entity, t} from '@deepkit/type';
-import {atomicChange, Database} from '@deepkit/orm';
-import {PostgresDatabaseAdapter} from '@deepkit/sql';
-import {BenchSuite} from '../../../bench';
+import { Entity, t } from '@deepkit/type';
+import { atomicChange, Database } from '@deepkit/orm';
+import { PostgresDatabaseAdapter } from '@deepkit/sql';
+import { BenchSuite } from '../../../bench';
 
 @Entity('deepkit')
 export class DeepkitModel {
@@ -40,7 +40,7 @@ export class DeepkitModel {
 
 export async function main() {
     const count = 10_000;
-    const database = new Database(new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres'}));
+    const database = new Database(new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres' }));
     database.registerEntity(DeepkitModel);
     await database.adapter.createTables([...database.entities]);
 

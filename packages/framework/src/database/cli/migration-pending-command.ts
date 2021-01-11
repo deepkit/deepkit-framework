@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {SqlMigrationHandler} from '@deepkit/sql';
-import {cli, flag} from '../../command';
-import {Logger} from '../../logger';
-import {MigrationProvider} from '../migration-provider';
+import { SqlMigrationHandler } from '@deepkit/sql';
+import { cli, flag } from '../../command';
+import { Logger } from '../../logger';
+import { MigrationProvider } from '../migration-provider';
 
 @cli.controller('migration:pending', {
     description: 'Shows pending migration files.'

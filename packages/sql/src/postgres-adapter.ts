@@ -27,14 +27,14 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from './sql-adapter';
-import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
-import {PostgresPlatform} from './platform/postgres-platform';
-import {ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema} from '@deepkit/type';
-import {DefaultPlatform} from './platform/default-platform';
+import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { PostgresPlatform } from './platform/postgres-platform';
+import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
+import { DefaultPlatform } from './platform/default-platform';
 import pg from 'pg';
-import type {PoolClient, PoolConfig, Pool} from 'pg';
-import {asyncOperation, ClassType, empty} from '@deepkit/core';
-import {SqlBuilder} from './sql-builder';
+import type { PoolClient, PoolConfig, Pool } from 'pg';
+import { asyncOperation, ClassType, empty } from '@deepkit/core';
+import { SqlBuilder } from './sql-builder';
 
 export class PostgresStatement extends SQLStatement {
     protected released = false;
@@ -196,13 +196,13 @@ export class PostgresPersistence extends SQLPersistence {
                     }
 
                     if (!assignReturning[id]) {
-                        assignReturning[id] = {item: changeSet.item, names: []};
+                        assignReturning[id] = { item: changeSet.item, names: [] };
                     }
 
                     assignReturning[id].names.push(i);
                     setReturning[i] = 1;
 
-                    aggregateSelects[i].push({id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`});
+                    aggregateSelects[i].push({ id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}` });
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
@@ -313,7 +313,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
         const connection = this.connectionPool.getConnection();
@@ -346,7 +346,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
-        const aggregateFields: { [name: string]: {converted: (v: any) => any} } = {};
+        const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
         const scopeSerializer = this.platform.serializer.for(this.classSchema);
         const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
@@ -355,7 +355,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
             if ($set[i] === undefined || $set[i] === null) {
-            set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
+                set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
             } else {
                 fieldsSet[i] = 1;
                 select.push(`${this.platform.quoteValue($set[i])} as ${this.platform.quoteIdentifier(i)}`);
@@ -369,14 +369,14 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         }
 
         for (const i of model.returning) {
-            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -393,7 +393,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         }
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
         const sql = `
             WITH _b AS (${selectSQL.sql})
             UPDATE

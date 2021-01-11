@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, Output} from "@angular/core";
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, Output } from "@angular/core";
 import Hammer from 'hammerjs';
 
 @Component({
@@ -31,7 +31,7 @@ export class SplitterComponent implements AfterViewInit {
     ngAfterViewInit(): void {
         this.zone.runOutsideAngular(() => {
             const mc = new Hammer(this.host.nativeElement);
-            mc.add(new Hammer.Pan({direction: Hammer.DIRECTION_ALL, threshold: 0}));
+            mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 0 }));
 
             let start: number = 0;
 

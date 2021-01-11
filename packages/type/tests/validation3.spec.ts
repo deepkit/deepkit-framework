@@ -1,10 +1,10 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jsonSerializer, PropertyValidator, t, uuid} from '../index';
-import {validate, ValidationFailed} from '../src/validation';
-import {Channel, Job} from './big-entity';
-import {jitValidateProperty, PropertyValidatorError} from '../src/jit-validation';
-import {fail} from 'assert';
+import { getClassSchema, jsonSerializer, PropertyValidator, t, uuid } from '../index';
+import { validate, ValidationFailed } from '../src/validation';
+import { Channel, Job } from './big-entity';
+import { jitValidateProperty, PropertyValidatorError } from '../src/jit-validation';
+import { fail } from 'assert';
 
 test('test any deep array', async () => {
     class Peter {
@@ -29,19 +29,19 @@ test('test nested array', async () => {
         names: string[][] = [];
     }
 
-    expect(validate(Peter, {names: ['invalid']})).toEqual([{
+    expect(validate(Peter, { names: ['invalid'] })).toEqual([{
         'code': 'invalid_type',
         'message': 'Type is not an array',
         'path': 'names.0',
     }]);
 
-    expect(validate(Peter, {names: [[], 'asd']})).toEqual([{
+    expect(validate(Peter, { names: [[], 'asd'] })).toEqual([{
         'code': 'invalid_type',
         'message': 'Type is not an array',
         'path': 'names.1',
     }]);
 
-    expect(validate(Peter, {names: [[], []]})).toEqual([]);
+    expect(validate(Peter, { names: [[], []] })).toEqual([]);
 });
 
 function MinStringLength(length: number) {
@@ -64,19 +64,19 @@ test('test container validators array', async () => {
     expect(roles.validators.length).toBe(1);
     expect(roles.getSubType().validators.length).toBe(1);
 
-    expect(validate(Peter, {roles: []})).toEqual([{
+    expect(validate(Peter, { roles: [] })).toEqual([{
         'code': 'empty',
         'message': 'roles empty',
         'path': 'roles',
     }]);
 
-    expect(validate(Peter, {roles: ['12']})).toEqual([{
+    expect(validate(Peter, { roles: ['12'] })).toEqual([{
         'code': 'too_short',
         'message': 'Min length of 3',
         'path': 'roles.0',
     }]);
 
-    expect(validate(Peter, {roles: ['123']})).toEqual([]);
+    expect(validate(Peter, { roles: ['123'] })).toEqual([]);
 });
 
 test('test container validators map', async () => {
@@ -87,19 +87,19 @@ test('test container validators map', async () => {
         roles: { [name: string]: string } = {};
     }
 
-    expect(validate(Peter, {roles: {}})).toEqual([{
+    expect(validate(Peter, { roles: {} })).toEqual([{
         'code': 'empty',
         'message': 'roles empty',
         'path': 'roles',
     }]);
 
-    expect(validate(Peter, {roles: {'foo': 'ba'}})).toEqual([{
+    expect(validate(Peter, { roles: { 'foo': 'ba' } })).toEqual([{
         'code': 'too_short',
         'message': 'Min length of 3',
         'path': 'roles.foo',
     }]);
 
-    expect(validate(Peter, {roles: {'foo': 'bar'}})).toEqual([]);
+    expect(validate(Peter, { roles: { 'foo': 'bar' } })).toEqual([]);
 });
 
 test('test any deep validation', async () => {
@@ -125,7 +125,7 @@ test('test array optionalItem value', async () => {
     expect(propSchema.getSubType().type).toBe('any');
 
     expect(jitValidateProperty(propSchema)([12313, undefined])).toEqual([]);
-    expect(jitValidateProperty(propSchema)([12313, null])).toEqual([{path: 'lastValue.1', message: 'Required value is null', code: 'required'}]);
+    expect(jitValidateProperty(propSchema)([12313, null])).toEqual([{ path: 'lastValue.1', message: 'Required value is null', code: 'required' }]);
 });
 
 
@@ -159,8 +159,8 @@ test('test custom validator on array items', async () => {
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
         expect(error.errors).toEqual([
-            {code: 'too_long', message: 'Too long :()', path: 'tags.0'},
-            {code: 'too_long', message: 'Too long :()', path: 'tag'},
+            { code: 'too_long', message: 'Too long :()', path: 'tags.0' },
+            { code: 'too_long', message: 'Too long :()', path: 'tag' },
         ]);
     }
 });

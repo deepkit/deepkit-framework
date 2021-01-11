@@ -8,32 +8,32 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType} from '@deepkit/core';
+import { ClassType } from '@deepkit/core';
 
 export type ClassDecoratorFn = (classType: ClassType, property?: string, parameterIndexOrDescriptor?: any) => void;
 export type PropertyDecoratorFn = (prototype: object, property?: string, parameterIndexOrDescriptor?: any) => void;
 
 export type FluidDecorator<T, D extends Function> = {
     [name in keyof T]: T[name] extends (...args: infer K) => any ? (...args: K) => D & FluidDecorator<T, D>
-        : D & FluidDecorator<T, D>
+    : D & FluidDecorator<T, D>
 };
 
 export function createFluidDecorator<API extends APIClass<any> | APIProperty<any>, D extends Function>
-(
-    api: API,
-    modifier: { name: string, args?: any }[],
-    collapse: (modifier: { name: string, args?: any }[], target: any, property?: string, parameterIndexOrDescriptor?: any) => void,
-    returnCollapse: boolean = false,
-    fluidFunctionSymbol?: symbol
-): FluidDecorator<ExtractClass<API>, D> {
+    (
+        api: API,
+        modifier: { name: string, args?: any }[],
+        collapse: (modifier: { name: string, args?: any }[], target: any, property?: string, parameterIndexOrDescriptor?: any) => void,
+        returnCollapse: boolean = false,
+        fluidFunctionSymbol?: symbol
+    ): FluidDecorator<ExtractClass<API>, D> {
     const fn = function (target: object, property?: string, parameterIndexOrDescriptor?: any) {
         const res = collapse(modifier, target, property, parameterIndexOrDescriptor);
         if (returnCollapse) return res;
     };
 
     const methods: string[] = [];
-    Object.defineProperty(fn, '_methods', {value: methods});
-    if (fluidFunctionSymbol) Object.defineProperty(fn, fluidFunctionSymbol, {value: true});
+    Object.defineProperty(fn, '_methods', { value: methods });
+    if (fluidFunctionSymbol) Object.defineProperty(fn, fluidFunctionSymbol, { value: true });
 
     let current = api;
     while (current.prototype) {
@@ -50,7 +50,7 @@ export function createFluidDecorator<API extends APIClass<any> | APIProperty<any
                     configurable: true,
                     enumerable: false,
                     get: () => {
-                        return createFluidDecorator(api, [...modifier, {name}], collapse, returnCollapse, fluidFunctionSymbol);
+                        return createFluidDecorator(api, [...modifier, { name }], collapse, returnCollapse, fluidFunctionSymbol);
                     }
                 });
             } else {
@@ -60,7 +60,7 @@ export function createFluidDecorator<API extends APIClass<any> | APIProperty<any
                     enumerable: false,
                     get: () => {
                         return (...args: any[]) => {
-                            return createFluidDecorator(api, [...modifier, {name, args}], collapse, returnCollapse, fluidFunctionSymbol);
+                            return createFluidDecorator(api, [...modifier, { name, args }], collapse, returnCollapse, fluidFunctionSymbol);
                         };
                     }
                 });
@@ -205,15 +205,15 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>, T =
     return fn as any;
 }
 
-export type FreeDecoratorFn<API> = {(): ExtractApiDataType<API>};
+export type FreeDecoratorFn<API> = { (): ExtractApiDataType<API> };
 
 export type FreeFluidDecorator<API> = {
     [name in keyof ExtractClass<API>]: ExtractClass<API>[name] extends (...args: infer K) => any
-        ? (...args: K) => FreeFluidDecorator<API>
-        : FreeFluidDecorator<API>
+    ? (...args: K) => FreeFluidDecorator<API>
+    : FreeFluidDecorator<API>
 } & FreeDecoratorFn<API>;
 
-export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<API> & {_fluidFunctionSymbol: symbol};
+export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<API> & { _fluidFunctionSymbol: symbol };
 
 export function createFreeDecoratorContext<API extends APIClass<any>, T = ExtractApiDataType<API>>(
     apiType: API

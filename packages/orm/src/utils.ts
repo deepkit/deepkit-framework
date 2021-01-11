@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, getClassTypeFromInstance} from '@deepkit/type';
-import {Entity} from './type';
+import { ClassSchema, getClassSchema, getClassTypeFromInstance } from '@deepkit/type';
+import { Entity } from './type';
 import sift from 'sift';
 import { FilterQuery } from './query';
 

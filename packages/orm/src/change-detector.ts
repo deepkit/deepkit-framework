@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, JitStack, PropertySchema, reserveVariable} from '@deepkit/type';
-import {getInstanceState} from './identity-map';
-import {empty, getObjectKeysSize} from '@deepkit/core';
-import {getJITConverterForSnapshot} from './converter';
-import {Changes, changeSetSymbol, ItemChanges} from './changes';
+import { ClassSchema, JitStack, PropertySchema, reserveVariable } from '@deepkit/type';
+import { getInstanceState } from './identity-map';
+import { empty, getObjectKeysSize } from '@deepkit/core';
+import { getJITConverterForSnapshot } from './converter';
+import { Changes, changeSetSymbol, ItemChanges } from './changes';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;

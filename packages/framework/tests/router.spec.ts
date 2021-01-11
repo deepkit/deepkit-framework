@@ -1,11 +1,11 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {dotToUrlPath, Router} from '../src/router';
-import {HttpKernel, JSONResponse} from '../src/http';
-import {http, httpClass} from '../src/decorator';
-import {Application} from '../src/application';
-import {t} from '@deepkit/type';
-import {HttpRequest} from '../src/http-model';
+import { dotToUrlPath, Router } from '../src/router';
+import { HttpKernel, JSONResponse } from '../src/http';
+import { http, httpClass } from '../src/decorator';
+import { Application } from '../src/application';
+import { t } from '@deepkit/type';
+import { HttpRequest } from '../src/http-model';
 
 test('router', async () => {
     class Controller {
@@ -32,16 +32,16 @@ test('router', async () => {
 
     const router = Router.forControllers([Controller]);
 
-    expect((await router.resolve('GET', '/'))?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'helloWorld'});
-    expect((await router.resolve('GET', '/peter'))?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'hello'});
+    expect((await router.resolve('GET', '/'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'helloWorld' });
+    expect((await router.resolve('GET', '/peter'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'hello' });
     expect((await router.resolve('GET', '/peter'))?.parameters!(undefined as any)).toEqual(['peter']);
 
     const userStatic = await router.resolve('GET', '/user/1233/static');
-    expect(userStatic?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'userStatic'});
+    expect(userStatic?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic' });
     expect(userStatic?.parameters!(undefined as any)).toEqual(['1233']);
 
     const userStatic2 = await router.resolve('GET', '/user2/1233/static/123');
-    expect(userStatic2?.routeConfig.action).toMatchObject({controller: Controller, methodName: 'userStatic2'});
+    expect(userStatic2?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic2' });
     expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
 });
 
@@ -68,7 +68,7 @@ test('router parameters', async () => {
         }
     }
 
-    const app = Application.create({controllers: [Controller]});
+    const app = Application.create({ controllers: [Controller] });
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toBe('peter');
@@ -90,7 +90,7 @@ test('router HttpRequest', async () => {
         }
     }
 
-    const app = Application.create({controllers: [Controller]});
+    const app = Application.create({ controllers: [Controller] });
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/req/any/path')).toEqual(['/req/any/path', 'req/any/path']);
@@ -109,10 +109,10 @@ test('router body', async () => {
         }
     }
 
-    const app = Application.create({controllers: [Controller]});
+    const app = Application.create({ controllers: [Controller] });
     const httpHandler = app.get(HttpKernel);
 
-    expect(await httpHandler.handleRequestFor('POST', '/', {username: 'Peter'})).toEqual(['Peter', true, '/']);
+    expect(await httpHandler.handleRequestFor('POST', '/', { username: 'Peter' })).toEqual(['Peter', true, '/']);
 });
 
 
@@ -138,10 +138,10 @@ test('router body double', async () => {
     expect(action.parameters['body2']).not.toBeUndefined();
     expect(action.parameters['body2'].name).toBe('body2');
 
-    const app = Application.create({controllers: [Controller]});
+    const app = Application.create({ controllers: [Controller] });
     const httpHandler = app.get(HttpKernel);
 
-    expect(await httpHandler.handleRequestFor('POST', '/', {username: 'Peter'})).toEqual(['Peter', true, '/']);
+    expect(await httpHandler.handleRequestFor('POST', '/', { username: 'Peter' })).toEqual(['Peter', true, '/']);
 });
 
 test('router groups', async () => {
@@ -190,7 +190,7 @@ test('router groups', async () => {
 
     expect(() => {
         @http.group('all')
-        class ControllerC {}
+        class ControllerC { }
     }).toThrow('Property decorators can only be used on class properties');
 });
 
@@ -211,7 +211,7 @@ test('router query', async () => {
     expect(action.parameters['test'].name).toBe('test');
     expect(action.parameters['test'].type).toBe('query');
 
-    const app = Application.create({controllers: [Controller]});
+    const app = Application.create({ controllers: [Controller] });
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/my-action?test=123')).toEqual(123);
@@ -232,12 +232,12 @@ test('router query all', async () => {
         }
     }
 
-    const app = Application.create({controllers: [Controller]});
+    const app = Application.create({ controllers: [Controller] });
     const httpHandler = app.get(HttpKernel);
 
-    expect(await httpHandler.handleRequestFor('GET', '/my-action?test=123')).toEqual({test: '123'});
+    expect(await httpHandler.handleRequestFor('GET', '/my-action?test=123')).toEqual({ test: '123' });
     expect(await httpHandler.handleRequestFor('GET', '/my-action')).toEqual({});
-    expect(await httpHandler.handleRequestFor('GET', '/my-action?filter=page&page=5')).toEqual({filter: 'page', page: 5});
+    expect(await httpHandler.handleRequestFor('GET', '/my-action?filter=page&page=5')).toEqual({ filter: 'page', page: 5 });
 });
 
 
@@ -287,18 +287,18 @@ test('router url resolve', async () => {
         }
     }
 
-    const app = Application.create({controllers: [Controller]});
+    const app = Application.create({ controllers: [Controller] });
     const router = app.get(Router);
 
     expect(router.resolveUrl('first')).toBe('/');
-    expect(router.resolveUrl('second', {peter: 'foo'})).toBe('/foo');
-    expect(router.resolveUrl('secondQuery', {peter: 'foo'})).toBe('/?peter=foo');
-    expect(router.resolveUrl('secondQuery2', {peter: 'foo'})).toBe('/?changed=foo');
+    expect(router.resolveUrl('second', { peter: 'foo' })).toBe('/foo');
+    expect(router.resolveUrl('secondQuery', { peter: 'foo' })).toBe('/?peter=foo');
+    expect(router.resolveUrl('secondQuery2', { peter: 'foo' })).toBe('/?changed=foo');
     expect(router.resolveUrl('third', {})).toBe('/third');
-    expect(router.resolveUrl('third', {params: {test: 123}})).toBe('/third?test=123');
-    expect(router.resolveUrl('third', {params: {test: 123, filter: 'peter'}})).toBe('/third?test=123&filter=peter');
+    expect(router.resolveUrl('third', { params: { test: 123 } })).toBe('/third?test=123');
+    expect(router.resolveUrl('third', { params: { test: 123, filter: 'peter' } })).toBe('/third?test=123&filter=peter');
 
     expect(router.resolveUrl('third2', {})).toBe('/third2');
-    expect(router.resolveUrl('third2', {params: {test: 123}})).toBe('/third2?deep[test]=123');
-    expect(router.resolveUrl('third2', {params: {test: 123, filter: 'peter'}})).toBe('/third2?deep[test]=123&deep[filter]=peter');
+    expect(router.resolveUrl('third2', { params: { test: 123 } })).toBe('/third2?deep[test]=123');
+    expect(router.resolveUrl('third2', { params: { test: 123, filter: 'peter' } })).toBe('/third2?deep[test]=123&deep[filter]=peter');
 });

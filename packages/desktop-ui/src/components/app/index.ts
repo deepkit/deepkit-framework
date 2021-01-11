@@ -17,17 +17,17 @@ import {
     MenuRadioDirective,
     MenuSeparatorDirective
 } from "./menu.component";
-import {detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector} from "./utils";
-import {ViewDirective} from "./dui-view.directive";
-import {CdCounterComponent} from "./cd-counter.component";
-import {DuiResponsiveDirective} from "./dui-responsive.directive";
-import {CommonModule, DOCUMENT} from "@angular/common";
-import {Electron} from "../../core/utils";
-import {ActivationEnd, Event as RouterEvent, NavigationEnd, Router} from "@angular/router";
-import {WindowRegistry} from "../window/window-state";
-import {ELECTRON_WINDOW, IN_DIALOG} from "./token";
-import {AsyncRenderPipe} from "./pipes";
-import {ReactiveChangeDetectionModule} from "./reactivate-change-detection";
+import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from "./utils";
+import { ViewDirective } from "./dui-view.directive";
+import { CdCounterComponent } from "./cd-counter.component";
+import { DuiResponsiveDirective } from "./dui-responsive.directive";
+import { CommonModule, DOCUMENT } from "@angular/common";
+import { Electron } from "../../core/utils";
+import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from "@angular/router";
+import { WindowRegistry } from "../window/window-state";
+import { ELECTRON_WINDOW, IN_DIALOG } from "./token";
+import { AsyncRenderPipe } from "./pipes";
+import { ReactiveChangeDetectionModule } from "./reactivate-change-detection";
 
 export * from "./reactivate-change-detection";
 export * from "./cd-counter.component";
@@ -280,7 +280,7 @@ export class DuiAppModule {
             ngModule: DuiAppModule,
             providers: [
                 DuiApp,
-                {provide: IN_DIALOG, useValue: false},
+                { provide: IN_DIALOG, useValue: false },
                 {
                     provide: ELECTRON_WINDOW,
                     useValue: Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined

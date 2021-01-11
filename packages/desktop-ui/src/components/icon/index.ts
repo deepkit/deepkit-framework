@@ -1,6 +1,6 @@
-import {NgModule} from '@angular/core';
+import { NgModule } from '@angular/core';
 
-import {IconComponent} from './icon.component';
+import { IconComponent } from './icon.component';
 
 export * from './icon.component';
 

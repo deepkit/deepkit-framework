@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {MongoClientConfig} from '../../client';
-import {Command} from '../command';
+import { MongoClientConfig } from '../../client';
+import { Command } from '../command';
 
 
 export interface MongoAuth {

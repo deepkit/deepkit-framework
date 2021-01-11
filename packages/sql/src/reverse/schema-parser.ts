@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Column, DatabaseModel} from '../schema/table';
-import {SQLConnection} from '../sql-adapter';
-import {DefaultPlatform} from '../platform/default-platform';
+import { Column, DatabaseModel } from '../schema/table';
+import { SQLConnection } from '../sql-adapter';
+import { DefaultPlatform } from '../platform/default-platform';
 
 const type3Regex = /^([^(]+)\(\s*(\d+)\s*,\s*(\d+)\s*\)$/;
 const type2Regex = /^([^(]+)\(\s*(\d+)\s*\)$/;

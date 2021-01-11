@@ -18,9 +18,9 @@
 
 import style from 'ansi-styles';
 import util from 'util';
-import {arrayRemoveItem, ClassType} from '@deepkit/core';
-import {inject} from './injector/injector';
-import {Debugger} from './debug/debugger';
+import { arrayRemoveItem, ClassType } from '@deepkit/core';
+import { inject } from './injector/injector';
+import { Debugger } from './debug/debugger';
 
 export enum LoggerLevel {
     alert,

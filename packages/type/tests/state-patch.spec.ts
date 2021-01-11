@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {applyAndReturnPatches, applyPatch} from '../index';
+import { applyAndReturnPatches, applyPatch } from '../index';
 
 class Goal {
     title: string = '';
@@ -188,7 +188,7 @@ test('patches', () => {
         const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
             state.persistent.id = 12;
         });
-        expect(patches).toEqual({'persistent.id': 12});
+        expect(patches).toEqual({ 'persistent.id': 12 });
     }
 
     // {
@@ -203,27 +203,27 @@ test('patches', () => {
             state.persistent.id = 12;
             state.persistent.titles = ['foo'];
         });
-        expect(patches).toEqual({'persistent.id': 12, 'persistent.titles': ['foo']});
+        expect(patches).toEqual({ 'persistent.id': 12, 'persistent.titles': ['foo'] });
     }
 
     {
         const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
             state.persistent.titles.push('foo');
         });
-        expect(patches).toEqual({'persistent.titles': ['Init', 'foo']});
+        expect(patches).toEqual({ 'persistent.titles': ['Init', 'foo'] });
     }
 
     {
         const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
             state.persistent.goal.title = 'deep';
         });
-        expect(patches).toEqual({'persistent.goal.title': 'deep'});
+        expect(patches).toEqual({ 'persistent.goal.title': 'deep' });
     }
 
     {
         const patches = applyAndReturnPatches(Object.freeze(state), (state) => {
             state.persistent.goal = new Goal();
         });
-        expect(patches).toEqual({'persistent.goal': new Goal()});
+        expect(patches).toEqual({ 'persistent.goal': new Goal() });
     }
 });

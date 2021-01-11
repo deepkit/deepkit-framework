@@ -1,8 +1,8 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
-import {BaseQuery, Formatter, getInstanceState, getNormalizedPrimaryKey} from '../index';
-import {getReference} from '../src/reference';
+import { getClassSchema, jsonSerializer, t } from '@deepkit/type';
+import { BaseQuery, Formatter, getInstanceState, getNormalizedPrimaryKey } from '../index';
+import { getReference } from '../src/reference';
 
 test('getNormalizedPrimaryKey', () => {
     class User {
@@ -10,8 +10,8 @@ test('getNormalizedPrimaryKey', () => {
         @t name: string = 'Foo';
     }
 
-    expect(getNormalizedPrimaryKey(getClassSchema(User), '123')).toEqual({id: '123'});
-    expect(getNormalizedPrimaryKey(getClassSchema(User), {id: '124'})).toEqual({id: '124'});
+    expect(getNormalizedPrimaryKey(getClassSchema(User), '123')).toEqual({ id: '123' });
+    expect(getNormalizedPrimaryKey(getClassSchema(User), { id: '124' })).toEqual({ id: '124' });
 
     class User2 {
         @t.primary id: string = '';
@@ -20,7 +20,7 @@ test('getNormalizedPrimaryKey', () => {
     }
 
     expect(() => getNormalizedPrimaryKey(getClassSchema(User2), '123')).toThrow('Entity User2 has composite primary key');
-    expect(getNormalizedPrimaryKey(getClassSchema(User2), {id: '124', id2: '444'})).toEqual({id: '124', id2: '444'});
+    expect(getNormalizedPrimaryKey(getClassSchema(User2), { id: '124', id2: '444' })).toEqual({ id: '124', id2: '444' });
 });
 
 test('original schema', () => {
@@ -31,7 +31,7 @@ test('original schema', () => {
         }
     }
 
-    const ref = getReference(getClassSchema(User), {id: 2});
+    const ref = getReference(getClassSchema(User), { id: 2 });
     expect(ref.id).toBe(2);
 
     expect(getClassSchema(ref) === getClassSchema(User)).toBe(true);
@@ -52,33 +52,33 @@ test('snapshot correct state', () => {
 
     {
         const query = new BaseQuery(user);
-        const user1 = formatter.hydrate(query.model, {username: 'Peter', id: '2', image: '1'});
+        const user1 = formatter.hydrate(query.model, { username: 'Peter', id: '2', image: '1' });
         const snapshot = getInstanceState(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);
         //when schema changes we get from mongodb `undefined` for new fields, but our snapshot converts that to `null`
         // since all databases use `null` as `not defined`. this means we basically ignore `undefined` where possible.
-        expect(snapshot).toEqual({username: 'Peter', id: 2, image: {id: 1}, image2: null});
+        expect(snapshot).toEqual({ username: 'Peter', id: 2, image: { id: 1 }, image2: null });
 
-        user1.image2 = getReference(image, {id: 2});
+        user1.image2 = getReference(image, { id: 2 });
         expect(user1.image2.id).toBe(2);
         getInstanceState(user1).markAsPersisted();
-        expect(getInstanceState(user1).getSnapshot()).toEqual({username: 'Peter', id: 2, image: {id: 1}, image2: {id: 2}});
+        expect(getInstanceState(user1).getSnapshot()).toEqual({ username: 'Peter', id: 2, image: { id: 1 }, image2: { id: 2 } });
 
         user1.image = undefined;
         getInstanceState(user1).markAsPersisted();
-        expect(getInstanceState(user1).getSnapshot()).toEqual({username: 'Peter', id: 2, image: null, image2: {id: 2}});
+        expect(getInstanceState(user1).getSnapshot()).toEqual({ username: 'Peter', id: 2, image: null, image2: { id: 2 } });
     }
 
     {
         const query = new BaseQuery(user);
-        const user1 = formatter.hydrate(query.model, {username: 'Peter2', id: '3', image: '1', image2: null});
+        const user1 = formatter.hydrate(query.model, { username: 'Peter2', id: '3', image: '1', image2: null });
         const snapshot = getInstanceState(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);
-        expect(snapshot).toEqual({username: 'Peter2', id: 3, image: {id: 1}, image2: null});
+        expect(snapshot).toEqual({ username: 'Peter2', id: 3, image: { id: 1 }, image2: null });
 
-        user1.image2 = getReference(image, {id: 2});
+        user1.image2 = getReference(image, { id: 2 });
         expect(user1.image2.id).toBe(2);
         getInstanceState(user1).markAsPersisted();
-        expect(getInstanceState(user1).getSnapshot()).toEqual({username: 'Peter2', id: 3, image: {id: 1}, image2: {id: 2}});
+        expect(getInstanceState(user1).getSnapshot()).toEqual({ username: 'Peter2', id: 3, image: { id: 1 }, image2: { id: 2 } });
     }
 });

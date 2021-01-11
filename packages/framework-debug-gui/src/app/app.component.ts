@@ -1,9 +1,9 @@
-import {ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
-import {observe} from '@deepkit/desktop-ui';
-import {Database, DebugRequest} from '@deepkit/framework-debug-shared';
-import {Collection} from '@deepkit/rpc';
-import {Observable} from 'rxjs';
-import {ControllerClient} from './client';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { observe } from '@deepkit/desktop-ui';
+import { Database, DebugRequest } from '@deepkit/framework-debug-shared';
+import { Collection } from '@deepkit/rpc';
+import { Observable } from 'rxjs';
+import { ControllerClient } from './client';
 
 @Component({
   selector: 'app-root',
@@ -97,7 +97,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   filterRequests(requests: DebugRequest[]): DebugRequest[] {
-    requests.sort(function(a, b) {
+    requests.sort(function (a, b) {
       if (a.id > b.id) return -1;
       if (a.id < b.id) return +1;
       return 0;

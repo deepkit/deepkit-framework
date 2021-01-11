@@ -1,4 +1,4 @@
-export {ValueAccessorBase, ngValueAccessor} from './core/form';
+export { ValueAccessorBase, ngValueAccessor } from './core/form';
 export * from './core/form';
 export * from './core/utils';
 export * from './components/app';

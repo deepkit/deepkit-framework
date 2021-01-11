@@ -13,12 +13,12 @@ import {
     ViewChild,
     ViewContainerRef
 } from "@angular/core";
-import {TemplatePortal} from "@angular/cdk/portal";
-import {Overlay, OverlayConfig, OverlayRef, PositionStrategy} from "@angular/cdk/overlay";
-import {Subscription} from "rxjs";
-import {WindowRegistry} from "../window/window-state";
-import {focusWatcher} from "../../core/utils";
-import {isArray} from "@deepkit/core";
+import { TemplatePortal } from "@angular/cdk/portal";
+import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from "@angular/cdk/overlay";
+import { Subscription } from "rxjs";
+import { WindowRegistry } from "../window/window-state";
+import { focusWatcher } from "../../core/utils";
+import { isArray } from "@deepkit/core";
 
 
 @Component({
@@ -83,8 +83,8 @@ export class DropdownComponent implements OnChanges, OnDestroy {
 
     @Output() hidden = new EventEmitter();
 
-    @ViewChild('dropdownTemplate', {static: false}) dropdownTemplate!: TemplateRef<any>;
-    @ViewChild('dropdown', {static: false}) dropdown!: ElementRef<HTMLElement>;
+    @ViewChild('dropdownTemplate', { static: false }) dropdownTemplate!: TemplateRef<any>;
+    @ViewChild('dropdown', { static: false }) dropdown!: ElementRef<HTMLElement>;
 
     constructor(
         protected overlayService: Overlay,
@@ -156,7 +156,7 @@ export class DropdownComponent implements OnChanges, OnDestroy {
         const overlay = this.overlayService;
 
         if (target instanceof MouseEvent) {
-            const mousePosition = {x: target.pageX, y: target.pageY};
+            const mousePosition = { x: target.pageX, y: target.pageY };
             position = overlay
                 .position()
                 .flexibleConnectedTo(mousePosition)

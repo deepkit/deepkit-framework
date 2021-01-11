@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, ExtractPrimaryKeyType, ValidationFailedItem} from '@deepkit/type';
-import {CustomError} from '@deepkit/core';
+import { ClassSchema, ExtractPrimaryKeyType, ValidationFailedItem } from '@deepkit/type';
+import { CustomError } from '@deepkit/core';
 
 export interface Entity {
 }

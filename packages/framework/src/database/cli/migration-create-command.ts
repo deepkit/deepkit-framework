@@ -156,7 +156,7 @@ ${downSql.map(serializeSQLLine).map(indent(12)).join(',\n')}
 }
 `;
 
-                mkdirSync(dirname(migrationFile), {recursive: true});
+                mkdirSync(dirname(migrationFile), { recursive: true });
                 writeFileSync(migrationFile, code.trim());
                 this.logger.log(`Migration file for database <green>${db.name}</green> written to <yellow>${migrationFile}</yellow>`);
             }

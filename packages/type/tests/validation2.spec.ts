@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, t} from '../index';
+import { getClassSchema, t } from '../index';
 
 test('test minimized code', async () => {
     expect(() => {

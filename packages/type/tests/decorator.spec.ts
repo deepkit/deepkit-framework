@@ -1,4 +1,4 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import {
     arrayBufferFrom,
     ClassSchema,
@@ -21,11 +21,11 @@ import {
     t,
 } from '../index';
 import 'reflect-metadata';
-import {Buffer} from 'buffer';
-import {SimpleModel} from './entities';
-import {PageClass} from './document-scenario/PageClass';
-import {DocumentClass} from './document-scenario/DocumentClass';
-import {resolvePropertySchema} from '../src/jit';
+import { Buffer } from 'buffer';
+import { SimpleModel } from './entities';
+import { PageClass } from './document-scenario/PageClass';
+import { DocumentClass } from './document-scenario/DocumentClass';
+import { resolvePropertySchema } from '../src/jit';
 
 
 test('getClassSchemaByName', async () => {
@@ -320,35 +320,35 @@ test('test properties', () => {
     expect(() => getClassSchema(Model).getDiscriminantPropertySchema()).toThrow('No discriminant property found');
 
     {
-        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), '_id');
+        const { type, resolveClassType } = resolvePropertySchema(getClassSchema(Model), '_id');
         expect(type).toBe('objectId');
         expect(resolveClassType).toBeUndefined();
     }
 
     {
-        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), 'data');
+        const { type, resolveClassType } = resolvePropertySchema(getClassSchema(Model), 'data');
         expect(type).toBe('class');
         expect(resolveClassType).toBe(DataValue);
     }
 
     expect(() => {
-        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), 'data2');
+        const { type, resolveClassType } = resolvePropertySchema(getClassSchema(Model), 'data2');
         expect(type).toBeUndefined();
         expect(resolveClassType).toBeUndefined();
     }).toThrow('Property Model.data2 not found');
 
     {
-        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(SubModel), '_id');
+        const { type, resolveClassType } = resolvePropertySchema(getClassSchema(SubModel), '_id');
         expect(type).toBe('objectId');
         expect(resolveClassType).toBeUndefined();
     }
     {
-        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(SubModel), 'data');
+        const { type, resolveClassType } = resolvePropertySchema(getClassSchema(SubModel), 'data');
         expect(type).toBe('class');
         expect(resolveClassType).toBe(DataValue);
     }
     {
-        const {type, resolveClassType} = resolvePropertySchema(getClassSchema(SubModel), 'data2');
+        const { type, resolveClassType } = resolvePropertySchema(getClassSchema(SubModel), 'data2');
         expect(type).toBe('class');
         expect(resolveClassType).toBe(DataValue2);
     }
@@ -366,13 +366,13 @@ test('more decorator', () => {
     {
         const instance = jsonSerializer.for(Model).deserialize({
             bool: 'wow',
-            whatever: {'any': false}
+            whatever: { 'any': false }
         });
 
         expect(getClassSchema(Model).getProperty('whatever').type).toBe('any');
 
         expect(instance.bool).toBe(false);
-        expect(instance.whatever).toEqual({any: false});
+        expect(instance.whatever).toEqual({ any: false });
     }
 
     {
@@ -441,7 +441,7 @@ test('binary', () => {
         preview: ArrayBuffer = arrayBufferFrom('FooBar', 'utf8');
     }
 
-    const {type, resolveClassType} = resolvePropertySchema(getClassSchema(Model), 'preview');
+    const { type, resolveClassType } = resolvePropertySchema(getClassSchema(Model), 'preview');
     expect(type).toBe('arrayBuffer');
     expect(resolveClassType).toBeUndefined();
 
@@ -499,73 +499,73 @@ test('group', () => {
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: []});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groups: [] });
         expect(Object.keys(plain)).toEqual(['username', 'foo']);
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: []});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groupsExclude: [] });
         expect(Object.keys(plain)).toEqual(['password', 'config']);
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: ['confidential']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groups: ['confidential'] });
         expect(Object.keys(plain)).toEqual(['password']);
     }
 
     {
-        const plain = jsonSerializer.for(User).serialize(user, {groups: ['confidential']});
+        const plain = jsonSerializer.for(User).serialize(user, { groups: ['confidential'] });
         expect(Object.keys(plain)).toEqual(['password']);
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: ['confidential']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groupsExclude: ['confidential'] });
         expect(Object.keys(plain)).toEqual(['username', 'config', 'foo']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily', 'language']);
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: ['confidential', 'details']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groupsExclude: ['confidential', 'details'] });
         expect(Object.keys(plain)).toEqual(['username', 'foo']);
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groupsExclude: ['theme']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groupsExclude: ['theme'] });
         expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
         expect(Object.keys(plain.config)).toEqual(['language']);
     }
 
     {
-        const plain = jsonSerializer.for(User).serialize(user, {groupsExclude: ['theme']});
+        const plain = jsonSerializer.for(User).serialize(user, { groupsExclude: ['theme'] });
         expect(Object.keys(plain)).toEqual(['username', 'password', 'config', 'foo']);
         expect(Object.keys(plain.config)).toEqual(['language']);
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: ['theme', 'details']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groups: ['theme', 'details'] });
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily']);
     }
 
     {
-        const plain = jsonSerializer.for(User).serialize(user, {groups: ['theme', 'details']});
+        const plain = jsonSerializer.for(User).serialize(user, { groups: ['theme', 'details'] });
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['color', 'fontSize', 'fontFamily']);
     }
 
     {
-        const plain = jsonSerializer.for(User).partialSerialize(user, {groups: ['text', 'details']});
+        const plain = jsonSerializer.for(User).partialSerialize(user, { groups: ['text', 'details'] });
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['fontSize', 'fontFamily']);
     }
 
     {
-        const plain = jsonSerializer.for(User).serialize(user, {groups: ['text', 'details']});
+        const plain = jsonSerializer.for(User).serialize(user, { groups: ['text', 'details'] });
         expect(Object.keys(plain)).toEqual(['config']);
         expect(Object.keys(plain.config)).toEqual(['fontSize', 'fontFamily']);
     }
 
-    const plain = {foo: 'bar2', username: 'peter2', password: 'password2', config: {color: 'blue'}};
+    const plain = { foo: 'bar2', username: 'peter2', password: 'password2', config: { color: 'blue' } };
 
     {
         const user2 = jsonSerializer.for(User).deserialize(plain);
@@ -577,7 +577,7 @@ test('group', () => {
     }
 
     {
-        const user2 = jsonSerializer.for(User).deserialize(plain, {groups: ['confidential']});
+        const user2 = jsonSerializer.for(User).deserialize(plain, { groups: ['confidential'] });
         expect(user2.foo).toBe(user.foo);
         expect(user2.username).toBe(user.username);
         expect(user2.password).toBe('password2');
@@ -586,7 +586,7 @@ test('group', () => {
     }
 
     {
-        const user2 = jsonSerializer.for(User).deserialize(plain, {groups: ['theme', 'details']});
+        const user2 = jsonSerializer.for(User).deserialize(plain, { groups: ['theme', 'details'] });
         expect(user2.foo).toBe(user.foo);
         expect(user2.username).toBe(user.username);
         expect(user2.password).toBe(user.password);
@@ -595,7 +595,7 @@ test('group', () => {
     }
 
     {
-        const user2 = jsonSerializer.for(User).deserialize(plain, {groupsExclude: ['confidential']});
+        const user2 = jsonSerializer.for(User).deserialize(plain, { groupsExclude: ['confidential'] });
         expect(user2.foo).toBe('bar2');
         expect(user2.username).toBe('peter2');
         expect(user2.password).toBe(user.password);
@@ -723,7 +723,7 @@ test('external schema', () => {
     t.schema({
         id: t.number,
         name: t.string,
-    }, {classType: Peter});
+    }, { classType: Peter });
 
     expect(getClassSchema(Peter).getProperty('id').type).toBe('number');
 });

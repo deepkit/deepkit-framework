@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BaseParser} from './bson-parser';
+import { BaseParser } from './bson-parser';
 
 /**
  * This creates a JS string from a utf8 byte buffer. This is the fastest way possible to create

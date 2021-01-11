@@ -20,7 +20,7 @@ import {
     classToPlain,
     plainToClass
 } from "class-transformer";
-import {BenchSuite} from '../../bench';
+import { BenchSuite } from '../../bench';
 
 export class Model {
     public id?: number;

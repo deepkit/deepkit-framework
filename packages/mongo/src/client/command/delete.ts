@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BaseResponse, Command} from './command';
-import {ClassSchema, getClassSchema, t} from '@deepkit/type';
-import {ClassType} from '@deepkit/core';
+import { BaseResponse, Command } from './command';
+import { ClassSchema, getClassSchema, t } from '@deepkit/type';
+import { ClassType } from '@deepkit/core';
 
 class DeleteResponse extends t.extendClass(BaseResponse, {
     n: t.number,

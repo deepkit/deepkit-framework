@@ -18,10 +18,10 @@
 
 //see https://docs.mongodb.com/manual/reference/command/isMaster/
 //we add only fields we really need to increase parsing time.
-import {t} from '@deepkit/type';
-import {BaseResponse, Command} from './command';
-import {MongoClientConfig} from '../client';
-import {Host} from '../host';
+import { t } from '@deepkit/type';
+import { BaseResponse, Command } from './command';
+import { MongoClientConfig } from '../client';
+import { Host } from '../host';
 
 export class IsMasterResponse extends t.extendClass(BaseResponse, {
     ismaster: t.boolean,

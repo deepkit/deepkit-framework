@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Server} from 'http';
+import { Server } from 'http';
 
 export class ApplicationConfig {
     host: string = 'localhost'; //binding to 127.0.0.1 is roughly 20% slower.

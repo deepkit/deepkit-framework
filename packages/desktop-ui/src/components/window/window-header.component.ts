@@ -10,8 +10,8 @@ import {
     TemplateRef,
     ViewChild
 } from "@angular/core";
-import {WindowState} from "./window-state";
-import {Electron} from "../../core/utils";
+import { WindowState } from "./window-state";
+import { Electron } from "../../core/utils";
 
 @Component({
     selector: 'dui-window-header',
@@ -98,7 +98,7 @@ export class WindowHeaderComponent implements OnDestroy {
 })
 export class WindowToolbarComponent implements OnDestroy, OnInit {
     @Input() for: string = 'default';
-    @ViewChild('templateRef', {static: true}) template!: TemplateRef<any>;
+    @ViewChild('templateRef', { static: true }) template!: TemplateRef<any>;
 
     constructor(protected windowState: WindowState) {
     }

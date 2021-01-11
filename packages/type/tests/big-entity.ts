@@ -1,4 +1,4 @@
-import {Entity, t} from '../index';
+import { Entity, t } from '../index';
 
 export class JobConfigDocker {
     @t.array(t.string)

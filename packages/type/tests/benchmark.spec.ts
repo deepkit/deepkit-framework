@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {t} from '../index';
+import { t } from '../index';
 
 export class DeepkitModel {
     @t ready?: boolean;

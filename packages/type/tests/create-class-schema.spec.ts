@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {createClassSchema, jsonSerializer, t} from '../index';
+import { createClassSchema, jsonSerializer, t } from '../index';
 
 test('test createClassSchema', async () => {
 
@@ -8,7 +8,7 @@ test('test createClassSchema', async () => {
         id!: string;
         title!: string;
         lists!: number[];
-        map!: {[name: string]: number};
+        map!: { [name: string]: number };
     }
 
     const schema = createClassSchema(ExternalClass);
@@ -30,20 +30,20 @@ test('test createClassSchema', async () => {
         id: '23',
         title: 'test',
         lists: [12, 23],
-        map: {test: 123}
+        map: { test: 123 }
     });
 
     expect(obj).toBeInstanceOf(ExternalClass);
     expect(obj.id).toBe('23');
     expect(obj.title).toBe('test');
     expect(obj.lists).toEqual([12, 23]);
-    expect(obj.map).toEqual({test: 123});
+    expect(obj.map).toEqual({ test: 123 });
 
     const plain = jsonSerializer.for(ExternalClass).serialize(obj);
     expect(plain.id).toBe('23');
     expect(plain.title).toBe('test');
     expect(plain.lists).toEqual([12, 23]);
-    expect(plain.map).toEqual({test: 123});
+    expect(plain.map).toEqual({ test: 123 });
 });
 
 test('test createClassSchema with constructor', async () => {
@@ -97,7 +97,7 @@ test('external class 2', () => {
     expect(schema.getProperty('seconds').type).toBe('number');
     expect(schema.getProperty('nanoseconds').type).toBe('number');
 
-    const timestamp = jsonSerializer.for(Timestamp).deserialize({seconds: 123, nanoseconds: 5});
+    const timestamp = jsonSerializer.for(Timestamp).deserialize({ seconds: 123, nanoseconds: 5 });
 
     expect(timestamp.seconds).toBe(123);
     expect(timestamp.nanoseconds).toBe(5);
@@ -136,10 +136,10 @@ test('createClassSchemaFrom complex', () => {
     expect(schema.getProperty('groups').getSubType().type).toBe('class');
     expect(schema.getProperty('groups').getSubType().getResolvedClassSchema().getProperty('name').type).toBe('string');
 
-    jsonSerializer.for(schema.classType).deserialize({asdad: 'd'});
+    jsonSerializer.for(schema.classType).deserialize({ asdad: 'd' });
 
     {
-        const instance = jsonSerializer.for(schema).deserialize({username: "asd", image: {path: "image.jpg"}, groups: [{name: "foo"}]});
+        const instance = jsonSerializer.for(schema).deserialize({ username: "asd", image: { path: "image.jpg" }, groups: [{ name: "foo" }] });
         console.log('instance', instance);
         expect(instance.username).toBe("asd");
         expect(instance.groups[0].name).toBe("foo");
@@ -147,7 +147,7 @@ test('createClassSchemaFrom complex', () => {
     }
 
     {
-        const instance = jsonSerializer.for(schema.classType).deserialize({username: "asd", image: {path: "image.jpg"}, groups: [{name: "foo"}]});
+        const instance = jsonSerializer.for(schema.classType).deserialize({ username: "asd", image: { path: "image.jpg" }, groups: [{ name: "foo" }] });
         expect(instance.username).toBe("asd");
         expect(instance.groups[0].name).toBe("foo");
         expect(instance.image.path).toBe("image.jpg");

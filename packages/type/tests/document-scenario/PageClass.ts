@@ -1,6 +1,6 @@
-import {createCollection, Collection} from './PageCollection';
-import {Entity, t} from '../../src/decorators';
-import {uuid} from '../../src/utils';
+import { createCollection, Collection } from './PageCollection';
+import { Entity, t } from '../../src/decorators';
+import { uuid } from '../../src/utils';
 
 @Entity('PageClass')
 export class PageClass {

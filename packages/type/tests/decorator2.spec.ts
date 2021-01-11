@@ -1,7 +1,7 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {Entity, getClassSchema, jsonSerializer, PropertySchema, t} from '../index';
-import {uuid} from '../src/utils';
+import { Entity, getClassSchema, jsonSerializer, PropertySchema, t } from '../index';
+import { uuid } from '../src/utils';
 
 test('test optional', () => {
     class Model {
@@ -260,7 +260,7 @@ test('test invalid @f', () => {
     expect(() => {
         class User1 {
             @t
-                // @ts-ignore
+            // @ts-ignore
             notDefined;
         }
     }).toThrowError('User1::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
@@ -272,7 +272,7 @@ test('test invalid @f', () => {
         class User2 {
             // @ts-ignore
             @t.type(NOTEXIST)
-                // @ts-ignore
+            // @ts-ignore
             notDefined;
         }
     }).toThrowError('User2::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
@@ -340,7 +340,7 @@ test('test invalid @f', () => {
         //works
         class Model {
             @t.map(t.any)
-                // @ts-ignore
+            // @ts-ignore
             any?;
         }
     }
@@ -371,28 +371,28 @@ test('nullable', () => {
     }
 
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: {label: '1'}, klass2: {label: '2'}});
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: { label: '1' }, klass2: { label: '2' } });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBeInstanceOf(ExampleClass);
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
     }
 
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: null, klass2: {label: '2'}});
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: null, klass2: { label: '2' } });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBe(null);
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
     }
 
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: undefined, klass2: {label: '2'}});
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: undefined, klass2: { label: '2' } });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBe(undefined); //since we have no default value set
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
     }
 
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({klass1: null, klass2: null});
+        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: null, klass2: null });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBe(null);
         expect(clazz.klass2).toBe(null);
@@ -411,9 +411,9 @@ test('null as default value', () => {
 
     const testClassSerializer = jsonSerializer.for(TestClass);
 
-    expect(testClassSerializer.validatedDeserialize({v1: undefined})).toEqual({v1: 1.0});
-    expect(testClassSerializer.validatedDeserialize({v1: null})).toEqual({v1: null});
-    expect(testClassSerializer.validatedDeserialize({v1: 3.14})).toEqual({v1: 3.14});
+    expect(testClassSerializer.validatedDeserialize({ v1: undefined })).toEqual({ v1: 1.0 });
+    expect(testClassSerializer.validatedDeserialize({ v1: null })).toEqual({ v1: null });
+    expect(testClassSerializer.validatedDeserialize({ v1: 3.14 })).toEqual({ v1: 3.14 });
 
     const myDbSerializer = new class extends jsonSerializer.fork('my-db-serializer') {
     };
@@ -423,9 +423,9 @@ test('null as default value', () => {
 
     const testClassDbSerializer = myDbSerializer.for(TestClass);
 
-    expect(testClassDbSerializer.validatedDeserialize({v1: undefined})).toEqual({v1: 1.0});
-    expect(testClassDbSerializer.validatedDeserialize({v1: null})).toEqual({v1: 1.0});
-    expect(testClassDbSerializer.validatedDeserialize({v1: 3.14})).toEqual({v1: 3.14});
+    expect(testClassDbSerializer.validatedDeserialize({ v1: undefined })).toEqual({ v1: 1.0 });
+    expect(testClassDbSerializer.validatedDeserialize({ v1: null })).toEqual({ v1: 1.0 });
+    expect(testClassDbSerializer.validatedDeserialize({ v1: 3.14 })).toEqual({ v1: 3.14 });
 });
 
 test('verbose undefined type', () => {
@@ -452,10 +452,10 @@ test('date default', () => {
 
     expect(jsonSerializer.for(DateClass).validatedDeserialize({
         value: '2020-11-03T09:10:39.392Z',
-    })).toEqual({value: new Date('2020-11-03T09:10:39.392Z')});
+    })).toEqual({ value: new Date('2020-11-03T09:10:39.392Z') });
 
     expect(jsonSerializer.for(DateClass).validatedDeserialize({
-    })).toEqual({value: new Date('2019-11-03T09:10:38.392Z')});
+    })).toEqual({ value: new Date('2019-11-03T09:10:38.392Z') });
 });
 
 

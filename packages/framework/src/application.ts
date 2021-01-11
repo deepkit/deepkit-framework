@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType} from '@deepkit/core';
-import {KernelModule} from './kernel';
-import {ServiceContainer} from './service-container';
-import {ProviderWithScope} from './injector/provider';
-import {createModule, Module, ModuleConfigOfOptions, ModuleOptions} from './module';
-import {Command, Config, Options} from '@oclif/config';
-import {basename, relative} from 'path';
-import {Main} from '@oclif/command';
-import {ExitError} from '@oclif/errors';
-import {buildOclifCommand} from './command';
+import { ClassType } from '@deepkit/core';
+import { KernelModule } from './kernel';
+import { ServiceContainer } from './service-container';
+import { ProviderWithScope } from './injector/provider';
+import { createModule, Module, ModuleConfigOfOptions, ModuleOptions } from './module';
+import { Command, Config, Options } from '@oclif/config';
+import { basename, relative } from 'path';
+import { Main } from '@oclif/command';
+import { ExitError } from '@oclif/errors';
+import { buildOclifCommand } from './command';
 
 export class Application<T extends ModuleOptions<any>> {
     public readonly serviceContainer: ServiceContainer<T>;
@@ -45,7 +45,7 @@ export class Application<T extends ModuleOptions<any>> {
     }
 
     static create<T extends Module<any> | ModuleOptions<any>, C = T extends Module<infer K> ? K : T>(module: T): Application<C> {
-        if (module instanceof Module){
+        if (module instanceof Module) {
             return new Application(module as any);
         } else {
             //see: https://github.com/microsoft/TypeScript/issues/13995
@@ -127,7 +127,7 @@ export class Application<T extends ModuleOptions<any>> {
         }
 
         try {
-            const config = new MyConfig({root: import.meta.url.replace('file://', '')});
+            const config = new MyConfig({ root: import.meta.url.replace('file://', '') });
             for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
                 config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.rootInjectorContext);
             }

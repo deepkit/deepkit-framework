@@ -1,5 +1,5 @@
-import {entity, t} from '@deepkit/type';
-import {ActiveRecord} from '@deepkit/orm';
+import { entity, t } from '@deepkit/type';
+import { ActiveRecord } from '@deepkit/orm';
 
 @entity.name('tag')
 export class Tag extends ActiveRecord {
@@ -8,7 +8,7 @@ export class Tag extends ActiveRecord {
     @t stars: number = 0;
 
     constructor(
-        @t.index({unique: true}) public name: string,
+        @t.index({ unique: true }) public name: string,
     ) {
         super();
     }

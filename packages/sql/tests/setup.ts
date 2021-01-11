@@ -1,8 +1,8 @@
-import {Database} from '@deepkit/orm';
-import {ClassSchema, getClassSchema} from '@deepkit/type';
-import {ClassType} from '@deepkit/core';
-import {SQLDatabaseAdapter} from '../index';
-import {DatabaseModel, TableComparator} from '../src/schema/table';
+import { Database } from '@deepkit/orm';
+import { ClassSchema, getClassSchema } from '@deepkit/type';
+import { ClassType } from '@deepkit/core';
+import { SQLDatabaseAdapter } from '../index';
+import { DatabaseModel, TableComparator } from '../src/schema/table';
 
 export async function createSetup(adapter: SQLDatabaseAdapter, schemas: (ClassSchema | ClassType)[]) {
     const database = new Database(adapter);

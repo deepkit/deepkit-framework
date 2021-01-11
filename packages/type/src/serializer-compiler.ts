@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {PropertySchema} from './model';
-import {JitStack} from './jit';
-import {SerializerCompilers} from './serializer';
+import { PropertySchema } from './model';
+import { JitStack } from './jit';
+import { SerializerCompilers } from './serializer';
 
 export type TypeConverterCompilerContext = Map<string, any>;
 export type ReserveVariable = (name?: string) => string;
@@ -54,7 +54,7 @@ export class CompilerState {
         return name;
     }
 
-    setContext(values: {[name: string]: any}) {
+    setContext(values: { [name: string]: any }) {
         for (const i in values) {
             if (!values.hasOwnProperty(i)) continue;
             this.rootContext.set(i, values[i]);

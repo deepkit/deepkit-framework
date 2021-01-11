@@ -1,7 +1,7 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {SimpleModel, SubModel} from './entities';
-import {jsonSerializer} from '../src/json-serializer';
+import { SimpleModel, SubModel } from './entities';
+import { jsonSerializer } from '../src/json-serializer';
 //
 // test('class-to test simple model', () => {
 //

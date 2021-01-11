@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {performance} from 'perf_hooks';
+import { performance } from 'perf_hooks';
 import Benchmark from 'benchmark';
 
 const Reset = '\x1b[0m';
@@ -34,7 +34,7 @@ function yellow(text: string): string {
 }
 
 function ops(ops: number): string {
-    let text = ops.toLocaleString(undefined, {maximumFractionDigits: 0});
+    let text = ops.toLocaleString(undefined, { maximumFractionDigits: 0 });
     text = text.padStart(12, ' ');
     return `${FgGreen}${text}${Reset} ops/s`;
 }
@@ -87,9 +87,9 @@ export class BenchSuite {
         }).on('cycle', function (event: any) {
             print(
                 ' 🏎',
-                'x', green(event.target.hz.toLocaleString(undefined, {maximumFractionDigits: 2})), 'ops/sec',
+                'x', green(event.target.hz.toLocaleString(undefined, { maximumFractionDigits: 2 })), 'ops/sec',
                 '\xb1' + event.target.stats.rme.toFixed(2) + '%',
-                yellow(event.target.stats.mean.toLocaleString(undefined, {maximumFractionDigits: 16})), 'sec/op',
+                yellow(event.target.stats.mean.toLocaleString(undefined, { maximumFractionDigits: 16 })), 'sec/op',
                 '\t' + getBlocks(event.target.stats.sample),
                 green(event.target.name),
             );
@@ -107,7 +107,7 @@ export class BenchSuite {
     }
 
     add(title: string, fn: () => void | Promise<void>, options: any = {}) {
-        options = Object.assign({maxTime: this.maxTime}, options);
+        options = Object.assign({ maxTime: this.maxTime }, options);
         this.suite.add(title, fn, options);
     }
 
@@ -130,7 +130,7 @@ export class BenchSuite {
     async runAsync() {
         print('Start benchmark', green(this.name));
         await new Promise(async (resolve, reject) => {
-            this.suite.run({async: true});
+            this.suite.run({ async: true });
             this.suite.on('complete', () => {
                 resolve(undefined);
             });
@@ -152,8 +152,8 @@ export async function bench(times: number, title: string, exec: () => void | Pro
         times.toLocaleString(), 'ops:',
         ops((1000 / took) * times),
         green(title),
-        took.toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms,',
-        (took / times).toLocaleString(undefined, {maximumFractionDigits: 17}), 'ms per item',
+        took.toLocaleString(undefined, { maximumFractionDigits: 17 }), 'ms,',
+        (took / times).toLocaleString(undefined, { maximumFractionDigits: 17 }), 'ms per item',
         process.memoryUsage().rss / 1024 / 1024, 'MB memory'
     ].join(' ') + '\n');
     return took;

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BaseEvent, eventDispatcher, EventDispatcher, EventToken, InjectorContext} from '@deepkit/framework';
-import {BenchSuite} from '../bench';
+import { BaseEvent, eventDispatcher, EventDispatcher, EventToken, InjectorContext } from '@deepkit/framework';
+import { BenchSuite } from '../bench';
 
 export async function main() {
     const bench = new BenchSuite('event');

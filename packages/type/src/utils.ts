@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {v4, stringify} from 'uuid';
-import {ClassType} from '@deepkit/core';
-import {ClassSchema} from './model';
-import {ExtractPrimaryKeyOrReferenceType, TypedArrays} from './types';
+import { v4, stringify } from 'uuid';
+import { ClassType } from '@deepkit/core';
+import { ClassSchema } from './model';
+import { ExtractPrimaryKeyOrReferenceType, TypedArrays } from './types';
 
 /** 
  * Returns a new UUID v4 as string.
@@ -41,33 +41,33 @@ export function isArray(v: any): v is Array<any> {
 
 export type JSONPartialSingle<T> = T extends Date ? string :
     T extends Array<infer K> ? Array<JSONPartialSingle<K>> :
-        T extends TypedArrays ? string :
-            T extends ArrayBuffer ? string :
-                T extends object ? JSONPartial<T> :
-                    T extends string ? number | T :
-                        T extends boolean ? number | string | T :
-                            T extends number ? T | string : T;
+    T extends TypedArrays ? string :
+    T extends ArrayBuffer ? string :
+    T extends object ? JSONPartial<T> :
+    T extends string ? number | T :
+    T extends boolean ? number | string | T :
+    T extends number ? T | string : T;
 
 export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<ExtractPrimaryKeyOrReferenceType<T[name]>> };
 
 export type JSONSingle<T> = T extends Date ? string | Date :
     T extends Array<infer K> ? Array<JSONSingle<K>> :
-        T extends TypedArrays ? string :
-            T extends ArrayBuffer ? string :
-                T extends object ? JSONEntity<T> :
-                    T extends string ? T :
-                        T extends boolean ? T :
-                            T extends number ? T : T;
+    T extends TypedArrays ? string :
+    T extends ArrayBuffer ? string :
+    T extends object ? JSONEntity<T> :
+    T extends string ? T :
+    T extends boolean ? T :
+    T extends number ? T : T;
 export type JSONEntity<T> = { [name in keyof T & string]: JSONSingle<ExtractPrimaryKeyOrReferenceType<T[name]>> };
 
 export type AnyEntitySingle<T> =
     T extends Array<infer K> ? Array<AnyEntitySingle<K>> :
-        T extends TypedArrays ? any :
-            T extends ArrayBuffer ? any :
-                T extends object ? AnyEntity<T> :
-                    T extends string ? any :
-                        T extends boolean ? any :
-                            T extends number ? any : any;
+    T extends TypedArrays ? any :
+    T extends ArrayBuffer ? any :
+    T extends object ? AnyEntity<T> :
+    T extends string ? any :
+    T extends boolean ? any :
+    T extends number ? any : any;
 export type AnyEntity<T> = { [name in keyof T & string]: AnyEntitySingle<ExtractPrimaryKeyOrReferenceType<T[name]>> };
 
 export type JSONPatch<T> = { [name in keyof T & string]: JSONSingle<T[name]> } | { [name: string]: any };

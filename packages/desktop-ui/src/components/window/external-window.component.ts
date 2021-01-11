@@ -19,16 +19,16 @@ import {
     ViewChild,
     ViewContainerRef
 } from "@angular/core";
-import {ComponentPortal, DomPortalHost, PortalHost} from "@angular/cdk/portal";
-import {WindowComponent} from "../window/window.component";
-import {WindowRegistry} from "../window/window-state";
-import {RenderComponentDirective} from "../core/render-component.directive";
-import {ELECTRON_WINDOW, IN_DIALOG} from "../app/token";
-import {Subscription} from "rxjs";
-import {DOCUMENT} from "@angular/common";
-import {DuiDialog} from "../dialog/dialog";
-import {Electron} from "../../core/utils";
-import {detectChangesNextFrame} from "../app";
+import { ComponentPortal, DomPortalHost, PortalHost } from "@angular/cdk/portal";
+import { WindowComponent } from "../window/window.component";
+import { WindowRegistry } from "../window/window-state";
+import { RenderComponentDirective } from "../core/render-component.directive";
+import { ELECTRON_WINDOW, IN_DIALOG } from "../app/token";
+import { Subscription } from "rxjs";
+import { DOCUMENT } from "@angular/common";
+import { DuiDialog } from "../dialog/dialog";
+import { Electron } from "../../core/utils";
+import { detectChangesNextFrame } from "../app";
 
 function PopupCenter(url: string, title: string, w: number, h: number): Window {
     let top = window.screenTop + (window.outerHeight / 2) - w / 2;
@@ -72,7 +72,7 @@ export class ExternalDialogWrapperComponent {
     container?: TemplateRef<any> | undefined;
     content?: TemplateRef<any> | undefined;
 
-    @ViewChild(RenderComponentDirective, {static: false}) renderComponentDirective?: RenderComponentDirective;
+    @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
     constructor(
         protected cd: ChangeDetectorRef,
@@ -110,7 +110,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
 
     public wrapperComponentRef?: ComponentRef<ExternalDialogWrapperComponent>;
 
-    @ViewChild('template', {static: false}) template?: TemplateRef<any>;
+    @ViewChild('template', { static: false }) template?: TemplateRef<any>;
 
     externalWindow?: Window;
     container?: TemplateRef<any> | undefined;
@@ -254,10 +254,10 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         const injector = Injector.create({
             parent: this.injector,
             providers: [
-                {provide: ExternalWindowComponent, useValue: this},
-                {provide: ELECTRON_WINDOW, useValue: this.electronWindow},
-                {provide: IN_DIALOG, useValue: false},
-                {provide: DOCUMENT, useValue: this.externalWindow!.document},
+                { provide: ExternalWindowComponent, useValue: this },
+                { provide: ELECTRON_WINDOW, useValue: this.electronWindow },
+                { provide: IN_DIALOG, useValue: false },
+                { provide: DOCUMENT, useValue: this.externalWindow!.document },
             ],
         });
 

@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, PropertySchema} from './model';
-import {registerCheckerCompiler} from './jit-validation-registry';
-import {getDataCheckerJS, jitValidate} from './jit-validation';
-import {getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
-import {getSortedUnionTypes} from './union';
-import {jsonTypeGuards} from './json-typeguards';
+import { getClassSchema, PropertySchema } from './model';
+import { registerCheckerCompiler } from './jit-validation-registry';
+import { getDataCheckerJS, jitValidate } from './jit-validation';
+import { getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } from '@deepkit/core';
+import { getSortedUnionTypes } from './union';
+import { jsonTypeGuards } from './json-typeguards';
 
 registerCheckerCompiler('number', (accessor: string, property: PropertySchema, utils) => {
     return `

@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DefaultPlatform, isSet} from './default-platform';
-import {Column, ForeignKey, Table, TableDiff} from '../schema/table';
-import {ClassSchema, isArray, PropertySchema, SqliteOptions} from '@deepkit/type';
-import {parseType} from '../reverse/schema-parser';
-import {SQLiteSchemaParser} from '../reverse/sqlite-schema-parser';
-import {SqliteSerializer} from '../serializer/sqlite-serializer';
-import {SQLiteFilterBuilder} from '../sql-filter-builder.sqlite';
-import {isObject} from '@deepkit/core';
+import { DefaultPlatform, isSet } from './default-platform';
+import { Column, ForeignKey, Table, TableDiff } from '../schema/table';
+import { ClassSchema, isArray, PropertySchema, SqliteOptions } from '@deepkit/type';
+import { parseType } from '../reverse/schema-parser';
+import { SQLiteSchemaParser } from '../reverse/sqlite-schema-parser';
+import { SqliteSerializer } from '../serializer/sqlite-serializer';
+import { SQLiteFilterBuilder } from '../sql-filter-builder.sqlite';
+import { isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 
 export class SQLitePlatform extends DefaultPlatform {
@@ -65,7 +65,7 @@ export class SQLitePlatform extends DefaultPlatform {
             || diff.addedIndices.length > 0
             || diff.addedFKs.length > 0
             || diff.addedPKColumns.length > 0
-        ;
+            ;
 
         for (const column of diff.addedColumns) {
             const sqlChangeNotSupported = false
@@ -79,7 +79,7 @@ export class SQLitePlatform extends DefaultPlatform {
 
                 //If a NOT NULL constraint is specified, then the field must have a default value other than NULL.
                 || column.isNotNull && column.defaultValue === undefined
-            ;
+                ;
 
             if (sqlChangeNotSupported) {
                 changeViaMigrationTableNeeded = true;

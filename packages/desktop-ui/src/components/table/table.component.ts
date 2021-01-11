@@ -33,10 +33,10 @@ import {
     isNumber
 } from "@deepkit/core";
 import Hammer from "hammerjs";
-import {Observable} from "rxjs";
-import {CdkVirtualScrollViewport} from "@angular/cdk/scrolling";
-import {DropdownComponent} from "../button";
-import {detectChangesNextFrame} from "../app/utils";
+import { Observable } from "rxjs";
+import { CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
+import { DropdownComponent } from "../button";
+import { detectChangesNextFrame } from "../app/utils";
 
 /**
  * Necessary directive to get information about the row item T in dui-table-column.
@@ -126,7 +126,7 @@ export class TableColumnDirective {
      */
     ovewrittenPosition?: number;
 
-    @ContentChild(TableCellDirective, {static: false}) cell?: TableCellDirective;
+    @ContentChild(TableCellDirective, { static: false }) cell?: TableCellDirective;
 
     isHidden() {
         return this.hidden !== false;
@@ -182,7 +182,7 @@ export class TableHeaderDirective {
     @Input('name') name!: string;
     @Input('sortable') sortable: boolean = true;
 
-    @ViewChild('templateRef', {static: false}) template!: TemplateRef<any>;
+    @ViewChild('templateRef', { static: false }) template!: TemplateRef<any>;
 }
 
 @Component({
@@ -402,17 +402,17 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      */
     @Output() public dbclick: EventEmitter<T> = new EventEmitter();
 
-    @ViewChild('header', {static: false}) header?: ElementRef;
+    @ViewChild('header', { static: false }) header?: ElementRef;
     @ViewChildren('th') ths?: QueryList<ElementRef<HTMLElement>>;
 
-    @ContentChildren(TableColumnDirective, {descendants: true}) columnDefs?: QueryList<TableColumnDirective>;
-    @ContentChildren(TableHeaderDirective, {descendants: true}) headerDefs?: QueryList<TableHeaderDirective>;
+    @ContentChildren(TableColumnDirective, { descendants: true }) columnDefs?: QueryList<TableColumnDirective>;
+    @ContentChildren(TableHeaderDirective, { descendants: true }) headerDefs?: QueryList<TableHeaderDirective>;
 
-    @ContentChild(TableCustomHeaderContextMenuDirective, {static: false}) customHeaderDropdown?: TableCustomHeaderContextMenuDirective;
-    @ContentChild(TableCustomRowContextMenuDirective, {static: false}) customRowDropdown?: TableCustomRowContextMenuDirective;
+    @ContentChild(TableCustomHeaderContextMenuDirective, { static: false }) customHeaderDropdown?: TableCustomHeaderContextMenuDirective;
+    @ContentChild(TableCustomRowContextMenuDirective, { static: false }) customRowDropdown?: TableCustomRowContextMenuDirective;
 
-    @ViewChild(CdkVirtualScrollViewport, {static: true}) viewport!: CdkVirtualScrollViewport;
-    @ViewChild('viewportElement', {static: true, read: ElementRef}) viewportElement!: ElementRef;
+    @ViewChild(CdkVirtualScrollViewport, { static: true }) viewport!: CdkVirtualScrollViewport;
+    @ViewChild('viewportElement', { static: true, read: ElementRef }) viewportElement!: ElementRef;
 
     sortedColumnDefs: TableColumnDirective[] = [];
 
@@ -524,7 +524,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     protected initHeaderMovement() {
         if (this.header && this.ths) {
             const mc = new Hammer(this.header!.nativeElement);
-            mc.add(new Hammer.Pan({direction: Hammer.DIRECTION_ALL, threshold: 1}));
+            mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 1 }));
 
             interface Box {
                 left: number;
@@ -585,7 +585,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
                             directive: directive,
                         });
 
-                        rowCells.push({cells: cells});
+                        rowCells.push({ cells: cells });
                     }
                 }
             });

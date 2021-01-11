@@ -1,8 +1,8 @@
-import {eventDispatcher, HtmlResponse, httpWorkflow, inject, injectable, Logger, RouteConfig} from '@deepkit/framework';
-import {config} from './config';
-import {join} from 'path';
-import {readFileSync} from 'fs';
-import {Router} from '@angular/router';
+import { eventDispatcher, HtmlResponse, httpWorkflow, inject, injectable, Logger, RouteConfig } from '@deepkit/framework';
+import { config } from './config';
+import { join } from 'path';
+import { readFileSync } from 'fs';
+import { Router } from '@angular/router';
 import domino from 'domino';
 (global as any).window = global;
 Object.assign(global, domino.createWindow());
@@ -43,9 +43,9 @@ export class AngularUniversalListener {
     }
 
     protected createModule() {
-        const options = {url: '_random_init/' + Date.now(), document: this.indexHtml};
+        const options = { url: '_random_init/' + Date.now(), document: this.indexHtml };
         const platform = this.platformDynamicServer([
-            {provide: this.INITIAL_CONFIG, useValue: options},
+            { provide: this.INITIAL_CONFIG, useValue: options },
         ]);
         return platform.bootstrapModule(this.serverModule);
     }
@@ -92,7 +92,7 @@ export class AngularUniversalListener {
             const router = await this.getRouter();
 
             try {
-                if (await router.navigateByUrl(event.url, {skipLocationChange: true})) {
+                if (await router.navigateByUrl(event.url, { skipLocationChange: true })) {
                     this.routesFound.set(event.url, true);
                 } else {
                     this.routesFound.set(event.url, false);
@@ -105,7 +105,7 @@ export class AngularUniversalListener {
         }
 
         event.routeFound(
-            new RouteConfig('angular', 'GET', event.url, {controller: AngularUniversalListener, methodName: 'render'}),
+            new RouteConfig('angular', 'GET', event.url, { controller: AngularUniversalListener, methodName: 'render' }),
             [event.url]
         );
     }

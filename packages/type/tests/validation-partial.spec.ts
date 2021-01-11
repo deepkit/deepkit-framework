@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jitValidatePartial, jitValidateProperty, resolvePropertySchema, t} from '../index';
+import { getClassSchema, jitValidatePartial, jitValidateProperty, resolvePropertySchema, t } from '../index';
 
 test('test partial @f.map(any)', async () => {
     const p = t.map(t.any).buildPropertySchema();
@@ -60,7 +60,7 @@ test('test partial @f.map(any) on class', async () => {
         'values.peter': [1, 2, 3],
         'values.23': 'asd',
         'values.23.asdasda.asdasdadd.asd': 'asd',
-        'any': {'asdasdasd': true},
+        'any': { 'asdasdasd': true },
     });
 
     expect(errors).toEqual([]);

@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {t} from '@deepkit/type';
-import {Command} from './command';
-import {IsMasterResponse} from './ismaster';
-import {MongoClientConfig} from '../client';
-import {Host, HostType} from '../host';
-import {Sha1ScramAuth, Sha256ScramAuth} from './auth/scram';
-import {ClassType} from '@deepkit/core';
-import {MongoError} from '../error';
-import {MongoAuth} from './auth/auth';
-import {X509Auth} from './auth/x509';
+import { t } from '@deepkit/type';
+import { Command } from './command';
+import { IsMasterResponse } from './ismaster';
+import { MongoClientConfig } from '../client';
+import { Host, HostType } from '../host';
+import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram';
+import { ClassType } from '@deepkit/core';
+import { MongoError } from '../error';
+import { MongoAuth } from './auth/auth';
+import { X509Auth } from './auth/x509';
 
 const isMasterSchema = t.schema({
     isMaster: t.number,

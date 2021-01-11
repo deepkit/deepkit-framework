@@ -19,7 +19,7 @@
 import 'reflect-metadata';
 import pkg from '@prisma/client';
 const { PrismaClient } = pkg;
-import {BenchSuite} from '../../../bench';
+import { BenchSuite } from '../../../bench';
 
 const prisma = new PrismaClient();
 

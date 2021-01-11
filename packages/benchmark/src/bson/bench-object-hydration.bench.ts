@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BenchSuite} from '../bench';
+import { BenchSuite } from '../bench';
 
 export async function main() {
     const suite = new BenchSuite(`Object hydration`);
@@ -28,18 +28,18 @@ export async function main() {
         for (const name of props) obj[name] = 1;
     });
 
-// const obj2: any = new ZZ();
-// obj2.property = 1;
-//
-// suite.add('class', () => {
-//     obj2.property = 1;
-// });
+    // const obj2: any = new ZZ();
+    // obj2.property = 1;
+    //
+    // suite.add('class', () => {
+    //     obj2.property = 1;
+    // });
 
-// const Entity1 = function () {}
-// suite.add('new Entity1', () => {
-//     const obj: any = new Entity1();
-//     for (const name of props) obj[name] = 1;
-// });
+    // const Entity1 = function () {}
+    // suite.add('new Entity1', () => {
+    //     const obj: any = new Entity1();
+    //     for (const name of props) obj[name] = 1;
+    // });
 
     const proto: any = {};
     for (const name of props) proto[name] = 1;

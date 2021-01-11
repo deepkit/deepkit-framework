@@ -13,9 +13,9 @@ for (const name of packages) {
     if (!fs.existsSync(tsConfigPath)) continue;
 
     console.log('processing', name, tsConfigPath);
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, {encoding: 'utf8'}));
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf8' }));
     const tsReferences = new Set();
-    const tsConfigString = fs.readFileSync(tsConfigPath, {encoding: 'utf8'})
+    const tsConfigString = fs.readFileSync(tsConfigPath, { encoding: 'utf8' })
     try {
         const tsConfig = JSON.parse(tsConfigString);
 

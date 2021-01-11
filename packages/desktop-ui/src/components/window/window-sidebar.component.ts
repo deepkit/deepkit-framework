@@ -1,4 +1,4 @@
-import {Component, TemplateRef, ViewChild} from "@angular/core";
+import { Component, TemplateRef, ViewChild } from "@angular/core";
 
 @Component({
     selector: 'dui-window-sidebar',
@@ -10,5 +10,5 @@ import {Component, TemplateRef, ViewChild} from "@angular/core";
     styleUrls: ['./window-sidebar.component.scss'],
 })
 export class WindowSidebarComponent {
-    @ViewChild('templateRef', {static: true}) public template!: TemplateRef<any>;
+    @ViewChild('templateRef', { static: true }) public template!: TemplateRef<any>;
 }

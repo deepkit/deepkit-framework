@@ -19,7 +19,7 @@
 import {
     binaryTypes,
     CompilerState,
-     compilerToString,
+    compilerToString,
     getClassSchema,
     getDataConverterJS,
     jsonSerializer,

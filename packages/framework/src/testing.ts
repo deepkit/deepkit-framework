@@ -40,11 +40,11 @@ export class BrokerMemoryServer extends BrokerServer {
 }
 
 export class MemoryLoggerTransport implements LoggerTransport {
-    public messages: {level: LoggerLevel, message: string}[] = [];
+    public messages: { level: LoggerLevel, message: string }[] = [];
     public messageStrings: string[] = [];
 
     write(message: string, level: LoggerLevel) {
-        this.messages.push({level, message});
+        this.messages.push({ level, message });
         this.messageStrings.push(message);
     }
 
@@ -75,7 +75,7 @@ export function createTestingApp<O extends ModuleOptions<NAME>, NAME extends str
     ];
 
     if (entities) {
-        providers.push({provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities)})
+        providers.push({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) })
         module.setupProvider(DatabaseRegistry).addDatabase(Database);
     }
 

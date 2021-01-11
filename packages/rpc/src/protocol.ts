@@ -181,7 +181,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     const size = view.getUint32(0, true);
     if (size !== buffer.byteLength) throw new Error(`Message buffer size wrong. Message size=${size}, buffer size=${buffer.byteLength}`);
-    
+
     const id = view.getUint32(5, true);
 
     let offset = 9;
@@ -189,7 +189,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
 
     if (routeType === RpcMessageRouteType.peer) {
         offset += 16; //<source>
-        while (buffer[offset++] !== 0) ; //feed until \0 byte
+        while (buffer[offset++] !== 0); //feed until \0 byte
     } else if (routeType === RpcMessageRouteType.sourceDest) {
         offset += 16 + 16; //uuid is each 16 bytes
     }
@@ -424,7 +424,7 @@ export class RpcMessageReader {
             if (ack) ack();
         } else if (message.type === RpcTypes.Chunk) {
             const progress = this.progress.get(message.id);
-            
+
             const body = message.parseBody(rpcChunk);
             let chunks = this.chunks.get(body.id);
             if (!chunks) {
@@ -435,7 +435,7 @@ export class RpcMessageReader {
             chunks.loaded += body.v.byteLength;
             if (this.onChunk) this.onChunk(message.id);
             if (progress) progress.set(body.total, chunks.loaded);
-            
+
             if (chunks.loaded === body.total) {
                 //we're done
                 this.progress.delete(message.id);

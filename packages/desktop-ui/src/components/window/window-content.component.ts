@@ -8,10 +8,10 @@ import {
     SimpleChanges,
     ViewChild
 } from "@angular/core";
-import {WindowSidebarComponent} from "./window-sidebar.component";
-import {Subject} from "rxjs";
-import {WindowState} from "./window-state";
-import {triggerResize} from "../../core/utils";
+import { WindowSidebarComponent } from "./window-sidebar.component";
+import { Subject } from "rxjs";
+import { WindowState } from "./window-state";
+import { triggerResize } from "../../core/utils";
 
 @Component({
     selector: 'dui-window-content',
@@ -48,11 +48,11 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
 
     @Output() sidebarWidthChange = new EventEmitter<number>();
 
-    @ContentChild(WindowSidebarComponent, {static: false}) toolbar?: WindowSidebarComponent;
+    @ContentChild(WindowSidebarComponent, { static: false }) toolbar?: WindowSidebarComponent;
 
-    @ViewChild('sidebar', {static: false}) public sidebar?: ElementRef<HTMLElement>;
-    @ViewChild('sidebarContainer', {static: false}) public sidebarContainer?: ElementRef<HTMLElement>;
-    @ViewChild('content', {static: true}) public content?: ElementRef<HTMLElement>;
+    @ViewChild('sidebar', { static: false }) public sidebar?: ElementRef<HTMLElement>;
+    @ViewChild('sidebarContainer', { static: false }) public sidebarContainer?: ElementRef<HTMLElement>;
+    @ViewChild('content', { static: true }) public content?: ElementRef<HTMLElement>;
 
     withAnimation: boolean = false;
     public readonly sidebarVisibleChanged = new Subject();

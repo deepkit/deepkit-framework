@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ConnectionRequest, MongoConnection, MongoConnectionPool} from './connection';
-import {parse as parseUrl} from 'url';
-import {parse as parseQueryString} from 'querystring';
-import {ClassSchema, getClassSchema, jsonSerializer} from '@deepkit/type';
-import {resolveSrvHosts} from './dns';
-import {Host} from './host';
-import {isErrorRetryableRead, isErrorRetryableWrite, MongoError} from './error';
-import {ConnectionOptions} from './options';
-import {arrayRemoveItem, ClassType, eachPair, singleStack, sleep} from '@deepkit/core';
-import {Command} from './command/command';
+import { ConnectionRequest, MongoConnection, MongoConnectionPool } from './connection';
+import { parse as parseUrl } from 'url';
+import { parse as parseQueryString } from 'querystring';
+import { ClassSchema, getClassSchema, jsonSerializer } from '@deepkit/type';
+import { resolveSrvHosts } from './dns';
+import { Host } from './host';
+import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error';
+import { ConnectionOptions } from './options';
+import { arrayRemoveItem, ClassType, eachPair, singleStack, sleep } from '@deepkit/core';
+import { Command } from './command/command';
 
 /**
  * Default URL:
@@ -161,7 +161,7 @@ export class MongoClientConfig {
             }
 
             const hostsData = await this.resolveSrvHosts();
-            const options = {...hostsData.options ? parseQueryString(hostsData.options) : {}};
+            const options = { ...hostsData.options ? parseQueryString(hostsData.options) : {} };
             const partialOptions = jsonSerializer.for(ConnectionOptions).validatedDeserialize(options) as {};
             for (const [k, v] of eachPair(partialOptions)) {
                 this.options[k] = v;
@@ -236,7 +236,7 @@ export class MongoClient {
 
     public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
         const maxRetries = 10;
-        const request = {writable: command.needsWritableHost()};
+        const request = { writable: command.needsWritableHost() };
         await this.connectionPool.ensureHostsConnected(true);
 
         for (let i = 1; i <= maxRetries; i++) {

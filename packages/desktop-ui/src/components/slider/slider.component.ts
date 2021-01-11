@@ -8,7 +8,7 @@ import {
     SkipSelf,
     ViewChild
 } from "@angular/core";
-import {ngValueAccessor, ValueAccessorBase} from "../../core/form";
+import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
 import Hammer from "hammerjs";
 
 @Component({
@@ -27,7 +27,7 @@ import Hammer from "hammerjs";
     providers: [ngValueAccessor(SliderComponent)]
 })
 export class SliderComponent extends ValueAccessorBase<number> implements AfterViewInit {
-    @ViewChild('knob', {static: true}) knob?: ElementRef;
+    @ViewChild('knob', { static: true }) knob?: ElementRef;
 
     @Input() min = 0;
     @Input() steps = 0.01;
@@ -50,7 +50,7 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
 
     ngAfterViewInit() {
         const mc = new Hammer(this.knob!.nativeElement);
-        mc.add(new Hammer.Pan({direction: Hammer.DIRECTION_HORIZONTAL, threshold: 1}));
+        mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL, threshold: 1 }));
 
         const mcTab = new Hammer(this.element.nativeElement);
         mcTab.add(new Hammer.Tap({}));

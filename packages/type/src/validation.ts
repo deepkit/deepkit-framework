@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType, CustomError} from '@deepkit/core';
-import {ClassSchema, getClassSchema,} from './model';
-import {jitValidate, jitValidateProperty, ValidationFailedItem} from './jit-validation';
-import {ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
+import { ClassType, CustomError } from '@deepkit/core';
+import { ClassSchema, getClassSchema, } from './model';
+import { jitValidate, jitValidateProperty, ValidationFailedItem } from './jit-validation';
+import { ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema } from './utils';
 
 /**
  *

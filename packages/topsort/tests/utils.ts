@@ -1,4 +1,4 @@
-import {performance} from 'perf_hooks';
+import { performance } from 'perf_hooks';
 
 /**
  * Executes given exec() method 3 times and averages the consumed time.

@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {isArray} from '@deepkit/core';
-import {PropertyValidatorError} from './jit-validation';
+import { isArray } from '@deepkit/core';
+import { PropertyValidatorError } from './jit-validation';
 import validator from 'validator';
 
 export const validators = {

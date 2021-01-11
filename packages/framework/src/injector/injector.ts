@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, PropertySchema, t} from '@deepkit/type';
-import {ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provider, ProviderWithScope, ValueProvider} from './provider';
-import {ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction} from '@deepkit/core';
-import {Module, ModuleOptions} from '../module';
+import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, PropertySchema, t } from '@deepkit/type';
+import { ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provider, ProviderWithScope, ValueProvider } from './provider';
+import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction } from '@deepkit/core';
+import { Module, ModuleOptions } from '../module';
 
 
 export class ConfigToken<T extends {}> {
@@ -35,9 +35,9 @@ export class ConfigSlice<T extends {}> {
     constructor(config: ConfigDefinition<T>, names: (keyof T & string)[]) {
         //we want that ConfigSlice acts as a regular plain object, which can be serialized at wish.
         Object.defineProperties(this, {
-            config: {enumerable: false, value: config},
-            names: {enumerable: false, value: names},
-            bag: {enumerable: false, writable: true},
+            config: { enumerable: false, value: config },
+            names: { enumerable: false, value: names },
+            bag: { enumerable: false, writable: true },
         });
 
         for (const name of names) {
@@ -590,8 +590,8 @@ export class Context {
 }
 
 export type ConfiguredProviderCalls = {
-        type: 'call', methodName: string | symbol | number, args: any[]
-    }
+    type: 'call', methodName: string | symbol | number, args: any[]
+}
     | { type: 'property', property: string | symbol | number, value: any }
     | { type: 'stop' }
     ;

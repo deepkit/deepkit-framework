@@ -1,4 +1,4 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import {
     emptySerializer,
@@ -85,22 +85,22 @@ test('different origin', async () => {
     });
 
     {
-        const d = mySerializer.for(Test).deserialize({date: 'my:2018-10-13T12:17:35.000Z'});
+        const d = mySerializer.for(Test).deserialize({ date: 'my:2018-10-13T12:17:35.000Z' });
         expect(d.date).toEqual(new Date('2018-10-13T12:17:35.000Z'));
     }
 
     {
-        const d = mySerializer.for(Test).serialize({date: new Date('2018-10-13T12:17:35.000Z')});
+        const d = mySerializer.for(Test).serialize({ date: new Date('2018-10-13T12:17:35.000Z') });
         expect(d.date).toEqual('my:2018-10-13T12:17:35.000Z');
     }
 
     {
-        const d = mySerializer.for(Test).to(jsonSerializer, {date: 'my:2018-10-13T12:17:35.000Z'});
+        const d = mySerializer.for(Test).to(jsonSerializer, { date: 'my:2018-10-13T12:17:35.000Z' });
         expect(d.date).toEqual('2018-10-13T12:17:35.000Z');
     }
 
     {
-        const d = mySerializer.for(Test).from(jsonSerializer, {date: '2018-10-13T12:17:35.000Z'});
+        const d = mySerializer.for(Test).from(jsonSerializer, { date: '2018-10-13T12:17:35.000Z' });
         expect(d.date).toEqual('my:2018-10-13T12:17:35.000Z');
     }
 });
@@ -191,8 +191,8 @@ test('multi level extend', async () => {
         logins: t.number
     });
 
-    const result = end.for(s).serialize({id: 5, logins: 124});
-    expect(result).toEqual({id: 100, logins: 124});
+    const result = end.for(s).serialize({ id: 5, logins: 124 });
+    expect(result).toEqual({ id: 100, logins: 124 });
     expect(baseCalled).toBe(1);
     expect(middleCalled).toBe(2);
 });
@@ -220,7 +220,7 @@ test('inheritance', () => {
         created: t.date,
     });
 
-    const baseRes = baseSerializer.for(s).serialize({created: new Date()});
+    const baseRes = baseSerializer.for(s).serialize({ created: new Date() });
     expect(typeof baseRes.created).toBe('string');
 
     const s2 = t.schema({
@@ -228,7 +228,7 @@ test('inheritance', () => {
         created: t.date,
     });
 
-    const res = noDateSerializer.for(s2).serialize({moderator: {created: new Date()}, created: new Date()});
+    const res = noDateSerializer.for(s2).serialize({ moderator: { created: new Date() }, created: new Date() });
     expect(res.created).toBeInstanceOf(Date);
     expect(res.moderator.created).toBeInstanceOf(Date);
 });

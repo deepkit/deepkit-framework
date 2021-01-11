@@ -1,7 +1,7 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator} from '../index';
-import {getClassSchema, jsonSerializer, t} from '@deepkit/type';
+import { getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../index';
+import { getClassSchema, jsonSerializer, t } from '@deepkit/type';
 
 class Image {
     @t title: string = '';
@@ -28,15 +28,15 @@ test('getJITConverterForSnapshot', () => {
     const converter = getJITConverterForSnapshot(schema);
 
     {
-        const converted = converter({id: 22, title: 'Peter'});
+        const converted = converter({ id: 22, title: 'Peter' });
         expect(converted).toBeInstanceOf(Object);
-        expect(converted).toEqual({id: 22, title: 'Peter', image: null});
+        expect(converted).toEqual({ id: 22, title: 'Peter', image: null });
     }
 
     {
-        const converted = converter({id: 22, title: 'Peter', image: new Image(3)});
+        const converted = converter({ id: 22, title: 'Peter', image: new Image(3) });
         expect(converted).toBeInstanceOf(Object);
-        expect(converted).toEqual({id: 22, title: 'Peter', image: {id: 3}});
+        expect(converted).toEqual({ id: 22, title: 'Peter', image: { id: 3 } });
     }
 });
 
@@ -46,15 +46,15 @@ test('getPrimaryKeyExtractor', () => {
     const converter = getPrimaryKeyExtractor(schema);
 
     {
-        const converted = converter({id: 22, title: 'Peter'});
+        const converted = converter({ id: 22, title: 'Peter' });
         expect(converted).toBeInstanceOf(Object);
-        expect(converted).toEqual({id: 22});
+        expect(converted).toEqual({ id: 22 });
     }
 
     {
-        const converted = converter({id: 22, title: 'Peter', image: new Image(3)});
+        const converted = converter({ id: 22, title: 'Peter', image: new Image(3) });
         expect(converted).toBeInstanceOf(Object);
-        expect(converted).toEqual({id: 22});
+        expect(converted).toEqual({ id: 22 });
     }
 });
 
@@ -64,12 +64,12 @@ test('getPrimaryKeyHashGenerator', () => {
     const converter = getPrimaryKeyHashGenerator(schema, jsonSerializer);
 
     {
-        const converted = converter({id: 22, title: 'Peter'});
+        const converted = converter({ id: 22, title: 'Peter' });
         expect(converted).toBe('\u000022');
     }
 
     {
-        const converted = converter({id: 22, title: 'Peter', image: new Image(3)});
+        const converted = converter({ id: 22, title: 'Peter', image: new Image(3) });
         expect(converted).toBe('\u000022');
     }
 });

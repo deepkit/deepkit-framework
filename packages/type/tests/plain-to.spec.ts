@@ -1,8 +1,8 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {Plan, SimpleModel, StringCollectionWrapper, SubModel} from './entities';
-import {getClassSchema, jsonSerializer, t} from '../index';
-import {resolvePropertySchema} from '../src/jit';
+import { Plan, SimpleModel, StringCollectionWrapper, SubModel } from './entities';
+import { getClassSchema, jsonSerializer, t } from '../index';
+import { resolvePropertySchema } from '../src/jit';
 
 test('resolvePropertySchema simple', () => {
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'id')!.type).toBe('uuid');
@@ -101,7 +101,7 @@ test('partial', () => {
     const instance = jsonSerializer.for(SimpleModel).partialDeserialize({
         name: 'Hi',
         children: [
-            {label: 'Foo'}
+            { label: 'Foo' }
         ]
     });
 
@@ -116,7 +116,7 @@ test('partial', () => {
 
 test('partial 3', () => {
     const i2 = jsonSerializer.for(SimpleModel).partialDeserialize({
-        'children': [{'label': 3}]
+        'children': [{ 'label': 3 }]
     });
     expect(i2['children'][0]).toBeInstanceOf(SubModel);
     expect(i2['children'][0].label).toBe('3');
@@ -144,11 +144,11 @@ test('test enum string', () => {
         enum: MyEnum = MyEnum.waiting;
     }
 
-    expect(jsonSerializer.for(Model).deserialize({enum: MyEnum.waiting}).enum).toBe(MyEnum.waiting);
-    expect(jsonSerializer.for(Model).deserialize({enum: MyEnum.downloading}).enum).toBe(MyEnum.downloading);
-    expect(jsonSerializer.for(Model).deserialize({enum: 'waiting'}).enum).toBe(MyEnum.waiting);
-    expect(jsonSerializer.for(Model).deserialize({enum: 'extracting'}).enum).toBe(MyEnum.extracting);
-    expect(jsonSerializer.for(Model).deserialize({enum: 'verifying'}).enum).toBe(MyEnum.verifying);
+    expect(jsonSerializer.for(Model).deserialize({ enum: MyEnum.waiting }).enum).toBe(MyEnum.waiting);
+    expect(jsonSerializer.for(Model).deserialize({ enum: MyEnum.downloading }).enum).toBe(MyEnum.downloading);
+    expect(jsonSerializer.for(Model).deserialize({ enum: 'waiting' }).enum).toBe(MyEnum.waiting);
+    expect(jsonSerializer.for(Model).deserialize({ enum: 'extracting' }).enum).toBe(MyEnum.extracting);
+    expect(jsonSerializer.for(Model).deserialize({ enum: 'verifying' }).enum).toBe(MyEnum.verifying);
 });
 
 test('test enum labels', () => {
@@ -164,14 +164,14 @@ test('test enum labels', () => {
         enum: MyEnum = MyEnum.third;
     }
 
-    expect(jsonSerializer.for(Model).deserialize({enum: MyEnum.first}).enum).toBe(MyEnum.first);
-    expect(jsonSerializer.for(Model).deserialize({enum: MyEnum.second}).enum).toBe(MyEnum.second);
-    expect(jsonSerializer.for(Model).deserialize({enum: 0}).enum).toBe(MyEnum.first);
-    expect(jsonSerializer.for(Model).deserialize({enum: 1}).enum).toBe(MyEnum.second);
-    expect(jsonSerializer.for(Model).deserialize({enum: 2}).enum).toBe(MyEnum.third);
+    expect(jsonSerializer.for(Model).deserialize({ enum: MyEnum.first }).enum).toBe(MyEnum.first);
+    expect(jsonSerializer.for(Model).deserialize({ enum: MyEnum.second }).enum).toBe(MyEnum.second);
+    expect(jsonSerializer.for(Model).deserialize({ enum: 0 }).enum).toBe(MyEnum.first);
+    expect(jsonSerializer.for(Model).deserialize({ enum: 1 }).enum).toBe(MyEnum.second);
+    expect(jsonSerializer.for(Model).deserialize({ enum: 2 }).enum).toBe(MyEnum.third);
 
     expect(() => {
-        expect(jsonSerializer.for(Model).deserialize({enum: 'first'}).enum).toBe(MyEnum.first);
+        expect(jsonSerializer.for(Model).deserialize({ enum: 'first' }).enum).toBe(MyEnum.first);
     }).toThrow('Invalid ENUM given in property enum: first, valid: 0,1,2');
 
 
@@ -180,18 +180,18 @@ test('test enum labels', () => {
         enum: MyEnum = MyEnum.third;
     }
 
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: MyEnum.first}).enum).toBe(MyEnum.first);
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: MyEnum.second}).enum).toBe(MyEnum.second);
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: 0}).enum).toBe(MyEnum.first);
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: 1}).enum).toBe(MyEnum.second);
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: 2}).enum).toBe(MyEnum.third);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: MyEnum.first }).enum).toBe(MyEnum.first);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: MyEnum.second }).enum).toBe(MyEnum.second);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: 0 }).enum).toBe(MyEnum.first);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: 1 }).enum).toBe(MyEnum.second);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: 2 }).enum).toBe(MyEnum.third);
 
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: 'first'}).enum).toBe(MyEnum.first);
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: 'second'}).enum).toBe(MyEnum.second);
-    expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: 'third'}).enum).toBe(MyEnum.third);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: 'first' }).enum).toBe(MyEnum.first);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: 'second' }).enum).toBe(MyEnum.second);
+    expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: 'third' }).enum).toBe(MyEnum.third);
 
     expect(() => {
-        expect(jsonSerializer.for(ModelWithLabels).deserialize({enum: 'Hi'}).enum).toBe(MyEnum.first);
+        expect(jsonSerializer.for(ModelWithLabels).deserialize({ enum: 'Hi' }).enum).toBe(MyEnum.first);
     }).toThrow('Invalid ENUM given in property enum: Hi, valid: 0,1,2,first,second,third');
 
 });

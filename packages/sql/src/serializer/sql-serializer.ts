@@ -83,7 +83,7 @@ sqlSerializer.fromClass.register('date', (property: PropertySchema, state: Compi
 });
 
 sqlSerializer.toClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({uuid4Stringify});
+    state.setContext({ uuid4Stringify });
     state.addCodeForSetter(`
         try {
             ${state.setter} = 'string' === typeof ${state.accessor} ? ${state.accessor} : uuid4Stringify(${state.accessor});
@@ -95,7 +95,7 @@ sqlSerializer.toClass.register('uuid', (property: PropertySchema, state: Compile
 });
 
 sqlSerializer.fromClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({uuid4Binary});
+    state.setContext({ uuid4Binary });
     state.addCodeForSetter(`
         try {
             ${state.setter} = uuid4Binary(${state.accessor});
@@ -157,7 +157,7 @@ sqlSerializer.fromClass.append('class', (property: PropertySchema, state: Compil
     if (property.parent) return;
 
     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
-    state.setContext({stringify: JSON.stringify});
+    state.setContext({ stringify: JSON.stringify });
     state.addSetter(`stringify(${state.accessor})`);
 });
 
@@ -166,26 +166,26 @@ sqlSerializer.fromClass.append('map', (property: PropertySchema, state: Compiler
     if (property.parent) return;
 
     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
-    state.setContext({stringify: JSON.stringify});
+    state.setContext({ stringify: JSON.stringify });
     state.addSetter(`stringify(${state.accessor})`);
 });
 
 sqlSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
-    state.setContext({typedArrayToBuffer});
+    state.setContext({ typedArrayToBuffer });
     state.addSetter(`typedArrayToBuffer(${state.accessor})`);
 });
 
 sqlSerializer.toClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
-    state.setContext({typedArrayNamesMap, nodeBufferToTypedArray});
+    state.setContext({ typedArrayNamesMap, nodeBufferToTypedArray });
     state.addSetter(`nodeBufferToTypedArray(${state.accessor}, typedArrayNamesMap.get('${property.type}'))`);
 });
 
 sqlSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({nodeBufferToArrayBuffer});
+    state.setContext({ nodeBufferToArrayBuffer });
     state.addSetter(`nodeBufferToArrayBuffer(${state.accessor})`);
 });
 
 sqlSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({Buffer});
+    state.setContext({ Buffer });
     state.addSetter(`Buffer.from(${state.accessor})`);
 });

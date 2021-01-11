@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {sqlSerializer} from './sql-serializer';
+import { sqlSerializer } from './sql-serializer';
 
 export const SqliteSerializer = new class extends sqlSerializer.fork('sqlite') {
 };

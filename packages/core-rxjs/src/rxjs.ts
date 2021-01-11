@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {Observable, Subscriber, Subscription, TeardownLogic} from 'rxjs';
-import {arrayRemoveItem, createStack, isFunction, mergePromiseStack, mergeStack} from '@deepkit/core';
-import {first, skip} from 'rxjs/operators';
+import { Observable, Subscriber, Subscription, TeardownLogic } from 'rxjs';
+import { arrayRemoveItem, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
+import { first, skip } from 'rxjs/operators';
 
 export class AsyncSubscription {
     protected unsubscribed = false;

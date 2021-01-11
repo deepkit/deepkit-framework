@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DefaultPlatform} from './default-platform';
-import {Pool} from 'mariadb';
-import {mySqlSerializer} from '../serializer/mysql-serializer';
-import {Column} from '../schema/table';
-import {MySQLOptions, PropertySchema} from '@deepkit/type';
-import {parseType} from '../reverse/schema-parser';
-import {MysqlSchemaParser} from '../reverse/mysql-schema-parser';
+import { DefaultPlatform } from './default-platform';
+import { Pool } from 'mariadb';
+import { mySqlSerializer } from '../serializer/mysql-serializer';
+import { Column } from '../schema/table';
+import { MySQLOptions, PropertySchema } from '@deepkit/type';
+import { parseType } from '../reverse/schema-parser';
+import { MysqlSchemaParser } from '../reverse/mysql-schema-parser';
 
 export class MySQLPlatform extends DefaultPlatform {
     protected defaultSqlType = 'longtext';
@@ -33,9 +33,9 @@ export class MySQLPlatform extends DefaultPlatform {
     constructor(protected pool: Pool) {
         super();
 
-        this.nativeTypeInformation.set('blob', {needsIndexPrefix: true, defaultIndexSize: 767});
-        this.nativeTypeInformation.set('longtext', {needsIndexPrefix: true, defaultIndexSize: 767});
-        this.nativeTypeInformation.set('longblob', {needsIndexPrefix: true, defaultIndexSize: 767});
+        this.nativeTypeInformation.set('blob', { needsIndexPrefix: true, defaultIndexSize: 767 });
+        this.nativeTypeInformation.set('longtext', { needsIndexPrefix: true, defaultIndexSize: 767 });
+        this.nativeTypeInformation.set('longblob', { needsIndexPrefix: true, defaultIndexSize: 767 });
 
         this.addType('number', 'double');
         this.addType('date', 'datetime');

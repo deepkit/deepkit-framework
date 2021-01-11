@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createConfig} from './injector/injector';
-import {t} from '@deepkit/type';
+import { createConfig } from './injector/injector';
+import { t } from '@deepkit/type';
 
 export const kernelConfig = createConfig({
     host: t.string.default('localhost'), //binding to 127.0.0.1 is roughly 20% slower.
@@ -38,4 +38,4 @@ export const kernelConfig = createConfig({
     migrationDir: t.string.default('migrations'),
 });
 
-export class KernelConfigAll extends kernelConfig.all() {}
+export class KernelConfigAll extends kernelConfig.all() { }

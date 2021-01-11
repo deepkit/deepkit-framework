@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {t, validateFactory} from '@deepkit/type';
-import {good} from './validation';
-import {BenchSuite} from '../../bench';
+import { t, validateFactory } from '@deepkit/type';
+import { good } from './validation';
+import { BenchSuite } from '../../bench';
 
 const Model = t.schema({
     number: t.number,

@@ -1,5 +1,5 @@
-import {ChangeDetectorRef, Component, HostBinding, HostListener, Injector, Input, SkipSelf} from "@angular/core";
-import {ngValueAccessor, ValueAccessorBase} from "../../core/form";
+import { ChangeDetectorRef, Component, HostBinding, HostListener, Injector, Input, SkipSelf } from "@angular/core";
+import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
 
 @Component({
     selector: 'dui-radiobox',

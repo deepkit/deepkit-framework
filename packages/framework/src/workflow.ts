@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {capitalize, ClassType, CompilerContext, CustomError, getClassName, isArray, toFastProperties} from '@deepkit/core';
-import {ExtractClassType} from '@deepkit/type';
-import {BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService} from './event';
-import {InjectorContext} from './injector/injector';
-import {HttpRequestDebugCollector} from './debug/debugger';
+import { capitalize, ClassType, CompilerContext, CustomError, getClassName, isArray, toFastProperties } from '@deepkit/core';
+import { ExtractClassType } from '@deepkit/type';
+import { BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService } from './event';
+import { InjectorContext } from './injector/injector';
+import { HttpRequestDebugCollector } from './debug/debugger';
 
 interface WorkflowTransition<T> {
     from: keyof T & string,
@@ -106,7 +106,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
     }
 
     addTransition(from: keyof T & string, to: keyof T & string, label?: string) {
-        this.transitions.push({from, to, label});
+        this.transitions.push({ from, to, label });
         if (!this.next[from]) this.next[from] = [];
         this.next[from]!.push(to);
     }
@@ -241,7 +241,7 @@ export class WorkflowStateSubject<T extends WorkflowPlaces> implements WorkflowS
     }
 }
 
-export class WorkflowError extends CustomError {}
+export class WorkflowError extends CustomError { }
 
 export class Workflow<T extends WorkflowPlaces> {
     protected events: { [name in keyof T]?: Function } = {};

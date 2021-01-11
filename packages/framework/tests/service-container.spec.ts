@@ -1,9 +1,9 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {ServiceContainer} from '../src/service-container';
-import {injectable} from '../src/injector/injector';
-import {rpc} from '@deepkit/rpc';
-import {createModule} from '../src/module';
+import { ServiceContainer } from '../src/service-container';
+import { injectable } from '../src/injector/injector';
+import { rpc } from '@deepkit/rpc';
+import { createModule } from '../src/module';
 
 test('controller', () => {
     class MyService {
@@ -82,7 +82,7 @@ test('controller in module and overwrite service', () => {
     {
         const MyModule = createModule({
             providers: [
-                {provide: MyService, useValue: new MyService('different')}
+                { provide: MyService, useValue: new MyService('different') }
             ],
             imports: [ControllerModule],
         });
@@ -142,7 +142,7 @@ test('simple setup with import and overwrite', () => {
         }
 
         const MyModuleOverwritten = createModule({
-            providers: [MyService, {provide: Connection, useClass: OverwrittenConnection}],
+            providers: [MyService, { provide: Connection, useClass: OverwrittenConnection }],
             imports: [DatabaseModule]
         });
 
@@ -204,7 +204,7 @@ test('scopes', () => {
     }
 
     const MyModule = createModule({
-        providers: [MyService, {provide: SessionHandler, scope: 'rpc'}],
+        providers: [MyService, { provide: SessionHandler, scope: 'rpc' }],
     });
 
     const serviceContainer = new ServiceContainer(MyModule);
@@ -325,7 +325,7 @@ test('module with config object', () => {
 
         const MyModule = createModule({
             providers: [
-                {provide: ExchangeConfig, useValue: changedConfig}
+                { provide: ExchangeConfig, useValue: changedConfig }
             ],
             imports: [ExchangeModule]
         });

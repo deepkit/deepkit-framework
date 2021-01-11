@@ -1,7 +1,7 @@
-import {expect, test} from '@jest/globals';
-import {t} from '@deepkit/type';
+import { expect, test } from '@jest/globals';
+import { t } from '@deepkit/type';
 import 'reflect-metadata';
-import {CircularDependencyError, createConfig, inject, injectable, Injector} from '../src/injector/injector';
+import { CircularDependencyError, createConfig, inject, injectable, Injector } from '../src/injector/injector';
 
 export const a = 'asd';
 
@@ -29,7 +29,7 @@ test('injector key', () => {
         }
     }
 
-    const injector = new Injector([MyServer, {provide: 'foo', useValue: 'bar'}]);
+    const injector = new Injector([MyServer, { provide: 'foo', useValue: 'bar' }]);
     expect(injector.get('foo')).toBe('bar');
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
 });
@@ -46,7 +46,7 @@ test('injector transient', () => {
         }
     }
 
-    const injector = new Injector([MyServer, {provide: Connection, transient: true}]);
+    const injector = new Injector([MyServer, { provide: Connection, transient: true }]);
     const c1 = injector.get(Connection);
     const c2 = injector.get(Connection);
     expect(c1).toBeInstanceOf(Connection);
@@ -80,7 +80,7 @@ test('injector property injection', () => {
         }
     }
 
-    const injector = new Injector([MyServer, Connection, {provide: 'name', useValue: 'peter'}]);
+    const injector = new Injector([MyServer, Connection, { provide: 'name', useValue: 'peter' }]);
     const s = injector.get(MyServer);
     expect(s.connection).toBeInstanceOf(Connection);
     expect(s.name).toBe('peter');
@@ -210,7 +210,7 @@ test('injector factory', () => {
     }
 
     {
-        const injector = new Injector([{provide: Service, useFactory: () => new Service()}]);
+        const injector = new Injector([{ provide: Service, useFactory: () => new Service() }]);
 
         const s1 = injector.get(Service);
         expect(s1).toBeInstanceOf(Service);
@@ -224,12 +224,12 @@ test('injector factory', () => {
 
 test('injector stack parent', () => {
     const i1 = new Injector([
-        {provide: 'level', deps: ['deep1'], useFactory: (d: any) => d},
-        {provide: 'level2', deps: ['deep2'], useFactory: (d: any) => d},
+        { provide: 'level', deps: ['deep1'], useFactory: (d: any) => d },
+        { provide: 'level2', deps: ['deep2'], useFactory: (d: any) => d },
     ]);
 
-    const i2 = new Injector([{provide: 'deep1', useValue: 2}], [i1]);
-    const i3 = new Injector([{provide: 'deep2', useValue: 3}], [i2]);
+    const i2 = new Injector([{ provide: 'deep1', useValue: 2 }], [i1]);
+    const i3 = new Injector([{ provide: 'deep2', useValue: 3 }], [i2]);
 
     expect(i2.get('level')).toBe(2);
     expect(i3.get('level')).toBe(2);
@@ -240,12 +240,12 @@ test('injector stack parent', () => {
 
 test('injector stack parent fork', () => {
     const i1 = new Injector([
-        {provide: 'level', deps: ['deep1'], useFactory: (d: any) => d},
-        {provide: 'level2', deps: ['deep2'], useFactory: (d: any) => d},
+        { provide: 'level', deps: ['deep1'], useFactory: (d: any) => d },
+        { provide: 'level2', deps: ['deep2'], useFactory: (d: any) => d },
     ]);
 
-    const i2 = new Injector([{provide: 'deep1', useValue: 2}], [i1]).fork();
-    const i3 = new Injector([{provide: 'deep2', useValue: 3}], [i2]).fork();
+    const i2 = new Injector([{ provide: 'deep1', useValue: 2 }], [i1]).fork();
+    const i3 = new Injector([{ provide: 'deep2', useValue: 3 }], [i2]).fork();
 
     expect(i2.get('level')).toBe(2);
     expect(i3.get('level')).toBe(2);
@@ -260,7 +260,7 @@ test('injector config', () => {
         debug: t.boolean.default(false)
     });
 
-    class ServiceConfig extends FullConfig.slice(['debug']) {}
+    class ServiceConfig extends FullConfig.slice(['debug']) { }
 
     @injectable()
     class MyService {
@@ -280,7 +280,7 @@ test('injector config', () => {
         }
     }
 
-    class Slice extends FullConfig.slice(['debug']) {}
+    class Slice extends FullConfig.slice(['debug']) { }
 
     @injectable()
     class MyService4 {

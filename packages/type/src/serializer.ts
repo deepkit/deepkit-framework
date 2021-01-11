@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, PropertySchema} from './model';
-import {TypeConverterCompiler} from './serializer-compiler';
-import {ClassType} from '@deepkit/core';
+import { ClassSchema, getClassSchema, PropertySchema } from './model';
+import { TypeConverterCompiler } from './serializer-compiler';
+import { ClassType } from '@deepkit/core';
 import {
     getClassToXFunction,
     getPartialClassToXFunction,
@@ -21,9 +21,9 @@ import {
     JitConverterOptions,
     resolvePropertySchema
 } from './jit';
-import {AnyEntity, ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
-import {validate, ValidationFailed} from './validation';
-import {binaryTypes, Types} from './types';
+import { AnyEntity, ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema } from './utils';
+import { validate, ValidationFailed } from './validation';
+import { binaryTypes, Types } from './types';
 
 type CompilerTypes = Types | 'undefined' | 'null';
 

@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {FlattenIfArray} from './utils';
-import {Buffer} from 'buffer';
+import { FlattenIfArray } from './utils';
+import { Buffer } from 'buffer';
 
 export type PrimaryKey<T> = T & { __isPrimaryKey?: T };
 

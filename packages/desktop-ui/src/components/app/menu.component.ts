@@ -9,10 +9,10 @@ import {
     Output,
     QueryList
 } from "@angular/core";
-import {WindowMenuState} from "../window/window-menu";
-import {arrayHasItem} from "@deepkit/core";
-import {Subscription} from "rxjs";
-import {Electron} from "../../core/utils";
+import { WindowMenuState } from "../window/window-menu";
+import { arrayHasItem } from "@deepkit/core";
+import { Subscription } from "rxjs";
+import { Electron } from "../../core/utils";
 
 @Directive()
 export class MenuBase implements AfterViewInit {
@@ -125,14 +125,14 @@ export class MenuBase implements AfterViewInit {
 
 @Directive({
     selector: 'dui-menu-item',
-    providers: [{provide: MenuBase, useExisting: forwardRef(() => MenuItemDirective)}]
+    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuItemDirective) }]
 })
 export class MenuItemDirective extends MenuBase {
 }
 
 @Directive({
     selector: 'dui-menu-checkbox',
-    providers: [{provide: MenuBase, useExisting: forwardRef(() => MenuCheckboxDirective)}]
+    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuCheckboxDirective) }]
 })
 export class MenuCheckboxDirective extends MenuBase {
     @Input() checked: boolean = false;
@@ -140,13 +140,13 @@ export class MenuCheckboxDirective extends MenuBase {
     type = 'checkbox';
 
     buildTemplate() {
-        return {...super.buildTemplate(), checked: this.checked};
+        return { ...super.buildTemplate(), checked: this.checked };
     }
 }
 
 @Directive({
     selector: 'dui-menu-radio',
-    providers: [{provide: MenuBase, useExisting: forwardRef(() => MenuRadioDirective)}]
+    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuRadioDirective) }]
 })
 export class MenuRadioDirective extends MenuBase {
     @Input() checked: boolean = false;
@@ -154,13 +154,13 @@ export class MenuRadioDirective extends MenuBase {
     type = 'radio';
 
     buildTemplate() {
-        return {...super.buildTemplate(), checked: this.checked};
+        return { ...super.buildTemplate(), checked: this.checked };
     }
 }
 
 @Directive({
     selector: 'dui-menu-separator',
-    providers: [{provide: MenuBase, useExisting: forwardRef(() => MenuSeparatorDirective)}]
+    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuSeparatorDirective) }]
 })
 export class MenuSeparatorDirective extends MenuBase {
     type = 'separator';

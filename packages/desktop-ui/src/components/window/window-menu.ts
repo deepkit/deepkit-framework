@@ -1,8 +1,8 @@
-import {MenuDirective} from "../app/menu.component";
-import {arrayRemoveItem} from "@deepkit/core";
-import {Subscription} from "rxjs";
-import {Injectable} from "@angular/core";
-import {Electron} from "../../core/utils";
+import { MenuDirective } from "../app/menu.component";
+import { arrayRemoveItem } from "@deepkit/core";
+import { Subscription } from "rxjs";
+import { Injectable } from "@angular/core";
+import { Electron } from "../../core/utils";
 
 @Injectable()
 export class WindowMenuState {
@@ -46,11 +46,11 @@ export class WindowMenuState {
 
         if (!template.length) {
             template.push(...[
-                {role: 'appMenu'},
-                {role: 'fileMenu'},
-                {role: 'editMenu'},
-                {role: 'viewMenu'},
-                {role: 'windowMenu'},
+                { role: 'appMenu' },
+                { role: 'fileMenu' },
+                { role: 'editMenu' },
+                { role: 'viewMenu' },
+                { role: 'windowMenu' },
             ]);
         }
 

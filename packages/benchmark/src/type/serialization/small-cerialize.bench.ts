@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {autoserializeAs, autoserializeAsArray, Deserialize, Serialize} from 'cerialize';
-import {BenchSuite} from '../../bench';
+import { autoserializeAs, autoserializeAsArray, Deserialize, Serialize } from 'cerialize';
+import { BenchSuite } from '../../bench';
 
 export class Model {
     @autoserializeAs(Number) id?: number;

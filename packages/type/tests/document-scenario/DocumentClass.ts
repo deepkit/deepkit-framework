@@ -1,6 +1,6 @@
-import {t} from '../../src/decorators';
-import {PageClass} from './PageClass';
-import {Collection, createCollection} from './PageCollection';
+import { t } from '../../src/decorators';
+import { PageClass } from './PageClass';
+import { Collection, createCollection } from './PageCollection';
 
 export class DocumentClass {
     static PageCollection = createCollection(PageClass);

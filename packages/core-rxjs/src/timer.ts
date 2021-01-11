@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {Timer} from '@deepkit/core';
-import {Observer} from 'rxjs';
+import { Timer } from '@deepkit/core';
+import { Observer } from 'rxjs';
 
 /**
  * Allows to create Timer which get deactivated automatically

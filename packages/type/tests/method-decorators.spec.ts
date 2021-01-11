@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jsonSerializer, PartialField, PropertySchema, t, validateMethodArgs} from '../index';
+import { getClassSchema, jsonSerializer, PartialField, PropertySchema, t, validateMethodArgs } from '../index';
 
 test('Basic array', () => {
     class Other {
@@ -88,7 +88,7 @@ test('short @f 2', () => {
         expect(errors[0].path).toBe('#0.0');
     }
     {
-        const errors = validateMethodArgs(Controller, 'foo', [[{'asd': 'sa'}]]);
+        const errors = validateMethodArgs(Controller, 'foo', [[{ 'asd': 'sa' }]]);
         expect(errors.length).toBe(1);
         expect(errors[0].code).toBe('invalid_string');
         expect(errors[0].message).toBe('No string given');
@@ -270,9 +270,9 @@ test('argument partial', () => {
     }
 
     expect(validateMethodArgs(User, 'foo', [{}]).length).toBe(0);
-    expect(validateMethodArgs(User, 'foo', [{name: undefined}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name'}]);
-    expect(validateMethodArgs(User, 'foo', [{name: []}])).toEqual([{'code': 'invalid_string', 'message': 'No string given', 'path': '#0.name'}]);
-    expect(validateMethodArgs(User, 'foo', [{name: ''}])).toEqual([]);
+    expect(validateMethodArgs(User, 'foo', [{ name: undefined }])).toEqual([{ 'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name' }]);
+    expect(validateMethodArgs(User, 'foo', [{ name: [] }])).toEqual([{ 'code': 'invalid_string', 'message': 'No string given', 'path': '#0.name' }]);
+    expect(validateMethodArgs(User, 'foo', [{ name: '' }])).toEqual([]);
 
     const userSchema = getClassSchema(User);
     const [configProperty] = userSchema.getMethodProperties('foo2');
@@ -282,9 +282,9 @@ test('argument partial', () => {
     const configSchema = getClassSchema(Config);
     expect(configSchema.getProperty('name').isOptional).toBe(false);
 
-    expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name'}]);
-    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: undefined}])).toEqual([]);
-    expect(validateMethodArgs(User, 'foo2', [{name: 'asd', sub: {peter: true}}])).toEqual([{'code': 'required', 'message': 'Required value is undefined', 'path': '#0.sub.name'}]);
+    expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{ 'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name' }]);
+    expect(validateMethodArgs(User, 'foo2', [{ name: 'asd', sub: undefined }])).toEqual([]);
+    expect(validateMethodArgs(User, 'foo2', [{ name: 'asd', sub: { peter: true } }])).toEqual([{ 'code': 'required', 'message': 'Required value is undefined', 'path': '#0.sub.name' }]);
 });
 
 test('argument convertion', () => {
@@ -302,7 +302,7 @@ test('argument convertion', () => {
     class Controller {
         @t.partial(Config)
         foo(name: string): PartialField<Config> {
-            return {prio: 2, 'sub.name': name};
+            return { prio: 2, 'sub.name': name };
         }
 
         @t
@@ -319,16 +319,16 @@ test('argument convertion', () => {
         const name = jsonSerializer.for(Controller).serializeMethodArgument('foo', 0, 2);
         expect(name).toBe(2);
 
-        const res = jsonSerializer.for(Controller).deserializeMethodResult('foo', {name: 3});
-        expect(res).toEqual({name: '3'});
+        const res = jsonSerializer.for(Controller).deserializeMethodResult('foo', { name: 3 });
+        expect(res).toEqual({ name: '3' });
     }
 
     {
-        const config = jsonSerializer.for(Controller).deserializeMethodArgument('bar', 0, {prio: '2'});
+        const config = jsonSerializer.for(Controller).deserializeMethodArgument('bar', 0, { prio: '2' });
         expect(config).toBeInstanceOf(Config);
         expect(config.prio).toBe(2);
 
-        const res = jsonSerializer.for(Controller).deserializeMethodResult('bar', {'sub': {name: 3}});
+        const res = jsonSerializer.for(Controller).deserializeMethodResult('bar', { 'sub': { name: 3 } });
         expect(res).toBeInstanceOf(Config);
         expect(res.sub).toBeInstanceOf(Config);
         expect(res.sub.name).toBe('3');

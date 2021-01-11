@@ -1,4 +1,4 @@
-import {NgModule} from '@angular/core';
+import { NgModule } from '@angular/core';
 import {
     TableCellDirective,
     TableColumnDirective,
@@ -7,11 +7,11 @@ import {
     TableCustomRowContextMenuDirective,
     TableHeaderDirective
 } from "./table.component";
-import {CommonModule} from "@angular/common";
-import {DuiIconModule} from "../icon";
-import {DuiSplitterModule} from "../splitter";
-import {ScrollingModule} from "@angular/cdk/scrolling";
-import {DuiButtonModule} from "../button";
+import { CommonModule } from "@angular/common";
+import { DuiIconModule } from "../icon";
+import { DuiSplitterModule } from "../splitter";
+import { ScrollingModule } from "@angular/cdk/scrolling";
+import { DuiButtonModule } from "../button";
 
 export * from "./table.component";
 

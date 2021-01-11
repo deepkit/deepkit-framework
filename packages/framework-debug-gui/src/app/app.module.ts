@@ -1,8 +1,8 @@
-import {BrowserModule} from '@angular/platform-browser';
-import {NgModule} from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { NgModule } from '@angular/core';
 
-import {AppRoutingModule} from './app-routing.module';
-import {AppComponent} from './app.component';
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
 import {
   DuiButtonModule,
   DuiCheckboxModule,
@@ -16,16 +16,16 @@ import {
   DuiTableModule,
   DuiAppModule,
 } from '@deepkit/desktop-ui';
-import {ConfigurationComponent} from './views/configuration/configuration.component';
-import {HttpComponent} from './views/http/http.component';
-import {ControllerClient} from './client';
-import {FormsModule} from '@angular/forms';
-import {RpcComponent} from './views/rpc/rpc.component';
-import {WorkflowCardComponent, WorkflowComponent} from './components/workflow.component';
-import {EventsComponent} from './views/events/events.component';
-import {DeepkitClient} from '@deepkit/rpc';
-import {OverlayModule} from '@angular/cdk/overlay';
-import {HttpRequestComponent} from './views/http/request/http-request.component';
+import { ConfigurationComponent } from './views/configuration/configuration.component';
+import { HttpComponent } from './views/http/http.component';
+import { ControllerClient } from './client';
+import { FormsModule } from '@angular/forms';
+import { RpcComponent } from './views/rpc/rpc.component';
+import { WorkflowCardComponent, WorkflowComponent } from './components/workflow.component';
+import { EventsComponent } from './views/events/events.component';
+import { DeepkitClient } from '@deepkit/rpc';
+import { OverlayModule } from '@angular/cdk/overlay';
+import { HttpRequestComponent } from './views/http/request/http-request.component';
 
 @NgModule({
   declarations: [
@@ -59,7 +59,7 @@ import {HttpRequestComponent} from './views/http/request/http-request.component'
   ],
   providers: [
     ControllerClient,
-    {provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + location.host)},
+    { provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + location.host) },
   ],
   bootstrap: [AppComponent]
 })

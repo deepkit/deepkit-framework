@@ -1,5 +1,5 @@
-import {ApplicationRef, ChangeDetectorRef, Directive, ElementRef, HostListener, Input, OnChanges} from "@angular/core";
-import {Electron} from "../../core/utils";
+import { ApplicationRef, ChangeDetectorRef, Directive, ElementRef, HostListener, Input, OnChanges } from "@angular/core";
+import { Electron } from "../../core/utils";
 
 
 @Directive({

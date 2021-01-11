@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
-import {log, stack} from '../src/decorators';
-import {sleep} from '../src/core';
+import { expect, test } from '@jest/globals';
+import { log, stack } from '../src/decorators';
+import { sleep } from '../src/core';
 
 test('test decorators @sync', async () => {
     class Test {
@@ -54,9 +54,9 @@ test('test decorators @sync', async () => {
         const test = new Test();
 
         expect(test.i).toBe(0);
-        test.increase().then((j) => {expect(j).toBe(1)});
-        test.increase().then((j) => {expect(j).toBe(2)});
-        test.increase().then((j) => {expect(j).toBe(3)});
+        test.increase().then((j) => { expect(j).toBe(1) });
+        test.increase().then((j) => { expect(j).toBe(2) });
+        test.increase().then((j) => { expect(j).toBe(3) });
         expect(test.i).toBe(1);
         expect(test.j).toBe(0);
 

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {isArray} from '@deepkit/core';
-import {BenchSuite} from '../bench';
+import { isArray } from '@deepkit/core';
+import { BenchSuite } from '../bench';
 
 export async function main() {
     const suite = new BenchSuite('isArray', 3);

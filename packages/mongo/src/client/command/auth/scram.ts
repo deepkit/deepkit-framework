@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual} from 'crypto';
-import {MongoAuth} from './auth';
-import {t} from '@deepkit/type';
-import {MongoClientConfig} from '../../client';
-import {BaseResponse, Command} from '../command';
-import {MongoError} from '../../error';
+import { createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
+import { MongoAuth } from './auth';
+import { t } from '@deepkit/type';
+import { MongoClientConfig } from '../../client';
+import { BaseResponse, Command } from '../command';
+import { MongoError } from '../../error';
 import saslprep from 'saslprep';
 
 class SaslStartCommand extends t.class({
@@ -119,7 +119,7 @@ export abstract class ScramAuth implements MongoAuth {
             mechanism: this.mechanism,
             payload: Buffer.concat([Buffer.from('n,,', 'utf8'), this.clientFirstMessageBare(username, this.nonce)]),
             autoAuthorize: 1,
-            options: {skipEmptyExchange: true}
+            options: { skipEmptyExchange: true }
         }, SaslStartResponse);
 
         const processedPassword = this.mechanism === 'SCRAM-SHA-256' ? saslprep(password) : passwordDigest(username, password);
@@ -179,7 +179,7 @@ export abstract class ScramAuth implements MongoAuth {
 
     //e.g. "r=fyko+d2lbbFgONRv9qkxdawLHo+Vgk7qvUOKUwuWLIWg4l/9SraGMHEE,s=rQ9ZY3MntBeuP3E1TDVC4w==,i=10000"
     protected parseStartPayload(payload: string) {
-        const result = {r: '', s: '', i: 0};
+        const result = { r: '', s: '', i: 0 };
         for (const pair of payload.split(',')) {
             const firstSign = pair.indexOf('=');
             const name = pair.substr(0, firstSign);
@@ -193,7 +193,7 @@ export abstract class ScramAuth implements MongoAuth {
 
     //e.g. "v=UMWeI25JD1yNYZRMpZ4VHvhZ9e0="
     protected parseContinuePayload(payload: string) {
-        const result = {v: ''};
+        const result = { v: '' };
         for (const pair of payload.split(',')) {
             const firstSign = pair.indexOf('=');
             const name = pair.substr(0, firstSign);

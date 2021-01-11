@@ -1,6 +1,6 @@
-import {BehaviorSubject} from "rxjs";
-import {Component, Input, OnInit} from "@angular/core";
-import {DialogComponent} from "./dialog.component";
+import { BehaviorSubject } from "rxjs";
+import { Component, Input, OnInit } from "@angular/core";
+import { DialogComponent } from "./dialog.component";
 
 class State {
     title: string = '';

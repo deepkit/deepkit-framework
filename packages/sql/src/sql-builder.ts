@@ -227,9 +227,9 @@ export class SqlBuilder {
                 //first pivot table
                 sql.append(`${join.type.toUpperCase()} JOIN ${pivotTableName} AS ${pivotName} ON (`);
                 sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToLeft.name)} = ${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)}`);
-                
+
                 sql.append(`)`);
-                
+
                 //then right table
                 sql.append(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (`);
                 sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToRight.name)} = ${joinName}.${this.platform.quoteIdentifier(join.query.classSchema.getPrimaryField().name)}`);
@@ -255,7 +255,7 @@ export class SqlBuilder {
             this.appendWhereSQL(sql, join.query.classSchema, join.query.model, joinName, 'AND');
 
             sql.append(`)`);
-            
+
             this.appendJoinSQL(sql, join.query.model, joinName, prefix + '__' + join.propertySchema.name);
         }
     }

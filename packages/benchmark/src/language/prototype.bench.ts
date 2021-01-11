@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {BenchSuite} from '../bench';
+import { BenchSuite } from '../bench';
 
 export function main() {
     const bench = new BenchSuite('prototype');
 
-    class Peter {}
+    class Peter { }
 
-    const sub = class extends Peter {};
+    const sub = class extends Peter { };
 
     bench.add('Object.getPrototypeOf', () => {
         const same = Object.getPrototypeOf(sub) === Peter;

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {Buffer} from 'buffer';
+import { Buffer } from 'buffer';
 
 export interface TypedArrayClassType<T> {
     new(...args: any[]): T;

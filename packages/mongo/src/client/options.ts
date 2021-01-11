@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {t} from '@deepkit/type';
+import { t } from '@deepkit/type';
 
 type AuthMechanismProperties = { [name: string]: string | boolean };
 

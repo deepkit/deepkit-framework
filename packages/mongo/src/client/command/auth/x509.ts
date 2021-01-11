@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {MongoAuth} from './auth';
-import {BaseResponse, Command} from '../command';
-import {MongoClientConfig} from '../../client';
-import {t} from '@deepkit/type';
+import { MongoAuth } from './auth';
+import { BaseResponse, Command } from '../command';
+import { MongoClientConfig } from '../../client';
+import { t } from '@deepkit/type';
 
 
 class AuthenticateCommand extends t.class({

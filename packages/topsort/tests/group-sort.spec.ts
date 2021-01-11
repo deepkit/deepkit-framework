@@ -1,15 +1,15 @@
-import {expect, test} from '@jest/globals';
-import {GroupArraySort} from '../src/group-array-sort';
-import {CircularDependencyException, ElementNotFoundException} from '../src/base';
-import {bench} from './utils';
-import {fail} from 'assert';
+import { expect, test } from '@jest/globals';
+import { GroupArraySort } from '../src/group-array-sort';
+import { CircularDependencyException, ElementNotFoundException } from '../src/base';
+import { bench } from './utils';
+import { fail } from 'assert';
 
 function getElementsGroup(count: number) {
     const elements = new Map<{ item: any, type: string }, any[]>();
     for (let i = 0; i < count / 3; i++) {
-        elements.set({item: 'car' + i, type: 'car'}, ['brand' + i]);
-        elements.set({item: 'owner' + i, type: 'owner'}, ['brand' + i, 'car' + i]);
-        elements.set({item: 'brand' + i, type: 'brand'}, []);
+        elements.set({ item: 'car' + i, type: 'car' }, ['brand' + i]);
+        elements.set({ item: 'owner' + i, type: 'owner' }, ['brand' + i, 'car' + i]);
+        elements.set({ item: 'brand' + i, type: 'brand' }, []);
     }
 
     return elements;
@@ -71,8 +71,8 @@ test('dependency in same', () => {
 
     sorter.sort();
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand1', 'brand2']},
-        {type: 'car', items: ['car1', 'car3', 'car2']},
+        { type: 'brand', items: ['brand1', 'brand2'] },
+        { type: 'car', items: ['car1', 'car3', 'car2'] },
     ]);
 });
 
@@ -88,9 +88,9 @@ test('dependency in same with activated sameTypeGrouping', () => {
 
     sorter.sort();
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand1', 'brand2']},
-        {type: 'car', items: ['car1', 'car3']},
-        {type: 'car', items: ['car2']},
+        { type: 'brand', items: ['brand1', 'brand2'] },
+        { type: 'car', items: ['car1', 'car3'] },
+        { type: 'car', items: ['car2'] },
     ]);
 });
 
@@ -110,11 +110,11 @@ test('dependency in same with activated sameTypeGrouping more complex', () => {
 
     sorter.sort();
     expect(sorter.getGroups()).toEqual([
-        {type: 'car', items: ['car6']},
-        {type: 'brand', items: ['brand1', 'brand2']},
-        {type: 'car', items: ['car1', 'car3']},
-        {type: 'car', items: ['car2']},
-        {type: 'car', items: ['car4', 'car5']},
+        { type: 'car', items: ['car6'] },
+        { type: 'brand', items: ['brand1', 'brand2'] },
+        { type: 'car', items: ['car1', 'car3'] },
+        { type: 'car', items: ['car2'] },
+        { type: 'car', items: ['car4', 'car5'] },
     ]);
 });
 
@@ -144,9 +144,9 @@ test('simple2', () => {
 
     expect(sorter.sort()).toEqual('brand1, car1, car2, brand2'.split(', '));
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand1']},
-        {type: 'car', items: ['car1', 'car2']},
-        {type: 'brand', items: ['brand2']},
+        { type: 'brand', items: ['brand1'] },
+        { type: 'car', items: ['car1', 'car2'] },
+        { type: 'brand', items: ['brand2'] },
     ]);
 });
 
@@ -161,14 +161,14 @@ test('GetGroups', () => {
     const result = sorter.sort();
     expect(result).toEqual('brand1, brand2, owner1, owner2, car1'.split(', '));
 
-    expect(sorter.groups[0]).toEqual({type: 'brand', level: 0, position: 0, length: 2});
-    expect(sorter.groups[1]).toEqual({type: 'user', level: 1, position: 2, length: 2});
-    expect(sorter.groups[2]).toEqual({type: 'car', level: 2, position: 4, length: 1});
+    expect(sorter.groups[0]).toEqual({ type: 'brand', level: 0, position: 0, length: 2 });
+    expect(sorter.groups[1]).toEqual({ type: 'user', level: 1, position: 2, length: 2 });
+    expect(sorter.groups[2]).toEqual({ type: 'car', level: 2, position: 4, length: 1 });
 
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand1', 'brand2']},
-        {type: 'user', items: ['owner1', 'owner2']},
-        {type: 'car', items: ['car1']},
+        { type: 'brand', items: ['brand1', 'brand2'] },
+        { type: 'user', items: ['owner1', 'owner2'] },
+        { type: 'car', items: ['car1'] },
     ]);
 
     expect(result[sorter.groups[0].position]).toBe('brand1');
@@ -190,9 +190,9 @@ test('SimpleDoc', () => {
     expect(result).toEqual('brand1, brand2, owner1, owner2, car1'.split(', '));
 
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand1', 'brand2']},
-        {type: 'user', items: ['owner1', 'owner2']},
-        {type: 'car', items: ['car1']},
+        { type: 'brand', items: ['brand1', 'brand2'] },
+        { type: 'user', items: ['owner1', 'owner2'] },
+        { type: 'car', items: ['car1'] },
     ]);
 });
 
@@ -209,9 +209,9 @@ test('simple', () => {
 
     expect(result).toEqual('brand1, brand2, car1, car2, owner1, owner2'.split(', '));
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand1', 'brand2']},
-        {type: 'car', items: ['car1', 'car2']},
-        {type: 'owner', items: ['owner1', 'owner2']},
+        { type: 'brand', items: ['brand1', 'brand2'] },
+        { type: 'car', items: ['car1', 'car2'] },
+        { type: 'owner', items: ['owner1', 'owner2'] },
     ]);
 });
 
@@ -226,9 +226,9 @@ test('implementation', () => {
     const result = sorter.sort();
     expect(result).toEqual('brand0, brand1, brand2, owner0, owner1, owner2, car0, car1, car2'.split(', '));
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand0', 'brand1', 'brand2']},
-        {type: 'owner', items: ['owner0', 'owner1', 'owner2']},
-        {type: 'car', items: ['car0', 'car1', 'car2']},
+        { type: 'brand', items: ['brand0', 'brand1', 'brand2'] },
+        { type: 'owner', items: ['owner0', 'owner1', 'owner2'] },
+        { type: 'car', items: ['car0', 'car1', 'car2'] },
     ]);
 });
 
@@ -243,9 +243,9 @@ test('implementation2', () => {
     const result = sorter.sort();
     expect(result).toEqual('brand0, brand1, brand2, owner0, owner1, owner2, car0, car1, car2'.split(', '));
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand0', 'brand1', 'brand2']},
-        {type: 'owner', items: ['owner0', 'owner1', 'owner2']},
-        {type: 'car', items: ['car0', 'car1', 'car2']},
+        { type: 'brand', items: ['brand0', 'brand1', 'brand2'] },
+        { type: 'owner', items: ['owner0', 'owner1', 'owner2'] },
+        { type: 'car', items: ['car0', 'car1', 'car2'] },
     ]);
 });
 
@@ -260,9 +260,9 @@ test('implementation3', () => {
     const result = sorter.sort();
     expect(result).toEqual('brand0, brand1, brand2, owner0, owner1, owner2, car0, car1, car2'.split(', '));
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand0', 'brand1', 'brand2']},
-        {type: 'owner', items: ['owner0', 'owner1', 'owner2']},
-        {type: 'car', items: ['car0', 'car1', 'car2']},
+        { type: 'brand', items: ['brand0', 'brand1', 'brand2'] },
+        { type: 'owner', items: ['owner0', 'owner1', 'owner2'] },
+        { type: 'car', items: ['car0', 'car1', 'car2'] },
     ]);
 });
 
@@ -277,8 +277,8 @@ test('implementation4', () => {
     const result = sorter.sort();
     expect(result).toEqual('brand0, brand1, brand2, owner0, owner1, owner2, car0, car1, car2'.split(', '));
     expect(sorter.getGroups()).toEqual([
-        {type: 'brand', items: ['brand0', 'brand1', 'brand2']},
-        {type: 'owner', items: ['owner0', 'owner1', 'owner2']},
-        {type: 'car', items: ['car0', 'car1', 'car2']},
+        { type: 'brand', items: ['brand0', 'brand1', 'brand2'] },
+        { type: 'owner', items: ['owner0', 'owner1', 'owner2'] },
+        { type: 'car', items: ['car0', 'car1', 'car2'] },
     ]);
 });

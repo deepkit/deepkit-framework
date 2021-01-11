@@ -11,8 +11,8 @@ import {
     SkipSelf,
     ViewChild
 } from "@angular/core";
-import {ngValueAccessor, ValueAccessorBase} from "../../core/form";
-import {detectChangesNextFrame} from "../app";
+import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
+import { detectChangesNextFrame } from "../app";
 
 @Component({
     selector: 'dui-input',
@@ -85,7 +85,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     @Output() esc = new EventEmitter<KeyboardEvent>();
     @Output() enter = new EventEmitter<KeyboardEvent>();
 
-    @ViewChild('input', {static: false}) input?: ElementRef<HTMLInputElement | HTMLTextAreaElement>;
+    @ViewChild('input', { static: false }) input?: ElementRef<HTMLInputElement | HTMLTextAreaElement>;
 
     @Input() textured: boolean | '' = false;
 

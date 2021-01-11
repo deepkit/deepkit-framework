@@ -83,10 +83,10 @@ export const KernelModule = createModule({
         DeepkitRpcSecurity,
         DatabaseRegistry,
         MigrationProvider,
-        {provide: LiveDatabase, scope: 'rpc'},
-        {provide: HttpListener},
-        {provide: SessionStack, scope: 'http'},
-        {provide: HttpRequestDebugCollector, scope: 'http'},
+        { provide: LiveDatabase, scope: 'rpc' },
+        { provide: HttpListener },
+        { provide: SessionStack, scope: 'http' },
+        { provide: HttpRequestDebugCollector, scope: 'http' },
     ],
     workflows: [
         httpWorkflow,
@@ -101,7 +101,7 @@ export const KernelModule = createModule({
         ServerListenController,
         DebugRouterController,
         DebugDIController,
-        
+
         MigrationCreateController,
         MigrationUpCommand,
         MigrationPendingCommand,
@@ -138,6 +138,6 @@ export const KernelModule = createModule({
         module.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
 
         module.addProvider(DebugDatabase);
-        module.setupProvider(DatabaseRegistry).addDatabase(DebugDatabase, {migrateOnStartup: true});
+        module.setupProvider(DatabaseRegistry).addDatabase(DebugDatabase, { migrateOnStartup: true });
     }
 }).forRoot();

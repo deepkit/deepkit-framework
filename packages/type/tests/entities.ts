@@ -1,4 +1,4 @@
-import {Entity, MultiIndex, t, uuid} from '../index';
+import { Entity, MultiIndex, t, uuid } from '../index';
 
 export class JobTaskQueue {
     @t
@@ -66,7 +66,7 @@ export class StringCollectionWrapper {
 }
 
 @Entity('SimpleModel')
-@MultiIndex(['name', 'type'], {unique: true})
+@MultiIndex(['name', 'type'], { unique: true })
 export class SimpleModel {
     @t.primary.uuid
     id: string = uuid();

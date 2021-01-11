@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DatabaseQueryModel, Entity, SORT_ORDER} from '@deepkit/orm';
-import {Binary} from 'bson';
+import { DatabaseQueryModel, Entity, SORT_ORDER } from '@deepkit/orm';
+import { Binary } from 'bson';
 
 type BSONTypeAlias =
     | 'number'
@@ -36,10 +36,10 @@ type BitwiseQuery =
 // we can search using alternative types in mongodb e.g.
 // string types can be searched using a regex in mongo
 // array types can be searched using their element type
-type RegExpForString<T> = T extends string ? (RegExp | T): T;
+type RegExpForString<T> = T extends string ? (RegExp | T) : T;
 type MongoAltQuery<T> =
-    T extends Array<infer U> ? (T | RegExpForString<U>):
-        RegExpForString<T>;
+    T extends Array<infer U> ? (T | RegExpForString<U>) :
+    RegExpForString<T>;
 
 /** https://docs.mongodb.com/manual/reference/operator/query/#query-selectors */
 export type QuerySelector<T> = {
@@ -112,7 +112,7 @@ export type RootQuerySelector<T> = {
     [key: string]: any;
 };
 
-export type ObjectQuerySelector<T> = T extends object ? {[key in keyof T]?: QuerySelector<T[key]> } : QuerySelector<T>;
+export type ObjectQuerySelector<T> = T extends object ? { [key in keyof T]?: QuerySelector<T[key]> } : QuerySelector<T>;
 
 export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 

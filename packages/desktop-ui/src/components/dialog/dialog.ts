@@ -13,11 +13,11 @@ import {
     Type,
     ViewContainerRef
 } from "@angular/core";
-import {DialogComponent} from "./dialog.component";
-import {isTargetChildOf} from "../../core/utils";
-import {DuiDialogProgress, ProgressDialogState} from "./progress-dialog.component";
-import {DOCUMENT} from "@angular/common";
-import {WindowRegistry} from "../window/window-state";
+import { DialogComponent } from "./dialog.component";
+import { isTargetChildOf } from "../../core/utils";
+import { DuiDialogProgress, ProgressDialogState } from "./progress-dialog.component";
+import { DOCUMENT } from "@angular/common";
+import { WindowRegistry } from "../window/window-state";
 
 
 @Component({
@@ -138,23 +138,23 @@ export class DuiDialog {
     }
 
     public async alert(title: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<boolean> {
-        const {dialog} = this.open(DuiDialogAlert, {title, content}, dialodInputs);
+        const { dialog } = this.open(DuiDialogAlert, { title, content }, dialodInputs);
         return dialog.toPromise();
     }
 
     public async confirm(title: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<boolean> {
-        const {dialog} = this.open(DuiDialogConfirm, {title, content}, dialodInputs);
+        const { dialog } = this.open(DuiDialogConfirm, { title, content }, dialodInputs);
         return dialog.toPromise();
     }
 
     public async prompt(title: string, value: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<false | string> {
-        const {dialog} = this.open(DuiDialogPrompt, {title, value, content}, dialodInputs);
+        const { dialog } = this.open(DuiDialogPrompt, { title, value, content }, dialodInputs);
         return dialog.toPromise();
     }
 
     public progress(): ProgressDialogState {
         const state$ = new ProgressDialogState;
-        this.open(DuiDialogProgress, {state$});
+        this.open(DuiDialogProgress, { state$ });
         return state$;
     }
 }

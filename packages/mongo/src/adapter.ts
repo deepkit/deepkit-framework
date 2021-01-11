@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity} from '@deepkit/orm';
-import {ClassSchema, getClassSchema, t} from '@deepkit/type';
-import {ClassType} from '@deepkit/core';
-import {MongoDatabaseQuery} from './query';
-import {MongoPersistence} from './persistence';
-import {MongoClient} from './client/client';
-import {DeleteCommand} from './client/command/delete';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity } from '@deepkit/orm';
+import { ClassSchema, getClassSchema, t } from '@deepkit/type';
+import { ClassType } from '@deepkit/core';
+import { MongoDatabaseQuery } from './query';
+import { MongoPersistence } from './persistence';
+import { MongoClient } from './client/client';
+import { DeleteCommand } from './client/command/delete';
 import { MongoQueryResolver } from './query.resolver';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
@@ -47,7 +47,7 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
     protected ormSequences = t.schema({
         name: t.string,
         value: t.number,
-    }, {name: this.getAutoIncrementSequencesCollection()});
+    }, { name: this.getAutoIncrementSequencesCollection() });
 
     constructor(
         connectionString: string

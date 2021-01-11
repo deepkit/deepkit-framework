@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Command} from './command';
-import {ClassSchema} from '@deepkit/type';
-import {ClassType} from '@deepkit/core';
+import { Command } from './command';
+import { ClassSchema } from '@deepkit/type';
+import { ClassType } from '@deepkit/core';
 
 export class GenericCommand<T extends ClassSchema | ClassType> extends Command {
     constructor(protected cmd: any) {

@@ -1,7 +1,7 @@
-import {plainToClass, t} from '@deepkit/type';
-import {createPool} from 'mariadb';
-import {MySQLConnectionPool, MySQLDatabaseAdapter} from '../src/mysql-adapter';
-import {Database} from '@deepkit/orm';
+import { plainToClass, t } from '@deepkit/type';
+import { createPool } from 'mariadb';
+import { MySQLConnectionPool, MySQLDatabaseAdapter } from '../src/mysql-adapter';
+import { Database } from '@deepkit/orm';
 
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({
@@ -27,26 +27,26 @@ test('connection release persistence/query', async () => {
     const user = t.schema({
         id: t.number.primary.autoIncrement,
         username: t.string
-    }, {name: 'test_connection_user'});
+    }, { name: 'test_connection_user' });
 
-    const adapter = new MySQLDatabaseAdapter({host: 'localhost', user: 'root', database: 'default'});
+    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' });
     const database = new Database(adapter);
     database.registerEntity(user);
     await adapter.createTables([...database.entities]);
     const session = database.createSession();
 
-    session.add(plainToClass(user, {id: undefined, username: '123'}));
+    session.add(plainToClass(user, { id: undefined, username: '123' }));
     await session.commit();
     expect((adapter as any).pool.activeConnections()).toBe(0);
     expect(adapter.connectionPool.getActiveConnections()).toBe(0);
 
-    const myUser = await database.query(user).filter({username: '123'}).findOne();
+    const myUser = await database.query(user).filter({ username: '123' }).findOne();
     expect(myUser.username).toBe('123');
     expect((adapter as any).pool.activeConnections()).toBe(0);
     expect(adapter.connectionPool.getActiveConnections()).toBe(0);
 
-    await database.persist(plainToClass(user, {id: undefined, username: '444'}));
-    const myUser2 = await database.query(user).filter({username: '444'}).findOne();
+    await database.persist(plainToClass(user, { id: undefined, username: '444' }));
+    const myUser2 = await database.query(user).filter({ username: '444' }).findOne();
     expect(myUser2.username).toBe('444');
     expect((adapter as any).pool.activeConnections()).toBe(0);
     expect(adapter.connectionPool.getActiveConnections()).toBe(0);

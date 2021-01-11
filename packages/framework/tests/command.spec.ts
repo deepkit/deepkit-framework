@@ -1,9 +1,9 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {arg, cli, Command} from '../src/command';
-import {Application} from '../src/application';
-import {ServiceContainer} from '../src/service-container';
-import {createModule} from '../src/module';
+import { arg, cli, Command } from '../src/command';
+import { Application } from '../src/application';
+import { ServiceContainer } from '../src/service-container';
+import { createModule } from '../src/module';
 
 @cli.controller('my')
 class MyCli implements Command {

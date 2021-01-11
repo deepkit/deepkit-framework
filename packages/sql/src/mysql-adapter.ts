@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createPool, Pool, PoolConfig, PoolConnection, UpsertResult} from 'mariadb';
+import { createPool, Pool, PoolConfig, PoolConnection, UpsertResult } from 'mariadb';
 import {
     SQLConnection,
     SQLConnectionPool,
@@ -28,12 +28,12 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from './sql-adapter';
-import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
-import {MySQLPlatform} from './platform/mysql-platform';
-import {ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema} from '@deepkit/type';
-import {DefaultPlatform} from './platform/default-platform';
-import {asyncOperation, ClassType, empty} from '@deepkit/core';
-import {SqlBuilder} from './sql-builder';
+import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { MySQLPlatform } from './platform/mysql-platform';
+import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
+import { DefaultPlatform } from './platform/default-platform';
+import { asyncOperation, ClassType, empty } from '@deepkit/core';
+import { SqlBuilder } from './sql-builder';
 
 export class MySQLStatement extends SQLStatement {
     constructor(protected sql: string, protected connection: PoolConnection) {
@@ -171,13 +171,13 @@ export class MySQLPersistence extends SQLPersistence {
                     }
 
                     if (!assignReturning[id]) {
-                        assignReturning[id] = {item: changeSet.item, names: []};
+                        assignReturning[id] = { item: changeSet.item, names: [] };
                     }
 
                     assignReturning[id].names.push(i);
                     setReturning[i] = 1;
 
-                    aggregateSelects[i].push({id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`});
+                    aggregateSelects[i].push({ id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}` });
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
@@ -292,7 +292,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
+        const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
         const connection = this.connectionPool.getConnection();
@@ -324,7 +324,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
-        const aggregateFields: { [name: string]: {converted: (v: any) => any} } = {};
+        const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
         const scopeSerializer = this.platform.serializer.for(this.classSchema);
         const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
@@ -342,14 +342,14 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         }
 
         for (const i of model.returning) {
-            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -374,7 +374,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const selectVarsSQL = `SELECT ${selectVars.join(', ')};`;
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const params = selectSQL.params;
         const sql = `
@@ -416,7 +416,7 @@ export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
 }
 
 export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
-    protected pool = createPool({multipleStatements: true, maxAllowedPacket: 16_000_000, ...this.options});
+    protected pool = createPool({ multipleStatements: true, maxAllowedPacket: 16_000_000, ...this.options });
     public connectionPool = new MySQLConnectionPool(this.pool);
     public platform = new MySQLPlatform(this.pool);
 

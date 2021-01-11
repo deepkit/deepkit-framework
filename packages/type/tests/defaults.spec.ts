@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
-import {uuid} from '../src/utils';
-import {getClassSchema, t} from '../index';
+import { expect, test } from '@jest/globals';
+import { uuid } from '../src/utils';
+import { getClassSchema, t } from '../index';
 
 test('simple', () => {
     class User {
@@ -68,8 +68,8 @@ test('auto detect isOptional class required', () => {
 
 test('auto detect isOptional schema', () => {
     const schema = t.schema({
-        username: t.string.index({unique: true}),
-    }, {name: 'xxx'});
+        username: t.string.index({ unique: true }),
+    }, { name: 'xxx' });
 
     expect(schema.getProperty('username').hasDefaultValue).toBe(false);
     expect(schema.getProperty('username').isOptional).toBe(false);

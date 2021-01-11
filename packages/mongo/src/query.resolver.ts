@@ -16,18 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Changes, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult} from '@deepkit/orm';
-import {ClassSchema, getClassSchema, resolveClassTypeOrForward, t} from '@deepkit/type';
-import {DEEP_SORT, FilterQuery, MongoQueryModel} from './query.model';
-import {convertClassQueryToMongo,} from './mapping';
-import {MongoDatabaseAdapter} from './adapter';
-import {DeleteCommand} from './client/command/delete';
-import {UpdateCommand} from './client/command/update';
-import {AggregateCommand} from './client/command/aggregate';
-import {CountCommand} from './client/command/count';
-import {FindCommand} from './client/command/find';
-import {mongoSerializer} from './mongo-serializer';
-import {FindAndModifyCommand} from './client/command/find-and-modify';
+import { Changes, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult } from '@deepkit/orm';
+import { ClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
+import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model';
+import { convertClassQueryToMongo, } from './mapping';
+import { MongoDatabaseAdapter } from './adapter';
+import { DeleteCommand } from './client/command/delete';
+import { UpdateCommand } from './client/command/update';
+import { AggregateCommand } from './client/command/aggregate';
+import { CountCommand } from './client/command/count';
+import { FindCommand } from './client/command/find';
+import { mongoSerializer } from './mongo-serializer';
+import { FindAndModifyCommand } from './client/command/find-and-modify';
 
 export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema.classType, (model.filter || {}) as FilterQuery<T>, {}, {
@@ -50,7 +50,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     }
 
     protected getPrimaryKeysProjection(classSchema: ClassSchema) {
-        const pk: { [name: string]: 1 | 0 } = {_id: 0};
+        const pk: { [name: string]: 1 | 0 } = { _id: 0 };
         for (const property of classSchema.getPrimaryFields()) {
             pk[property.name] = 1;
         }
@@ -59,12 +59,12 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
     protected async fetchIds(queryModel: MongoQueryModel<T>, limit: number = 0): Promise<any[]> {
         const primaryKeyName = this.classSchema.getPrimaryField().name;
-        const projection = {[primaryKeyName]: 1 as const};
+        const projection = { [primaryKeyName]: 1 as const };
 
         if (queryModel.hasJoins()) {
             const pipeline = this.buildAggregationPipeline(queryModel);
-            if (limit) pipeline.push({$limit: limit});
-            pipeline.push({$project: projection});
+            if (limit) pipeline.push({ $limit: limit });
+            pipeline.push({ $project: projection });
             const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline));
             return items.map(v => v[primaryKeyName]);
             // return items.map(v => {
@@ -88,7 +88,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         deleteResult.primaryKeys = primaryKeys;
         const primaryKeyName = this.classSchema.getPrimaryField().name;
 
-        const query = convertClassQueryToMongo(this.classSchema.classType, {[primaryKeyName]: {$in: primaryKeys}} as FilterQuery<T>);
+        const query = convertClassQueryToMongo(this.classSchema.classType, { [primaryKeyName]: { $in: primaryKeys } } as FilterQuery<T>);
         await this.databaseSession.adapter.client.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
     }
 
@@ -100,7 +100,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const filter = getMongoFilter(this.classSchema, model) || {};
         const serializer = mongoSerializer.for(this.classSchema);
 
-        const u = {$set: changes.$set, $unset: changes.$unset, $inc: changes.$inc};
+        const u = { $set: changes.$set, $unset: changes.$unset, $inc: changes.$inc };
         if (u.$set) {
             u.$set = serializer.partialSerialize(u.$set);
         }
@@ -157,7 +157,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     public async count(queryModel: MongoQueryModel<T>) {
         if (queryModel.hasJoins()) {
             const pipeline = this.buildAggregationPipeline(queryModel);
-            pipeline.push({$count: 'count'});
+            pipeline.push({ $count: 'count' });
             const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline, this.countSchema));
             return items.length ? items[0].count : 0;
         } else {
@@ -173,7 +173,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     public async findOneOrUndefined(queryModel: MongoQueryModel<T>): Promise<T | undefined> {
         if (queryModel.hasJoins()) {
             const pipeline = this.buildAggregationPipeline(queryModel);
-            pipeline.push({$limit: 1});
+            pipeline.push({ $limit: 1 });
             const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline));
             if (items.length) {
                 const formatter = this.createFormatter(queryModel.withIdentityMap);
@@ -230,12 +230,12 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         );
 
                         joinPipeline.push({
-                            $match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$foreign_id']}}
+                            $match: { $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$foreign_id'] } }
                         });
                     }
                 } else {
                     joinPipeline.push({
-                        $match: {$expr: {$eq: ['$' + join.foreignPrimaryKey.name, '$$foreign_id']}}
+                        $match: { $expr: { $eq: ['$' + join.foreignPrimaryKey.name, '$$foreign_id'] } }
                     });
                 }
 
@@ -243,21 +243,21 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                     handleJoins(joinPipeline, join.query.model, foreignSchema);
                 }
 
-                if (join.query.model.filter) joinPipeline.push({$match: getMongoFilter(join.query.classSchema, join.query.model)});
-                if (join.query.model.sort) joinPipeline.push({$sort: this.getSortFromModel(join.query.model.sort)});
-                if (join.query.model.skip) joinPipeline.push({$skip: join.query.model.skip});
-                if (join.query.model.limit) joinPipeline.push({$limit: join.query.model.limit});
+                if (join.query.model.filter) joinPipeline.push({ $match: getMongoFilter(join.query.classSchema, join.query.model) });
+                if (join.query.model.sort) joinPipeline.push({ $sort: this.getSortFromModel(join.query.model.sort) });
+                if (join.query.model.skip) joinPipeline.push({ $skip: join.query.model.skip });
+                if (join.query.model.limit) joinPipeline.push({ $limit: join.query.model.limit });
 
                 if (join.populate) {
                     const projection = this.getProjection(join.query.classSchema, join.query.model.select);
                     // if (!join.classSchema.hasProperty('_id') || (join.query.model.isPartial() && !join.query.model.isSelected('_id'))) {
                     //     project['_id'] = 0;
                     // }
-                    if (projection) joinPipeline.push({$project: projection});
+                    if (projection) joinPipeline.push({ $project: projection });
                 } else {
                     //not populated, so only fetch primary key.
                     const projection = this.getPrimaryKeysProjection(foreignSchema);
-                    joinPipeline.push({$project: projection});
+                    joinPipeline.push({ $project: projection });
                 }
 
                 join.as = '__ref_' + join.propertySchema.name;
@@ -278,9 +278,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         pipeline.push({
                             $lookup: {
                                 from: this.databaseSession.adapter.client.resolveCollectionName(viaClassType),
-                                let: {localField: '$' + join.classSchema.getPrimaryField().name},
+                                let: { localField: '$' + join.classSchema.getPrimaryField().name },
                                 pipeline: [
-                                    {$match: {$expr: {$eq: ['$' + backReference.getForeignKeyName(), '$$localField']}}}
+                                    { $match: { $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$localField'] } } }
                                 ],
                                 as: subAs,
                             },
@@ -295,15 +295,15 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         );
 
                         pipeline.push({
-                            $addFields: {[subAs]: '$' + subAs + '.' + backReferenceForward.getForeignKeyName()},
+                            $addFields: { [subAs]: '$' + subAs + '.' + backReferenceForward.getForeignKeyName() },
                         });
 
                         pipeline.push({
                             $lookup: {
                                 from: this.databaseSession.adapter.client.resolveCollectionName(foreignSchema),
-                                let: {localField: '$' + subAs},
+                                let: { localField: '$' + subAs },
                                 pipeline: [
-                                    {$match: {$expr: {$in: ['$' + foreignSchema.getPrimaryField().name, '$$localField']}}}
+                                    { $match: { $expr: { $in: ['$' + foreignSchema.getPrimaryField().name, '$$localField'] } } }
                                 ].concat(joinPipeline),
                                 as: join.as,
                             },
@@ -313,7 +313,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         pipeline.push({
                             $lookup: {
                                 from: this.databaseSession.adapter.client.resolveCollectionName(foreignSchema),
-                                let: {foreign_id: '$' + join.classSchema.getPrimaryField().name},
+                                let: { foreign_id: '$' + join.classSchema.getPrimaryField().name },
                                 pipeline: joinPipeline,
                                 as: join.as,
                             },
@@ -323,7 +323,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                     pipeline.push({
                         $lookup: {
                             from: this.databaseSession.adapter.client.resolveCollectionName(foreignSchema),
-                            let: {foreign_id: '$' + join.propertySchema.getForeignKeyName()},
+                            let: { foreign_id: '$' + join.propertySchema.getForeignKeyName() },
                             pipeline: joinPipeline,
                             as: join.as,
                         },
@@ -335,7 +335,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
                     if (join.type === 'inner') {
                         pipeline.push({
-                            $match: {[join.as]: {$ne: []}}
+                            $match: { [join.as]: { $ne: [] } }
                         });
                     }
                 } else {
@@ -356,13 +356,13 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
         handleJoins(pipeline, model, this.classSchema);
 
-        if (model.filter) pipeline.push({$match: getMongoFilter(this.classSchema, model)});
-        if (model.sort) pipeline.push({$sort: this.getSortFromModel(model.sort)});
-        if (model.skip) pipeline.push({$skip: model.skip});
-        if (model.limit) pipeline.push({$limit: model.limit});
+        if (model.filter) pipeline.push({ $match: getMongoFilter(this.classSchema, model) });
+        if (model.sort) pipeline.push({ $sort: this.getSortFromModel(model.sort) });
+        if (model.skip) pipeline.push({ $skip: model.skip });
+        if (model.limit) pipeline.push({ $limit: model.limit });
 
         const projection = this.getProjection(this.classSchema, model.select);
-        if (projection) pipeline.push({$project: projection});
+        if (projection) pipeline.push({ $project: projection });
 
         return pipeline;
     }

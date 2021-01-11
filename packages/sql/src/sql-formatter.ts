@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Formatter} from '@deepkit/orm';
+import { Formatter } from '@deepkit/orm';
 
 export class SqlFormatter extends Formatter {
 }

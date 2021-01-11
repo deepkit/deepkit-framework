@@ -1,5 +1,5 @@
-import {createConfig} from '@deepkit/framework';
-import {t} from '@deepkit/type';
+import { createConfig } from '@deepkit/framework';
+import { t } from '@deepkit/type';
 
 export const config = createConfig({
     browserPath: t.string.description('The path to the built dist file for the browser (with all the assets), usually something like ../../dist/browser'),

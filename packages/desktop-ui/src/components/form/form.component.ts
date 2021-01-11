@@ -8,8 +8,8 @@ import {
     Output, SimpleChanges,
     SkipSelf
 } from "@angular/core";
-import {FormGroup, NgControl} from "@angular/forms";
-import {detectChangesNextFrame} from "../app";
+import { FormGroup, NgControl } from "@angular/forms";
+import { detectChangesNextFrame } from "../app";
 
 @Component({
     selector: 'dui-form-row',
@@ -29,9 +29,9 @@ import {detectChangesNextFrame} from "../app";
 export class FormRowComponent {
     @Input() label: string = '';
 
-    @ContentChild(NgControl, {static: false}) ngControl?: NgControl;
+    @ContentChild(NgControl, { static: false }) ngControl?: NgControl;
 
-    isString(v: any){
+    isString(v: any) {
         return 'string' === typeof v;
     }
 }

@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, JSONPartial, jsonSerializer, PartialEntity} from '@deepkit/type';
-import {Entity} from './type';
-import {getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator} from './converter';
-import {isObject, toFastProperties} from '@deepkit/core';
-import {inspect} from 'util';
-import {changeSetSymbol, ItemChanges} from './changes';
+import { ClassSchema, getClassSchema, JSONPartial, jsonSerializer, PartialEntity } from '@deepkit/type';
+import { Entity } from './type';
+import { getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator } from './converter';
+import { isObject, toFastProperties } from '@deepkit/core';
+import { inspect } from 'util';
+import { changeSetSymbol, ItemChanges } from './changes';
 
 export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();
@@ -38,9 +38,9 @@ export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
     } else {
         const first = primaryFields[0];
         if (isObject(primaryKey) && (primaryKey as any)[first.name] !== undefined) {
-            return {[first.name]: (primaryKey as any)[first.name]};
+            return { [first.name]: (primaryKey as any)[first.name] };
         } else {
-            return {[first.name]: primaryKey};
+            return { [first.name]: primaryKey };
         }
     }
 }
@@ -189,7 +189,7 @@ export class IdentityMap {
         const store = this.getStore(classSchema);
         for (const item of items) {
             const pkHash = getPrimaryKeyHashGenerator(classSchema, jsonSerializer)(item);
-            store.set(pkHash, {ref: item, stale: false});
+            store.set(pkHash, { ref: item, stale: false });
             getInstanceState(item).markAsPersisted();
         }
     }

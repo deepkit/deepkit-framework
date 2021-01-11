@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Injector, render} from '@deepkit/framework';
-import {bench} from '../../bench';
-import {Website} from './website';
+import { Injector, render } from '@deepkit/framework';
+import { bench } from '../../bench';
+import { Website } from './website';
 
 const template1 = () => <div>Test</div>;
 
-function Head({}, children: string) {
+function Head({ }, children: string) {
     return <div>Yes {children}</div>;
 }
 

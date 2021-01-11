@@ -16,15 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {cli, Command, flag} from '../command';
-import {Logger, TimestampFormatter} from '../logger';
-import {kernelConfig} from '../kernel.config';
-import {ApplicationServer} from '../application-server';
-import {WebWorkerFactory} from '../worker';
-import {EventDispatcher} from '../event';
+import { cli, Command, flag } from '../command';
+import { Logger, TimestampFormatter } from '../logger';
+import { kernelConfig } from '../kernel.config';
+import { ApplicationServer } from '../application-server';
+import { WebWorkerFactory } from '../worker';
+import { EventDispatcher } from '../event';
 import { InjectorContext } from '../injector/injector';
 
-class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) {}
+class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) { }
 
 @cli.controller('server:listen', {
     description: 'Starts the HTTP server'

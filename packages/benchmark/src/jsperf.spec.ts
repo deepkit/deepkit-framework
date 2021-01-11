@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {f, getClassSchema, Patcher, jsonSerializer} from '@deepkit/type';
+import { f, getClassSchema, Patcher, jsonSerializer } from '@deepkit/type';
 import { BenchSuite } from './bench';
 
-test.only('nope', () => {});
+test.only('nope', () => { });
 
 test('parse JSON_ARRAYAGG', () => {
     const bench = new BenchSuite('JSON_ARRAYAGG');
@@ -161,7 +161,7 @@ test('weakMap vs Object.defineProperty', () => {
 
     suite.add('weakMap set', () => {
         for (const item of items) {
-            weakMap.set(item, {myAdditionalData: item.id});
+            weakMap.set(item, { myAdditionalData: item.id });
         }
     });
 
@@ -171,11 +171,11 @@ test('weakMap vs Object.defineProperty', () => {
         }
     });
 
-    Object.defineProperty(User.prototype, '__myData', {writable: true, enumerable: false, value: {}});
+    Object.defineProperty(User.prototype, '__myData', { writable: true, enumerable: false, value: {} });
 
     suite.add('defineProperty set', () => {
         for (const item of items) {
-            (item as any).__myData = {myAdditionalData: item.id};
+            (item as any).__myData = { myAdditionalData: item.id };
         }
     });
 
@@ -211,7 +211,7 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
         }
 
         expect(Item.prototype.hasOwnProperty('bla')).toBe(false);
-        Object.defineProperty(Item.prototype, 'bla', {writable: true, enumerable: false});
+        Object.defineProperty(Item.prototype, 'bla', { writable: true, enumerable: false });
         expect(Item.prototype.hasOwnProperty('bla')).toBe(true);
         const item = new Item;
         expect((item as any).bla).toBe(undefined);
@@ -224,7 +224,7 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
     suite.add('set predefined', () => {
         const item = new User(1);
         if (!(item as any)['constructor'].prototype.hasOwnProperty('bla')) {
-            Object.defineProperty(Object.getPrototypeOf(item), 'bla', {writable: true, enumerable: false});
+            Object.defineProperty(Object.getPrototypeOf(item), 'bla', { writable: true, enumerable: false });
         }
         (item as any).bla = 1;
     });
@@ -234,7 +234,7 @@ test('set known prop in prototype vs unknown prop vs weakmap', () => {
     suite.add('set predefined symbol', () => {
         const item = new User(1);
         if (!(item as any)['constructor'].prototype.hasOwnProperty(symbol)) {
-            Object.defineProperty(Object.getPrototypeOf(item), symbol, {writable: true, enumerable: false});
+            Object.defineProperty(Object.getPrototypeOf(item), symbol, { writable: true, enumerable: false });
         }
         (item as any)[symbol] = 1;
     });
@@ -265,7 +265,7 @@ test('cache', () => {
 
     const cache: any = {};
     suite.add('object write', () => {
-        cache[1] = {i: 1};
+        cache[1] = { i: 1 };
     });
 
     suite.add('object read', () => {
@@ -280,7 +280,7 @@ test('cache', () => {
 
     const map = new Map();
     suite.add('map write', () => {
-        map.set(1, {i: 1});
+        map.set(1, { i: 1 });
     });
     suite.add('map read', () => {
         const n = map.get(1);

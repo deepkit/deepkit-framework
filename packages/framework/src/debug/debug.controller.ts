@@ -28,16 +28,16 @@ import {
     RpcActionParameter,
     Workflow
 } from '@deepkit/framework-debug-shared';
-import {Collection, rpc, rpcClass} from '@deepkit/rpc';
-import {getClassSchema, t} from '@deepkit/type';
-import {ServiceContainer} from '../service-container';
-import {parseRouteControllerAction, Router} from '../router';
-import {getClassName} from '@deepkit/core';
-import {EventDispatcher, isEventListenerContainerEntryService} from '../event';
-import {DatabaseRegistry} from '../database-registry';
-import {inject} from '../injector/injector';
-import {DatabaseAdapter} from '@deepkit/orm';
-import {LiveDatabase} from '../database/live-database';
+import { Collection, rpc, rpcClass } from '@deepkit/rpc';
+import { getClassSchema, t } from '@deepkit/type';
+import { ServiceContainer } from '../service-container';
+import { parseRouteControllerAction, Router } from '../router';
+import { getClassName } from '@deepkit/core';
+import { EventDispatcher, isEventListenerContainerEntryService } from '../event';
+import { DatabaseRegistry } from '../database-registry';
+import { inject } from '../injector/injector';
+import { DatabaseAdapter } from '@deepkit/orm';
+import { LiveDatabase } from '../database/live-database';
 
 
 @rpc.controller(DebugControllerInterface)
@@ -61,9 +61,9 @@ export class DebugController implements DebugControllerInterface {
         for (const db of this.databaseRegistry.getDatabases()) {
             const entities: DatabaseEntity[] = [];
             for (const classSchema of db.entities) {
-                entities.push({name: classSchema.name, className: classSchema.getClassName()});
+                entities.push({ name: classSchema.name, className: classSchema.getClassName() });
             }
-            databases.push({name: db.name, entities, adapter: (db.adapter as DatabaseAdapter).getName()});
+            databases.push({ name: db.name, entities, adapter: (db.adapter as DatabaseAdapter).getName() });
         }
 
         return databases;

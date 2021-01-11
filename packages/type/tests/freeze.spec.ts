@@ -1,6 +1,6 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {getClassSchema, jsonSerializer, t} from '../index';
+import { getClassSchema, jsonSerializer, t } from '../index';
 
 export class StateGoalChecklistItem {
     @t read: boolean = false;

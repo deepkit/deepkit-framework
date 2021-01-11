@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType, CompilerContext, isClass, isFunction} from '@deepkit/core';
-import {Context, InjectorContext} from './injector/injector';
-import {createClassDecoratorContext, createPropertyDecoratorContext} from '@deepkit/type';
+import { ClassType, CompilerContext, isClass, isFunction } from '@deepkit/core';
+import { Context, InjectorContext } from './injector/injector';
+import { createClassDecoratorContext, createPropertyDecoratorContext } from '@deepkit/type';
 
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
@@ -45,7 +45,7 @@ export class EventToken<T extends BaseEvent> {
     }
 
     listen(callback: (event: T) => void, order: number = 0): EventListener<T> {
-        return {eventToken: this, callback, order: order};
+        return { eventToken: this, callback, order: order };
     }
 }
 
@@ -75,7 +75,7 @@ export const eventClass = createClassDecoratorContext(
         t = new EventClassStore;
 
         addListener(eventToken: EventToken<any>, methodName: string, order: number) {
-            this.t.listeners.push({eventToken, methodName, order: order});
+            this.t.listeners.push({ eventToken, methodName, order: order });
         }
     }
 );
@@ -132,12 +132,12 @@ export class EventDispatcher {
         const config = eventClass._fetch(listener);
         if (!config) return;
         for (const entry of config.listeners) {
-            this.add(entry.eventToken, {context, classType: listener, methodName: entry.methodName, order: entry.order});
+            this.add(entry.eventToken, { context, classType: listener, methodName: entry.methodName, order: entry.order });
         }
     }
 
     public registerCallback<E extends BaseEvent>(eventToken: EventToken<E>, callback: (event: E) => Promise<void> | void, order: number = 0) {
-        this.add(eventToken, {fn: callback, order: order});
+        this.add(eventToken, { fn: callback, order: order });
     }
 
     public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {

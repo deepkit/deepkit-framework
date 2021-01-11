@@ -1,8 +1,8 @@
-import {expect, test} from '@jest/globals';
-import {ArraySort} from '../src/array-sort';
-import {bench} from './utils';
-import {CircularDependencyException, ElementNotFoundException} from '../src/base';
-import {fail} from 'assert';
+import { expect, test } from '@jest/globals';
+import { ArraySort } from '../src/array-sort';
+import { bench } from './utils';
+import { CircularDependencyException, ElementNotFoundException } from '../src/base';
+import { fail } from 'assert';
 
 function getElementsFlat(count: number) {
     const elements = new Map<string, string[]>();

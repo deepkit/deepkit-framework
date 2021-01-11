@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {performance} from 'perf_hooks';
+import { performance } from 'perf_hooks';
 
 export const enum TraceType {
     request,
@@ -69,9 +69,9 @@ export class Tracer {
     protected frames: TraceFrame[] = [];
 
     public start(type: TraceFrameTypes, name: string, data?: any) {
-        this.stack.push({name, level: this.stack.length});
+        this.stack.push({ name, level: this.stack.length });
 
-        const frame = Object.assign({stamp: performance.now(), mode: TraceFrameMode.start}, type);
+        const frame = Object.assign({ stamp: performance.now(), mode: TraceFrameMode.start }, type);
         this.frames.push(frame);
     }
 
@@ -80,7 +80,7 @@ export class Tracer {
         if (!last) throw new Error(`Tracer race condition: could not end ${name}, stack empty`);
         if (name !== last.name) throw new Error(`Tracer race condition: could not end ${name}, ${last.name} is expected`);
 
-        const frame = Object.assign({stamp: performance.now(), mode: TraceFrameMode.start});
+        const frame = Object.assign({ stamp: performance.now(), mode: TraceFrameMode.start });
         this.frames.push(frame);
     }
 }

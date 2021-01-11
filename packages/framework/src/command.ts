@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {args, flags} from '@oclif/parser';
+import { args, flags } from '@oclif/parser';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
@@ -26,11 +26,11 @@ import {
     PropertyApiTypeInterface,
     PropertySchema
 } from '@deepkit/type';
-import {IBooleanFlag, IOptionFlag} from '@oclif/parser/lib/flags';
-import {ClassType} from '@deepkit/core';
-import {Command as OclifCommand} from '@oclif/config';
-import {Command as OclifCommandBase} from '@oclif/command';
-import {InjectorContext} from './injector/injector';
+import { IBooleanFlag, IOptionFlag } from '@oclif/parser/lib/flags';
+import { ClassType } from '@deepkit/core';
+import { Command as OclifCommand } from '@oclif/config';
+import { Command as OclifCommandBase } from '@oclif/command';
+import { InjectorContext } from './injector/injector';
 
 class ArgDefinitions {
     name: string = '';
@@ -144,7 +144,7 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
     let properties: PropertySchema[] = [];
     try {
         properties = schema.getMethodProperties('execute');
-    } catch {}
+    } catch { }
 
     for (const i in argDefinitions.args) {
         if (!argDefinitions.args.hasOwnProperty(i)) continue;
@@ -176,7 +176,7 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
                 static flags = oclifFlags;
 
                 async run() {
-                    const {flags, args} = this.parse(Clazz);
+                    const { flags, args } = this.parse(Clazz);
                     const cliScopedContext = rootScopedContext.createChildScope('cli');
                     const instance = cliScopedContext.get(classType);
                     const methodArgs: any[] = [];

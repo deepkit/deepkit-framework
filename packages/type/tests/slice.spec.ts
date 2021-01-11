@@ -1,5 +1,5 @@
-import {expect, test} from '@jest/globals';
-import {plainToClass, t} from '../index';
+import { expect, test } from '@jest/globals';
+import { plainToClass, t } from '../index';
 import 'reflect-metadata';
 
 test('slice exclude', () => {
@@ -19,13 +19,13 @@ test('slice exclude', () => {
     expect(pub.hasProperty('created')).toBe(true);
 
     {
-        const instance = plainToClass(pub, {username: 'Peter'});
+        const instance = plainToClass(pub, { username: 'Peter' });
         expect(instance.username).toBe('Peter');
         expect((instance as any).password).toBe(undefined);
     }
 
     {
-        const instance = plainToClass(pub, {username: 'Peter', password: 'asdasd'});
+        const instance = plainToClass(pub, { username: 'Peter', password: 'asdasd' });
         expect(instance.username).toBe('Peter');
         expect((instance as any).password).toBe(undefined);
     }
@@ -48,13 +48,13 @@ test('slice include', () => {
     expect(pub.hasProperty('created')).toBe(false);
 
     {
-        const instance = plainToClass(pub, {username: 'Peter'});
+        const instance = plainToClass(pub, { username: 'Peter' });
         expect(instance.username).toBe('Peter');
         expect((instance as any).password).toBe(undefined);
     }
 
     {
-        const instance = plainToClass(pub, {username: 'Peter', password: 'asdasd'});
+        const instance = plainToClass(pub, { username: 'Peter', password: 'asdasd' });
         expect(instance.username).toBe('Peter');
         expect((instance as any).password).toBe(undefined);
     }
@@ -67,7 +67,7 @@ test('slice extend', () => {
         created: t.date,
     });
 
-    const pub = schema.extend({logins: t.number.default(0)});
+    const pub = schema.extend({ logins: t.number.default(0) });
     expect(pub.hasProperty('logins')).toBe(true);
     expect(pub.getProperty('logins').type).toBe('number');
     expect(pub.hasProperty('password')).toBe(true);
@@ -75,13 +75,13 @@ test('slice extend', () => {
     expect(pub.hasProperty('created')).toBe(true);
 
     {
-        const instance = plainToClass(pub, {username: 'Peter'});
+        const instance = plainToClass(pub, { username: 'Peter' });
         expect(instance.username).toBe('Peter');
         expect(instance.logins).toBe(0);
     }
 
     {
-        const instance = plainToClass(pub, {username: 'Peter', logins: 10});
+        const instance = plainToClass(pub, { username: 'Peter', logins: 10 });
         expect(instance.username).toBe('Peter');
         expect(instance.logins).toBe(10);
     }

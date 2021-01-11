@@ -8,7 +8,7 @@ import { Tag } from './tag';
 export class Book extends ActiveRecord {
     @t.primary.autoIncrement public id?: number;
 
-    @t.array(() => Tag).backReference({via: () => BookTag})
+    @t.array(() => Tag).backReference({ via: () => BookTag })
     tags: Tag[] = [];
 
     constructor(

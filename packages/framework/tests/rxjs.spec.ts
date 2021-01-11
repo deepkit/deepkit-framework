@@ -1,5 +1,5 @@
-import {expect, test} from '@jest/globals';
-import {BehaviorSubject} from 'rxjs';
+import { expect, test } from '@jest/globals';
+import { BehaviorSubject } from 'rxjs';
 
 
 test('rxjs complete on complete', () => {

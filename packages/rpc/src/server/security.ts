@@ -16,11 +16,11 @@ export class RpcKernelSecurity<T extends Session> {
     async hasControllerAccess(session: T, classType: ClassType, method: string): Promise<boolean> {
         return true;
     }
-    
+
     async isAllowedToRegisterAsPeer(session: T, peerId: string): Promise<boolean> {
         return true;
     }
-    
+
     async isAllowedToSendToPeer(session: T, peerId: string): Promise<boolean> {
         return true;
     }

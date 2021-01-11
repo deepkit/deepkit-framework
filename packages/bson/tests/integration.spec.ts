@@ -1,11 +1,11 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {entity, FieldDecoratorResult, t, Types} from '@deepkit/type';
+import { entity, FieldDecoratorResult, t, Types } from '@deepkit/type';
 import bson from 'bson';
-import {createBSONSizer, getBSONSerializer, JS_INT_MAX, JS_INT_MIN} from '../src/bson-serialize';
-import {getBSONDecoder} from '../src/bson-jit-parser';
+import { createBSONSizer, getBSONSerializer, JS_INT_MAX, JS_INT_MIN } from '../src/bson-serialize';
+import { getBSONDecoder } from '../src/bson-jit-parser';
 
-const {calculateObjectSize, serialize, deserialize} = bson;
+const { calculateObjectSize, serialize, deserialize } = bson;
 
 enum MyEnum {
     first, second, third,
@@ -81,7 +81,7 @@ const types: [FieldDecoratorResult<any>, any, any?, true?][] = [
     [t.enum(MyEnum2), MyEnum2.first],
     [t.enum(MyEnum2), MyEnum2.second],
     [t.enum(MyEnum2), MyEnum2.third],
-    [t.type({name: t.string}), {name: 'Peter'}],
+    [t.type({ name: t.string }), { name: 'Peter' }],
     [t.union(t.string, MyModel), 'asd'],
     [t.union(t.string, t.array(t.string)), 'asd'],
     [t.union(t.string, t.array(t.string)), ['a', 'b']],
@@ -92,29 +92,29 @@ const types: [FieldDecoratorResult<any>, any, any?, true?][] = [
     [t.union(t.string, t.uuid, t.date), '3c25985e-4e25-45db-9e8a-a487cc78929a'],
     [t.union(t.string, t.uuid, t.date), 'asd'],
     [t.union(t.string, t.map(t.string)), 'asd'],
-    [t.union(t.string, t.map(t.string)), {first: 'asd', second: 'asd'}],
+    [t.union(t.string, t.map(t.string)), { first: 'asd', second: 'asd' }],
     [t.union(t.string, t.partial(t.string)), 'asd'],
-    [t.union(t.string, t.partial(t.string)), {first: 'asd', second: 'asd'}],
+    [t.union(t.string, t.partial(t.string)), { first: 'asd', second: 'asd' }],
     [t.union(t.string, t.type(ArrayBuffer)), 'asd'],
     [t.union(t.string, t.type(ArrayBuffer)), ab, undefined, true],
     [t.union(t.string, t.type(Uint8Array)), uint8Array, undefined, true],
     [t.type(DecoratedValue), new DecoratedValue(['a', 'b']), undefined, true],
     [t.type(DecoratedValue2), decoratedValue2, undefined, true],
-    [t.union(t.string, MyModel), {type: 'a', name: 'Peter', items: new DecoratedValue(['a', 'b']),}, undefined, true],
+    [t.union(t.string, MyModel), { type: 'a', name: 'Peter', items: new DecoratedValue(['a', 'b']), }, undefined, true],
     [t.array(t.string), ['Peter', 'b']],
     [t.array(t.number.optional), [1, undefined, 2], undefined, true], //bson-js converts the undefined into null
     [t.array(t.string.optional), ['Peter', undefined, 'Bar'], undefined, true], //bson-js converts the undefined into null
     [t.array(t.string.nullable), ['Peter', null, 'Bar']],
     [t.array(t.union(t.string, t.number)), ['Peter', 23, 'Bar']],
     [t.array(t.union(t.boolean, t.number)), [false, 23, true]],
-    [t.map(t.string), {name: 'Peter'}],
-    [t.any, {name: 'Peter', ready: false}],
+    [t.map(t.string), { name: 'Peter' }],
+    [t.any, { name: 'Peter', ready: false }],
     [t.type(ArrayBuffer), ab],
     [t.type(Uint8Array), new Uint8Array([22, 44, 55, 66])],
     [t.type(Int16Array), new Int16Array([22, 44, 55, 66])],
-    [t.union(t.type({type: t.literal('m'), name: t.string})), {type: 'm', name: 'Peter'}],
-    [t.partial({name: t.string}), {}],
-    [t.partial({name: t.string}), {name: 'Peter'}],
+    [t.union(t.type({ type: t.literal('m'), name: t.string })), { type: 'm', name: 'Peter' }],
+    [t.partial({ name: t.string }), {}],
+    [t.partial({ name: t.string }), { name: 'Peter' }],
     [t.any, new RegExp('/abc/', 'g')],
     [t.any, new RegExp(/abc/, 'g')],
     [t.any, /abc/g],
@@ -163,12 +163,12 @@ for (let i = 0; i < types.length; i++) {
 
         expect(getBSONDecoder(s)(getBSONSerializer(s)({}))).toEqual({});
         expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({}))).toEqual({});
-        const bsonOptional = getBSONSerializer(sOptional)({field: null});
+        const bsonOptional = getBSONSerializer(sOptional)({ field: null });
         const decoderOptional = getBSONDecoder(sOptional);
 
         decoderOptional(bsonOptional);
-        expect(decoderOptional(bsonOptional)).toEqual({field: null});
-        expect(getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({field: null}))).toEqual({field: null});
+        expect(decoderOptional(bsonOptional)).toEqual({ field: null });
+        expect(getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({ field: null }))).toEqual({ field: null });
 
         const type = field.buildPropertySchema().type;
         const blacklist: Types[] = [

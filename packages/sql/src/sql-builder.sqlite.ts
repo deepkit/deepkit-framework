@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {SqlBuilder} from './sql-builder';
+import { SqlBuilder } from './sql-builder';
 
 export class SQLiteSqlBuilder extends SqlBuilder {
 

@@ -1,4 +1,4 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import {
     base64ToArrayBuffer,
@@ -13,7 +13,7 @@ import {
     typedArrayToBase64,
     typedArrayToBuffer
 } from '../index';
-import {Buffer} from 'buffer';
+import { Buffer } from 'buffer';
 
 test('mapping', async () => {
     class Clazz {

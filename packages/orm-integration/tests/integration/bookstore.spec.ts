@@ -98,7 +98,7 @@ test('uuid', async () => {
     await database.persist(image);
 
     {
-        const imageDB = await database.query(Image).filter({id: image.id}).findOne();
+        const imageDB = await database.query(Image).filter({ id: image.id }).findOne();
         expect(imageDB.id).toBe(image.id);
         expect(imageDB.privateToken).toBe(image.privateToken);
         expect(imageDB.downloads).toBe(0);
@@ -106,7 +106,7 @@ test('uuid', async () => {
     }
 
     {
-        const patched = await database.query(Image).returning('path', 'privateToken', 'image').patchMany({$inc: {downloads: 1}});
+        const patched = await database.query(Image).returning('path', 'privateToken', 'image').patchMany({ $inc: { downloads: 1 } });
         expect(patched.modified).toBe(1);
         expect(patched.primaryKeys).toEqual([image.id]);
         expect(patched.returning.downloads).toEqual([1]);
@@ -145,11 +145,11 @@ test('user-group', async () => {
     await addUser('Marc 1', groupA);
 
     await addUser('Marie', groupB);
-    
-    const allUsersInA = await database.query(User).useInnerJoin('groups').filter({name: 'a'}).end().find();
+
+    const allUsersInA = await database.query(User).useInnerJoin('groups').filter({ name: 'a' }).end().find();
     expect(allUsersInA.length).toBe(3);
 
-    const allUsersInB = await database.query(User).useInnerJoin('groups').filter({name: 'b'}).end().find();
+    const allUsersInB = await database.query(User).useInnerJoin('groups').filter({ name: 'b' }).end().find();
     expect(allUsersInB.length).toBe(1);
 
     {
@@ -158,7 +158,7 @@ test('user-group', async () => {
 
         await database.persist(new UserGroup(user, group));
 
-        const allUsersInB = await database.query(User).useInnerJoin('groups').filter({name: 'b'}).end().find();
+        const allUsersInB = await database.query(User).useInnerJoin('groups').filter({ name: 'b' }).end().find();
         expect(allUsersInB.length).toBe(2);
     }
 });

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {CustomError} from '@deepkit/core';
+import { CustomError } from '@deepkit/core';
 
 export class MongoError extends CustomError {
     constructor(message: string, public readonly code?: number) {
@@ -67,7 +67,7 @@ const retryableReads: number[] = [
     89,
     9001
 ]
-;
+    ;
 export function isErrorRetryableRead(error: any): boolean {
     if (error instanceof MongoError && error.code) {
         return retryableReads.includes(error.code);

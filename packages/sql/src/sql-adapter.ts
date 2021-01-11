@@ -31,13 +31,13 @@ import {
     PatchResult,
     SORT_ORDER
 } from '@deepkit/orm';
-import {ClassType} from '@deepkit/core';
-import {ClassSchema, getClassSchema, plainToClass, t} from '@deepkit/type';
-import {DefaultPlatform} from './platform/default-platform';
-import {SqlBuilder} from './sql-builder';
-import {SqlFormatter} from './sql-formatter';
-import {sqlSerializer} from './serializer/sql-serializer';
-import {DatabaseComparator, DatabaseModel} from './schema/table';
+import { ClassType } from '@deepkit/core';
+import { ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';
+import { DefaultPlatform } from './platform/default-platform';
+import { SqlBuilder } from './sql-builder';
+import { SqlFormatter } from './sql-formatter';
+import { sqlSerializer } from './serializer/sql-serializer';
+import { DatabaseComparator, DatabaseModel } from './schema/table';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -290,7 +290,7 @@ export class SqlMigrationHandler {
         this.migrationEntity = t.schema({
             version: t.number.primary,
             created: t.date,
-        }, {name: database.adapter.platform.getMigrationTableName()});
+        }, { name: database.adapter.platform.getMigrationTableName() });
     }
 
     public async setLatestMigrationVersion(version: number): Promise<void> {
@@ -304,13 +304,13 @@ export class SqlMigrationHandler {
 
     public async removeMigrationVersion(version: number): Promise<void> {
         const session = this.database.createSession();
-        await session.query(this.migrationEntity).filter({version}).deleteOne();
+        await session.query(this.migrationEntity).filter({ version }).deleteOne();
     }
 
     public async getLatestMigrationVersion(): Promise<number> {
         const session = this.database.createSession();
         try {
-            const version = await session.query(this.migrationEntity).sort({version: 'desc'}).findOneOrUndefined();
+            const version = await session.query(this.migrationEntity).sort({ version: 'desc' }).findOneOrUndefined();
             return version ? version.version : 0;
         } catch (error) {
             const connection = await this.database.adapter.connectionPool.getConnection();

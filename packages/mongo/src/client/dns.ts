@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {resolveSrv, resolveTxt} from 'dns';
-import {asyncOperation} from '@deepkit/core';
+import { resolveSrv, resolveTxt } from 'dns';
+import { asyncOperation } from '@deepkit/core';
 
 function matchesParentDomain(srvAddress, parentDomain) {
     const regex = /^.*?\./;
@@ -37,7 +37,7 @@ export async function resolveSrvHosts(hostname: string): Promise<{ options: stri
                 }
             }
             const hosts = addresses.map(v => {
-                return {hostname: v.name, port: v.port};
+                return { hostname: v.name, port: v.port };
             });
 
             resolveTxt(hostname, (err, records) => {
@@ -51,7 +51,7 @@ export async function resolveSrvHosts(hostname: string): Promise<{ options: stri
                     options = records[0].join('');
                 }
 
-                resolve({options, hosts});
+                resolve({ options, hosts });
             });
         });
     });
