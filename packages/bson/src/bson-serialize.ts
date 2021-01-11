@@ -23,19 +23,7 @@ import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_BINARY_SUBTYPE_DEFAULT,
     BSON_BINARY_SUBTYPE_UUID,
-    BSON_DATA_ARRAY,
-    BSON_DATA_BINARY,
-    BSON_DATA_BOOLEAN,
-    BSON_DATA_DATE,
-    BSON_DATA_INT,
-    BSON_DATA_LONG,
-    BSON_DATA_NULL,
-    BSON_DATA_NUMBER,
-    BSON_DATA_OBJECT,
-    BSON_DATA_OID,
-    BSON_DATA_REGEXP,
-    BSON_DATA_STRING,
-    BSON_DATA_UNDEFINED,
+    BSONType,
     digitByteSize,
     TWO_PWR_32_DBL_N
 } from './utils';
@@ -406,14 +394,25 @@ export class Writer {
     write(value: any, nameWriter?: () => void): void {
         if ('boolean' === typeof value) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_BOOLEAN);
+                this.writeByte(BSONType.BOOLEAN);
                 nameWriter();
             }
             this.writeByte(value ? 1 : 0);
+        } else if (value instanceof RegExp) {
+            if (nameWriter) {
+                this.writeByte(BSONType.REGEXP);
+                nameWriter();
+            }
+            this.writeString(value.source)
+            this.writeNull();
+            if (value.ignoreCase) this.writeString('i');
+            if (value.global) this.writeString('s'); //BSON does not use the RegExp flag format
+            if (value.multiline) this.writeString('m');
+            this.writeNull();
         } else if ('string' === typeof value) {
             //size + content + null
             if (nameWriter) {
-                this.writeByte(BSON_DATA_STRING);
+                this.writeByte(BSONType.STRING);
                 nameWriter();
             }
             const start = this.offset;
@@ -423,7 +422,7 @@ export class Writer {
             this.writeDelayedSize(this.offset - start - 4, start);
         } else if ('bigint' === typeof value) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_LONG);
+                this.writeByte(BSONType.LONG);
                 nameWriter();
             }
             this.writeUint32(Number(value % BigInt(TWO_PWR_32_DBL_N)) | 0);
@@ -434,21 +433,21 @@ export class Writer {
                 if (value >= BSON_INT32_MIN && value <= BSON_INT32_MAX) {
                     //32bit
                     if (nameWriter) {
-                        this.writeByte(BSON_DATA_INT);
+                        this.writeByte(BSONType.INT);
                         nameWriter();
                     }
                     this.writeInt32(value);
                 } else if (value >= JS_INT_MIN && value <= JS_INT_MAX) {
                     //double, 64bit
                     if (nameWriter) {
-                        this.writeByte(BSON_DATA_NUMBER);
+                        this.writeByte(BSONType.NUMBER);
                         nameWriter();
                     }
                     this.writeDouble(value);
                 } else {
                     //long, but we serialize as Double, because deserialize will be BigInt
                     if (nameWriter) {
-                        this.writeByte(BSON_DATA_NUMBER);
+                        this.writeByte(BSONType.NUMBER);
                         nameWriter();
                     }
                     this.writeDouble(value);
@@ -456,14 +455,14 @@ export class Writer {
             } else {
                 //double
                 if (nameWriter) {
-                    this.writeByte(BSON_DATA_NUMBER);
+                    this.writeByte(BSONType.NUMBER);
                     nameWriter();
                 }
                 this.writeDouble(value);
             }
         } else if (value instanceof Date) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_DATE);
+                this.writeByte(BSONType.DATE);
                 nameWriter();
             }
             const long = bson.Long.fromNumber(value.valueOf());
@@ -471,7 +470,7 @@ export class Writer {
             this.writeUint32(long.getHighBits());
         } else if (value && value['_bsontype'] === 'Binary') {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_BINARY);
+                this.writeByte(BSONType.BINARY);
                 nameWriter();
             }
             this.writeUint32(value.buffer.byteLength);
@@ -488,12 +487,12 @@ export class Writer {
 
         } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_BINARY);
+                this.writeByte(BSONType.BINARY);
                 nameWriter();
             }
             let view = value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
             if ((value as any)['_bsontype'] === 'Binary') {
-                view = (value as any as bson.Binary).buffer;
+                view = (value as any).buffer;
             }
 
             this.writeUint32(value.byteLength);
@@ -504,7 +503,7 @@ export class Writer {
             }
         } else if (isArray(value)) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_ARRAY);
+                this.writeByte(BSONType.ARRAY);
                 nameWriter();
             }
             const start = this.offset;
@@ -520,13 +519,13 @@ export class Writer {
             this.writeDelayedSize(this.offset - start, start);
         } else if (isObjectId(value)) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_OID);
+                this.writeByte(BSONType.OID);
                 nameWriter();
             }
             this.writeObjectId(value);
         } else if (value instanceof RegExp) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_REGEXP);
+                this.writeByte(BSONType.REGEXP);
                 nameWriter();
             }
             this.writeString(value.source);
@@ -537,17 +536,17 @@ export class Writer {
             this.writeNull();
         } else if (value === undefined) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_UNDEFINED);
+                this.writeByte(BSONType.UNDEFINED);
                 nameWriter();
             }
         } else if (value === null) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_NULL);
+                this.writeByte(BSONType.NULL);
                 nameWriter();
             }
         } else if (isObject(value)) {
             if (nameWriter) {
-                this.writeByte(BSON_DATA_OBJECT);
+                this.writeByte(BSONType.OBJECT);
                 nameWriter();
             }
             const start = this.offset;
@@ -609,7 +608,7 @@ function getPropertySerializerCode(
         return `
             if ('bigint' === typeof ${accessor}) {
                 //long
-                writer.writeByte(${BSON_DATA_LONG});
+                writer.writeByte(${BSONType.LONG});
                 ${nameWriter}
                 writer.writeUint32(Number(${accessor} % BigInt(TWO_PWR_32_DBL_N)) | 0); //low
                 writer.writeUint32(Number(${accessor} / BigInt(TWO_PWR_32_DBL_N)) | 0); //high
@@ -617,23 +616,23 @@ function getPropertySerializerCode(
                 //it's an int
                 if (${accessor} >= ${BSON_INT32_MIN} && ${accessor} <= ${BSON_INT32_MAX}) {
                     //32bit
-                    writer.writeByte(${BSON_DATA_INT});
+                    writer.writeByte(${BSONType.INT});
                     ${nameWriter}
                     writer.writeInt32(${accessor});
                 } else if (${accessor} >= ${JS_INT_MIN} && ${accessor} <= ${JS_INT_MAX}) {
                     //double, 64bit
-                    writer.writeByte(${BSON_DATA_NUMBER});
+                    writer.writeByte(${BSONType.NUMBER});
                     ${nameWriter}
                     writer.writeDouble(${accessor});
                 } else {
                     //long, but we serialize as Double, because deserialize will be BigInt
-                    writer.writeByte(${BSON_DATA_NUMBER});
+                    writer.writeByte(${BSONType.NUMBER});
                     ${nameWriter}
                     writer.writeDouble(${accessor});
                 }
             } else {
                 //double, 64bit
-                writer.writeByte(${BSON_DATA_NUMBER});
+                writer.writeByte(${BSONType.NUMBER});
                 ${nameWriter}
                 writer.writeDouble(${accessor});
             }
@@ -646,13 +645,13 @@ function getPropertySerializerCode(
         compiler.context.set(propertySerializer, serializerFn);
 
         code = `
-            writer.writeByte(${BSON_DATA_OBJECT});
+            writer.writeByte(${BSONType.OBJECT});
             ${nameWriter}
             ${propertySerializer}.fn(${accessor}, writer);
         `;
     } else if (property.type === 'string') {
         code = `
-            writer.writeByte(${BSON_DATA_STRING});
+            writer.writeByte(${BSONType.STRING});
             ${nameWriter}
             const start = writer.offset;
             writer.offset += 4; //size placeholder
@@ -662,14 +661,14 @@ function getPropertySerializerCode(
         `;
     } else if (property.type === 'boolean') {
         code = `
-            writer.writeByte(${BSON_DATA_BOOLEAN});
+            writer.writeByte(${BSONType.BOOLEAN});
             ${nameWriter}
             writer.writeByte(${accessor} ? 1 : 0);
         `;
     } else if (property.type === 'date') {
         compiler.context.set('Long', bson.Long);
         code = `
-            writer.writeByte(${BSON_DATA_DATE});
+            writer.writeByte(${BSONType.DATE});
             ${nameWriter}
             if (!(${accessor} instanceof Date)) {
                 console.debug('got', typeof ${accessor}, ${accessor});
@@ -683,7 +682,7 @@ function getPropertySerializerCode(
         compiler.context.set('hexToByte', hexToByte);
         compiler.context.set('ObjectId', bson.ObjectId);
         code = `
-            writer.writeByte(${BSON_DATA_OID});
+            writer.writeByte(${BSONType.OID});
             ${nameWriter}
             
             writer.writeObjectId(${accessor});
@@ -692,7 +691,7 @@ function getPropertySerializerCode(
         compiler.context.set('uuidStringToByte', uuidStringToByte);
         compiler.context.set('Binary', bson.Binary);
         code = `
-            writer.writeByte(${BSON_DATA_BINARY});
+            writer.writeByte(${BSONType.BINARY});
             ${nameWriter}
             writer.writeUint32(16);
             writer.writeByte(${BSON_BINARY_SUBTYPE_UUID});
@@ -732,7 +731,7 @@ function getPropertySerializerCode(
     } else if (property.type === 'array') {
         const i = compiler.reserveVariable('i');
         code = `
-            writer.writeByte(${BSON_DATA_ARRAY});
+            writer.writeByte(${BSONType.ARRAY});
             ${nameWriter}
             const start = writer.offset;
             writer.offset += 4; //size
@@ -747,7 +746,7 @@ function getPropertySerializerCode(
     } else if (property.type === 'map') {
         const i = compiler.reserveVariable('i');
         code = `
-            writer.writeByte(${BSON_DATA_OBJECT});
+            writer.writeByte(${BSONType.OBJECT});
             ${nameWriter}
             const start = writer.offset;
             writer.offset += 4; //size
@@ -771,12 +770,12 @@ function getPropertySerializerCode(
 
         if (property.isOptional) {
             elseBranch = `
-            writer.writeByte(${BSON_DATA_UNDEFINED});
+            writer.writeByte(${BSONType.UNDEFINED});
             ${nameWriter}
             `;
         } else if (property.isNullable) {
             elseBranch = `
-            writer.writeByte(${BSON_DATA_NULL});
+            writer.writeByte(${BSONType.NULL});
             ${nameWriter}
             `;
         } else if (property.hasManualDefaultValue()) {
@@ -806,10 +805,10 @@ function getPropertySerializerCode(
 
     return `
     if (${accessor} === undefined) {
-        writer.writeByte(${BSON_DATA_UNDEFINED});
+        writer.writeByte(${BSONType.UNDEFINED});
         ${nameWriter}
     } else if (${accessor} === null) {
-        writer.writeByte(${BSON_DATA_NULL});
+        writer.writeByte(${BSONType.NULL});
         ${nameWriter}
     } else {
         ${code}

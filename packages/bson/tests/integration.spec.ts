@@ -115,6 +115,12 @@ const types: [FieldDecoratorResult<any>, any, any?, true?][] = [
     [t.union(t.type({type: t.literal('m'), name: t.string})), {type: 'm', name: 'Peter'}],
     [t.partial({name: t.string}), {}],
     [t.partial({name: t.string}), {name: 'Peter'}],
+    [t.any, new RegExp('/abc/', 'g')],
+    [t.any, new RegExp(/abc/, 'g')],
+    [t.any, /abc/g],
+    [t.any, /abc/i],
+    [t.any, /abc/m],
+    [t.any, /abc/gim],
 ];
 
 test('nix', () => {

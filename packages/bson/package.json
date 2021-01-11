@@ -17,14 +17,12 @@
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.1",
     "@deepkit/type": "^1.0.1-alpha.1",
-    "bson": "^4.0.4",
-    "buffer": "^5.2.1"
+    "bson": "^4.0.4"
   },
   "devDependencies": {
     "@types/bson": "^4.0.3",
     "bson-ext": "^2.0.5",
-    "reflect-metadata": "^0.1.13",
-    "rxjs": "~6.6.0"
+    "reflect-metadata": "^0.1.13"
   },
   "jest": {
     "testEnvironment": "node",

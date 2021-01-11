@@ -75,6 +75,12 @@ export class BaseParser {
                 return undefined;
             case BSONType.BINARY:
                 return this.parseBinary(property);
+            case BSONType.REGEXP:
+                const source = this.eatString(this.stringSize());
+                this.offset++; //null
+                const options = this.eatString(this.stringSize());
+                this.offset++; //null
+                return new RegExp(source, options.replace('s', 'g'));
             case BSONType.OBJECT:
                 return parseObject(this);
             case BSONType.ARRAY:
@@ -193,6 +199,12 @@ export class BaseParser {
 
     peekUInt32(): number {
         return this.dataView.getUint32(this.offset, true);
+    }
+
+    stringSize(): number {
+        let end = this.offset;
+        while (this.buffer[end] !== 0) end++;
+        return end - this.offset;
     }
 
     eatObjectPropertyName() {
