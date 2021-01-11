@@ -275,7 +275,7 @@ export class Module<T extends ModuleOptions<any>> {
         const m = new Module(cloneOptions(this.options), {...this.configValues}, this.setups.slice(0), this.id);
         m.root = this.root;
         m.parent = this.parent;
-        m.configuredProviderCalls = this.configuredProviderCalls;
+        m.configuredProviderCalls = new Map(this.configuredProviderCalls);
 
         const imports = m.getImports();
         const exports = m.getExports();
