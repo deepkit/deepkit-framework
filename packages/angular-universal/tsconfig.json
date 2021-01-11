@@ -25,6 +25,9 @@
   ],
   "references": [
       {
+        "path": "../type/tsconfig.json"
+      },
+      {
         "path": "../framework/tsconfig.json"
       }
     ]

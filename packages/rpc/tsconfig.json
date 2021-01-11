@@ -31,6 +31,12 @@
     },
     {
       "path": "../type/tsconfig.dist.json"
+    },
+    {
+      "path": "../bson/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.dist.json"
     }
   ]
 }

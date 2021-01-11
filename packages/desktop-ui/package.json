@@ -58,7 +58,7 @@
     "@angular/platform-browser-dynamic": "~10.2.3",
     "@angular/router": "~10.2.3",
     "@types/fs-extra": "^8.0.1",
-    "@types/node": "^12.12.26",
+    "@types/node": "^14.0.0",
     "awesome-typescript-loader": "^5.2.1",
     "fs-extra": "^8.1.0",
     "rxjs": "~6.6.0",

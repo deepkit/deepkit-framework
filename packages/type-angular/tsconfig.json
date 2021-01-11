@@ -23,5 +23,11 @@
     "index.ts"
   ],
   "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.dist.json"
+    }
   ]
 }

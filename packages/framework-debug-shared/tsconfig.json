@@ -28,13 +28,10 @@
   ],
   "references": [
     {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../core-rxjs/tsconfig.json"
-    },
-    {
       "path": "../type/tsconfig.dist.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
     }
   ]
 }
