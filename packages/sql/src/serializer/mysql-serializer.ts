@@ -16,7 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {sqlSerializer} from './sql-serializer';
+import { binaryTypes, CompilerState, PropertySchema } from '@deepkit/type';
+import { sqlSerializer } from './sql-serializer';
 
 export const mySqlSerializer = new class extends sqlSerializer.fork('mysql') {
 };
+
+//for queries with `returning`, MySQL returns binary stuff as base64.
+function convertBinaryFromBase64(property: PropertySchema, state: CompilerState) {
+    state.setContext({ Buffer });
+    const offset = 'base64:type254:'.length;
+    state.addSetter(`typeof ${state.accessor} === 'string' && ${state.accessor}.startsWith('base64:') ? Buffer.from(${state.accessor}.substr(${offset}), 'base64') : ${state.accessor}`);
+}
+
+mySqlSerializer.toClass.prepend('uuid', convertBinaryFromBase64)
+mySqlSerializer.toClass.prepend('arrayBuffer', convertBinaryFromBase64)
+for (const type of binaryTypes) {
+    mySqlSerializer.toClass.prepend(type, convertBinaryFromBase64)
+}

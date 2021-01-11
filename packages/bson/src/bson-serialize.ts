@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, getDataConverterJS, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, reserveVariable} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getDataConverterJS, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, reserveVariable, UnpopulatedCheck} from '@deepkit/type';
 import {ClassType, CompilerContext, isArray, isObject, toFastProperties} from '@deepkit/core';
 import {seekElementSize} from './continuation';
 import {
@@ -223,7 +223,7 @@ function getPropertySizer(compiler: CompilerContext, property: PropertySchema, a
         for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
             discriminants.push(unionType.property.type);
         }
-        let elseBranch = `throw new Error('No valid discriminant was found for ${property.name}, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
+        let elseBranch = `throw new Error('No valid discriminant was found for ${property.name}, so could not determine class type. Guard tried: [${discriminants.join(',')}]. Got: ' + ${accessor});`;
 
         if (property.isOptional) {
             elseBranch = '';
@@ -288,14 +288,21 @@ export function createBSONSizer(classSchema: ClassSchema, jitStack: JitStack = n
         `);
     }
 
+    compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
     compiler.context.set('seekElementSize', seekElementSize);
 
     const functionCode = `
         let size = 4; //object size
         
+        const unpopulatedCheck = _global.unpopulatedCheck;
+        _global.unpopulatedCheck = UnpopulatedCheck.ReturnSymbol;
+
         ${getSizeCode.join('\n')}
         size += 1; //null
         
+        _global.unpopulatedCheck = unpopulatedCheck;
+
         return size;
     `;
 
@@ -761,7 +768,7 @@ function getPropertySerializerCode(
         for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
             discriminants.push(unionType.property.type);
         }
-        let elseBranch = `throw new Error('No valid discriminant was found for ${property.name}, so could not determine class type. Guard tried: [${discriminants.join(',')}].');`;
+        let elseBranch = `throw new Error('No valid discriminant was found for ${property.name}, so could not determine class type. Guard tried: [${discriminants.join(',')}]. Got: ' + ${accessor});`;
 
         if (property.isOptional) {
             elseBranch = `
@@ -815,6 +822,7 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
     const compiler = new CompilerContext();
     const prepared = jitStack.prepare(schema);
     compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
     compiler.context.set('_sizer', getBSONSizer(schema));
     compiler.context.set('Writer', Writer);
     compiler.context.set('seekElementSize', seekElementSize);
@@ -836,10 +844,14 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
         const size = _sizer(obj);
         writer = writer || new Writer(createBuffer(size));
         writer.writeUint32(size);
+        const unpopulatedCheck = _global.unpopulatedCheck;
+        _global.unpopulatedCheck = UnpopulatedCheck.ReturnSymbol;
         
         ${getPropertyCode.join('\n')}
         writer.writeNull();
         
+        _global.unpopulatedCheck = unpopulatedCheck;
+
         return writer.buffer;
     `;
 

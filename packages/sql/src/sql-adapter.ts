@@ -38,6 +38,7 @@ import {SqlBuilder} from './sql-builder';
 import {SqlFormatter} from './sql-formatter';
 import {sqlSerializer} from './serializer/sql-serializer';
 import {DatabaseComparator, DatabaseModel} from './schema/table';
+import { inspect } from 'util';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -169,7 +170,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
         const connection = this.connectionPool.getConnection();
         try {
-            const row = await connection.execAndReturnSingle(sql);
+            const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             //postgres has bigint as return type of COUNT, so we need to convert always
             return Number(row.count);
         } finally {
@@ -183,7 +184,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
         const connection = this.connectionPool.getConnection();
         try {
-            await connection.run(sql);
+            await connection.run(sql.sql, sql.params);
             deleteResult.modified = await connection.getChanges();
             //todo, implement deleteResult.primaryKeys
         } finally {
@@ -196,7 +197,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.select(this.classSchema, model);
         const connection = this.connectionPool.getConnection();
         try {
-            const rows = await connection.execAndReturnAll(sql);
+            const rows = await connection.execAndReturnAll(sql.sql, sql.params);
             const formatter = this.createFormatter(model.withIdentityMap);
             const results: T[] = [];
             if (model.hasJoins()) {
@@ -217,7 +218,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
 
         const connection = this.connectionPool.getConnection();
         try {
-            const row = await connection.execAndReturnSingle(sql);
+            const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             if (!row) return;
 
             const formatter = this.createFormatter(model.withIdentityMap);
@@ -469,7 +470,7 @@ export class SQLPersistence extends DatabasePersistence {
         try {
             await this.connection.run(sql, params);
         } catch (error) {
-            console.warn('Insert failed', sql, params);
+            console.warn('Insert failed', sql, params, error);
             throw error;
         }
     }

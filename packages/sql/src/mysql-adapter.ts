@@ -30,7 +30,7 @@ import {
 } from './sql-adapter';
 import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
 import {MySQLPlatform} from './platform/mysql-platform';
-import {ClassSchema, getClassSchema, isArray} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
 import {asyncOperation, ClassType, empty} from '@deepkit/core';
 import {SqlBuilder} from './sql-builder';
@@ -287,8 +287,9 @@ export class MySQLPersistence extends SQLPersistence {
 
 export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-        const pkName = this.classSchema.getPrimaryField().name;
-        const pkField = this.platform.quoteIdentifier(pkName);
+        const primaryKey = this.classSchema.getPrimaryField();
+        const pkField = this.platform.quoteIdentifier(primaryKey.name);
+        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
@@ -297,18 +298,18 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const connection = this.connectionPool.getConnection();
         try {
             const sql = `
-                WITH _ AS (${select})
+                WITH _ AS (${select.sql})
                 DELETE ${tableName}
                 FROM ${tableName} INNER JOIN _ INNER JOIN (SELECT @_pk := JSON_ARRAYAGG(${pkField}) FROM _ GROUP BY '0') as _pk
                 WHERE ${tableName}.${pkField} = _.${pkField};
                 SELECT @_pk
             `;
 
-            const rows = await connection.execAndReturnAll(sql);
+            const rows = await connection.execAndReturnAll(sql, select.params);
             const returning = rows[1];
             const pk = returning[0]['@_pk'];
-            if (pk) deleteResult.primaryKeys = JSON.parse(pk);
-            deleteResult.modified = await connection.getChanges();
+            if (pk) deleteResult.primaryKeys = JSON.parse(pk).map(primaryKeyConverted);
+            deleteResult.modified = deleteResult.primaryKeys.length;
         } finally {
             connection.release();
         }
@@ -317,11 +318,13 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const pkField = this.platform.quoteIdentifier(this.classSchema.getPrimaryField().name);
+        const primaryKey = this.classSchema.getPrimaryField();
+        const pkField = this.platform.quoteIdentifier(primaryKey.name);
+        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
         select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
-        const aggregateFields: { [name: string]: 1 } = {};
+        const aggregateFields: { [name: string]: {converted: (v: any) => any} } = {};
 
         const scopeSerializer = this.platform.serializer.for(this.classSchema);
         const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
@@ -338,10 +341,15 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
         }
 
+        for (const i of model.returning) {
+            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
+        }
+
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = 1;
+            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -367,8 +375,10 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
+
+        const params = selectSQL.params;
         const sql = `
-            WITH _tmp AS (${selectSQL})
+            WITH _tmp AS (${selectSQL.sql})
             UPDATE
                 ${tableName} as _target, _tmp as b ${extractVarsSQL}
             SET
@@ -379,14 +389,14 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 
         const connection = this.connectionPool.getConnection();
         try {
-            const result = await connection.execAndReturnAll(sql);
+            const result = await connection.execAndReturnAll(sql, params);
             const packet = result[0];
             patchResult.modified = packet.affectedRows;
             const returning = result[1][0];
-            patchResult.primaryKeys = JSON.parse(returning['@_pk']) as (any)[];
+            patchResult.primaryKeys = (JSON.parse(returning['@_pk']) as any[]).map(primaryKeyConverted as any);
 
             for (const i in aggregateFields) {
-                patchResult.returning[i] = JSON.parse(returning['@_f_' + i]) as any[];
+                patchResult.returning[i] = (JSON.parse(returning['@_f_' + i]) as any[]).map(aggregateFields[i].converted);
             }
 
         } finally {

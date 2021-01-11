@@ -40,7 +40,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType('number', 'double');
         this.addType('date', 'datetime');
         this.addType('boolean', 'tinyint', 1);
-        this.addType('uuid', 'blob');
+        this.addType('uuid', 'binary', 16);
         this.addBinaryType('longblob');
     }
 

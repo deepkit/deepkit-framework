@@ -26,6 +26,8 @@ import {QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter} from './event';
 import {ItemChanges} from './changes';
 import {Entity} from './type';
 import {VirtualForeignKeyConstraint} from './virtual-foreign-key-constraint';
+import { getNormalizedPrimaryKey } from './identity-map';
+import { getReference } from './reference';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -208,6 +210,22 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         const res = await worker(session);
         await session.commit();
         return res;
+    }
+
+    /**
+     * Creates a new reference.
+     * 
+     * If you work with a DatabaseSession, use DatabaseSession.getReference instead to
+     * maintain object identity.
+     *
+     * ```
+     * const user = database.getReference(User, 1);
+     * ```
+     */
+    public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKeyFields<T>): T {
+        const schema = getClassSchema(classType);
+        const pk = getNormalizedPrimaryKey(schema, primaryKey);
+        return getReference(schema, pk);
     }
 
     /**

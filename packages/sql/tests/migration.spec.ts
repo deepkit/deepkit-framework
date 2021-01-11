@@ -32,6 +32,9 @@ test('migration basic', async () => {
     expect(tableUser.getColumn('id').isAutoIncrement).toBe(true);
     expect(tableUser.getColumn('id').type).toBe('integer');
 
+    expect(user.getProperty('username').isOptional).toBe(false);
+    expect(user.getProperty('username').isNullable).toBe(false);
+
     expect(tableUser.hasColumn('username')).toBe(true);
     expect(tableUser.getColumn('username').type).toBe('text');
     expect(tableUser.getColumn('username').isNotNull).toBe(true);

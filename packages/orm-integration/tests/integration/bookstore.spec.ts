@@ -1,12 +1,13 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { entity, getClassSchema, t } from '@deepkit/type';
+import { entity, getClassSchema, t, uuid } from '@deepkit/type';
 import { createEnvSetup } from './setup';
-import { User } from './user';
+import { User, UserGroup } from './user';
 import { UserCredentials } from './user-credentials';
 import { SQLitePlatform } from '@deepkit/sql';
 import { atomicChange, getInstanceState } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
+import { Group } from './group';
 
 // process.env['ADAPTER_DRIVER'] = 'mongo';
 // process.env['ADAPTER_DRIVER'] = 'mysql';
@@ -35,6 +36,20 @@ class Book {
     }
 }
 
+@entity.name('image')
+class Image {
+    @t.primary.uuid id: string = uuid();
+
+    @t downloads: number = 0;
+
+    @t.uuid privateToken: string = uuid();
+
+    @t image: Uint8Array = new Uint8Array([128, 255]);
+
+    constructor(
+        @t public path: string) { }
+}
+
 enum ReviewStatus {
     published,
     revoked,
@@ -55,7 +70,7 @@ class Review {
     }
 }
 
-const entities = [User, UserCredentials, Book, Review];
+const entities = [User, UserCredentials, Book, Review, Image];
 
 test('schema', () => {
     const book = getClassSchema(Book);
@@ -76,6 +91,78 @@ test('tables', () => {
     const [userCredentials] = new SQLitePlatform().createTables([UserCredentials, User]);
     expect(userCredentials.getColumn('user').isPrimaryKey).toBe(true);
     expect(userCredentials.getColumn('user').type).toBe('integer');
+});
+
+test('uuid', async () => {
+    const database = await createEnvSetup(entities);
+
+    const image = new Image('/foo.jpg');
+    await database.persist(image);
+
+    {
+        const imageDB = await database.query(Image).filter({id: image.id}).findOne();
+        expect(imageDB.id).toBe(image.id);
+        expect(imageDB.privateToken).toBe(image.privateToken);
+        expect(imageDB.downloads).toBe(0);
+        expect(imageDB.image).toEqual(new Uint8Array([128, 255]));
+    }
+
+    {
+        const patched = await database.query(Image).returning('path', 'privateToken', 'image').patchMany({$inc: {downloads: 1}});
+        expect(patched.modified).toBe(1);
+        expect(patched.primaryKeys).toEqual([image.id]);
+        expect(patched.returning.downloads).toEqual([1]);
+        expect(patched.returning.path).toEqual(['/foo.jpg']);
+        expect(patched.returning.privateToken).toEqual([image.privateToken]);
+        expect(patched.returning.image).toEqual([new Uint8Array([128, 255])]);
+    }
+
+    {
+        const deleted = await database.query(Image).deleteMany();
+        expect(deleted.primaryKeys).toEqual([image.id]);
+        expect(deleted.modified).toBe(1);
+    }
+});
+
+test('user-group', async () => {
+    const database = await createEnvSetup(entities);
+
+    await database.query(User).deleteMany();
+    await database.query(Group).deleteMany();
+    await database.query(UserGroup).deleteMany();
+
+    const groupA = new Group('a');
+    const groupB = new Group('b');
+
+    await database.persist(groupA, groupB);
+
+    const addUser = async (name: string, group: Group) => {
+        const user = new User(name);
+        await database.persist(user);
+        await database.persist(new UserGroup(user, group));
+    };
+
+    await addUser('Peter 1', groupA);
+    await addUser('Peter 2', groupA);
+    await addUser('Marc 1', groupA);
+
+    await addUser('Marie', groupB);
+    
+    const allUsersInA = await database.query(User).useInnerJoin('groups').filter({name: 'a'}).end().find();
+    expect(allUsersInA.length).toBe(3);
+
+    const allUsersInB = await database.query(User).useInnerJoin('groups').filter({name: 'b'}).end().find();
+    expect(allUsersInB.length).toBe(1);
+
+    {
+        const user = await database.query(User).filter({ name: 'Peter 1' }).findOne();
+        const group = await database.query(Group).filter({ name: 'b' }).findOne();
+
+        await database.persist(new UserGroup(user, group));
+
+        const allUsersInB = await database.query(User).useInnerJoin('groups').filter({name: 'b'}).end().find();
+        expect(allUsersInB.length).toBe(2);
+    }
 });
 
 test('basics', async () => {

@@ -20,12 +20,13 @@ import { asyncOperation, toFastProperties } from '@deepkit/core';
 import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jsonSerializer, propertyDefinition, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { ClientProgress } from '../writer';
-import { Collection, CollectionState } from '../collection';
+import { Collection, CollectionQueryModel, CollectionState } from '../collection';
 import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionModel, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
 import { RpcBaseClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
 import { deserialize } from '@deepkit/bson';
+import { skip } from 'rxjs/operators';
 
 type ControllerStateActionTypes = {
     parameters: string[],
@@ -133,10 +134,10 @@ export class RpcActionClient {
                         }
 
                         switch (reply.type) {
-                            case RpcTypes.ResponseEntity:
+                            case RpcTypes.ResponseEntity: {
                                 resolve(this.entityState.createEntitySubject(types.resultProperty.getResolvedClassSchema(), types.resultSchema, reply));
-
                                 break;
+                            }
 
                             case RpcTypes.ResponseActionSimple: {
                                 subject.release();
@@ -260,8 +261,13 @@ export class RpcActionClient {
                                 collection = new Collection(classType);
                                 collectionEntityStore = this.entityState.getStore(classType);
 
+                                collection.model.change.subscribe(() => {
+                                    console.log('send model update')
+                                    subject.send(RpcTypes.ActionCollectionModel, getClassSchema(CollectionQueryModel), collection!.model);
+                                });
+
                                 collection.addTeardown(() => {
-                                    subject.send(RpcTypes.ResponseActionCollectionUnsubscribe);
+                                    subject.send(RpcTypes.ActionCollectionUnsubscribe);
                                 });
 
                                 this.handleCollection(collectionEntityStore, types, collection, bodies);
@@ -303,7 +309,7 @@ export class RpcActionClient {
                 }
 
                 case RpcTypes.ResponseActionCollectionModel: {
-                    collection.model = next.parseBody(rpcResponseActionCollectionModel).model;
+                    collection.model.set(next.parseBody(getClassSchema(CollectionQueryModel)));
                     break;
                 }
 
@@ -317,6 +323,13 @@ export class RpcActionClient {
                         const fork = entityStore.createFork(item.id);
                         collection.entitySubjects.set(item.id, fork);
                         items.push(fork.value);
+
+                        //fork is automatically unsubscribed once removed from the collection
+                        fork.pipe(skip(1)).subscribe(i => {
+                            if (fork.deleted) return; //we get deleted already
+                            collection.deepChange.next(i);
+                            collection.loaded();
+                        });
                     }
 
                     collection.add(items);
@@ -324,7 +337,6 @@ export class RpcActionClient {
                 }
 
                 case RpcTypes.ResponseActionCollectionRemove: {
-                    //todo, use entity-state
                     const ids = next.parseBody(rpcResponseActionCollectionRemove).ids;
                     collection.remove(ids); //this unsubscribes its EntitySubject as well
                     break;
@@ -339,6 +351,13 @@ export class RpcActionClient {
                         const fork = entityStore.createFork(item.id);
                         collection.entitySubjects.set(item.id, fork);
                         items.push(fork.value);
+
+                        //fork is automatically unsubscribed once removed from the collection
+                        fork.pipe(skip(1)).subscribe(i => {
+                            if (fork.deleted) return; //we get deleted already
+                            collection.deepChange.next(i);
+                            collection.loaded();
+                        });
                     }
 
                     collection.set(items);

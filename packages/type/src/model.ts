@@ -242,6 +242,11 @@ export class PropertySchema {
     isOptional: boolean = false;
     isNullable: boolean = false;
 
+    /**
+     * When the a property is defined as ! you have to manually use t.required.
+     */
+    manuallySetToRequired: boolean = false;
+
     isDiscriminant: boolean = false;
 
     //for enums
@@ -647,6 +652,12 @@ export class ClassSchema<T = any> {
     protected hasFullLoadHooksCheck = false;
 
     private detectedDefaultValueProperties: string[] = [];
+    private assignedInConstructor: string[] = [];
+
+    /**
+     * Whether this schema comes from an actual class (not t.schema);
+     */
+    public fromClass: boolean = true;
 
     constructor(classType: ClassType) {
         this.classType = classType;
@@ -683,6 +694,8 @@ export class ClassSchema<T = any> {
         while ((match = findAssignment.exec(constructorCode)) !== null) {
             const lname = match[1];
             const rname = match[2];
+
+            this.assignedInConstructor.push(lname);
             if (lname === rname) {
                 //its a `this.name=name` assignment, very likely to be a direct construct dependency
                 //so it's not per-se optional. If it's optional it can be marked as once later on.
@@ -759,7 +772,7 @@ export class ClassSchema<T = any> {
     }
 
     public clone(classType?: ClassType): ClassSchema {
-        classType ||= class {};
+        classType ||= class { };
         const s = new ClassSchema(classType);
         classType.prototype[classSchemaSymbol] = s;
         s.name = this.name;
@@ -768,6 +781,7 @@ export class ClassSchema<T = any> {
         s.databaseSchemaName = this.databaseSchemaName;
         s.decorator = this.decorator;
         s.discriminant = this.discriminant;
+        s.fromClass = this.fromClass;
 
         s.classProperties = new Map();
         for (const [i, v] of this.classProperties.entries()) {
@@ -778,7 +792,7 @@ export class ClassSchema<T = any> {
         for (const [i, properties] of this.methodProperties.entries()) {
             const obj: PropertySchema[] = [];
             for (const v of properties) {
-                obj.push(v.clone());
+                obj.push(s.classProperties.get(v.name) || v.clone());
             }
             s.methodProperties.set(i, obj);
         }
@@ -831,8 +845,14 @@ export class ClassSchema<T = any> {
     }
 
     public registerProperty(property: PropertySchema) {
-        if (!property.methodName && this.detectedDefaultValueProperties.includes(property.name)) {
-            property.hasDefaultValue = true;
+        if (this.fromClass && !property.methodName) {
+            property.hasDefaultValue = this.detectedDefaultValueProperties.includes(property.name)
+
+            if (!property.manuallySetToRequired && !property.hasDefaultValue && !this.assignedInConstructor.includes(property.name)) {
+                //when we have no default value AND the property was never seen in the constructor, its
+                //a optional one.
+                property.isOptional = true;
+            }
         }
 
         this.propertyNames.push(property.name);
@@ -1196,7 +1216,7 @@ export class ClassSchema<T = any> {
 }
 
 export class ClassSlicer<T> {
-    constructor(protected schema: ClassSchema<T>) {}
+    constructor(protected schema: ClassSchema<T>) { }
 
     public exclude<K extends (keyof T & string)[]>(...properties: K): ClassType<Omit<T, K[number]>> {
         for (const name of properties) this.schema.removeProperty(name);
@@ -1250,7 +1270,7 @@ export function getKnownClassSchemasNames(): string[] {
     return Object.keys(getGlobalStore().RegisteredEntities);
 }
 
-export const classSchemaSymbol = Symbol('classSchema');
+export const classSchemaSymbol = Symbol.for('deepkit/type/classSchema');
 
 /**
  * @hidden

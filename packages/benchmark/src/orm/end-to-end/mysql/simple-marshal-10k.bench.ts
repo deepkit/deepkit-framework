@@ -24,7 +24,7 @@ import {BenchSuite} from '../../../bench';
 
 @Entity('deepkit')
 export class DeepkitModel {
-    @t.primary public id?: number;
+    @t.primary public id: number = 0;
 
     @t ready?: boolean;
 

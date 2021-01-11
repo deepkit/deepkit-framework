@@ -25,7 +25,7 @@ import { HttpRequest, HttpResponse } from './http-model';
 import { InjectorContext } from './injector/injector';
 import { Provider } from './injector/provider';
 import { injectable, Injector } from './injector/injector';
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelConnection } from '@deepkit/rpc';
+import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '@deepkit/rpc';
 import { DeepkitRpcSecurity, RpcInjectorContext } from './rpc';
 import { RpcControllers } from './service-container';
 
@@ -34,7 +34,7 @@ export class WebWorkerFactory {
     constructor(protected httpKernel: HttpKernel, protected rpcControllers: RpcControllers, protected rootScopedContext: InjectorContext) {
     }
 
-    create(id: number, options: { server?: Server, host: string, port: number }) {
+    create(id: number, options: { server?: Server, host: string, port: number }): WebWorker {
         return new WebWorker(id, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
     }
 
@@ -50,6 +50,12 @@ export class WebWorkerFactory {
     }
 }
 
+export class WebMemoryWorkerFactory extends WebWorkerFactory {
+    create(id: number, options: { server?: Server, host: string, port: number }): WebMemoryWorker {
+        return new WebMemoryWorker(id, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
+    }
+}
+
 export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, writer: RpcConnectionWriter, request?: HttpRequest) {
     let rpcScopedContext: RpcInjectorContext;
     let connection: RpcKernelConnection;
@@ -58,7 +64,8 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
         { provide: HttpRequest, useValue: request },
         { provide: RpcInjectorContext, useFactory: () => rpcScopedContext },
         { provide: RpcKernelConnection, useFactory: () => connection },
-        { provide: ConnectionWriter, useValue: writer}
+        { provide: RpcKernelBaseConnection, useFactory: () => connection },
+        { provide: ConnectionWriter, useValue: writer},
     ];
     const additionalInjector = new Injector(providers);
     rpcScopedContext = rootScopedContext.createChildScope('rpc', additionalInjector);
@@ -69,18 +76,21 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
 
 @injectable()
 export class WebWorker {
-    protected wsServer: WebSocket.Server;
-    protected server: http.Server | https.Server;
+    protected wsServer?: WebSocket.Server;
+    protected server?: http.Server | https.Server;
 
     constructor(
         public readonly id: number,
-        protected httpKernel: HttpKernel,
-        protected rpcKernel: RpcKernel,
+        public httpKernel: HttpKernel,
+        public rpcKernel: RpcKernel,
         protected rootScopedContext: InjectorContext,
-        options: { server?: Server, host: string, port: number },
+        protected options: { server?: Server, host: string, port: number },
     ) {
-        if (options.server) {
-            this.server = options.server as Server;
+    }
+
+    start() {
+        if (this.options.server) {
+            this.server = this.options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
         } else {
             this.server = new http.Server(
@@ -88,7 +98,7 @@ export class WebWorker {
                 this.httpKernel.handleRequest.bind(this.httpKernel) as any //as any necessary since http.Server is not typed correctly
             );
             this.server.keepAliveTimeout = 5000;
-            this.server.listen(options.port, options.host, () => {
+            this.server.listen(this.options.port, this.options.host, () => {
                 // console.log(`Worker #${id} listening on ${options.host}:${options.port}.`);
             });
         }
@@ -119,4 +129,8 @@ export class WebWorker {
             this.server.close();
         }
     }
+}
+
+export class WebMemoryWorker extends WebWorker {
+    start() {}
 }

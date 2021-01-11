@@ -230,10 +230,8 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
             }
         }
 
-        if (this.rootInjectorContext.configuredProviderRegistry) {
-            for (const [provider, calls] of module.getConfiguredProviderCalls().entries()) {
-                this.rootInjectorContext.configuredProviderRegistry.add(provider, ...calls);
-            }
+        for (const [provider, calls] of module.getConfiguredProviderCalls().entries()) {
+            this.rootInjectorContext.configuredProviderRegistry.add(provider, ...calls);
         }
 
         for (const controller of controllers) {

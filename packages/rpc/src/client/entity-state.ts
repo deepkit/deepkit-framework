@@ -1,3 +1,4 @@
+import { deserialize } from "@deepkit/bson";
 import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from "@deepkit/core";
 import { ClassSchema, getClassSchema, jsonSerializer } from "@deepkit/type";
 import { EntityPatch, EntitySubject, IdType, IdVersionInterface, rpcEntityPatch, rpcEntityRemove, RpcTypes } from "../model";
@@ -56,7 +57,7 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
         }
 
         if (patch.$inc) for (const i in patch.$inc) {
-            setPathValue(store.item, i, getPathValue(store.item, i, patch.$inc[i]));
+            setPathValue(store.item, i, getPathValue(store.item, i) + patch.$inc[i]);
         }
 
         if (patch.$unset) for (const i in patch.$unset) {
@@ -146,6 +147,7 @@ export class EntityState {
             switch (message.type) {
                 case RpcTypes.EntityPatch: {
                     //todo, use specialized ClassSchema, so we get correct instance types returned. We need however first deepkit/bson patch support
+                    // at the moment this happens in onPatch using jsonSerializer
                     const body = message.parseBody(rpcEntityPatch);
                     const store = this.getStoreByName(body.entityName);
                     store.onPatch(body.id, body.version, body.patch);

@@ -322,6 +322,14 @@ function createFieldDecoratorResult<T>(
         }
     });
 
+
+    Object.defineProperty(fn, 'required', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Required()]);
+        }
+    });
+
     Object.defineProperty(fn, 'nullable', {
         get: () => {
             resetIfNecessary();
@@ -605,6 +613,16 @@ function Optional() {
 /**
  * @internal
  */
+function Required() {
+    return (target: object, property: PropertySchema) => {
+        property.isOptional = false;
+        property.manuallySetToRequired = true;
+    };
+}
+
+/**
+ * @internal
+ */
 function Nullable() {
     return (target: object, property: PropertySchema) => {
         property.isNullable = true;
@@ -826,6 +844,7 @@ fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cl
     });
 
     const schema = createClassSchema(clazz, options.name);
+    schema.fromClass = false;
 
     if (!props) throw new Error('No props given');
 

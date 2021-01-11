@@ -142,13 +142,11 @@ test('basic serialisation return: entity', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        @t.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
 
         @rpc.action()
-        @t.type(User).optional
         async optionalUser(@t.optional returnUser: boolean = false): Promise<User | undefined> {
             return returnUser ? new User('optional') : undefined;
         }
@@ -166,7 +164,6 @@ test('basic serialisation return: entity', async () => {
         }
 
         @rpc.action()
-        @t.generic(User)
         async observable(name: string): Promise<Observable<User>> {
             return new Observable((observer) => {
                 observer.next(new User(name));

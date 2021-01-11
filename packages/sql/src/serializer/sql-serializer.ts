@@ -100,7 +100,7 @@ sqlSerializer.fromClass.register('uuid', (property: PropertySchema, state: Compi
         try {
             ${state.setter} = uuid4Binary(${state.accessor});
         } catch (error) {
-            throw new TypeError('Invalid UUID v4 given in property ${property.name}');
+            throw new TypeError('Invalid UUID v4 given in property ${property.name}: ' + error);
         }
         `
     );

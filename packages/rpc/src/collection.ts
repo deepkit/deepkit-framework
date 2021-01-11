@@ -21,12 +21,12 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
-import { IdInterface } from './model';
+import { ClassType, getClassName, isArray, isFunction, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
-import { ClassType, each, getClassName, isArray } from '@deepkit/core';
-import { EntitySubject } from './model';
-import { ClassSchema, t } from '@deepkit/type';
+import { t } from '@deepkit/type';
+import { REPL_MODE_SLOPPY } from 'repl';
+import { isObservable, ReplaySubject, Subject, TeardownLogic } from 'rxjs';
+import { EntitySubject, IdInterface } from './model';
 
 export type FilterParameters = { [name: string]: any | undefined };
 
@@ -104,10 +104,19 @@ export interface CollectionEntitySubjectFetcher {
     fetch<T extends IdInterface>(classType: ClassType<T>, id: string | number): EntitySubject<T>;
 }
 
+export interface CollectionQueryModelInterface<T> {
+    filter?: FilterQuery<T>;
+    skip?: number;
+    itemsPerPage: number;
+    limit?: number;
+    parameters: { [name: string]: any };
+    sort?: Sort<T>;
+}
+
 /**
  * internal note: This is aligned with @deepit/orm `DatabaseQueryModel`
  */
-export class CollectionQueryModel<T> {
+export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T>  {
     @t.map(t.any).optional
     filter?: FilterQuery<T>;
 
@@ -127,6 +136,17 @@ export class CollectionQueryModel<T> {
     sort?: Sort<T>;
 
     public readonly change = new Subject<void>();
+
+    set(model: CollectionQueryModelInterface<any>) {
+        this.filter = model.filter;
+        this.skip = model.skip;
+        this.itemsPerPage = model.itemsPerPage || 50;
+        this.limit = model.limit;
+        this.sort = model.sort;
+        for (const [i, v] of Object.entries(model.parameters)) {
+            this.parameters[i] = v;
+        }
+    }
 
     changed(): void {
         this.change.next();
@@ -153,11 +173,19 @@ export class CollectionState {
     @t total: number = 0;
 }
 
+const IsCollection = Symbol.for('deepkit/collection');
+
+export function isCollection(v: any): v is Collection<any> {
+    return !!v && isObject(v) && v.hasOwnProperty(IsCollection);
+}
+
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent<T>> = new Subject;
 
     public readonly removed = new Subject<T>();
     public readonly added = new Subject<T>();
+
+    [IsCollection] = true;
 
     protected readonly teardowns: TeardownLogic[] = [];
 
@@ -211,7 +239,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     }
 
     public orderByField(name: keyof T & string, order: SORT_ORDER = 'asc') {
-        this.model.sort = {[name]: order} as Sort<T>;
+        this.model.sort = { [name]: order } as Sort<T>;
         return this;
     }
 
@@ -425,6 +453,9 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
             if (!item) continue;
 
             this.itemsMap.delete(id);
+            const fork = this.entitySubjects.get(id);
+            fork?.unsubscribe();
+            this.entitySubjects.delete(id);
 
             const index = this.items.indexOf(item);
             if (-1 !== index) {

@@ -17,7 +17,7 @@
  */
 
 import { getClassName } from '@deepkit/core';
-import { getClassSchema } from '@deepkit/type';
+import { getClassSchema, PrimaryKeyFields } from '@deepkit/type';
 import { Database } from './database';
 import { GenericQuery } from './query';
 
@@ -60,5 +60,9 @@ export class ActiveRecord {
 
     public static query<T extends typeof ActiveRecord>(this: T): GenericQuery<InstanceType<T>> {
         return this.getDatabase().query(this);
+    }
+
+    public static reference<T extends typeof ActiveRecord>(this: T, primaryKey: any | PrimaryKeyFields<InstanceType<T>>): InstanceType<T> {
+        return this.getDatabase().getReference(this, primaryKey) as InstanceType<T>;
     }
 }

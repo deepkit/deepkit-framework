@@ -22,6 +22,7 @@ import {kernelConfig} from '../kernel.config';
 import {ApplicationServer} from '../application-server';
 import {WebWorkerFactory} from '../worker';
 import {EventDispatcher} from '../event';
+import { InjectorContext } from '../injector/injector';
 
 class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) {}
 
@@ -33,6 +34,7 @@ export class ServerListenController implements Command {
         protected logger: Logger,
         protected config: ApplicationServerConfig,
         protected webWorkerFactory: WebWorkerFactory,
+        protected rootScopedContext: InjectorContext,
         protected eventDispatcher: EventDispatcher,
     ) {
     }
@@ -45,7 +47,7 @@ export class ServerListenController implements Command {
     ): Promise<void> {
         if (!this.logger.hasFormatter(TimestampFormatter)) this.logger.addFormatter(new TimestampFormatter);
 
-        const applicationServer = new ApplicationServer(this.logger, this.webWorkerFactory, this.eventDispatcher, {
+        const applicationServer = new ApplicationServer(this.logger, this.webWorkerFactory, this.eventDispatcher, this.rootScopedContext, {
             workers: workers || this.config.workers || 1,
             host: host || this.config.host,
             port: port || this.config.port,

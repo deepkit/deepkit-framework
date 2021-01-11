@@ -277,7 +277,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      * the `hydrateEntity` function.
      *
      * ```
-     * const user = database.getReference(User, 1);
+     * const user = session.getReference(User, 1);
      * ```
      */
     public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKeyFields<T>): T {

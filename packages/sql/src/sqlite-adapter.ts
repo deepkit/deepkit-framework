@@ -30,7 +30,7 @@ import {
 } from './sql-adapter';
 import {Changes, DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
 import {SQLitePlatform} from './platform/sqlite-platform';
-import {ClassSchema, getClassSchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema} from '@deepkit/type';
 import {ClassType, empty} from '@deepkit/core';
 import {DefaultPlatform} from './platform/default-platform';
 import {SqlBuilder} from './sql-builder';
@@ -260,23 +260,23 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         // if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const pkName = this.classSchema.getPrimaryField().name;
-        const pkField = this.platform.quoteIdentifier(this.classSchema.getPrimaryField().name);
+        const primaryKey = this.classSchema.getPrimaryField();
+        const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const sqlBuilder = new SqlBuilder(this.platform);
         const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
-
+        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        
         const connection = this.connectionPool.getConnection();
         try {
-            await connection.exec(`
-                DROP TABLE IF EXISTS _tmp_d;
-                CREATE TEMPORARY TABLE _tmp_d as ${select};
-            `);
-
+            await connection.exec(`DROP TABLE IF EXISTS _tmp_d;`);
+            await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
+            
             const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (SELECT * FROM _tmp_d)`;
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
             deleteResult.modified = await connection.getChanges();
             for (const row of rows) {
-                deleteResult.primaryKeys.push(row[pkName]);
+                deleteResult.primaryKeys.push(primaryKeyConverted(row[pkName]));
             }
         } finally {
             connection.release();
@@ -286,11 +286,13 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const pkField = this.platform.quoteIdentifier(this.classSchema.getPrimaryField().name);
+        const primaryKey = this.classSchema.getPrimaryField();
+        const pkField = this.platform.quoteIdentifier(primaryKey.name);
+        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
         select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
-        const aggregateFields: { [name: string]: 1 } = {};
+        const aggregateFields: { [name: string]: {converted: (v: any) => any} } = {};
 
         const scopeSerializer = this.platform.serializer.for(this.classSchema);
         const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
@@ -307,10 +309,15 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
         }
 
+        for (const i of model.returning) {
+            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
+        }
+
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = 1;
+            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -334,10 +341,8 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 
         const connection = this.connectionPool.getConnection();
         try {
-            await connection.exec(`
-                DROP TABLE IF EXISTS _b;
-                CREATE TEMPORARY TABLE _b AS ${selectSQL};
-            `);
+            await connection.exec(`DROP TABLE IF EXISTS _b;`);
+            await connection.run(`CREATE TEMPORARY TABLE _b AS ${selectSQL.sql};`, selectSQL.params);
 
             await connection.run(sql);
             patchResult.modified = await connection.getChanges();
@@ -349,9 +354,9 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             }
 
             for (const returning of returnings) {
-                patchResult.primaryKeys.push(returning[pkName]);
+                patchResult.primaryKeys.push(primaryKeyConverted(returning[pkName]));
                 for (const i in aggregateFields) {
-                    patchResult.returning[i].push(returning[i]);
+                    patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
 

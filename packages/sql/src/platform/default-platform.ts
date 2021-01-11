@@ -179,7 +179,7 @@ export abstract class DefaultPlatform {
 
                 column.defaultValue = property.defaultValue;
 
-                const isNullable = property.isUndefinedAllowed() || property.isNullable;
+                const isNullable = property.isNullable || property.isOptional;
                 column.isNotNull = !isNullable;
                 column.isPrimaryKey = property.isId;
                 if (property.isAutoIncrement) {

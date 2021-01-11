@@ -16,19 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {each, getClassName} from '@deepkit/core';
-import {createRpcConnection, WebWorker, WebWorkerFactory} from './worker';
-import {RpcControllers} from './service-container';
-import {EventDispatcher, BaseEvent, eventDispatcher, EventToken} from './event';
+import { each, getClassName } from '@deepkit/core';
+import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
+import { RpcControllers } from './service-container';
+import { EventDispatcher, BaseEvent, eventDispatcher, EventToken } from './event';
 import cluster from 'cluster';
-import {inject, injectable, InjectorContext} from './injector/injector';
-import {Logger} from './logger';
-import {kernelConfig} from './kernel.config';
-import {HttpControllers} from './router';
-import {httpClass} from './decorator';
+import { inject, injectable, InjectorContext } from './injector/injector';
+import { Logger } from './logger';
+import { kernelConfig } from './kernel.config';
+import { HttpControllers } from './router';
+import { httpClass } from './decorator';
 import { DirectClient, RpcClient, RpcKernel } from '@deepkit/rpc';
 
-export class ServerBootstrapEvent extends BaseEvent {}
+export class ServerBootstrapEvent extends BaseEvent { }
 
 /**
  * Called only once for application server bootstrap (in the cluster main process)
@@ -47,14 +47,14 @@ export const onServerMainBootstrapDone = new EventToken('server.main.bootstrapDo
  */
 export const onServerWorkerBootstrap = new EventToken('server.worker.bootstrap', ServerBootstrapEvent);
 
-export class ServerShutdownEvent extends BaseEvent {}
+export class ServerShutdownEvent extends BaseEvent { }
 
 /**
  * Called when application server shuts down in the main process.
  */
 export const onServerMainShutdown = new EventToken('server.main.shutdown', ServerBootstrapEvent);
 
-class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) {}
+class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) { }
 
 @injectable()
 export class ApplicationServerListener {
@@ -91,12 +91,14 @@ export class ApplicationServerListener {
 
 @injectable()
 export class ApplicationServer {
-    protected masterWorker?: WebWorker;
+    protected worker?: WebWorker;
+    protected started = false;
 
     constructor(
         protected logger: Logger,
         protected webWorkerFactory: WebWorkerFactory,
         protected eventDispatcher: EventDispatcher,
+        protected rootScopedContext: InjectorContext,
         protected config: ApplicationServerConfig,
     ) {
     }
@@ -110,8 +112,8 @@ export class ApplicationServer {
             }
         } else {
             await this.shutdown();
-            if (this.masterWorker) {
-                this.masterWorker.close();
+            if (this.worker) {
+                this.worker.close();
             }
         }
     }
@@ -129,6 +131,9 @@ export class ApplicationServer {
     }
 
     public async start() {
+        if (this.started) throw new Error('ApplicationServer already started');
+        this.started = true;
+
         //listening to this signal is required to make ts-node-dev working with its reload feature.
         process.on('SIGTERM', () => {
             console.log('Received SIGTERM.');
@@ -150,7 +155,7 @@ export class ApplicationServer {
                 await this.bootstrapDone();
             } else {
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
-                this.webWorkerFactory.create(cluster.worker.id, this.config);
+                this.worker = this.webWorkerFactory.create(cluster.worker.id, this.config);
 
                 cluster.on('exit', (w) => {
                     this.logger.warning(`Worker ${w.id} died.`);
@@ -160,32 +165,20 @@ export class ApplicationServer {
         } else {
             await this.bootstrap();
             await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
-            this.masterWorker = this.webWorkerFactory.create(1, this.config);
+            this.worker = this.webWorkerFactory.create(1, this.config);
             await this.bootstrapDone();
         }
     }
-}
 
-@injectable()
-export class InMemoryApplicationServer extends ApplicationServer {
-    protected kernel?: RpcKernel;
-
-    @inject()
-    protected rootScopedContext!: InjectorContext;
-
-    async start(): Promise<void> {
-        this.kernel = this.webWorkerFactory.createRpcKernel();
-        await this.bootstrap();
-    }
-
-    async close(): Promise<void> {
-        await this.shutdown();
+    public getWorker(): WebWorker {
+        if (!this.worker) throw new Error('No WebWorker registered yet. Did you start()?');
+        return this.worker;
     }
 
     public createClient() {
-        if (!this.kernel) throw new Error('Not started');
+        const worker = this.getWorker();
         const context = this.rootScopedContext;
-        const kernel = this.kernel;
+        const kernel = worker.rpcKernel;
 
         return new RpcClient({
             connect(connection) {
@@ -204,4 +197,8 @@ export class InMemoryApplicationServer extends ApplicationServer {
             }
         });
     }
+}
+
+export class InMemoryApplicationServer extends ApplicationServer {
+
 }

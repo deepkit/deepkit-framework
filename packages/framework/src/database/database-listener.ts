@@ -16,18 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {createModule} from '../module';
-import {MigrationCreateController} from './cli/migration-create-command';
-import {MigrationUpCommand} from './cli/migration-up-command';
-import {MigrationPendingCommand} from './cli/migration-pending-command';
-import {MigrationDownCommand} from './cli/migration-down-command';
-import {inject, injectable} from '../injector/injector';
-import {DatabaseRegistry} from './database-registry';
-import {MigrationProvider} from './migration-provider';
-import {databaseConfig} from './database.config';
-import {eventDispatcher} from '../event';
-import {onServerMainBootstrap, onServerMainShutdown, onServerWorkerBootstrap} from '../application-server';
-import {Logger} from '../logger';
+import { getClassName } from '@deepkit/core';
+import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
+import { DatabaseRegistry } from '../database-registry';
+import { eventDispatcher } from '../event';
+import { injectable } from '../injector/injector';
+import { Logger } from '../logger';
 
 @injectable()
 export class DatabaseListener {
@@ -54,23 +48,3 @@ export class DatabaseListener {
         this.databases.onShutDown();
     }
 }
-
-export const DatabaseModule = createModule({
-    name: 'database',
-    providers: [
-        DatabaseRegistry,
-        MigrationProvider,
-    ],
-    listeners: [
-        DatabaseListener,
-    ],
-    controllers: [
-        MigrationCreateController,
-        MigrationUpCommand,
-        MigrationPendingCommand,
-        MigrationDownCommand
-    ],
-    config: databaseConfig
-}).setup((module, config) => {
-    module.options.providers.push(...config.databases);
-}).forRoot();

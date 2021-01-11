@@ -12,6 +12,8 @@ export class BrokerChannel<T> {
     protected wrapped: boolean = false;
     protected schema: ClassSchema;
 
+    protected decoder: (bson: Uint8Array) => any;
+
     constructor(
         public channel: string,
         protected decoratorOrSchema: FieldDecoratorResult<T> | ClassSchema<T> | ClassType<T>,
@@ -20,6 +22,7 @@ export class BrokerChannel<T> {
         const extracted = this.getPubSubMessageSchema(decoratorOrSchema);
         this.wrapped = extracted.wrapped;
         this.schema = extracted.schema;
+        this.decoder = getBSONDecoder(this.schema);
     }
 
     protected getPubSubMessageSchema<T>(decoratorOrSchema: FieldDecoratorResult<T> | ClassSchema<T> | ClassType<T>): { schema: ClassSchema, wrapped: boolean } {
@@ -50,10 +53,8 @@ export class BrokerChannel<T> {
     }
 
     async subscribe(callback: (next: T) => void): Promise<AsyncSubscription> {
-        const decoder = getBSONDecoder(this.schema);
-
         const parsedCallback = (next: Uint8Array) => {
-            const parsed = decoder(next);
+            const parsed = this.decoder(next);
             callback(this.wrapped ? parsed.v : parsed);
         };
 

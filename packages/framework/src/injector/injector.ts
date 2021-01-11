@@ -319,6 +319,7 @@ export class Injector {
 
         for (const property of schema.getClassProperties().values()) {
             if (!('deepkit/inject' in property.data)) continue;
+            if (property.methodName === 'constructor') continue;
             propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(property, compiler, classTypeVar, args.length, 'propertyParameterNotFound')};`);
         }
 

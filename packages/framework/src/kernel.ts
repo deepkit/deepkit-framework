@@ -16,34 +16,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ProcessLocker} from '@deepkit/core';
-import {SessionStack} from './session';
-import {Router} from './router';
-import {HttpKernel, HttpListener, httpWorkflow, serveStaticListener} from './http';
-import {ServerListenController} from './cli/server-listen';
-import {eventDispatcher} from './event';
-import {ApplicationServer, ApplicationServerListener} from './application-server';
-import {ConsoleTransport, Logger} from './logger';
-import {LiveDatabase} from './broker/live-database';
-import {injectable, injectorReference} from './injector/injector';
-import {DebugController} from './debug/debug.controller';
-import {createModule} from './module';
-import {BrokerModule} from './broker/broker.module';
-import {kernelConfig} from './kernel.config';
-import {EnvConfiguration} from './configuration';
-import {WebWorkerFactory} from './worker';
-import {registerDebugHttpController} from './debug/http-debug.controller';
-import {Zone} from './zone';
-import {HttpRequestDebugCollector, Debugger} from './debug/debugger';
-import {DatabaseModule} from './database/database.module';
-import {DebugDatabase} from './debug/db';
-import {DatabaseRegistry} from './database/database-registry';
+import { ProcessLocker } from '@deepkit/core';
+import { DebugRequest } from '@deepkit/framework-debug-shared';
 import fs from 'fs-extra';
-import {dirname} from 'path';
-import {DebugRouterController} from './cli/router-debug';
-import {DebugRequest} from '@deepkit/framework-debug-shared';
+import { dirname } from 'path';
+import { ApplicationServer, ApplicationServerListener } from './application-server';
+import { BrokerModule } from './broker/broker.module';
+import { LiveDatabase } from './broker/live-database';
+import { DebugRouterController } from './cli/router-debug';
 import { DebugDIController } from './cli/router-di';
+import { ServerListenController } from './cli/server-listen';
+import { EnvConfiguration } from './configuration';
+import { DatabaseRegistry } from './database-registry';
+import { MigrationCreateController } from './database/cli/migration-create-command';
+import { MigrationDownCommand } from './database/cli/migration-down-command';
+import { MigrationPendingCommand } from './database/cli/migration-pending-command';
+import { MigrationUpCommand } from './database/cli/migration-up-command';
+import { DatabaseListener } from './database/database-listener';
+import { MigrationProvider } from './database/migration-provider';
+import { DebugDatabase } from './debug/db';
+import { DebugController } from './debug/debug.controller';
+import { Debugger, HttpRequestDebugCollector } from './debug/debugger';
+import { registerDebugHttpController } from './debug/http-debug.controller';
+import { eventDispatcher } from './event';
+import { HttpKernel, HttpListener, httpWorkflow, serveStaticListener } from './http';
+import { injectable, injectorReference } from './injector/injector';
+import { kernelConfig } from './kernel.config';
+import { ConsoleTransport, Logger } from './logger';
+import { createModule } from './module';
+import { Router } from './router';
 import { DeepkitRpcSecurity } from './rpc';
+import { SessionStack } from './session';
+import { WebWorkerFactory } from './worker';
+import { Zone } from './zone';
 
 @injectable()
 class HttpLogger {
@@ -68,8 +73,6 @@ export const KernelModule = createModule({
     config: kernelConfig,
     providers: [
         ProcessLocker,
-        // InternalClient,
-        // RpcSecurityStrategy,
         ApplicationServer,
         Router,
         HttpKernel,
@@ -78,6 +81,8 @@ export const KernelModule = createModule({
         ConsoleTransport,
         Logger,
         DeepkitRpcSecurity,
+        DatabaseRegistry,
+        MigrationProvider,
         {provide: LiveDatabase, scope: 'rpc'},
         {provide: HttpListener},
         {provide: SessionStack, scope: 'http'},
@@ -90,16 +95,26 @@ export const KernelModule = createModule({
     listeners: [
         HttpListener,
         ApplicationServerListener,
+        DatabaseListener,
     ],
     controllers: [
         ServerListenController,
         DebugRouterController,
         DebugDIController,
+        
+        MigrationCreateController,
+        MigrationUpCommand,
+        MigrationPendingCommand,
+        MigrationDownCommand,
     ],
     imports: [
         BrokerModule,
     ],
 }).setup((module, config) => {
+    if (config.databases) {
+        module.options.providers.push(...config.databases);
+    }
+
     if (config.httpLog) {
         module.addListener(HttpLogger);
     }

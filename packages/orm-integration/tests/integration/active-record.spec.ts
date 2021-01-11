@@ -48,6 +48,7 @@ test('second level join', async () => {
         const book1Db = books[0];
         expect(book1Db.author.name).toBe('peter');
         expect(book1Db.author.groups.length).toBe(1);
+        expect(book1Db.author.groups[0]).toBeInstanceOf(Group);
         expect(book1Db.author.groups[0].name).toBe('group1');
     }
 

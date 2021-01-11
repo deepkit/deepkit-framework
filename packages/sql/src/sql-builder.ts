@@ -16,12 +16,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {SQLQueryModel} from './sql-adapter';
-import {DefaultPlatform} from './platform/default-platform';
-import {ClassSchema, getClassSchema, PropertySchema, resolveClassTypeOrForward} from '@deepkit/type';
-import {DatabaseJoinModel, getPrimaryKeyHashGenerator} from '@deepkit/orm';
+import { SQLQueryModel } from './sql-adapter';
+import { DefaultPlatform } from './platform/default-platform';
+import { ClassSchema, getClassSchema, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
+import { DatabaseJoinModel, DatabaseQueryModel, getPrimaryKeyHashGenerator } from '@deepkit/orm';
+import { getSqlFilter } from './filter';
 
 type ConvertDataToDict = (row: any) => { [name: string]: any };
+
+export class Sql {
+    constructor(
+        public sql: string = '',
+        public params: any[] = [],
+    ) { }
+
+    public appendSql(sql: Sql) {
+        this.sql += ' ' + sql.sql;
+        this.params.push(...sql.params);
+    }
+
+    public append(sql: string, params?: any[]) {
+        this.sql += ' ' + sql;
+        if (params) this.params.push(...params);
+    }
+}
 
 export class SqlBuilder {
     protected sqlSelect: string[] = [];
@@ -32,9 +50,18 @@ export class SqlBuilder {
     constructor(protected platform: DefaultPlatform) {
     }
 
-    protected getWhereSQL(schema: ClassSchema, filter: any, tableName?: string) {
+    protected appendWhereSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName?: string, prefix: string = 'WHERE') {
         tableName = tableName || this.platform.getTableIdentifier(schema);
-        return this.platform.createSqlFilterBuilder(schema, tableName).convert(filter);
+        const filter = getSqlFilter(schema, model, this.platform.serializer);
+        const builder = this.platform.createSqlFilterBuilder(schema, tableName);
+        builder.placeholderPosition = sql.params.length;
+        const whereClause = builder.convert(filter);
+
+        if (whereClause) {
+            sql.append(prefix);
+            sql.params.push(...builder.params);
+            sql.append(whereClause);
+        }
     }
 
     protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>) {
@@ -48,7 +75,7 @@ export class SqlBuilder {
     }
 
     protected selectColumnsWithJoins(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {
-        const result: { startIndex: number, fields: PropertySchema[] } = {startIndex: this.sqlSelect.length, fields: []};
+        const result: { startIndex: number, fields: PropertySchema[] } = { startIndex: this.sqlSelect.length, fields: [] };
 
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
         const tableName = this.platform.getTableIdentifier(schema);
@@ -110,7 +137,7 @@ export class SqlBuilder {
             const pkHash = rootPkHasher(converted);
             if (!itemsStack[0] || itemsStack[0].hash !== pkHash) {
                 if (itemsStack[0]) result.push(itemsStack[0].item);
-                itemsStack[0] = {hash: pkHash, item: converted};
+                itemsStack[0] = { hash: pkHash, item: converted };
             }
 
             for (let joinId = 0; joinId < this.joins.length; joinId++) {
@@ -123,7 +150,7 @@ export class SqlBuilder {
                 const forItem = itemsStack[join.forJoinIndex + 1]!.item;
 
                 if (!itemsStack[joinId + 1] || itemsStack[joinId + 1]!.hash !== pkHash) {
-                    itemsStack[joinId + 1] = {hash: pkHash, item: converted};
+                    itemsStack[joinId + 1] = { hash: pkHash, item: converted };
                 }
 
                 if (join.join.propertySchema.isArray) {
@@ -168,10 +195,8 @@ export class SqlBuilder {
         return new Function(code)() as ConvertDataToDict;
     }
 
-    protected getJoinSQL<T>(model: SQLQueryModel<T>, parentName: string, prefix: string = ''): string {
-        if (!model.joins.length) return '';
-
-        const joins: string[] = [];
+    protected appendJoinSQL<T>(sql: Sql, model: SQLQueryModel<T>, parentName: string, prefix: string = ''): void {
+        if (!model.joins.length) return;
 
         for (const join of model.joins) {
             const tableName = this.platform.getTableIdentifier(join.query.classSchema);
@@ -199,55 +224,50 @@ export class SqlBuilder {
 
                 const pivotName = this.platform.quoteIdentifier(prefix + '__p_' + join.propertySchema.name);
 
-                const pivotClause: string[] = [];
-                pivotClause.push(`${pivotName}.${this.platform.quoteIdentifier(pivotToLeft.name)} = ${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)}`);
+                //first pivot table
+                sql.append(`${join.type.toUpperCase()} JOIN ${pivotTableName} AS ${pivotName} ON (`);
+                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToLeft.name)} = ${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)}`);
+                this.appendWhereSQL(sql, join.query.classSchema, join.query.model, joinName, 'AND');
 
-                const whereClause = this.getWhereSQL(join.query.classSchema, join.query.model.filter, joinName);
-                if (whereClause) pivotClause.push(whereClause);
+                sql.append(`)`);
 
-                joins.push(`${join.type.toUpperCase()} JOIN ${pivotTableName} AS ${pivotName} ON (${pivotClause.join(' AND ')})`);
+                //then right table
+                sql.append(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (`);
+                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToRight.name)} = ${joinName}.${this.platform.quoteIdentifier(join.query.classSchema.getPrimaryField().name)}`);
+                sql.append(`)`);
 
-                const onClause: string[] = [];
-                onClause.push(`${pivotName}.${this.platform.quoteIdentifier(pivotToRight.name)} = ${joinName}.${this.platform.quoteIdentifier(join.query.classSchema.getPrimaryField().name)}`);
-                joins.push(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (${onClause.join(' AND ')})`);
-
-                const moreJoins = this.getJoinSQL(join.query.model, joinName, prefix + '__' + join.propertySchema.name);
-                if (moreJoins) joins.push(moreJoins);
+                this.appendJoinSQL(sql, join.query.model, joinName, prefix + '__' + join.propertySchema.name);
 
                 continue;
             }
 
-            const onClause: string[] = [];
+            sql.append(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (`);
+
             if (join.propertySchema.backReference && !join.propertySchema.backReference.via) {
                 const backReference = foreignSchema.findReverseReference(
                     join.classSchema.classType,
                     join.propertySchema,
                 );
-                onClause.push(`${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)} = ${joinName}.${this.platform.quoteIdentifier(backReference.name)}`);
+                sql.append(`${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)} = ${joinName}.${this.platform.quoteIdentifier(backReference.name)}`);
             } else {
-                onClause.push(`${parentName}.${this.platform.quoteIdentifier(join.propertySchema.name)} = ${joinName}.${this.platform.quoteIdentifier(join.foreignPrimaryKey.name)}`);
+                sql.append(`${parentName}.${this.platform.quoteIdentifier(join.propertySchema.name)} = ${joinName}.${this.platform.quoteIdentifier(join.foreignPrimaryKey.name)}`);
             }
+            this.appendWhereSQL(sql, join.query.classSchema, join.query.model, joinName, 'AND');
 
-            const whereClause = this.getWhereSQL(join.query.classSchema, join.query.model.filter, joinName);
-            if (whereClause) onClause.push(whereClause);
-
-            joins.push(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (${onClause.join(' AND ')})`);
-
-            const moreJoins = this.getJoinSQL(join.query.model, joinName, prefix + '__' + join.propertySchema.name);
-            if (moreJoins) joins.push(moreJoins);
+            sql.append(`)`);
+            
+            this.appendJoinSQL(sql, join.query.model, joinName, prefix + '__' + join.propertySchema.name);
         }
-
-        return joins.join('\n');
     }
 
-    public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string): string {
+    public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
-        const whereClause = this.getWhereSQL(schema, model.filter) || 'true';
-        const joins = this.getJoinSQL(model, tableName);
-        let sql = `${head} FROM ${tableName} ${joins} WHERE ${whereClause}`;
+        const sql = new Sql(`${head} FROM ${tableName}`);
+        this.appendJoinSQL(sql, model, tableName);
+        this.appendWhereSQL(sql, schema, model);
 
-        if (model.limit !== undefined) sql += ' LIMIT ' + this.platform.quoteValue(model.limit);
-        if (model.skip !== undefined) sql += ' SKIP ' + this.platform.quoteValue(model.skip);
+        if (model.limit !== undefined) sql.append('LIMIT ' + this.platform.quoteValue(model.limit));
+        if (model.skip !== undefined) sql.append('SKIP ' + this.platform.quoteValue(model.skip));
 
         return sql;
     }
@@ -255,7 +275,7 @@ export class SqlBuilder {
     public update<T>(schema: ClassSchema, model: SQLQueryModel<T>, set: string[]): string {
         const tableName = this.platform.getTableIdentifier(schema);
         const primaryKey = schema.getPrimaryField();
-        const select = this.select(schema, model, {select: [primaryKey.name]});
+        const select = this.select(schema, model, { select: [primaryKey.name] });
 
         return `UPDATE ${tableName} SET ${set.join(', ')} WHERE ${this.platform.quoteIdentifier(primaryKey.name)} IN (SELECT * FROM (${select}) as __)`;
     }
@@ -264,7 +284,7 @@ export class SqlBuilder {
         schema: ClassSchema,
         model: SQLQueryModel<any>,
         options: { select?: string[] } = {}
-    ): string {
+    ): Sql {
         const manualSelect = options.select && options.select.length ? options.select : undefined;
 
         if (!manualSelect) {
@@ -283,10 +303,10 @@ export class SqlBuilder {
             }
         }
 
-        let sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
+        const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
 
         if (order.length) {
-            sql += ' ORDER BY ' + (order.join(', '));
+            sql.append(' ORDER BY ' + (order.join(', ')));
         }
 
         return sql;

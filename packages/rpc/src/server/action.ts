@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { ClassType, collectForMicrotask, getClassPropertyName, isArray, isPlainObject, toFastProperties } from '@deepkit/core';
+import { ClassType, collectForMicrotask, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
 import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
 import { BehaviorSubject, isObservable, Observable, Subject, Subscription } from 'rxjs';
-import { Collection, CollectionEvent, CollectionQueryModel, CollectionState } from '../collection';
+import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
-import { ActionObservableTypes, EntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
+import { ActionObservableTypes, EntitySubject, isEntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
 import { RpcKernelSecurity, Session, SessionState } from './security';
@@ -50,6 +50,7 @@ export class RpcServerAction {
 
     protected collections: {
         [id: number]: {
+            collection: Collection<any>,
             unsubscribe: () => void
         }
     } = {};
@@ -116,6 +117,17 @@ export class RpcServerAction {
 
             if (generic) {
                 resultProperty = generic.clone();
+            } else {
+                //if its Promise, Observable, Collection, EntitySubject, we simply assume any, because sending those types as resultProperty is definitely wrong
+                //and result in weird errors when `undefined` is returned in the actual action (since from undefined we don't infer an actual type)
+                if ((isPrototypeOfBase(resultProperty.classType, Observable)
+                    || isPrototypeOfBase(resultProperty.classType, Collection)
+                    || isPrototypeOfBase(resultProperty.classType, Promise))
+                    || isPrototypeOfBase(resultProperty.classType, EntitySubject)
+                ) {
+                    resultProperty.type = 'any';
+                    resultProperty.typeSet = false; //to signal the user hasn't defined a type
+                }
             }
         }
 
@@ -186,11 +198,21 @@ export class RpcServerAction {
                 break;
             }
 
-            case RpcTypes.ResponseActionCollectionUnsubscribe: {
+            case RpcTypes.ActionCollectionUnsubscribe: {
                 const collection = this.collections[message.id];
                 if (!collection) return response.error(new Error('No collection found'));
                 collection.unsubscribe();
                 delete this.collections[message.id];
+                break;
+            }
+
+            case RpcTypes.ActionCollectionModel: {
+                const collection = this.collections[message.id];
+                if (!collection) return response.error(new Error('No collection found'));
+                const body = message.parseBody(getClassSchema(CollectionQueryModel));
+                collection.collection.model.set(body);
+                console.log('collection.model.changed()');
+                collection.collection.model.changed();
                 break;
             }
 
@@ -238,7 +260,7 @@ export class RpcServerAction {
         try {
             const result = await controller[body.method](...Object.values(converted));
 
-            if (result instanceof EntitySubject) {
+            if (isEntitySubject(result)) {
                 const newProperty = createNewPropertySchemaIfNecessary(result.value, types.resultProperty);
                 if (newProperty) {
                     types.resultSchema = createClassSchema();
@@ -248,7 +270,7 @@ export class RpcServerAction {
                     response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
                 }
                 response.reply(RpcTypes.ResponseEntity, types.resultSchema, { v: result.value });
-            } else if (result instanceof Collection) {
+            } else if (isCollection(result)) {
                 const collection = result;
 
                 const newProperty = new PropertySchema('v');
@@ -298,6 +320,7 @@ export class RpcServerAction {
                 }));
 
                 this.collections[message.id] = {
+                    collection,
                     unsubscribe: () => {
                         unsubscribed = true;
                         eventsSub.unsubscribe();
@@ -393,8 +416,10 @@ export function isResultTypeDifferent(result: any, property: PropertySchema): bo
     if (property.type === 'map' && !isPlainObject(result)) return true;
     if (property.type === 'array' && !isArray(result)) return true;
 
-    if (property.type === 'any') {
-        //means not defined probably
+    if (property.type === 'any' && property.typeSet === false) {
+        //type is infered as Promise, Observable, Collection, EntitySubject, so we should try to infer 
+        //from the result now
+        return true;
     }
 
     if (property.type === 'class') {

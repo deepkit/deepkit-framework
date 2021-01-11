@@ -1,4 +1,4 @@
-import { BrokerClient, BrokerKernel, BrokerChannel, BrokerDirectClientAdapter } from "@deepkit/broker";
+import { BrokerChannel, BrokerClient, BrokerDirectClientAdapter, BrokerKernel } from "@deepkit/broker";
 import { asyncOperation, ClassType, ParsedHost, parseHost } from "@deepkit/core";
 import { ClientTransportAdapter, IdInterface, TransportConnectionHooks } from "@deepkit/rpc";
 import { ClassSchema, FieldDecoratorResult, getClassSchema, t } from "@deepkit/type";
@@ -19,12 +19,12 @@ class TcpWriter {
 const defaultPort = 8811;
 
 @injectable()
-export class BrokerTcpServer {
+export class BrokerServer {
     protected host: ParsedHost = parseHost(this.listen);
     protected server?: Server;
     protected kernel?: BrokerKernel;
 
-    constructor(public listen: string) {
+    constructor(@inject(brokerConfig.token('listen')) public listen: string) {
         if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
             unlinkSync(this.host.unixSocket);
         }
@@ -68,7 +68,7 @@ export class BrokerTcpServer {
     }
 }
 
-export const enum EntityChannelMessageType {
+export enum EntityChannelMessageType {
     remove,
     patch,
     add,
@@ -92,7 +92,7 @@ interface EntityChannelMessageRemove<T> {
 
 const entityChannelMessageRemove = t.schema({
     type: t.literal(EntityChannelMessageType.remove).discriminant,
-    ids: t.array(t.union(t.string, t.number)),
+    ids: t.array(t.union(t.string, t.number, t.uuid, t.mongoId)),
 }, { name: 'EntityChannelMessageRemove' });
 
 export interface EntityPatches {
@@ -155,11 +155,12 @@ export class BaseBroker extends BrokerClient {
 
     public entityChannel<T extends IdInterface>(schemaOrType: ClassSchema<T> | ClassType<T>): EntityBrokerChannel<T> {
         const schema = getClassSchema(schemaOrType);
-        let channel = this.activeChannels.get(schema.getName());
+        const channelName = 'dk/e/' + schema.getName();
+        let channel = this.activeChannels.get(channelName);
         if (channel) return channel as EntityBrokerChannel<T>;
 
         const decorator = this.getEntityChannelMessageSchema(schema);
-        channel = new EntityBrokerChannel('dk/e/' + schema.getName(), decorator, this);
+        channel = new EntityBrokerChannel(channelName, decorator, this);
         this.activeChannels.set(channel.channel, channel);
 
         return channel as EntityBrokerChannel<T>;

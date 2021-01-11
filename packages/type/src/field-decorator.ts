@@ -97,6 +97,12 @@ export interface FieldDecoratorResultBase<T> {
      */
     optional: FieldDecoratorResult<T | undefined>;
 
+    /** 
+     * Marks the field as required. This is the default, however in cases were you use ! you have to manually specify 
+     * that this property is required.
+    */
+    required: FieldDecoratorResult<T>;
+
     /**
      * Marks this type as nullable (allow to set as null). Per default `undefined` and `null` are treated both as `undefined`,
      * basically ignoring `null` values. Null values fall back per default to the default property value. Using `nullable` keeps

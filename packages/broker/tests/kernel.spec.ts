@@ -137,6 +137,7 @@ test('entity-fields', async () => {
     const client2 = new BrokerDirectClient(kernel);
 
     {
+        expect(await client1.getEntityFields('model')).toEqual([]);
         const sub = await client1.publishEntityFields('model', ['foo', 'bar']);
         expect(await client1.getEntityFields('model')).toEqual(['foo', 'bar']);
         await sub.unsubscribe();

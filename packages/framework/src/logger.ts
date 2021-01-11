@@ -18,7 +18,7 @@
 
 import style from 'ansi-styles';
 import util from 'util';
-import {ClassType} from '@deepkit/core';
+import {arrayRemoveItem, ClassType} from '@deepkit/core';
 import {inject} from './injector/injector';
 import {Debugger} from './debug/debugger';
 
@@ -32,7 +32,7 @@ export enum LoggerLevel {
 }
 
 
-export class ConsoleTransport implements Transport {
+export class ConsoleTransport implements LoggerTransport {
     write(message: string, level: LoggerLevel) {
         if (level === LoggerLevel.error) {
             process.stderr.write(message + '\n');
@@ -46,17 +46,17 @@ export class ConsoleTransport implements Transport {
     }
 }
 
-export interface Transport {
+export interface LoggerTransport {
     write(message: string, level: LoggerLevel): void;
 
     supportsColor(): boolean;
 }
 
-export interface Formatter {
+export interface LoggerFormatter {
     format(message: string, level: LoggerLevel): string;
 }
 
-export class ColorFormatter implements Formatter {
+export class ColorFormatter implements LoggerFormatter {
     static colors: string[] = [
         'black',
         'red',
@@ -85,7 +85,7 @@ export class ColorFormatter implements Formatter {
     }
 }
 
-export class RemoveColorFormatter implements Formatter {
+export class RemoveColorFormatter implements LoggerFormatter {
     format(message: string, level: LoggerLevel): string {
         if (message.includes('<')) {
             message = message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
@@ -96,7 +96,7 @@ export class RemoveColorFormatter implements Formatter {
     }
 }
 
-export class TimestampFormatter implements Formatter {
+export class TimestampFormatter implements LoggerFormatter {
     format(message: string, level: LoggerLevel): string {
         return `<yellow>${new Date().toISOString()}</yellow> [${String(LoggerLevel[level]).toUpperCase()}] ${message}`;
     }
@@ -110,23 +110,27 @@ export class Logger {
     protected debugger?: Debugger;
 
     constructor(
-        protected transport: Transport[] = [],
-        protected formatter: Formatter[] = [],
+        protected transport: LoggerTransport[] = [],
+        protected formatter: LoggerFormatter[] = [],
     ) {
     }
 
-    addTransport(transport: Transport) {
+    addTransport(transport: LoggerTransport) {
         this.transport.push(transport);
     }
 
-    hasFormatter(formatterType: ClassType<Formatter>) {
+    removeTransport(transport: LoggerTransport) {
+        arrayRemoveItem(this.transport, transport);
+    }
+
+    hasFormatter(formatterType: ClassType<LoggerFormatter>) {
         for (const formatter of this.formatter) {
             if (formatter instanceof formatterType) return true;
         }
         return false;
     }
 
-    addFormatter(formatter: Formatter) {
+    addFormatter(formatter: LoggerFormatter) {
         this.formatter.push(formatter);
     }
 

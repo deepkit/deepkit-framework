@@ -16,12 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, isArray, resolvePropertySchema, Serializer} from '@deepkit/type';
-import {isPlainObject} from '@deepkit/core';
+import { isPlainObject } from '@deepkit/core';
+import { ClassSchema, resolvePropertySchema, Serializer } from '@deepkit/type';
 
 type Filter = { [name: string]: any };
 
 export class SQLFilterBuilder {
+    public params: any[] = [];
+    public placeholderPosition = 0;
+
     constructor(
         protected schema: ClassSchema,
         protected tableName: string,
@@ -31,8 +34,21 @@ export class SQLFilterBuilder {
     ) {
     }
 
+    createPlaceholder(): string { 
+        return '?'
+    }
+
     convert(filter: Filter): string {
         return this.conditions(filter, 'AND').trim();
+    }
+
+    /** 
+     * Normalizes values necessary for the conection driver to bind parameters for prepared statements.
+     * E.g. SQLite does not support boolean, so we convert boolean to number.
+    */
+    protected bindValue(value: any): any {
+        if (value === undefined) return null; //no SQL driver supports undefined
+        return value;
     }
 
     protected conditionsArray(filters: Filter[], join: 'AND' | 'OR'): string {
@@ -68,21 +84,28 @@ export class SQLFilterBuilder {
         else throw new Error(`Comparator ${comparison} not supported.`);
 
         const isReference = 'string' === typeof value && value[0] === '$';
-        if (!isReference) {
+        let rvalue = '';
+        if (isReference) {
+            rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`
+        } else {
+            rvalue = this.createPlaceholder();
             const property = resolvePropertySchema(this.schema, fieldName);
-            if (!property.isArray && (comparison === 'in' || comparison === 'nin') && isArray(value)) {
-                value = value.map(v => this.quoteValue(this.serializer.serializeProperty(property, v)));
-            } else {
-                if (value === undefined || value === null) {
-                    cmpSign = 'IS';
-                }
-                value = this.quoteValue(this.serializer.serializeProperty(property, value));
+            // if (!property.isArray && (comparison === 'in' || comparison === 'nin') && isArray(value)) {
+            //     this.params.push(value);
+            // } else {
+            if (value === undefined || value === null) {
+                cmpSign = 'IS';
+                value = null;
             }
+
+            if (property.type === 'class' || property.type === 'map' || property.type === 'array') {
+                value = JSON.stringify(value);
+            }
+
+            this.params.push(this.bindValue(value));
         }
 
-        let rvalue = value;
-        if (isReference) rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`;
-        if (comparison === 'in' || comparison === 'nin') rvalue = '(' + rvalue + ')';
+        // if (comparison === 'in' || comparison === 'nin') rvalue = '(' + rvalue + ')';
 
         if (fieldName.includes('.')) {
             const [column, path] = this.splitDeepFieldPath(fieldName);

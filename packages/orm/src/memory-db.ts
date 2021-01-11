@@ -22,7 +22,7 @@ import { ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySch
 import { ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
 import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database';
 import { Changes } from './changes';
-import { Entity, PatchResult } from './type';
+import { DeleteResult, Entity, PatchResult } from './type';
 import { findQueryList } from './utils';
 import { convertQueryFilter } from './query-filter';
 import { Formatter } from './formatter';
@@ -140,11 +140,16 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
 
             if (model.filter) {
                 model.filter = convertQueryFilter(classSchema, model.filter, (convertClassType: ClassSchema, path: string, value: any) => {
+                    //this is important to convert relations to its foreignKey value
                     return serializer.serializeProperty(path, value);
                 });
             }
 
             let filtered = model.filter ? findQueryList<T>(items, model.filter) : items;
+
+            if (model.hasJoins()) {
+                throw new Error('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
+            }
 
             if (model.skip && model.limit) {
                 filtered = filtered.slice(model.skip, model.skip + model.limit);
@@ -179,14 +184,18 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                             withIdentityMap ? this.databaseSession.identityMap : undefined
                         );
                     }
-                    
+
                     async count(model: DatabaseQueryModel<T>): Promise<number> {
                         const items = find(schema, model);
                         return items.length;
                     }
 
-                    async delete(model: DatabaseQueryModel<T>): Promise<void> {
+                    async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
                         const items = find(schema, model);
+                        const primaryKey = schema.getPrimaryFieldName();
+                        for (const item of items) {
+                            deleteResult.primaryKeys.push(item[primaryKey] as any);
+                        }
                         remove(schema, items);
                     }
 
@@ -216,18 +225,10 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
 
                         patchResult.modified = items.length;
                         for (const item of items) {
-                            patchResult.primaryKeys.push(item[primaryKey] as any);
-                            if (model.returning) {
-                                for (const f of model.returning) {
-                                    if (!patchResult.returning[f]) patchResult.returning[f] = [];
-                                    const v = patchResult.returning[f];
-                                    if (v) v.push(item[f]);
-                                }
-                            }
 
                             if (changes.$inc) {
                                 for (const [path, v] of Object.entries(changes.$inc)) {
-                                    setPathValue(item, path, getPathValue(item, path));
+                                    setPathValue(item, path, getPathValue(item, path) + v);
                                 }
                             }
 
@@ -242,6 +243,16 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                                     setPathValue(item, path, v);
                                 }
                             }
+
+                            if (model.returning) {
+                                for (const f of model.returning) {
+                                    if (!patchResult.returning[f]) patchResult.returning[f] = [];
+                                    const v = patchResult.returning[f];
+                                    if (v) v.push(item[f]);
+                                }
+                            }
+
+                            patchResult.primaryKeys.push(item[primaryKey] as any);
                             store.items.set(item[primaryKey] as any, serializer.serialize(item));
                         }
                     }

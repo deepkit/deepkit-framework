@@ -34,7 +34,7 @@ import {ServiceContainer} from '../service-container';
 import {parseRouteControllerAction, Router} from '../router';
 import {getClassName} from '@deepkit/core';
 import {EventDispatcher, isEventListenerContainerEntryService} from '../event';
-import {DatabaseRegistry} from '../database/database-registry';
+import {DatabaseRegistry} from '../database-registry';
 import {inject} from '../injector/injector';
 import {DatabaseAdapter} from '@deepkit/orm';
 import {LiveDatabase} from '../broker/live-database';

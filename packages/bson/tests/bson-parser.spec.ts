@@ -2,9 +2,10 @@ import {expect, test} from '@jest/globals';
 import 'reflect-metadata';
 import bson from 'bson';
 import {findValueInObject, parseObject, ParserV2} from '../src/bson-parser';
-import {t} from '@deepkit/type';
+import {getClassSchema, t} from '@deepkit/type';
 import {getBSONDecoder} from '../src/bson-jit-parser';
 import {BSONType} from '../src/utils';
+import { getBSONSerializer } from '../src/bson-serialize';
 
 const {deserialize, serialize} = bson;
 
@@ -101,4 +102,35 @@ test('undefined array', () => {
         //organisations stays undefined
         expect(getBSONDecoder(schema)(bson)).toEqual({username: 'Peter', organisations: []});
     }
+});
+
+
+test('constructor vars', () => {
+    class UserBase {
+        @t
+        id: string = 'abc';
+    
+        @t
+        version: number = 1;
+    
+        constructor(@t public name: string) {
+        }
+    }
+
+    class User extends UserBase {
+        @t
+        connections: number = 10;
+    }
+
+    expect(getClassSchema(UserBase).getProperty('name').methodName).toBe('constructor');
+    expect(getClassSchema(User).getProperty('name').methodName).toBe('constructor');
+
+    expect(getClassSchema(User).getMethodProperties('constructor').includes(getClassSchema(User).getProperty('name'))).toBe(true);
+
+    const bson = getBSONSerializer(User)(new User('peter'));
+    const json = deserialize(Buffer.from(bson));
+    expect(json.name).toBe('peter');
+    const back = getBSONDecoder(User)(bson);
+    expect(back.name).toBe('peter');
+
 });

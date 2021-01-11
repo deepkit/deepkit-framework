@@ -38,30 +38,48 @@ export async function main() {
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
         const bench = new BenchSuite('mongoose');
+        await Model.deleteMany();
+
+        const items: any[] = [];
+        for (let i = 1; i <= count; i++) {
+            items.push({
+                id: i, name: 'Peter ' + i,
+                ready: true, priority: true,
+                tags: ['a', 'b', 'c']
+            })
+        }
 
         await bench.runAsyncFix(1, 'insert', async () => {
-            const items: any[] = [];
-            for (let i = 1; i <= count; i++) {
-                items.push({
-                    id: i, name: 'Peter ' + i,
-                    ready: true, priority: true,
-                    tags: ['a', 'b', 'c']
-                })
-            }
-
             await Model.insertMany(items);
+        });
+
+        await Model.deleteMany();
+        await bench.runAsyncFix(1, 'insert (lean)', async () => {
+            await Model.insertMany(items, {lean: true});
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
             await Model.find();
         });
 
+        await bench.runAsyncFix(10, 'fetch (lean)', async () => {
+            await Model.find({}, {}, {lean: true});
+        });
+
         await bench.runAsyncFix(1, 'update-query', async () => {
             await Model.updateMany({}, {$inc: {priority: 1}}, {multi: true});
         });
 
+        await bench.runAsyncFix(1, 'update-query (lean)', async () => {
+            await Model.updateMany({}, {$inc: {priority: 1}}, {multi: true, lean: true});
+        });
+
         await bench.runAsyncFix(1, 'remove-query', async () => {
             await Model.deleteMany();
+        });
+
+        await bench.runAsyncFix(1, 'remove-query (lean)', async () => {
+            await Model.deleteMany({}, {lean: true});
         });
     }
 

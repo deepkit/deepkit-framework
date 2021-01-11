@@ -16,12 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {inject} from '../injector/injector';
-import {Database} from '@deepkit/orm';
-import {ClassType} from '@deepkit/core';
-import {ClassSchema, getClassSchema} from '@deepkit/type';
-import {databaseConfig} from './database.config';
-import {InjectorContext} from '../injector/injector';
+import { ClassType } from '@deepkit/core';
+import { Database } from '@deepkit/orm';
+import { ClassSchema, getClassSchema } from '@deepkit/type';
+import { inject, InjectorContext } from './injector/injector';
+import { kernelConfig } from './kernel.config';
 
 /**
  * Class to register a new database and resolve a schema/type to a database.
@@ -34,8 +33,8 @@ export class DatabaseRegistry {
 
     constructor(
         protected scopedContext: InjectorContext,
-        @inject(databaseConfig.token('databases')) protected databaseTypes: ClassType<Database<any>>[],
-        @inject(databaseConfig.token('migrateOnStartup')) protected migrateOnStartup: boolean,
+        @inject(kernelConfig.token('databases')) protected readonly databaseTypes: ClassType<Database<any>>[] = [],
+        @inject(kernelConfig.token('migrateOnStartup')) protected migrateOnStartup: boolean,
     ) {
     }
 

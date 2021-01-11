@@ -344,7 +344,7 @@ export class RpcBaseClient {
     }
 
     protected onMessage(message: RpcMessage) {
-        // console.log('client: received message', message.id, RpcTypes[message.type], message.routeType);
+        // console.log('client: received message', message.id, message.type, RpcTypes[message.type], message.routeType);
 
         if (message.type === RpcTypes.Entity) {
             this.actionClient.entityState.handle(message);

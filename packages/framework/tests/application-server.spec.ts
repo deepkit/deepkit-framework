@@ -1,19 +1,51 @@
 import { rpc } from '@deepkit/rpc';
 import { test, expect } from '@jest/globals';
 import 'reflect-metadata';
-import { InMemoryApplicationServer } from '../src/application-server';
 import { Application } from '../src/application';
 import { createModule } from '../src/module';
 import { InjectorContext } from '../src/injector/injector';
+import { createTestingApp, MemoryLoggerTransport } from '../src/testing';
+import { ApplicationServer } from '../src/application-server';
+import { Logger } from '../src/logger';
 
 test('basic bootstrap', async () => {
     const AppModule = createModule({});
 
-    const app = new Application(AppModule, [InMemoryApplicationServer]);
-    const applicationServer = app.get(InMemoryApplicationServer);
+    const app = new Application(AppModule);
+    const applicationServer = app.get(ApplicationServer);
 
     await applicationServer.start();
     await applicationServer.close();
+});
+
+test('testing app manuall', async () => {
+    const test = createTestingApp({});
+    const applicationServer = test.app.get(ApplicationServer);
+
+    await applicationServer.start();
+    await applicationServer.close();
+});
+
+test('testing app api', async () => {
+    @rpc.controller('test')
+    class MyController {
+        constructor(protected logger: Logger) {}
+
+        @rpc.action()
+        foo() {
+            this.logger.log('bar');
+            return 'bar';
+        }
+    }
+
+    const testing = createTestingApp({controllers: [MyController]});
+    await testing.startServer();
+
+    const client = testing.createRpcClient();
+    const controller = client.controller<MyController>('test');
+
+    expect(await controller.foo()).toBe('bar');
+    expect(testing.app.get(MemoryLoggerTransport).messageStrings.includes('bar'));
 });
 
 test('basic controller', async () => {
@@ -35,8 +67,8 @@ test('basic controller', async () => {
         controllers: [MyController],
     });
 
-    const app = new Application(AppModule, [InMemoryApplicationServer]);
-    const applicationServer = app.get(InMemoryApplicationServer);
+    const app = new Application(AppModule);
+    const applicationServer = app.get(ApplicationServer);
     const injectorContext = app.get(InjectorContext);
     const controller = injectorContext.createChildScope('rpc').get(MyController);
     expect(controller.foo()).toBe('bar');

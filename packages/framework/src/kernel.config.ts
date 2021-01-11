@@ -32,6 +32,10 @@ export const kernelConfig = createConfig({
     debugStorePath: t.string.default('var/debug/'),
     debugSqlitePath: t.string.default('var/debug/deepkit-debug.sqlite'),
     httpLog: t.boolean.default(true),
+
+    databases: t.array(t.any).optional.description('ClassType[] of Database classes'),
+    migrateOnStartup: t.boolean.default(false).description('Whether all registered database should be migrated automatically on startup.'),
+    migrationDir: t.string.default('migrations'),
 });
 
 export class KernelConfigAll extends kernelConfig.all() {}

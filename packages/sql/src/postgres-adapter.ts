@@ -29,7 +29,7 @@ import {
 } from './sql-adapter';
 import {Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult} from '@deepkit/orm';
 import {PostgresPlatform} from './platform/postgres-platform';
-import {ClassSchema, getClassSchema, PropertySchema} from '@deepkit/type';
+import {ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema} from '@deepkit/type';
 import {DefaultPlatform} from './platform/default-platform';
 import pg from 'pg';
 import type {PoolClient, PoolConfig, Pool} from 'pg';
@@ -296,8 +296,9 @@ export class PostgresPersistence extends SQLPersistence {
 export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-        const pkName = this.classSchema.getPrimaryField().name;
-        const pkField = this.platform.quoteIdentifier(pkName);
+        const primaryKey = this.classSchema.getPrimaryField();
+        const pkField = this.platform.quoteIdentifier(primaryKey.name);
+        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const select = sqlBuilder.select(this.classSchema, model, {select: [pkField]});
@@ -306,17 +307,17 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const connection = this.connectionPool.getConnection();
         try {
             const sql = `
-                WITH _ AS (${select})
+                WITH _ AS (${select.sql})
                 DELETE
                 FROM ${tableName} USING _
                 WHERE ${tableName}.${pkField} = _.${pkField}
                 RETURNING ${tableName}.${pkField}
             `;
 
-            const rows = await connection.execAndReturnAll(sql);
+            const rows = await connection.execAndReturnAll(sql, select.params);
             deleteResult.modified = rows.length;
             for (const row of rows) {
-                deleteResult.primaryKeys.push(row[pkName]);
+                deleteResult.primaryKeys.push(primaryKeyConverted(row[primaryKey.name]));
             }
         } finally {
             connection.release();
@@ -327,12 +328,13 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const pkName = this.classSchema.getPrimaryField().name;
-        const pkField = this.platform.quoteIdentifier(pkName);
+        const primaryKey = this.classSchema.getPrimaryField();
+        const pkField = this.platform.quoteIdentifier(primaryKey.name);
+        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
         select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
-        const aggregateFields: { [name: string]: 1 } = {};
+        const aggregateFields: { [name: string]: {converted: (v: any) => any} } = {};
 
         const scopeSerializer = this.platform.serializer.for(this.classSchema);
         const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
@@ -354,10 +356,15 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
         }
 
+        for (const i of model.returning) {
+            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
+            select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
+        }
+
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = 1;
+            aggregateFields[i] = {converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer)};
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -365,22 +372,6 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
         }
 
-        // let extractVarsSQL = '';
-        // let selectVarsSQL = '';
-        // if (!empty(aggregateFields)) {
-        //     const extractSelect: string[] = [];
-        //     const selectVars: string[] = [];
-        //     extractSelect.push(`@_pk := JSON_ARRAYAGG(${pkField})`);
-        //     selectVars.push(`@_pk`);
-        //     for (const i in aggregateFields) {
-        //         extractSelect.push(`@_f_${i} := JSON_ARRAYAGG(${this.platform.quoteIdentifier(i)})`);
-        //         selectVars.push(`@_f_${i}`);
-        //     }
-        //     extractVarsSQL = `,
-        //         (SELECT ${extractSelect.join(', ')} FROM _tmp GROUP BY '0') as _
-        //     `;
-        //     selectVarsSQL = `SELECT ${selectVars.join(', ')};`;
-        // }
         const returningSelect: string[] = [];
         returningSelect.push(tableName + '.' + pkField);
         if (!empty(aggregateFields)) {
@@ -392,7 +383,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const sqlBuilder = new SqlBuilder(this.platform);
         const selectSQL = sqlBuilder.select(this.classSchema, model, {select});
         const sql = `
-            WITH _b AS (${selectSQL})
+            WITH _b AS (${selectSQL.sql})
             UPDATE
                 ${tableName}
             SET
@@ -404,7 +395,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
 
         const connection = this.connectionPool.getConnection();
         try {
-            const result = await connection.execAndReturnAll(sql);
+            const result = await connection.execAndReturnAll(sql, selectSQL.params);
 
             patchResult.modified = result.length;
             for (const i in aggregateFields) {
@@ -412,9 +403,9 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             }
 
             for (const returning of result) {
-                patchResult.primaryKeys.push(returning[pkName]);
+                patchResult.primaryKeys.push(primaryKeyConverted(returning[primaryKey.name]));
                 for (const i in aggregateFields) {
-                    patchResult.returning[i].push(returning[i]);
+                    patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
         } finally {

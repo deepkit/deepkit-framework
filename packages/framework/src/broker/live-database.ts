@@ -34,7 +34,7 @@ import {
     Collection,
     CollectionSort,
     CollectionState,
-    ConnectionWriter,
+
     EntitySubject,
     IdVersionInterface,
     rpcEntityPatch,
@@ -44,7 +44,7 @@ import {
 } from '@deepkit/rpc';
 import { ClassSchema, getClassSchema, jsonSerializer, resolveClassTypeOrForward } from '@deepkit/type';
 import { Observable } from 'rxjs';
-import { DatabaseRegistry } from '../database/database-registry';
+import { DatabaseRegistry } from '../database-registry';
 import { injectable } from '../injector/injector';
 import { findQuerySatisfied } from '../utils';
 import { Broker, EntityChannelMessageType, EntityPatches } from './broker';
@@ -57,17 +57,6 @@ interface SentState {
 class SubscriptionHandler {
     protected sentEntities: { [id: string]: SentState } = {};
     protected entitySubscription?: Promise<AsyncSubscription>;
-
-    /**
-     * Which fields other subscriber in the topology require so
-     * they are able to match their query filters.
-     * We basically add for all query's `returning` those fields
-     * and the values in patch bus-message.
-     *
-     * This is required for live-collections to answer the question:
-     *  - What if it wasn't a known item, but WOULD become one after the patch?
-     */
-    public usedFields: string[] = [];
 
     constructor(
         protected connection: RpcKernelBaseConnection,
@@ -146,28 +135,29 @@ class SubscriptionHandler {
                     this.rmSentState(id);
                 }
 
-                this.connection.sendMessage(RpcTypes.EntityRemove, rpcEntityRemove, {
-                    entityName: entityName,
-                    ids: message.ids,
-                }).release();
+                this.connection.createMessageBuilder()
+                    .composite(RpcTypes.Entity)
+                    .add(RpcTypes.EntityRemove, rpcEntityRemove, {
+                        entityName: entityName,
+                        ids: message.ids,
+                    }).send();
                 return;
             }
-
-            // useful debugging lines
-            // const state = this.getSentState(classType, message.id);
 
             if (message.type === EntityChannelMessageType.patch && this.needsToBeSend(message.id, message.version)) {
                 this.setSent(message.id, message.version);
 
-                this.connection.sendMessage(RpcTypes.EntityPatch, rpcEntityPatch, {
-                    entityName: entityName,
-                    id: message.id,
-                    version: message.version,
-                    patch: message.patch
-                }).release();
-
-                //nothing to do for ADD, because that's handled by Collection
+                this.connection.createMessageBuilder()
+                    .composite(RpcTypes.Entity)
+                    .add(RpcTypes.EntityPatch, rpcEntityPatch, {
+                        entityName: entityName,
+                        id: message.id,
+                        version: message.version,
+                        patch: message.patch
+                    }).send();
             }
+
+            //nothing to do for ADD, because that's handled by Collection
         });
     }
 }
@@ -176,7 +166,7 @@ class SubscriptionHandlers {
     protected handler = new Map<ClassSchema, SubscriptionHandler>();
 
     constructor(
-        protected writer: any,
+        protected connection: RpcKernelBaseConnection,
         protected databases: DatabaseRegistry,
         protected broker: Broker,
     ) {
@@ -185,7 +175,7 @@ class SubscriptionHandlers {
     get(classSchema: ClassSchema): SubscriptionHandler {
         let handler = this.handler.get(classSchema);
         if (!handler) {
-            handler = new SubscriptionHandler(this.writer, classSchema, this.databases.getDatabaseForEntity(classSchema), this.broker);
+            handler = new SubscriptionHandler(this.connection, classSchema, this.databases.getDatabaseForEntity(classSchema), this.broker);
             this.handler.set(classSchema, handler);
         }
 
@@ -263,7 +253,7 @@ class LiveCollection<T extends IdVersionInterface> {
         protected broker: Broker,
         protected database: Database,
         protected subscriptionHandler: SubscriptionHandler,
-        protected writer: ConnectionWriter,
+        protected connection: RpcKernelBaseConnection,
     ) {
         this.rootFields = exportQueryFilterFieldNames(this.classSchema, model.filter || {});
         // figure out what entities are involved (by going through all joins)
@@ -318,6 +308,8 @@ class LiveCollection<T extends IdVersionInterface> {
 
     protected async _updateCollection(databaseChanged: boolean = false) {
         if (!this.entitySubscription) return;
+
+        console.log('_updateCollection');
 
         // let pagingHash = '';
         // let parametersHash = '';
@@ -416,7 +408,7 @@ class LiveCollection<T extends IdVersionInterface> {
             return collection.model.hasPaging() || collection.model.hasSort();
         }
 
-        const scopedSerializer = jsonSerializer.for(this.classSchema);
+        // const scopedSerializer = jsonSerializer.for(this.classSchema);
         this.entitySubscription = await this.broker.entityChannel(this.classSchema).subscribe(async (message) => {
             if (message.type === EntityChannelMessageType.remove) {
                 if (requiresFullUpdate(this.collection)) {
@@ -431,7 +423,12 @@ class LiveCollection<T extends IdVersionInterface> {
                 this.collection.removeMany(message.ids);
             }
 
-            if (message.type === EntityChannelMessageType.add && !this.knownIDs.has(message.id) && findQuerySatisfied(message.item, currentQuery)) {
+            if (message.type === EntityChannelMessageType.add) {
+
+                if (this.knownIDs.has(message.id) || !findQuerySatisfied(message.item, currentQuery)) {
+                    return;
+                }
+
                 if (requiresFullUpdate(this.collection)) {
                     await this.updateCollection(true);
                     return;
@@ -439,7 +436,7 @@ class LiveCollection<T extends IdVersionInterface> {
 
                 this.knownIDs.add(message.id);
                 if (this.model.isChangeFeedActive()) this.subscriptionHandler.increaseUsage(message.id);
-                this.collection.add(scopedSerializer.deserialize(message.item));
+                this.collection.add(message.item);
             }
 
             if (message.type === EntityChannelMessageType.patch) {
@@ -474,6 +471,21 @@ class LiveCollection<T extends IdVersionInterface> {
         });
 
         this.model.change.subscribe(() => {
+            console.log('this.model.change.subscribe');
+            this.updateCollection().catch(console.error);
+        });
+        
+        this.collection.model.change.subscribe(() => {
+            console.log('this.collection.model.change.subscribe');
+            this.model.limit = this.collection.model.limit;
+            this.model.skip = this.collection.model.skip;
+            this.model.itemsPerPage = this.collection.model.itemsPerPage;
+            this.model.sort = this.collection.model.sort as Sort<any>;
+
+            if (this.collection.model.filter) this.model.filter = this.collection.model.filter;
+
+            this.model.setParameters(this.collection.model.parameters);
+            console.log('server: model change');
             this.updateCollection().catch(console.error);
         });
 
@@ -519,13 +531,20 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
     public model = this.createModel<T>();
 
     constructor(
-        protected writer: ConnectionWriter,
         public classSchema: ClassSchema<T>,
+        protected connection: RpcKernelBaseConnection,
         protected database: Database,
         protected broker: Broker,
         protected subscriptionHandler: SubscriptionHandler,
     ) {
         super(classSchema);
+    }
+
+    clone(): this {
+        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.connection, this.database, this.broker, this.subscriptionHandler);
+        cloned.model = this.model.clone(cloned) as this['model'];
+        cloned.format = this.format;
+        return cloned;
     }
 
     disableEntityChangeFeed(): this {
@@ -657,14 +676,9 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
 
     async find(): Promise<Collection<T>> {
         const collection = new Collection(this.classSchema.classType);
+        collection.model.set(this.model);
 
-        //forward all events on collection to 
-        collection.model.change.subscribe(() => {
-            Object.assign(this.model, collection.model);
-            this.model.changed();
-        });
-
-        const liveCollection = new LiveCollection(collection, this.model, this.broker, this.database, this.subscriptionHandler, this.writer);
+        const liveCollection = new LiveCollection(collection, this.model, this.broker, this.database, this.subscriptionHandler, this.connection);
         collection.addTeardown(async () => {
             await liveCollection.stopSync();
         });
@@ -712,13 +726,13 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
 
 @injectable()
 export class LiveDatabase {
-    protected subscriptionHandler = new SubscriptionHandlers(this.writer, this.databases, this.broker);
+    protected subscriptionHandler = new SubscriptionHandlers(this.connection, this.databases, this.broker);
     protected entitySubscriptions = new Map<ClassSchema, AsyncEventSubscription[]>();
 
     constructor(
         protected databases: DatabaseRegistry,
         protected broker: Broker,
-        protected writer: ConnectionWriter,
+        protected connection: RpcKernelBaseConnection,
     ) {
     }
 
@@ -750,8 +764,6 @@ export class LiveDatabase {
         subscriptions.push(database.unitOfWorkEvents.onInsertPost.subscribe((event: UnitOfWorkEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
 
-            const serialized = jsonSerializer.for(event.classSchema);
-
             for (const item of event.items) {
                 this.broker.entityChannel(event.classSchema).publishAdd(item);
             }
@@ -767,7 +779,7 @@ export class LiveDatabase {
 
         subscriptions.push(database.unitOfWorkEvents.onUpdatePost.subscribe(async (event: UnitOfWorkUpdateEvent<IdVersionInterface>) => {
             if (schema !== event.classSchema) return;
-            const serialized = jsonSerializer.for(event.classSchema);
+            // const serialized = jsonSerializer.for(event.classSchema);
 
             for (const changeSet of event.changeSets) {
                 const jsonPatch: any = {
@@ -807,6 +819,7 @@ export class LiveDatabase {
         subscriptions.push(database.queryEvents.onPatchPre.subscribe(async (event) => {
             if (schema !== event.classSchema) return;
             event.patch.increase('version', 1);
+            event.returning.push('version');
             for (const field of await this.broker.getEntityFields(event.classSchema)) {
                 if (!event.returning.includes(field)) event.returning.push(field);
             }
@@ -814,6 +827,7 @@ export class LiveDatabase {
 
         subscriptions.push(database.queryEvents.onPatchPost.subscribe(async (event) => {
             if (schema !== event.classSchema) return;
+
             const jsonPatch: EntityPatches = {
                 $set: event.patch.$set,
                 $inc: event.patch.$inc,
@@ -842,8 +856,8 @@ export class LiveDatabase {
 
     public query<T extends IdVersionInterface>(classType: ClassType<T> | ClassSchema<T>) {
         return new LiveQuery(
-            this.writer,
             getClassSchema(classType),
+            this.connection,
             this.databases.getDatabaseForEntity(classType),
             this.broker,
             this.subscriptionHandler.get(getClassSchema(classType))

@@ -22,15 +22,13 @@ import {inject, injectable} from '../injector/injector';
 import {eventDispatcher} from '../event';
 import {onServerMainBootstrap, onServerMainShutdown} from '../application-server';
 import {brokerConfig} from './broker.config';
-import { Broker, BrokerTcpServer } from './broker';
+import { Broker, BrokerServer } from './broker';
 
 @injectable()
 export class BrokerListener {
-    protected brokerServer?: BrokerTcpServer;
-
     constructor(
         protected broker: Broker,
-        @inject(brokerConfig.token('listen')) protected listen: string,
+        protected brokerServer: BrokerServer,
         @inject(brokerConfig.token('startOnBootstrap')) protected startOnBootstrap: boolean,
     ) {
     }
@@ -38,16 +36,14 @@ export class BrokerListener {
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
         if (this.startOnBootstrap) {
-            this.brokerServer = new BrokerTcpServer(this.listen);
             await this.brokerServer.start();
         }
     }
 
     @eventDispatcher.listen(onServerMainShutdown)
     async onMainShutdown() {
-        if (this.startOnBootstrap && this.brokerServer) {
+        if (this.startOnBootstrap) {
             this.brokerServer.close();
-            this.brokerServer = undefined;
         }
         await this.broker.disconnect();
     }
@@ -62,9 +58,11 @@ export const BrokerModule = createModule({
     providers: [
         Broker,
         AppLocker,
+        BrokerServer,
     ],
     exports: [
         Broker,
         AppLocker,
+        BrokerServer,
     ]
 }).forRoot();

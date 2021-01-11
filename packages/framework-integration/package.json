@@ -18,6 +18,7 @@
     "@deepkit/framework": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
     "@deepkit/orm": "^1.0.1-alpha.0",
+    "@deepkit/sql": "^1.0.1-alpha.0",
     "@deepkit/mongo": "^1.0.1-alpha.0",
     "buffer": "^5.2.1",
     "fs-extra": "^9.0.1",

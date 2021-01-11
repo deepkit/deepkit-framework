@@ -64,8 +64,6 @@ export class RpcCompositeMessage {
     }
 
     send() {
-        if (!this.messages.length) return;
-
         if (this.clientId && this.source) {
             //we route back accordingly
             this.writer.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, this.type, this.messages));

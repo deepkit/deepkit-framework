@@ -162,20 +162,22 @@ export class Formatter {
     }
 
     protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
-        if (classSchema.references.size === 0) {
-            if (!this.identityMap) {
-                return model.isPartial() ? this.rootSerializer.partialDeserialize(dbRecord) : this.rootSerializer.deserialize(dbRecord);
+        let pool: Map<PKHash, any> | undefined = undefined;
+        let pkHash: any = undefined;
+        if (this.rootClassSchema.references.size > 0) {
+            //the pool is only necessary when the root class has actually references
+            pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
+            pool = this.getInstancePoolForClass(classSchema.classType);
+
+            if (pool.has(pkHash)) {
+                return pool.get(pkHash);
             }
         }
 
-        const pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
-        const pool = this.getInstancePoolForClass(classSchema.classType);
-
-        if (pool.has(pkHash)) {
-            return pool.get(pkHash);
-        }
-
         if (this.identityMap && !model.isPartial()) {
+            if (!pkHash) {
+                pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
+            }
             const item = this.identityMap.getByHash(classSchema, pkHash);
 
             if (item) {
@@ -227,7 +229,7 @@ export class Formatter {
 
         if (!model.isPartial()) {
             getInstanceState(converted).markAsPersisted();
-            pool.set(pkHash, converted);
+            if (pool) pool.set(pkHash, converted);
 
             if (this.identityMap) {
                 this.identityMap.store(classSchema, converted);
@@ -294,17 +296,19 @@ export class Formatter {
             getInstanceState(converted).markAsFromDatabase();
         }
 
-        const handledRelation = this.assignJoins(model, classSchema, dbRecord, converted);
+        if (classSchema.references.size > 0) {
+            const handledRelation = model.joins.length ? this.assignJoins(model, classSchema, dbRecord, converted) : undefined;
 
-        //all non-populated owning references will be just proxy references
-        for (const propertySchema of classSchema.references.values()) {
-            if (handledRelation[propertySchema.name]) continue;
-            if (propertySchema.isReference) {
-                converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, model.isPartial());
-            } else {
-                //unpopulated backReferences are inaccessible
-                if (!model.isPartial()) {
-                    this.makeInvalidReference(converted, classSchema, propertySchema);
+            //all non-populated owning references will be just proxy references
+            for (const propertySchema of classSchema.references.values()) {
+                if (handledRelation && handledRelation[propertySchema.name]) continue;
+                if (propertySchema.isReference) {
+                    converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, model.isPartial());
+                } else {
+                    //unpopulated backReferences are inaccessible
+                    if (!model.isPartial()) {
+                        this.makeInvalidReference(converted, classSchema, propertySchema);
+                    }
                 }
             }
         }

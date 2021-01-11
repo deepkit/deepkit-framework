@@ -16,21 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {Database} from '@deepkit/orm';
-import {ClassType} from '@deepkit/core';
+import { ClassType } from '@deepkit/core';
+import { Database } from '@deepkit/orm';
 import glob from 'fast-glob';
-import {basename, join} from 'path';
-import {Migration} from './migration';
-import {DatabaseRegistry} from './database-registry';
-import {inject} from '../injector/injector';
-import { databaseConfig } from './database.config';
+import { basename, join } from 'path';
+import { DatabaseRegistry } from '../database-registry';
+import { inject } from '../injector/injector';
+import { kernelConfig } from '../kernel.config';
+import { Migration } from './migration';
 
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
 
     constructor(
         @inject().root protected databases: DatabaseRegistry,
-        @inject(databaseConfig.token('migrationDir')) protected migrationDir: string,
+        @inject(kernelConfig.token('migrationDir')) protected migrationDir: string,
     ) {
     }
 
@@ -57,7 +57,7 @@ export class MigrationProvider {
     async getMigrations(migrationDir: string): Promise<Migration[]> {
         let migrations: Migration[] = [];
 
-        const files = await glob('**/*.ts', {cwd: migrationDir});
+        const files = await glob('**/*.ts', { cwd: migrationDir });
 
         for (const file of files) {
             const path = join(process.cwd(), migrationDir, file);

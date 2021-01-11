@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
 import 'reflect-metadata';
 import {entity, sliceClass, t} from '@deepkit/type';
-import {Application, BodyValidation, DatabaseModule, http, KernelModule, Logger, Redirect} from '@deepkit/framework';
+import {Application, BodyValidation, http, KernelModule, Logger, Redirect} from '@deepkit/framework';
 import {Website} from './views/website';
 import {ActiveRecord, Database} from '@deepkit/orm';
 import {SQLiteDatabaseAdapter} from '@deepkit/sql';
@@ -78,7 +78,9 @@ Application.create({
     providers: [],
     controllers: [HelloWorldController],
     imports: [
-        KernelModule.configure({workers: 1, debug: true, publicDir: 'public', httpLog: true}),
-        DatabaseModule.configure({databases: [SQLiteDatabase], migrateOnStartup: true})
+        KernelModule.configure({
+            workers: 1, debug: true, publicDir: 'public', httpLog: true,
+            databases: [SQLiteDatabase], migrateOnStartup: true
+        }),
     ]
 }).run();

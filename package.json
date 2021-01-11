@@ -35,6 +35,9 @@
     "testPathIgnorePatterns": [
       "packages/*/dist"
     ],
+    "collectCoverageFrom": [
+      "src/**/*.ts"
+    ],
     "projects": [
       "packages/core",
       "packages/core-rxjs",

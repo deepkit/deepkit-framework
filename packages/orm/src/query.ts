@@ -107,12 +107,19 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
         return this.limit !== undefined || this.skip !== undefined;
     }
 
+    setParameters(parameters: {[name: string]: any}) {
+        for (const [i, v] of Object.entries(parameters)) {
+            this.parameters[i] = v;
+        }
+    }
+
     clone(parentQuery: BaseQuery<T>): this {
         const constructor = this.constructor as ClassType<this>;
         const m = new constructor();
         m.filter = this.filter;
         m.withIdentityMap = this.withIdentityMap;
         m.select = new Set(this.select.values());
+        m.parameters = { ...this.parameters };
 
         m.joins = this.joins.map((v) => {
             return {
@@ -125,9 +132,12 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
             };
         });
 
+        for (const join of m.joins) {
+            join.query.model.parameters = m.parameters;
+        }
+
         m.skip = this.skip;
         m.limit = this.limit;
-        m.parameters = { ...this.parameters };
         m.sort = this.sort ? { ...this.sort } : undefined;
 
         return m;
@@ -187,6 +197,12 @@ export class BaseQuery<T extends Entity> {
         } else {
             c.model.select = new Set([...fields as string[], ...(moreFields as string[])]);
         }
+        return c;
+    }
+
+    returning(...fields: FieldName<T>[]): this {
+        const c = this.clone();
+        c.model.returning.push(...fields);
         return c;
     }
 
@@ -533,7 +549,6 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         for (const field of event.returning) {
             if (!event.query.model.returning.includes(field)) event.query.model.returning.push(field);
         }
-        event.query.model.returning.push(...event.returning);
 
         //whe need to use event.query in case someone overwrite it
         await event.query.resolver.patch(event.query.model, changes, patchResult);

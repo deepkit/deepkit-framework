@@ -16,17 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DatabaseComparator, DatabaseModel, SQLDatabaseAdapter} from '@deepkit/sql';
-import {dirname, join} from 'path';
-import {format} from 'date-fns';
-import {existsSync, mkdirSync, writeFileSync} from 'fs';
-import {indent} from '@deepkit/core';
-import {cli, Command, flag} from '../../command';
-import {Logger} from '../../logger';
-import {MigrationProvider} from '../migration-provider';
-import {DatabaseRegistry} from '../database-registry';
-import {inject} from '../../injector/injector';
-import {databaseConfig} from '../database.config';
+import { kernelConfig } from '../../kernel.config';
+import { indent } from '@deepkit/core';
+import { DatabaseComparator, DatabaseModel, SQLDatabaseAdapter } from '@deepkit/sql';
+import { format } from 'date-fns';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { cli, Command, flag } from '../../command';
+import { DatabaseRegistry } from '../../database-registry';
+import { inject } from '../../injector/injector';
+import { Logger } from '../../logger';
+import { MigrationProvider } from '../migration-provider';
 
 
 function serializeSQLLine(sql: string): string {
@@ -41,7 +41,7 @@ export class MigrationCreateController implements Command {
         protected logger: Logger,
         protected databases: DatabaseRegistry,
         protected databaseProvider: MigrationProvider,
-        @inject(databaseConfig.token('migrationDir')) protected migrationDir: string,
+        @inject(kernelConfig.token('migrationDir')) protected migrationDir: string,
     ) {
     }
 

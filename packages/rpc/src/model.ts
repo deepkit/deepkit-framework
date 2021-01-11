@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { ClassType, CustomError } from '@deepkit/core';
+import { ClassType, CustomError, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, Entity, propertyDefinition, t } from '@deepkit/type';
-import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
+import { BehaviorSubject, isObservable, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
 import { CollectionQueryModel, CollectionState } from './collection';
 
@@ -163,12 +163,21 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     }
 }
 
+const IsEntitySubject = Symbol.for('deepkit/entitySubject');
+
+export function isEntitySubject(v: any): v is EntitySubject<any> {
+    return !!v && isObject(v) && v.hasOwnProperty(IsEntitySubject);
+}
+
+
 export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<T> {
     /**
      * Patches are in class format.
      */
     public readonly patches = new Subject<EntityPatch>();
     public readonly delete = new Subject<boolean>();
+
+    [IsEntitySubject] = true;
 
     public deleted: boolean = false;
 
@@ -324,8 +333,9 @@ export enum RpcTypes {
     ResponseActionObservableComplete,
     ResponseActionObservableError,
 
+    ActionCollectionUnsubscribe, //when client unsubscribed collection
+    ActionCollectionModel, //when client updated model
     ResponseActionCollection,
-    ResponseActionCollectionUnsubscribe,
     ResponseActionCollectionModel,
     ResponseActionCollectionState,
 
@@ -428,9 +438,9 @@ export const rpcEntityRemove = t.schema({
 });
 
 export interface EntityPatch {
-    $set?: {[path: string]: any},
-    $unset?: {[path: string]: number}
-    $inc?: {[path: string]: number}
+    $set?: { [path: string]: any },
+    $unset?: { [path: string]: number }
+    $inc?: { [path: string]: number }
 }
 
 export const rpcEntityPatch = t.schema({
