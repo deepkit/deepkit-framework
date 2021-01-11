@@ -9,9 +9,7 @@ import { atomicChange, getInstanceState } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
 import { Group } from './group';
 
-// process.env['ADAPTER_DRIVER'] = 'mongo';
-// process.env['ADAPTER_DRIVER'] = 'mysql';
-// process.env['ADAPTER_DRIVER'] = 'postgres';
+console.log('bookstore tests for adapter', process.env['ADAPTER_DRIVER'] || 'sqlite');
 
 class BookModeration {
     @t locked: boolean = false;
@@ -70,7 +68,7 @@ class Review {
     }
 }
 
-const entities = [User, UserCredentials, Book, Review, Image];
+const entities = [User, UserCredentials, Book, Review, Image, Group, UserGroup];
 
 test('schema', () => {
     const book = getClassSchema(Book);

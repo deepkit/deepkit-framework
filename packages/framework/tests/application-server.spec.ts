@@ -8,24 +8,6 @@ import { createTestingApp, MemoryLoggerTransport } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
 import { Logger } from '../src/logger';
 
-test('basic bootstrap', async () => {
-    const AppModule = createModule({});
-
-    const app = new Application(AppModule);
-    const applicationServer = app.get(ApplicationServer);
-
-    await applicationServer.start();
-    await applicationServer.close();
-});
-
-test('testing app manuall', async () => {
-    const test = createTestingApp({});
-    const applicationServer = test.app.get(ApplicationServer);
-
-    await applicationServer.start();
-    await applicationServer.close();
-});
-
 test('testing app api', async () => {
     @rpc.controller('test')
     class MyController {
