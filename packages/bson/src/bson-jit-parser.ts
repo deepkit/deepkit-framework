@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType, CompilerContext} from '@deepkit/core';
-import {ClassSchema, getClassSchema, getDataConverterJS, getSortedUnionTypes, PropertySchema} from '@deepkit/type';
-import {BaseParser, ParserV2} from './bson-parser';
-import {bsonTypeGuards} from './bson-typeguards';
-import {seekElementSize} from './continuation';
-import {BSONType, BSON_BINARY_SUBTYPE_UUID, digitByteSize} from './utils';
+import { ClassType, CompilerContext } from '@deepkit/core';
+import { ClassSchema, getClassSchema, getSortedUnionTypes, PropertySchema } from '@deepkit/type';
+import { BaseParser, ParserV2 } from './bson-parser';
+import { bsonTypeGuards } from './bson-typeguards';
+import { seekElementSize } from './continuation';
+import { BSONType, BSON_BINARY_SUBTYPE_UUID, digitByteSize } from './utils';
 
 function createPropertyConverter(setter: string, property: PropertySchema, compiler: CompilerContext, parentProperty?: PropertySchema): string {
     //we want the isNullable value from the actual property, not the decorated.
@@ -83,8 +83,6 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
                 ${propertyAssign.join('\n')}
             }
             `;
-
-            return createPropertyConverter(setter, schema.getDecoratedPropertySchema(), compiler);
         }
 
         const propertySchema = '_propertySchema_' + property.name;

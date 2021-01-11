@@ -8,11 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-//sort by type group (literal, type, generic primitive, any)
-import {PropertySchema} from './model';
-import {Types} from './types';
-import {JSONTypeGuard, JSONTypeGuardFactory, jsonTypeGuards} from './json-typeguards';
+import { PropertySchema } from './model';
+import { Types } from './types';
 
+//sort by type group (literal, type, generic primitive, any)
 const sorts: { [type in Types]: number } = {
     literal: 1,
 
@@ -46,7 +45,7 @@ const sorts: { [type in Types]: number } = {
 
 export type UnionTypeGuard<T> = (p: PropertySchema) => T;
 
-export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Types, UnionTypeGuard<T>>): {property: PropertySchema, guard: T}[] {
+export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Types, UnionTypeGuard<T>>): { property: PropertySchema, guard: T }[] {
     const sorted = property.templateArgs.slice(0);
 
     sorted.sort((a, b) => {
@@ -55,7 +54,7 @@ export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Typ
         return 0;
     });
 
-    const result: {property: PropertySchema, guard: T}[] = [];
+    const result: { property: PropertySchema, guard: T }[] = [];
     for (const type of sorted) {
         const guardFactory = guards.get(type.type);
         if (!guardFactory) {

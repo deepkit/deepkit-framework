@@ -56,7 +56,6 @@ export class Application<T extends ModuleOptions<any>> {
 
     configure(config: ModuleConfigOfOptions<T>): this {
         throw new Error('Not implemented yet.');
-        return this;
     }
 
     loadConfigFromEnvFile(path: string | string[]): this {

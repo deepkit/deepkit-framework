@@ -67,7 +67,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.AllEntityFields: {
                 const composite = response.composite(BrokerType.AllEntityFields);
-                for (const [name, fields] of this.state.entityFields.entries()) {
+                for (const name of this.state.entityFields.keys()) {
                     composite.add(BrokerType.EntityFields, brokerEntityFields, { name, fields: this.state.getEntityFields(name) });
                 }
                 composite.send();
@@ -151,7 +151,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.Get: {
                 const body = message.parseBody(brokerGet);
-                response.reply(BrokerType.ResponseGet, brokerResponseGet, { v: this.state.get(body.n) })
+                response.reply(BrokerType.ResponseGet, brokerResponseGet, { v: this.state.get(body.n) });
                 break;
             }
         }

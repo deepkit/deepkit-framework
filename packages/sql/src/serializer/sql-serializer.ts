@@ -153,8 +153,6 @@ sqlSerializer.fromClass.prepend('class', (property: PropertySchema, state: Compi
 sqlSerializer.fromClass.append('class', (property: PropertySchema, state: CompilerState) => {
     if (property.isReference) return;
 
-    const schema = state.jitStack.currentSchema;
-
     //we don't stringify non-root properties
     if (property.parent) return;
 

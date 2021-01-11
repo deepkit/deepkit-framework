@@ -129,7 +129,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     }
 
     bootstrapModules(): void {
-        for (const [module, contexts] of this.moduleContexts.entries()) {
+        for (const module of this.moduleContexts.keys()) {
             if (module.options.bootstrap) {
                 this.getInjectorFor(module).get(module.options.bootstrap);
             }

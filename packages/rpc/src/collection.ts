@@ -21,11 +21,10 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import { ClassType, getClassName, isArray, isFunction, isObject } from '@deepkit/core';
+import { ClassType, getClassName, isArray, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { t } from '@deepkit/type';
-import { REPL_MODE_SLOPPY } from 'repl';
-import { isObservable, ReplaySubject, Subject, TeardownLogic } from 'rxjs';
+import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
 import { EntitySubject, IdInterface } from './model';
 
 export type FilterParameters = { [name: string]: any | undefined };

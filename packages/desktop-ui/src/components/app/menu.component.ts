@@ -55,7 +55,7 @@ export class MenuBase implements AfterViewInit {
             for (const item of this.child.toArray()) {
                 if (item === this) continue;
                 if (!item.validOs()) {
-                    continue
+                    continue;
                 }
                 submenu.push(item.buildTemplate());
             }

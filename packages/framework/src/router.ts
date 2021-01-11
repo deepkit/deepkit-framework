@@ -16,18 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {asyncOperation, ClassType, CompilerContext} from '@deepkit/core';
-import {join} from 'path';
-import {getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema} from '@deepkit/type';
-import {ValidationError, ValidationErrorItem} from '@deepkit/rpc';
-import {httpClass} from './decorator';
-import {BasicInjector, injectable} from './injector/injector';
-import {Logger} from './logger';
-import {IncomingMessage} from 'http';
+import { asyncOperation, ClassType, CompilerContext } from '@deepkit/core';
+import { ValidationError, ValidationErrorItem } from '@deepkit/rpc';
+import { getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema } from '@deepkit/type';
 import formidable from 'formidable';
+import { IncomingMessage } from 'http';
+import { join } from 'path';
 import querystring from 'querystring';
-import {HttpRequest} from './http-model';
-import {Socket} from 'net';
+import { httpClass } from './decorator';
+import { HttpRequest } from './http-model';
+import { BasicInjector, injectable } from './injector/injector';
+import { Logger } from './logger';
 
 type ResolvedController = { parameters?: ((injector: BasicInjector) => any[] | Promise<any[]>), routeConfig: RouteConfig };
 
@@ -46,7 +45,7 @@ function parseBody(form: any, req: IncomingMessage) {
             if (err) {
                 reject(err);
             } else {
-                resolve({fields, files});
+                resolve({ fields, files });
             }
         });
     });
@@ -194,7 +193,7 @@ function parseRoutePathToRegex(routeConfig: RouteConfig): { regex: string, param
         return routeConfig.parameterRegularExpressions[name] ? '(' + routeConfig.parameterRegularExpressions[name] + ')' : String.raw`([^/]+)`;
     });
 
-    return {regex: path, parameterNames};
+    return { regex: path, parameterNames };
 }
 
 export function parseRouteControllerAction(routeConfig: RouteConfig): ParsedRoute {
@@ -346,20 +345,7 @@ export class Router {
     }
 
     protected getRouteUrlResolveCode(compiler: CompilerContext, routeConfig: RouteConfig): string {
-        const routeConfigVar = compiler.reserveVariable('routeConfigVar', routeConfig);
         const parsedRoute = parseRouteControllerAction(routeConfig);
-        const path = routeConfig.getFullPath();
-        const prefix = path.substr(0, path.indexOf(':'));
-
-        const regexVar = compiler.reserveVariable('regex', new RegExp('^' + parsedRoute.regex + '$'));
-        const setParameters: string[] = [];
-        const parameterValidator: string[] = [];
-        let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
-
-        let enableParseBody = false;
-        const hasParameters = parsedRoute.getParameters().length > 0;
-        let requiresAsyncParameters = false;
-
 
         let url = routeConfig.getFullPath();
         url = url.replace(/:(\w+)/g, (a, name) => {
@@ -404,14 +390,14 @@ export class Router {
         if (!data) return;
 
         for (const action of data.getActions()) {
-            const routeConfig = new RouteConfig(action.name, action.httpMethod, action.path, {controller, methodName: action.methodName});
+            const routeConfig = new RouteConfig(action.name, action.httpMethod, action.path, { controller, methodName: action.methodName });
             routeConfig.parameterRegularExpressions = action.parameterRegularExpressions;
             routeConfig.throws = action.throws;
             routeConfig.description = action.description;
             routeConfig.category = action.category;
             routeConfig.groups = action.groups;
             routeConfig.baseUrl = data.baseUrl;
-            routeConfig.parameters = {...action.parameters};
+            routeConfig.parameters = { ...action.parameters };
             this.addRoute(routeConfig);
         }
     }
@@ -472,8 +458,8 @@ export class Router {
 
     public resolve(method: string, url: string): ResolvedController | undefined {
         return this.resolveRequest({
-            getUrl(){ return url},
-            getMethod(){ return method},
+            getUrl() { return url },
+            getMethod() { return method },
         } as any);
     }
 }

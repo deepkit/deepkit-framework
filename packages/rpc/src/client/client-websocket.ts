@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClientTransportAdapter, RpcClient, RpcClientTransporter, TransportConnectionHooks} from './client';
+import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
 
 export class DeepkitClient extends RpcClient {
     constructor(url: string) {

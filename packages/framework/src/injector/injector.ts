@@ -278,8 +278,6 @@ export class Injector {
             token = isFunction(options.token) ? options.token() : options.token;
         }
 
-        const useRootInjector = options?.root === true;
-
         if (token instanceof ConfigDefinition) {
             return compiler.reserveVariable('fullConfig', token.getConfigOrDefaults());
         } else if (token instanceof ConfigToken) {
@@ -307,7 +305,6 @@ export class Injector {
     }
 
     protected createFactory(compiler: CompilerContext, classType: ClassType): string {
-        const argsCheck: string[] = [];
         const schema = getClassSchema(classType);
         const args: string[] = [];
         const propertyAssignment: string[] = [];

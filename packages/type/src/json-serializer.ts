@@ -8,16 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema} from './model';
-import {arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64} from './core';
-import {getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions} from './jit';
-import {ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue} from '@deepkit/core';
-import {CompilerState, getDataConverterJS, reserveVariable} from './serializer-compiler';
-import {getSortedUnionTypes} from './union';
-import {Serializer} from './serializer';
-import {ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema} from './utils';
-import {validate, ValidationFailed} from './validation';
-import {jsonTypeGuards} from './json-typeguards';
+import { ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } from '@deepkit/core';
+import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
+import { getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions } from './jit';
+import { jsonTypeGuards } from './json-typeguards';
+import { ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema } from './model';
+import { Serializer } from './serializer';
+import { CompilerState, getDataConverterJS } from './serializer-compiler';
+import { getSortedUnionTypes } from './union';
+import { ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema } from './utils';
+import { validate, ValidationFailed } from './validation';
 
 export class JSONSerializer extends Serializer {
     constructor() {
@@ -171,26 +171,26 @@ jsonSerializer.toClass.register('enum', (property: PropertySchema, state: Compil
 });
 
 jsonSerializer.toClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
-    state.setContext({base64ToTypedArray});
-    state.setContext({isBinaryJSON});
+    state.setContext({ base64ToTypedArray });
+    state.setContext({ isBinaryJSON });
     //property.type maps to global type constructor names
     state.addSetter(`${state.accessor} instanceof ${property.type} ? ${state.accessor} : (isBinaryJSON(${state.accessor}) ? base64ToTypedArray(${state.accessor}.data, ${property.type}) : new ${property.type}())`);
 });
 
 jsonSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({base64ToArrayBuffer});
-    state.setContext({isBinaryJSON});
+    state.setContext({ base64ToArrayBuffer });
+    state.setContext({ isBinaryJSON });
     state.addSetter(`${state.accessor} instanceof ArrayBuffer ? ${state.accessor} : (isBinaryJSON(${state.accessor}) ? base64ToArrayBuffer(${state.accessor}.data): new ArrayBuffer())`);
 });
 
 //we need to add '∏type' to make union with auto-detection work
 jsonSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
-    state.setContext({typedArrayToBase64});
+    state.setContext({ typedArrayToBase64 });
     state.addSetter(`{'∏type': 'binary', data: typedArrayToBase64(${state.accessor})}`);
 });
 
 jsonSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({arrayBufferToBase64});
+    state.setContext({ arrayBufferToBase64 });
     state.addSetter(`{'∏type': 'binary', data: arrayBufferToBase64(${state.accessor})}`);
 });
 

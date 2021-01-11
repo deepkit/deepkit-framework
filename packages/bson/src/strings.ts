@@ -88,14 +88,12 @@ export function decodeUTF8(buffer: Uint8Array, off: number = 0, end: number = In
             } else throw new Error('UTF-8 decode: code point 0x' + c.toString(16) + ' exceeds UTF-16 reach');
         } else {
             if (c === 0) {
-                off = off;
                 return s;
             }
 
             s += String.fromCharCode(c);
         }
     }
-    off = end;
     return s;
 }
 

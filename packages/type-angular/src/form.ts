@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ClassType, isFunction, isObject} from '@deepkit/core';
-import {Subscription} from 'rxjs';
-import {AbstractControl, FormArray, FormControl, FormGroup, ValidationErrors, ValidatorFn} from '@angular/forms';
-import {getClassSchema, handleCustomValidator, jitValidateProperty, PropertySchema, PropertyValidator, PropertyValidatorError, ValidationFailedItem} from '@deepkit/type';
+import { AbstractControl, FormArray, FormControl, FormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { ClassType, isFunction } from '@deepkit/core';
+import { getClassSchema, handleCustomValidator, jitValidateProperty, PropertySchema, PropertyValidator, PropertyValidatorError, ValidationFailedItem } from '@deepkit/type';
+import { Subscription } from 'rxjs';
 
 export function requiredIfValidator(predicate: () => boolean, validator: ValidatorFn) {
     return (formControl: AbstractControl) => {
@@ -109,7 +109,7 @@ function createControl<T>(
         parent.root.valueChanges.subscribe((v) => {
             //todo: rework to apply validity status sync. find our why here is a race condition.
             setTimeout(() => {
-                control.updateValueAndValidity({emitEvent: false});
+                control.updateValueAndValidity({ emitEvent: false });
             });
         });
     }
@@ -276,7 +276,7 @@ export class TypedFormGroup<T extends object> extends FormGroup {
             //this comes after `setValue` so we don't get old values
             this.lastSyncSub = this.valueChanges.subscribe(() => {
                 this.updateEntity(v);
-                this.updateValueAndValidity({emitEvent: false});
+                this.updateValueAndValidity({ emitEvent: false });
             });
             this.updateValueAndValidity();
         } else {

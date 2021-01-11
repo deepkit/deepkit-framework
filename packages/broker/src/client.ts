@@ -1,4 +1,4 @@
-import { deserialize, getBSONDecoder, getBSONSerializer } from "@deepkit/bson";
+import { getBSONDecoder, getBSONSerializer } from "@deepkit/bson";
 import { arrayRemoveItem, asyncOperation, ClassType } from "@deepkit/core";
 import { AsyncSubscription } from "@deepkit/core-rxjs";
 import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, TransportConnectionHooks } from "@deepkit/rpc";

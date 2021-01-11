@@ -16,18 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassSchema, getClassSchema, getDataConverterJS, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, reserveVariable, UnpopulatedCheck} from '@deepkit/type';
-import {ClassType, CompilerContext, isArray, isObject, toFastProperties} from '@deepkit/core';
-import {seekElementSize} from './continuation';
+import { ClassType, CompilerContext, isArray, isObject, toFastProperties } from '@deepkit/core';
+import { ClassSchema, getClassSchema, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, UnpopulatedCheck } from '@deepkit/type';
+import bson from 'bson';
+import { seekElementSize } from './continuation';
 import {
-    BSON_BINARY_SUBTYPE_BYTE_ARRAY,
+    BSONType, BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_BINARY_SUBTYPE_DEFAULT,
     BSON_BINARY_SUBTYPE_UUID,
-    BSONType,
     digitByteSize,
     TWO_PWR_32_DBL_N
 } from './utils';
-import bson from 'bson';
 
 export function createBuffer(size: number): Uint8Array {
     return 'undefined' !== typeof Buffer ? Buffer.allocUnsafe(size) : new Uint8Array(size);

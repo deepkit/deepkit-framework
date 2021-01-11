@@ -17,16 +17,16 @@
  */
 
 import { each, getClassName } from '@deepkit/core';
-import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
-import { RpcControllers } from './service-container';
-import { EventDispatcher, BaseEvent, eventDispatcher, EventToken } from './event';
+import { RpcClient } from '@deepkit/rpc';
 import cluster from 'cluster';
-import { inject, injectable, InjectorContext } from './injector/injector';
-import { Logger } from './logger';
-import { kernelConfig } from './kernel.config';
-import { HttpControllers } from './router';
 import { httpClass } from './decorator';
-import { DirectClient, RpcClient, RpcKernel } from '@deepkit/rpc';
+import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from './event';
+import { injectable, InjectorContext } from './injector/injector';
+import { kernelConfig } from './kernel.config';
+import { Logger } from './logger';
+import { HttpControllers } from './router';
+import { RpcControllers } from './service-container';
+import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 
 export class ServerBootstrapEvent extends BaseEvent { }
 

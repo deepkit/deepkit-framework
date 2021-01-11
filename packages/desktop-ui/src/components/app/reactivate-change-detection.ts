@@ -3,10 +3,9 @@
  * This file is part of Deepkit and licensed under GNU GPL v3. See the LICENSE file for more information.
  */
 
-import {AfterViewInit, ApplicationRef, NgModule, OnDestroy, Type} from "@angular/core";
-import {ɵComponentDef as ComponentDef, ɵNG_COMP_DEF as NG_COMP_DEF, SimpleChanges} from '@angular/core';
-import {Subscription} from "rxjs";
-import {throttleTime, getClassName} from "@deepkit/core";
+import { AfterViewInit, ApplicationRef, NgModule, OnDestroy, Type, ɵComponentDef as ComponentDef, ɵNG_COMP_DEF as NG_COMP_DEF } from "@angular/core";
+import { getClassName, throttleTime } from "@deepkit/core";
+import { Subscription } from "rxjs";
 
 export function observeAction() {
     return function (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<any>): TypedPropertyDescriptor<any> | void {

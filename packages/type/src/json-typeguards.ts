@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {getClassSchema, PropertySchema} from './model';
-import {isValidEnumValue} from '@deepkit/core';
-import {typedArrayNamesMap, Types} from './types';
+import { isValidEnumValue } from '@deepkit/core';
+import { PropertySchema } from './model';
+import { typedArrayNamesMap, Types } from './types';
 
 export type JSONTypeGuard = (v: any) => boolean;
 export type JSONTypeGuardFactory = (property: PropertySchema) => JSONTypeGuard;

@@ -1,12 +1,12 @@
 import {
     ChangeDetectionStrategy,
     ChangeDetectorRef,
-    Component, DoCheck,
+    Component,
     HostBinding,
-    HostListener, Injectable,
+    HostListener,
     Injector, SkipSelf
 } from "@angular/core";
-import {ngValueAccessor, ValueAccessorBase} from "../../core/form";
+import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
 
 @Component({
     selector: 'dui-checkbox',

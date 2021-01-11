@@ -19,7 +19,7 @@
 import { ClassType, CustomError, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, Entity, propertyDefinition, t } from '@deepkit/type';
-import { BehaviorSubject, isObservable, Observable, Subject, TeardownLogic } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
 import { CollectionQueryModel, CollectionState } from './collection';
 
@@ -384,7 +384,7 @@ export enum ActionObservableTypes {
 export const rpcSort = t.schema({
     field: t.string,
     direction: t.union('asc', 'desc'),
-})
+});
 
 export const rpcResponseActionObservable = t.schema({
     type: t.enum(ActionObservableTypes)

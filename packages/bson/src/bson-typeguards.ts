@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {isValidEnumValue} from '@deepkit/core';
-import {getClassSchema, PropertySchema, typedArrayNamesMap, Types} from '@deepkit/type';
-import {BaseParser, findValueInObject} from './bson-parser';
-import {BSONType} from './utils';
+import { isValidEnumValue } from '@deepkit/core';
+import { PropertySchema, typedArrayNamesMap, Types } from '@deepkit/type';
+import { BaseParser, findValueInObject } from './bson-parser';
+import { BSONType } from './utils';
 
 export type BSONTypeGuard = (elementType: BSONType, parser: BaseParser) => boolean;
 export type BSONTypeGuardFactory = (property: PropertySchema) => BSONTypeGuard;

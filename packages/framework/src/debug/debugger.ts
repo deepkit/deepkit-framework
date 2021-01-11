@@ -16,18 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {DebugRequest} from '@deepkit/framework-debug-shared';
-import {LoggerLevel} from '../logger';
-import {injectable} from '../injector/injector';
-import {Zone} from '../zone';
-import {HttpRequest, HttpResponse} from '../http-model';
-import {DebugDatabase} from './db';
-import {kernelConfig} from '../kernel.config';
-import {openSync, appendFileSync, mkdirSync} from 'fs';
-import {dirname, join} from 'path';
-import {DatabaseAdapter, DatabaseSession} from '@deepkit/orm';
-import {Stopwatch} from './stopwatch';
-import {normalizeDirectory} from '../utils';
+import { DebugRequest } from '@deepkit/framework-debug-shared';
+import { DatabaseAdapter, DatabaseSession } from '@deepkit/orm';
+import { appendFileSync, mkdirSync, openSync } from 'fs';
+import { join } from 'path';
+import { HttpRequest, HttpResponse } from '../http-model';
+import { injectable } from '../injector/injector';
+import { kernelConfig } from '../kernel.config';
+import { LoggerLevel } from '../logger';
+import { normalizeDirectory } from '../utils';
+import { Zone } from '../zone';
+import { DebugDatabase } from './db';
+import { Stopwatch } from './stopwatch';
 
 export class Debugger {
     protected getCollector(): HttpRequestDebugCollector | undefined {
@@ -43,7 +43,7 @@ export class Debugger {
     }
 }
 
-class Config extends kernelConfig.slice(['debugSqlitePath', 'debugStorePath', 'debugUrl']) {}
+class Config extends kernelConfig.slice(['debugSqlitePath', 'debugStorePath', 'debugUrl']) { }
 
 @injectable()
 export class HttpRequestDebugCollector {
@@ -72,7 +72,7 @@ export class HttpRequestDebugCollector {
         this.session.add(this.debugRequest);
         await this.session.commit();
         this.logPath = join(this.config.debugStorePath, 'requests', this.debugRequest.id + '');
-        mkdirSync(this.logPath, {recursive: true});
+        mkdirSync(this.logPath, { recursive: true });
         this.logFile = openSync(join(this.logPath, 'log.txt'), 'a');
     }
 

@@ -16,17 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {ClassType} from '@deepkit/core';
+import { ClassType } from '@deepkit/core';
 import {
     ClassDecoratorResult,
-    ClassSchema,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     getClassSchema,
     mergeDecorator,
-    PropertyDecoratorResult,
+    PropertyDecoratorResult
 } from '@deepkit/type';
-import {join} from 'path';
+import { join } from 'path';
 
 export interface ControllerOptions {
     name: string;
@@ -165,7 +164,7 @@ class HttpActionDecorator {
     }
 
     throws(errorType: ClassType, message?: string) {
-        this.t.throws.push({errorType, message});
+        this.t.throws.push({ errorType, message });
     }
 
     regexp(parameterName: string, regex: any) {

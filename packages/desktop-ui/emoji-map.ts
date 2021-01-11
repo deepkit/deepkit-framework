@@ -36,7 +36,7 @@ import {eachPair} from "@marcj/estdlib";
         categoriesNormalized.push({
             name: name,
             emojis: emojis,
-        })
+        });
     }
 
     const mapTS = `

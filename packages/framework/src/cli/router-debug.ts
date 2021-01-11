@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {cli, Command, flag} from '../command';
-import {Router} from '../router';
+import { cli, Command } from '../command';
+import { Router } from '../router';
 
 @cli.controller('debug:router', {
 })

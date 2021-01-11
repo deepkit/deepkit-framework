@@ -470,7 +470,7 @@ class LiveCollection<T extends IdVersionInterface> {
             console.log('this.model.change.subscribe');
             this.updateCollection().catch(console.error);
         });
-        
+
         this.collection.model.change.subscribe(() => {
             console.log('this.collection.model.change.subscribe');
             this.model.limit = this.collection.model.limit;

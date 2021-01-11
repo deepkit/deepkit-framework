@@ -90,7 +90,7 @@ export class SQLFilterBuilder {
         const isReference = 'string' === typeof value && value[0] === '$';
         let rvalue = '';
         if (isReference) {
-            rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`
+            rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`;
         } else {
             if (value === undefined || value === null) {
                 cmpSign = this.isNull();

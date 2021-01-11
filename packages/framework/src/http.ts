@@ -16,23 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {RouteConfig, Router} from './router';
-import {ClassType, CustomError, isPromise} from '@deepkit/core';
-import {inject, injectable, InjectorContext, MemoryInjector} from './injector/injector';
-import {IncomingMessage, ServerResponse} from 'http';
-import {Socket} from 'net';
-import {getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer} from '@deepkit/type';
-import {isElementStruct, render} from './template/template';
-import {Logger} from './logger';
+import { ClassType, CustomError } from '@deepkit/core';
+import { getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer } from '@deepkit/type';
+import { stat } from 'fs';
+import { ServerResponse } from 'http';
+import { Socket } from 'net';
+import { join } from 'path';
 import serveStatic from 'serve-static';
-import {BaseEvent, EventDispatcher, eventDispatcher,} from './event';
-import {createWorkflow, WorkflowEvent} from './workflow';
-import {join} from 'path';
-import {stat} from 'fs';
-import {HttpRequestDebugCollector} from './debug/debugger';
-import {kernelConfig} from './kernel.config';
-import {Zone} from './zone';
-import {HttpRequest, HttpResponse} from './http-model';
+import { HttpRequestDebugCollector } from './debug/debugger';
+import { EventDispatcher, eventDispatcher } from './event';
+import { HttpRequest, HttpResponse } from './http-model';
+import { inject, injectable, InjectorContext, MemoryInjector } from './injector/injector';
+import { kernelConfig } from './kernel.config';
+import { Logger } from './logger';
+import { RouteConfig, Router } from './router';
+import { isElementStruct, render } from './template/template';
+import { createWorkflow, WorkflowEvent } from './workflow';
+import { Zone } from './zone';
 
 
 export class Redirect {

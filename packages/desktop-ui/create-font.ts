@@ -33,7 +33,7 @@ ensureDirSync(out);
 
     readFolder(__dirname + '/../src/assets/icons', files);
     if (projectOutput) {
-        readFolder(projectOutput, files);``
+        readFolder(projectOutput, files);
     }
 
     const fontStream = new SVGIcons2SVGFontStream({

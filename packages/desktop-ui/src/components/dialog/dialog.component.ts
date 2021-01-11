@@ -176,7 +176,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         const window = this.window ? this.window.getClosestNonDialogWindow() : this.registry.getOuterActiveWindow();
         const offsetTop = window && window.header ? window.header.getBottomPosition() - 1 : 0;
 
-        const document = this.registry.getCurrentViewContainerRef().element.nativeElement.ownerDocument;
+        // const document = this.registry.getCurrentViewContainerRef().element.nativeElement.ownerDocument;
 
         //this is necessary for multi-window environments, but doesn't work yet.
         // const overlayContainer = new OverlayContainer(document);

@@ -16,9 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {cli, Command, flag} from '../command';
-import {Router} from '../router';
-import {ServiceContainer} from '../service-container';
+import { cli, Command, flag } from '../command';
+import { ServiceContainer } from '../service-container';
 
 @cli.controller('debug:di', {
 })

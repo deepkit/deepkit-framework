@@ -17,16 +17,15 @@
  */
 
 import { asyncOperation, toFastProperties } from '@deepkit/core';
-import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jsonSerializer, propertyDefinition, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
+import { ClassSchema, createClassSchema, getClassSchema, propertyDefinition, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
-import { ClientProgress } from '../writer';
+import { skip } from 'rxjs/operators';
 import { Collection, CollectionQueryModel, CollectionState } from '../collection';
-import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionModel, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
+import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
+import { ClientProgress } from '../writer';
 import { RpcBaseClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
-import { deserialize } from '@deepkit/bson';
-import { skip } from 'rxjs/operators';
 
 type ControllerStateActionTypes = {
     parameters: string[],
@@ -367,12 +366,6 @@ export class RpcActionClient {
                     }
 
                     collection.set(items);
-                    break;
-                }
-
-                case RpcTypes.ResponseActionCollectionState: {
-                    const state = next.parseBody(getClassSchema(CollectionState));
-                    collection.setState(state);
                     break;
                 }
             }

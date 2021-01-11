@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { BaseParser } from './bson-parser';
 import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_DATA_ARRAY,
@@ -38,10 +39,8 @@ import {
     BSON_DATA_STRING,
     BSON_DATA_SYMBOL,
     BSON_DATA_TIMESTAMP,
-    BSON_DATA_UNDEFINED,
-    digitByteSize
+    BSON_DATA_UNDEFINED
 } from './utils';
-import {BaseParser} from './bson-parser';
 
 export function seekElementSize(elementType: number, parser: BaseParser): any {
     switch (elementType) {

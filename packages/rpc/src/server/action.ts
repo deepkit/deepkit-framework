@@ -149,7 +149,7 @@ export class RpcServerAction {
             parametersDeserialize: getXToClassFunction(argSchema, jsonSerializer),
             parametersValidate: jitValidate(argSchema),
             observableNextSchema
-        }
+        };
         toFastProperties(this.cachedActionsTypes);
 
         return types;

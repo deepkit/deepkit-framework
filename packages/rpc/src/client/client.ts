@@ -19,18 +19,18 @@
 import { asyncOperation, ClassType, sleep } from '@deepkit/core';
 import { ClassSchema } from '@deepkit/type';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { RpcMessageWriter, ClientProgress, Progress, SingleProgress } from '../writer';
 import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
 import {
     createRpcMessage,
     createRpcMessagePeer,
     ErroredRpcMessage,
-    readRpcMessage,
+
     RpcMessage,
     RpcMessageReader,
     RpcMessageRouteType
 } from '../protocol';
 import { RpcKernel } from '../server/kernel';
+import { ClientProgress, RpcMessageWriter, SingleProgress } from '../writer';
 import { RpcActionClient, RpcControllerState } from './action';
 import { RpcMessageSubject } from './message-subject';
 
@@ -368,7 +368,7 @@ export class RpcBaseClient {
         const id = this.messageId++;
         const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
         const dontWaitForConnection = !!(options && options.dontWaitForConnection);
-        const timeout = options && options.timeout ? options.timeout : 0;
+        // const timeout = options && options.timeout ? options.timeout : 0;
 
         const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
             if (connectionId === this.transporter.connectionId) {

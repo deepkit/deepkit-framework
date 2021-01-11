@@ -1,4 +1,3 @@
-import { deserialize } from "@deepkit/bson";
 import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from "@deepkit/core";
 import { ClassSchema, getClassSchema, jsonSerializer } from "@deepkit/type";
 import { EntityPatch, EntitySubject, IdType, IdVersionInterface, rpcEntityPatch, rpcEntityRemove, RpcTypes } from "../model";
@@ -7,7 +6,7 @@ import { RpcMessage } from "../protocol";
 export class EntitySubjectStore<T extends IdVersionInterface> {
     store = new Map<IdType, { item: T, forks: EntitySubject<T>[] }>();
 
-    constructor(protected schema: ClassSchema<T>) {}
+    constructor(protected schema: ClassSchema<T>) { }
 
     public isRegistered(id: IdType): boolean {
         return this.store.has(id);

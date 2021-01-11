@@ -226,7 +226,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         if (this.parentWindow && this.alwaysRaised) {
             this.parentWindow.windowState.disableInputs.next(true);
             if (this.parentWindow.electronWindow) {
-                this.electronWindow.setParentWindow(this.parentWindow.electronWindow)
+                this.electronWindow.setParentWindow(this.parentWindow.electronWindow);
             }
         }
 

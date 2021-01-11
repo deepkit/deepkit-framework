@@ -811,7 +811,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         }
 
         const sortField = this.currentSort || this.defaultSort;
-        const dir = this.currentSortDirection || this.defaultSortDirection
+        const dir = this.currentSortDirection || this.defaultSortDirection;
         const customSortFunction = this.sortFunction ? this.sortFunction(sortField, dir) : undefined;
 
         if (customSortFunction) {

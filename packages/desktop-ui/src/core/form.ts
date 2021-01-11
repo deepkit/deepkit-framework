@@ -1,4 +1,3 @@
-import {ControlValueAccessor, NG_VALUE_ACCESSOR, NgControl} from "@angular/forms";
 import {
     ChangeDetectorRef,
     Directive,
@@ -6,7 +5,6 @@ import {
     forwardRef,
     HostBinding,
     Inject,
-    Injectable,
     Injector,
     Input,
     OnDestroy,
@@ -14,8 +12,9 @@ import {
     SkipSelf,
     Type
 } from "@angular/core";
-import {FormComponent} from "../components/form/form.component";
-import {detectChangesNextFrame} from "../components/app/utils";
+import { ControlValueAccessor, NgControl, NG_VALUE_ACCESSOR } from "@angular/forms";
+import { detectChangesNextFrame } from "../components/app/utils";
+import { FormComponent } from "../components/form/form.component";
 
 export function ngValueAccessor<T>(clazz: Type<T>) {
     return {

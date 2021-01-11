@@ -18,16 +18,12 @@
 
 import {
     binaryTypes,
-    compilerToString,
     CompilerState,
+     compilerToString,
     getClassSchema,
     getDataConverterJS,
     jsonSerializer,
-    nodeBufferToArrayBuffer,
-    nodeBufferToTypedArray,
     PropertySchema,
-    typedArrayNamesMap,
-    typedArrayToBuffer,
     Types
 } from '@deepkit/type';
 import bson from 'bson';
@@ -117,7 +113,7 @@ mongoSerializer.fromClass.prepend('class', (property: PropertySchema, state: Com
 
 //this is necessary since we use in FindCommand `filter: t.any`, so uuid and objectId need to be correct BSON types already
 mongoSerializer.fromClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({uuid4Binary});
+    state.setContext({ uuid4Binary });
     state.addCodeForSetter(`
         try {
             ${state.setter} = uuid4Binary(${state.accessor});
@@ -128,7 +124,7 @@ mongoSerializer.fromClass.register('uuid', (property: PropertySchema, state: Com
     );
 });
 mongoSerializer.fromClass.register('objectId', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({ObjectID: bson.ObjectID});
+    state.setContext({ ObjectID: bson.ObjectID });
 
     state.addCodeForSetter(`
         try {
