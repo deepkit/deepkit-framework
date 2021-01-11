@@ -19,6 +19,6 @@ export class DocumentClass {
 }
 
 export class ClassWithUnmetParent {
-    @t.type(ClassWithUnmetParent).parentReference
-    parent?: ClassWithUnmetParent;
+    @t.type(ClassWithUnmetParent).required.parentReference
+    parent!: ClassWithUnmetParent;
 }

@@ -253,10 +253,10 @@ test('partial', () => {
 
 test('argument partial', () => {
     class Config {
-        @t
+        @t.required
         name!: string;
 
-        @t.optional
+        @t
         sub?: Config;
     }
 

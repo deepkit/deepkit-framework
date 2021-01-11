@@ -7,15 +7,15 @@ test('union ClassType', () => {
         @t.literal('regular')
         type!: 'regular';
 
-        @t.string
+        @t.string.required
         name!: string;
     }
 
     class AdminUser {
-        @t.literal('admin')
+        @t.literal('admin').required
         type!: 'admin';
 
-        @t.string
+        @t.string.required
         superAdminName!: string;
     }
 

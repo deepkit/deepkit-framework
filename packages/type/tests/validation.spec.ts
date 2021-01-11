@@ -53,8 +53,8 @@ test('test required', async () => {
         @t
         id: string = '1';
 
-        @t
-        name?: string;
+        @t.required
+        name!: string;
 
         @t.optional
         optional?: string;
@@ -67,7 +67,6 @@ test('test required', async () => {
     }
 
     const instance = new Model;
-    expect(validate(Model, instance).length).toBe(1);
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
         message: 'Required value is undefined',
@@ -93,16 +92,16 @@ test('test required', async () => {
 
 test('test deep', async () => {
     class Deep {
-        @t
-        name?: string;
+        @t.required
+        name!: string;
     }
 
     class Model {
         @t
         id: string = '2';
 
-        @t.type(Deep)
-        deep?: Deep;
+        @t.type(Deep).required
+        deep!: Deep;
 
         @t.array(Deep)
         deepArray: Deep[] = [];
@@ -112,7 +111,6 @@ test('test deep', async () => {
     }
 
     const instance = new Model;
-    expect(validate(Model, instance).length).toBe(1);
     expect(validate(Model, instance)).toEqual([{
         code: 'required',
         message: 'Required value is undefined',
@@ -212,7 +210,7 @@ test('test inline validator', async () => {
 
 test('test uuid', async () => {
     class Model {
-        @t.uuid
+        @t.uuid.required
         public id!: string;
     }
 
@@ -239,7 +237,7 @@ test('test uuid', async () => {
 
 test('test objectId', async () => {
     class Model {
-        @t.mongoId
+        @t.mongoId.required
         public id!: string;
     }
 
@@ -278,7 +276,7 @@ test('test objectId', async () => {
 
 test('test boolean', async () => {
     class Model {
-        @t
+        @t.required
         public bo!: boolean;
     }
 
@@ -317,7 +315,7 @@ test('test boolean', async () => {
 
 test('test Date', async () => {
     class Model {
-        @t.type(Date)
+        @t.type(Date).required
         public endTime!: Date;
     }
 
@@ -605,21 +603,21 @@ test('test decorated', async () => {
 test('test nested validation', async () => {
     // Class definition with validation rules
     class A {
-        @t
+        @t.required
         public x!: string;
     }
 
     class B {
-        @t
+        @t.required
         public type!: string;
 
-        @t.type(A)
+        @t.type(A).required
         public nested!: A;
 
-        @t.map(A)
+        @t.map(A).required
         public nestedMap!: { [name: string]: A };
 
-        @t.array(A)
+        @t.array(A).required
         public nesteds!: A[];
     }
 
@@ -643,7 +641,7 @@ test('test nested validation', async () => {
     ]);
 
     class BOptional {
-        @t
+        @t.required
         public type!: string;
 
         @t.type(A).optional
@@ -818,7 +816,7 @@ test('custom isRequired null', () => {
     }
 
     class MyModel {
-        @t.enum(MyEnum).nullable.validator(isRequired()) enum?: MyEnum;
+        @t.enum(MyEnum).nullable.validator(isRequired()).required enum!: MyEnum;
     }
 
     expect(validate(MyModel, {enum: MyEnum.second})).toEqual([]);

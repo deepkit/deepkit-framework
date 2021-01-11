@@ -202,14 +202,14 @@ test('partial edge cases', () => {
     }
 
     class User {
-        @t
-        name?: string;
+        @t.required
+        name!: string;
 
-        @t.array(String)
-        tags?: string[];
+        @t.array(String).required
+        tags!: string[];
 
-        @t
-        config?: Config;
+        @t.required
+        config!: Config;
 
         @t.type(() => User).optional.parentReference
         parent?: User;

@@ -293,15 +293,15 @@ test('test invalid @f', () => {
 
     expect(() => {
         class User5 {
-            @t.array(Config)
-            config?: Config;
+            @t.array(Config).required
+            config!: Config;
         }
     }).toThrowError('User5::config type mismatch. Given Array<Config>, but declared is Config.');
 
     expect(() => {
         class Model {
-            @t.array(t.type(() => Config))
-            sub?: Config;
+            @t.array(t.type(() => Config)).required
+            sub!: Config;
         }
 
     }).toThrowError('Model::sub type mismatch. Given Array<Config>, but declared is Config.');
@@ -312,14 +312,14 @@ test('test invalid @f', () => {
             sub?: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Array<ForwardedRef>, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Array<ForwardedRef>?, but declared is Config.');
 
     expect(() => {
         class Model {
             @t.map(() => undefined)
             sub?: Config;
         }
-    }).toThrowError('Model::sub type mismatch. Given Map<any, ForwardedRef>, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Map<any, ForwardedRef>?, but declared is Config.');
 
     expect(() => {
         class Model {
@@ -327,7 +327,7 @@ test('test invalid @f', () => {
             sub?: Config[];
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Map<any, Config>, but declared is Array.');
+    }).toThrowError('Model::sub type mismatch. Given Map<any, Config>?, but declared is Array.');
 
     {
         //works
