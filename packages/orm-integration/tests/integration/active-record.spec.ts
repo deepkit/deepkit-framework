@@ -16,12 +16,12 @@ test('basic operations', async () => {
 
     expect(await Book.query().count()).toBe(1);
 
-    expect(await database.query(Book).count()).toBe(1);
-    expect(await database.query(User).count()).toBe(1);
+    expect(await Book.query().count()).toBe(1);
+    expect(await Book.query().count()).toBe(1);
 
     await book1.remove();
 
-    expect(await database.query(Book).count()).toBe(0);
+    expect(await Book.query().count()).toBe(0);
     expect(await database.query(User).count()).toBe(1);
 });
 
@@ -43,7 +43,7 @@ test('second level join', async () => {
     expect(await database.query(User).count()).toBe(2);
 
     {
-        const books = await database.query(Book).useInnerJoinWith('author').innerJoinWith('groups').end().find();
+        const books = await Book.query().useInnerJoinWith('author').innerJoinWith('groups').end().find();
         expect(books.length).toBe(1); //because user1 has no group assigned
         const book1Db = books[0];
         expect(book1Db.author.name).toBe('peter');
@@ -54,7 +54,7 @@ test('second level join', async () => {
 
     {
         await database.persist(new UserGroup(user2, group1));
-        const books = await database.query(Book).useInnerJoinWith('author').innerJoinWith('groups').end().find();
+        const books = await Book.query().useInnerJoinWith('author').innerJoinWith('groups').end().find();
         expect(books.length).toBe(2); //because user1 has now a group
         const book1Db = books[0];
         expect(book1Db.title).toBe('My book');
@@ -81,7 +81,7 @@ test('many to many', async () => {
     await tagAssignment.save();
 
     {
-        const books = await database.query(Book).joinWith('tags').find();
+        const books = await Book.query().joinWith('tags').find();
         expect(books.length).toBe(1);
         const book1DB = books[0];
         expect(book1DB.author.id).toBe(user1.id);
@@ -94,7 +94,7 @@ test('many to many', async () => {
     await new BookTag(book1, tagHot).save();
 
     {
-        const books = await database.query(Book).joinWith('tags').find();
+        const books = await Book.query().joinWith('tags').find();
         expect(books.length).toBe(1);
         const book1DB = books[0];
         expect(book1DB.author.id).toBe(user1.id);
