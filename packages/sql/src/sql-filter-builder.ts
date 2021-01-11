@@ -38,6 +38,10 @@ export class SQLFilterBuilder {
         return '?'
     }
 
+    isNull() {
+        return 'IS NULL';
+    }
+
     convert(filter: Filter): string {
         return this.conditions(filter, 'AND').trim();
     }
@@ -88,21 +92,19 @@ export class SQLFilterBuilder {
         if (isReference) {
             rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`
         } else {
-            rvalue = this.createPlaceholder();
-            const property = resolvePropertySchema(this.schema, fieldName);
-            // if (!property.isArray && (comparison === 'in' || comparison === 'nin') && isArray(value)) {
-            //     this.params.push(value);
-            // } else {
             if (value === undefined || value === null) {
-                cmpSign = 'IS';
-                value = null;
-            }
+                cmpSign = this.isNull();
+                rvalue = '';
+            } else {
+                rvalue = this.createPlaceholder();
+                const property = resolvePropertySchema(this.schema, fieldName);
+                
+                if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
+                    value = JSON.stringify(value);
+                }
 
-            if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
-                value = JSON.stringify(value);
+                this.params.push(this.bindValue(value));
             }
-
-            this.params.push(this.bindValue(value));
         }
 
         // if (comparison === 'in' || comparison === 'nin') rvalue = '(' + rvalue + ')';

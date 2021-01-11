@@ -168,7 +168,19 @@ export class PostgresPersistence extends SQLPersistence {
                     }
                     requiredFields[i] = 1;
                     fieldAddedToValues[i] = 1;
-                    values[i].push(this.platform.quoteValue(value[i]));
+                    let v = value[i];
+
+                    //special postgres check to avoid an error like:
+                    /// column "deletedAt" is of type timestamp without time zone but expression is of type text
+                    if (v === undefined || v === null) {
+                        if (classSchema.getProperty(i).type === 'date') {
+                            values[i].push('null::timestamp');
+                        } else {
+                            values[i].push('null');
+                        }
+                    } else {
+                        values[i].push(this.platform.quoteValue(v));
+                    }
                 }
             }
 

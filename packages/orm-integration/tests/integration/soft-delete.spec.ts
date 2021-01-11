@@ -1,9 +1,8 @@
+import 'reflect-metadata';
 import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
-import { entity, plainToClass, t } from '@deepkit/type';
+import { entity, getClassSchema, plainToClass, t } from '@deepkit/type';
 import { test } from '@jest/globals';
 import { createEnvSetup } from './setup';
-
-// process.env['ADAPTER_DRIVER'] = 'mongo';
 
 test('soft-delete query', async () => {
     const s = t.schema({
@@ -60,7 +59,7 @@ test('soft-delete query', async () => {
 });
 
 test('soft-delete session', async () => {
-    @entity.name('softDeleteUser')
+    @entity.name('softDeleteUser2')
     class User {
         @t.primary.autoIncrement id: number = 0;
         @t deletedAt?: Date;
@@ -71,6 +70,7 @@ test('soft-delete session', async () => {
         ) { }
     }
 
+    expect(getClassSchema(User).getProperty('id').type).toBe('number');
     const database = await createEnvSetup([User]);
     const softDelete = new SoftDelete(database);
     softDelete.enable(User);
