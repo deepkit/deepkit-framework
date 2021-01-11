@@ -8,13 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType, eachKey, eachPair, getClassName, isClass, isConstructable, isFunction, isObject, isPlainObject, toFastProperties } from '@deepkit/core';
-import { isArray } from './utils';
-import { extractMethod } from './code-parser';
-import getParameterNames from 'get-parameter-names';
-import { typedArrayMap, typedArrayNamesMap, Types } from './types';
-import { FieldDecoratorResult } from './field-decorator';
+import { arrayRemoveItem, ClassType, eachKey, eachPair, ExtractClassType, extractMethodBody, getClassName, extractParameters, isClass, isConstructable, isFunction, isObject, isPlainObject, toFastProperties } from '@deepkit/core';
 import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
+import { FieldDecoratorResult } from './field-decorator';
+import { typedArrayMap, typedArrayNamesMap, Types } from './types';
+import { isArray } from './utils';
 
 export enum UnpopulatedCheck {
     None,
@@ -686,7 +684,7 @@ export class ClassSchema<T = any> {
     protected loadDefaults() {
         const originCode = this.classType.toString();
 
-        const constructorCode = originCode.startsWith('class') ? extractMethod(originCode, 'constructor') : originCode;
+        const constructorCode = originCode.startsWith('class') ? extractMethodBody(originCode, 'constructor') : originCode;
 
         const findAssignment = RegExp(String.raw`this\.([^ \t\.=]+)[^=]*=([^ \n\t;]+)?`, 'g');
         let match: any;
@@ -1016,7 +1014,7 @@ export class ClassSchema<T = any> {
                 ? Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType)
                 : Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
 
-            const names = getParameterNames(this.classType.prototype[name]);
+            const names = extractParameters(this.classType.prototype[name]);
 
             for (const [i, t] of eachPair(paramtypes)) {
                 if (!properties[i]) {
@@ -1215,11 +1213,16 @@ export class ClassSchema<T = any> {
     }
 }
 
+const deletedExcludedProperties = Symbol();
+
 export class ClassSlicer<T> {
     constructor(protected schema: ClassSchema<T>) { }
 
     public exclude<K extends (keyof T & string)[]>(...properties: K): ClassType<Omit<T, K[number]>> {
-        for (const name of properties) this.schema.removeProperty(name);
+        for (const name of properties) {
+            this.schema.removeProperty(name);
+            (this.schema.classType as any)[deletedExcludedProperties].push(name);
+        }
         return this.schema.classType as any;
     }
 
@@ -1231,7 +1234,7 @@ export class ClassSlicer<T> {
         return this.schema.classType as any;
     }
 
-    public extend<E extends PlainSchemaProps>(props: E, options?: { name?: string, classType?: ClassType }): ClassType<T & ExtractClassDefinition<E>> {
+    public extend<E extends PlainSchemaProps>(props: E): ClassType<T & ExtractClassDefinition<E>> {
         const schema = t.schema(props);
         for (const property of schema.getClassProperties().values()) {
             this.schema.registerProperty(property);
@@ -1241,7 +1244,73 @@ export class ClassSlicer<T> {
 }
 
 export function sliceClass<T>(classType: ClassType<T> | ClassSchema<T>): ClassSlicer<T> {
-    return new ClassSlicer(getClassSchema(classType).clone());
+    const base: ClassType<any> = classType instanceof ClassSchema ? classType.classType : classType;
+    class Class extends base {
+        static [deletedExcludedProperties]: string[] = [];
+        constructor(...args: any[]) {
+            super(...args);
+            for (const prop of Class[deletedExcludedProperties]) {
+                delete this[prop];
+            }
+        }
+    }
+    Class[deletedExcludedProperties].push('nix');
+    return new ClassSlicer(getClassSchema(base).clone(Class));
+}
+
+type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never;
+
+/**
+ * Function to mixin multiple classes together and create a new class, which can be extended from.
+ * 
+ * @example
+ * ```typescript
+ * 
+ *   class Timestampable {
+ *       @t createdAt: Date = new Date;
+ *       @t updatedAt: Date = new Date;
+ *   }
+ *
+ *   class SoftDeleted {
+ *       @t deletedAt?: Date;
+ *       @t deletedBy?: string;
+ *   }
+ *
+ *   class User extends mixin(Timestampable, SoftDeleted) {
+ *       @t.primary.autoIncrement id: number = 0;
+ *       @t.minLength(3).required public username!: string;
+ *   }
+ * ```
+ */
+export function mixin<T extends (ClassSchema | ClassType)[]>(...classTypes: T): ClassType<UnionToIntersection<ExtractClassType<T[number]>>> {
+    const constructors: Function[] = [];
+    const schema = createClassSchema(class {
+        constructor(...args: any[]) {
+            for (const c of constructors) {
+                c.call(this, ...args);
+            }
+        }
+    });
+
+    for (const classType of classTypes) {
+        const foreignSchema = getClassSchema(classType);
+
+        for (const i in foreignSchema.classType.prototype) {
+            schema.classType.prototype[i] = foreignSchema.classType.prototype[i];
+        }
+
+        for (const prop of foreignSchema.getClassProperties().values()) {
+            schema.registerProperty(prop.clone());
+        }
+
+        constructors.push(function (this: any, ...args: any[]) {
+            const item = new foreignSchema.classType(...args);
+            for (const prop of foreignSchema.getClassProperties().keys()) {
+                this[prop] = item[prop];
+            }
+        });
+    }
+    return schema.classType as any;
 }
 
 /**

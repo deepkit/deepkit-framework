@@ -7,8 +7,50 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ClassType } from "./core";
 
-export function extractMethod(classCode: string, name: string): string {
+const COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+var DEFAULT_PARAMS = /=[^,]+/mg;
+var FAT_ARROWS = /=>.*$/mg;
+
+// export function getParameterNames(fn: string | Function | ClassType) {
+//     fn = typeof fn === 'string' ? fn : fn.toString();
+//     const constructorCode = fn.startsWith('class') ? extractMethodBody(fn, 'constructor') : fn;
+
+//     const code = constructorCode
+//         .replace(COMMENTS, '')
+//         .replace(FAT_ARROWS, '')
+//         .replace(DEFAULT_PARAMS, '');
+
+//     console.log('code', code);
+
+//     const result = code.slice(code.indexOf('(') + 1, code.indexOf(')'))
+//         .match(/([^\(\){\s,]+)/g);
+
+//     return result === null
+//         ? []
+//         : result;
+// }
+
+export function extractParameters(fn: string | Function | ClassType): string[] {
+    fn = typeof fn === 'string' ? fn : fn.toString();
+    fn = removeStrings(fn);
+
+    if (fn.startsWith('class')) {
+        const start = fn.match(new RegExp('[\t\ \n{]constructor\\('));
+        if (!start) return [];
+
+        fn = fn.substr((start.index || 0) + start[0].length);
+
+        fn = fn.replace(COMMENTS, '').replace(FAT_ARROWS, '').replace(DEFAULT_PARAMS, '');
+        return fn.slice(0, fn.indexOf('{')).match(/([^\(\){\s,]+)/g) || [];
+    } else {
+        fn = fn.replace(COMMENTS, '').replace(FAT_ARROWS, '').replace(DEFAULT_PARAMS, '');
+        return fn.slice(fn.indexOf('(') + 1, fn.indexOf('{')).match(/([^\(\)\{\}\s,]+)/g) || [];
+    }
+}
+
+export function extractMethodBody(classCode: string, name: string): string {
     let methodCode = '';
     classCode = removeStrings(classCode);
     const start = classCode.match(new RegExp('[\t\ \n]' + name + '\\('));

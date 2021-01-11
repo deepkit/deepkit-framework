@@ -9,8 +9,7 @@
  */
 
 import { PropertyValidatorError } from './jit-validation';
-import { ClassType, eachPair, getClassName, isFunction, isNumber, isPlainObject, } from '@deepkit/core';
-import getParameterNames from 'get-parameter-names';
+import { ClassType, eachPair, getClassName, extractParameters, isFunction, isNumber, isPlainObject, } from '@deepkit/core';
 import { isArray } from './utils';
 import { ClassDecoratorResult, createClassDecoratorContext } from './decorator-builder';
 import {
@@ -203,7 +202,7 @@ function createFieldDecoratorResult<T>(
                 methodsParamNames[parameterIndexOrDescriptor] = givenPropertyName;
             } else if (methodName === 'constructor') {
                 //only for constructor methods
-                const constructorParamNames = getParameterNames((target as ClassType).prototype.constructor);
+                const constructorParamNames = extractParameters((target as ClassType).prototype.constructor);
                 // const constructorParamNames = getCachedParameterNames((target as ClassType).prototype.constructor);
                 givenPropertyName = constructorParamNames[parameterIndexOrDescriptor];
 
@@ -265,7 +264,7 @@ function createFieldDecoratorResult<T>(
                     argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
                 } else {
                     if (!argumentsProperties[parameterIndexOrDescriptor]) {
-                        const constructorParamNames = getParameterNames((target as any)[methodName]);
+                        const constructorParamNames = extractParameters((target as any)[methodName]);
                         const name = constructorParamNames[parameterIndexOrDescriptor] || String(parameterIndexOrDescriptor);
                         argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(name);
                         argumentsProperties[parameterIndexOrDescriptor].methodName = methodName;

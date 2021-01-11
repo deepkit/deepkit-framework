@@ -8,7 +8,7 @@ import { SQLiteDatabaseAdapter } from '@deepkit/sql';
 
 @entity.name('user')
 class User extends ActiveRecord {
-    @t.primary.autoIncrement id?: number;
+    @t.primary.autoIncrement id: number = 0;
     @t created: Date = new Date;
 
     constructor(

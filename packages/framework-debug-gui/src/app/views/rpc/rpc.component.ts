@@ -4,12 +4,12 @@ import { RpcAction, Workflow } from '@deepkit/framework-debug-shared';
 
 @Component({
   template: `
-    <div class="header">
+    <!--<div class="header">
       <h4>RPC Workflow</h4>
     </div>
     <div style="height: 250px; margin-bottom: 10px; overflow: auto" class="overlay-scrollbar-small">
       <app-workflow [workflow]="workflow"></app-workflow>
-    </div>
+    </div>-->
     <div class="header">
       <h4>RPC Actions</h4>
       <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="filterQuery"></dui-input>
@@ -72,9 +72,9 @@ export class RpcComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    [this.actions, this.workflow] = await Promise.all([
+    [this.actions] = await Promise.all([
       this.controllerClient.debug.actions(),
-      this.controllerClient.debug.getWorkflow('rpc'),
+      // this.controllerClient.debug.getWorkflow('rpc'),
     ]);
     this.cd.detectChanges();
   }
