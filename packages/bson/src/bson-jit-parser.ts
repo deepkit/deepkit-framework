@@ -23,7 +23,7 @@ import {bsonTypeGuards} from './bson-typeguards';
 import {seekElementSize} from './continuation';
 import {BSONType, BSON_BINARY_SUBTYPE_UUID, digitByteSize} from './utils';
 
-function createPropertyConverter(setter: string, property: PropertySchema, compiler: CompilerContext, parentProperty?: PropertySchema) {
+function createPropertyConverter(setter: string, property: PropertySchema, compiler: CompilerContext, parentProperty?: PropertySchema): string {
     //we want the isNullable value from the actual property, not the decorated.
     const nullOrSeek = `
         if (elementType === ${BSONType.NULL}) {

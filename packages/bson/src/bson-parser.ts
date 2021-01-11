@@ -21,13 +21,12 @@ import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_BINARY_SUBTYPE_UUID,
     BSONType,
-    digitByteSize
+    digitByteSize,
+    TWO_PWR_32_DBL_N
 } from './utils';
 import {decodeUTF8, decodeUTF8Parser} from './strings';
 import {nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap} from '@deepkit/type';
 import {seekElementSize} from './continuation';
-
-const TWO_PWR_32_DBL_N = (1n << 16n) * (1n << 16n);
 
 export const hexTable: string[] = [];
 for (let i = 0; i < 256; i++) {
@@ -93,7 +92,7 @@ export class BaseParser {
         const lowBits = this.eatUInt32();
         const highBits = this.eatUInt32();
 
-        return BigInt(highBits) * TWO_PWR_32_DBL_N + (BigInt(lowBits >>> 0));
+        return BigInt(highBits) * BigInt(TWO_PWR_32_DBL_N) + (BigInt(lowBits >>> 0));
     }
 
     parseString() {
@@ -227,7 +226,7 @@ export class BaseParser {
         return this.dataView.getFloat64(this.offset - 8, true);
     }
 
-    eatString(size): string {
+    eatString(size: number): string {
         this.offset += size;
         return decodeUTF8(this.buffer, this.offset - size, this.offset - 1);
     }
@@ -265,7 +264,7 @@ export class ParserV2 extends BaseParser {
         return s;
     }
 
-    eatString(size): string {
+    eatString(size: number): string {
         return decodeUTF8Parser(this, size);
     }
 }

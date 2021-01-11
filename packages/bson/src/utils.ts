@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+export const TWO_PWR_32_DBL_N = (1 << 16) * (1 << 16);
+
 export const BSON_DATA_NUMBER = 1;
 export const BSON_DATA_STRING = 2;
 export const BSON_DATA_OBJECT = 3;

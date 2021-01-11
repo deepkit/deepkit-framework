@@ -36,7 +36,8 @@ import {
     BSON_DATA_REGEXP,
     BSON_DATA_STRING,
     BSON_DATA_UNDEFINED,
-    digitByteSize
+    digitByteSize,
+    TWO_PWR_32_DBL_N
 } from './utils';
 import bson from 'bson';
 
@@ -47,8 +48,6 @@ export function createBuffer(size: number): Uint8Array {
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
 const BSON_INT32_MIN = -0x80000000;
-
-const TWO_PWR_32_DBL_N = (1n << 16n) * (1n << 16n);
 
 // JS MAX PRECISE VALUES
 export const JS_INT_MAX = 0x20000000000000; // Any integer up to 2^53 can be precisely represented by a double.
@@ -161,7 +160,7 @@ export function getValueSize(value: any): number {
     return 0;
 }
 
-function getPropertySizer(compiler: CompilerContext, property: PropertySchema, accessor, jitStack: JitStack): string {
+function getPropertySizer(compiler: CompilerContext, property: PropertySchema, accessor: string, jitStack: JitStack): string {
     if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
         property = property.getResolvedClassSchema().getDecoratedPropertySchema();
         accessor = `(${accessor} && ${accessor}.${property.name})`;
@@ -427,8 +426,8 @@ export class Writer {
                 this.writeByte(BSON_DATA_LONG);
                 nameWriter();
             }
-            this.writeUint32(Number(value % TWO_PWR_32_DBL_N) | 0);
-            this.writeUint32(Number(value / TWO_PWR_32_DBL_N) | 0);
+            this.writeUint32(Number(value % BigInt(TWO_PWR_32_DBL_N)) | 0);
+            this.writeUint32(Number(value / BigInt(TWO_PWR_32_DBL_N)) | 0);
         } else if ('number' === typeof value) {
             if (Math.floor(value) === value) {
                 //it's an int
@@ -493,7 +492,7 @@ export class Writer {
                 nameWriter();
             }
             let view = value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-            if (value['_bsontype'] === 'Binary') {
+            if ((value as any)['_bsontype'] === 'Binary') {
                 view = (value as any as bson.Binary).buffer;
             }
 
@@ -612,8 +611,8 @@ function getPropertySerializerCode(
                 //long
                 writer.writeByte(${BSON_DATA_LONG});
                 ${nameWriter}
-                writer.writeUint32(Number(${accessor} % TWO_PWR_32_DBL_N) | 0); //low
-                writer.writeUint32(Number(${accessor} / TWO_PWR_32_DBL_N) | 0); //high
+                writer.writeUint32(Number(${accessor} % BigInt(TWO_PWR_32_DBL_N)) | 0); //low
+                writer.writeUint32(Number(${accessor} / BigInt(TWO_PWR_32_DBL_N)) | 0); //high
             } else if (Math.floor(${accessor}) === ${accessor}) {
                 //it's an int
                 if (${accessor} >= ${BSON_INT32_MIN} && ${accessor} <= ${BSON_INT32_MAX}) {
