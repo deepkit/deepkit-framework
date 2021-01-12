@@ -20,7 +20,7 @@
     "font": "node bin/create-font.js",
     "build": "webpack && node bin/create-font.js && npm run docs",
     "prepublishOnly": "npm run build",
-    "docs": "typedoc --json src/assets/docs.json --mode modules src"
+    "docs": "typedoc --plugin none --json src/assets/docs.json --mode modules src"
   },
   "browserslist": [
     "last 2 Chrome versions"

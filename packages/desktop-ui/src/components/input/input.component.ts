@@ -208,7 +208,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
                         if (reader.result instanceof ArrayBuffer) {
                             resolve(reader.result);
                         } else {
-                            resolve();
+                            resolve(undefined);
                         }
                     }
                 };

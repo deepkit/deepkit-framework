@@ -311,7 +311,7 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
                 if (reader.result instanceof ArrayBuffer) {
                     resolve(new Uint8Array(reader.result));
                 } else {
-                    resolve();
+                    resolve(undefined);
                 }
             }
         };
