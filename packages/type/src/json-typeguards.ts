@@ -22,12 +22,6 @@ export function registerJSONTypeGuard(type: UnionGuardsTypes, factory: JSONTypeG
     jsonTypeGuards.set(type, factory);
 }
 
-registerJSONTypeGuard('simpleClass', (property: PropertySchema) => {
-    return (v: any) => {
-        return v && 'object' === typeof v && 'function' !== typeof v.slice;
-    };
-});
-
 registerJSONTypeGuard('class', (property: PropertySchema) => {
     const schema = property.getResolvedClassSchema();
     if (schema.discriminant) {
@@ -119,6 +113,12 @@ registerJSONTypeGuard('array', (property: PropertySchema) => {
 });
 
 registerJSONTypeGuard('map', (property: PropertySchema) => {
+    return (v: any) => {
+        return v && 'object' === typeof v && 'function' !== typeof v.slice;
+    };
+});
+
+registerJSONTypeGuard('patch', (property: PropertySchema) => {
     return (v: any) => {
         return v && 'object' === typeof v && 'function' !== typeof v.slice;
     };

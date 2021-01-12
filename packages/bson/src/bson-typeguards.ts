@@ -22,12 +22,6 @@ export function registerBSONTypeGuard(type: UnionGuardsTypes, factory: BSONTypeG
     bsonTypeGuards.set(type, factory);
 }
 
-registerBSONTypeGuard('simpleClass', (property: PropertySchema) => {
-    return (elementType: BSONType, parser: BaseParser) => {
-        return (elementType === BSONType.OBJECT);
-    };
-});
-
 registerBSONTypeGuard('class', (property: PropertySchema) => {
     const schema = property.getResolvedClassSchema();
     if (schema.discriminant) {
@@ -133,6 +127,12 @@ registerBSONTypeGuard('array', (property: PropertySchema) => {
 });
 
 registerBSONTypeGuard('map', (property: PropertySchema) => {
+    return (elementType: BSONType, parser: BaseParser) => {
+        return elementType === BSONType.OBJECT;
+    };
+});
+
+registerBSONTypeGuard('patch', (property: PropertySchema) => {
     return (elementType: BSONType, parser: BaseParser) => {
         return elementType === BSONType.OBJECT;
     };
