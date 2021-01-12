@@ -5,6 +5,7 @@ import { RpcMessage } from "../protocol";
 
 export class EntitySubjectStore<T extends IdVersionInterface> {
     store = new Map<IdType, { item: T, forks: EntitySubject<T>[] }>();
+    onCreation = new Map<IdType, { calls: Function[] }>();
 
     constructor(protected schema: ClassSchema<T>) { }
 
@@ -14,6 +15,11 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
 
     public register(item: T): void {
         this.store.set(item.id, { item: item, forks: [] });
+        const store = this.onCreation.get(item.id);
+        if (store) {
+            for (const c of store.calls) c();
+            this.onCreation.delete(item.id);
+        }
     }
 
     public deregister(id: IdType): void {
@@ -22,6 +28,15 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
 
     public getItem(id: IdType): T | undefined {
         return this.store.get(id)?.item;
+    }
+
+    protected registerOnCreation(id: IdType, call: Function) {
+        let store = this.onCreation.get(id);
+        if (!store) {
+            store = { calls: [] };
+            this.onCreation.set(id, store);
+        }
+        store.calls.push(call);
     }
 
     public onDelete(id: IdType): void {
@@ -35,7 +50,11 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
 
     public onSet(id: IdType, item: T): void {
         const store = this.store.get(id);
-        if (!store) throw new Error('Could not onSet on unknown item');
+        if (!store) {
+            this.registerOnCreation(id, () => this.onSet(id, item));
+            return;
+        }
+
         store.item = item;
         for (const fork of store.forks) {
             fork.next(item);
@@ -44,7 +63,14 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
 
     public onPatch(id: IdType, version: number, patch: EntityPatch): void {
         const store = this.store.get(id);
-        if (!store) throw new Error('Could not onPatch on unknown item');
+        if (!store) {
+            //it might happen that we receive patches before we actually have the entity registered
+            //in this case, we schedule the same call for later, when the actual item is registered.
+            this.registerOnCreation(id, () => this.onPatch(id, version, patch));
+            return;
+        }
+
+        if (store.item.version === version) return;
 
         store.item.version = version;
         if (patch.$set) {
