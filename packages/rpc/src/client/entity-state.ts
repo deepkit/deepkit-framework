@@ -70,9 +70,12 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
             return;
         }
 
-        if (store.item.version === version) return;
+        if (store.item.version === version) {
+            return;
+        }
 
         store.item.version = version;
+
         if (patch.$set) {
             const $set = jsonSerializer.for(this.schema).patchDeserialize(patch.$set);
 
@@ -82,6 +85,7 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
         }
 
         if (patch.$inc) for (const i in patch.$inc) {
+            if (i === 'version') continue;
             setPathValue(store.item, i, getPathValue(store.item, i) + patch.$inc[i]);
         }
 

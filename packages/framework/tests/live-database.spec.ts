@@ -94,18 +94,19 @@ test('test increase', async () => {
     expect(user.value.connections).toBe(0);
 
     testController.increase(1);
-    console.log('wait');
+    console.log('wait 1');
     await user.nextStateChange;
     expect(user.value.name).toBe('peter');
     expect(user.value.connections).toBe(1);
 
     testController.increase(-5);
-    console.log('wait');
+    console.log('wait 2');
     await user.nextStateChange;
     expect(user.value.name).toBe('peter');
     expect(user.value.connections).toBe(-4);
 
     testController.increase(1);
+    console.log('wait 3');
     await user.nextStateChange;
 
     expect(user.value.name).toBe('peter');
