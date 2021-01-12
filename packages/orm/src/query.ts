@@ -577,15 +577,15 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
     public async ids(singleKey: boolean = false): Promise<PrimaryKeyFields<T>[] | ExtractPrimaryKeyType<T>[]> {
         const pks: any = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
         if (singleKey && pks.length > 1) {
-            throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key. singleKey impossible.`);
+            throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key`);
         }
 
         if (singleKey) {
             const pkName = pks[0] as keyof Resolve<this>;
-            return (await this.clone().select(pks).find() as Resolve<this>[]).map(v => v[pkName]) as any;
+            return (await this.clone().select(...pks).find() as Resolve<this>[]).map(v => v[pkName]) as any;
         }
 
-        return await this.clone().select(pks).find() as any;
+        return await this.clone().select(...pks).find() as any;
     }
 
     public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {

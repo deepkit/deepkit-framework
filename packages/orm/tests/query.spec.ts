@@ -1,4 +1,4 @@
-import { PrimaryKey, t } from '@deepkit/type';
+import { plainToClass, PrimaryKey, t } from '@deepkit/type';
 import { test } from '@jest/globals';
 import { assert, IsExact } from "conditional-type-checks";
 import { Database } from '../src/database';
@@ -13,15 +13,18 @@ test('query select', async () => {
     assert<IsExact<{ id: PrimaryKey<number>, username: string }, InstanceType<typeof s.classType>>>(true);
 
     const database = new Database(new MemoryDatabaseAdapter());
+    await database.persist(plainToClass(s, { id: 0, username: 'Peter' }));
 
     {
         const item = await database.query(s).findOne();
+        expect(item.username).toBe('Peter');
         assert<IsExact<InstanceType<typeof s.classType>, typeof item>>(true);
         assert<IsExact<{ id: PrimaryKey<number>, username: string }, typeof item>>(true);
     }
 
     {
         const item = await database.query(s).select('username').findOne();
+        expect(item.username).toBe('Peter');
         assert<IsExact<InstanceType<typeof s.classType>, typeof item>>(false);
         assert<IsExact<{ id: PrimaryKey<number>, username: string }, typeof item>>(false);
         assert<IsExact<{ username: string }, typeof item>>(true);
