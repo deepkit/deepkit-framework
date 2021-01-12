@@ -11,15 +11,22 @@
 import { isValidEnumValue } from '@deepkit/core';
 import { PropertySchema } from './model';
 import { typedArrayNamesMap, Types } from './types';
+import { UnionGuardsTypes } from "./union";
 
 export type JSONTypeGuard = (v: any) => boolean;
 export type JSONTypeGuardFactory = (property: PropertySchema) => JSONTypeGuard;
 
-export const jsonTypeGuards = new Map<Types, JSONTypeGuardFactory>();
+export const jsonTypeGuards = new Map<UnionGuardsTypes, JSONTypeGuardFactory>();
 
-export function registerJSONTypeGuard(type: Types, factory: JSONTypeGuardFactory) {
+export function registerJSONTypeGuard(type: UnionGuardsTypes, factory: JSONTypeGuardFactory) {
     jsonTypeGuards.set(type, factory);
 }
+
+registerJSONTypeGuard('simpleClass', (property: PropertySchema) => {
+    return (v: any) => {
+        return v && 'object' === typeof v && 'function' !== typeof v.slice;
+    };
+});
 
 registerJSONTypeGuard('class', (property: PropertySchema) => {
     const schema = property.getResolvedClassSchema();

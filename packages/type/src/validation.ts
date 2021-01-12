@@ -48,7 +48,7 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * Returns an empty array if not errors found and validation succeeded.
  *
  * Warning: If `item` is a plain object this does not check if `item` is exactly of type T, but if it can safely be
- * converted to one using plainToClass. For example `t.string` allows numbers because it can be safely converted to string.
+ * converted to one using plainToClass/deserialize. For example `t.string` allows numbers because it can be safely converted to string.
  *
  * @example
  * ```

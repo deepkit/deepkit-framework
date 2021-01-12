@@ -9,19 +9,24 @@
  */
 
 import { isValidEnumValue } from '@deepkit/core';
-import { PropertySchema, typedArrayNamesMap, Types } from '@deepkit/type';
+import { PropertySchema, typedArrayNamesMap, Types, UnionGuardsTypes } from '@deepkit/type';
 import { BaseParser, findValueInObject } from './bson-parser';
 import { BSONType } from './utils';
 
 export type BSONTypeGuard = (elementType: BSONType, parser: BaseParser) => boolean;
 export type BSONTypeGuardFactory = (property: PropertySchema) => BSONTypeGuard;
 
-export const bsonTypeGuards = new Map<Types, BSONTypeGuardFactory>();
+export const bsonTypeGuards = new Map<UnionGuardsTypes, BSONTypeGuardFactory>();
 
-export function registerBSONTypeGuard(type: Types, factory: BSONTypeGuardFactory) {
+export function registerBSONTypeGuard(type: UnionGuardsTypes, factory: BSONTypeGuardFactory) {
     bsonTypeGuards.set(type, factory);
 }
 
+registerBSONTypeGuard('simpleClass', (property: PropertySchema) => {
+    return (elementType: BSONType, parser: BaseParser) => {
+        return (elementType === BSONType.OBJECT);
+    };
+});
 
 registerBSONTypeGuard('class', (property: PropertySchema) => {
     const schema = property.getResolvedClassSchema();

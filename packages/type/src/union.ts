@@ -45,7 +45,9 @@ const sorts: { [type in Types]: number } = {
 
 export type UnionTypeGuard<T> = (p: PropertySchema) => T;
 
-export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Types, UnionTypeGuard<T>>): { property: PropertySchema, guard: T }[] {
+export type UnionGuardsTypes =  Types | 'simpleClass';
+
+export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<UnionGuardsTypes, UnionTypeGuard<T>>): { property: PropertySchema, guard: T }[] {
     const sorted = property.templateArgs.slice(0);
 
     sorted.sort((a, b) => {
@@ -54,9 +56,18 @@ export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Typ
         return 0;
     });
 
+    const hasOnlyOneClassType = sorted.filter(v => v.type === 'class').length === 1;
+
     const result: { property: PropertySchema, guard: T }[] = [];
     for (const type of sorted) {
-        const guardFactory = guards.get(type.type);
+        let guardFactory = guards.get(type.type);
+
+        if (type.type === 'class' && hasOnlyOneClassType) {
+            //for simple union like string|MyClass we don't need a custom discriminator
+            //we just use the 'simpleClass' guard
+            guardFactory = guards.get('simpleClass');
+        }
+
         if (!guardFactory) {
             throw new Error(`No type guard for ${type.type} found`);
         }
@@ -64,7 +75,7 @@ export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Typ
         result.push({
             property: type,
             guard: guardFactory(type),
-        })
+        });
     }
 
     return result;

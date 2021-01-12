@@ -342,3 +342,28 @@ test('union string | date', () => {
     expect(validate(s, { union: 'sad' })).toEqual([]);
     expect(validate(s, { union: '2012-08-13T22:57:24.716Z' })).toEqual([]);
 });
+
+test('union string | MyClass', () => {
+    class MyClass {
+        @t.required id!: number;
+    }
+
+    const s = t.schema({
+        union: t.union(t.string, MyClass),
+    });
+
+    {
+        const item = jsonSerializer.for(s).deserialize({ union: 'foo' });
+        expect(item.union).toBe('foo');
+    }
+
+    {
+        const item = jsonSerializer.for(s).deserialize({ union: new MyClass });
+        expect(item.union).toBeInstanceOf(MyClass);
+    }
+
+    expect(validate(s, { union: {} })).toEqual([{ code: 'required', message: 'Required value is undefined', path: 'union.id', }]);
+    expect(validate(s, { union: false })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
+    expect(validate(s, { union: 'sad' })).toEqual([]);
+    expect(validate(s, { union: '2012-08-13T22:57:24.716Z' })).toEqual([]);
+});

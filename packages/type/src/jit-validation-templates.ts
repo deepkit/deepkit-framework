@@ -170,6 +170,7 @@ registerCheckerCompiler('union', (accessor: string, property: PropertySchema, ut
                         ${utils.raise('required', 'Required value is undefined')};
                     }
                 } else {
+                    console.debug('got union value', ${accessor});
                     ${utils.raise('invalid_union', 'No compatible type for union found')};
                 }
              }

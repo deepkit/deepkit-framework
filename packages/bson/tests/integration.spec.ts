@@ -38,6 +38,13 @@ class MyModel {
     }
 }
 
+class SimpleModel {
+    @t items: DecoratedValue = new DecoratedValue;
+
+    constructor(@t public name: string) {
+    }
+}
+
 const ab = new ArrayBuffer(2);
 const uint8Array = new Uint8Array(ab);
 
@@ -56,7 +63,7 @@ decoratedValue2.items = ['a', 'b', 'c'];
 
 
 
-const types: [FieldDecoratorResult<any>, any, any?, true?][] = [
+const types: [type: FieldDecoratorResult<any>, value: any, expected?: any, dontComarepToMongo?: true][] = [
     [t.string, 'Hello Peter'],
     [t.number, 1],
     [t.number, 0],
@@ -83,12 +90,17 @@ const types: [FieldDecoratorResult<any>, any, any?, true?][] = [
     [t.enum(MyEnum2), MyEnum2.third],
     [t.type({ name: t.string }), { name: 'Peter' }],
     [t.union(t.string, MyModel), 'asd'],
+    [t.union(t.string, MyModel), {name: 'foo'}],
+    [t.union(t.string, SimpleModel), 'asd'],
+    [t.union(t.string, SimpleModel), {name: 'foo'}],
+    [t.union(t.mongoId, SimpleModel), '507f191e810c19729de860ea', undefined, true],
+    [t.union(t.mongoId, SimpleModel), {name: 'foo'}],
     [t.union(t.string, t.array(t.string)), 'asd'],
     [t.union(t.string, t.array(t.string)), ['a', 'b']],
     [t.union(t.string, t.uuid), 'asd'],
     [t.union(t.string, t.uuid), '3c25985e-4e25-45db-9e8a-a487cc78929a'],
     [t.union(t.string, t.mongoId), 'asd'],
-    [t.union(t.string, t.uuid), '507f191e810c19729de860ea'],
+    [t.union(t.string, t.mongoId), '507f191e810c19729de860ea', undefined, true],
     [t.union(t.string, t.uuid, t.date), '3c25985e-4e25-45db-9e8a-a487cc78929a'],
     [t.union(t.string, t.uuid, t.date), 'asd'],
     [t.union(t.string, t.map(t.string)), 'asd'],
