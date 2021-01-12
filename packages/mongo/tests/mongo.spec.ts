@@ -124,10 +124,10 @@ test('test patchAll', async () => {
     expect(await session.query(SimpleModel).filter({name: {$regex: /^myName?/}}).count()).toBe(0);
     expect(await session.query(SimpleModel).filter({name: {$regex: /^peter.*/}}).count()).toBe(3);
 
-    const fields = await session.query(SimpleModel).filter({name: 'peterNew'}).select(['name']).findOne();
+    const fields = await session.query(SimpleModel).filter({name: 'peterNew'}).select('name').findOne();
     expect(fields!.name).toBe('peterNew');
 
-    const fieldRows = await session.query(SimpleModel).select(['name']).find();
+    const fieldRows = await session.query(SimpleModel).select('name').find();
     expect(fieldRows.length).toBe(3);
     expect(fieldRows[0].name).toBe('peterNew');
     expect(fieldRows[1].name).toBe('peterNew');

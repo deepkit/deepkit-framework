@@ -19,7 +19,7 @@
 import { ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
 import { Subject } from 'rxjs';
 import { ClassType, empty } from '@deepkit/core';
-import { FieldName, FlattenIfArray } from './utils';
+import { FieldName, FlattenIfArray, Placeholder, Replace, Resolve } from './utils';
 import { DatabaseSession } from './database-session';
 import { DatabaseAdapter } from './database';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
@@ -176,6 +176,8 @@ export interface QueryClassType<T> {
 }
 
 export class BaseQuery<T extends Entity> {
+    _!: Placeholder<T>;
+
     public format: 'class' | 'json' | 'raw' = 'class';
 
     protected createModel<T>() {
@@ -189,16 +191,10 @@ export class BaseQuery<T extends Entity> {
     ) {
     }
 
-    select(...fields: FieldName<T>[]): this;
-    select(fields: string[] | (FieldName<T>)[]): this;
-    select(fields: string[] | FieldName<T>[] | FieldName<T>, ...moreFields: FieldName<T>[]): this {
+    select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
         const c = this.clone();
-        if ('string' === typeof fields) {
-            c.model.select = new Set([fields as string, ...(moreFields as string[])]);
-        } else {
-            c.model.select = new Set([...fields as string[], ...(moreFields as string[])]);
-        }
-        return c;
+        c.model.select = new Set([...select as string[]]);
+        return c as any;
     }
 
     returning(...fields: FieldName<T>[]): this {
@@ -415,7 +411,6 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
  * coded against this interface via Database<DatabaseAdapter> which uses this GenericQuery.
  */
 export class GenericQuery<T extends Entity> extends BaseQuery<T> {
-    item!: T;
 
     constructor(
         classSchema: ClassSchema<T>,
@@ -426,11 +421,11 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         this.model.withIdentityMap = databaseSession.withIdentityMap;
     }
 
-    static from<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): B & InstanceType<T> {
-        const result = (new this(base.classSchema, base.databaseSession, base.resolver)) as B & InstanceType<T>;
+    static from<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): Replace<InstanceType<T>, Resolve<B>> {
+        const result = (new this(base.classSchema, base.databaseSession, base.resolver));
         result.model = base.model.clone(result);
         result.format = base.format;
-        return result;
+        return result as any;
     }
 
     protected async callQueryEvent(): Promise<this> {
@@ -454,9 +449,9 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         return await query.resolver.count(query.model);
     }
 
-    public async find(): Promise<T[]> {
+    public async find(): Promise<Resolve<this>[]> {
         const query = await this.callQueryEvent();
-        return await query.resolver.find(query.model);
+        return await query.resolver.find(query.model) as Resolve<this>[];
     }
 
     public async findOneOrUndefined(): Promise<T | undefined> {
@@ -464,11 +459,11 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         return await query.resolver.findOneOrUndefined(query.model);
     }
 
-    public async findOne(): Promise<T> {
+    public async findOne(): Promise<Resolve<this>> {
         const query = await this.callQueryEvent();
         const item = await query.resolver.findOneOrUndefined(query.model);
         if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found (for filter ${JSON.stringify(this.model.filter)})`);
-        return item;
+        return item as Resolve<this>;
     }
 
     public async deleteMany(): Promise<DeleteResult<T>> {
@@ -588,30 +583,31 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
     public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;
     public async ids(singleKey: true): Promise<ExtractPrimaryKeyType<T>[]>;
     public async ids(singleKey: boolean = false): Promise<PrimaryKeyFields<T>[] | ExtractPrimaryKeyType<T>[]> {
-        const pks = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
+        const pks: any = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
         if (singleKey && pks.length > 1) {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key. singleKey impossible.`);
         }
 
         if (singleKey) {
-            return (await this.clone().select(pks).find()).map(v => v[pks[0]]) as any;
+            const pkName = pks[0] as keyof Resolve<this>;
+            return (await this.clone().select(pks).find() as Resolve<this>[]).map(v => v[pkName]) as any;
         }
 
         return await this.clone().select(pks).find() as any;
     }
 
     public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
-        const items = await this.select(name).find();
+        const items = await this.select(name as keyof Resolve<this>).find() as T[];
         return items.map(v => v[name]);
     }
 
     public async findOneField<K extends FieldName<T>>(name: K): Promise<T[K]> {
-        const item = await this.select(name).findOne();
+        const item = await this.select(name as keyof Resolve<this>).findOne() as T;
         return item[name];
     }
 
     public async findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined> {
-        const item = await this.select(name).findOneOrUndefined();
+        const item = await this.select(name as keyof Resolve<this>).findOneOrUndefined();
         if (item) return item[name];
         return;
     }

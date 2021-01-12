@@ -445,7 +445,7 @@ test('joins', async () => {
 
     {
         const query = await session.query(OrganisationMembership)
-            .useInnerJoinWith('user').select(['id']).filter({name: 'marc'}).end();
+            .useInnerJoinWith('user').select('id').filter({name: 'marc'}).end();
 
         {
             const items = await query.find();
@@ -559,7 +559,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(Organisation).useJoinWith('users').select(['id']).end().find();
+        const items = await session.query(Organisation).useJoinWith('users').select('id').end().find();
         expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -675,7 +675,7 @@ test('joins', async () => {
         }
 
         {
-            const items = await query.clone().getJoin('organisations').useJoinWith('owner').select(['id']).end().end().find();
+            const items = await query.clone().getJoin('organisations').useJoinWith('owner').select('id').end().end().find();
             expect(items.length).toBe(2);
             expect(items[0].name).toBe('marc');
             expect(items[0].organisations.length).toBe(1);

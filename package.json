@@ -3,6 +3,7 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
+  "private": true,
   "scripts": {
     "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js --no-cache --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
@@ -11,7 +12,6 @@
     "clean": "rm -rf packages/*/dist",
     "clean-modules": "rm -rf packages/*/node_modules; rm -rf node_modules;",
     "docs": "rm -rf docs && typedoc",
-    "publish": "npm run build && lerna publish --no-private",
     "publish-force": "npm run build && lerna publish --no-private --force-publish",
     "publish-website": "heroku container:push web && heroku container:release web"
   },

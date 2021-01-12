@@ -52,3 +52,7 @@ export function findQueryList<T extends { [index: string]: any }>(items: T[], qu
     //sift can not be correctly imported, so we need to work around it.
     return (sift as any).default(query as any, items as any[]);
 }
+
+export type Placeholder<T> = () => T;
+export type Resolve<T extends {_: Placeholder<any>}> = T['_'] extends Placeholder<infer K> ? K : never;
+export type Replace<T, R> = T & { _: Placeholder<R> };

@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@types/sqlstring": "^2.2.1",
+    "conditional-type-checks": "^1.0.5",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
