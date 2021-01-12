@@ -2,9 +2,16 @@
   "name": "@deepkit/core",
   "version": "1.0.1-alpha.4",
   "description": "Deepkit core library",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "module": "./dist/esm/index.js",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -19,7 +26,9 @@
   "devDependencies": {
     "@types/dot-prop": "~4.2.0"
   },
-  "scripts": {},
+  "scripts": {
+    "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
+  },
   "jest": {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

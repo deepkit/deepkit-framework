@@ -1,9 +1,16 @@
 {
   "name": "@deepkit/broker",
   "version": "1.0.1-alpha.4",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "module": "./dist/esm/index.js",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
@@ -11,9 +18,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
+    "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
   },
   "peerDependencies": {
     "@deepkit/type": "^1.0.1-alpha.0",

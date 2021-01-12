@@ -2,17 +2,22 @@
   "name": "@deepkit/orm",
   "version": "1.0.1-alpha.4",
   "description": "Deepkit ORM, the fastest JIT-based ORM for Typescript",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "module": "./dist/esm/index.js",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "test": "jest --coverage",
-    "tsc": "tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
+    "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",

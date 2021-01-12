@@ -31,7 +31,7 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../type/tsconfig.dist.json"
+      "path": "../type/tsconfig.json"
     },
     {
       "path": "../bson/tsconfig.json"

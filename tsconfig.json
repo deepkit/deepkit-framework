@@ -14,7 +14,7 @@
       "path": "packages/framework/tsconfig.json"
     },
     {
-      "path": "packages/type/tsconfig.dist.json"
+      "path": "packages/type/tsconfig.json"
     },
     {
       "path": "packages/bson/tsconfig.json"
