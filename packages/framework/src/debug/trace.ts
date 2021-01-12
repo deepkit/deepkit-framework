@@ -21,6 +21,7 @@
 import { performance } from 'perf_hooks';
 
 export const enum TraceType {
+    end,
     request,
     cli,
     rpc,
@@ -29,58 +30,67 @@ export const enum TraceType {
     other,
 }
 
+export interface TraceFrameBase {
+    id: number;
+    stamp: number;
+}
+
 export interface TraceFrameRequest {
     type: TraceType.request;
-    id: number;
+    requestId: number;
 }
 
 export interface TraceFrameEvent {
     type: TraceType.event;
-    name: string;
+    eventName: string;
 }
 
 export interface TraceFrameRpc {
     type: TraceType.rpc;
-    id: string;
+    actionId: string;
 }
 
 export interface TraceFrameWorkflowTransition {
     type: TraceType.workflowTransition;
-    id: string;
+    transitionName: string;
 }
 
-export const enum TraceFrameMode {
-    start,
-    end,
-    data,
-}
-
-export interface TraceFrameBasic {
+export interface TraceFrameEnd {
+    type: TraceType.end;
+    id: number;
     stamp: number;
-    mode: TraceFrameMode;
 }
 
 export type TraceFrameTypes = TraceFrameRequest | TraceFrameEvent | TraceFrameRpc | TraceFrameWorkflowTransition;
-export type TraceFrame = TraceFrameBasic & TraceFrameTypes;
+export type TraceFrame = (TraceFrameBase & TraceFrameTypes) | TraceFrameEnd;
+
+export type TraceDone = () => void;
 
 export class Tracer {
-    protected stack: { name: string, level: number }[] = [];
+    protected id: number = 0;
+    // protected stack: { name: string, level: number }[] = [];
 
     protected frames: TraceFrame[] = [];
 
-    public start(type: TraceFrameTypes, name: string, data?: any) {
-        this.stack.push({ name, level: this.stack.length });
+    public start(type: TraceFrameTypes): TraceDone {
+        // this.stack.push({ level: this.stack.length });
 
-        const frame = Object.assign({ stamp: performance.now(), mode: TraceFrameMode.start }, type);
+        const id = this.id++;
+        const frame = Object.assign({ id, stamp: performance.now() }, type);
         this.frames.push(frame);
+
+        return () => {
+            this.frames.push({ id, type: TraceType.end, stamp: performance.now() });
+        };
     }
 
-    public end(name: string) {
-        const last = this.stack.pop();
-        if (!last) throw new Error(`Tracer race condition: could not end ${name}, stack empty`);
-        if (name !== last.name) throw new Error(`Tracer race condition: could not end ${name}, ${last.name} is expected`);
+    // public end(name: string) {
+    //     const last = this.stack.pop();
+    //     if (!last) throw new Error(`Tracer race condition: could not end ${name}, stack empty`);
+    //     if (name !== last.name) throw new Error(`Tracer race condition: could not end ${name}, ${last.name} is expected`);
 
-        const frame = Object.assign({ stamp: performance.now(), mode: TraceFrameMode.start });
-        this.frames.push(frame);
-    }
+
+    //     const frame = Object.assign({ stamp: performance.now(), mode: TraceFrameMode.end });
+    //     this.frames.push(frame);
+    // }
 }
