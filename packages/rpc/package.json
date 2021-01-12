@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/rpc",
-  "version": "1.0.1-alpha.1",
+  "version": "1.0.1-alpha.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -20,10 +20,10 @@
     "rxjs": "~6.6.0"
   },
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.1",
-    "@deepkit/type": "^1.0.1-alpha.1",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.1",
-    "@deepkit/bson": "^1.0.1-alpha.1",
+    "@deepkit/bson": "^1.0.1-alpha.2",
+    "@deepkit/core": "^1.0.1-alpha.2",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.2",
+    "@deepkit/type": "^1.0.1-alpha.2",
     "dot-prop": "^5.1.1"
   },
   "devDependencies": {
@@ -36,7 +36,10 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [".ts", ".tsx"],
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

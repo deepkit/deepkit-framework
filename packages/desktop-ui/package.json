@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/desktop-ui",
-  "version": "1.0.1-alpha.1",
+  "version": "1.0.1-alpha.2",
   "description": "Library for desktop UI widgets in Angular 10+",
   "keywords": [
     "Desktop",
@@ -26,8 +26,8 @@
     "last 2 Chrome versions"
   ],
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.0",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.0",
+    "@deepkit/core": "^1.0.1-alpha.2",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.2",
     "@types/hammerjs": "^2.0.36",
     "hammerjs": "^2.0.8",
     "path": "^0.12.7",
@@ -37,12 +37,12 @@
     "access": "public"
   },
   "peerDependencies": {
-    "electron": ">7.1.9",
-    "rxjs": "^6.5.3",
+    "@angular/cdk": "~10.2.3",
     "@angular/common": "~10.2.3",
     "@angular/core": "~10.2.3",
-    "@angular/cdk": "~10.2.3",
-    "@angular/forms": "~10.2.3"
+    "@angular/forms": "~10.2.3",
+    "electron": ">7.1.9",
+    "rxjs": "^6.5.3"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^0.1002.0",

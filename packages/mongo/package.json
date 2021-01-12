@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mongo",
-  "version": "1.0.1-alpha.1",
+  "version": "1.0.1-alpha.2",
   "description": "Deepkit ORM MongoDB adapter",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,16 +9,15 @@
   "publishConfig": {
     "access": "public"
   },
-  "scripts": {
-  },
+  "scripts": {},
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.1",
-    "@deepkit/core": "^1.0.1-alpha.1",
-    "@deepkit/orm": "^1.0.1-alpha.1",
-    "@deepkit/type": "^1.0.1-alpha.1",
+    "@deepkit/bson": "^1.0.1-alpha.2",
+    "@deepkit/core": "^1.0.1-alpha.2",
+    "@deepkit/orm": "^1.0.1-alpha.2",
+    "@deepkit/type": "^1.0.1-alpha.2",
     "bson": "^4.0.4",
     "mongo-uuid": "^1.0.0",
     "saslprep": "^1.0.3"
@@ -34,7 +33,10 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [".ts", ".tsx"],
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/core-rxjs",
-  "version": "1.0.1-alpha.1",
+  "version": "1.0.1-alpha.2",
   "description": "Deepkit core rxjs library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,21 +12,23 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "scripts": {
-  },
+  "scripts": {},
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
     "rxjs": "~6.6.0"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.1",
+    "@deepkit/core": "^1.0.1-alpha.2",
     "rxjs": "~6.6.0"
   },
   "jest": {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [".ts", ".tsx"],
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-shared",
-  "version": "1.0.1-alpha.1",
+  "version": "1.0.1-alpha.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -13,15 +13,18 @@
   },
   "scripts": {},
   "dependencies": {
-    "@deepkit/type": "^1.0.1-alpha.1",
-    "@deepkit/rpc": "^1.0.1-alpha.1"
+    "@deepkit/rpc": "^1.0.1-alpha.2",
+    "@deepkit/type": "^1.0.1-alpha.2"
   },
   "jest": {
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [".ts", ".tsx"],
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
     "testMatch": [
       "**/tests/**/*.spec.ts",
       "**/tests/**/*.spec.tsx"
