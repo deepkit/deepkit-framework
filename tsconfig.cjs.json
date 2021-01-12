@@ -17,9 +17,6 @@
       "path": "packages/mongo/tsconfig.cjs.json"
     },
     {
-      "path": "packages/type-angular/tsconfig.cjs.json"
-    },
-    {
       "path": "packages/sql/tsconfig.cjs.json"
     },
     {
