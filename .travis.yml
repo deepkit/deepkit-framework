@@ -21,7 +21,7 @@ before_script:
 - mysql -e 'CREATE DATABASE IF NOT EXISTS `default`;'
 - npm install
 - npm run bootstrap
-- npm run tsc
+- npm run build
 - sleep 1
 script:
 - npm run test
