@@ -2,6 +2,7 @@
   "name": "@deepkit/framework-debug-gui",
   "version": "1.0.1-alpha.4",
   "sideEffects": false,
+  "license": "AGPL-3.0-only",
   "publishConfig": {
     "access": "public"
   },

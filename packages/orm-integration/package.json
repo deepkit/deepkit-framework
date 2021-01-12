@@ -13,7 +13,7 @@
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
-  "license": "AGPL-3.0-only",
+  "license": "MIT",
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
