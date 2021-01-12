@@ -3,7 +3,7 @@
   "version": "1.0.1-alpha.5",
   "description": "Deepkit BSON parser",
   "type": "module",
-  "main": "./dist/cjs/index.js",
+  "main": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
@@ -11,7 +11,6 @@
       "default": "./dist/esm/index.js"
     }
   },
-  "module": "./dist/esm/index.js",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"

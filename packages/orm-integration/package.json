@@ -6,11 +6,6 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "private": true,
-  "scripts": {
-    "test": "sh ./test-all.sh",
-    "tsc": "tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
-  },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",

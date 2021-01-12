@@ -2,7 +2,7 @@
   "name": "@deepkit/rpc",
   "version": "1.0.1-alpha.5",
   "type": "module",
-  "main": "./dist/cjs/index.js",
+  "main": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
@@ -10,7 +10,6 @@
       "default": "./dist/esm/index.js"
     }
   },
-  "module": "./dist/esm/index.js",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
