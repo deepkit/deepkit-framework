@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/bson",
-  "version": "1.0.1-alpha.2",
+  "version": "1.0.1-alpha.3",
   "description": "Deepkit BSON parser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,8 +14,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.2",
-    "@deepkit/type": "^1.0.1-alpha.2",
+    "@deepkit/core": "^1.0.1-alpha.3",
+    "@deepkit/type": "^1.0.1-alpha.3",
     "bson": "^4.0.4"
   },
   "devDependencies": {

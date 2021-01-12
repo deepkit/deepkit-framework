@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-gui",
-  "version": "1.0.1-alpha.2",
+  "version": "1.0.1-alpha.3",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -27,10 +27,10 @@
     "@angular/platform-browser": "~10.2.3",
     "@angular/platform-browser-dynamic": "~10.2.3",
     "@angular/router": "~10.2.3",
-    "@deepkit/desktop-ui": "^1.0.1-alpha.2",
-    "@deepkit/framework-debug-shared": "^1.0.1-alpha.2",
-    "@deepkit/rpc": "^1.0.1-alpha.2",
-    "@deepkit/type": "^1.0.1-alpha.2",
+    "@deepkit/desktop-ui": "^1.0.1-alpha.3",
+    "@deepkit/framework-debug-shared": "^1.0.1-alpha.3",
+    "@deepkit/rpc": "^1.0.1-alpha.3",
+    "@deepkit/type": "^1.0.1-alpha.3",
     "@types/dagre": "^0.7.44",
     "@types/jasmine": "~3.5.0",
     "@types/jasminewd2": "~2.0.3",

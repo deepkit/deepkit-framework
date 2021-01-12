@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework",
-  "version": "1.0.1-alpha.2",
+  "version": "1.0.1-alpha.3",
   "exports": {
     ".": "./dist/index.js",
     "./jsx-runtime": "./dist/jsx-runtime.js",
@@ -25,15 +25,15 @@
     "rxjs": "~6.6.0"
   },
   "dependencies": {
-    "@deepkit/broker": "^1.0.1-alpha.2",
-    "@deepkit/core": "^1.0.1-alpha.2",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.2",
-    "@deepkit/framework-debug-gui": "^1.0.1-alpha.2",
-    "@deepkit/framework-debug-shared": "^1.0.1-alpha.2",
-    "@deepkit/orm": "^1.0.1-alpha.2",
-    "@deepkit/rpc": "^1.0.1-alpha.2",
-    "@deepkit/sql": "^1.0.1-alpha.2",
-    "@deepkit/type": "^1.0.1-alpha.2",
+    "@deepkit/broker": "^1.0.1-alpha.3",
+    "@deepkit/core": "^1.0.1-alpha.3",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.3",
+    "@deepkit/framework-debug-gui": "^1.0.1-alpha.3",
+    "@deepkit/framework-debug-shared": "^1.0.1-alpha.3",
+    "@deepkit/orm": "^1.0.1-alpha.3",
+    "@deepkit/rpc": "^1.0.1-alpha.3",
+    "@deepkit/sql": "^1.0.1-alpha.3",
+    "@deepkit/type": "^1.0.1-alpha.3",
     "@oclif/command": "^1.8.0",
     "@oclif/parser": "^3.8.5",
     "@oclif/plugin-help": "^3.2.0",
