@@ -2,7 +2,7 @@ import { AsyncEventSubscription, ClassType } from "@deepkit/core";
 import { ClassSchema, getClassSchema } from "@deepkit/type";
 import { DatabaseSession } from "../database-session";
 import { Database, DatabaseAdapter } from "../database";
-import { GenericQuery } from "../query";
+import { Query } from "../query";
 import { Entity } from "../type";
 
 interface SoftDeleteEntity extends Entity {
@@ -47,7 +47,7 @@ export class SoftDeleteSession {
     }
 }
 
-export class SoftDeleteQuery<T extends SoftDeleteEntity> extends GenericQuery<T> {
+export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
     includeSoftDeleted: boolean = false;
     setDeletedBy?: T['deletedBy'];
 
@@ -131,7 +131,7 @@ export class SoftDelete {
             throw new Error(`Entity ${schema.getClassName()} has no ${deletedAtName} property. Please define one as type '${deletedAtName}: t.date.optional'`);
         }
 
-        function queryFilter(event: { classSchema: ClassSchema, query: GenericQuery<any> }) {
+        function queryFilter(event: { classSchema: ClassSchema, query: Query<any> }) {
             //this is for each query method: count, find, findOne(), etc.
 
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter

@@ -18,7 +18,7 @@ import {
     DatabaseQueryModel,
     DatabaseSession, DeleteResult,
     Entity,
-    GenericQuery,
+    Query,
     GenericQueryResolver,
     PatchResult,
     SORT_ORDER
@@ -243,7 +243,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 }
 
-export class SQLDatabaseQuery<T extends Entity> extends GenericQuery<T> {
+export class SQLDatabaseQuery<T extends Entity> extends Query<T> {
     constructor(
         classSchema: ClassSchema<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
@@ -257,7 +257,6 @@ export class SQLDatabaseQuery<T extends Entity> extends GenericQuery<T> {
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.connectionPool, this.platform);
         cloned.model = this.model.clone(cloned) as this['model'];
-        cloned.format = this.format;
         cloned.resolver = this.resolver;
         return cloned;
     }

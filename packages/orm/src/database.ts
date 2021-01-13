@@ -9,7 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { GenericQuery } from './query';
+import { Query } from './query';
 import { getDatabaseSessionHydrator, isHydrated } from './formatter';
 import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
 import { DatabaseSession } from './database-session';
@@ -32,7 +32,7 @@ export async function hydrateEntity<T>(item: T) {
 }
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): GenericQuery<T>;
+    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): Query<T>;
 }
 
 export interface DatabasePersistenceChangeSet<T> {

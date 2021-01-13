@@ -9,7 +9,7 @@
  */
 
 import { DatabaseSession } from './database-session';
-import { DatabaseQueryModel, GenericQuery, GenericQueryResolver } from './query';
+import { DatabaseQueryModel, Query, GenericQueryResolver } from './query';
 import { ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySchema } from '@deepkit/type';
 import { ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
 import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database';
@@ -63,6 +63,161 @@ function sort(items: any[], field: string, sortFn: typeof sortAsc | typeof sortA
     items.sort((a, b) => {
         return sortFn(a[field], b[field]);
     });
+}
+
+export class MemoryQuery<T> extends Query<T> {
+    isMemoryDb() {
+        return true;
+    }
+}
+
+
+const find = <T>(adapter: MemoryDatabaseAdapter, classSchema: ClassSchema, model: DatabaseQueryModel<T>): T[] => {
+    const rawItems = [...adapter.getStore(classSchema).items.values()];
+    const serializer = memorySerializer.for(classSchema);
+    const items = rawItems.map(v => serializer.deserialize(v));
+
+    if (model.filter) {
+        model.filter = convertQueryFilter(classSchema, model.filter, (convertClassType: ClassSchema, path: string, value: any) => {
+            //this is important to convert relations to its foreignKey value
+            return serializer.serializeProperty(path, value);
+        }, {}, {
+            $parameter: (name, value) => {
+                if (undefined === model.parameters[value]) {
+                    throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
+                }
+                return model.parameters[value];
+            }
+        });
+    }
+
+    let filtered = model.filter ? findQueryList<T>(items, model.filter) : items;
+
+    if (model.hasJoins()) {
+        throw new Error('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
+    }
+
+    if (model.sort) {
+        for (const [name, direction] of Object.entries(model.sort)) {
+            sort(filtered, name, direction === 'asc' ? sortAsc : sortDesc);
+        }
+    }
+
+    if (model.skip && model.limit) {
+        filtered = filtered.slice(model.skip, model.skip + model.limit);
+    } else if (model.limit) {
+        filtered = filtered.slice(0, model.limit);
+    } else if (model.skip) {
+        filtered = filtered.slice(model.skip);
+    }
+    return filtered;
+}
+
+const remove = <T>(adapter: MemoryDatabaseAdapter, classSchema: ClassSchema<T>, toDelete: T[]) => {
+    const items = adapter.getStore(classSchema).items;
+
+    const primaryKey = classSchema.getPrimaryFieldName();
+    for (const item of toDelete) {
+        items.delete(item[primaryKey] as any);
+    }
+}
+
+export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
+    constructor(protected adapter: MemoryDatabaseAdapter, protected databaseSession: DatabaseSession<any>) {
+        super();
+    }
+
+    createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): MemoryQuery<T> {
+        const schema = getClassSchema(classType);
+        const adapter = this.adapter;
+
+        class Resolver extends GenericQueryResolver<T> {
+
+            protected createFormatter(withIdentityMap: boolean = false) {
+                return new Formatter(
+                    this.classSchema,
+                    memorySerializer,
+                    this.databaseSession.getHydrator(),
+                    withIdentityMap ? this.databaseSession.identityMap : undefined
+                );
+            }
+
+            async count(model: DatabaseQueryModel<T>): Promise<number> {
+                const items = find(adapter, schema, model);
+                return items.length;
+            }
+
+            async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
+                const items = find(adapter, schema, model);
+                const primaryKey = schema.getPrimaryFieldName();
+                for (const item of items) {
+                    deleteResult.primaryKeys.push(item[primaryKey] as any);
+                }
+                remove(adapter, schema, items);
+            }
+
+            async find(model: DatabaseQueryModel<T>): Promise<T[]> {
+                const items = find(adapter, schema, model);
+                const formatter = this.createFormatter(model.withIdentityMap);
+                return items.map(v => formatter.hydrate(model, v));
+            }
+
+            async findOneOrUndefined(model: DatabaseQueryModel<T>): Promise<T | undefined> {
+                const items = find(adapter, schema, model);
+
+                if (items[0]) return this.createFormatter(model.withIdentityMap).hydrate(model, items[0]);
+                return undefined;
+            }
+
+            async has(model: DatabaseQueryModel<T>): Promise<boolean> {
+                const items = find(adapter, schema, model);
+                return items.length > 0;
+            }
+
+            async patch(model: DatabaseQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
+                const items = find(adapter, schema, model);
+                const store = adapter.getStore(schema);
+                const primaryKey = schema.getPrimaryFieldName();
+                const serializer = memorySerializer.for(schema);
+
+                patchResult.modified = items.length;
+                for (const item of items) {
+
+                    if (changes.$inc) {
+                        for (const [path, v] of Object.entries(changes.$inc)) {
+                            setPathValue(item, path, getPathValue(item, path) + v);
+                        }
+                    }
+
+                    if (changes.$unset) {
+                        for (const path of Object.keys(changes.$unset)) {
+                            deletePathValue(item, path);
+                        }
+                    }
+
+                    if (changes.$set) {
+                        for (const [path, v] of Object.entries(changes.$set)) {
+                            setPathValue(item, path, v);
+                        }
+                    }
+
+                    if (model.returning) {
+                        for (const f of model.returning) {
+                            if (!patchResult.returning[f]) patchResult.returning[f] = [];
+                            const v = patchResult.returning[f];
+                            if (v) v.push(item[f]);
+                        }
+                    }
+
+                    patchResult.primaryKeys.push(item[primaryKey] as any);
+                    store.items.set(item[primaryKey] as any, serializer.serialize(item));
+                }
+            }
+        }
+
+
+        return new MemoryQuery(getClassSchema(classType), this.databaseSession, new Resolver(getClassSchema(classType), this.databaseSession));
+    }
 }
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
@@ -140,152 +295,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
         return '';
     }
 
-    queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory {
-        const adapter = this;
-
-        const find = <T>(classSchema: ClassSchema, model: DatabaseQueryModel<T>): T[] => {
-            const rawItems = [...this.getStore(classSchema).items.values()];
-            const serializer = memorySerializer.for(classSchema);
-            const items = rawItems.map(v => serializer.deserialize(v));
-
-            if (model.filter) {
-                model.filter = convertQueryFilter(classSchema, model.filter, (convertClassType: ClassSchema, path: string, value: any) => {
-                    //this is important to convert relations to its foreignKey value
-                    return serializer.serializeProperty(path, value);
-                }, {}, {
-                    $parameter: (name, value) => {
-                        if (undefined === model.parameters[value]) {
-                            throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
-                        }
-                        return model.parameters[value];
-                    }
-                });
-            }
-
-            let filtered = model.filter ? findQueryList<T>(items, model.filter) : items;
-
-            if (model.hasJoins()) {
-                throw new Error('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
-            }
-
-            if (model.sort) {
-                for (const [name, direction] of Object.entries(model.sort)) {
-                    sort(filtered, name, direction === 'asc' ? sortAsc : sortDesc);
-                }
-            }
-
-            if (model.skip && model.limit) {
-                filtered = filtered.slice(model.skip, model.skip + model.limit);
-            } else if (model.limit) {
-                filtered = filtered.slice(0, model.limit);
-            } else if (model.skip) {
-                filtered = filtered.slice(model.skip);
-            }
-            return filtered;
-        }
-
-        const remove = <T>(classSchema: ClassSchema<T>, toDelete: T[]) => {
-            const items = this.getStore(classSchema).items;
-
-            const primaryKey = classSchema.getPrimaryFieldName();
-            for (const item of toDelete) {
-                items.delete(item[primaryKey] as any);
-            }
-        }
-
-        return new class {
-            createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): GenericQuery<T> {
-                const schema = getClassSchema(classType);
-
-                class Resolver extends GenericQueryResolver<T> {
-
-                    protected createFormatter(withIdentityMap: boolean = false) {
-                        return new Formatter(
-                            this.classSchema,
-                            memorySerializer,
-                            this.databaseSession.getHydrator(),
-                            withIdentityMap ? this.databaseSession.identityMap : undefined
-                        );
-                    }
-
-                    async count(model: DatabaseQueryModel<T>): Promise<number> {
-                        const items = find(schema, model);
-                        return items.length;
-                    }
-
-                    async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-                        const items = find(schema, model);
-                        const primaryKey = schema.getPrimaryFieldName();
-                        for (const item of items) {
-                            deleteResult.primaryKeys.push(item[primaryKey] as any);
-                        }
-                        remove(schema, items);
-                    }
-
-                    async find(model: DatabaseQueryModel<T>): Promise<T[]> {
-                        const items = find(schema, model);
-                        const formatter = this.createFormatter(model.withIdentityMap);
-                        return items.map(v => formatter.hydrate(model, v));
-                    }
-
-                    async findOneOrUndefined(model: DatabaseQueryModel<T>): Promise<T | undefined> {
-                        const items = find(schema, model);
-
-                        if (items[0]) return this.createFormatter(model.withIdentityMap).hydrate(model, items[0]);
-                        return undefined;
-                    }
-
-                    async has(model: DatabaseQueryModel<T>): Promise<boolean> {
-                        const items = find(schema, model);
-                        return items.length > 0;
-                    }
-
-                    async patch(model: DatabaseQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
-                        const items = find(schema, model);
-                        const store = adapter.getStore(schema);
-                        const primaryKey = schema.getPrimaryFieldName();
-                        const serializer = memorySerializer.for(schema);
-
-                        patchResult.modified = items.length;
-                        for (const item of items) {
-
-                            if (changes.$inc) {
-                                for (const [path, v] of Object.entries(changes.$inc)) {
-                                    setPathValue(item, path, getPathValue(item, path) + v);
-                                }
-                            }
-
-                            if (changes.$unset) {
-                                for (const path of Object.keys(changes.$unset)) {
-                                    deletePathValue(item, path);
-                                }
-                            }
-
-                            if (changes.$set) {
-                                for (const [path, v] of Object.entries(changes.$set)) {
-                                    setPathValue(item, path, v);
-                                }
-                            }
-
-                            if (model.returning) {
-                                for (const f of model.returning) {
-                                    if (!patchResult.returning[f]) patchResult.returning[f] = [];
-                                    const v = patchResult.returning[f];
-                                    if (v) v.push(item[f]);
-                                }
-                            }
-
-                            patchResult.primaryKeys.push(item[primaryKey] as any);
-                            store.items.set(item[primaryKey] as any, serializer.serialize(item));
-                        }
-                    }
-                }
-
-                class Query extends GenericQuery<T> {
-                }
-
-                return new Query(getClassSchema(classType), databaseSession, new Resolver(getClassSchema(classType), databaseSession));
-            }
-        };
+    queryFactory(databaseSession: DatabaseSession<this>): MemoryQueryFactory {
+        return new MemoryQueryFactory(this, databaseSession);
     }
 }

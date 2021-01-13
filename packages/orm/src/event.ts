@@ -13,7 +13,7 @@ import { ClassSchema, ExtractPrimaryKeyType } from '@deepkit/type';
 import { Changes } from './changes';
 import { DatabasePersistenceChangeSet } from './database';
 import { DatabaseSession } from './database-session';
-import { GenericQuery } from './query';
+import { Query } from './query';
 import { DeleteResult, PatchResult } from './type';
 
 export class UnitOfWorkCommitEvent<T> extends AsyncEmitterEvent {
@@ -85,7 +85,7 @@ export class QueryDatabaseEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public query: GenericQuery<T>
+        public query: Query<T>
     ) {
         super()
     }
@@ -99,7 +99,7 @@ export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public query: GenericQuery<T>,
+        public query: Query<T>,
         public readonly deleteResult: DeleteResult<T>
     ) {
         super()
@@ -116,7 +116,7 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ClassSchema<T>,
-        public query: GenericQuery<T>,
+        public query: Query<T>,
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>
     ) {

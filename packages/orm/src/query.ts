@@ -10,7 +10,7 @@
 
 import { ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
 import { Subject } from 'rxjs';
-import { ClassType, empty } from '@deepkit/core';
+import { ClassType, empty, getClassName } from '@deepkit/core';
 import { FieldName, FlattenIfArray, Placeholder, Replace, Resolve } from './utils';
 import { DatabaseSession } from './database-session';
 import { DatabaseAdapter } from './database';
@@ -168,9 +168,8 @@ export interface QueryClassType<T> {
 }
 
 export class BaseQuery<T extends Entity> {
-    _!: Placeholder<T>;
-
-    public format: 'class' | 'json' | 'raw' = 'class';
+    //for higher kinded type
+    _!: () => T;
 
     protected createModel<T>() {
         return new DatabaseQueryModel<T, FilterQuery<T>, Sort<T>>();
@@ -179,7 +178,7 @@ export class BaseQuery<T extends Entity> {
     public model = this.createModel<T>();
 
     constructor(
-        public readonly classSchema: ClassSchema<T>
+        public readonly classSchema: ClassSchema,
     ) {
     }
 
@@ -259,7 +258,7 @@ export class BaseQuery<T extends Entity> {
 
         if (filter instanceof this.classSchema.classType) {
             const primaryKey = this.classSchema.getPrimaryField();
-            c.model.filter = { [primaryKey.name]: filter[primaryKey.name as FieldName<T>] } as this['model']['filter'];
+            c.model.filter = { [primaryKey.name]: (filter as any)[primaryKey.name] } as this['model']['filter'];
         } else {
             c.model.filter = filter;
         }
@@ -282,7 +281,6 @@ export class BaseQuery<T extends Entity> {
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema);
         cloned.model = this.model.clone(cloned) as this['model'];
-        cloned.format = this.format;
         return cloned;
     }
 
@@ -396,16 +394,31 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
     abstract has(model: MODEL): Promise<boolean>;
 }
 
+export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends ((...args: any[]) => any) ? K : never }[keyof T];
+
+// This can live anywhere in your codebase:
+function applyMixins(derivedCtor: any, constructors: any[]) {
+    constructors.forEach((baseCtor) => {
+        Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
+            Object.defineProperty(
+                derivedCtor.prototype,
+                name,
+                Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
+                Object.create(null)
+            );
+        });
+    });
+}
+
 /**
  * This a generic query abstraction which should supports most basics database interactions.
  *
  * All query implementations should extend this since db agnostic consumers are probably
  * coded against this interface via Database<DatabaseAdapter> which uses this GenericQuery.
  */
-export class GenericQuery<T extends Entity> extends BaseQuery<T> {
-
+export class Query<T extends Entity> extends BaseQuery<T> {
     constructor(
-        classSchema: ClassSchema<T>,
+        classSchema: ClassSchema,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
         protected resolver: GenericQueryResolver<T>
     ) {
@@ -413,10 +426,41 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         this.model.withIdentityMap = databaseSession.withIdentityMap;
     }
 
-    static from<T extends typeof GenericQuery, B extends GenericQuery<any>>(this: T, base: B): Replace<InstanceType<T>, Resolve<B>> {
-        const result = (new this(base.classSchema, base.databaseSession, base.resolver));
-        result.model = base.model.clone(result);
-        result.format = base.format;
+    static from<Q extends Query<any> & { _: () => T }, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Query<any>>>(this: B, query: Q): Replace<InstanceType<B>, Resolve<Q>> {
+        const result = (new this(query.classSchema, query.databaseSession, query.resolver));
+        result.model = query.model.clone(result);
+        return result as any;
+    }
+
+    public lift<B extends ClassType<Query<any>>, T extends ReturnType<InstanceType<B>['_']>, THIS extends Query<any> & { _: () => T }>(
+        this: THIS, query: B
+    ): Pick<this, Methods<this>> & Replace<InstanceType<B>, Resolve<this>> {
+        if (this.constructor === Query) {
+            //no prototype moving necessary
+        } else {
+            const name = getClassName(query) + 'Lifted';
+            const o = {
+                [name]: class extends query {
+                }
+            };
+
+            query = o[name];
+            for (const name of Object.getOwnPropertyNames(this.constructor.prototype)) {
+                if (name === 'constructor') continue;
+                Object.defineProperty(query.prototype, name, Object.getOwnPropertyDescriptor(this.constructor.prototype, name)!);
+            }
+
+            const parent = Object.getPrototypeOf(this.constructor);
+            if (parent !== Query) {
+                for (const name of Object.getOwnPropertyNames(parent.prototype)) {
+                    if (name === 'constructor') continue;
+                    Object.defineProperty(query.prototype, name, Object.getOwnPropertyDescriptor(parent.prototype, name)!);
+                }
+            }
+        }
+
+        const result = new query(this.classSchema, this.databaseSession, this.resolver);
+        result.model = this.model.clone(result);
         return result as any;
     }
 
@@ -426,13 +470,12 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
 
         const event = new QueryDatabaseEvent(this.databaseSession, this.classSchema, this);
         await this.databaseSession.queryEmitter.onFetch.emit(event);
-        return event.query as this;
+        return event.query as any;
     }
 
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.resolver);
         cloned.model = this.model.clone(cloned) as this['model'];
-        cloned.format = this.format;
         return cloned;
     }
 
@@ -459,14 +502,14 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
     }
 
     public async deleteMany(): Promise<DeleteResult<T>> {
-        return this.delete(this);
+        return this.delete(this) as any;
     }
 
     public async deleteOne(): Promise<DeleteResult<T>> {
         return this.delete(this.limit(1));
     }
 
-    protected async delete(query: this): Promise<DeleteResult<T>> {
+    protected async delete(query: Query<T>): Promise<DeleteResult<T>> {
         const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions();
 
         const deleteResult: DeleteResult<T> = {
@@ -506,7 +549,7 @@ export class GenericQuery<T extends Entity> extends BaseQuery<T> {
         return this.patch(this.limit(1), patch);
     }
 
-    protected async patch(query: this, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+    protected async patch(query: Query<T>, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
         const changes: Changes<T> = new Changes<T>({
             $set: (patch as Changes<T>).$set || {},
             $inc: (patch as Changes<T>).$inc,

@@ -539,7 +539,6 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.connection, this.database, this.broker, this.subscriptionHandler);
         cloned.model = this.model.clone(cloned) as this['model'];
-        cloned.format = this.format;
         return cloned;
     }
 

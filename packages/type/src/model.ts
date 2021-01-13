@@ -517,7 +517,10 @@ export class PropertySchema {
         for (const i of eachKey(this)) {
             (s as any)[i] = (this as any)[i];
         }
+        s.data = {...this.data};
+        s.symbol = Symbol(this.name);
         s.classTypeResolved = undefined;
+        s.templateArgs = this.templateArgs.slice(0);
         return s;
     }
 

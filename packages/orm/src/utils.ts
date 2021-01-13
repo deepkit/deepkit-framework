@@ -46,5 +46,5 @@ export function findQueryList<T extends { [index: string]: any }>(items: T[], qu
 }
 
 export type Placeholder<T> = () => T;
-export type Resolve<T extends {_: Placeholder<any>}> = T['_'] extends Placeholder<infer K> ? K : never;
+export type Resolve<T extends {_: Placeholder<any>}> = ReturnType<T['_']>;
 export type Replace<T, R> = T & { _: Placeholder<R> };
