@@ -20,7 +20,8 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@deepkit/framework"
   },
-  "files": [
-    "app.tsx"
+  "include": [
+    "*.tsx",
+    "*.ts",
   ]
 }

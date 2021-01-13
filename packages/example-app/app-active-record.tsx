@@ -3,18 +3,19 @@ import 'reflect-metadata';
 import { entity, sliceClass, t } from '@deepkit/type';
 import { Application, BodyValidation, http, KernelModule, Logger, Redirect } from '@deepkit/framework';
 import { Website } from './views/website';
-import { Database } from '@deepkit/orm';
+import { ActiveRecord, Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sql';
-import { injectable } from '@deepkit/framework';
 
 @entity.name('user')
-class User {
+class User extends ActiveRecord {
     @t.primary.autoIncrement id: number = 0;
     @t created: Date = new Date;
 
     constructor(
         @t.minLength(3) public username: string
-    ) { }
+    ) {
+        super();
+    }
 }
 
 class SQLiteDatabase extends Database {
@@ -25,36 +26,27 @@ class SQLiteDatabase extends Database {
 
 class AddUserDto extends sliceClass(User).exclude('id', 'created') { };
 
-@injectable()
-class UserList {
-    constructor(
-        protected props: { error?: string } = {},
-        protected children: any[],
-        protected database: SQLiteDatabase
-    ) { }
+async function UserList({ error }: { error?: string } = {}) {
+    const users = await User.query().find();
+    return <Website title="Users">
+        <h1>Users</h1>
 
-    async render() {
-        const users = await this.database.query(User).find();
-        return <Website title="Users">
-            <h1>Users</h1>
+        <img src="/lara.jpeg" style="max-width: 100%" />
+        <div style="margin: 25px 0;">
+            {users.map(user => <div>#{user.id} <strong>{user.username}</strong>, created {user.created}</div>)}
+        </div>
 
-            <img src="/lara.jpeg" style="max-width: 100%" />
-            <div style="margin: 25px 0;">
-                {users.map(user => <div>#{user.id} <strong>{user.username}</strong>, created {user.created}</div>)}
-            </div>
-
-            <form action="/add" method="post">
-                <input type="text" name="username" /><br />
-                {this.props.error ? <div style="color: red">Error: {this.props.error}</div> : ''}
-                <button>Send</button>
-            </form>
-        </Website>;
-    }
+        <form action="/add" method="post">
+            <input type="text" name="username" /><br />
+            {error ? <div style="color: red">Error: {error}</div> : ''}
+            <button>Send</button>
+        </form>
+    </Website>;
 }
 
 @http.controller()
 class HelloWorldController {
-    constructor(protected logger: Logger, protected database: SQLiteDatabase) {
+    constructor(protected logger: Logger) {
     }
 
     @http.GET('/').name('startPage').description('List all users')
@@ -65,26 +57,19 @@ class HelloWorldController {
 
     @http.GET('/api/users')
     async users() {
-        return await this.database.query(User).find();
+        return await User.query().find();
     }
 
     @http.POST('/add').description('Adds a new user')
     async add(@http.body() body: AddUserDto, bodyValidation: BodyValidation) {
         if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')} />;
 
-        const user = new User(body.username);
-        await this.database.persist(user);
-
+        await new User(body.username).save();
         return Redirect.toRoute('startPage');
     }
 
-    @http.GET('/path/:name')
-    async urlParam(name: string) {
-        return name;
-    }
-
-    @http.GET('/query')
-    async queryParam(@http.query() peter: string) {
+    @http.GET('/my-getter')
+    async get2(@http.query() peter: string) {
         return peter;
     }
 }
