@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { ClassType, CustomError } from '@deepkit/core';
 import { Query } from './query';
 import { getDatabaseSessionHydrator, isHydrated } from './formatter';
 import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
@@ -34,6 +34,8 @@ export async function hydrateEntity<T>(item: T) {
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): Query<T>;
 }
+
+export class DatabaseError extends CustomError {}
 
 export interface DatabasePersistenceChangeSet<T> {
     changes: ItemChanges<T>;

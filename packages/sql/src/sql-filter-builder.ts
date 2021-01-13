@@ -58,6 +58,11 @@ export class SQLFilterBuilder {
         return sql.join(` ${join} `);
     }
 
+    protected quoteIdWithTable(id: string): string {
+        if (this.tableName) return `${this.tableName}.${this.quoteId(id)}`; 
+        return `${this.quoteId(id)}`; 
+    }
+
     protected condition(fieldName: string | undefined, value: any, comparison: 'eq' | 'gt' | 'gte' | 'in' | 'lt' | 'lte' | 'ne' | 'nin' | string): string {
         if (fieldName === undefined) {
             throw new Error('No comparison operators at root level allowed');
@@ -82,7 +87,7 @@ export class SQLFilterBuilder {
         const isReference = 'string' === typeof value && value[0] === '$';
         let rvalue = '';
         if (isReference) {
-            rvalue = `${this.tableName}.${this.quoteId(value.substr(1))}`;
+            rvalue = `${this.quoteIdWithTable(value.substr(1))}`;
         } else {
             if (value === undefined || value === null) {
                 cmpSign = this.isNull();
@@ -106,7 +111,7 @@ export class SQLFilterBuilder {
             return `${this.getDeepColumnAccessor(this.tableName, column, path)} ${cmpSign} ${rvalue}`;
         }
 
-        return `${this.tableName}.${this.quoteId(fieldName)} ${cmpSign} ${rvalue}`;
+        return `${this.quoteIdWithTable(fieldName)} ${cmpSign} ${rvalue}`;
     }
 
     protected getDeepColumnAccessor(table: string, column: string, path: string) {

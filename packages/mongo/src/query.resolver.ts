@@ -9,17 +9,17 @@
  */
 
 import { Changes, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult } from '@deepkit/orm';
-import { ClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
-import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model';
-import { convertClassQueryToMongo, } from './mapping';
+import { ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
 import { MongoDatabaseAdapter } from './adapter';
-import { DeleteCommand } from './client/command/delete';
-import { UpdateCommand } from './client/command/update';
 import { AggregateCommand } from './client/command/aggregate';
 import { CountCommand } from './client/command/count';
+import { DeleteCommand } from './client/command/delete';
 import { FindCommand } from './client/command/find';
-import { mongoSerializer } from './mongo-serializer';
 import { FindAndModifyCommand } from './client/command/find-and-modify';
+import { UpdateCommand } from './client/command/update';
+import { convertClassQueryToMongo } from './mapping';
+import { mongoSerializer } from './mongo-serializer';
+import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model';
 
 export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema.classType, (model.filter || {}) as FilterQuery<T>, {}, {
@@ -188,22 +188,39 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return;
     }
 
-    public async find(queryModel: MongoQueryModel<T>): Promise<T[]> {
-        const formatter = this.createFormatter(queryModel.withIdentityMap);
-        if (queryModel.hasJoins()) {
-            const pipeline = this.buildAggregationPipeline(queryModel);
-            const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline));
-            return items.map(v => formatter.hydrate(queryModel, v));
+    public async find(model: MongoQueryModel<T>): Promise<T[]> {
+        const formatter = this.createFormatter(model.withIdentityMap);
+        if (model.hasJoins() || model.isAggregate()) {
+            const pipeline = this.buildAggregationPipeline(model);
+
+            let resultsSchema = this.classSchema;
+            if (model.isAggregate()) {
+                //todo: cache this depending on the fields selected
+                resultsSchema = createClassSchema();
+                for (const g of model.groupBy.values()) {
+                    resultsSchema.addProperty(g, t.any);
+                }
+                for (const g of model.aggregate.keys()) {
+                    resultsSchema.addProperty(g, t.any);
+                }
+            }
+
+            const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline, resultsSchema));
+            if (model.isAggregate()) {
+                return items;
+            }
+
+            return items.map(v => formatter.hydrate(model, v));
         } else {
             const items = await this.databaseSession.adapter.client.execute(new FindCommand(
                 this.classSchema,
-                getMongoFilter(this.classSchema, queryModel),
-                this.getProjection(this.classSchema, queryModel.select),
-                this.getSortFromModel(queryModel.sort),
-                queryModel.limit,
-                queryModel.skip,
+                getMongoFilter(this.classSchema, model),
+                this.getProjection(this.classSchema, model.select),
+                this.getSortFromModel(model.sort),
+                model.limit,
+                model.skip,
             ));
-            return items.map(v => formatter.hydrate(queryModel, v));
+            return items.map(v => formatter.hydrate(model, v));
         }
     }
 
@@ -349,12 +366,43 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         handleJoins(pipeline, model, this.classSchema);
 
         if (model.filter) pipeline.push({ $match: getMongoFilter(this.classSchema, model) });
+
+        if (model.isAggregate()) {
+            const group: any = {_id: {}};
+            const project: any = {};
+            for (const g of model.groupBy.values()) {
+                group._id[g] = '$' + g;
+                project[g] = "$_id." + g;
+            }
+
+            for (const [as, a] of model.aggregate.entries()) {
+                if (a.func === 'sum') {
+                    group[as] = {$sum: '$' + a.property.name};
+                } else if (a.func === 'min') {
+                    group[as] = {$min: '$' + a.property.name};
+                } else if (a.func === 'max') {
+                    group[as] = {$max: '$' + a.property.name};
+                } else if (a.func === 'avg') {
+                    group[as] = {$avg: '$' + a.property.name};
+                } else if (a.func === 'group_concat') {
+                    group[as] = {$push: '$' + a.property.name};
+                }
+
+                project[as] = 1;
+            }
+
+            pipeline.push({$group: group});
+            pipeline.push({$project: project});
+        }
+
         if (model.sort) pipeline.push({ $sort: this.getSortFromModel(model.sort) });
         if (model.skip) pipeline.push({ $skip: model.skip });
         if (model.limit) pipeline.push({ $limit: model.limit });
 
-        const projection = this.getProjection(this.classSchema, model.select);
-        if (projection) pipeline.push({ $project: projection });
+        if (!model.isAggregate()) {
+            const projection = this.getProjection(this.classSchema, model.select);
+            if (projection) pipeline.push({ $project: projection });
+        }
 
         return pipeline;
     }

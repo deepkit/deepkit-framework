@@ -1062,10 +1062,10 @@ export interface MainDecorator {
      */
     number: FieldDecoratorResult<number>;
 
-    /**
-     * Marks a field as integer.
-     */
-    integer: FieldDecoratorResult<number>;
+    // /**
+    //  * Marks a field as integer.
+    //  */
+    // integer: FieldDecoratorResult<number>;
 
     /**
      * Marks a field as boolean.

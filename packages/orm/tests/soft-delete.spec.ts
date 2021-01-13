@@ -32,9 +32,9 @@ test('soft-delete query', async () => {
     await database.query(s).filter({ id: 2 }).lift(SoftDeleteQuery).deletedBy('me').deleteOne();
 
     const q = database.query(s).lift(SoftDeleteQuery).withSoftDeleted();
-    expect(Query.isLifted(q, SoftDeleteQuery)).toBe(true);
+    expect(Query.is(q, SoftDeleteQuery)).toBe(true);
 
-    if (Query.isLifted(q, SoftDeleteQuery)) {
+    if (Query.is(q, SoftDeleteQuery)) {
         expect(q.includeSoftDeleted).toBe(true);
     }
 

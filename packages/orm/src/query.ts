@@ -8,16 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { ClassType, empty } from '@deepkit/core';
 import { ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
 import { Subject } from 'rxjs';
-import { ClassType, empty, getClassName } from '@deepkit/core';
-import { FieldName, FlattenIfArray, Placeholder, Replace, Resolve } from './utils';
-import { DatabaseSession } from './database-session';
-import { DatabaseAdapter } from './database';
-import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
 import { Changes, ChangesInterface } from './changes';
-import { DeleteResult, Entity, PatchResult } from './type';
 import { getSimplePrimaryKeyHashGenerator } from './converter';
+import { DatabaseAdapter } from './database';
+import { DatabaseSession } from './database-session';
+import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
+import { DeleteResult, Entity, PatchResult } from './type';
+import { FieldName, FlattenIfArray, Replace, Resolve } from './utils';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -71,9 +71,12 @@ export type FilterQuery<T> = {
 } &
     RootQuerySelector<T>;
 
-export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Entity> = FilterQuery<Entity>, SORT extends Sort<Entity> = Sort<Entity>> {
+export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> = FilterQuery<T>, SORT extends Sort<T> = Sort<T>> {
     public withIdentityMap: boolean = true;
     public filter?: FILTER;
+    public having?: FILTER;
+    public groupBy: Set<string> = new Set<string>();
+    public aggregate = new Map<string, {property: PropertySchema, func: string}>();
     public select: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
     public skip?: number;
@@ -108,9 +111,12 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
     clone(parentQuery: BaseQuery<T>): this {
         const constructor = this.constructor as ClassType<this>;
         const m = new constructor();
-        m.filter = this.filter;
+        m.filter = this.filter && {...this.filter};
+        m.having = this.having && {...this.having};
         m.withIdentityMap = this.withIdentityMap;
-        m.select = new Set(this.select.values());
+        m.select = new Set(this.select);
+        m.groupBy = new Set(this.groupBy);
+        m.aggregate = new Map(this.aggregate);
         m.parameters = { ...this.parameters };
 
         m.joins = this.joins.map((v) => {
@@ -140,7 +146,14 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<Ent
      * Whether only a subset of fields are selected.
      */
     isPartial() {
-        return this.select.size > 0;
+        return this.select.size > 0 || this.groupBy.size > 0 || this.aggregate.size > 0;
+    }
+
+    /**
+     * Whether only a subset of fields are selected.
+     */
+    isAggregate() {
+        return this.groupBy.size > 0 || this.aggregate.size > 0;
     }
 
     getFirstSelect() {
@@ -182,6 +195,43 @@ export class BaseQuery<T extends Entity> {
         model?: DatabaseQueryModel<T>
     ) {
         this.model = model || this.createModel<T>();
+    }
+
+    groupBy<K extends FieldName<T>[]>(...field: K): this {
+        const c = this.clone();
+        c.model.groupBy = new Set([...field as string[]]);
+        return c as any;
+    }
+
+    withSum<K extends FieldName<T>>(field: K, as?: string): this {
+        return this.aggregateField(field, 'sum', as);
+    }
+
+    withGroupConcat<K extends FieldName<T>>(field: K, as?: string): this {
+        return this.aggregateField(field, 'group_concat', as);
+    }
+
+    withCount<K extends FieldName<T>>(field: K, as?: string): this {
+        return this.aggregateField(field, 'count', as);
+    }
+
+    withMax<K extends FieldName<T>>(field: K, as?: string): this {
+        return this.aggregateField(field, 'max', as);
+    }
+
+    withMin<K extends FieldName<T>>(field: K, as?: string): this {
+        return this.aggregateField(field, 'min', as);
+    }
+
+    withAverage<K extends FieldName<T>>(field: K, as?: string): this {
+        return this.aggregateField(field, 'avg', as);
+    }
+
+    aggregateField<K extends FieldName<T>>(field: K, func: string, as?: string): this {
+        const c = this.clone();
+        as ||= field;
+        c.model.aggregate.set(as, {property: this.classSchema.getProperty(field), func});
+        return c as any;
     }
 
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
@@ -254,6 +304,12 @@ export class BaseQuery<T extends Entity> {
         return c;
     }
 
+    having(filter?: this['model']['filter']): this {
+        const c = this.clone();
+        c.model.having = filter;
+        return c;
+    }
+
     filter(filter?: this['model']['filter'] | T): this {
         const c = this.clone();
         if (filter && !Object.keys(filter as object).length) filter = undefined;
@@ -277,6 +333,13 @@ export class BaseQuery<T extends Entity> {
     sort(sort?: this['model']['sort']): this {
         const c = this.clone();
         c.model.sort = sort;
+        return c;
+    }
+
+    orderBy<K extends FieldName<T>>(field: K, direction: 'asc' | 'desc' = 'asc'): this {
+        const c = this.clone();
+        if (!c.model.sort) c.model.sort = {};
+        c.model.sort[field] = direction;
         return c;
     }
 
@@ -421,7 +484,7 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
 export class Query<T extends Entity> extends BaseQuery<T> {
     protected lifts: ClassType[] = [];
 
-    static isLifted<T extends ClassType<Query<any>>>(v: Query<any>, type: T): v is InstanceType<T> {
+    static is<T extends ClassType<Query<any>>>(v: Query<any>, type: T): v is InstanceType<T> {
         return v.lifts.includes(type) || v instanceof type;
     }
 
@@ -446,14 +509,14 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         const base = this['constructor'] as ClassType;
         //we create a custom class to have our own prototype
         const clazz = class extends base { };
-        
+
         let obj: any = query;
-        const wasSet: {[name: string]: true} = {}
+        const wasSet: { [name: string]: true } = {}
         const lifts: any[] = [];
         do {
             if (obj === Query) break;
             lifts.push(obj);
-            
+
             for (const i of Object.getOwnPropertyNames(obj.prototype)) {
                 if (i === 'constructor') continue;
                 if (wasSet[i]) continue;
@@ -465,7 +528,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
                 wasSet[i] = true;
             }
         } while (obj = Object.getPrototypeOf(obj));
-        
+
         const cloned = new clazz(this.classSchema, this.databaseSession, this.resolver);
 
         const lift = new query(this.classSchema, this.databaseSession, this.resolver, this.model);
@@ -497,6 +560,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         await this.databaseSession.queryEmitter.onFetch.emit(event);
         return event.query as any;
     }
+
     public async count(): Promise<number> {
         const query = await this.callQueryEvent();
         return await query.resolver.count(query.model);

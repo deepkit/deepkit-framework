@@ -16,13 +16,13 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
     const driver = process.env['ADAPTER_DRIVER'] || 'sqlite';
     let adapter: DatabaseAdapter | undefined;
     if (driver === 'sqlite') {
-        adapter = new SQLiteDatabaseAdapter('/tmp/bookstore.sqlite');
+        adapter = new SQLiteDatabaseAdapter('/tmp/orm-integration.sqlite');
     } else if (driver === 'mysql') {
         adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' });
     } else if (driver === 'postgres') {
         adapter = new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres' });
     } else if (driver === 'mongo') {
-        adapter = new MongoDatabaseAdapter('mongodb://localhost/bookstore');
+        adapter = new MongoDatabaseAdapter('mongodb://localhost/orm-integration');
     }
 
     if (!adapter) throw new Error(`Could not detect adapter from ${driver}`);
@@ -38,7 +38,7 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
 
     if (adapter instanceof MongoDatabaseAdapter) {
         await adapter.resetAutoIncrementSequences();
-        await adapter.client.execute(new GenericCommand({ dropDatabase: 1, $db: 'bookstore' }));
+        await adapter.client.execute(new GenericCommand({ dropDatabase: 1, $db: 'orm-integration' }));
     }
 
     return database;

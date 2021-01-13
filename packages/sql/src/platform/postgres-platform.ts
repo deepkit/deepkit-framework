@@ -79,6 +79,13 @@ export class PostgresPlatform extends DefaultPlatform {
         this.addBinaryType('bytea');
     }
 
+    getAggregateSelect(tableName: string, property: PropertySchema, func: string) {
+        if (func === 'group_concat') {
+            return `array_to_string(array_agg(${tableName}.${this.quoteIdentifier(property.name)}), ',')`;
+        }
+        return super.getAggregateSelect(tableName, property, func);
+    }
+
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): PostgreSQLFilterBuilder {
         return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }

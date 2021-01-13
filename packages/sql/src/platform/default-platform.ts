@@ -72,6 +72,10 @@ export abstract class DefaultPlatform {
         return sqlstring.escape(value);
     }
 
+    getAggregateSelect(tableName: string, property: PropertySchema, func: string) {
+        return `${func}(${tableName}.${this.quoteIdentifier(property.name)})`;
+    }
+
     addBinaryType(sqlType: string, size?: number, scale?: number) {
         for (const type of binaryTypes) {
             this.addType(type, sqlType, size, scale);

@@ -147,6 +147,8 @@ export class PostgresSchemaParser extends SchemaParser {
             if ('string' === typeof row.column_default) {
                 if (row.column_default.includes('nextval(') && row.column_default.includes('::regclass')) {
                     column.isAutoIncrement = true;
+                } else {
+                    column.defaultValue = JSON.parse(row.column_default);
                 }
             }
 

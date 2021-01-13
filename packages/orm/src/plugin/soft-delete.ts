@@ -135,7 +135,7 @@ export class SoftDelete {
             //this is for each query method: count, find, findOne(), etc.
 
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
-            if (Query.isLifted(event.query, SoftDeleteQuery) && event.query.includeSoftDeleted === true) return;
+            if (Query.is(event.query, SoftDeleteQuery) && event.query.includeSoftDeleted === true) return;
 
             if (event.classSchema !== schema) return; //do nothing
 
@@ -150,13 +150,13 @@ export class SoftDelete {
             if (event.classSchema !== schema) return; //do nothing
 
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
-            if (Query.isLifted(event.query, SoftDeleteQuery) && event.query.includeSoftDeleted === true) return;
+            if (Query.is(event.query, SoftDeleteQuery) && event.query.includeSoftDeleted === true) return;
 
             //stop actual query delete query
             event.stop();
 
             const patch = { [deletedAtName]: new Date } as Partial<T>;
-            if (hasDeletedBy && Query.isLifted(event.query, SoftDeleteQuery) && event.query.setDeletedBy !== undefined) {
+            if (hasDeletedBy && Query.is(event.query, SoftDeleteQuery) && event.query.setDeletedBy !== undefined) {
                 patch.deletedBy = event.query.setDeletedBy;
             }
 

@@ -1,12 +1,9 @@
-import { getClassSchema, plainToClass, PrimaryKey, t } from '@deepkit/type';
+import { plainToClass, PrimaryKey, t } from '@deepkit/type';
 import { test } from '@jest/globals';
 import { assert, IsExact } from "conditional-type-checks";
-import { BaseQuery, Methods, Query } from '../src/query';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
-import { ClassType } from '@deepkit/core';
-import { DeleteResult, Entity } from '../src/type';
-import { addListener } from 'process';
+import { Query } from '../src/query';
 
 test('query select', async () => {
     const s = t.schema({
@@ -80,10 +77,10 @@ test('query lift', async () => {
         }
     }
 
-    expect(Query.isLifted(q, UserQuery)).toBe(false);
+    expect(Query.is(q, UserQuery)).toBe(false);
 
-    expect(Query.isLifted(q.lift(UserQuery), UserQuery)).toBe(true);
-    expect(Query.isLifted(q.lift(UserQuery), MyBase)).toBe(true);
+    expect(Query.is(q.lift(UserQuery), UserQuery)).toBe(true);
+    expect(Query.is(q.lift(UserQuery), MyBase)).toBe(true);
 
     expect(q.isMemoryDb()).toBe(true);
 
@@ -93,8 +90,8 @@ test('query lift', async () => {
     expect(q.lift(UserQuery).lift(BilligQuery).hello()).toBe('world');
     expect(q.lift(UserQuery).lift(OverwriteHello).hello()).toBe('nope');
     
-    expect(Query.isLifted(q.lift(UserQuery).lift(OverwriteHello), MyBase)).toBe(true);
-    expect(Query.isLifted(q.lift(UserQuery).lift(OverwriteHello), OverwriteHello)).toBe(true);
+    expect(Query.is(q.lift(UserQuery).lift(OverwriteHello), MyBase)).toBe(true);
+    expect(Query.is(q.lift(UserQuery).lift(OverwriteHello), OverwriteHello)).toBe(true);
 
     {
         const items = await q.lift(UserQuery).find();

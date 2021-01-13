@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { BaseResponse, Command } from './command';
-import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
 import { ClassType, toFastProperties } from '@deepkit/core';
+import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
+import { BaseResponse, Command } from './command';
 
 const aggregateSchema = t.schema({
     aggregate: t.string,

@@ -43,8 +43,10 @@ export class SqlBuilder {
     }
 
     protected appendWhereSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName?: string, prefix: string = 'WHERE') {
+        if (!model.filter) return;
+
         tableName = tableName || this.platform.getTableIdentifier(schema);
-        const filter = getSqlFilter(schema, model, this.platform.serializer);
+        const filter = getSqlFilter(schema, model.filter, model.parameters, this.platform.serializer);
         const builder = this.platform.createSqlFilterBuilder(schema, tableName);
         builder.placeholderPosition = sql.params.length;
         const whereClause = builder.convert(filter);
@@ -56,13 +58,41 @@ export class SqlBuilder {
         }
     }
 
+    protected appendHavingSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName?: string) {
+        if (!model.having) return;
+
+        tableName = tableName || this.platform.getTableIdentifier(schema);
+        const filter = getSqlFilter(schema, model.having, model.parameters, this.platform.serializer);
+        const builder = this.platform.createSqlFilterBuilder(schema, '');
+        builder.placeholderPosition = sql.params.length;
+        const whereClause = builder.convert(filter);
+
+        if (whereClause) {
+            sql.append('HAVING');
+            sql.params.push(...builder.params);
+            sql.append(whereClause);
+        }
+    }
     protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>) {
+        const tableName = this.platform.getTableIdentifier(schema);
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
 
-        for (const property of properties) {
-            if (property.backReference) continue;
+        if (model.aggregate.size || model.groupBy.size) {
+            //we select only whats aggregated
+            for (const name of model.groupBy.values()) {
+                this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(name));
+            }
+            for (const [as, a] of model.aggregate.entries()) {
+                if (a.property.backReference) continue;
 
-            this.sqlSelect.push(this.platform.quoteIdentifier(property.name));
+                this.sqlSelect.push(this.platform.getAggregateSelect(tableName, a.property, a.func) + ' AS ' + this.platform.quoteIdentifier(as));
+            }
+        } else {
+            for (const property of properties) {
+                if (property.backReference) continue;
+
+                this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name));
+            }
         }
     }
 
@@ -296,6 +326,17 @@ export class SqlBuilder {
         }
 
         const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
+
+        if (model.groupBy.size) {
+            const groupBy: string[] = []
+            for (const g of model.groupBy.values()) {
+                groupBy.push(this.platform.quoteIdentifier(g));
+            }
+
+            sql.append('GROUP BY ' + groupBy.join(', '));
+        }
+
+        this.appendHavingSQL(sql, schema, model);
 
         if (order.length) {
             sql.append(' ORDER BY ' + (order.join(', ')));

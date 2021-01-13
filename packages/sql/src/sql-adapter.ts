@@ -21,7 +21,8 @@ import {
     Query,
     GenericQueryResolver,
     PatchResult,
-    SORT_ORDER
+    SORT_ORDER,
+    DatabaseError
 } from '@deepkit/orm';
 import { ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';
@@ -189,8 +190,13 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const connection = this.connectionPool.getConnection();
         try {
             const rows = await connection.execAndReturnAll(sql.sql, sql.params);
-            const formatter = this.createFormatter(model.withIdentityMap);
             const results: T[] = [];
+            if (model.isAggregate()) {
+                //when aggregate the field types could be completely different, so don't normalize
+                for (const row of rows) results.push(row); //mysql returns not a real array, so we have to iterate
+                return results;
+            }
+            const formatter = this.createFormatter(model.withIdentityMap);
             if (model.hasJoins()) {
                 const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
                 for (const row of converted) results.push(formatter.hydrate(model, row));
@@ -198,6 +204,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
                 for (const row of rows) results.push(formatter.hydrate(model, row));
             }
             return results;
+        } catch (error) {
+            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}`);
         } finally {
             connection.release();
         }
@@ -212,6 +220,11 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             if (!row) return;
 
+            if (model.isAggregate()) {
+                //when aggregate the field types could be completely different, so don't normalize
+                return row;
+            }
+
             const formatter = this.createFormatter(model.withIdentityMap);
             if (model.hasJoins()) {
                 const [converted] = sqlBuilder.convertRows(this.classSchema, model, [row]);
@@ -219,6 +232,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
             } else {
                 return formatter.hydrate(model, row);
             }
+        } catch (error) {
+            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}`);
         } finally {
             connection.release();
         }
