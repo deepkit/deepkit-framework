@@ -352,7 +352,22 @@ function createFieldDecoratorResult<T>(
     fn.transform = (t: (v: any) => any, serializer: string = 'all') => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-            property.transformers.set(serializer, t);
+            property.serialization.set(serializer, t);
+            property.deserialization.set(serializer, t);
+        }]);
+    };
+
+    fn.serialize = (t: (v: any) => any, serializer: string = 'all') => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.serialization.set(serializer, t);
+        }]);
+    };
+
+    fn.deserialize = (t: (v: any) => any, serializer: string = 'all') => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.deserialization.set(serializer, t);
         }]);
     };
 

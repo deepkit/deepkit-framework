@@ -61,7 +61,7 @@ test('serialize reference', () => {
     const organisation = new Organisation('a', owner);
 
     const ApiOrganisation = sliceClass(Organisation).extend({
-        owner: t.transform((user: User) => user.id, 'json')
+        owner: t.serialize((user: User) => user.id, 'json')
     });
 
     expect(getClassSchema(Organisation).getProperty('owner').getResolvedClassType()).toBe(User);
@@ -73,13 +73,13 @@ test('serialize reference', () => {
     expect(getClassSchema(Organisation).clone().getMethodProperties('constructor')[0].name).toBe('name');
     expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[0].name).toBe('name');
 
-    expect(getClassSchema(ApiOrganisation).getProperty('owner').transformers.get('json')).toBeInstanceOf(Function);
+    expect(getClassSchema(ApiOrganisation).getProperty('owner').serialization.get('json')).toBeInstanceOf(Function);
     expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[1].name).toBe('owner');
-    expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[1].transformers.get('json')).toBeInstanceOf(Function);
+    expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[1].serialization.get('json')).toBeInstanceOf(Function);
     expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[1].getResolvedClassType()).toBe(User);
 
     const ApiOrganisation2 = sliceClass(Organisation).extend({
-        owner: t.transform((user: User) => user.id)
+        owner: t.serialize((user: User) => user.id)
     });
 
     {

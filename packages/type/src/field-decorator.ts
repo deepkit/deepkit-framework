@@ -123,8 +123,10 @@ export interface FieldDecoratorResultBase<T> {
     default(v: T): FieldDecoratorResult<T>;
 
     /** 
-     * Changes the value before during serializing (not deserializing) to another value, 
+     * Changes the value after serializing and deserialization to another value,
      * optionally for a particular serializer.
+     * 
+     * The function is called after all internal serializer/deserialization templates have been applied.
      * 
      * serializerName is the name of the serialzier. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
      * 
@@ -132,6 +134,32 @@ export interface FieldDecoratorResultBase<T> {
      * So it's to use the decorator typesafe via `@t.transform((user: User) => user.id)`.
     */
     transform<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
+
+    /** 
+     * Changes the value after serializing (class to x) to another value, 
+     * optionally for a particular serializer.
+     * 
+     * The function is called after all internal serializer templates have been applied.
+     * 
+     * serializerName is the name of the serialzier. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
+     * 
+     * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
+     * So it's to use the decorator typesafe via `@t.transform((user: User) => user.id)`.
+    */
+    serialize<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
+
+    /** 
+     * Changes the value after deserializing (x to class) to another value, 
+     * optionally for a particular serializer.
+     * 
+     * The function is called after all internal deserializer templates have been applied.
+     * 
+     * serializerName is the name of the serialzier. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
+     * 
+     * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
+     * So it's to use the decorator typesafe via `@t.transform((user: User) => user.id)`.
+    */
+    deserialize<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
 
     /**
      * Sets a description.
@@ -339,9 +367,7 @@ export interface FieldDecoratorResultBase<T> {
      *
      * class MyCustomValidator implements PropertyValidator {
      *      async validate<T>(value: any, target: ClassType<T>, propertyName: string) {
-     *          if (value.length > 10) {
-     *              throw new PropertyValidatorError('too_long', 'Too long :()');
-     *          }
+     *          if (value.length > 10) throw new PropertyValidatorError('too_long', 'Too long :()');
      *      };
      * }
      *
@@ -353,9 +379,7 @@ export interface FieldDecoratorResultBase<T> {
      *     name: string;
      *
      *     @t.validator((value: any, target: ClassType, propertyName: string) => {
-     *          if (value.length > 255) {
-     *              throw new PropertyValidatorError('too_long', 'Too long :()');
-     *          }
+     *          if (value.length > 255) throw new PropertyValidatorError('too_long', 'Too long :()');
      *     })
      *     title: string;
      * }

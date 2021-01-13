@@ -330,9 +330,14 @@ export class PropertySchema {
     description: string = '';
 
     /** 
-     * Transformer for serialization (not deserialization).
+     * Transformer for serialization.
     */
-    transformers = new Map<string, (v: any) => any>();
+    serialization = new Map<string, (v: any) => any>();
+
+    /** 
+     * Transformer for deserialization.
+    */
+    deserialization = new Map<string, (v: any) => any>();
 
     constructor(public name: string, public parent?: PropertySchema) {
     }
@@ -527,7 +532,8 @@ export class PropertySchema {
         s.classType = this.classType;
         // s.classTypeResolved = undefined;
         s.templateArgs = this.templateArgs.slice(0);
-        s.transformers = new Map(this.transformers);
+        s.serialization = new Map(this.serialization);
+        s.deserialization = new Map(this.deserialization);
         return s;
     }
 
