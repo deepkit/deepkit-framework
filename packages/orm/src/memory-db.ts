@@ -66,8 +66,10 @@ function sort(items: any[], field: string, sortFn: typeof sortAsc | typeof sortA
 }
 
 export class MemoryQuery<T> extends Query<T> {
+    protected isMemory = true;
+    
     isMemoryDb() {
-        return true;
+        return this.isMemory;
     }
 }
 

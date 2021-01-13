@@ -175,11 +175,13 @@ export class BaseQuery<T extends Entity> {
         return new DatabaseQueryModel<T, FilterQuery<T>, Sort<T>>();
     }
 
-    public model = this.createModel<T>();
+    public model: DatabaseQueryModel<T>;
 
     constructor(
         public readonly classSchema: ClassSchema,
+        model?: DatabaseQueryModel<T>
     ) {
+        this.model = model || this.createModel<T>();
     }
 
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
@@ -417,6 +419,12 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
  * coded against this interface via Database<DatabaseAdapter> which uses this GenericQuery.
  */
 export class Query<T extends Entity> extends BaseQuery<T> {
+    protected lifts: ClassType[] = [];
+
+    static isLifted<T extends ClassType<Query<any>>>(v: Query<any>, type: T): v is InstanceType<T> {
+        return v.lifts.includes(type);
+    }
+
     constructor(
         classSchema: ClassSchema,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
@@ -434,34 +442,50 @@ export class Query<T extends Entity> extends BaseQuery<T> {
 
     public lift<B extends ClassType<Query<any>>, T extends ReturnType<InstanceType<B>['_']>, THIS extends Query<any> & { _: () => T }>(
         this: THIS, query: B
-    ): Pick<this, Methods<this>> & Replace<InstanceType<B>, Resolve<this>> {
-        if (this.constructor === Query) {
-            //no prototype moving necessary
-        } else {
-            const name = getClassName(query) + 'Lifted';
-            const o = {
-                [name]: class extends query {
-                }
-            };
-
-            query = o[name];
-            for (const name of Object.getOwnPropertyNames(this.constructor.prototype)) {
-                if (name === 'constructor') continue;
-                Object.defineProperty(query.prototype, name, Object.getOwnPropertyDescriptor(this.constructor.prototype, name)!);
+    ): Replace<InstanceType<B>, Resolve<this>> & Pick<this, Methods<this>> {
+        const base = this['constructor'] as ClassType;
+        //we create a custom class to have our own prototype
+        const clazz = class extends base { };
+        
+        let obj: any = query;
+        const wasSet: {[name: string]: true} = {}
+        const lifts: any[] = [];
+        do {
+            if (obj === Query) break;
+            lifts.push(obj);
+            
+            for (const i of Object.getOwnPropertyNames(obj.prototype)) {
+                if (i === 'constructor') continue;
+                if (wasSet[i]) continue;
+                Object.defineProperty(clazz.prototype, i, {
+                    configurable: true,
+                    writable: true,
+                    value: obj.prototype[i],
+                })
+                wasSet[i] = true;
             }
+        } while (obj = Object.getPrototypeOf(obj));
+        
+        const cloned = new clazz(this.classSchema, this.databaseSession, this.resolver);
 
-            const parent = Object.getPrototypeOf(this.constructor);
-            if (parent !== Query) {
-                for (const name of Object.getOwnPropertyNames(parent.prototype)) {
-                    if (name === 'constructor') continue;
-                    Object.defineProperty(query.prototype, name, Object.getOwnPropertyDescriptor(parent.prototype, name)!);
-                }
-            }
+        const lift = new query(this.classSchema, this.databaseSession, this.resolver, this.model);
+        for (const i in this) {
+            (cloned)[i] = (this as any)[i];
         }
+        for (const i in lift) {
+            (cloned)[i] = (lift as any)[i];
+        }
+        cloned.lifts = this.lifts;
+        cloned.lifts.push(...lifts);
 
-        const result = new query(this.classSchema, this.databaseSession, this.resolver);
-        result.model = this.model.clone(result);
-        return result as any;
+        return cloned as any;
+    }
+
+    clone(): this {
+        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.resolver);
+        cloned.model = this.model.clone(cloned) as this['model'];
+        cloned.lifts = this.lifts;
+        return cloned;
     }
 
     protected async callQueryEvent(): Promise<this> {
@@ -472,13 +496,6 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         await this.databaseSession.queryEmitter.onFetch.emit(event);
         return event.query as any;
     }
-
-    clone(): this {
-        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.resolver);
-        cloned.model = this.model.clone(cloned) as this['model'];
-        return cloned;
-    }
-
     public async count(): Promise<number> {
         const query = await this.callQueryEvent();
         return await query.resolver.count(query.model);

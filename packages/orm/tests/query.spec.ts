@@ -3,7 +3,7 @@ import { test } from '@jest/globals';
 import { assert, IsExact } from "conditional-type-checks";
 import { BaseQuery, Methods, Query } from '../src/query';
 import { Database } from '../src/database';
-import { MemoryDatabaseAdapter } from '../src/memory-db';
+import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
 import { ClassType } from '@deepkit/core';
 import { DeleteResult, Entity } from '../src/type';
 import { addListener } from 'process';
@@ -49,9 +49,22 @@ test('query lift', async () => {
     await database.persist(plainToClass(s, { id: 0, username: 'foo' }));
     await database.persist(plainToClass(s, { id: 1, username: 'bar', openBillings: 5 }));
 
-    class UserQuery<T extends { username: string }> extends Query<T> {
+    class MyBase<T>  extends Query<T> {
+        protected world = 'world';
+        hello() {
+            return this.world;
+        }
+    }
+
+    class UserQuery<T extends { username: string }> extends MyBase<T> {
         findAllUserNames() {
             return this.findField('username');
+        }
+
+        //query classes should be able to infer the actual used class
+        //so specialized routines could be executed (e.g. for SQL queries)
+        detectMemoryQuery() {
+            return this instanceof MemoryQuery;
         }
     }
 
@@ -61,10 +74,27 @@ test('query lift', async () => {
         }
     }
 
+    class OverwriteHello<T> extends Query<T>  {
+        hello() {
+            return 'nope';
+        }
+    }
+
+    expect(Query.isLifted(q, UserQuery)).toBe(false);
+
+    expect(Query.isLifted(q.lift(UserQuery), UserQuery)).toBe(true);
+    expect(Query.isLifted(q.lift(UserQuery), MyBase)).toBe(true);
+
     expect(q.isMemoryDb()).toBe(true);
 
     expect(q.lift(UserQuery).isMemoryDb()).toBe(true);
-
+    expect(q.lift(UserQuery).detectMemoryQuery()).toBe(true);
+    expect(q.lift(UserQuery).hello()).toBe('world');
+    expect(q.lift(UserQuery).lift(BilligQuery).hello()).toBe('world');
+    expect(q.lift(UserQuery).lift(OverwriteHello).hello()).toBe('nope');
+    
+    expect(Query.isLifted(q.lift(UserQuery).lift(OverwriteHello), MyBase)).toBe(true);
+    expect(Query.isLifted(q.lift(UserQuery).lift(OverwriteHello), OverwriteHello)).toBe(true);
 
     {
         const items = await q.lift(UserQuery).find();
@@ -135,3 +165,29 @@ test('query lift', async () => {
         assert<IsExact<string[], typeof items>>(true);
     }
 });
+
+
+// test('query aggregate', async () => {
+//     const product = t.schema({
+//         id: t.number.primary,
+//         category: t.string,
+//         title: t.string,
+//         price: t.integer,
+//         rating: t.integer.default(0),
+//     }, { name: 'Product' });
+
+//     const database = new Database(new MemoryDatabaseAdapter());
+
+//     database.query(product).find();
+//     const query = database.query(product) as any;
+
+//     query.groupBy('category').sum('sum').find();
+//     query.groupBy('category').count('id').find();
+//     query.groupBy('category').groupConcat('id').find();
+
+//     query.groupBy('category').min('rating').find();
+//     query.groupBy('category').avg('rating').find();
+//     query.groupBy('category').max('rating').find();
+
+//     // await database.persist(plainToClass(s, { id: 0, username: 'Peter' }));
+// });

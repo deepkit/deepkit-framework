@@ -4,6 +4,7 @@ import { getInstanceState } from '../src/identity-map';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter } from '../src/memory-db';
 import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '../src/plugin/soft-delete';
+import { Query } from '../src/query';
 
 test('soft-delete query', async () => {
     const s = t.schema({
@@ -29,6 +30,13 @@ test('soft-delete query', async () => {
     expect(await database.query(s).count()).toBe(2);
 
     await database.query(s).filter({ id: 2 }).lift(SoftDeleteQuery).deletedBy('me').deleteOne();
+
+    const q = database.query(s).lift(SoftDeleteQuery).withSoftDeleted();
+    expect(Query.isLifted(q, SoftDeleteQuery)).toBe(true);
+
+    if (Query.isLifted(q, SoftDeleteQuery)) {
+        expect(q.includeSoftDeleted).toBe(true);
+    }
 
     expect(await database.query(s).count()).toBe(1);
     expect(await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().count()).toBe(3);
