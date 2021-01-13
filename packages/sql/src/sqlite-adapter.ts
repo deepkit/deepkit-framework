@@ -359,16 +359,6 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 }
 
 export class SQLiteDatabaseQuery<T> extends SQLDatabaseQuery<T> {
-    constructor(
-        classSchema: ClassSchema<T>,
-        databaseSession: DatabaseSession<DatabaseAdapter>,
-        protected connectionPool: SQLiteConnectionPool,
-        platform: DefaultPlatform
-    ) {
-        super(classSchema, databaseSession, connectionPool, platform);
-    }
-
-    protected resolver = new SQLiteQueryResolver(this.connectionPool, this.platform, this.classSchema, this.databaseSession);
 }
 
 export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
@@ -379,7 +369,9 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends Entity>(
         classType: ClassType<T> | ClassSchema<T>
     ): SQLiteDatabaseQuery<T> {
-        return new SQLiteDatabaseQuery(getClassSchema(classType), this.databaseSession, this.connectionPool, this.platform);
+        return new SQLiteDatabaseQuery(getClassSchema(classType), this.databaseSession,
+            new SQLiteQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+        );
     }
 }
 

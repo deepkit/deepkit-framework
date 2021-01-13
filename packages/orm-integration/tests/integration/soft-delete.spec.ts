@@ -26,21 +26,21 @@ test('soft-delete query', async () => {
     expect(await database.query(s).count()).toBe(2);
 
     //soft delete using deletedBy
-    await SoftDeleteQuery.from(database.query(s)).filter({ id: 2 }).deletedBy('me').deleteOne();
+    await database.query(s).lift(SoftDeleteQuery).filter({ id: 2 }).deletedBy('me').deleteOne();
     expect(await database.query(s).count()).toBe(1);
     {
-        const deleted2 = await SoftDeleteQuery.from(database.query(s)).withSoftDeleted().filter({ id: 2 }).findOne();
+        const deleted2 = await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().filter({ id: 2 }).findOne();
         expect(deleted2.id).toBe(2);
         expect(deleted2.deletedAt).not.toBe(undefined);
         expect(deleted2.deletedBy).toBe('me');
     }
 
     //restore first
-    await SoftDeleteQuery.from(database.query(s).filter({ id: 1 })).restoreOne();
+    await database.query(s).filter({ id: 1 }).lift(SoftDeleteQuery).restoreOne();
     expect(await database.query(s).count()).toBe(2);
 
     //restore all
-    await SoftDeleteQuery.from(database.query(s)).restoreMany();
+    await database.query(s).lift(SoftDeleteQuery).restoreMany();
     expect(await database.query(s).count()).toBe(3);
     {
         const deleted2 = await database.query(s).filter({ id: 2 }).findOne();
@@ -50,12 +50,12 @@ test('soft-delete query', async () => {
     //soft delete everything
     await database.query(s).deleteMany();
     expect(await database.query(s).count()).toBe(0);
-    expect(await SoftDeleteQuery.from(database.query(s)).withSoftDeleted().count()).toBe(3);
+    expect(await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().count()).toBe(3);
 
     //hard delete everything
-    await SoftDeleteQuery.from(database.query(s)).withSoftDeleted().deleteMany();
+    await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().deleteMany();
     expect(await database.query(s).count()).toBe(0);
-    expect(await SoftDeleteQuery.from(database.query(s)).withSoftDeleted().count()).toBe(0);
+    expect(await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().count()).toBe(0);
 });
 
 test('soft-delete session', async () => {

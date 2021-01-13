@@ -398,12 +398,13 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 }
 
 export class MySQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
-    protected resolver = new MySQLQueryResolver(this.connectionPool, this.platform, this.classSchema, this.databaseSession);
 }
 
 export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): MySQLDatabaseQuery<T> {
-        return new MySQLDatabaseQuery(getClassSchema(classType), this.databaseSession, this.connectionPool, this.platform);
+        return new MySQLDatabaseQuery(getClassSchema(classType), this.databaseSession,
+            new MySQLQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+        );
     }
 }
 

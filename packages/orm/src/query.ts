@@ -422,7 +422,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     protected lifts: ClassType[] = [];
 
     static isLifted<T extends ClassType<Query<any>>>(v: Query<any>, type: T): v is InstanceType<T> {
-        return v.lifts.includes(type);
+        return v.lifts.includes(type) || v instanceof type;
     }
 
     constructor(
@@ -475,6 +475,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         for (const i in lift) {
             (cloned)[i] = (lift as any)[i];
         }
+        cloned.model = this.model.clone(cloned as BaseQuery<any>);
         cloned.lifts = this.lifts;
         cloned.lifts.push(...lifts);
 

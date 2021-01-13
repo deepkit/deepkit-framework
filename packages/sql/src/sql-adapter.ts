@@ -235,7 +235,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.update(this.classSchema, model, set);
         const connection = this.connectionPool.getConnection();
         try {
-            await connection.run(sql);
+            await connection.run(sql.sql, sql.params);
             patchResult.modified = await connection.getChanges();
         } finally {
             connection.release();
@@ -247,18 +247,10 @@ export class SQLDatabaseQuery<T extends Entity> extends Query<T> {
     constructor(
         classSchema: ClassSchema<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
-        protected connectionPool: SQLConnectionPool,
-        protected platform: DefaultPlatform,
+        protected resolver: SQLQueryResolver<T>
     ) {
-        super(classSchema, databaseSession, new SQLQueryResolver(connectionPool, platform, classSchema, databaseSession));
+        super(classSchema, databaseSession, resolver);
         if (!databaseSession.withIdentityMap) this.model.withIdentityMap = false;
-    }
-
-    clone(): this {
-        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.connectionPool, this.platform);
-        cloned.model = this.model.clone(cloned) as this['model'];
-        cloned.resolver = this.resolver;
-        return cloned;
     }
 }
 
@@ -270,7 +262,9 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     createQuery<T extends Entity>(
         classType: ClassType<T> | ClassSchema<T>
     ): SQLDatabaseQuery<T> {
-        return new SQLDatabaseQuery(getClassSchema(classType), this.databaseSession, this.connectionPool, this.platform);
+        return new SQLDatabaseQuery(getClassSchema(classType), this.databaseSession,
+            new SQLQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+        );
     }
 }
 

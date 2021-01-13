@@ -419,12 +419,13 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
 }
 
 export class PostgresSQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
-    protected resolver = new PostgresSQLQueryResolver(this.connectionPool, this.platform, this.classSchema, this.databaseSession);
 }
 
 export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): PostgresSQLDatabaseQuery<T> {
-        return new PostgresSQLDatabaseQuery(getClassSchema(classType), this.databaseSession, this.connectionPool, this.platform);
+        return new PostgresSQLDatabaseQuery(getClassSchema(classType), this.databaseSession,
+            new PostgresSQLQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+        );
     }
 }
 
