@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mongo",
-  "version": "1.0.1-alpha.6",
+  "version": "1.0.1-alpha.7",
   "description": "Deepkit ORM MongoDB adapter",
   "type": "module",
   "main": "./dist/esm/index.js",
@@ -22,10 +22,10 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.6",
-    "@deepkit/core": "^1.0.1-alpha.6",
-    "@deepkit/orm": "^1.0.1-alpha.6",
-    "@deepkit/type": "^1.0.1-alpha.6",
+    "@deepkit/bson": "^1.0.1-alpha.7",
+    "@deepkit/core": "^1.0.1-alpha.7",
+    "@deepkit/orm": "^1.0.1-alpha.7",
+    "@deepkit/type": "^1.0.1-alpha.7",
     "bson": "^4.0.4",
     "mongo-uuid": "^1.0.0",
     "saslprep": "^1.0.3"

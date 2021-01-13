@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/bson",
-  "version": "1.0.1-alpha.6",
+  "version": "1.0.1-alpha.7",
   "description": "Deepkit BSON parser",
   "type": "module",
   "main": "./dist/esm/index.js",
@@ -22,8 +22,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.6",
-    "@deepkit/type": "^1.0.1-alpha.6",
+    "@deepkit/core": "^1.0.1-alpha.7",
+    "@deepkit/type": "^1.0.1-alpha.7",
     "bson": "^4.0.4"
   },
   "devDependencies": {

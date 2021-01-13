@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-shared",
-  "version": "1.0.1-alpha.6",
+  "version": "1.0.1-alpha.7",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -13,8 +13,8 @@
   },
   "scripts": {},
   "dependencies": {
-    "@deepkit/rpc": "^1.0.1-alpha.6",
-    "@deepkit/type": "^1.0.1-alpha.6"
+    "@deepkit/rpc": "^1.0.1-alpha.7",
+    "@deepkit/type": "^1.0.1-alpha.7"
   },
   "jest": {
     "testEnvironment": "node",
