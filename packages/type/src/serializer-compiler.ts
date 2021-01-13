@@ -136,6 +136,19 @@ export function getDataConverterJS(
         ${setter} = ${accessor};`;
     }
 
+    const isFromClass = serializerCompilers.serializer.fromClass === serializerCompilers;
+    let postTransform = '';
+
+    //we only do transformers from class to x, since only here we know the type. from x to class would be highly error prone.
+    if (isFromClass) {
+        const transformer = property.transformers.get(serializerCompilers.serializer.name) || property.transformers.get('all');
+        if (transformer && isFromClass) {
+            const fnVar = reserveVariable(rootContext, 'transformer');
+            rootContext.set(fnVar, transformer);
+            postTransform = `${setter} = ${fnVar}(${setter})`;
+        }
+    }
+
     return `
         if (${accessor} === undefined) {
             ${setUndefined}
@@ -145,6 +158,7 @@ export function getDataConverterJS(
             ${nullSetterCode}
         } else {
             ${convert}
+            ${postTransform}
         }
     `;
 }

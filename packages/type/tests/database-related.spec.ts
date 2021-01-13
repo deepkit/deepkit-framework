@@ -4,6 +4,8 @@ import { Entity, MultiIndex, t } from '../src/decorators';
 import { getClassSchema } from '../index';
 import { uuid } from '../src/utils';
 import { getCollectionName } from '../src/mapper';
+import { jsonSerializer } from '../src/json-serializer';
+import { sliceClass } from '../src/model';
 
 
 @Entity('user2')
@@ -47,13 +49,62 @@ class OrganisationMembership {
     id: string = uuid();
 
     constructor(
-        @t.reference().index() public user: User,
+        @t.reference().index()
+        public user: User,
         @t.reference().index() public organisation: Organisation,
     ) {
     }
 }
 
-test('test reverse ref', async () => {
+test('serialize reference', () => {
+    const owner = new User('admin');
+    const organisation = new Organisation('a', owner);
+
+    const ApiOrganisation = sliceClass(Organisation).extend({
+        owner: t.transform((user: User) => user.id, 'json')
+    });
+
+    expect(getClassSchema(Organisation).getProperty('owner').getResolvedClassType()).toBe(User);
+    expect(getClassSchema(Organisation).getProperty('owner').clone().getResolvedClassType()).toBe(User);
+    expect(getClassSchema(Organisation).clone().getProperty('owner').getResolvedClassType()).toBe(User);
+    expect(getClassSchema(Organisation).clone().getMethodProperties('constructor')[1].getResolvedClassType()).toBe(User);
+
+    expect(getClassSchema(Organisation).getMethodProperties('constructor')[0].name).toBe('name');
+    expect(getClassSchema(Organisation).clone().getMethodProperties('constructor')[0].name).toBe('name');
+    expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[0].name).toBe('name');
+
+    expect(getClassSchema(ApiOrganisation).getProperty('owner').transformers.get('json')).toBeInstanceOf(Function);
+    expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[1].name).toBe('owner');
+    expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[1].transformers.get('json')).toBeInstanceOf(Function);
+    expect(getClassSchema(ApiOrganisation).getMethodProperties('constructor')[1].getResolvedClassType()).toBe(User);
+
+    const ApiOrganisation2 = sliceClass(Organisation).extend({
+        owner: t.transform((user: User) => user.id)
+    });
+
+    {
+        const plain = jsonSerializer.for(Organisation).serialize(organisation);
+        expect(plain.owner).toEqual({ id: owner.id, name: owner.name });
+    }
+
+    {
+        const plain = jsonSerializer.for(ApiOrganisation).serialize(organisation);
+        expect(plain.owner).toEqual(owner.id);
+    }
+
+    {
+        const plain = jsonSerializer.for(ApiOrganisation2).serialize(organisation);
+        expect(plain.owner).toEqual(owner.id);
+    }
+
+    {
+        const item = jsonSerializer.for(ApiOrganisation).deserialize({id: '123', owner: {id: '444'}});
+        expect(item.owner).toBeInstanceOf(User);
+        expect(item.owner.id).toBe('444');
+    }
+});
+
+test('reverse ref', async () => {
     const userSchema = getClassSchema(User);
     const organisationSchema = getClassSchema(Organisation);
     const pivotSchema = getClassSchema(OrganisationMembership);

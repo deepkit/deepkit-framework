@@ -329,6 +329,11 @@ export class PropertySchema {
 
     description: string = '';
 
+    /** 
+     * Transformer for serialization (not deserialization).
+    */
+    transformers = new Map<string, (v: any) => any>();
+
     constructor(public name: string, public parent?: PropertySchema) {
     }
 
@@ -517,10 +522,12 @@ export class PropertySchema {
         for (const i of eachKey(this)) {
             (s as any)[i] = (this as any)[i];
         }
-        s.data = {...this.data};
+        s.data = { ...this.data };
         s.symbol = Symbol(this.name);
-        s.classTypeResolved = undefined;
+        s.classType = this.classType;
+        // s.classTypeResolved = undefined;
         s.templateArgs = this.templateArgs.slice(0);
+        s.transformers = new Map(this.transformers);
         return s;
     }
 
@@ -853,6 +860,17 @@ export class ClassSchema<T = any> {
                 //when we have no default value AND the property was never seen in the constructor, its
                 //a optional one.
                 property.isOptional = true;
+            }
+        }
+
+        const constructorProperties = this.methodProperties.get('constructor');
+        if (constructorProperties) {
+            //during decorator calls it might be that `constructorProperties` is not completely populated 
+            for (let i = 0; i < constructorProperties.length; i++) {
+                if (!constructorProperties[i]) continue;
+                if (constructorProperties[i].name === property.name) {
+                    constructorProperties[i] = property;
+                }
             }
         }
 
@@ -1238,7 +1256,7 @@ export class ClassSlicer<T> {
     }
 
     public extend<E extends PlainSchemaProps>(props: E): ClassType<T & ExtractClassDefinition<E>> {
-        const schema = t.schema(props);
+        const schema = t.schema(props, {classType: this.schema.classType});
         for (const property of schema.getClassProperties().values()) {
             this.schema.registerProperty(property);
         }

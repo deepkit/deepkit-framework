@@ -31,6 +31,7 @@ import {
 import { PartialField, Types } from './types';
 import { validators } from './validation-decorator';
 import { FieldDecoratorResult, isFieldDecorator, MySQLOptions, PostgresOptions, SqliteOptions, ValidatorFn } from './field-decorator';
+import { Serializer } from './serializer';
 
 export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
 
@@ -348,6 +349,13 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, Default(v)]);
     };
 
+    fn.transform = (t: (v: any) => any, serializer: string = 'all') => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.transformers.set(serializer, t);
+        }]);
+    };
+
     fn.description = (v: string) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
@@ -463,6 +471,15 @@ function createFieldDecoratorResult<T>(
         }
     });
 
+    // Object.defineProperty(fn, 'integer', {
+    //     get: () => {
+    //         resetIfNecessary();
+    //         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+    //             property.setType('integer');
+    //         }]);
+    //     }
+    // });
+
     Object.defineProperty(fn, 'date', {
         get: () => {
             resetIfNecessary();
@@ -471,6 +488,7 @@ function createFieldDecoratorResult<T>(
             }]);
         }
     });
+
 
     Object.defineProperty(fn, 'boolean', {
         get: () => {
@@ -1028,6 +1046,11 @@ export interface MainDecorator {
      * Marks a field as number.
      */
     number: FieldDecoratorResult<number>;
+
+    /**
+     * Marks a field as integer.
+     */
+    integer: FieldDecoratorResult<number>;
 
     /**
      * Marks a field as boolean.

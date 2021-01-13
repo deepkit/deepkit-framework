@@ -122,6 +122,17 @@ export interface FieldDecoratorResultBase<T> {
      */
     default(v: T): FieldDecoratorResult<T>;
 
+    /** 
+     * Changes the value before during serializing (not deserializing) to another value, 
+     * optionally for a particular serializer.
+     * 
+     * serializerName is the name of the serialzier. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
+     * 
+     * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
+     * So it's to use the decorator typesafe via `@t.transform((user: User) => user.id)`.
+    */
+    transform<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
+
     /**
      * Sets a description.
      */
@@ -348,7 +359,6 @@ export interface FieldDecoratorResultBase<T> {
      *     })
      *     title: string;
      * }
-     *
      * ```
      */
     validator(
