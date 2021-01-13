@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/core",
-  "version": "1.0.1-alpha.7",
+  "version": "1.0.1-alpha.8",
   "description": "Deepkit core library",
   "type": "module",
   "main": "./dist/esm/index.js",
