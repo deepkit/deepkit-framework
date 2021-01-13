@@ -24,17 +24,12 @@ test('query aggregate', async () => {
     const query = database.query(product);
 
     expect(await query.withSum('price').find()).toEqual([{price: 999+499+45549}]);
-    expect(await query.groupBy('category').withSum('price').orderBy('category').find()).toEqual([{price: 45549}, {price: 999+499}]);
-
-    expect(await query.withSum('price').find()).toEqual([{price: 999+499+45549}]);
     expect(await query.groupBy('category').withSum('price').orderBy('category').find()).toEqual([{category: 'planets', price: 45549}, {category: 'toys', price: 999+499}]);
     
-    expect(await query.filter({price: {$lt: 1000}}).withSum('price').orderBy('category').find()).toEqual([{price: 999+499}]);
     expect(await query.filter({category: 'toys'}).groupBy('category').withSum('price').find()).toEqual([{category: 'toys', price: 999+499}]);
-    
-    expect(await query.groupBy('category').withSum('price').orderBy('category').having({price: {$lt: 2000}}).find()).toEqual([{category: 'toys', price: 999+499}]);
+    expect(await query.groupBy('category').withSum('price').orderBy('category').filter({price: {$lt: 2000}}).find()).toEqual([{category: 'toys', price: 999+499}]);
 
-    expect(await query.groupBy('category').withSum('price').find()).toEqual([{category: 'planets', price: 45549}, {category: 'toys', price: 999+499}]);
+    expect(await query.groupBy('category').withSum('price').orderBy('category').find()).toEqual([{category: 'planets', price: 45549}, {category: 'toys', price: 999+499}]);
 
     expect(await query.groupBy('category').withMin('price').orderBy('category').find()).toEqual([{category: 'planets', price: 45549}, {category: 'toys', price: 499}]);
     expect(await query.groupBy('category').withMax('price').orderBy('category').find()).toEqual([{category: 'planets', price: 45549}, {category: 'toys', price: 999}]);
