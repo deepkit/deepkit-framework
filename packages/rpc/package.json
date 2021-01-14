@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/rpc",
-  "version": "1.0.1-alpha.8",
+  "version": "1.0.1-alpha.9",
   "type": "module",
   "main": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
@@ -24,10 +24,10 @@
     "rxjs": "~6.6.0"
   },
   "dependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.8",
-    "@deepkit/core": "^1.0.1-alpha.8",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.8",
-    "@deepkit/type": "^1.0.1-alpha.8",
+    "@deepkit/bson": "^1.0.1-alpha.9",
+    "@deepkit/core": "^1.0.1-alpha.9",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.9",
+    "@deepkit/type": "^1.0.1-alpha.9",
     "dot-prop": "^5.1.1"
   },
   "devDependencies": {
