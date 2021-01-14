@@ -21,7 +21,8 @@ import {
 import bson from 'bson';
 import mongoUuid from 'mongo-uuid';
 
-export function uuid4Binary(u?: string): bson.Binary {
+//we cant annotate bson.Binary as this would break .d.ts
+export function uuid4Binary(u?: string): any {
     return mongoUuid(bson.Binary, u);
 }
 

@@ -50,7 +50,7 @@ export class MenuBase implements AfterViewInit {
     }
 
     buildTemplate() {
-        const submenu = [];
+        const submenu: any[] = [];
         if (this.child) {
             for (const item of this.child.toArray()) {
                 if (item === this) continue;

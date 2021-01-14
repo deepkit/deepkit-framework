@@ -40,7 +40,7 @@ export class ServerListenController implements Command {
     }
 
     async execute(
-        @flag.default('localhost') host?: string,
+        @flag.optional host?: string,
         @flag.optional port?: number,
         @flag.optional workers?: number,
         @flag.default(false) watch?: boolean,

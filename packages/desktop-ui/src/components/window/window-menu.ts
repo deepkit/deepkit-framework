@@ -34,7 +34,7 @@ export class WindowMenuState {
     }
 
     protected _build() {
-        const template = [];
+        const template: any[] = [];
 
         //todo, merge menus with same id(), id falls back to role+label
         // then we can use fileMenu in sub views and add sub menu items as we want

@@ -214,7 +214,7 @@ function createSchemaDecoder(schema: ClassSchema): DecoderFn {
             if (property.isParentReference) {
                 throw new Error('Parent references not supported in BSON.');
             } else {
-                setProperties.push(`_instance.${property.name} = object.${property.name};`);
+                setProperties.push(`if (object.${property.name} !== undefined) _instance.${property.name} = object.${property.name};`);
             }
         }
 

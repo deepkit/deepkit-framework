@@ -33,7 +33,7 @@ import {
     isNumber
 } from "@deepkit/core";
 import Hammer from "hammerjs";
-import { Observable } from "rxjs";
+import { isObservable, Observable } from "rxjs";
 import { CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
 import { DropdownComponent } from "../button";
 import { detectChangesNextFrame } from "../app/utils";
@@ -766,7 +766,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes.items) {
-            if (this.items instanceof Observable) {
+            if (isObservable(this.items)) {
                 this.items.subscribe((items: T[]) => {
                     this.sorted = items;
                     this.doSort();

@@ -13,34 +13,37 @@ import {
 } from "@angular/core";
 import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
 import { detectChangesNextFrame } from "../app";
+import { DatePipe } from '@angular/common';
+
+const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
 
 @Component({
     selector: 'dui-input',
     template: `
         <dui-icon *ngIf="icon" class="icon" [size]="iconSize" [name]="icon"></dui-icon>
         <input
-            *ngIf="type !== 'textarea'"
-            #input
-            [step]="step"
-            [readOnly]="readonly !== false"
-            [attr.min]="min"
-            [attr.max]="max"
-            [attr.minLength]="minLength"
-            [attr.maxLength]="maxLength"
-            [type]="type" (focus)="onFocus()" (blur)="onBlur()"
-            (change)="handleFileInput($event)"
-            [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
-            [disabled]="isDisabled"
-            [ngModel]="type === 'file' ? undefined : innerValue"
-            (ngModelChange)="setInnerValue($event)"
+                *ngIf="type !== 'textarea'"
+                #input
+                [step]="step"
+                [readOnly]="readonly !== false"
+                [attr.min]="min"
+                [attr.max]="max"
+                [attr.minLength]="minLength"
+                [attr.maxLength]="maxLength"
+                [type]="type" (focus)="onFocus()" (blur)="onBlur()"
+                (change)="handleFileInput($event)"
+                [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
+                [disabled]="isDisabled"
+                [ngModel]="type === 'file' ? undefined : innerValue"
+                (ngModelChange)="setInnerValue($event)"
         />
         <textarea
-            #input
-            [readOnly]="readonly !== false"
-            *ngIf="type === 'textarea'" (focus)="onFocus()" (blur)="onBlur()"
-            [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
-            [disabled]="isDisabled"
-            [(ngModel)]="innerValue"></textarea>
+                #input
+                [readOnly]="readonly !== false"
+                *ngIf="type === 'textarea'" (focus)="onFocus()" (blur)="onBlur()"
+                [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
+                [disabled]="isDisabled"
+                [(ngModel)]="innerValue"></textarea>
         <dui-icon *ngIf="hasClearer" class="clearer" name="clear" (click)="clear()"></dui-icon>
     `,
     styleUrls: ['./input.component.scss'],
@@ -131,6 +134,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         protected injector: Injector,
         public readonly cd: ChangeDetectorRef,
         @SkipSelf() public readonly cdParent: ChangeDetectorRef,
+        private datePipe : DatePipe,
     ) {
         super(injector, cd, cdParent);
     }
@@ -156,6 +160,25 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         if (this.type === 'file') return;
 
         this.innerValue = value;
+    }
+
+    get innerValue(): any {
+        if (dateTimeTypes.includes(this.type)) {
+            if (super.innerValue instanceof Date) {
+                return this.datePipe.transform(super.innerValue, 'yyyy-MM-dd');
+            }
+        }
+
+        return super.innerValue;
+    }
+
+    set innerValue(value: any | undefined) {
+        if (dateTimeTypes.includes(this.type)) {
+            if ('string' === typeof value) {
+                value = new Date(value);
+            }
+        }
+        super.innerValue = value;
     }
 
     async writeValue(value?: any) {
@@ -223,7 +246,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
         if (files) {
             if (files.length > 1) {
-                const value = [];
+                const value: any[] = [];
                 for (let i = 0; i < files.length; i++) {
                     const file = files.item(i);
                     if (file) {
