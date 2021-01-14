@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type",
-  "version": "1.0.1-alpha.9",
+  "version": "1.0.1-alpha.10",
   "description": "@deepkit/type, the fastest universal TypeScript serializer and validator with JIT engine for frontend, backend, http-transport, RPC, and database, with built-in validations, for Browser/NodeJS.",
   "type": "module",
   "main": "./dist/esm/index.js",
@@ -22,7 +22,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.9",
+    "@deepkit/core": "^1.0.1-alpha.10",
     "@types/validator": "^13.1.0",
     "buffer": "^5.2.1",
     "clone": "^2.1.1",
