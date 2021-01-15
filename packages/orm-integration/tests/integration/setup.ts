@@ -18,7 +18,7 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
     if (driver === 'sqlite') {
         adapter = new SQLiteDatabaseAdapter('/tmp/orm-integration.sqlite');
     } else if (driver === 'mysql') {
-        adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' });
+        adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', password: process.env.MYSQL_PW, database: 'default' });
     } else if (driver === 'postgres') {
         adapter = new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres' });
     } else if (driver === 'mongo') {
