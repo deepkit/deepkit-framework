@@ -34,7 +34,7 @@ test('relation bug spec', async () => {
     ]);
 });
 
-test('soft-delete session', async () => {
+test('relation bug session', async () => {
     @entity.name('relationBugCookie2')
     class Cookie {
         @t.primary.autoIncrement id: number = 0;
