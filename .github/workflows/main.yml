@@ -1,0 +1,26 @@
+name: CI
+
+on: push
+
+jobs:
+  build:
+    runs-on: [ ubuntu-latest ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+      - name: Cache ~/.npm
+        uses: actions/cache@v1
+        with:
+          path: ~/.npm # npm cache files are stored in `~/.npm` on Linux/macOS
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Setup
+        run: npm install
+        shell: bash
+      - name: Lerna bootstrap
+        run: |
+          npm run boostrap
+      - name: Test
+        run: npm run test
