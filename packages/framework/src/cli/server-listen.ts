@@ -16,15 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { cli, Command, flag } from '../command';
-import { Logger, TimestampFormatter } from '../logger';
-import { kernelConfig } from '../kernel.config';
 import { ApplicationServer } from '../application-server';
-import { WebWorkerFactory } from '../worker';
-import { EventDispatcher } from '../event';
+import { cli, Command, flag } from '../command';
 import { InjectorContext } from '../injector/injector';
-
-class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) { }
+import { KernelModule } from '../kernel';
+import { Logger, TimestampFormatter } from '../logger';
 
 @cli.controller('server:listen', {
     description: 'Starts the HTTP server'
@@ -32,10 +28,7 @@ class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'hos
 export class ServerListenController implements Command {
     constructor(
         protected logger: Logger,
-        protected config: ApplicationServerConfig,
-        protected webWorkerFactory: WebWorkerFactory,
-        protected rootScopedContext: InjectorContext,
-        protected eventDispatcher: EventDispatcher,
+        protected injectorContext: InjectorContext,
     ) {
     }
 
@@ -43,17 +36,23 @@ export class ServerListenController implements Command {
         @flag.optional host?: string,
         @flag.optional port?: number,
         @flag.optional workers?: number,
+        @flag.optional ssl?: boolean,
+        @flag.optional selfSigned?: boolean,
         @flag.default(false) watch?: boolean,
     ): Promise<void> {
         if (!this.logger.hasFormatter(TimestampFormatter)) this.logger.addFormatter(new TimestampFormatter);
 
-        const applicationServer = new ApplicationServer(this.logger, this.webWorkerFactory, this.eventDispatcher, this.rootScopedContext, {
-            workers: workers || this.config.workers || 1,
-            host: host || this.config.host,
-            port: port || this.config.port,
-            server: this.config.server,
-        });
+        const overwrite: { [name: string]: any } = {};
+        if (host) overwrite.host = host;
+        if (port) overwrite.port = port;
+        if (workers) overwrite.workers = workers;
+        if (ssl) overwrite.ssl = {};
+        if (selfSigned) overwrite.selfSigned = selfSigned;
 
-        await applicationServer.start();
+        const kernel = this.injectorContext.getModule('kernel');
+        kernel.setConfig(overwrite);
+        const server = this.injectorContext.get(ApplicationServer);
+
+        await server.start();
     }
 }

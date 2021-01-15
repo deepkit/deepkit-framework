@@ -26,10 +26,13 @@ test('basics', async () => {
     }
 
     {
-        await client.increment('inc', 5);
+        let n = await client.increment('inc', 5);
+        expect(n).toBe(5);
         expect(await client.getIncrement('inc')).toBe(5);
-        await client.increment('inc', 5);
-        await client.increment('inc', 5);
+        n = await client.increment('inc', 5);
+        expect(n).toBe(10);
+        n = await client.increment('inc', 5);
+        expect(n).toBe(15);
         expect(await client.getIncrement('inc')).toBe(15);
     }
 

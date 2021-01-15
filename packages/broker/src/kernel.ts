@@ -10,7 +10,7 @@
 
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
 import { createRpcMessage, RpcKernelBaseConnection, RpcConnectionWriter, RpcMessage, RpcMessageRouteType, RpcMessageBuilder, RpcKernelConnections } from '@deepkit/rpc';
-import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
+import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIncrement, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
 
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];
@@ -149,8 +149,8 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.Increment: {
                 const body = message.parseBody(brokerIncrement);
-                this.state.increment(body.n, body.v);
-                response.ack();
+                const newValue = this.state.increment(body.n, body.v);
+                response.reply(BrokerType.ResponseIncrement, brokerResponseIncrement, {v: newValue});
                 break;
             }
             case BrokerType.Delete: {
@@ -260,12 +260,13 @@ export class BrokerState {
         this.setStore.set(id, data);
     }
 
-    public increment(id: string, v?: number) {
+    public increment(id: string, v?: number): number {
         const buffer = this.setStore.get(id);
         const float64 = buffer ? new Float64Array(buffer.buffer, buffer.byteOffset) : new Float64Array(1);
         if (!buffer) this.setStore.set(id, new Uint8Array(float64.buffer));
 
         float64[0] += v || 1;
+        return float64[0];
     }
 
     public get(id: string): Uint8Array | undefined {

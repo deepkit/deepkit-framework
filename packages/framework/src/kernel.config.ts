@@ -22,15 +22,25 @@ import { t } from '@deepkit/type';
 export const kernelConfig = createConfig({
     host: t.string.default('localhost'), //binding to 127.0.0.1 is roughly 20% slower.
     port: t.number.default(8080),
+    httpsPort: t.number.optional.description('If httpsPort and ssl is defined, then the https server is started additional to the http-server.'),
+    selfSigned: t.boolean.optional.description('If for ssl: true the certificate and key should be automatically generated.'),
+    keepAliveTimeout: t.number.optional,
     path: t.string.default('/'),
     workers: t.number.default(1),
+    ssl: t.boolean.default(false).description("Enables HTTPS server"),
+    sslOptions: t.any.description("Same interface as tls.SecureContextOptions & tls.TlsOptions."),
+    sslKey: t.string.optional.description('A file path to a ssl key file for https'),
+    sslCertificate: t.string.optional.description('A file path to a certificate file for https'),
+    sslCa: t.string.optional.description('A file path to a ca file for https'),
+    sslCrl: t.string.optional.description('A file path to a crl file for https'),
     server: t.any, //todo: change to t.classType(Server)
     maxPayload: t.number.optional,
     publicDir: t.string.optional.description('A path to a folder that should be served per default. Relative to cwd.'),
     debug: t.boolean.default(false),
     debugUrl: t.string.default('_debug'),
-    debugStorePath: t.string.default('var/debug/'),
-    debugSqlitePath: t.string.default('var/debug/deepkit-debug.sqlite'),
+    varPath: t.string.default('var/'),
+    debugStorePath: t.string.default('debug/').description('Relative to {varPath} option'),
+    debugSqlitePath: t.string.default('debug/deepkit-debug.sqlite').description('Relative to {varPath} option'),
     httpLog: t.boolean.default(true),
 
     databases: t.array(t.any).optional.description('ClassType[] of Database classes'),

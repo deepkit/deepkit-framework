@@ -19,12 +19,16 @@
 import { DebugRequest } from '@deepkit/framework-debug-shared';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sql';
+import { join } from 'path';
 import { inject } from '../injector/injector';
 import { kernelConfig } from '../kernel.config';
 
 export class DebugDatabase extends Database {
-    constructor(@inject(kernelConfig.token('debugSqlitePath')) debugSqlitePath: string) {
-        super(new SQLiteDatabaseAdapter(debugSqlitePath), [
+    constructor(
+        @inject(kernelConfig.token('varPath')) varPath: string,
+        @inject(kernelConfig.token('debugSqlitePath')) debugSqlitePath: string,
+    ) {
+        super(new SQLiteDatabaseAdapter(join(varPath, debugSqlitePath)), [
             DebugRequest,
         ]);
         this.name = 'debug';

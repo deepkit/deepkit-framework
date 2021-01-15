@@ -14,7 +14,7 @@ import { AsyncSubscription } from "@deepkit/core-rxjs";
 import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, TransportConnectionHooks } from "@deepkit/rpc";
 import { ClassSchema, FieldDecoratorResult, getClassSchema, isFieldDecorator, PropertySchema, t } from "@deepkit/type";
 import { BrokerKernel } from "./kernel";
-import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from "./model";
+import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIncrement, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from "./model";
 
 export class BrokerChannel<T> {
     protected listener: number = 0;
@@ -287,11 +287,11 @@ export class BrokerClient extends RpcBaseClient {
         return float64[0];
     }
 
-    public async increment<T>(id: string, value?: number): Promise<undefined> {
-        await this.sendMessage(BrokerType.Increment, brokerIncrement, { n: id, v: value })
-            .ackThenClose();
+    public async increment<T>(id: string, value?: number): Promise<number> {
+        const response = await this.sendMessage(BrokerType.Increment, brokerIncrement, { n: id, v: value })
+            .waitNext(BrokerType.ResponseIncrement, brokerResponseIncrement);
 
-        return undefined;
+        return response.v;
     }
 
     public async delete<T>(id: string): Promise<undefined> {

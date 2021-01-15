@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { ClassType, collectForMicrotask, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
+import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, stringifyValueWithType, toFastProperties } from '@deepkit/core';
 import { isBehaviorSubject, isSubject } from '@deepkit/core-rxjs';
-import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
+import { ClassSchema, createClassSchema, getClassSchema, getClassTypeFromInstance, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
@@ -233,7 +233,6 @@ export class RpcServerAction {
                 if (!collection) return response.error(new Error('No collection found'));
                 const body = message.parseBody(getClassSchema(CollectionQueryModel));
                 collection.collection.model.set(body);
-                console.log('collection.model.changed()');
                 collection.collection.model.changed();
                 break;
             }
@@ -370,6 +369,13 @@ export class RpcServerAction {
                         subject: result,
                         completedByClient: false,
                         subscription: result.subscribe((next) => {
+                            if (types.resultProperty.type === 'class' && types.resultProperty.classType && next && !(next instanceof types.resultProperty.classType)) {
+                                console.warn(
+                                    `The subject in action ${getClassPropertyName(classType, body.method)} has a class type assigned of ${getClassName(types.resultProperty.classType)}` +
+                                    ` but emitted something different of type ${stringifyValueWithType(next)}. Either annotate the method with t.union() or make sure it emits the correct type.`
+                                );
+                                return;
+                            }
                             const newProperty = createNewPropertySchemaIfNecessary(next, types.resultProperty);
                             if (newProperty) {
                                 types.observableNextSchema = rpcActionObservableSubscribeId.clone();

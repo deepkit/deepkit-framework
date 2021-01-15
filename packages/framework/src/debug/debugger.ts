@@ -43,7 +43,7 @@ export class Debugger {
     }
 }
 
-class Config extends kernelConfig.slice(['debugSqlitePath', 'debugStorePath', 'debugUrl']) { }
+class Config extends kernelConfig.slice(['varPath', 'debugSqlitePath', 'debugStorePath', 'debugUrl']) { }
 
 @injectable()
 export class HttpRequestDebugCollector {
@@ -71,7 +71,7 @@ export class HttpRequestDebugCollector {
         );
         this.session.add(this.debugRequest);
         await this.session.commit();
-        this.logPath = join(this.config.debugStorePath, 'requests', this.debugRequest.id + '');
+        this.logPath = join(this.config.varPath, this.config.debugStorePath, 'requests', this.debugRequest.id + '');
         mkdirSync(this.logPath, { recursive: true });
         this.logFile = openSync(join(this.logPath, 'log.txt'), 'a');
     }

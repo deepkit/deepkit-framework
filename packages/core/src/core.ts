@@ -9,6 +9,7 @@
  */
 
 import dotProp from 'dot-prop';
+import { join } from 'path';
 import { eachPair } from './iterators';
 
 /**
@@ -109,6 +110,73 @@ export function typeOf(obj: any) {
  */
 export function isPlainObject(obj: any): obj is object {
     return Boolean(obj && typeof obj === 'object' && obj.constructor instanceof obj.constructor);
+}
+
+/**
+ * Returns the ClassType for a given instance.
+ */
+export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
+    if (!isClassInstance(target)) {
+        throw new Error(`Value is not a class instance. Got ${stringifyValueWithType(target)}`);
+    }
+
+    return (target as any)['constructor'] as ClassType<T>;
+}
+
+/**
+ * Returns true when target is a class instance.
+ */
+export function isClassInstance(target: any): boolean {
+    return target !== undefined && target !== null
+        && target['constructor']
+        && Object.getPrototypeOf(target) === (target as any)['constructor'].prototype
+        && !isPlainObject(target)
+        && isObject(target);
+}
+
+/** 
+ * Returns a human readable string representation from the given value.
+*/
+export function stringifyValueWithType(value: any): string {
+    if ('string' === typeof value) return `String(${value})`;
+    if ('number' === typeof value) return `Number(${value})`;
+    if ('boolean' === typeof value) return `Boolean(${value})`;
+    if ('function' === typeof value) return `Function ${value.name}`;
+    if (isPlainObject(value)) return `Object ${prettyPrintObject(value)}`;
+    if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${prettyPrintObject(value)}`;
+    if (null === typeof value) return `null`;
+    return 'undefined';
+}
+
+/**
+ * Changes the class of a given instance and returns the new object.
+ * 
+ * @example
+ * ```typescript
+ * 
+ *  class Model1 {
+ *    id: number = 0;
+ *  }
+ * 
+ *  class Model2 {
+ *    id: number = 0;
+ *  }
+ * 
+ *  const model1 = new Model1();
+ *  const model2 = changeClass(model1, Model2);
+ *  model2 instanceof Model2; //true
+ * ```
+ */
+export function changeClass<T>(value: any, newClass: ClassType<T>): T {
+    return Object.assign(Object.create(newClass.prototype), value);
+}
+
+export function prettyPrintObject(object: object): string {
+    let res: string[] = [];
+    for (const i in object) {
+        res.push(i + ': ' + stringifyValueWithType((object as any)[i]));
+    }
+    return '{' + res.join(',') + '}';
 }
 
 /**

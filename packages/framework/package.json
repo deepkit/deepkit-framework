@@ -43,6 +43,7 @@
     "date-fns": "^2.16.1",
     "formidable": "^1.2.2",
     "fs-extra": "^9.0.1",
+    "selfsigned": "1.10.8",
     "get-parameter-names": "^0.3.0",
     "md5": "^2.2.1",
     "mime-types": "^2.1.27",

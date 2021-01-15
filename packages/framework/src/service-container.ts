@@ -147,6 +147,11 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         return this.rootInjectorContext.getInjector(context.id);
     }
 
+    public getRootInjector(): Injector {
+        if (!this.rootContext) throw new Error('No root context set');
+        return this.rootInjectorContext.getInjector(this.rootContext.id);
+    }
+
     protected getContext(id: number): Context {
         const context = this.contextManager.get(id);
         if (!context) throw new Error(`No context for ${id} found`);
@@ -156,7 +161,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
 
     protected getNewContext(module: Module<any>, parent?: Context): Context {
         const newId = this.currentIndexId++;
-        const context = new Context(newId, parent);
+        const context = new Context(module, newId, parent);
         this.contextManager.set(newId, context);
 
         let contexts = this.moduleContexts.get(module);
@@ -176,6 +181,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         additionalProviders: ProviderWithScope[] = [],
         additionalImports: Module<any>[] = []
     ): Context {
+        this.rootInjectorContext.modules[module.getName()] = module;
         const exports = module.options.exports ? module.options.exports.slice(0) : [];
         const providers = module.options.providers ? module.options.providers.slice(0) : [];
         const controllers = module.options.controllers ? module.options.controllers.slice(0) : [];

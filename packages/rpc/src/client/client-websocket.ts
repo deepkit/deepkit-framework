@@ -16,11 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { ClassType } from '@deepkit/core';
 import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
 
 export class DeepkitClient extends RpcClient {
     constructor(url: string) {
         super(new RpcWebSocketClientAdapter(url));
+    }
+
+    static fromCurrentHost<T extends ClassType<DeepkitClient>>(this: T, baseUrl: string = ''): InstanceType<T> {
+        const ws = location.protocol.startsWith('https') ? 'wss' : 'ws';
+        return new (this as any)(`${ws}://${location.host}/${baseUrl}`);
     }
 }
 

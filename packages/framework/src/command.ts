@@ -16,20 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { args, flags } from '@oclif/parser';
+import { ClassType } from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     FreeFluidDecorator,
     getClassSchema,
+
+    getPropertyXtoClassFunction,
+    jsonSerializer,
     PropertyApiTypeInterface,
     PropertySchema
 } from '@deepkit/type';
-import { IBooleanFlag, IOptionFlag } from '@oclif/parser/lib/flags';
-import { ClassType } from '@deepkit/core';
-import { Command as OclifCommand } from '@oclif/config';
 import { Command as OclifCommandBase } from '@oclif/command';
+import { Command as OclifCommand } from '@oclif/config';
+import { args, flags } from '@oclif/parser';
+import { IBooleanFlag, IOptionFlag } from '@oclif/parser/lib/flags';
 import { InjectorContext } from './injector/injector';
 
 class ArgDefinitions {
@@ -95,6 +98,7 @@ export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
 
     default(value: any) {
         this.t.default = value;
+        this.t.optional = true;
         return;
     }
 
@@ -142,9 +146,14 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
 
     const schema = getClassSchema(classType);
     let properties: PropertySchema[] = [];
+    let converters: {[name: string]: (v: any) => any} = {};
     try {
         properties = schema.getMethodProperties('execute');
     } catch { }
+
+    for (const property of properties) {
+        converters[property.name] = getPropertyXtoClassFunction(property, jsonSerializer);
+    }
 
     for (const i in argDefinitions.args) {
         if (!argDefinitions.args.hasOwnProperty(i)) continue;
@@ -182,7 +191,7 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
                     const methodArgs: any[] = [];
 
                     for (const property of properties) {
-                        methodArgs.push(args[property.name] ?? flags[property.name]);
+                        methodArgs.push(converters[property.name](args[property.name] ?? flags[property.name]));
                     }
 
                     return instance.execute(...methodArgs);

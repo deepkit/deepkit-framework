@@ -260,7 +260,7 @@ export class TableHeaderDirective {
                                                   [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
                                 </ng-container>
                                 <ng-container *ngIf="!column.cell">
-                                    {{ row[column.name || ''] }}
+                                    {{ column.name ? valueFetcher(row, column.name) : '' }}
                                 </ng-container>
                             </div>
                         </div>
@@ -366,7 +366,11 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     /**
      * Alternate object value fetcher, important for sorting and filtering.
      */
-    @Input() public valueFetcher = (object: any, path: string): any => object[path];
+    @Input() public valueFetcher = (object: any, path: string): any => {
+        const dot = path.indexOf('.');
+        if (dot === -1) return object[path];
+        return object[path.substr(0, dot)][path.substr(dot + 1)];
+    };
 
     /**
      * A hook to provide custom sorting behavior for certain columns.

@@ -447,10 +447,13 @@ export class PropertySchema {
         if (props['classType']) {
             const entity = getGlobalStore().RegisteredEntities[props['classType']];
             if (!entity) {
-                throw new Error(`Could not unserialize type information for ${p.methodName || ''}:${p.name}, got entity name ${props['classType']}. ` +
+                throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props['classType']} . ` +
                     `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name()`);
             }
             p.classType = getClassSchema(entity).classType;
+        } else if (p.type === 'class' && !props['classType']) {
+            throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
+                `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
         }
         p.classTypeName = props['classTypeName'];
 
@@ -1262,7 +1265,7 @@ export class ClassSlicer<T> {
     }
 
     public extend<E extends PlainSchemaProps>(props: E): ClassType<T & ExtractClassDefinition<E>> {
-        const schema = t.schema(props, {classType: this.schema.classType});
+        const schema = t.schema(props, { classType: this.schema.classType });
         for (const property of schema.getClassProperties().values()) {
             this.schema.registerProperty(property);
         }
@@ -1466,7 +1469,7 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object | ClassSche
  */
 export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = ''): ClassSchema<T> {
     const fromClass = clazz !== undefined;
-    
+
     const c = clazz || class {
     };
     if (name) {

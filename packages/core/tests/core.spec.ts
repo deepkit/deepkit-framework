@@ -1,13 +1,16 @@
-import { expect, test } from '@jest/globals';
+    import { expect, test } from '@jest/globals';
 import { domainToASCII } from 'url';
 import {
     asyncOperation,
+    changeClass,
     collectForMicrotask,
     getClassName,
+    getClassTypeFromInstance,
     getObjectKeysSize,
     getPathValue,
     isArray,
     isClass,
+    isClassInstance,
     isConstructable,
     isFunction,
     isObject,
@@ -16,7 +19,8 @@ import {
     isPrototypeOfBase,
     isUndefined,
     setPathValue,
-    sleep
+    sleep,
+    stringifyValueWithType
 } from '../src/core';
 
 class SimpleClass {
@@ -335,4 +339,60 @@ test('collectForMicrotask', async () => {
 
     await sleep(0.1);
     expect(got).toEqual(['d']);
+});
+
+test('stringifyValueWithType', async () => {
+    class Peter {id = 1}
+    expect(stringifyValueWithType(new Peter)).toBe(`Peter {id: Number(1)}`);
+    expect(stringifyValueWithType({id: 1})).toBe(`Object {id: Number(1)}`);
+    expect(stringifyValueWithType('foo')).toBe(`String(foo)`);
+    expect(stringifyValueWithType(2)).toBe(`Number(2)`);
+    expect(stringifyValueWithType(true)).toBe(`Boolean(true)`);
+    expect(stringifyValueWithType(function Peter() {})).toBe(`Function Peter`);
+});
+
+test('getClassTypeFromInstance', async () => {
+    class Peter {}
+    expect(getClassTypeFromInstance(new Peter)).toBe(Peter);
+    expect(() => getClassTypeFromInstance({})).toThrow('Value is not a class instance');
+    expect(() => getClassTypeFromInstance('asd')).toThrow('Value is not a class instance');
+    expect(() => getClassTypeFromInstance(23)).toThrow('Value is not a class instance');
+    expect(() => getClassTypeFromInstance(undefined)).toThrow('Value is not a class instance');
+});
+
+test('isClassInstance', async () => {
+    class Peter {}
+    expect(isClassInstance(new Peter)).toBe(true);
+    expect(isClassInstance({})).toBe(false);
+    expect(isClassInstance('asd')).toBe(false);
+    expect(isClassInstance(undefined)).toBe(false);
+    expect(isClassInstance(null)).toBe(false);
+    expect(isClassInstance(3223)).toBe(false);
+});
+
+test('isClassInstance', async () => {
+    class Model1 {
+        id: number = 0;
+    }
+
+    class Base {}
+    
+    class Model2 extends Base {
+        id: number = 0;
+
+        model2() {
+            return true;
+        }
+    }
+
+    const model1 = new Model1;
+    model1.id = 22;
+
+    changeClass(model1, Model2);
+    expect(model1 instanceof Model1).toBe(true);
+
+    expect(changeClass(model1, Model2) instanceof Model2).toBe(true);
+    expect(changeClass(model1, Model2) instanceof Base).toBe(true);
+    expect(changeClass(model1, Model2) instanceof Model1).toBe(false);
+    expect(changeClass(model1, Model2).model2()).toBe(true);
 });

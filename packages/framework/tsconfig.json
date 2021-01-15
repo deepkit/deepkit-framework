@@ -12,7 +12,6 @@
     "target": "es2018",
     "module": "esnext",
     "esModuleInterop": true,
-    "baseUrl": ".",
     "outDir": "./dist",
     "declaration": true,
     "composite": true,

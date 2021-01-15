@@ -1,5 +1,5 @@
 import { sleep } from '@deepkit/core';
-import { entity, t } from '@deepkit/type';
+import { entity, plainToClass, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
@@ -160,9 +160,11 @@ test('observable unsubscribes automatically when connection closes', async () =>
         @rpc.action()
         strings(): Observable<string> {
             return new Observable((observer) => {
-                return {unsubscribe() {
-                    unsubscribed = true;
-                }}
+                return {
+                    unsubscribe() {
+                        unsubscribed = true;
+                    }
+                }
             })
         }
     }
@@ -174,22 +176,89 @@ test('observable unsubscribes automatically when connection closes', async () =>
     const controller = client.controller<Controller>('myController');
 
     {
-        const o = (await controller.strings()).subscribe(() => {});
+        const o = (await controller.strings()).subscribe(() => { });
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         o.unsubscribe();
         await sleep(0);
         expect(unsubscribed).toBe(true);
     }
-    
+
     {
         unsubscribed = false;
-        const o = (await controller.strings()).subscribe(() => {});
+        const o = (await controller.strings()).subscribe(() => { });
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         client.disconnect();
         await sleep(0);
         expect(unsubscribed).toBe(true);
+    }
+});
+
+test('observable different next type', async () => {
+
+    class WrongModel {
+        @t id: number = 0;
+    }
+
+    @entity.name('observable/differentytype')
+    class MyModel {
+        @t id: number = 0;
+    }
+
+    class Controller {
+        protected subject = new BehaviorSubject<MyModel | undefined>(undefined);
+
+        @rpc.action()
+        @t.generic(MyModel)
+        getSubject(): BehaviorSubject<MyModel | undefined> {
+            if (this.subject) this.subject.complete();
+            this.subject = new BehaviorSubject<MyModel | undefined>(undefined);
+            return this.subject;
+        }
+
+        @rpc.action()
+        triggerCorrect(): void {
+            this.subject.next(plainToClass(MyModel, { id: 2 }));
+        }
+
+        @rpc.action()
+        triggerPlain(): void {
+            this.subject.next({ id: 2 });
+        }
+
+        @rpc.action()
+        triggerWrongModel(): void {
+            this.subject.next(new WrongModel());
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const subject = await controller.getSubject();
+        expect(subject.value).toBe(undefined);
+        await controller.triggerCorrect();
+        expect(subject.value).toBeInstanceOf(MyModel);
+        expect(subject.value).toEqual({ id: 2 });
+    }
+
+    {
+        const subject = await controller.getSubject();
+        expect(subject.value).toBe(undefined);
+        await controller.triggerPlain();
+        expect(subject.value).toEqual(undefined);
+    }
+
+    {
+        const subject = await controller.getSubject();
+        expect(subject.value).toBe(undefined);
+        await controller.triggerWrongModel();
+        expect(subject.value).toEqual(undefined);
     }
 });
 

@@ -24,6 +24,7 @@ export enum BrokerType {
     Set,
     Get,
     Increment,
+    ResponseIncrement,
     Delete,
     ResponseGet,
 
@@ -49,6 +50,10 @@ export const brokerDelete = t.schema({
 export const brokerIncrement = t.schema({
     n: t.string,
     v: t.number.optional
+});
+
+export const brokerResponseIncrement = t.schema({
+    v: t.number
 });
 
 export const brokerSet = t.schema({

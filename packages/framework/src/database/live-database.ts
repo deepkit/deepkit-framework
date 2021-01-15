@@ -129,7 +129,6 @@ class SubscriptionHandler {
 
         this.entitySubscription = this.broker.entityChannel(this.classSchema).subscribe((message) => {
             if (message.type === EntityChannelMessageType.remove) {
-                console.log('message delete', this.classSchema.getClassName(), message.ids)
                 for (const id of message.ids) {
                     this.rmSentState(id);
                 }
@@ -467,12 +466,10 @@ class LiveCollection<T extends IdVersionInterface> {
         });
 
         this.model.change.subscribe(() => {
-            console.log('this.model.change.subscribe');
             this.updateCollection().catch(console.error);
         });
 
         this.collection.model.change.subscribe(() => {
-            console.log('this.collection.model.change.subscribe');
             this.model.limit = this.collection.model.limit;
             this.model.skip = this.collection.model.skip;
             this.model.itemsPerPage = this.collection.model.itemsPerPage;
@@ -481,7 +478,6 @@ class LiveCollection<T extends IdVersionInterface> {
             if (this.collection.model.filter) this.model.filter = this.collection.model.filter;
 
             this.model.setParameters(this.collection.model.parameters);
-            console.log('server: model change');
             this.updateCollection().catch(console.error);
         });
 

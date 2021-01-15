@@ -249,7 +249,8 @@ export class Module<T extends ModuleOptions<any>> {
     getConfig(): ExtractConfigOfDefinition<DefaultObject<T['config']>> {
         if (this.resolvedConfig) return this.resolvedConfig;
         const config: any = {};
-        if (!this.options.config) return config;
+        this.resolvedConfig = {};
+        if (!this.options.config) return this.resolvedConfig;
 
         for (const option of this.options.config.schema.getClassProperties().values()) {
             const path = this.options.name ? this.options.name + '.' + option.name : option.name;
@@ -333,6 +334,18 @@ export class Module<T extends ModuleOptions<any>> {
         const m = this.clone();
         m.configValues = configValues;
         return m;
+    }
+    /**
+     * Overwrites given values of the current module.
+     */
+    setConfig(config: ModuleConfigOfOptions<T>): void {
+        const resolvedConfig = this.getConfig();
+        if (this.options.config) {
+            for (const option of this.options.config.schema.getClassProperties().values()) {
+                if (!(option.name in config)) continue;
+                resolvedConfig[option.name] = (config as any)[option.name];
+            }
+        }
     }
 
     /**

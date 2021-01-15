@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { t } from '@deepkit/type';
 import 'reflect-metadata';
-import { CircularDependencyError, createConfig, inject, injectable, Injector } from '../src/injector/injector';
+import { CircularDependencyError, createConfig, inject, injectable, Injector, InjectorContext } from '../src/injector/injector';
 
 export const a = 'asd';
 
@@ -293,7 +293,7 @@ test('injector config', () => {
         MyService2,
         MyService3,
         MyService4,
-    ]);
+    ], []);
 
     expect(i1.get(MyService).config.debug).toBe(false);
     expect(i1.get(MyService2).config.debug).toBe(false);

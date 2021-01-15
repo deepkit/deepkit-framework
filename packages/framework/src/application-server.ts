@@ -54,7 +54,9 @@ export class ServerShutdownEvent extends BaseEvent { }
  */
 export const onServerMainShutdown = new EventToken('server.main.shutdown', ServerBootstrapEvent);
 
-class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'workers']) { }
+class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'httpsPort',
+    'ssl', 'sslKey', 'sslCertificate', 'sslCa', 'sslCrl',
+    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers']) { }
 
 @injectable()
 export class ApplicationServerListener {
@@ -84,7 +86,13 @@ export class ApplicationServerListener {
         if (this.config.server) {
             this.logger.log(`Server up and running`);
         } else {
-            this.logger.log(`Server up and running at http://${this.config.host}:${this.config.port}/`);
+            if (this.config.ssl) {
+                this.logger.log(`HTTPS listening at https://${this.config.host}:${this.config.httpsPort || this.config.port}/`);
+            }
+
+            if (!this.config.ssl || (this.config.ssl && this.config.httpsPort)) {
+                this.logger.log(`HTTP listening at http://${this.config.host}:${this.config.port}/`);
+            }
         }
     }
 }
@@ -99,7 +107,7 @@ export class ApplicationServer {
         protected webWorkerFactory: WebWorkerFactory,
         protected eventDispatcher: EventDispatcher,
         protected rootScopedContext: InjectorContext,
-        protected config: ApplicationServerConfig,
+        public config: ApplicationServerConfig,
     ) {
     }
 

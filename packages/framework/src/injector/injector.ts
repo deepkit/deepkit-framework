@@ -20,6 +20,7 @@ import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSch
 import { ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provider, ProviderWithScope, ValueProvider } from './provider';
 import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction } from '@deepkit/core';
 import { Module, ModuleOptions } from '../module';
+import { inspect } from 'util';
 
 
 export class ConfigToken<T extends {}> {
@@ -49,6 +50,10 @@ export class ConfigSlice<T extends {}> {
             });
         }
     }
+
+    [inspect.custom]() {
+        return { ...this };
+    }
 }
 
 export class ConfigDefinition<T extends {}> {
@@ -63,6 +68,10 @@ export class ConfigDefinition<T extends {}> {
 
     setModule(module: Module<any>) {
         this.module = module;
+    }
+
+    hasModule(): boolean {
+        return this.module !== undefined;
     }
 
     getModule(): Module<ModuleOptions<any>> {
@@ -242,7 +251,7 @@ export class Injector {
     constructor(
         protected providers: Provider[] = [],
         protected parents: Injector[] = [],
-        protected injectorContext: InjectorContext | undefined = undefined,
+        protected injectorContext: InjectorContext = new InjectorContext,
         protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined
     ) {
         if (this.providers.length) this.retriever = this.buildRetriever();
@@ -279,19 +288,30 @@ export class Injector {
         }
 
         if (token instanceof ConfigDefinition) {
-            return compiler.reserveVariable('fullConfig', token.getConfigOrDefaults());
+            if (token.hasModule()) {
+                const module = this.injectorContext.getModule(token.getModule().getName());
+                return compiler.reserveVariable('fullConfig', module.getConfig());
+            } else {
+                return compiler.reserveVariable('fullConfig', token.getConfigOrDefaults());
+            }
         } else if (token instanceof ConfigToken) {
-            const config = token.config.getConfigOrDefaults();
-            return compiler.reserveVariable(token.name, config[token.name]);
+            if (token.config.hasModule()) {
+                const module = this.injectorContext.getModule(token.config.getModule().getName());
+                const config = module.getConfig();
+                return compiler.reserveVariable(token.name, config[token.name]);
+            } else {
+                const config = token.config.getConfigOrDefaults();
+                return compiler.reserveVariable(token.name, config[token.name]);
+            }
         } else if (isClass(token) && (Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice || Object.getPrototypeOf(token) === ConfigSlice)) {
             const value: ConfigSlice<any> = new token;
             if (!value.bag) {
-                const bag: { [name: string]: any } = {};
-                const config = value.config.getConfigOrDefaults();
-                for (const name of value.names) {
-                    bag[name] = config[name];
+                if (value.config.hasModule()) {
+                    const module = this.injectorContext.getModule(value.config.getModule().getName());
+                    value.bag = module.getConfig();
+                } else {
+                    value.bag = value.config.getConfigOrDefaults();
                 }
-                value.bag = bag;
                 return compiler.reserveVariable('configSlice', value);
             }
         } else {
@@ -583,6 +603,7 @@ export class Context {
     providers: ProviderWithScope[] = [];
 
     constructor(
+        public readonly module: Module<any>,
         public readonly id: number,
         public readonly parent?: Context,
     ) {
@@ -627,15 +648,21 @@ export class InjectorContext {
         public readonly configuredProviderRegistry: ConfiguredProviderRegistry = new ConfiguredProviderRegistry,
         public readonly parent: InjectorContext | undefined = undefined,
         public readonly additionalInjectorParent: Injector | undefined = undefined,
+        public readonly modules: { [name: string]: Module<any> } = {},
         scopeCaches?: ScopedContextScopeCaches,
     ) {
         this.scopeCaches = scopeCaches || new ScopedContextScopeCaches(this.contextManager.size);
         this.cache = this.scopeCaches.getCache(this.scope);
     }
 
+    getModule(name: string): Module<any> {
+        if (!this.modules[name]) throw new Error(`No Module with name ${name} registered`);
+        return this.modules[name];
+    }
+
     static forProviders(providers: ProviderWithScope[]) {
         const registry = new ContextRegistry();
-        const context = new Context(0);
+        const context = new Context(new Module({}), 0);
         registry.set(0, context);
         context.providers.push(...providers);
         return new InjectorContext(registry);
@@ -675,6 +702,6 @@ export class InjectorContext {
     }
 
     public createChildScope(scope: string, additionalInjectorParent?: Injector): InjectorContext {
-        return new InjectorContext(this.contextManager, scope, this.configuredProviderRegistry, this, additionalInjectorParent, this.scopeCaches);
+        return new InjectorContext(this.contextManager, scope, this.configuredProviderRegistry, this, additionalInjectorParent, this.modules, this.scopeCaches);
     }
 }

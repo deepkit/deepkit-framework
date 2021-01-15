@@ -22,18 +22,84 @@ import https from 'https';
 import WebSocket from 'ws';
 import { HttpKernel } from './http';
 import { HttpRequest, HttpResponse } from './http-model';
-import { injectable, Injector, InjectorContext } from './injector/injector';
+import { inject, injectable, Injector, InjectorContext } from './injector/injector';
 import { Provider } from './injector/provider';
 import { DeepkitRpcSecurity, RpcInjectorContext } from './rpc';
 import { RpcControllers } from './service-container';
+import { SecureContextOptions, TlsOptions } from 'tls';
+import selfsigned from 'selfsigned';
+import { kernelConfig } from './kernel.config';
+import { join } from 'path';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { Logger } from './logger';
+
+export interface WebServerOptions {
+    host: string;
+
+    /** 
+     * Defins the port of the http server.
+     * If ssl is defined, this port is used for the https server. If you want to have http and https
+     * at the same time, use `httpsPort` accordingly.
+    */
+    port: number;
+
+    varPath: string;
+
+    /**
+     * If httpsPort and ssl is defined, then the https server is started additional to the http-server.
+     * 
+     * In a production deployment, you usually want both, http and https server. 
+     * Set `port: 80` and `httpsPort: 443` to have both.
+     */
+    httpsPort?: number;
+
+    /**
+     * HTTP Keep alive timeout.
+     */
+    keepAliveTimeout?: number;
+
+    /**
+     * When external server should be used. If this is set, all other opptions are ignored.
+     */
+    server?: Server;
+
+    /** 
+     * Enables HTTPS.
+     * Make sure to pass `sslKey` and `sslCertificate` as well (or use sslOptions).
+    */
+    ssl: boolean;
+
+    sslKey?: string;
+    sslCertificate?: string;
+    sslCa?: string;
+    sslCrl?: string;
+
+    /**
+     * If defined https.createServer is used and all options passed as is to it.
+     * Make sure to pass `key` and `cert`, as described in Node's https.createServer() documentation.
+     * See https://nodejs.org/api/https.html#https_https_createserver_options_requestlistener
+     */
+    sslOptions?: SecureContextOptions & TlsOptions;
+
+    /**
+     * When true keys & certificates are created on-the-fly (for development purposes).
+     * Should not be used in production.
+     */
+    selfSigned?: boolean;
+}
 
 @injectable()
 export class WebWorkerFactory {
-    constructor(protected httpKernel: HttpKernel, protected rpcControllers: RpcControllers, protected rootScopedContext: InjectorContext) {
+    constructor(
+        protected httpKernel: HttpKernel,
+        public logger: Logger,
+        protected rpcControllers: RpcControllers,
+        protected rootScopedContext: InjectorContext,
+    ) {
     }
 
-    create(id: number, options: { server?: Server, host: string, port: number }): WebWorker {
-        return new WebWorker(id, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
+    create(id: number, options: WebServerOptions): WebWorker {
+        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
     }
 
     createRpcKernel() {
@@ -49,8 +115,8 @@ export class WebWorkerFactory {
 }
 
 export class WebMemoryWorkerFactory extends WebWorkerFactory {
-    create(id: number, options: { server?: Server, host: string, port: number }): WebMemoryWorker {
-        return new WebMemoryWorker(id, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
+    create(id: number, options: WebServerOptions): WebMemoryWorker {
+        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
     }
 }
 
@@ -75,14 +141,17 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
 @injectable()
 export class WebWorker {
     protected wsServer?: WebSocket.Server;
+    protected wssServer?: WebSocket.Server;
     protected server?: http.Server | https.Server;
+    protected servers?: https.Server;
 
     constructor(
         public readonly id: number,
+        public logger: Logger,
         public httpKernel: HttpKernel,
         public rpcKernel: RpcKernel,
         protected rootScopedContext: InjectorContext,
-        protected options: { server?: Server, host: string, port: number },
+        protected options: WebServerOptions,
     ) {
     }
 
@@ -90,42 +159,82 @@ export class WebWorker {
         if (this.options.server) {
             this.server = this.options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
+            this.wsServer = new WebSocket.Server({ server: this.server });
+            this.wsServer.on('connection', this.onWsConnecton.bind(this));
         } else {
-            this.server = new http.Server(
-                { IncomingMessage: HttpRequest, ServerResponse: HttpResponse },
-                this.httpKernel.handleRequest.bind(this.httpKernel) as any //as any necessary since http.Server is not typed correctly
-            );
-            this.server.keepAliveTimeout = 5000;
-            this.server.listen(this.options.port, this.options.host, () => {
-                // console.log(`Worker listening on ${this.options.host}:${this.options.port}.`);
-            });
-        }
+            if (this.options.ssl) {
+                const options = this.options.sslOptions || {};
 
-        this.wsServer = new WebSocket.Server({ server: this.server });
-        this.wsServer.on('connection', (ws, req: HttpRequest) => {
-            const connection = createRpcConnection(this.rootScopedContext, this.rpcKernel, {
-                write(b) {
-                    ws.send(b);
-                },
-                bufferedAmount(): number {
-                    return ws.bufferedAmount;
+                if (this.options.selfSigned) {
+                    const keyPath = join(this.options.varPath, `self-signed-${this.options.host}.key`);
+                    const certificatePath = join(this.options.varPath, `self-signed-${this.options.host}.cert`);
+                    if (existsSync(keyPath) && existsSync(certificatePath)) {
+                        options.key = readFileSync(keyPath, 'utf8');
+                        options.cert = readFileSync(certificatePath, 'utf8');
+                    } else {
+                        const attrs = [{ name: 'commonName', value: this.options.host }];
+                        const pems = selfsigned.generate(attrs, { days: 365 });
+                        options.cert = pems.cert;
+                        options.key = pems.private;
+                        writeFileSync(keyPath, pems.private, 'utf8');
+                        writeFileSync(certificatePath, pems.cert, 'utf8');
+                        this.logger.log(`Self signed certificate for ${this.options.host} created at ${certificatePath}`);
+                        this.logger.log(`Tip: If you want to open this server via chrome for localhost, use chrome://flags/#allow-insecure-localhost`);
+                    }
                 }
-            }, req);
 
-            ws.on('message', async (message: any) => {
-                connection.feed(message);
-            });
+                if (!options.key && this.options.sslKey) options.key = readFileSync(this.options.sslKey, 'utf8');
+                if (!options.ca && this.options.sslCa) options.key = readFileSync(this.options.sslCa, 'utf8');
+                if (!options.cert && this.options.sslCertificate) options.cert = readFileSync(this.options.sslCertificate, 'utf8');
+                if (!options.crl && this.options.sslCrl) options.cert = readFileSync(this.options.sslCrl, 'utf8');
 
-            ws.on('close', async () => {
-                connection.close();
-            });
+                this.servers = new https.Server(
+                    Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse, }, options),
+                    this.httpKernel.handleRequest.bind(this.httpKernel) as any //as any necessary since http.Server is not typed correctly
+                );
+                this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
+                if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
+
+                this.wssServer = new WebSocket.Server({ server: this.servers });
+                this.wssServer.on('connection', this.onWsConnecton.bind(this));
+            }
+
+            const startHttpServer = !this.servers || (this.servers && this.options.httpsPort);
+            if (startHttpServer) {
+                this.server = new http.Server(
+                    { IncomingMessage: HttpRequest, ServerResponse: HttpResponse },
+                    this.httpKernel.handleRequest.bind(this.httpKernel) as any //as any necessary since http.Server is not typed correctly
+                );
+                if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
+                this.server.listen(this.options.port, this.options.host);
+                this.wsServer = new WebSocket.Server({ server: this.server });
+                this.wsServer.on('connection', this.onWsConnecton.bind(this));
+            }
+        }
+    }
+
+    onWsConnecton(ws, req: HttpRequest) {
+        const connection = createRpcConnection(this.rootScopedContext, this.rpcKernel, {
+            write(b) {
+                ws.send(b);
+            },
+            bufferedAmount(): number {
+                return ws.bufferedAmount;
+            }
+        }, req);
+
+        ws.on('message', async (message: any) => {
+            connection.feed(message);
+        });
+
+        ws.on('close', async () => {
+            connection.close();
         });
     }
 
     close() {
-        if (this.server) {
-            this.server.close();
-        }
+        if (this.server) this.server.close();
+        if (this.servers) this.servers.close();
     }
 }
 

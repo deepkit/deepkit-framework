@@ -269,7 +269,6 @@ export class RpcActionClient {
                                 collectionEntityStore = this.entityState.getStore(classType);
 
                                 collection.model.change.subscribe(() => {
-                                    console.log('send model update')
                                     subject.send(RpcTypes.ActionCollectionModel, getClassSchema(CollectionQueryModel), collection!.model);
                                 });
 
@@ -296,7 +295,7 @@ export class RpcActionClient {
                             }
                         };
                     } catch (error) {
-                        console.debug('reply error', reply.id, RpcTypes[reply.type], error);
+                        console.warn('reply error', reply.id, RpcTypes[reply.type], error);
                         reject(error);
                     }
                 });
