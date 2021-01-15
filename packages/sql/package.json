@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.1-alpha.10",
+  "version": "1.0.1-alpha.11",
   "description": "deepkit/type SQL adapter.",
   "type": "module",
   "main": "./dist/esm/index.js",
@@ -22,9 +22,9 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.10",
-    "@deepkit/orm": "^1.0.1-alpha.10",
-    "@deepkit/type": "^1.0.1-alpha.10",
+    "@deepkit/core": "^1.0.1-alpha.11",
+    "@deepkit/orm": "^1.0.1-alpha.11",
+    "@deepkit/type": "^1.0.1-alpha.11",
     "better-sqlite3": "^7.1.1",
     "mariadb": "^2.4.2",
     "pg": "^8.5.1",

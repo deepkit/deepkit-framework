@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/angular-universal",
-  "version": "1.0.1-alpha.10",
+  "version": "1.0.1-alpha.11",
   "description": "Angular server side rendering for Deepkit Framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,8 +18,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/framework": "^1.0.1-alpha.10",
-    "@deepkit/type": "^1.0.1-alpha.10",
+    "@deepkit/framework": "^1.0.1-alpha.11",
+    "@deepkit/type": "^1.0.1-alpha.11",
     "domino": "^2.0.0"
   },
   "devDependencies": {
