@@ -31,6 +31,9 @@ jobs:
       - name: Lerna bootstrap
         run: npm run bootstrap
 
+      - name: Build
+        run: tsc --build tsconfig.json
+
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.3.0
         with:
