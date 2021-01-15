@@ -285,6 +285,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         protected peerExchange: RpcPeerExchange,
     ) {
         super(writer, connections);
+        this.onClose.then(() => this.actionHandler.onClose());
         this.peerExchange.register(this.id, this.writer);
     }
 

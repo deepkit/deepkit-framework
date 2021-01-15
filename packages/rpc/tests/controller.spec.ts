@@ -1,4 +1,4 @@
-import { entity, t } from '@deepkit/type';
+import { entity, getClassSchema, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { DirectClient } from '../src/client/client-direct';
@@ -127,5 +127,43 @@ test('promise', async () => {
     {
         const model = await controller.createModel('foo');
         expect(model).toBeInstanceOf(MyModel);
+    }
+});
+
+test('wrong arguments', async () => {
+    @entity.name('model/promise2')
+    class MyModel {
+        constructor(
+            @t public id: number
+        ) { }
+    }
+
+    class Controller {
+        @rpc.action()
+        //MyModel is automatically detected once executed. 
+        async getProduct(id: number): Promise<MyModel> {
+            return new MyModel(id);
+        }
+    }
+
+    expect(getClassSchema(Controller).getMethodProperties('getProduct')[0].isOptional).toBe(false);
+    expect(getClassSchema(Controller).getMethodProperties('getProduct')[0].isNullable).toBe(false);
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        await expect(controller.getProduct(undefined as any)).rejects.toThrow('id(required): Required value is undefined');
+    }
+
+    {
+        await expect(controller.getProduct('23' as any)).rejects.toThrow('id(required): Required value is undefined');
+    }
+
+    {
+        await expect(controller.getProduct(NaN as any)).rejects.toThrow('id(invalid_number): No valid number given, got NaN');
     }
 });

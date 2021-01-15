@@ -7,6 +7,7 @@ test('connect invalid', async () => {
     const client = new MongoClient('mongodb://invalid/');
 
     await expect(client.connect()).rejects.toThrow('getaddrinfo ENOTFOUND invalid');
+    client.close();
 });
 
 test('connect handshake', async () => {
@@ -14,6 +15,7 @@ test('connect handshake', async () => {
     await client.connect();
 
     expect(client.config.hosts[0].getType()).toBe(HostType.standalone);
+    client.close();
 });
 
 test('connect isMaster command', async () => {
@@ -22,6 +24,7 @@ test('connect isMaster command', async () => {
     const response = await client.execute(new IsMasterCommand);
 
     expect(response.ismaster).toBe(true);
+    client.close();
 });
 
 

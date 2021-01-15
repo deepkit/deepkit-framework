@@ -30,6 +30,8 @@ const aggregateSchema = t.schema({
 });
 
 export class AggregateCommand<T extends ClassSchema | ClassType, R extends ClassSchema> extends Command {
+    partial: boolean = false;
+
     constructor(
         public classSchema: T,
         public pipeline: any[] = [],
@@ -53,16 +55,27 @@ export class AggregateCommand<T extends ClassSchema | ClassType, R extends Class
         const resultSchema = this.resultSchema || schema;
 
         const jit = resultSchema.jit;
-        let specialisedResponse = jit.mdbAggregate;
+        let specialisedResponse = this.partial ? jit.mdbAggregatePartial : jit.mdbAggregate;
         if (!specialisedResponse) {
-            specialisedResponse = t.extendSchema(BaseResponse, {
-                cursor: {
-                    id: t.number,
-                    firstBatch: t.array(resultSchema),
-                    nextBatch: t.array(resultSchema),
-                },
-            });
-            jit.mdbAggregate = specialisedResponse;
+            if (this.partial) {
+                specialisedResponse = t.extendSchema(BaseResponse, {
+                    cursor: {
+                        id: t.number,
+                        firstBatch: t.array(t.partial(resultSchema)),
+                        nextBatch: t.array(t.partial(resultSchema)),
+                    },
+                });
+                jit.mdbAggregatePartial = specialisedResponse;
+            } else {
+                specialisedResponse = t.extendSchema(BaseResponse, {
+                    cursor: {
+                        id: t.number,
+                        firstBatch: t.array(resultSchema),
+                        nextBatch: t.array(resultSchema),
+                    },
+                });
+                jit.mdbAggregate = specialisedResponse;
+            }
             toFastProperties(jit);
         }
 

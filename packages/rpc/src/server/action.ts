@@ -17,8 +17,9 @@
  */
 
 import { ClassType, collectForMicrotask, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
+import { isBehaviorSubject, isSubject } from '@deepkit/core-rxjs';
 import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
-import { BehaviorSubject, isObservable, Observable, Subject, Subscription } from 'rxjs';
+import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
 import { ActionObservableTypes, EntitySubject, isEntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
@@ -44,6 +45,8 @@ export class RpcServerAction {
     protected cachedActionsTypes: { [id: string]: ActionTypes } = {};
     protected observableSubjects: {
         [id: number]: {
+            subject: Subject<any>,
+            completedByClient: boolean,
             subscription: Subscription
         }
     } = {};
@@ -81,6 +84,25 @@ export class RpcServerAction {
             parameters: types.parameters.map(v => v.toJSON()),
             result: types.resultSchema.getProperty('v').toJSON(),
         });
+    }
+
+    public async onClose() {
+        for (const collection of Object.values(this.collections)) {
+            if (!collection.collection.closed) {
+                collection.unsubscribe();
+                collection.collection.unsubscribe();
+            }
+        }
+
+        for (const observable of Object.values(this.observables)) {
+            for (const sub of Object.values(observable.subscriptions)) {
+                if (sub.sub && !sub.sub.closed) sub.sub.unsubscribe();
+            }
+        }
+
+        for (const subject of Object.values(this.observableSubjects)) {
+            if (!subject.subject.closed) subject.subject.complete();
+        }
     }
 
     protected async loadTypes(controller: string, method: string): Promise<ActionTypes> {
@@ -230,13 +252,14 @@ export class RpcServerAction {
                 break;
             }
 
-            case RpcTypes.ActionObservableSubjectUnsubscribe: {
+            case RpcTypes.ActionObservableSubjectUnsubscribe: { //aka completed
                 const subject = this.observableSubjects[message.id];
                 if (!subject) return response.error(new Error('No observable found'));
-                subject.subscription.unsubscribe();
+                subject.completedByClient = true;
+                subject.subject.complete();
+                delete this.observableSubjects[message.id];
                 break;
             }
-
         }
     }
 
@@ -321,9 +344,15 @@ export class RpcServerAction {
                     composite.send();
                 }));
 
+                collection.addTeardown(() => {
+                    const c = this.collections[message.id];
+                    if (c) c.unsubscribe();
+                });
+
                 this.collections[message.id] = {
                     collection,
                     unsubscribe: () => {
+                        if (unsubscribed) return;
                         unsubscribed = true;
                         eventsSub.unsubscribe();
                         collection.unsubscribe();
@@ -334,10 +363,12 @@ export class RpcServerAction {
                 this.observables[message.id] = { observable: result, subscriptions: {}, types, classType, method: body.method };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
-                if (result instanceof Subject) {
+                if (isSubject(result)) {
                     type = ActionObservableTypes.subject;
 
                     this.observableSubjects[message.id] = {
+                        subject: result,
+                        completedByClient: false,
                         subscription: result.subscribe((next) => {
                             const newProperty = createNewPropertySchemaIfNecessary(next, types.resultProperty);
                             if (newProperty) {
@@ -359,13 +390,15 @@ export class RpcServerAction {
                             const extracted = rpcEncodeError(error);
                             response.reply(RpcTypes.ResponseActionObservableError, rpcResponseActionObservableSubscriptionError, { ...extracted, id: message.id });
                         }, () => {
+                            const v = this.observableSubjects[message.id];
+                            if (v && v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
                             response.reply(RpcTypes.ResponseActionObservableComplete, rpcActionObservableSubscribeId, {
                                 id: message.id
                             });
                         })
                     };
 
-                    if (result instanceof BehaviorSubject) {
+                    if (isBehaviorSubject(result)) {
                         type = ActionObservableTypes.behaviorSubject;
                     }
                 }

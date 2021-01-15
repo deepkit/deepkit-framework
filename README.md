@@ -40,7 +40,7 @@ atomic patches, and SQL migrations. SQLite, PostgreSQL, MySQL, and MongoDB suppo
 **@deepkit/rpc**: Highly configurable high-performance RPC server for TypeScript, with support for auto-infering return and parameter types (no code-generation needed), 
 RxJS Observable support, and binary protocol with ability to track download/upload progress. Uses @deepkit/type for schema definition.
 
-**@deepkit/broker**: High-Performance typesafe message bus server for pub/sub pattern, key-value storage, and central app locks.
+**@deepkit/broker**: High-Performance typesafe message bus server for pub/sub pattern, key-value storage, and central atomic app locks.
 
 **@deepkit/bson**: Fastest BSON parser and serializer. 13x faster than official bson-js/bson-ext, and 2x faster than JSON. Uses @deepkit/type for schema definition.
 

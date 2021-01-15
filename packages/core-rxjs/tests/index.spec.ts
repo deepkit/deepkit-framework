@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { BehaviorSubject, Subject, Subscription } from 'rxjs';
-import { nextValue, Subscriptions } from '../src/rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { isBehaviorSubject, isSubject, nextValue, Subscriptions } from '../src/rxjs';
 
 test('nextValue subject', async () => {
     const subject = new Subject();
@@ -22,6 +22,16 @@ test('nextValue behaviorsubject', async () => {
 
     const next = await nextValue(subject);
     expect(next).toBe(5);
+});
+
+test('is functions', async () => {
+    expect(isSubject(new Observable)).toBe(false);
+    expect(isSubject(new Subject)).toBe(true);
+    expect(isSubject(new BehaviorSubject(undefined))).toBe(true);
+
+    expect(isBehaviorSubject(new Observable)).toBe(false);
+    expect(isBehaviorSubject(new Subject)).toBe(false);
+    expect(isBehaviorSubject(new BehaviorSubject(undefined))).toBe(true);
 });
 
 

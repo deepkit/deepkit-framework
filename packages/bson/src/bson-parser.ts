@@ -275,9 +275,9 @@ export class ParserV2 extends BaseParser {
 
 export function findValueInObject(parser: BaseParser, checker: (elementType: BSONType, name: string) => boolean): any {
     const offset = parser.offset;
-    parser.seek(4);
+    const end = parser.eatUInt32() + parser.offset;
 
-    while (true) {
+    while (parser.offset < end) {
         const elementType = parser.eatByte();
         if (elementType === 0) break;
 
@@ -297,9 +297,9 @@ export function findValueInObject(parser: BaseParser, checker: (elementType: BSO
 
 export function parseObject(parser: BaseParser): any {
     const result: any = {};
-    parser.seek(4);
+    const end = parser.eatUInt32() + parser.offset;
 
-    while (true) {
+    while (parser.offset < end) {
         const elementType = parser.eatByte();
         if (elementType === 0) break;
 
@@ -312,9 +312,9 @@ export function parseObject(parser: BaseParser): any {
 
 export function parseArray(parser: BaseParser): any[] {
     const result: any[] = [];
-    parser.seek(4);
+    const end = parser.eatUInt32() + parser.offset;
 
-    for (let i = 0; ; i++) {
+    for (let i = 0; parser.offset < end; i++) {
         const elementType = parser.eatByte();
         if (elementType === 0) break;
 

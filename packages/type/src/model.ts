@@ -1465,6 +1465,8 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object | ClassSche
  * ```
  */
 export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = ''): ClassSchema<T> {
+    const fromClass = clazz !== undefined;
+    
     const c = clazz || class {
     };
     if (name) {
@@ -1473,6 +1475,7 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
 
     const classSchema = getOrCreateEntitySchema(c);
     classSchema.name = name;
+    classSchema.fromClass = fromClass;
 
     return classSchema;
 }

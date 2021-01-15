@@ -219,9 +219,13 @@ export class RpcActionClient {
                                     resolve(observable);
                                 } else if (body.type === ActionObservableTypes.subject) {
                                     observableSubject = new Subject<any>();
-                                    observableSubject.subscribe().add(() => {
+                                    //we have to monkey patch unsubscribe, because they is no other way to hook into that
+                                    // note: subject.subscribe().add(T), T is not called when subject.unsubscribe() is called.
+                                    observableSubject.unsubscribe = () => {
+                                        Subject.prototype.unsubscribe.call(observableSubject);
                                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
-                                    });
+                                    };
+
                                     if (firstObservableNextCalled) {
                                         observableSubject.next(firstObservableNext);
                                         firstObservableNext = undefined;
@@ -230,9 +234,13 @@ export class RpcActionClient {
                                 } else if (body.type === ActionObservableTypes.behaviorSubject) {
                                     observableSubject = new BehaviorSubject<any>(firstObservableNext);
                                     firstObservableNext = undefined;
-                                    observableSubject.subscribe().add(() => {
+
+                                    //we have to monkey patch unsubscribe, because they is no other way to hook into that
+                                    // note: subject.subscribe().add(T), T is not called when subject.unsubscribe() is called.
+                                    observableSubject.unsubscribe = () => {
+                                        Subject.prototype.unsubscribe.call(observableSubject);
                                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
-                                    });
+                                    };
                                     resolve(observableSubject);
                                 }
 
@@ -288,7 +296,7 @@ export class RpcActionClient {
                             }
                         };
                     } catch (error) {
-                        console.debug('reply error', error);
+                        console.debug('reply error', reply.id, RpcTypes[reply.type], error);
                         reject(error);
                     }
                 });

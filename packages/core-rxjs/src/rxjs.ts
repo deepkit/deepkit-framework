@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Observable, Subscriber, Subscription, TeardownLogic } from 'rxjs';
+import { BehaviorSubject, isObservable, Observable, Subject, Subscriber, Subscription, TeardownLogic } from 'rxjs';
 import { arrayRemoveItem, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
 import { first, skip } from 'rxjs/operators';
 
@@ -25,6 +25,14 @@ export class AsyncSubscription {
 
         await this.cb();
     }
+}
+
+export function isSubject(v: any): v is Subject<any> {
+    return v && isFunction(v.unsubscribe) && isObservable(v);
+}
+
+export function isBehaviorSubject(v: any): v is BehaviorSubject<any> {
+    return v && isFunction(v.getValue) && isSubject(v);
 }
 
 /**

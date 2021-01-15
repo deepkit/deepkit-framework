@@ -57,18 +57,14 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             const pipeline = this.buildAggregationPipeline(queryModel);
             if (limit) pipeline.push({ $limit: limit });
             pipeline.push({ $project: projection });
-            const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline));
+            const command = new AggregateCommand(this.classSchema, pipeline);
+            command.partial = true;
+            const items = await this.databaseSession.adapter.client.execute(command);
             return items.map(v => v[primaryKeyName]);
-            // return items.map(v => {
-            //     return {[primaryKeyName]: v[primaryKeyName]}
-            // }) as Partial<T>[];
         } else {
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
             const items = await this.databaseSession.adapter.client.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit));
             return items.map(v => v[primaryKeyName]);
-            // return items.map(v => {
-            //     return {[primaryKeyName]: v[primaryKeyName]}
-            // }) as Partial<T>[];
         }
     }
 
@@ -150,7 +146,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         if (queryModel.hasJoins()) {
             const pipeline = this.buildAggregationPipeline(queryModel);
             pipeline.push({ $count: 'count' });
-            const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline, this.countSchema));
+            const command = new AggregateCommand(this.classSchema, pipeline, this.countSchema);
+            const items = await this.databaseSession.adapter.client.execute(command);
             return items.length ? items[0].count : 0;
         } else {
             return await this.databaseSession.adapter.client.execute(new CountCommand(
@@ -162,27 +159,29 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         }
     }
 
-    public async findOneOrUndefined(queryModel: MongoQueryModel<T>): Promise<T | undefined> {
-        if (queryModel.hasJoins()) {
-            const pipeline = this.buildAggregationPipeline(queryModel);
+    public async findOneOrUndefined(model: MongoQueryModel<T>): Promise<T | undefined> {
+        if (model.hasJoins()) {
+            const pipeline = this.buildAggregationPipeline(model);
             pipeline.push({ $limit: 1 });
-            const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline));
+            const command = new AggregateCommand(this.classSchema, pipeline);
+            command.partial = model.isPartial();
+            const items = await this.databaseSession.adapter.client.execute(command);
             if (items.length) {
-                const formatter = this.createFormatter(queryModel.withIdentityMap);
-                return formatter.hydrate(queryModel, items[0]);
+                const formatter = this.createFormatter(model.withIdentityMap);
+                return formatter.hydrate(model, items[0]);
             }
         } else {
             const items = await this.databaseSession.adapter.client.execute(new FindCommand(
                 this.classSchema,
-                getMongoFilter(this.classSchema, queryModel),
-                this.getProjection(this.classSchema, queryModel.select),
-                this.getSortFromModel(queryModel.sort),
+                getMongoFilter(this.classSchema, model),
+                this.getProjection(this.classSchema, model.select),
+                this.getSortFromModel(model.sort),
                 1,
-                queryModel.skip,
+                model.skip,
             ));
             if (items.length) {
-                const formatter = this.createFormatter(queryModel.withIdentityMap);
-                return formatter.hydrate(queryModel, items[0]);
+                const formatter = this.createFormatter(model.withIdentityMap);
+                return formatter.hydrate(model, items[0]);
             }
         }
         return;
@@ -205,7 +204,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 }
             }
 
-            const items = await this.databaseSession.adapter.client.execute(new AggregateCommand(this.classSchema, pipeline, resultsSchema));
+            const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
+            command.partial = model.isPartial();
+            const items = await this.databaseSession.adapter.client.execute(command);
             if (model.isAggregate()) {
                 return items;
             }
@@ -227,6 +228,12 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     protected buildAggregationPipeline(model: MongoQueryModel<T>) {
         const handleJoins = <T>(pipeline: any[], query: MongoQueryModel<T>, schema: ClassSchema) => {
             for (const join of query.joins) {
+                if (join.query.model.isPartial()) {
+                    join.as = '__refp_' + join.propertySchema.name;
+                } else {
+                    join.as = '__ref_' + join.propertySchema.name;
+                }
+
                 const foreignSchema = join.propertySchema.getResolvedClassSchema();
                 const joinPipeline: any[] = [];
 
@@ -268,8 +275,6 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                     const projection = this.getPrimaryKeysProjection(foreignSchema);
                     joinPipeline.push({ $project: projection });
                 }
-
-                join.as = '__ref_' + join.propertySchema.name;
 
                 if (join.propertySchema.backReference) {
                     if (join.propertySchema.backReference.via) {
@@ -340,7 +345,15 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 }
 
                 if (join.propertySchema.isArray) {
-                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation.exclude('json'));
+                    if (!schema.hasProperty(join.as)) {
+                        //it's important that joins with partials have a different name. We set it at the beginngin
+                        //of this for each join loop.
+                        if (join.query.model.isPartial()) {
+                            schema.addProperty(join.as, t.array(t.partial(foreignSchema)).noValidation.exclude('json'));
+                        } else {
+                            schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation.exclude('json'));
+                        }
+                    }
 
                     if (join.type === 'inner') {
                         pipeline.push({
@@ -348,7 +361,15 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         });
                     }
                 } else {
-                    if (!schema.hasProperty(join.as)) schema.addProperty(join.as, t.type(foreignSchema).noValidation.exclude('json'));
+                    if (!schema.hasProperty(join.as)) {
+                        //it's important that joins with partials have a different name. We set it at the beginngin
+                        //of this for each join loop.
+                        if (join.query.model.isPartial()) {
+                            schema.addProperty(join.as, t.partial(foreignSchema).noValidation.exclude('json'));
+                        } else {
+                            schema.addProperty(join.as, t.type(foreignSchema).noValidation.exclude('json'));
+                        }
+                    }
 
                     //for *toOne relations, since mongodb joins always as array
                     pipeline.push({
@@ -407,9 +428,14 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return pipeline;
     }
 
+    /** 
+     * Returns undefined when no selection limitation has happened. When non-undefined 
+     * the mongo driver returns a t.partial.
+    */
     protected getProjection<T>(classSchema: ClassSchema, select: Set<string>): { [name: string]: 0 | 1 } | undefined {
         const res: { [name: string]: 0 | 1 } = {};
 
+        //as soon as we provide a {} to find/aggregate command, it triggers t.partial()
         if (select.size) {
             res['_id'] = 0;
             for (const v of select.values()) {

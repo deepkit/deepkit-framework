@@ -160,6 +160,24 @@ function getPropertySizer(compiler: CompilerContext, property: PropertySchema, a
         }
         size += 1; //null
         `;
+    } else if (property.type === 'number') {
+        code = `
+        if (typeof ${accessor} === 'number' || typeof ${accessor} === 'bigint') {
+            size += getValueSize(${accessor});
+        }
+        `
+    } else if (property.type === 'string') {
+        code = `
+        if (typeof ${accessor} === 'string') {
+            size += getValueSize(${accessor});
+        }
+        `
+    } else if (property.type === 'boolean') {
+        code = `
+        if (typeof ${accessor} === 'boolean') {
+            size += 1;
+        }
+        `
     } else if (property.type === 'map') {
         compiler.context.set('stringByteLength', stringByteLength);
         const i = compiler.reserveVariable('i');
@@ -603,29 +621,34 @@ function getPropertySerializerCode(
                 ${nameWriter}
                 writer.writeUint32(Number(${accessor} % BigInt(TWO_PWR_32_DBL_N)) | 0); //low
                 writer.writeUint32(Number(${accessor} / BigInt(TWO_PWR_32_DBL_N)) | 0); //high
-            } else if (Math.floor(${accessor}) === ${accessor}) {
-                //it's an int
-                if (${accessor} >= ${BSON_INT32_MIN} && ${accessor} <= ${BSON_INT32_MAX}) {
-                    //32bit
-                    writer.writeByte(${BSONType.INT});
-                    ${nameWriter}
-                    writer.writeInt32(${accessor});
-                } else if (${accessor} >= ${JS_INT_MIN} && ${accessor} <= ${JS_INT_MAX}) {
-                    //double, 64bit
-                    writer.writeByte(${BSONType.NUMBER});
-                    ${nameWriter}
-                    writer.writeDouble(${accessor});
+            } else if ('number' === typeof ${accessor}) {
+                if (Math.floor(${accessor}) === ${accessor}) {
+                    //it's an int
+                    if (${accessor} >= ${BSON_INT32_MIN} && ${accessor} <= ${BSON_INT32_MAX}) {
+                        //32bit
+                        writer.writeByte(${BSONType.INT});
+                        ${nameWriter}
+                        writer.writeInt32(${accessor});
+                    } else if (${accessor} >= ${JS_INT_MIN} && ${accessor} <= ${JS_INT_MAX}) {
+                        //double, 64bit
+                        writer.writeByte(${BSONType.NUMBER});
+                        ${nameWriter}
+                        writer.writeDouble(${accessor});
+                    } else {
+                        //long, but we serialize as Double, because deserialize will be BigInt
+                        writer.writeByte(${BSONType.NUMBER});
+                        ${nameWriter}
+                        writer.writeDouble(${accessor});
+                    }
                 } else {
-                    //long, but we serialize as Double, because deserialize will be BigInt
+                    //double, 64bit
                     writer.writeByte(${BSONType.NUMBER});
                     ${nameWriter}
                     writer.writeDouble(${accessor});
                 }
             } else {
-                //double, 64bit
-                writer.writeByte(${BSONType.NUMBER});
+                writer.writeByte(${BSONType.UNDEFINED});
                 ${nameWriter}
-                writer.writeDouble(${accessor});
             }
         `;
     }
@@ -642,6 +665,7 @@ function getPropertySerializerCode(
         `;
     } else if (property.type === 'string') {
         code = `
+        if (typeof ${accessor} === 'string') {
             writer.writeByte(${BSONType.STRING});
             ${nameWriter}
             const start = writer.offset;
@@ -649,12 +673,21 @@ function getPropertySerializerCode(
             writer.writeString(${accessor});
             writer.writeByte(0); //null
             writer.writeDelayedSize(writer.offset - start - 4, start);
+        } else {
+            writer.writeByte(${BSONType.UNDEFINED});
+            ${nameWriter}
+        }
         `;
     } else if (property.type === 'boolean') {
         code = `
+        if (typeof ${accessor} === 'boolean') {
             writer.writeByte(${BSONType.BOOLEAN});
             ${nameWriter}
             writer.writeByte(${accessor} ? 1 : 0);
+        } else {
+            writer.writeByte(${BSONType.UNDEFINED});
+            ${nameWriter}
+        }
         `;
     } else if (property.type === 'date') {
         compiler.context.set('Long', bson.Long);

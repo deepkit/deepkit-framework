@@ -272,28 +272,6 @@ test('joins', async () => {
 
     session.withIdentityMap = false;
 
-    // {
-    //     const item = await session.query(User).filter({name: 'marc'}).findOne();
-    //     expect('_id' in item).toBe(false);
-    // }
-
-    // todo: fix this stuff
-    // {
-    //     const item = await database.query(User).filter({name: 'marc'}).asJSON().findOne();
-    //     expect('_id' in item).toBe(false);
-    // }
-    //
-    // {
-    //     const item = await database.query(User).filter({name: 'marc'}).asRaw().findOne();
-    //     expect('_id' in item).toBe(false);
-    // }
-    //
-    // {
-    //     const item = await database.query(User).filter({name: 'marc'}).select(['_id']).asRaw().findOne();
-    //     expect('_id' in item).toBe(true);
-    // }
-
-
     {
         const item = await session.query(User).findOne();
         expect(item.name).toEqual('admin');

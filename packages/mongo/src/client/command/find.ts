@@ -60,16 +60,27 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
         };
 
         const jit = schema.jit;
-        let specialisedResponse = jit.mdbFind;
+        let specialisedResponse = this.projection ? jit.mdbFindPartial : jit.mdbFind;
         if (!specialisedResponse) {
-            specialisedResponse = t.extendSchema(BaseResponse, {
-                cursor: {
-                    id: t.number,
-                    firstBatch: t.array(schema),
-                    nextBatch: t.array(schema),
-                },
-            });
-            jit.mdbFind = specialisedResponse;
+            if (this.projection) {
+                specialisedResponse = t.extendSchema(BaseResponse, {
+                    cursor: {
+                        id: t.number,
+                        firstBatch: t.array(t.partial(schema)),
+                        nextBatch: t.array(t.partial(schema)),
+                    },
+                });
+                jit.mdbFindPartial = specialisedResponse;
+            } else {
+                specialisedResponse = t.extendSchema(BaseResponse, {
+                    cursor: {
+                        id: t.number,
+                        firstBatch: t.array(schema),
+                        nextBatch: t.array(schema),
+                    },
+                });
+                jit.mdbFind = specialisedResponse;
+            }
             toFastProperties(jit);
         }
 

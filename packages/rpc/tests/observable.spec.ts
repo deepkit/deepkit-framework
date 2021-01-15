@@ -2,7 +2,7 @@ import { sleep } from '@deepkit/core';
 import { entity, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { first, take } from 'rxjs/operators';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
@@ -115,6 +115,84 @@ test('Subject', async () => {
     }
 });
 
+test('subject unsubscribes automatically when connection closes', async () => {
+    let unsubscribed = false;
+    class Controller {
+        @rpc.action()
+        strings(): Subject<string> {
+            const subject = new Subject<string>();
+            subject.subscribe().add(() => {
+                unsubscribed = true;
+            });
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const o = await controller.strings();
+        expect(o).toBeInstanceOf(Subject);
+        expect(unsubscribed).toBe(false);
+        o.unsubscribe();
+        await sleep(0);
+        expect(unsubscribed).toBe(true);
+    }
+
+    {
+        unsubscribed = false;
+        const o = await controller.strings();
+        expect(o).toBeInstanceOf(Subject);
+        expect(unsubscribed).toBe(false);
+        client.disconnect();
+        await sleep(0);
+        expect(unsubscribed).toBe(true);
+    }
+});
+
+test('observable unsubscribes automatically when connection closes', async () => {
+    let unsubscribed = false;
+    class Controller {
+        @rpc.action()
+        strings(): Observable<string> {
+            return new Observable((observer) => {
+                return {unsubscribe() {
+                    unsubscribed = true;
+                }}
+            })
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const o = (await controller.strings()).subscribe(() => {});
+        expect(o).toBeInstanceOf(Subscription);
+        expect(unsubscribed).toBe(false);
+        o.unsubscribe();
+        await sleep(0);
+        expect(unsubscribed).toBe(true);
+    }
+    
+    {
+        unsubscribed = false;
+        const o = (await controller.strings()).subscribe(() => {});
+        expect(o).toBeInstanceOf(Subscription);
+        expect(unsubscribed).toBe(false);
+        client.disconnect();
+        await sleep(0);
+        expect(unsubscribed).toBe(true);
+    }
+});
+
 test('Behavior', async () => {
     class Controller {
         @rpc.action()
@@ -155,6 +233,30 @@ test('Behavior', async () => {
     }
 });
 
+test('make sure base assumption about Subject is right', async () => {
+    {
+        const subject = new Subject<any>();
+        let teardown = false;
+        subject.subscribe().add(() => {
+            teardown = true;
+        });
+
+        subject.unsubscribe();
+        expect(teardown).toBe(false);
+    }
+
+    {
+        const subject = new Subject<any>();
+        let teardown = false;
+        subject.subscribe().add(() => {
+            teardown = true;
+        });
+
+        subject.complete();
+        expect(teardown).toBe(true);
+    }
+});
+
 test('observable complete', async () => {
     let active = false;
 
@@ -189,7 +291,6 @@ test('observable complete', async () => {
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
-
 
     {
         //make sure the assumption that unsubscribe() is even called when the observer calls complete() himself.

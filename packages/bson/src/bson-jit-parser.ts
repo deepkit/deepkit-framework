@@ -43,6 +43,53 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
                 ${nullOrSeek}
             }
             `;
+    } else if (property.type === 'partial') {
+        const object = compiler.reserveVariable('partiaObject', {});
+        const propertyCode: string[] = [];
+        const schema = property.getResolvedClassSchema();
+        for (const property of schema.getClassProperties().values()) {
+            //todo, support non-ascii names
+            const bufferCompare: string[] = [];
+            for (let i = 0; i < property.name.length; i++) {
+                bufferCompare.push(`parser.buffer[parser.offset + ${i}] === ${property.name.charCodeAt(i)}`);
+            }
+            bufferCompare.push(`parser.buffer[parser.offset + ${property.name.length}] === 0`);
+
+            propertyCode.push(`
+            //property ${property.name} (${property.type})
+            if (${bufferCompare.join(' && ')}) {
+                parser.offset += ${property.name.length} + 1;
+                ${createPropertyConverter(`${object}.${property.name}`, property, compiler)}
+                continue;
+            }
+        `);
+        }
+
+
+        return `
+        if (elementType === ${BSONType.OBJECT}) {
+            ${object} = {};
+            const end = parser.eatUInt32() + parser.offset;
+            
+            while (parser.offset < end) {
+                const elementType = parser.eatByte();
+                if (elementType === 0) break;
+                
+                ${propertyCode.join('\n')}
+                
+                //jump over this property when not registered in schema
+                while (parser.offset < end && parser.buffer[parser.offset++] != 0);
+
+                //seek property value
+                if (parser.offset >= end) break;
+                seekElementSize(elementType, parser);
+            }
+            ${setter} = ${object};
+        } else {
+            ${nullOrSeek}
+        }
+    `;
+
     } else if (property.type === 'class') {
         const schema = property.getResolvedClassSchema();
 
@@ -70,7 +117,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             } else {
                 ${decoratedVar} = undefined;
                 ${createPropertyConverter(decoratedVar, schema.getDecoratedPropertySchema(), compiler)}
-                
+
                 ${setter} = new ${classTypeVar}(${arg});
                 ${propertyAssign.join('\n')}
             }
@@ -199,7 +246,7 @@ function createSchemaDecoder(schema: ClassSchema): DecoderFn {
     const constructorArgumentNames: string[] = [];
     const constructorParameter = schema.getMethodProperties('constructor');
 
-    let propertyCode: string[] = [];
+    const propertyCode: string[] = [];
     for (const property of schema.getClassProperties().values()) {
         //todo, support non-ascii names
         const bufferCompare: string[] = [];
@@ -237,32 +284,34 @@ function createSchemaDecoder(schema: ClassSchema): DecoderFn {
             return _instance;
         `;
     }
+
     const functionCode = `
         var object = {};
         ${schema.isCustomClass() ? 'var _instance;' : ''}
-        parser.seek((offset || 0) + 4);
+        const end = parser.eatUInt32() + parser.offset;
 
-        while (true) {
+        while (parser.offset < end) {
             const elementType = parser.eatByte();
             if (elementType === 0) break;
 
             ${propertyCode.join('\n')}
 
             //jump over this property when not registered in schema
-            while (parser.buffer[parser.offset++] != 0);
+            while (parser.offset < end && parser.buffer[parser.offset++] != 0);
             //seek property value
+            if (parser.offset >= end) break;
             seekElementSize(elementType, parser);
         }
 
         ${schema.isCustomClass() ? instantiate : 'return object;'}
     `;
 
-    const fn = compiler.build(functionCode, 'parser', 'offset', '_options');
+    const fn = compiler.build(functionCode, 'parser', 'partial');
     fn.buildId = schema.buildId;
     return fn;
 }
 
-export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (parser: BaseParser, offset?: number) => T {
+export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (parser: BaseParser) => T {
     schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
 
     if (schema.jit.rawBson) return schema.jit.rawBson;
@@ -275,6 +324,6 @@ export function getBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (bson:
     const fn = getRawBSONDecoder(schema);
 
     return (bson, offset = 0) => {
-        return fn(new ParserV2(bson), offset);
+        return fn(new ParserV2(bson, offset));
     };
 }
