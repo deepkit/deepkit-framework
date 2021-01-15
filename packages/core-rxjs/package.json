@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/core-rxjs",
-  "version": "1.0.1-alpha.11",
+  "version": "1.0.1-alpha.12",
   "description": "Deepkit core rxjs library",
   "type": "module",
   "main": "./dist/esm/index.js",
@@ -26,7 +26,7 @@
     "rxjs": "~6.6.0"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.11",
+    "@deepkit/core": "^1.0.1-alpha.12",
     "rxjs": "~6.6.0"
   },
   "jest": {

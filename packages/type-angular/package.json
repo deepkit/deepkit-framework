@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-angular",
-  "version": "1.0.1-alpha.11",
+  "version": "1.0.1-alpha.12",
   "description": "Types angular forms",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,8 +13,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.11",
-    "@deepkit/type": "^1.0.1-alpha.11"
+    "@deepkit/core": "^1.0.1-alpha.12",
+    "@deepkit/type": "^1.0.1-alpha.12"
   },
   "devDependencies": {
     "@angular/core": "^9.0.0",
