@@ -21,6 +21,6 @@ jobs:
         shell: bash
       - name: Lerna bootstrap
         run: |
-          npm run boostrap
+          npm run bootstrap
       - name: Test
         run: npm run test
