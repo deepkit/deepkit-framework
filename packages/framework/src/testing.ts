@@ -38,6 +38,10 @@ export class TestingFascade<A extends Application<any>> {
         await this.app.get(ApplicationServer).start();
     }
 
+    public async stopServer() {
+        await this.app.get(ApplicationServer).close();
+    }
+
     public async request(method: string, path: string, body?: any) {
 
     }

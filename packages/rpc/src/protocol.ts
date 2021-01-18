@@ -21,20 +21,20 @@ export const enum RpcMessageRouteType {
     peer = 3,
 }
 
-export class RpcMessageRoute {
-    public peerId?: string;
+// export class RpcMessageRoute {
+//     public peerId?: string;
 
-    public source?: string;
-    public destination?: string;
+//     public source?: string;
+//     public destination?: string;
 
-    constructor(
-        public type: RpcMessageRouteType = 0,
-    ) {
-    }
-}
+//     constructor(
+//         public type: RpcMessageRouteType = 0,
+//     ) {
+//     }
+// }
 
 /*
- * A message is a binary message and has the following structure:
+ * A message is binary data and has the following structure:
  *
  * <size> <version> <id> <route>[<routeConfig>] <composite> <messageBody>
  *

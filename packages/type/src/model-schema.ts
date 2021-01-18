@@ -25,6 +25,7 @@ export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schem
     isDiscriminant: t.literal(true).optional,
     allowLabelsAsValue: t.literal(true).optional,
     classType: t.string.optional,
+    defaultValue: t.any.optional,
     classTypeName: t.string.optional,
     noValidation: t.boolean.optional,
     methodName: t.string.optional,

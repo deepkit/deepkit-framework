@@ -148,9 +148,10 @@ test('test entity sync list', async () => {
                 await this.database.query(User).filter({ id: peter.id }).patchOne({ name: 'Peter patched' });
             }, 1000);
 
-            return await this.liveDatabase.query(User).filter({
+            const collection = await this.liveDatabase.query(User).filter({
                 name: { $regex: /Peter/ }
             }).find();
+            return collection;
         }
 
         @rpc.action()

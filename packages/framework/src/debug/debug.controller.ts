@@ -150,7 +150,7 @@ export class DebugController implements DebugControllerInterface {
                 appConfig.push({
                     name: name,
                     value: value,
-                    defaultValue: schema.getProperty(name).defaultValue,
+                    defaultValue: schema.getProperty(name).getDefaultValue(),
                     description: schema.getProperty(name).description,
                     type: schema.getProperty(name).toString(),
                 });
@@ -167,7 +167,7 @@ export class DebugController implements DebugControllerInterface {
                 modulesConfig.push({
                     name: module.getName() + '.' + name,
                     value: value,
-                    defaultValue: schema.getProperty(name).defaultValue,
+                    defaultValue: schema.getProperty(name).getDefaultValue(),
                     description: schema.getProperty(name).description,
                     type: schema.getProperty(name).toString(),
                 });

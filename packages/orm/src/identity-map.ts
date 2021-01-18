@@ -83,7 +83,8 @@ class InstanceState<T extends Entity> {
     }
 
     markAsPersisted() {
-        this.snapshot = getJITConverterForSnapshot(this.classSchema)(this.item);
+        const snap = getJITConverterForSnapshot(this.classSchema);
+        this.snapshot = snap(this.item);
         this.knownInDatabase = true;
         (this.item as any)[changeSetSymbol] = new ItemChanges({}, this.item);
     }

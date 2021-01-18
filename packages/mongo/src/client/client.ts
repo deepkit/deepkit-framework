@@ -26,6 +26,7 @@ import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error
 import { ConnectionOptions } from './options';
 import { arrayRemoveItem, ClassType, eachPair, singleStack, sleep } from '@deepkit/core';
 import { Command } from './command/command';
+import { DropDatabaseCommand } from './command/drop-database';
 
 /**
  * Default URL:
@@ -225,6 +226,10 @@ export class MongoClient {
     public close() {
         this.inCloseProcedure = true;
         this.connectionPool.close();
+    }
+
+    async dropDatabase(dbName: string): Promise<void> {
+        await this.execute(new DropDatabaseCommand(dbName));
     }
 
     /**

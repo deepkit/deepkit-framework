@@ -20,7 +20,7 @@ import { mongoSerializer } from './mongo-serializer';
 import { FindAndModifyCommand } from './client/command/find-and-modify';
 import { empty } from '@deepkit/core';
 import { FindCommand } from './client/command/find';
-import bson from 'bson';
+import { ObjectId } from '@deepkit/bson';
 
 export class MongoPersistence extends DatabasePersistence {
 
@@ -76,12 +76,12 @@ export class MongoPersistence extends DatabasePersistence {
 
         for (const item of items) {
             if (autoIncrement) item[autoIncrement.name] = ++autoIncrementValue;
-            const converted = scopeSerializer.serialize(item);
-
             if (has_Id && !item['_id']) {
-                converted['_id'] = new bson.ObjectId();
-                item['_id'] = converted['_id'].toHexString();
+                item['_id'] = ObjectId.generate();
             }
+
+            //replaces references with the foreign key
+            const converted = scopeSerializer.serialize(item);
             insert.push(converted);
         }
         await this.client.execute(new InsertCommand(classSchema, insert));
@@ -117,13 +117,17 @@ export class MongoPersistence extends DatabasePersistence {
                 }
             }
 
+            const u: any = {};
+            if (changeSet.changes.$set && !empty(changeSet.changes.$set)) {
+                u.$set = scopeSerializer.partialSerialize(changeSet.changes.$set);
+            }
+
+            if (changeSet.changes.$inc) u.$inc = changeSet.changes.$inc;
+            if (changeSet.changes.$unset) u.$unset = changeSet.changes.$unset;
+
             updates.push({
                 q: convertClassQueryToMongo(classSchema.classType, changeSet.primaryKey as FilterQuery<T>),
-                u: {
-                    $set: !empty(changeSet.changes.$set) ? scopeSerializer.partialSerialize(changeSet.changes.$set!) : undefined,
-                    $inc: changeSet.changes.$inc,
-                    $unset: changeSet.changes.$unset,
-                },
+                u: u,
                 multi: false,
             });
         }

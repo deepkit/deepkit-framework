@@ -15,83 +15,71 @@ import { BaseParser } from './bson-parser';
  * small strings (< 14chars). Everything else should be cached or created by Buffer.toString('utf8').
  */
 export function decodeUTF8Parser(parser: BaseParser, size: number = parser.size - parser.offset) {
-    let i = parser.offset, s = '';
     const end = parser.offset + size;
-    while (i < end) {
-        let c = parser.buffer[i++];
-
-        if (c > 127) {
-            if (c > 191 && c < 224) {
-                if (i >= end)
-                    throw new Error('UTF-8 decode: incomplete 2-byte sequence');
-                c = (c & 31) << 6 | parser.buffer[i++] & 63;
-            } else if (c > 223 && c < 240) {
-                if (i + 1 >= end)
-                    throw new Error('UTF-8 decode: incomplete 3-byte sequence');
-                c = (c & 15) << 12 | (parser.buffer[i++] & 63) << 6 | parser.buffer[i++] & 63;
-            } else if (c > 239 && c < 248) {
-                if (i + 2 >= end)
-                    throw new Error('UTF-8 decode: incomplete 4-byte sequence');
-                c = (c & 7) << 18 | (parser.buffer[i++] & 63) << 12 | (parser.buffer[i++] & 63) << 6 | parser.buffer[i++] & 63;
-            } else throw new Error('UTF-8 decode: unknown multibyte start 0x' + c.toString(16) + ' at index ' + (i - 1));
-            if (c <= 0xffff) {
-                s += String.fromCharCode(c);
-            } else if (c <= 0x10ffff) {
-                c -= 0x10000;
-                s += String.fromCharCode(c >> 10 | 0xd800, c & 0x3FF | 0xdc00);
-            } else throw new Error('UTF-8 decode: code point 0x' + c.toString(16) + ' exceeds UTF-16 reach');
-        } else {
-            if (c === 0) {
-                parser.offset = i;
-                return s;
-            }
-
-            s += String.fromCharCode(c);
-        }
-    }
+    let s = decodeUTF8(parser.buffer, parser.offset, end - 1);
     parser.offset = end;
     return s;
 }
 
+const decoder = new TextDecoder("utf-8");
 export function decodeUTF8(buffer: Uint8Array, off: number = 0, end: number = Infinity) {
+    if (end - off > 1024 * 10) {
+        return decoder.decode(buffer.slice(off, end));
+    } else {
+        return decodeUTF8Short(buffer, off, end);
+    }
+}
+
+// Based on http://stackoverflow.com/a/22747272/680742, the browser with
+// the lowest limit is Chrome, with 0x10000 args.
+// We go 1 magnitude less, for safety
+const MAX_ARGUMENTS_LENGTH = 0x1000
+
+export function decodeUTF8Short(buffer: Uint8Array, off: number = 0, end: number = Infinity) {
+    let codes: number[] = [];
     let s = '';
     while (off < end) {
         let c = buffer[off++];
-
         if (c > 127) {
             if (c > 191 && c < 224) {
-                if (off >= end)
-                    throw new Error('UTF-8 decode: incomplete 2-byte sequence');
+                // if (off >= end)
+                //     throw new Error('UTF-8 decode: incomplete 2-byte sequence');
                 c = (c & 31) << 6 | buffer[off++] & 63;
             } else if (c > 223 && c < 240) {
-                if (off + 1 >= end)
-                    throw new Error('UTF-8 decode: incomplete 3-byte sequence');
+                // if (off + 1 >= end)
+                //     throw new Error('UTF-8 decode: incomplete 3-byte sequence');
                 c = (c & 15) << 12 | (buffer[off++] & 63) << 6 | buffer[off++] & 63;
             } else if (c > 239 && c < 248) {
-                if (off + 2 >= end)
-                    throw new Error('UTF-8 decode: incomplete 4-byte sequence');
+                // if (off + 2 >= end)
+                //     throw new Error('UTF-8 decode: incomplete 4-byte sequence');
                 c = (c & 7) << 18 | (buffer[off++] & 63) << 12 | (buffer[off++] & 63) << 6 | buffer[off++] & 63;
-            } else throw new Error('UTF-8 decode: unknown multibyte start 0x' + c.toString(16) + ' at index ' + (off - 1));
+            } else {
+                // throw new Error('UTF-8 decode: unknown multibyte start 0x' + c.toString(16) + ' at index ' + (off - 1));
+            }
             if (c <= 0xffff) {
-                s += String.fromCharCode(c);
+                codes.push(c);
             } else if (c <= 0x10ffff) {
                 c -= 0x10000;
-                s += String.fromCharCode(c >> 10 | 0xd800, c & 0x3FF | 0xdc00);
+                codes.push(c >> 10 | 0xd800, c & 0x3FF | 0xdc00);
             } else throw new Error('UTF-8 decode: code point 0x' + c.toString(16) + ' exceeds UTF-16 reach');
         } else {
             if (c === 0) {
+                s += String.fromCharCode.apply(String, codes);
                 return s;
             }
 
-            s += String.fromCharCode(c);
+            codes.push(c);
+        }
+
+        if (codes.length >= MAX_ARGUMENTS_LENGTH) {
+            s += String.fromCharCode.apply(String, codes);
+            codes = [];
         }
     }
-    return s;
-}
 
-interface KeyCacheRecord {
-    readonly bytes: Uint8Array;
-    readonly offset: number;
-    readonly key: string;
-    hits: number;
+    if (codes.length) {
+        s += String.fromCharCode.apply(String, codes);
+    }
+
+    return s;
 }

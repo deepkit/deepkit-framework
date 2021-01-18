@@ -11,21 +11,9 @@
 import { ClassSchema, getClassSchema, JSONEntity, jsonSerializer, resolvePropertySchema, TypedArrays, } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import './mongo-serializer';
-import { Binary } from 'bson';
 import { mongoSerializer } from './mongo-serializer';
 import { convertQueryFilter, QueryCustomFields, QueryFieldNames } from '@deepkit/orm';
 import { FilterQuery } from './query.model';
-
-export type MongoTypeSingle<T> = T extends Date ? Date :
-    T extends Array<infer K> ? Array<MongoTypeSingle<K>> :
-    T extends ArrayBuffer ? Binary :
-    T extends TypedArrays ? Binary :
-    T extends object ? JSONEntity<T> :
-    T extends string ? T :
-    T extends boolean ? T :
-    T extends number ? T : T;
-
-export type MongoType<T> = { [name in keyof T & string]: MongoTypeSingle<T[name]> };
 
 
 /**

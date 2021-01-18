@@ -57,12 +57,15 @@ test('nullable', () => {
     const item = new s.classType;
     item.username = 'asd';
 
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd' });
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.password = null;
     expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.optional = undefined;
+    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null, optional: null });
+
+    delete item.optional;
     expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.optional = 'yes';

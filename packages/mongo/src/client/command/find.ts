@@ -25,11 +25,11 @@ const findSchema = t.schema({
     find: t.string,
     $db: t.string,
     batchSize: t.number,
-    limit: t.number.optional,
+    limit: t.number,
+    skip: t.number,
     filter: t.any,
-    projection: t.any,
-    sort: t.any,
-    skip: t.number.optional,
+    projection: t.any.optional,
+    sort: t.any.optional,
 });
 
 export class FindCommand<T extends ClassSchema | ClassType> extends Command {
@@ -48,16 +48,17 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
     async execute(config): Promise<ExtractClassType<T>[]> {
         const schema = getClassSchema(this.classSchema);
 
-        const cmd = {
+        const cmd: InstanceType<typeof findSchema.classType> = {
             find: schema.collectionName || schema.name || 'unknown',
             $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             filter: this.filter,
-            projection: this.projection,
-            sort: this.sort,
             limit: this.limit,
             skip: this.skip,
             batchSize: 1_000_000, //todo make configurable
         };
+
+        if (this.projection) cmd.projection = this.projection;
+        if (this.sort) cmd.sort = this.sort;
 
         const jit = schema.jit;
         let specialisedResponse = this.projection ? jit.mdbFindPartial : jit.mdbFind;

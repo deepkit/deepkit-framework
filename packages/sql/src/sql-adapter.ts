@@ -460,7 +460,8 @@ export class SQLPersistence extends DatabasePersistence {
             const converted = scopeSerializer.serialize(item);
 
             insert.push(fields.map(v => {
-                params.push(converted[v]);
+                v = converted[v];
+                params.push(v === undefined ? null : v);
                 return this.getPlaceholderSymbol();
             }).join(', '));
         }

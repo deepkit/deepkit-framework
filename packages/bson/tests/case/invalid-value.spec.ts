@@ -18,7 +18,7 @@ test('invalid', () => {
 
     {
         const bson = serialize({id: 'asd'});
-        expect(getBSONDecoder(s)(bson)).toEqual({id: 'asd'});
+        expect(getBSONDecoder(s)(bson)).toEqual({});
     }
 
     {
@@ -28,6 +28,16 @@ test('invalid', () => {
 
     {
         const bson = getBSONSerializer(s)({id: 'sd'});
+        expect(getBSONDecoder(s)(bson)).toEqual({});
+    }
+
+    {
+        const bson = getBSONSerializer(s)({id: false});
+        expect(getBSONDecoder(s)(bson)).toEqual({});
+    }
+
+    {
+        const bson = getBSONSerializer(s)({id: {}});
         expect(getBSONDecoder(s)(bson)).toEqual({});
     }
 

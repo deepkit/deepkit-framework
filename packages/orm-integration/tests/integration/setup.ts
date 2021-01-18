@@ -3,7 +3,7 @@ import { ClassSchema } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import { MySQLDatabaseAdapter, PostgresDatabaseAdapter, SQLDatabaseAdapter, SQLiteDatabaseAdapter } from '@deepkit/sql';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
-import { GenericCommand, MongoDatabaseAdapter } from '@deepkit/mongo';
+import { MongoDatabaseAdapter } from '@deepkit/mongo';
 
 const databases: Database<any>[] = []
 
@@ -38,7 +38,7 @@ export async function createEnvSetup(schemas: (ClassSchema | ClassType)[]): Prom
 
     if (adapter instanceof MongoDatabaseAdapter) {
         await adapter.resetAutoIncrementSequences();
-        await adapter.client.execute(new GenericCommand({ dropDatabase: 1, $db: 'orm-integration' }));
+        await adapter.client.dropDatabase('orm-integration');
     }
 
     return database;

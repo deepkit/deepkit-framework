@@ -16,9 +16,10 @@ test('basic', () => {
         @t.array(ProductImage) images: ProductImage[] = [];
     }
 
-    const bson = serialize({id: 23});
-
-    const item = getBSONDecoder(Product)(bson);
-    expect(item.id).toBe(23);
-    expect(item.images.length).toBe(0);
+    {
+        const bson = serialize({ id: 23 });
+        const item = getBSONDecoder(Product)(bson);
+        expect(item.id).toBe(23);
+        expect(item.images.length).toBe(0);
+    }
 });

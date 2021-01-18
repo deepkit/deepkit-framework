@@ -8,7 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType, eachKey, eachPair, ExtractClassType, extractMethodBody, getClassName, extractParameters, isClass, isConstructable, isFunction, isObject, isPlainObject, toFastProperties } from '@deepkit/core';
+import {
+    arrayRemoveItem,
+    ClassType,
+    eachKey,
+    eachPair,
+    ExtractClassType,
+    extractMethodBody,
+    getClassName,
+    extractParameters,
+    isClass,
+    isConstructable,
+    isFunction,
+    isObject,
+    isPlainObject,
+    toFastProperties
+} from '@deepkit/core';
 import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
 import { FieldDecoratorResult } from './field-decorator';
 import { typedArrayMap, typedArrayNamesMap, Types } from './types';
@@ -61,7 +76,6 @@ export interface BackReferenceOptions<T> {
     mappedBy?: keyof T & string,
 }
 
-
 export type IndexOptions = Partial<{
     //index size. Necessary for blob/longtext, etc.
     size: number,
@@ -90,6 +104,7 @@ export interface PropertySchemaSerialized {
     allowLabelsAsValue?: true;
     methodName?: string;
     groupNames?: string[];
+    defaultValue?: any;
     templateArgs?: PropertySchemaSerialized[];
     classType?: string;
     classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
@@ -126,7 +141,9 @@ function resolveForwardRef<T>(forwardRef: ForwardRefFn<T>): T | undefined {
     } else {
         try {
             return forwardRef();
-        } catch { return undefined; }
+        } catch {
+            return undefined;
+        }
     }
 }
 
@@ -270,9 +287,15 @@ export class PropertySchema {
     hasDefaultValue: boolean = false;
 
     /**
-     * The detected default value OR manual set default value.
+     * The manual set default value. This is always a function, even if the user provided only a value.
      */
-    defaultValue: any;
+    defaultValue?: () => any;
+
+    /**
+     * In serializes that have a two-pass way to generate the data, here's the place to store the last
+     * generated default value.
+     */
+    lastGeneratedDefaultValue?: any;
 
     templateArgs: PropertySchema[] = [];
 
@@ -329,14 +352,14 @@ export class PropertySchema {
 
     description: string = '';
 
-    /** 
+    /**
      * Transformer for serialization.
-    */
+     */
     serialization = new Map<string, (v: any) => any>();
 
-    /** 
+    /**
      * Transformer for deserialization.
-    */
+     */
     deserialization = new Map<string, (v: any) => any>();
 
     constructor(public name: string, public parent?: PropertySchema) {
@@ -345,6 +368,14 @@ export class PropertySchema {
     setType(type: Types) {
         this.type = type;
         this.typeSet = true;
+    }
+
+    getDefaultValue(): any {
+        if (this.defaultValue) {
+            this.lastGeneratedDefaultValue = this.defaultValue();
+            return this.lastGeneratedDefaultValue
+        }
+        return undefined;
     }
 
     toString(): string {
@@ -404,6 +435,7 @@ export class PropertySchema {
         if (this.typeSet) props['typeSet'] = true;
         if (this.methodName) props['methodName'] = this.methodName;
         if (this.groupNames.length) props['groupNames'] = this.groupNames;
+        if (this.defaultValue) props['defaultValue'] = this.defaultValue();
         props['noValidation'] = this.noValidation;
 
         if (this.templateArgs.length) {
@@ -439,6 +471,7 @@ export class PropertySchema {
         if (props['methodName']) p.methodName = props['methodName'];
         if (props['groupNames']) p.groupNames = props['groupNames'];
         if (props['noValidation']) p.noValidation = props['noValidation'];
+        if (props['defaultValue']) p.defaultValue = () => props['defaultValue'];
 
         if (props['templateArgs']) {
             p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v, p));
@@ -493,7 +526,7 @@ export class PropertySchema {
             && type !== 'any'
             && type !== Array
             && type !== Object
-            ;
+        ;
 
         if (isCustomObject) {
             this.type = 'class';
@@ -684,7 +717,7 @@ export class ClassSchema<T = any> {
 
     /**
      * Whether this schema annotated an actual custom class.
-    */
+     */
     public isCustomClass(): boolean {
         return (this.classType as any) !== Object;
     }
@@ -789,7 +822,8 @@ export class ClassSchema<T = any> {
     }
 
     public clone(classType?: ClassType): ClassSchema {
-        classType ||= class { };
+        classType ||= class {
+        };
         const s = new ClassSchema(classType);
         classType.prototype[classSchemaSymbol] = s;
         s.name = this.name;
@@ -948,6 +982,21 @@ export class ClassSchema<T = any> {
         }
 
         return this.getProperty(this.idField);
+    }
+
+    public hasCircularReference(stack: ClassSchema[] = []): boolean {
+        if (stack.includes(this)) return true;
+        stack.push(this);
+        
+        for (const property of this.getClassProperties().values()) {
+            if (property.type === 'partial' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
+            if (property.type === 'map' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
+            if (property.type === 'array' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
+            if (property.type === 'class' && property.getResolvedClassSchema().hasCircularReference(stack)) return true;
+        }
+        
+        stack.pop();
+        return false;
     }
 
     public getPrimaryFieldName(): keyof T & string {
@@ -1246,7 +1295,8 @@ export class ClassSchema<T = any> {
 const deletedExcludedProperties = Symbol();
 
 export class ClassSlicer<T> {
-    constructor(protected schema: ClassSchema<T>) { }
+    constructor(protected schema: ClassSchema<T>) {
+    }
 
     public exclude<K extends (keyof T & string)[]>(...properties: K): ClassType<Omit<T, K[number]>> {
         for (const name of properties) {
@@ -1275,8 +1325,10 @@ export class ClassSlicer<T> {
 
 export function sliceClass<T>(classType: ClassType<T> | ClassSchema<T>): ClassSlicer<T> {
     const base: ClassType<any> = classType instanceof ClassSchema ? classType.classType : classType;
+
     class Class extends base {
         static [deletedExcludedProperties]: string[] = [];
+
         constructor(...args: any[]) {
             super(...args);
             for (const prop of Class[deletedExcludedProperties]) {
@@ -1284,6 +1336,7 @@ export function sliceClass<T>(classType: ClassType<T> | ClassSchema<T>): ClassSl
             }
         }
     }
+
     Class[deletedExcludedProperties].push('nix');
     return new ClassSlicer(getClassSchema(base).clone(Class));
 }
@@ -1292,10 +1345,10 @@ type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x
 
 /**
  * Function to mixin multiple classes together and create a new class, which can be extended from.
- * 
+ *
  * @example
  * ```typescript
- * 
+ *
  *   class Timestampable {
  *       @t createdAt: Date = new Date;
  *       @t updatedAt: Date = new Date;

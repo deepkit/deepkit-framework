@@ -1,7 +1,6 @@
 import {afterEach} from '@jest/globals';
 import {Database} from '@deepkit/orm';
 import {MongoDatabaseAdapter} from '../src/adapter';
-import {GenericCommand} from '../src/client/command/generic';
 import {performance} from 'perf_hooks';
 
 /**
@@ -24,10 +23,7 @@ const databases: Database<MongoDatabaseAdapter>[] = [];
 export async function createDatabase(dbName: string = 'testing') {
     dbName = dbName.replace(/\s+/g, '-');
     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/' + dbName));
-    await database.adapter.client.execute(new GenericCommand({
-        dropDatabase: 1,
-        $db: dbName,
-    }));
+    await database.adapter.client.dropDatabase(dbName);
     databases.push(database);
     return database;
 }

@@ -9,7 +9,15 @@
  */
 
 import { PropertyValidatorError } from './jit-validation';
-import { ClassType, eachPair, getClassName, extractParameters, isFunction, isNumber, isPlainObject, } from '@deepkit/core';
+import {
+    ClassType,
+    eachPair,
+    getClassName,
+    extractParameters,
+    isFunction,
+    isNumber,
+    isPlainObject,
+} from '@deepkit/core';
 import { isArray } from './utils';
 import { ClassDecoratorResult, createClassDecoratorContext } from './decorator-builder';
 import {
@@ -28,9 +36,16 @@ import {
     PropertyValidator,
     ReferenceActions
 } from './model';
-import { PartialField, Types } from './types';
+import { PartialField, PatchField, Types } from './types';
 import { validators } from './validation-decorator';
-import { FieldDecoratorResult, isFieldDecorator, MySQLOptions, PostgresOptions, SqliteOptions, ValidatorFn } from './field-decorator';
+import {
+    FieldDecoratorResult,
+    isFieldDecorator,
+    MySQLOptions,
+    PostgresOptions,
+    SqliteOptions,
+    ValidatorFn
+} from './field-decorator';
 import { Serializer } from './serializer';
 
 export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
@@ -41,13 +56,15 @@ export type MergeSchemaAndBase<T extends PlainSchemaProps, BASE extends ClassSch
 
 export type ExtractClassProperty<T> =
     T extends PlainSchemaProps ? ExtractClassDefinition<T> :
-    T extends ClassSchema<infer K> ? K :
-    T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T
+        T extends ClassSchema<infer K> ? K :
+            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T
 
 export type OptionalProps<T> = { [name in keyof T]: undefined extends T[name] ? name : never }[keyof T];
 export type RequiredProps<T> = { [name in keyof T]: undefined extends T[name] ? never : name }[keyof T];
 
-export type MakeUndefinedOptional<T> = { [name in RequiredProps<T>]: T[name] } & { [name in OptionalProps<T>]?: T[name] }
+export type MakeUndefinedOptional<T> =
+    { [name in RequiredProps<T>]: T[name] }
+    & { [name in OptionalProps<T>]?: T[name] }
 
 export type ExtractClassDefinition<T extends PlainSchemaProps> = MakeUndefinedOptional<{ [name in keyof T]: ExtractClassProperty<T[name]> }>;
 
@@ -666,7 +683,15 @@ function Nullable() {
  */
 function Default(v: any) {
     return (target: object, property: PropertySchema) => {
-        property.defaultValue = v;
+        if (isArray(v)) {
+            property.defaultValue = () => v.slice(0);
+        } else if (isPlainObject(v)) {
+            property.defaultValue = () => {
+                return { ...v };
+            };
+        } else {
+            property.defaultValue = isFunction(v) ? v : () => v;
+        }
     };
 }
 
@@ -925,18 +950,30 @@ fRaw['type'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<a
 fRaw['literal'] = function <T extends number | string | boolean>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field('literal').use((target, property) => {
         property.literalValue = type;
-        property.defaultValue = type;
     });
 };
 
 fRaw['union'] = function <T>(this: FieldDecoratorResult<any>, ...types: (ClassType | ForwardRefFn<any> | ClassSchema | string | number | boolean | PlainSchemaProps | FieldDecoratorResult<any>)[]): FieldDecoratorResult<T> {
     return Field('union').use((target, property) => {
         property.setType('union');
-    }).template(...types);
+    }).generic(...types);
 };
 
-fRaw['partial'] = function <T extends ClassType>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
-    return Field('partial').template(type);
+fRaw['partial'] = function <T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps>(this: FieldDecoratorResult<T>, type: T): FieldDecoratorResult<T> {
+    let schema = type instanceof ClassSchema ? type.clone() : new ClassSchema(class {
+    });
+
+    if (isPlainObject(type)) {
+        schema = t.schema(type as PlainSchemaProps);
+    } else {
+        schema = getClassSchema(type).clone();
+    }
+
+    for (const property of schema.getClassProperties().values()) {
+        property.isOptional = true; //a Partial<T> is defined in a way that makes all its properties optional
+    }
+
+    return Field('partial').generic(schema);
 };
 
 fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabelsAsValue: boolean = false): FieldDecoratorResult<T> {
@@ -955,8 +992,8 @@ type ExtractType<T> = T extends ForwardRef<infer K> ? ExtractSimpleType<K> :
 
 type ExtractSimpleType<T> = T extends ClassType<infer K> ? K :
     T extends ClassSchema<infer K> ? K :
-    T extends PlainSchemaProps ? ExtractClassDefinition<T> :
-    T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
+        T extends PlainSchemaProps ? ExtractClassDefinition<T> :
+            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
 
 type StandardEnum<T> = {
     [id: string]: T | string;
@@ -1121,7 +1158,12 @@ export interface MainDecorator {
      * }
      * ```
      */
-    partial<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<PartialField<ExtractType<T>>>;
+    partial<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps>(type: T): FieldDecoratorResult<PartialField<ExtractType<T>>>;
+
+    // /**
+    //  * Partial type. Allows deep dot-style paths.
+    //  */
+    // patch<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<PatchField<ExtractType<T>>>;
 
     /**
      * Marks a field as type any. It does not transform the value and directly uses JSON.parse/stringify.

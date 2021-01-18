@@ -21,12 +21,11 @@ import { Host } from './host';
 import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
 import { Command } from './command/command';
-import { ClassSchema } from '@deepkit/type';
+import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake';
 import { MongoClientConfig } from './client';
 import { MongoError } from './error';
-import bson from 'bson';
 
 export enum MongoConnectionStatus {
     pending = 'pending',
@@ -302,9 +301,9 @@ export class MongoConnection {
         }
     }
 
-    protected sendMessage<T>(schema: ClassType<T> | ClassSchema<T> | undefined, message: T) {
-        const messageSerializer = schema === undefined ? bson.serialize : getBSONSerializer(schema);
-        const messageSizer = schema === undefined ? bson.calculateObjectSize : getBSONSizer(schema);
+    protected sendMessage<T>(schema: ClassType<T> | ClassSchema<T>, message: T) {
+        const messageSerializer = getBSONSerializer(schema);
+        const messageSizer = getBSONSizer(schema);
 
         const buffer = Buffer.alloc(16 + 4 + 1 + messageSizer(message));
         // const buffer = Buffer.alloc(16 + 4 + 10 + 1 + 4 + 4 + calculateObjectSize(message));
@@ -330,6 +329,7 @@ export class MongoConnection {
         // writer.writeInt32(0); //skip, 4
         // writer.writeInt32(1); //return, 4
 
+        try {
         const section = messageSerializer(message);
         // const section = serialize(message);
         writer.writeBuffer(section);
@@ -340,6 +340,10 @@ export class MongoConnection {
 
         //detect backPressure
         this.socket.write(buffer);
+        } catch (error) {
+            console.log('failed sending message', message, 'using schema', getClassSchema(schema).toString());
+            throw error;
+        }
     }
 
     async connect(): Promise<void> {

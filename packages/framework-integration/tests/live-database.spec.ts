@@ -137,12 +137,14 @@ test('test entity collection reactive find', async () => {
 
         @rpc.action()
         async find(teamName: string): Promise<Collection<User>> {
-            return this.liveDatabase.query(User)
+            const collection = await this.liveDatabase.query(User)
                 .useInnerJoin('teams')
                 .filter({ name: { $parameter: 'teamName' } })
                 .end()
                 .parameter('teamName', teamName)
                 .find();
+
+            return collection;
         }
     }
 

@@ -9,7 +9,6 @@
  */
 
 import { DatabaseQueryModel, Entity, SORT_ORDER } from '@deepkit/orm';
-import { Binary } from 'bson';
 
 type BSONTypeAlias =
     | 'number'
@@ -22,7 +21,6 @@ type BSONTypeAlias =
 /** https://docs.mongodb.com/manual/reference/operator/query-bitwise */
 type BitwiseQuery =
     | number    /** <numeric bitmask> */
-    | Binary    /** <BinData bitmask> */
     | number[]; /** [ <position1>, <position2>, ... ] */
 
 // we can search using alternative types in mongodb e.g.

@@ -34,9 +34,8 @@ export function stringifyUuid(buffer: Uint8Array, offset: number = 0): string {
     return stringify(buffer, offset);
 }
 
-export function isArray(v: any): v is Array<any> {
-    if (v && (v as any).length && 'function' === typeof (v as any).reduce) return true;
-    return false;
+export function isArray(obj: any): obj is Array<any> {
+    return !!(obj && 'number' === typeof obj.length && 'function' === typeof obj.reduce);
 }
 
 export type JSONPartialSingle<T> = T extends Date ? string :

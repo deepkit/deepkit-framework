@@ -280,7 +280,7 @@ export class RpcServerAction {
         }
 
         try {
-            const result = await controller[body.method](...Object.values(converted));
+            const result = await controller[body.method](...Object.values(value.args));
 
             if (isEntitySubject(result)) {
                 const newProperty = createNewPropertySchemaIfNecessary(result.value, types.resultProperty);

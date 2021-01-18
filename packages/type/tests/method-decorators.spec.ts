@@ -215,13 +215,13 @@ test('no decorators', () => {
 
 test('partial', () => {
     class Config {
-        @t
+        @t.required
         name!: string;
 
-        @t
+        @t.required
         sub!: Config;
 
-        @t
+        @t.required
         prio: number = 0;
     }
 
@@ -234,11 +234,17 @@ test('partial', () => {
     }
 
     const s = getClassSchema(User);
+
+    const config = getClassSchema(Config);
+    expect(config.getProperty('name').isOptional).toBe(false);
+
     expect(s.getProperty('config').isPartial).toBe(true);
-    expect(s.getProperty('config').getSubType().getResolvedClassType()).toBe(Config);
+     //partial creates a new schema with all properties being optional
+    expect(s.getProperty('config').getSubType().getResolvedClassType()).not.toBe(Config);
+    expect(s.getProperty('config').getSubType().getResolvedClassSchema().getProperty('name').isOptional).toBe(true);
 
     expect(s.getProperty('config2').isPartial).toBe(true);
-    expect(s.getProperty('config2').getSubType().getResolvedClassType()).toBe(Config);
+    expect(s.getProperty('config2').getSubType().getResolvedClassType()).not.toBe(Config);
 
     const u = jsonSerializer.for(User).deserialize({
         config: {
@@ -270,7 +276,8 @@ test('argument partial', () => {
     }
 
     expect(validateMethodArgs(User, 'foo', [{}]).length).toBe(0);
-    expect(validateMethodArgs(User, 'foo', [{ name: undefined }])).toEqual([{ 'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name' }]);
+    //for optional values its allowed to set to undefined. How else would you reset an already set value?
+    expect(validateMethodArgs(User, 'foo', [{ name: undefined }])).toEqual([]);
     expect(validateMethodArgs(User, 'foo', [{ name: [] }])).toEqual([{ 'code': 'invalid_string', 'message': 'No string given', 'path': '#0.name' }]);
     expect(validateMethodArgs(User, 'foo', [{ name: '' }])).toEqual([]);
 

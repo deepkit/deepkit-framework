@@ -88,7 +88,10 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const filter = getMongoFilter(this.classSchema, model) || {};
         const serializer = mongoSerializer.for(this.classSchema);
 
-        const u = { $set: changes.$set, $unset: changes.$unset, $inc: changes.$inc };
+        const u: any = {};
+        if (changes.$set) u.$set = changes.$set;
+        if (changes.$unset) u.$set = changes.$unset;
+        if (changes.$inc) u.$inc = changes.$inc;
         if (u.$set) {
             u.$set = serializer.partialSerialize(u.$set);
         }
@@ -349,9 +352,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         //it's important that joins with partials have a different name. We set it at the beginngin
                         //of this for each join loop.
                         if (join.query.model.isPartial()) {
-                            schema.addProperty(join.as, t.array(t.partial(foreignSchema)).noValidation.exclude('json'));
+                            schema.addProperty(join.as, t.array(t.partial(foreignSchema)).noValidation.exclude('all'));
                         } else {
-                            schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation.exclude('json'));
+                            schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation.exclude('all'));
                         }
                     }
 
@@ -365,9 +368,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         //it's important that joins with partials have a different name. We set it at the beginngin
                         //of this for each join loop.
                         if (join.query.model.isPartial()) {
-                            schema.addProperty(join.as, t.partial(foreignSchema).noValidation.exclude('json'));
+                            schema.addProperty(join.as, t.partial(foreignSchema).noValidation.exclude('all'));
                         } else {
-                            schema.addProperty(join.as, t.type(foreignSchema).noValidation.exclude('json'));
+                            schema.addProperty(join.as, t.type(foreignSchema).noValidation.exclude('all'));
                         }
                     }
 

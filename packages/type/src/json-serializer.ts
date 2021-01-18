@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } from '@deepkit/core';
+import { ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isObject, isValidEnumValue } from '@deepkit/core';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
 import { getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions } from './jit';
 import { jsonTypeGuards } from './json-typeguards';
@@ -113,6 +113,14 @@ jsonSerializer.toClass.register('literal', (property: PropertySchema, state: Com
     state.addSetter(literalValue);
 });
 
+jsonSerializer.toClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
+    state.addCodeForSetter(`if ('string' === typeof ${state.accessor}) ${state.setter} = ${state.accessor};`);
+});
+
+jsonSerializer.fromClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
+    state.addCodeForSetter(`if ('string' === typeof ${state.accessor}) ${state.setter} = ${state.accessor};`);
+});
+
 jsonSerializer.toClass.prepend('undefined', (property, state: CompilerState) => {
     if (property.type === 'literal' && !property.isOptional) {
         const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
@@ -121,7 +129,22 @@ jsonSerializer.toClass.prepend('undefined', (property, state: CompilerState) => 
     return;
 });
 
+jsonSerializer.fromClass.prepend('undefined', (property, state: CompilerState) => {
+    if (property.type === 'literal' && !property.isOptional) {
+        const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
+        state.addSetter(literalValue);
+    }
+    return;
+});
+
 jsonSerializer.toClass.prepend('null', (property: PropertySchema, state: CompilerState) => {
+    if (property.type === 'literal' && !property.isNullable) {
+        const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
+        state.addSetter(literalValue);
+    }
+});
+
+jsonSerializer.fromClass.prepend('null', (property: PropertySchema, state: CompilerState) => {
     if (property.type === 'literal' && !property.isNullable) {
         const literalValue = state.setVariable('_literal_value_' + property.name, property.literalValue);
         state.addSetter(literalValue);
@@ -201,7 +224,7 @@ const convertToPlainUsingToJson = (property: PropertySchema, state: CompilerStat
 jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
 
 
-function convertArray(property: PropertySchema, state: CompilerState) {
+export function convertArray(property: PropertySchema, state: CompilerState) {
     const a = state.setVariable('a');
     const l = state.setVariable('l');
     let setDefault = property.isOptional ? '' : `${state.setter} = [];`;
@@ -263,7 +286,19 @@ jsonSerializer.fromClass.register('class', (property: PropertySchema, state: Com
     const classSchema = getClassSchema(property.resolveClassType!);
     const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
 
-    state.addSetter(`${classToX}.fn(${state.accessor}, _options)`);
+    state.setContext({isObject});
+    let primarKeyHandling = '';
+    if (property.isReference) {
+        primarKeyHandling = getDataConverterJS(state.setter, state.accessor, property.getResolvedClassSchema().getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack);
+    }
+
+    state.addCodeForSetter(`
+    if (isObject(${state.accessor})) {
+        ${state.setter} = ${classToX}.fn(${state.accessor}, _options, _stack, _depth);
+    } else if (${property.isReference}) {
+        ${primarKeyHandling}
+    }
+    `);
 });
 
 jsonSerializer.toClass.register('class', (property: PropertySchema, state) => {
@@ -282,14 +317,22 @@ jsonSerializer.toClass.register('class', (property: PropertySchema, state) => {
         return;
     }
 
+    state.setContext({isObject});
+    let primarKeyHandling = '';
+    if (property.isReference) {
+        primarKeyHandling = getDataConverterJS(state.setter, state.accessor, property.getResolvedClassSchema().getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack);
+    }
+
     state.addCodeForSetter(`
         //object and not an array
         if ('object' === typeof ${state.accessor} && 'function' !== typeof ${state.accessor}.slice) {
             ${state.setter} = ${xToClass}.fn(${state.accessor}, _options, getParents(), _state);
-        } else if (${!property.isReference} && 'string' === typeof ${state.accessor}) {
+        } else if (${!property.isReference} && 'string' === typeof ${state.accessor} && '{' === ${state.accessor}[0]) {
             try {
                 ${state.setter} = ${xToClass}.fn(JSON.parse(${state.accessor}), _options, getParents(), _state);
             } catch (e) {}
+        } else if (${property.isReference}) {
+            ${primarKeyHandling}
         }
     `);
 });
@@ -308,7 +351,7 @@ jsonSerializer.toClass.register('union', (property: PropertySchema, state) => {
         elseBranch = `${state.setter} = null;`;
     } else if (property.hasManualDefaultValue()) {
         const defaultVar = state.setVariable('default', property.defaultValue);
-        elseBranch = `${state.setter} = ${defaultVar};`;
+        elseBranch = `${state.setter} = ${defaultVar}();`;
     }
 
     for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
@@ -344,7 +387,7 @@ jsonSerializer.fromClass.register('union', (property: PropertySchema, state) => 
         elseBranch = `${state.setter} = null;`;
     } else if (property.hasManualDefaultValue()) {
         const defaultVar = state.setVariable('default', property.defaultValue);
-        elseBranch = `${state.setter} = ${defaultVar};`;
+        elseBranch = `${state.setter} = ${defaultVar}();`;
     }
 
     for (const unionType of getSortedUnionTypes(property, jsonTypeGuards)) {
@@ -377,5 +420,5 @@ jsonSerializer.fromClass.register('partial', (property, state) => {
     const classSchema = getClassSchema(property.getSubType().resolveClassType!);
     const partialClassToX = state.setVariable('partialClassToX', state.jitStack.getOrCreate(classSchema, () => getPartialClassToXFunction(classSchema, state.serializerCompilers.serializer)));
 
-    state.addSetter(`${partialClassToX}.fn(${state.accessor}, _options)`);
+    state.addSetter(`${partialClassToX}.fn(${state.accessor}, _options, _stack, _depth)`);
 });

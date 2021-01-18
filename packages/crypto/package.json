@@ -1,0 +1,26 @@
+{
+  "name": "@deepkit/crypto",
+  "version": "1.0.1-alpha.12",
+  "description": "Deepkit crypto library",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

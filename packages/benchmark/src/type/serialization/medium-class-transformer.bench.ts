@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import 'reflect-metadata';
 import { classToPlain, Exclude as ctExclude, plainToClass, Transform, Type } from 'class-transformer';
 import { BenchSuite } from '../../bench';
 

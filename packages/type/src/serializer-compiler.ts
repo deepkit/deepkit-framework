@@ -82,12 +82,14 @@ export type TypeConverterCompiler = (
 
 export function reserveVariable(
     rootContext: TypeConverterCompilerContext,
-    name: string = 'var'
+    name: string = 'var',
+    value?: any
 ) {
     for (let i = 0; i < 10000; i++) {
         const candidate = name + '_' + i;
         if (!rootContext.has(candidate)) {
             rootContext.set(candidate, undefined);
+            rootContext.set(candidate, value);
             return candidate;
         }
     }
@@ -118,9 +120,6 @@ export function getDataConverterJS(
     undefinedSetterCode: string = '',
     nullSetterCode: string = ''
 ): string {
-    const setNull = property.isNullable ? `${setter} = null;` : '';
-    rootContext.set('_default_' + property.name, property.defaultValue);
-    const setUndefined = !property.hasDefaultValue && property.defaultValue !== undefined ? `${setter} = ${'_default_' + property.name};` : '';
     const undefinedCompiler = serializerCompilers.get('undefined');
     const nullCompiler = serializerCompilers.get('null');
 
@@ -132,13 +131,17 @@ export function getDataConverterJS(
     if (compiler) {
         convert = executeCompiler(rootContext, jitStack, compiler, setter, accessor, property, serializerCompilers);
     } else {
-        convert = `//no compiler for ${property.type}
+        convert = `
+        //no compiler for ${property.type}
         ${setter} = ${accessor};`;
     }
 
     let postTransform = '';
 
-    if (serializerCompilers.serializer.fromClass === serializerCompilers) {
+    const isSerialization = serializerCompilers.serializer.fromClass === serializerCompilers;
+    const isDeserialization = serializerCompilers.serializer.toClass === serializerCompilers;
+
+    if (isSerialization) {
         const transformer = property.serialization.get(serializerCompilers.serializer.name) || property.serialization.get('all');
         if (transformer) {
             const fnVar = reserveVariable(rootContext, 'transformer');
@@ -147,7 +150,7 @@ export function getDataConverterJS(
         }
     }
 
-    if (serializerCompilers.serializer.toClass === serializerCompilers) {
+    if (isDeserialization) {
         const transformer = property.deserialization.get(serializerCompilers.serializer.name) || property.deserialization.get('all');
         if (transformer) {
             const fnVar = reserveVariable(rootContext, 'transformer');
@@ -156,13 +159,30 @@ export function getDataConverterJS(
         }
     }
 
+    // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens
+    // not: When the value is not defined (property.name in object === false), then this code will never run.
+    let defaultValue = isSerialization ? 'null' : 'undefined';
+    if (!property.hasDefaultValue && property.defaultValue !== undefined) {
+        defaultValue = `${reserveVariable(rootContext, 'defaultValue', property.defaultValue)}()`;
+    } else if (!property.isOptional && property.isNullable ) { 
+        defaultValue = 'null';
+    }
+
     return `
         if (${accessor} === undefined) {
-            ${setUndefined}
+            ${setter} = ${defaultValue}; 
             ${undefinedSetterCode}
         } else if (${accessor} === null) {
-            ${setNull}
-            ${nullSetterCode}
+            //null acts on transport layer as telling an explicitely set undefined
+            //this is to support actual undefined as value across a transport layer. Otherwise it
+            //would be impossible to set a already set value to undefined back (since JSON.stringify() omits that information)
+            if (${property.isNullable}) {
+                ${setter} = null;
+                ${nullSetterCode}
+            } else {
+                if (${property.isOptional}) ${setter} = ${defaultValue};
+                ${undefinedSetterCode}
+            }
         } else {
             ${convert}
             ${postTransform}

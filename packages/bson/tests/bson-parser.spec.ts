@@ -46,7 +46,7 @@ test('createBSONParser', () => {
             firstBatch: [{ name: 'Peter' }, { name: 'Marc' }, { name: 'Bar' }],
             test: ['a', 'b', 'c']
         },
-        ok: true,
+        ok: 1,
     };
 
     const schema = t.schema({
@@ -55,13 +55,12 @@ test('createBSONParser', () => {
             firstBatch: t.array({
                 name: t.string
             }),
-            test: t.string,
+            test: t.array(t.string),
         }),
         ok: t.number,
     });
 
     const bson = serialize(obj);
-    console.log('deserialized', deserialize(bson));
 
     const parsed = getBSONDecoder(schema)(bson);
     expect(parsed).toEqual(obj);

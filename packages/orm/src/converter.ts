@@ -8,11 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getDataConverterJS, getGlobalStore, JitStack, jsonSerializer, PropertySchema, Serializer, SerializerCompilers, UnpopulatedCheck } from '@deepkit/type';
+import {
+    ClassSchema,
+    getDataConverterJS,
+    getGlobalStore,
+    isExcluded,
+    JitStack,
+    jsonSerializer,
+    PropertySchema,
+    Serializer,
+    SerializerCompilers,
+    UnpopulatedCheck
+} from '@deepkit/type';
 import { toFastProperties } from '@deepkit/core';
 
 function createJITConverterForSnapshot(
-    classSchema: ClassSchema,
+    schema: ClassSchema,
     properties: Iterable<PropertySchema>,
     serializerCompilers: SerializerCompilers
 ) {
@@ -22,6 +33,8 @@ function createJITConverterForSnapshot(
 
     for (const property of properties) {
         if (property.isParentReference) continue;
+
+        if (isExcluded(schema, property.name, 'json')) continue;
 
         if (property.isReference) {
             const referenceCode: string[] = [];
@@ -56,24 +69,40 @@ function createJITConverterForSnapshot(
             `);
     }
 
+    let circularCheckBeginning = '';
+    let circularCheckEnd = '';
+
+    if (schema.hasCircularReference()) {
+        circularCheckBeginning = `
+        if (_stack) {
+            if (_stack.includes(_value)) return undefined;
+        } else {
+            _stack = [];
+        }
+        _stack.push(_value);
+        `;
+        circularCheckEnd = `_stack.pop();`;
+    }
+
     const functionCode = `
-        return function(_value, _parents, _options) {
+        return function(_value, _parents, _options, _stack, _depth) {
+            ${circularCheckBeginning}
             var _result = {};
             var oldUnpopulatedCheck = _global.unpopulatedCheck;
             _global.unpopulatedCheck = UnpopulatedCheckNone;
             ${setProperties.join('\n')}
             _global.unpopulatedCheck = oldUnpopulatedCheck;
+            ${circularCheckEnd}
             return _result;
         }
         `;
-
 
     context.set('_global', getGlobalStore());
     context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled.bind(undefined, ...context.values())();
-    fn.buildId = classSchema.buildId;
+    fn.buildId = schema.buildId;
     return fn;
 }
 
@@ -140,14 +169,14 @@ export function getSimplePrimaryKeyHashGenerator(classSchema: ClassSchema) {
 }
 
 function createPrimaryKeyHashGenerator(
-    classSchema: ClassSchema,
+    schema: ClassSchema,
     serializer: Serializer
 ) {
     const context = new Map<any, any>();
     const setProperties: string[] = [];
     const jitStack = new JitStack();
 
-    for (const property of classSchema.getPrimaryFields()) {
+    for (const property of schema.getPrimaryFields()) {
         if (property.isParentReference) continue;
 
         if (property.isReference) {
@@ -179,7 +208,7 @@ function createPrimaryKeyHashGenerator(
         }
 
         if (property.type === 'class') {
-            throw new Error(`Class as primary key (${classSchema.getClassName()}.${property.name}) is not supported`);
+            throw new Error(`Class as primary key (${schema.getClassName()}.${property.name}) is not supported`);
         }
 
         setProperties.push(`
@@ -191,17 +220,34 @@ function createPrimaryKeyHashGenerator(
         `);
     }
 
+    let circularCheckBeginning = '';
+    let circularCheckEnd = '';
+
+    if (schema.hasCircularReference()) {
+        circularCheckBeginning = `
+        if (_stack) {
+            if (_stack.includes(_value)) return undefined;
+        } else {
+            _stack = [];
+        }
+        _stack.push(_value);
+        `;
+        circularCheckEnd = `_stack.pop();`;
+    }
+
     const functionCode = `
-        return function(_value) {
+        return function(_value, _stack) {
             var _result = '';
             var lastValue;
+            ${circularCheckBeginning}
             ${setProperties.join('\n')}
+            ${circularCheckEnd}
             return _result;
         }
     `;
 
     const compiled = new Function(...context.keys(), functionCode);
     const fn = compiled.bind(undefined, ...context.values())();
-    fn.buildId = classSchema.buildId;
+    fn.buildId = schema.buildId;
     return fn;
 }

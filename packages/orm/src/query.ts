@@ -579,7 +579,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     public async findOne(): Promise<Resolve<this>> {
         const query = await this.callQueryEvent();
         const item = await query.resolver.findOneOrUndefined(query.model);
-        if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found (for filter ${JSON.stringify(this.model.filter)})`);
+        if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found`);
         return item as Resolve<this>;
     }
 

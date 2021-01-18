@@ -387,7 +387,7 @@ test('nullable', () => {
     {
         const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: undefined, klass2: { label: '2' } });
         expect(clazz).toBeInstanceOf(ConstructorClass);
-        expect(clazz.klass1).toBe(undefined); //since we have no default value set
+        expect(clazz.klass1).toBe(null);
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
     }
 
@@ -418,7 +418,7 @@ test('null as default value', () => {
     const myDbSerializer = new class extends jsonSerializer.fork('my-db-serializer') {
     };
     myDbSerializer.toClass.register('null', (property, compiler) => {
-        compiler.addSetter(compiler.setVariable('value', property.defaultValue));
+        compiler.addSetter(`${compiler.setVariable('value', property.defaultValue)}()`);
     });
 
     const testClassDbSerializer = myDbSerializer.for(TestClass);

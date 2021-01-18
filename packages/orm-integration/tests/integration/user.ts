@@ -11,7 +11,7 @@ export class User {
     @t firstName: string = '';
     @t lastName: string = '';
     @t email: string = '';
-    @t.optional birthdate?: Date;
+    @t birthdate?: Date;
 
     @t logins: number = 0;
 

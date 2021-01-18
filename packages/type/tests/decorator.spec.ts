@@ -793,3 +793,17 @@ test('old forwardRef struct for IE11', () => {
         expect(schema.getProperty('children').resolveClassType).not.toBe(Children);
     }
 });
+
+test('default creates clones', () => {
+    {
+        const defaultValue: string[] = [];
+        const propertySchema = t.array(t.string).optional.default(defaultValue).buildPropertySchema();
+        expect(propertySchema.getDefaultValue()).not.toBe(defaultValue);
+    }
+
+    {
+        const defaultValue: any = {};
+        const propertySchema = t.map(t.string).optional.default(defaultValue).buildPropertySchema();
+        expect(propertySchema.getDefaultValue()).not.toBe(defaultValue);
+    }
+});

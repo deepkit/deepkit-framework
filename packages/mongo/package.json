@@ -26,7 +26,6 @@
     "@deepkit/core": "^1.0.1-alpha.12",
     "@deepkit/orm": "^1.0.1-alpha.12",
     "@deepkit/type": "^1.0.1-alpha.12",
-    "bson": "^4.0.4",
     "mongo-uuid": "^1.0.0",
     "saslprep": "^1.0.3"
   },

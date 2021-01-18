@@ -157,8 +157,9 @@ sqlSerializer.fromClass.append('class', (property: PropertySchema, state: Compil
     if (property.parent) return;
 
     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
+    //but only on root properties.
     state.setContext({ stringify: JSON.stringify });
-    state.addSetter(`stringify(${state.accessor})`);
+    state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
 });
 
 sqlSerializer.fromClass.append('map', (property: PropertySchema, state: CompilerState) => {
@@ -166,8 +167,9 @@ sqlSerializer.fromClass.append('map', (property: PropertySchema, state: Compiler
     if (property.parent) return;
 
     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
+    //but only on root properties.
     state.setContext({ stringify: JSON.stringify });
-    state.addSetter(`stringify(${state.accessor})`);
+    state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
 });
 
 sqlSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {

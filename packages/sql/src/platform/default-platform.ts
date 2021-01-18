@@ -181,7 +181,7 @@ export abstract class DefaultPlatform {
 
                 const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
 
-                column.defaultValue = property.defaultValue;
+                column.defaultValue = property.getDefaultValue();
 
                 const isNullable = property.isNullable || property.isOptional;
                 column.isNotNull = !isNullable;

@@ -64,14 +64,25 @@ export type Types =
 
 /**
  * Type for @t.partial().
- *
- * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths (like mongoDB)
  */
 export type PartialField<T> = {
     [P in keyof T & string]?: T[P]
 } & {
     //it's currently not possible to further define it
     //https://github.com/Microsoft/TypeScript/issues/12754
+    [path: string]: any
+}
+
+/**
+ * Type for @t.patch().
+ * Differs to standard Partial<> in a way that it supports sub class fields using dot based paths (like mongoDB)
+ */
+export type PatchField<T> = {
+    [P in keyof T & string]?: T[P]
+} & {
+    //it's currently not possible to further define it
+    //https://github.com/Microsoft/TypeScript/issues/12754
+    //todo: Since 4.1 its possible using template literals
     [path: string]: any
 }
 

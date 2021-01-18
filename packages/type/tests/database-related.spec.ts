@@ -84,7 +84,7 @@ test('serialize reference', () => {
 
     {
         const plain = jsonSerializer.for(Organisation).serialize(organisation);
-        expect(plain.owner).toEqual({ id: owner.id, name: owner.name });
+        expect(plain.owner).toEqual({ id: owner.id, name: owner.name, managedUsers: [], organisations: [] });
     }
 
     {

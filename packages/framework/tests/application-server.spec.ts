@@ -28,6 +28,7 @@ test('testing app api', async () => {
 
     expect(await controller.foo()).toBe('bar');
     expect(testing.app.get(MemoryLoggerTransport).messageStrings.includes('bar'));
+    await testing.stopServer();
 });
 
 test('basic controller', async () => {

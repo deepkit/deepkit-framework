@@ -6,8 +6,8 @@ import bson from 'bson';
 import { getBSONDecoder } from '../src/bson-jit-parser';
 import { randomBytes } from 'crypto';
 import { parseObject, ParserV2 } from '../src/bson-parser';
-
-const { Binary, calculateObjectSize, deserialize, Long, ObjectId, serialize } = bson;
+import { ObjectId } from '../src/model';
+const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
 
 test('hexToByte', () => {
     expect(hexToByte('00')).toBe(0);
@@ -119,7 +119,6 @@ test('basic long', () => {
         const heightBytes = Buffer.alloc(4);
         heightBytes.writeUInt32LE(long.getHighBits(), 0);
 
-        console.log('expect', number);
         expect(bson).toEqual(Buffer.from([
             23, 0, 0, 0, //size
             18, //type long
@@ -200,14 +199,16 @@ test('basic number double', () => {
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 
     expect(getBSONSerializer(schema)({ position: null }).byteLength).toBe(expectedSizeNull);
-    expect(getBSONSerializer(schema)({ position: undefined }).byteLength).toBe(5);
+    expect(getBSONSerializer(schema)({ position: undefined }).byteLength).toBe(expectedSizeNull); //explicitely annotataed undefined is included
+    expect(getBSONSerializer(schema)({}).byteLength).toBe(5);
 
     expect(getBSONSerializer(schema)({ position: null }).byteLength).toEqual(expectedSizeNull);
-    expect(getBSONSerializer(schema)({ position: undefined }).byteLength).toEqual(5);
+    expect(getBSONSerializer(schema)({ position: undefined }).byteLength).toEqual(expectedSizeNull); //explicitely annotataed undefined is included
+    expect(getBSONSerializer(schema)({}).byteLength).toEqual(5);
 
     expect(getBSONSerializer(schema)({ position: null })).toEqual(serialize({ position: null }));
-    expect(getBSONSerializer(schema)({ position: undefined })).toEqual(serialize({}));
-    expect(getBSONSerializer(schema)({ position: undefined })).toEqual(serialize({ position: undefined }));
+    expect(getBSONSerializer(schema)({})).toEqual(serialize({}));
+    expect(getBSONSerializer(schema)({})).toEqual(serialize({ position: undefined })); //official bson drops undefined values
 });
 
 test('basic boolean', () => {
@@ -367,12 +368,12 @@ test('basic Buffer', () => {
 });
 
 test('basic uuid', () => {
-    const uuid = new Binary(
+    const uuidRandomBinary = new Binary(
         Buffer.allocUnsafe(16),
         Binary.SUBTYPE_UUID
     );
 
-    const object = { uuid: uuid };
+    const object = { uuid: '75ed2328-89f2-4b89-9c49-1498891d616d' };
 
     const expectedSize =
         4 //size uint32
@@ -386,15 +387,14 @@ test('basic uuid', () => {
         + 1 //object null
         ;
 
-    expect(calculateObjectSize(object)).toBe(expectedSize);
+    expect(calculateObjectSize({ uuid: uuidRandomBinary })).toBe(expectedSize);
 
     const schema = t.schema({
         uuid: t.uuid,
     });
 
-    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
     expect(getBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
 
     const uuidPlain = Buffer.from([0x75, 0xed, 0x23, 0x28, 0x89, 0xf2, 0x4b, 0x89, 0x9c, 0x49, 0x14, 0x98, 0x89, 0x1d, 0x61, 0x6d]);
     const uuidBinary = new Binary(uuidPlain, 4);
@@ -402,8 +402,8 @@ test('basic uuid', () => {
         uuid: uuidBinary
     };
 
-    expect(getBSONSerializer(schema)(objectBinary).byteLength).toBe(expectedSize);
-    expect(getBSONSerializer(schema)(objectBinary)).toEqual(serialize(objectBinary));
+    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
+    expect(getBSONSerializer(schema)(object)).toEqual(serialize(objectBinary));
 
     const bson = serialize(objectBinary);
     const parsed = parseObject(new ParserV2(bson));
@@ -411,11 +411,11 @@ test('basic uuid', () => {
 });
 
 test('basic objectId', () => {
-    const object = { _id: new ObjectId };
+    const object = { _id: '507f191e810c19729de860ea' };
 
     const expectedSize =
         4 //size uint32
-        + 1 // type (date)
+        + 1 // type
         + '_id\0'.length
         + (
             12 //size of objectId
@@ -423,7 +423,8 @@ test('basic objectId', () => {
         + 1 //object null
         ;
 
-    expect(calculateObjectSize(object)).toBe(expectedSize);
+    const nativeBson = { _id: new OfficialObjectId('507f191e810c19729de860ea') };
+    expect(calculateObjectSize(nativeBson)).toBe(expectedSize);
 
     const schema = t.schema({
         _id: t.mongoId,
@@ -431,7 +432,7 @@ test('basic objectId', () => {
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
     expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+    expect(getBSONSerializer(schema)(object)).toEqual(serialize(nativeBson));
 });
 
 test('basic nested', () => {
@@ -644,12 +645,13 @@ test('any objectId', () => {
 
     {
         const doc = { _id: new ObjectId('507f191e810c19729de860ea') };
+        const officialDoc = { _id: new OfficialObjectId('507f191e810c19729de860ea') };
         const bson = getBSONSerializer(schema)(doc);
-        const bsonOfficial = serialize(doc);
+        const bsonOfficial = serialize(officialDoc);
 
         expect(bson).toEqual(bsonOfficial);
         const parsed = deserialize(Buffer.from(bson));
-        expect(parsed._id).toBeInstanceOf(ObjectId);
+        expect(parsed._id).toBeInstanceOf(OfficialObjectId);
         expect(parsed._id.toHexString()).toBe('507f191e810c19729de860ea');
 
         const parsed2 = getBSONDecoder(schema)(bson);
@@ -658,12 +660,13 @@ test('any objectId', () => {
 
     {
         const doc = { q: { id: new ObjectId('507f191e810c19729de860ea') } };
+        const officialDoc = { q: { id: new OfficialObjectId('507f191e810c19729de860ea') } };
         const bson = getBSONSerializer(schema)(doc);
-        const bsonOfficial = serialize(doc);
+        const bsonOfficial = serialize(officialDoc);
 
         expect(bson).toEqual(bsonOfficial);
         const parsed = deserialize(Buffer.from(bson));
-        expect(parsed.q.id).toBeInstanceOf(ObjectId);
+        expect(parsed.q.id).toBeInstanceOf(OfficialObjectId);
         expect(parsed.q.id.toHexString()).toBe('507f191e810c19729de860ea');
 
         const parsed2 = getBSONDecoder(schema)(bson);
@@ -677,36 +680,20 @@ test('objectId string', () => {
     });
 
     {
-        const doc = { id: new ObjectId('507f191e810c19729de860ea') };
-        const bson = getBSONSerializer(schema)(doc);
-
-        const bsonOfficial = serialize({ id: new ObjectId('507f191e810c19729de860ea') });
-        expect(bson).toEqual(bsonOfficial);
-
-        const parsed = deserialize(Buffer.from(bson));
-        expect(parsed.id).toBeInstanceOf(ObjectId);
-        expect(parsed.id.toHexString()).toBe('507f191e810c19729de860ea');
-
-        const parsed2 = getBSONDecoder(schema)(bson);
-        expect(parsed2.id).toBe('507f191e810c19729de860ea');
-    }
-
-    {
         const doc = { id: '507f191e810c19729de860ea' };
         const bson = getBSONSerializer(schema)(doc);
 
-        const bsonOfficial = serialize({ id: new ObjectId('507f191e810c19729de860ea') });
+        const bsonOfficial = serialize({ id: new OfficialObjectId('507f191e810c19729de860ea') });
         expect(bson).toEqual(bsonOfficial);
 
         const parsed = deserialize(Buffer.from(bson));
-        expect(parsed.id).toBeInstanceOf(ObjectId);
+        expect(parsed.id).toBeInstanceOf(OfficialObjectId);
         expect(parsed.id.toHexString()).toBe('507f191e810c19729de860ea');
 
         const parsed2 = getBSONDecoder(schema)(bson);
         expect(parsed2.id).toBe('507f191e810c19729de860ea');
     }
 });
-
 
 test('model 1, missing `public`', () => {
     class User {
@@ -828,8 +815,13 @@ test('reference', () => {
         (object as any).manager = null;
 
         const bson = getBSONSerializer(User)(object);
-        expect(getBSONDecoder(User)(bson)).toEqual(deserialize(Buffer.from(bson)));
-        expect(bson).toEqual(serialize(object));
+        const json = deserialize(bson);
+        expect('manager' in json).toBe(true); //needs to be maintained in BSON since manager is optional. Only way to reset it.
+        expect(json.manager).toBe(null); //needs to be maintained in BSON since manager is optional. Only way to reset it.
+
+        const trip = getBSONDecoder(User)(bson);
+        expect(trip.manager).toBe(undefined);
+        expect('manager' in trip).toBe(false); //not part of the object since undefined/null
     }
 
     const updateSchema = t.schema({
@@ -912,7 +904,7 @@ test('arrayBuffer', () => {
 
     const mongoMessage = {
         name: message.name,
-        secondId: new ObjectId(message.secondId),
+        secondId: new OfficialObjectId(message.secondId),
         preview: new Binary(Buffer.from(message.preview)),
     };
     const size = getBSONSizer(schema)(message);
@@ -945,7 +937,7 @@ test('typed array', () => {
 
     const mongoMessage = {
         name: message.name,
-        secondId: new ObjectId(message.secondId),
+        secondId: new OfficialObjectId(message.secondId),
         preview: new Binary(Buffer.from(new Uint8Array(message.preview.buffer, message.preview.byteOffset, message.preview.byteLength))),
     };
     const size = getBSONSizer(schema)(message);
@@ -971,19 +963,19 @@ test('typed any and undefined', () => {
         },
     });
 
-    expect(getValueSize({ $inc: undefined })).toBe(calculateObjectSize({ $inc: undefined }));
+    // expect(getValueSize({ $inc: undefined })).toBe(calculateObjectSize({ $inc: undefined })); //official BSON does not include undefined values, but we do
     expect(getValueSize({ $inc: [undefined] })).toBe(calculateObjectSize({ $inc: [undefined] }));
 
-    const size = getBSONSizer(schema)(message);
-    expect(size).toBe(calculateObjectSize(message));
+    // const size = getBSONSizer(schema)(message);
+    // expect(size).toBe(calculateObjectSize(message)); //official bson doesnt include undefined
 
     const bson = getBSONSerializer(schema)(message);
-
-    expect(bson).toEqual(serialize(message));
+    // expect(bson).toEqual(serialize(message)); //official bson doesnt include undefined
 
     const back = getBSONDecoder(schema)(bson);
     expect(back.data.$set).toEqual({});
     expect(back.data.$inc).toEqual(undefined);
+    expect('$inc' in back.data).toEqual(true);
 });
 
 test('test map map', () => {
@@ -1034,32 +1026,32 @@ test('test array optional', () => {
     }
 });
 
-test('test map optional', () => {
+test('test map optional 1', () => {
     const schema = t.schema({
         data: t.map(t.date.optional),
     });
 
     {
         const message = { data: { first: new Date, second: undefined } };
-        const size = getBSONSizer(schema)(message);
-        expect(size).toBe(calculateObjectSize(message));
+        // const size = getBSONSizer(schema)(message); //we maintain undefined as null, in contrary to BSON official
+        // expect(size).toBe(calculateObjectSize(message));
 
         expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
-        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
+        // expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
     }
 });
 
-test('test map optional', () => {
+test('test map optional 2', () => {
     const schema = t.schema({
         data: t.map(t.date.optional),
     });
 
     {
         const message = { data: { first: new Date, second: undefined } };
-        const size = getBSONSizer(schema)(message);
-        expect(size).toBe(calculateObjectSize(message));
+        // const size = getBSONSizer(schema)(message);  //we maintain undefined as null, in contrary to BSON official
+        // expect(size).toBe(calculateObjectSize(message));
         expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
-        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
+        // expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
     }
 });
 
@@ -1081,10 +1073,12 @@ test('test union optional', () => {
 
     {
         const message = { data: undefined };
-        const size = getBSONSizer(schema)(message);
-        expect(size).toBe(calculateObjectSize(message));
-        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
-        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
+        // const size = getBSONSizer(schema)(message);
+        // expect(size).toBe(calculateObjectSize(message)); //official bson does not include undefined, but we do
+        const trip = getBSONDecoder(schema)(getBSONSerializer(schema)(message));
+        expect('data' in trip).toBe(true);
+        expect(trip.data).toEqual(undefined);
+        // expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
     }
 
     {

@@ -248,7 +248,7 @@ test('partial edge cases', () => {
             tags: {} as any
         });
 
-        expect(m.name).toBe(undefined);
+        expect(m.name).toBe(null); //serialize converts undefined to null, since there's no such thing as undefined in JSON
         expect(m['picture']).toBe(undefined);
         expect(m.tags).toEqual([]);
     }

@@ -859,12 +859,13 @@ test('nullable', () => {
         optional: t.string.optional,
     });
 
-    expect(jsonSerializer.for(s).deserialize({ username: 'asd' })).toEqual({ username: 'asd' });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd' })).toEqual({ username: 'asd', password: null });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', password: undefined })).toEqual({ username: 'asd', password: null });
     expect(jsonSerializer.for(s).deserialize({ username: 'asd', password: null })).toEqual({ username: 'asd', password: null });
     expect(jsonSerializer.for(s).deserialize({ username: 'asd', password: 'null' })).toEqual({ username: 'asd', password: 'null' });
 
-    expect(jsonSerializer.for(s).deserialize({ username: 'asd', optional: null })).toEqual({ username: 'asd' });
-    expect(jsonSerializer.for(s).deserialize({ username: 'asd', optional: 'null' })).toEqual({ username: 'asd', optional: 'null' });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', optional: null })).toEqual({ username: 'asd', password: null, optional: undefined });
+    expect(jsonSerializer.for(s).deserialize({ username: 'asd', optional: 'null' })).toEqual({ username: 'asd', password: null, optional: 'null' });
 });
 
 
@@ -890,5 +891,5 @@ test('nullable container', () => {
     expect(s2.getProperty('name').type).toBe('string');
 
     expect(jsonSerializer.for(s).deserialize({ tags: null, tagMap: null, tagPartial: null })).toEqual({ tags: null, tagMap: null, tagPartial: null });
-    expect(jsonSerializer.for(s).deserialize({})).toEqual({});
+    expect(jsonSerializer.for(s).deserialize({})).toEqual({ tags: null, tagMap: null, tagPartial: null });
 });

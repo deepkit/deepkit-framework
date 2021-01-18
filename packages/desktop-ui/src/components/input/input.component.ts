@@ -163,7 +163,10 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     }
 
     get innerValue(): any {
-        if (dateTimeTypes.includes(this.type)) {
+        if (this.type === 'text') {
+
+        } else if (this.type === 'number') {
+        } else if (dateTimeTypes.includes(this.type)) {
             if (super.innerValue instanceof Date) {
                 return this.datePipe.transform(super.innerValue, 'yyyy-MM-dd');
             }
@@ -173,7 +176,13 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     }
 
     set innerValue(value: any | undefined) {
-        if (dateTimeTypes.includes(this.type)) {
+        if (this.type === 'text') {
+
+        } else if (this.type === 'number') {
+            if (value && 'number' !== typeof value) {
+                value = parseFloat(value);
+            }
+        } else if (dateTimeTypes.includes(this.type)) {
             if ('string' === typeof value) {
                 value = new Date(value);
             }

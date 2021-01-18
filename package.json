@@ -8,6 +8,7 @@
     "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js --no-cache --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.cjs.json && lerna run build",
+    "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
     "clean": "rm -rf packages/*/dist",
     "clean-modules": "rm -rf packages/*/node_modules; rm -rf node_modules;",

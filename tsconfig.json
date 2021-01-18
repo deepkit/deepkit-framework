@@ -8,6 +8,9 @@
       "path": "packages/core-rxjs/tsconfig.json"
     },
     {
+      "path": "packages/crypto/tsconfig.json"
+    },
+    {
       "path": "packages/framework-debug-shared/tsconfig.json"
     },
     {

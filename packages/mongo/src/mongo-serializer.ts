@@ -8,81 +8,42 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { ObjectId, UUID } from '@deepkit/bson';
 import {
-    binaryTypes,
     CompilerState,
+    compilerToNumber,
     compilerToString,
+    convertArray,
     getClassSchema,
+    getClassToXFunction,
     getDataConverterJS,
-    jsonSerializer,
     PropertySchema,
-    Types
+    Serializer
 } from '@deepkit/type';
-import bson from 'bson';
-import mongoUuid from 'mongo-uuid';
 
-//we cant annotate bson.Binary as this would break .d.ts
-export function uuid4Binary(u?: string): any {
-    return mongoUuid(bson.Binary, u);
-}
-
-export const mongoSerializer = new class extends jsonSerializer.fork('sql') {
-};
+export const mongoSerializer = new Serializer('mongo');
 
 mongoSerializer.fromClass.register('string', compilerToString);
+mongoSerializer.fromClass.register('number', compilerToNumber);
 
-mongoSerializer.fromClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
-    //mongo does not support 'undefined' as column type, so we convert automatically to null
-    state.addSetter(`null`);
-});
-
-mongoSerializer.toClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
-    //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
-    //we convert back to undefined or keep it null
-    if (property.isOptional) return state.addSetter(`undefined`);
-    if (property.isNullable) return state.addSetter(`null`);
-});
-
-mongoSerializer.fromClass.register('null', (property: PropertySchema, state: CompilerState) => {
-    //mongo does not support 'undefined' as column type, so we convert automatically to null
-    state.addSetter(`null`);
-});
-
-mongoSerializer.toClass.register('null', (property: PropertySchema, state: CompilerState) => {
-    //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
-    //we convert back to undefined or keep it null
-    if (property.isOptional) return state.addSetter(`undefined`);
-    if (property.isNullable) return state.addSetter(`null`);
-});
-
-//these types are handled as is by @deepkit/bson, so we remove templates set by jsonSerializer
-const resetTypes: Types[] = [...binaryTypes, 'uuid', 'map', 'date', 'objectId'];
-for (const type of resetTypes) {
-    mongoSerializer.toClass.register(type, (property, state) => {
-        state.addSetter(state.accessor);
-    });
-    mongoSerializer.fromClass.register(type, (property, state) => {
-        state.addSetter(state.accessor);
-    });
-}
-
-mongoSerializer.toClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
-    //when property is a reference, then we stored in the database the actual primary key and used this
-    //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
-    const classSchema = getClassSchema(property.resolveClassType!);
-
-    //note: jsonSerializer already calls JSON.parse if data is a string
-
-    if (property.isReference) {
-        const primary = classSchema.getPrimaryField();
-        state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.rootContext, state.jitStack));
-        state.forceEnd();
+mongoSerializer.fromClass.register('array', (property: PropertySchema, state: CompilerState) => {
+    if (property.backReference || (property.parent && property.parent.backReference)) {
+        //we don't serialize back references to mongodb
+        state.template = '';
+    } else {
+        convertArray(property, state);
     }
-
-    return;
+});
+mongoSerializer.toClass.register('array', (property: PropertySchema, state: CompilerState) => {
+    if (property.backReference || (property.parent && property.parent.backReference)) {
+        //we don't serialize back references to mongodb
+        state.addSetter('undefined');
+    } else {
+        convertArray(property, state);
+    }
 });
 
-mongoSerializer.fromClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
+mongoSerializer.fromClass.register('class', (property: PropertySchema, state: CompilerState) => {
     //When property is a reference we store the actual primary (as foreign key) of the referenced instance instead of the actual instance.
     //This way we implemented basically relations in the database
     const classSchema = getClassSchema(property.resolveClassType!);
@@ -100,31 +61,23 @@ mongoSerializer.fromClass.prepend('class', (property: PropertySchema, state: Com
             }
             `
         );
-        state.forceEnd();
+    } else if (property.backReference || (property.parent && property.parent.backReference)) {
+        //we don't serialize back references to mongodb
+        state.template = '';
+    } else {
+        const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
+        state.addSetter(`${classToX}.fn(${state.accessor}, _options, _stack)`);
     }
 });
 
-//this is necessary since we use in FindCommand `filter: t.any`, so uuid and objectId need to be correct BSON types already
+//this is necessary since we use in FindCommand `filter: t.any`, so uuid and objectId need to be a wrapper type so that @deepkit/bson serializes correctly
 mongoSerializer.fromClass.register('uuid', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({ uuid4Binary });
-    state.addCodeForSetter(`
-        try {
-            ${state.setter} = uuid4Binary(${state.accessor});
-        } catch (error) {
-            throw new TypeError('Invalid UUID v4 given in property ${property.name}');
-        }
-        `
-    );
+    state.setContext({ UUID });
+    state.addSetter(`new UUID(${state.accessor})`);
 });
-mongoSerializer.fromClass.register('objectId', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({ ObjectID: bson.ObjectID });
 
-    state.addCodeForSetter(`
-        try {
-            ${state.setter} = new ObjectID(${state.accessor});
-        } catch (error) {
-            throw new TypeError('Invalid ObjectID given in property ${property.name}');
-        }
-        `
-    );
+mongoSerializer.fromClass.register('objectId', (property: PropertySchema, state: CompilerState) => {
+    state.setContext({ ObjectId });
+
+    state.addSetter(`new ObjectId(${state.accessor})`);
 });

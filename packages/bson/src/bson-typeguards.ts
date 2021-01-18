@@ -26,7 +26,9 @@ registerBSONTypeGuard('class', (property: PropertySchema) => {
     const schema = property.getResolvedClassSchema();
     if (schema.discriminant) {
         const discriminant = schema.getProperty(schema.discriminant);
-        const discriminantValue = discriminant.type === 'literal' ? discriminant.literalValue : discriminant.defaultValue;
+        const discriminantValue = discriminant.type === 'literal' ? discriminant.literalValue :
+            discriminant.defaultValue ? discriminant.defaultValue() : undefined;
+
         if (discriminantValue === undefined) {
             throw new Error(`Discriminant ${schema.getClassPropertyName(discriminant.name)} has no default value.`);
         }

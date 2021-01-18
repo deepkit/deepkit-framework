@@ -10,7 +10,7 @@
 
 import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck } from './model';
 import { isExcluded } from './mapper';
-import { ClassType, toFastProperties } from '@deepkit/core';
+import { ClassType, getClassName, toFastProperties } from '@deepkit/core';
 import { getDataConverterJS, reserveVariable } from './serializer-compiler';
 import { Serializer } from './serializer';
 
@@ -158,7 +158,7 @@ export function createPropertyClassToXFunction(
     const line = getDataConverterJS('result', '_value', property, serializer.fromClass, context, jitStack);
 
     const functionCode = `
-        return function(_value, _options) {
+        return function(_value, _options, _stack, _depth) {
             var result;
             //createJITConverterFromPropertySchema ${property.name} ${property.type}
             ${line}
@@ -267,7 +267,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         const property = schema.getProperty(schema.decorator);
 
         functionCode = `
-        return function(_instance, _options) {
+        return function(_instance, _options, _stack, _depth) {
             var result, _state;
             ${getDataConverterJS(`result`, `_instance.${schema.decorator}`, property, serializer.fromClass, context, jitStack)}
             return result;
@@ -277,32 +277,62 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         const convertProperties: string[] = [];
 
         for (const property of schema.getClassProperties().values()) {
-            if (property.isParentReference) {
-                //we do not export parent references, as this would lead to an circular reference
-                continue;
-            }
+            if (property.isParentReference) continue; //we do not export parent references, as this would lead to an circular reference
+            if (isExcluded(schema, property.name, serializer.name)) continue;
 
-            if (property.backReference) continue;
-
-            if (isExcluded(schema, property.name, serializer.name)) {
-                continue;
+            let setDefault = '';
+            if (property.hasManualDefaultValue() || property.type === 'literal') {
+                if (property.defaultValue !== undefined) {
+                    const defaultValue = reserveVariable(context, 'defaultValue', property.defaultValue);
+                    setDefault = `_data.${property.name} = ${defaultValue}();`;
+                } else if (property.type === 'literal' && !property.isOptional) {
+                    setDefault = `_data.${property.name} = ${JSON.stringify(property.literalValue)};`;
+                }
+            } else if (property.isNullable) {
+                setDefault = `_data.${property.name} = null;`;
             }
 
             convertProperties.push(`
             //${property.name}:${property.type}
-            if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){ 
-                ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, serializer.fromClass, context, jitStack)}
+            if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
+                if (${JSON.stringify(property.name)} in _instance) {
+                    ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, serializer.fromClass, context, jitStack)}
+                } else {
+                    ${setDefault}
+                }
             }
-        `);
+            `);
+        }
+
+        let circularCheckBeginning = '';
+        let circularCheckEnd = '';
+
+        if (schema.hasCircularReference()) {
+            circularCheckBeginning = `
+            if (_stack) {
+                if (_stack.includes(_instance)) return undefined;
+            } else {
+                _stack = [];
+            }
+            _stack.push(_instance);
+            `;
+            circularCheckEnd = `_stack.pop();`;
         }
 
         functionCode = `
-        return function self(_instance, _options) {
+        return function self(_instance, _options, _stack, _depth) {
+            ${circularCheckBeginning}
             var _data = {};
+            _depth = !_depth ? 1 : _depth + 1;
             var _oldUnpopulatedCheck = _global.unpopulatedCheck;
             _global.unpopulatedCheck = UnpopulatedCheckNone;
+    
             ${convertProperties.join('\n')}
+
             _global.unpopulatedCheck = _oldUnpopulatedCheck;
+
+            ${circularCheckEnd}
+
             return _data;
         }
         `;
@@ -429,14 +459,31 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
 
     for (const property of schema.getClassProperties().values()) {
         if (assignedViaConstructor[property.name]) continue;
-        if (property.isReference || property.backReference) continue;
+
+        if (isExcluded(schema, property.name, serializer.name)) continue;
 
         if (property.isParentReference) {
             setProperties.push(getParentResolverJS(schema, `_instance.${property.name}`, property, context));
         } else {
+            let setDefault = '';
+            if (property.hasManualDefaultValue() || property.type === 'literal') {
+                if (property.defaultValue !== undefined) {
+                    const defaultValue = reserveVariable(context, 'defaultValue', property.defaultValue);
+                    setDefault = `_instance.${property.name} = ${defaultValue}();`;
+                } else if (property.type === 'literal' && !property.isOptional) {
+                    setDefault = `_instance.${property.name} = ${JSON.stringify(property.literalValue)};`;
+                }
+            } else if (property.isNullable) {
+                setDefault = `_instance.${property.name} = null;`;
+            }
+
             setProperties.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
-                ${getDataConverterJS(`_instance.${property.name}`, `_data.${property.name}`, property, serializer.toClass, context, jitStack)}
+                if (${JSON.stringify(property.name)} in _data) {
+                    ${getDataConverterJS(`_instance.${property.name}`, `_data.${property.name}`, property, serializer.toClass, context, jitStack)}
+                } else {
+                    ${setDefault}
+                }
             }
             `);
         }
@@ -593,8 +640,9 @@ export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, seriali
     }
 
     const functionCode = `
-        return function(_data, _options) {
+        return function(_data, _options, _stack, _depth) {
             var _result = {};
+            _depth = !_depth ? 1 : _depth + 1;
 
             ${props.join('\n')}
             return _result;

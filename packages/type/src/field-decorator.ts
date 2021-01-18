@@ -119,8 +119,10 @@ export interface FieldDecoratorResultBase<T> {
 
     /**
      * Sets a default value.
+     *
+     * Internal note: Using in V our type T creates an TS issue: Type instantiation is excessively deep and possibly infinite.
      */
-    default(v: T): FieldDecoratorResult<T>;
+    default(v: (() => any) | T): FieldDecoratorResult<T>;
 
     /** 
      * Changes the value after serializing and deserialization to another value,

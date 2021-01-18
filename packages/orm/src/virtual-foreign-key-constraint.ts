@@ -55,7 +55,7 @@ export class VirtualForeignKeyConstraint {
             } else if (property.referenceOptions.onDelete === 'SET NULL') {
                 await query.patchMany({ [property.name]: null });
             } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                await query.patchMany({ [property.name]: property.defaultValue });
+                await query.patchMany({ [property.name]: property.getDefaultValue() });
             }
         }
     }
@@ -75,7 +75,7 @@ export class VirtualForeignKeyConstraint {
             } else if (property.referenceOptions.onDelete === 'SET NULL') {
                 await query.patchMany({ [property.name]: null });
             } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                await query.patchMany({ [property.name]: property.defaultValue });
+                await query.patchMany({ [property.name]: property.getDefaultValue() });
             }
         }
     }
@@ -97,7 +97,7 @@ export class VirtualForeignKeyConstraint {
             } else if (property.referenceOptions.onDelete === 'SET NULL') {
                 await query.patchMany({ [property.name]: null });
             } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                await query.patchMany({ [property.name]: property.defaultValue });
+                await query.patchMany({ [property.name]: property.getDefaultValue() });
             }
             //RESTRICT needs to be handled in Pre
         }
@@ -128,7 +128,7 @@ export class VirtualForeignKeyConstraint {
                 } else if (property.referenceOptions.onDelete === 'SET NULL') {
                     await query.patchMany({ [property.name]: null });
                 } else if (property.referenceOptions.onDelete === 'SET DEFAULT') {
-                    await query.patchMany({ [property.name]: property.defaultValue });
+                    await query.patchMany({ [property.name]: property.getDefaultValue() });
                 }
             }
             //RESTRICT needs to be handled in Pre

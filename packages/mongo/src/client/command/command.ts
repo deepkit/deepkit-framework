@@ -58,10 +58,10 @@ export const BaseResponse = t.schema({
 export abstract class Command {
     protected current?: { response?: ClassSchema | ClassType, resolve: Function, reject: Function };
 
-    public sender?: (schema: ClassSchema | ClassType | undefined, message: Buffer) => void;
+    public sender?: (schema: ClassSchema | ClassType, message: Buffer) => void;
 
     public sendAndWait<T extends ClassSchema | ClassType, R extends ClassSchema | ClassType>(
-        schema: T | undefined, message: ExtractClassType<T>, response?: R
+        schema: T, message: ExtractClassType<T>, response?: R
     ): Promise<ExtractClassType<R>> {
         if (!this.sender) throw new Error(`No sender set in command ${getClassSchema(this)}`);
         this.sender(schema, message);

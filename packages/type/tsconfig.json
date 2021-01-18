@@ -12,7 +12,6 @@
     "module": "es2020",
     "esModuleInterop": true,
 
-    "baseUrl": ".",
     "outDir": "./dist/esm",
     "declaration": true,
     "composite": true,
