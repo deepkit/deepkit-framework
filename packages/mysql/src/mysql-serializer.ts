@@ -17,7 +17,7 @@
  */
 
 import { binaryTypes, CompilerState, PropertySchema } from '@deepkit/type';
-import { sqlSerializer } from './sql-serializer';
+import { sqlSerializer } from '@deepkit/sql';
 
 export const mySqlSerializer = new class extends sqlSerializer.fork('mysql') {
 };

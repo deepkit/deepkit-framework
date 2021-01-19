@@ -31,6 +31,9 @@
       "path": "../type/tsconfig.json"
     },
     {
+      "path": "../sql/tsconfig.json"
+    },
+    {
       "path": "../orm/tsconfig.json"
     }
   ]

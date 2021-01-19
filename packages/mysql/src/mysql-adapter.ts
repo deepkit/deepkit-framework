@@ -18,14 +18,14 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement
-} from './sql-adapter';
+    SQLStatement,
+    DefaultPlatform,
+    SqlBuilder
+} from '@deepkit/sql';
 import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
-import { MySQLPlatform } from './platform/mysql-platform';
+import { MySQLPlatform } from './mysql-platform';
 import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
-import { DefaultPlatform } from './platform/default-platform';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
-import { SqlBuilder } from './sql-builder';
 
 export class MySQLStatement extends SQLStatement {
     constructor(protected sql: string, protected connection: PoolConnection) {

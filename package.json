@@ -48,6 +48,7 @@
       "packages/bson",
       "packages/mongo",
       "packages/sql",
+      "packages/mysql",
       "packages/framework-integration",
       "packages/framework",
       "packages/rpc",

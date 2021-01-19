@@ -32,6 +32,9 @@
       "path": "packages/sql/tsconfig.json"
     },
     {
+      "path": "packages/mysql/tsconfig.json"
+    },
+    {
       "path": "packages/rpc/tsconfig.json"
     },
     {

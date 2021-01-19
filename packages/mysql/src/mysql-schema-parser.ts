@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { DatabaseModel, ForeignKey, Index, Table } from '../schema/table';
-import { parseType, SchemaParser } from './schema-parser';
+import { DatabaseModel, ForeignKey, Index, Table } from '@deepkit/sql';
+import { parseType, SchemaParser } from '@deepkit/sql';
 
 export class MysqlSchemaParser extends SchemaParser {
     public defaultSchema = 'default';
