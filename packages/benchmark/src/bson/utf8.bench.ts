@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Writer, ParserV2 } from '@deepkit/bson';
+import { Writer, ParserV2, decodeUTF8Short, decodeUTF8 } from '@deepkit/bson';
 import 'reflect-metadata';
 import { BenchSuite } from '../bench';
+import {performance} from 'perf_hooks';
 
 function parseUtf8(buffer: Uint8Array, size: number): string {
     const coded = new Uint16Array(size);
@@ -31,6 +32,57 @@ function parseUtf82(buffer: Uint8Array, size: number): string {
 }
 
 export async function main() {
+
+    const header: string[] = ['size', 'JSON.parse'];
+    const rows: string[] = [];
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder("utf-8");
+    const implementations: { name: string, do: (v: Uint8Array, size: number) => string }[] = [
+        {name: 'String.fromCharCode.apply', do: (v: Uint8Array, size: number) => parseUtf8(v, size)},
+        {name: 'decodeUTF8', do: (v: Uint8Array, size: number) => decodeUTF8(v, 0, size)},
+        {name: 'TextDecoder.decode', do: (v: Uint8Array, size: number) => decoder.decode(v.slice(0, size))},
+    ];
+
+    for (const impl of implementations) {
+        header.push(impl.name);
+    }
+
+    //warmup
+    for (let i = 0; i < 50; i++) {
+        const size = (i * 128);
+        const string = 'x'.repeat(size);
+        const uint8array = encoder.encode(string);
+        const json = JSON.stringify(string);
+
+        JSON.parse(json);
+        for (const impl of implementations) impl.do(uint8array, size);
+    }
+
+    for (let i = 0; i < 50; i++) {
+        const size = (i * 128);
+        const string = 'x'.repeat(size);
+        const uint8array = encoder.encode(string);
+        const json = JSON.stringify(string);
+
+        const row: number[] = [size];
+
+        const start = performance.now();
+        JSON.parse(json);
+        row.push(performance.now() - start);
+
+        for (const impl of implementations) {
+            const start = performance.now();
+            impl.do(uint8array, size);
+            row.push(performance.now() - start);
+        }
+
+        rows.push(row.join('; ').replace(/\./g, ','));
+    }
+
+    console.log(header.join(';'));
+    for (const row of rows) console.log(row);
+
     const suite = new BenchSuite(`BSON utf8`);
 
     const size = 10 * 1024;

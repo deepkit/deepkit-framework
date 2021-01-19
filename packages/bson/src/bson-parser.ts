@@ -275,6 +275,37 @@ export class ParserV2 extends BaseParser {
     }
 }
 
+const decoder = new TextDecoder('utf8');
+export class ParserV3 extends BaseParser {
+    eatObjectPropertyName() {
+        let end = this.offset;
+        let simple = true;
+        while (this.buffer[end] !== 0) {
+            if (this.buffer[end] > 127) simple = false;
+            end++;
+        }
+
+        if (simple) {
+            //do simple ascii
+            const s = String.fromCharCode.apply(String, this.buffer.slice(this.offset, end) as any);
+            this.offset = end + 1;
+            return s;
+        }
+
+        const s = decoder.decode(this.buffer.slice(this.offset, end));
+        this.offset = end + 1;
+
+        return s;
+    }
+
+    eatString(size: number): string {
+        const end = this.offset + size;
+        let s = decoder.decode(this.buffer.slice(this.offset, end - 1));
+        this.offset = end;
+        return s;
+    }
+}
+
 export function findValueInObject(parser: BaseParser, checker: (elementType: BSONType, name: string) => boolean): any {
     const offset = parser.offset;
     const end = parser.eatUInt32() + parser.offset;
