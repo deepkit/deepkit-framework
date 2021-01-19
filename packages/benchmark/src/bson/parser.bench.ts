@@ -63,7 +63,7 @@ export async function main() {
         items.push({
             // _id: new ObjectId(),
             id: i,
-            name: 'Peter',
+            name: 'x'.repeat(5),
             ready: true,
             priority: 0,
             tags: ['a', 'b', 'c'],

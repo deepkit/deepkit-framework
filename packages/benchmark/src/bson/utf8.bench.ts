@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Writer, ParserV2, decodeUTF8Short, decodeUTF8 } from '@deepkit/bson';
+import { Writer, decodeUTF8Short, decodeUTF8, buildStringDecoder } from '@deepkit/bson';
 import 'reflect-metadata';
 import { BenchSuite } from '../bench';
 import {performance} from 'perf_hooks';
@@ -38,9 +38,21 @@ export async function main() {
 
     const encoder = new TextEncoder();
     const decoder = new TextDecoder("utf-8");
+
+    const spec5 = buildStringDecoder(5);
+    const spec10 = buildStringDecoder(10);
+    const spec20 = buildStringDecoder(20);
+    const spec30 = buildStringDecoder(30);
+    const spec100 = buildStringDecoder(100);
+    // const spec1000 = buildStringDecoder(1000);
     const implementations: { name: string, do: (v: Uint8Array, size: number) => string }[] = [
         {name: 'String.fromCharCode.apply', do: (v: Uint8Array, size: number) => parseUtf8(v, size)},
         {name: 'decodeUTF8', do: (v: Uint8Array, size: number) => decodeUTF8(v, 0, size)},
+        {name: 'specialized 5', do: (v: Uint8Array, size: number) => spec5(v, 0, size)},
+        {name: 'specialized 10', do: (v: Uint8Array, size: number) => spec10(v, 0, size)},
+        {name: 'specialized 20', do: (v: Uint8Array, size: number) => spec20(v, 0, size)},
+        {name: 'specialized 100', do: (v: Uint8Array, size: number) => spec100(v, 0, size)},
+        // {name: 'specialized 1000', do: (v: Uint8Array, size: number) => spec1000(v, 0, size)},
         {name: 'TextDecoder.decode', do: (v: Uint8Array, size: number) => decoder.decode(v.slice(0, size))},
     ];
 
@@ -49,8 +61,8 @@ export async function main() {
     }
 
     //warmup
-    for (let i = 0; i < 50; i++) {
-        const size = (i * 128);
+    for (let i = 0; i < 1000; i++) {
+        const size = 1500;
         const string = 'x'.repeat(size);
         const uint8array = encoder.encode(string);
         const json = JSON.stringify(string);
@@ -85,28 +97,126 @@ export async function main() {
 
     const suite = new BenchSuite(`BSON utf8`);
 
-    const size = 10 * 1024;
-    const bigString = 'x'.repeat(size);
+    const bigString = 'Peter'.repeat(64);
+    const size = bigString.length; //I know thats not the real bytes
 
     const json = JSON.stringify(bigString);
     const writer = new Writer(new Uint8Array(size));
     writer.writeString(bigString);
     console.log('String size', size);
 
-    suite.add('bson deserialize: big string', () => {
-        const decoded = new ParserV2(writer.buffer).eatString(size);
+    suite.add('decodeUTF8', () => {
+        decodeUTF8(writer.buffer, 0, size);
     });
 
-    suite.add('candidate 1 parse: big string', () => {
+    suite.add('decodeUTF8Short', () => {
+        decodeUTF8Short(writer.buffer, 0, size);
+    });
+
+    spec10(writer.buffer, 0, size);
+
+    suite.add('specialized 10', () => {
+        spec10(writer.buffer, 0, size);
+    });
+
+    suite.add('specialized 20', () => {
+        spec20(writer.buffer, 0, size);
+    });
+
+    suite.add('specialized 100', () => {
+        spec100(writer.buffer, 0, size);
+    });
+
+    const specExact = buildStringDecoder(size);
+    specExact(writer.buffer, 0, size);
+    suite.add('specialized exact' + size, () => {
+        specExact(writer.buffer, 0, size);
+    });
+
+    suite.add('String.fromCharCode.apply', () => {
         const decoded = parseUtf8(writer.buffer, size);
     });
 
-    suite.add('candidate 2 parse: big string', () => {
+    suite.add('String.fromCharCode specialized', () => {
+        const codes = writer.buffer;
+        let s = String.fromCharCode(
+            codes[0], codes[1], codes[2], codes[3], codes[4], codes[5], codes[6], codes[7], codes[8], codes[9],
+            codes[10], codes[11], codes[12], codes[13], codes[14], codes[15], codes[16], codes[17], codes[18], codes[19],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+            codes[20], codes[21], codes[22], codes[23], codes[24], codes[25], codes[26], codes[27], codes[28], codes[29],
+        );
+    });
+
+    suite.add('TextDecoder', () => {
         const decoded = parseUtf82(writer.buffer, size);
     });
 
-    suite.add('JSON.parse() big string', () => {
+    suite.add('JSON.parse()', () => {
         const decoded = JSON.parse(json);
+    });
+
+    suite.add('fromCharCode hardcoded', () => {
+        const s = String.fromCharCode(102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115);
+    });
+
+    const codes2 = new Uint8Array([102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115]);
+    suite.add('specialist 30', () => {
+        const s = spec30(codes2, 0, 30);
+    });
+
+    suite.add('fromCodePoint hardcoded', () => {
+        const s = String.fromCodePoint(102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115);
+    });
+
+    const codes = [102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115,102,117,110,99,116,105,111,110,32,115];
+    suite.add('fromCharCode apply', () => {
+        const s = String.fromCharCode.apply(String, codes);
+    });
+
+    suite.add('fromCharCode apply uint8', () => {
+        const s = String.fromCharCode.apply(String, codes2 as any);
+    });
+
+    suite.add('fromCharCode apply uint8 specialized', () => {
+        let s  = String.fromCharCode(codes2[0], codes2[1], codes2[2], codes2[3], codes2[4], codes2[5], codes2[6], codes2[7], codes2[8], codes2[9],);
+        s += String.fromCharCode(codes2[10], codes2[11], codes2[12], codes2[13], codes2[14], codes2[15], codes2[16], codes2[17], codes2[18], codes2[19],);
+        s += String.fromCharCode(codes2[20], codes2[21], codes2[22], codes2[23], codes2[24], codes2[25], codes2[26], codes2[27], codes2[28], codes2[29],);
+    });
+
+    suite.add('fromCharCode apply uint8 specialized full', () => {
+        let s  = String.fromCharCode(
+            codes2[0], codes2[1], codes2[2], codes2[3], codes2[4], codes2[5], codes2[6], codes2[7], codes2[8], codes2[9],
+            codes2[10], codes2[11], codes2[12], codes2[13], codes2[14], codes2[15], codes2[16], codes2[17], codes2[18], codes2[19],
+            codes2[20], codes2[21], codes2[22], codes2[23], codes2[24], codes2[25], codes2[26], codes2[27], codes2[28], codes2[29],
+        );
     });
 
     // suite.add('JSON.stringify big string', () => {

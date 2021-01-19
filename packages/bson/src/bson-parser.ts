@@ -16,11 +16,12 @@ import {
     digitByteSize,
     TWO_PWR_32_DBL_N
 } from './utils';
-import { decodeUTF8, decodeUTF8Parser } from './strings';
+import { buildStringDecoder, decodeUTF8 } from './strings';
 import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
 import { seekElementSize } from './continuation';
 import { hexTable } from './model';
 
+declare var Buffer: any;
 
 /**
  * This is the (slowest) base parser which parses all property names as utf8.
@@ -238,12 +239,15 @@ export class BaseParser {
     }
 }
 
+const stringParser = buildStringDecoder(256);
+
 /**
  * This is a general purpose Parser assuming ascii names as property names.
  * It falls back automatically to UTF8 when a UTF8 byte was found.
  * This is way faster than BaseParser when property names are mainly ascii (which is usually the case).
  */
 export class ParserV2 extends BaseParser {
+    
     eatObjectPropertyName() {
         let end = this.offset;
         let simple = true;
@@ -264,14 +268,22 @@ export class ParserV2 extends BaseParser {
             return string;
         }
 
-        const s = decodeUTF8(this.buffer, this.offset, end);
+        const s = stringParser(this.buffer, this.offset, end);
         this.offset = end + 1;
 
         return s;
     }
 
     eatString(size: number): string {
-        return decodeUTF8Parser(this, size);
+        // const s = stringParser(this.buffer, this.offset, this.offset + size);
+        let s = '';
+        if (size > 64 && 'undefined' !== typeof Buffer) {
+            s = Buffer.from(this.buffer.buffer, this.buffer.byteOffset + this.offset, size).toString('utf8');
+        } else {
+            s = stringParser(this.buffer, this.offset, this.offset + size);
+        }
+        this.offset += size;
+        return s;
     }
 }
 
