@@ -239,7 +239,7 @@ export class BaseParser {
     }
 }
 
-const stringParser = buildStringDecoder(256);
+const stringParser = buildStringDecoder(32);
 
 /**
  * This is a general purpose Parser assuming ascii names as property names.
@@ -278,7 +278,7 @@ export class ParserV2 extends BaseParser {
         // const s = stringParser(this.buffer, this.offset, this.offset + size);
         let s = '';
         if (size > 64 && 'undefined' !== typeof Buffer) {
-            s = Buffer.from(this.buffer.buffer, this.buffer.byteOffset + this.offset, size).toString('utf8');
+            s = Buffer.from(this.buffer.buffer, this.buffer.byteOffset + this.offset, size - 1).toString('utf8');
         } else {
             s = stringParser(this.buffer, this.offset, this.offset + size);
         }

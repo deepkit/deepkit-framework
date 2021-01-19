@@ -11,6 +11,9 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "browser": {
+    "crypto": false
+  },
   "jest": {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

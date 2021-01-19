@@ -124,7 +124,7 @@ export function buildStringDecoder(specializations: number = 10) {
             codes[codesOffset++] = c;
         }
 
-        if (codesOffset > ${specializations}) {
+        if (codesOffset >= ${specializations}) {
             s += decodeCodes${specializations}(codes);
             codesOffset = 0;
         }

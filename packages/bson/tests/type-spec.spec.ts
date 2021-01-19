@@ -124,6 +124,12 @@ test('model', () => {
         expect(back).toBeInstanceOf(Model);
     }
 });
+test('string', () => {
+    expect(roundTrip(t.string, "0123456789")).toEqual("0123456789");
+    expect(roundTrip(t.string, "012345678901234567890123456789")).toEqual("012345678901234567890123456789");
+    expect(roundTrip(t.string, "0123456789012345678901234567890123456789")).toEqual("0123456789012345678901234567890123456789");
+    expect(roundTrip(t.string, "0123456789".repeat(64))).toEqual("0123456789".repeat(64));
+});
 
 test('with implicit default value', () => {
     const defaultDate = new Date;
