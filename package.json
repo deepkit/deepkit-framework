@@ -50,6 +50,7 @@
       "packages/sql",
       "packages/mysql",
       "packages/postgres",
+      "packages/sqlite",
       "packages/framework-integration",
       "packages/framework",
       "packages/rpc",

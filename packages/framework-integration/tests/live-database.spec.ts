@@ -2,7 +2,7 @@ import { ClassType } from '@deepkit/core';
 import { Application, createModule, createTestingApp as createTestingAppOriginal, DatabaseRegistry, LiveDatabase, Module, ModuleOptions, TestingFascade } from '@deepkit/framework';
 import { Database } from '@deepkit/orm';
 import { Collection, IdInterface, rpc } from '@deepkit/rpc';
-import { SQLiteDatabaseAdapter } from '@deepkit/sql';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';

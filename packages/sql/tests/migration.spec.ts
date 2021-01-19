@@ -1,9 +1,10 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { t } from '@deepkit/type';
-import { SQLiteDatabaseAdapter, SQLitePlatform } from '../index';
-import { Index } from '../src/schema/table';
+import { DatabaseModel, Index } from '../src/schema/table';
 import { schemaMigrationRoundTrip } from './setup';
+import { DefaultPlatform } from '../src/platform/default-platform';
+import { SchemaParser } from "../src/reverse/schema-parser";
 
 const user = t.schema({
     id: t.number.autoIncrement.primary,
@@ -24,8 +25,22 @@ const post = t.schema({
     content: t.string,
 }, { name: 'post' });
 
+
+class MySchemaParser extends SchemaParser {
+    parse(database: DatabaseModel, limitTableNames?: string[]): void {
+    }
+}
+
+class MyPlatform extends DefaultPlatform {
+    schemaParserType = MySchemaParser;
+    constructor() {
+        super();
+        this.addType('number', 'integer');
+    }
+}
+
 test('migration basic', async () => {
-    const [tableUser, tablePost] = new SQLitePlatform().createTables([user, post]);
+    const [tableUser, tablePost] = new MyPlatform().createTables([user, post]);
 
     expect(tableUser.hasColumn('id')).toBe(true);
     expect(tableUser.getColumn('id').isPrimaryKey).toBe(true);
@@ -46,10 +61,4 @@ test('migration basic', async () => {
     expect(tablePost.foreignKeys[0].foreign).toBe(tableUser);
     expect(tablePost.foreignKeys[0].localColumns[0].name).toBe('user');
     expect(tablePost.foreignKeys[0].foreignColumns[0].name).toBe('id');
-});
-
-describe('migration round trip', () => {
-    test('sqlite', async () => {
-        await schemaMigrationRoundTrip([user, post], new SQLiteDatabaseAdapter(':memory:'));
-    });
 });

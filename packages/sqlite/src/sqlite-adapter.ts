@@ -18,14 +18,14 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement
-} from './sql-adapter';
+    SQLStatement,
+    DefaultPlatform,
+    SqlBuilder
+} from '@deepkit/sql';
 import { Changes, DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
-import { SQLitePlatform } from './platform/sqlite-platform';
+import { SQLitePlatform } from './sqlite-platform';
 import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
 import { ClassType, empty } from '@deepkit/core';
-import { DefaultPlatform } from './platform/default-platform';
-import { SqlBuilder } from './sql-builder';
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected stmt: sqlite3.Statement) {

@@ -35,6 +35,12 @@
       "path": "packages/mysql/tsconfig.json"
     },
     {
+      "path": "packages/postgres/tsconfig.json"
+    },
+    {
+      "path": "packages/sqlite/tsconfig.json"
+    },
+    {
       "path": "packages/rpc/tsconfig.json"
     },
     {

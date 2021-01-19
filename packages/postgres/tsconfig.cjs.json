@@ -12,6 +12,9 @@
       "path": "../type/tsconfig.cjs.json"
     },
     {
+      "path": "../sql/tsconfig.cjs.json"
+    },
+    {
       "path": "../orm/tsconfig.cjs.json"
     }
   ]

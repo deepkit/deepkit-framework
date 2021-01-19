@@ -33,6 +33,7 @@
     "@deepkit/orm": "^1.0.1-alpha.12",
     "@deepkit/rpc": "^1.0.1-alpha.12",
     "@deepkit/sql": "^1.0.1-alpha.12",
+    "@deepkit/sqlite": "^1.0.1-alpha.12",
     "@deepkit/type": "^1.0.1-alpha.12",
     "@oclif/command": "^1.8.0",
     "@oclif/parser": "^3.8.5",

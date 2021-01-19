@@ -16,13 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { DefaultPlatform, isSet } from './default-platform';
-import { Column, ForeignKey, Table, TableDiff } from '../schema/table';
+import { DefaultPlatform, isSet, Column, ForeignKey, Table, TableDiff, parseType} from '@deepkit/sql';
 import { ClassSchema, isArray, PropertySchema, SqliteOptions } from '@deepkit/type';
-import { parseType } from '../reverse/schema-parser';
-import { SQLiteSchemaParser } from '../reverse/sqlite-schema-parser';
-import { SqliteSerializer } from '../serializer/sqlite-serializer';
-import { SQLiteFilterBuilder } from '../sql-filter-builder.sqlite';
+import { SQLiteSchemaParser } from './sqlite-schema-parser';
+import { SqliteSerializer } from './sqlite-serializer';
+import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite';
 import { isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 

@@ -37,6 +37,15 @@
       "path": "../sql/tsconfig.json"
     },
     {
+      "path": "../mysql/tsconfig.json"
+    },
+    {
+      "path": "../postgres/tsconfig.json"
+    },
+    {
+      "path": "../sqlite/tsconfig.json"
+    },
+    {
       "path": "../mongo/tsconfig.json"
     }
   ]

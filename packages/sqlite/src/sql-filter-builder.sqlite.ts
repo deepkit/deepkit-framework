@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { SQLFilterBuilder } from './sql-filter-builder';
+import { SQLFilterBuilder } from '@deepkit/sql';
 
 export class SQLiteFilterBuilder extends SQLFilterBuilder {
     protected getDeepColumnAccessor(table: string, column: string, path: string) {

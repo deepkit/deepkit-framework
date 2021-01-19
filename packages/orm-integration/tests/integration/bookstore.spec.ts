@@ -4,7 +4,7 @@ import { entity, getClassSchema, t, uuid } from '@deepkit/type';
 import { createEnvSetup } from './setup';
 import { User, UserGroup } from './user';
 import { UserCredentials } from './user-credentials';
-import { SQLitePlatform, SqliteSerializer } from '@deepkit/sql';
+import { SqliteSerializer, SQLitePlatform } from '@deepkit/sqlite';
 import { atomicChange, getInstanceState } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
 import { Group } from './group';

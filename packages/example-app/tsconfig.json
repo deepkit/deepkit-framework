@@ -9,12 +9,10 @@
     "target": "es2018",
     "module": "es2020",
     "esModuleInterop": true,
-
     "lib": [
       "es6",
       "dom"
     ],
-
     "baseUrl": ".",
     "outDir": "./dist",
     "jsx": "react-jsx",
@@ -22,6 +20,6 @@
   },
   "include": [
     "*.tsx",
-    "*.ts",
+    "*.ts"
   ]
 }

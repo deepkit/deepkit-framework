@@ -18,7 +18,7 @@
 
 import { DebugRequest } from '@deepkit/framework-debug-shared';
 import { Database } from '@deepkit/orm';
-import { SQLiteDatabaseAdapter } from '@deepkit/sql';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { dirname, join } from 'path';
 import { inject } from '../injector/injector';
 import { kernelConfig } from '../kernel.config';
