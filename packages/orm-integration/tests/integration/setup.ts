@@ -1,7 +1,8 @@
 import { afterAll } from '@jest/globals';
 import { ClassSchema } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
-import { PostgresDatabaseAdapter, SQLDatabaseAdapter, SQLiteDatabaseAdapter } from '@deepkit/sql';
+import { SQLDatabaseAdapter, SQLiteDatabaseAdapter } from '@deepkit/sql';
+import { PostgresDatabaseAdapter } from '@deepkit/postgres';
 import { MySQLDatabaseAdapter } from '@deepkit/mysql';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
 import { MongoDatabaseAdapter } from '@deepkit/mongo';

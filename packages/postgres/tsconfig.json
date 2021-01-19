@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "noImplicitAny": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2020",
+    "module": "es2020",
+    "esModuleInterop": true,
+
+    "outDir": "./dist/esm",
+    "declaration": true,
+    "composite": true
+  },
+  "include": [
+    "benchmarks",
+    "src",
+    "tests",
+    "index.ts"
+  ],
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../orm/tsconfig.json"
+    }
+  ]
+}

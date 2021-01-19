@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { t } from '@deepkit/type';
-import { PostgresDatabaseAdapter, SQLiteDatabaseAdapter, SQLitePlatform } from '../index';
+import { SQLiteDatabaseAdapter, SQLitePlatform } from '../index';
 import { Index } from '../src/schema/table';
 import { schemaMigrationRoundTrip } from './setup';
 
@@ -51,9 +51,5 @@ test('migration basic', async () => {
 describe('migration round trip', () => {
     test('sqlite', async () => {
         await schemaMigrationRoundTrip([user, post], new SQLiteDatabaseAdapter(':memory:'));
-    });
-
-    test('postgres', async () => {
-        await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres' }));
     });
 });

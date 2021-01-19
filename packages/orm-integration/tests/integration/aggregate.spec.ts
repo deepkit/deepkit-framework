@@ -1,6 +1,6 @@
 import { MongoDatabaseQuery } from '@deepkit/mongo';
 import { Database, Query } from '@deepkit/orm';
-import { PostgresSQLDatabaseQuery, SQLiteDatabaseQuery } from '@deepkit/sql';
+import { SQLiteDatabaseQuery } from '@deepkit/sql';
 import { MySQLDatabaseQuery } from '@deepkit/mysql';
 import { plainToClass, t } from '@deepkit/type';
 import { test } from '@jest/globals';

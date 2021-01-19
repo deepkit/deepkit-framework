@@ -3,26 +3,8 @@ import { jest } from '@jest/globals'
 import 'reflect-metadata';
 import { t } from '@deepkit/type';
 import { schemaMigrationRoundTrip } from './setup';
-import { PostgresDatabaseAdapter } from '../src/postgres-adapter';
 import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 
-
-test('postgres custom type', async () => {
-    const post = t.schema({
-        id: t.number.autoIncrement.primary,
-        slug: t.string.postgres({ type: 'VARCHAR(255)' }),
-        content: t.string.postgres({ type: 'text' }),
-    }, { name: 'post' });
-
-    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres' });
-    const [postTable] = adapter.platform.createTables([post]);
-    expect(postTable.getColumn('slug').type).toBe('varchar');
-    expect(postTable.getColumn('slug').size).toBe(255);
-
-    expect(postTable.getColumn('content').type).toBe('text');
-
-    await schemaMigrationRoundTrip([post], adapter);
-});
 
 test('sqlite custom type', async () => {
     const post = t.schema({

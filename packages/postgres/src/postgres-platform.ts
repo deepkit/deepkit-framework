@@ -16,13 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { DefaultPlatform, isSet } from './default-platform';
-import { postgresSerializer } from '../serializer/postgres-serializer';
-import { Column, Index, Table } from '../schema/table';
+import { DefaultPlatform, isSet, Column, Index, Table, parseType } from '@deepkit/sql';
+import { postgresSerializer } from './postgres-serializer';
 import { ClassSchema, isArray, PostgresOptions, PropertySchema } from '@deepkit/type';
-import { parseType } from '../reverse/schema-parser';
-import { PostgresSchemaParser } from '../reverse/postgres-schema-parser';
-import { PostgreSQLFilterBuilder } from '../postgres/sql-filter-builder';
+import { PostgresSchemaParser } from './postgres-schema-parser';
+import { PostgreSQLFilterBuilder } from './sql-filter-builder';
 import { isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring';
 

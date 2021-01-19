@@ -16,14 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { SQLFilterBuilder } from '../sql-filter-builder';
+import { sqlSerializer } from '@deepkit/sql';
 
-export class PostgreSQLFilterBuilder extends SQLFilterBuilder {
-    protected getDeepColumnAccessor(table: string, column: string, path: string) {
-        return `${table}.${this.quoteId(column)}->${this.quoteValue(path)}`;
-    }
-
-    createPlaceholder() {
-        return '$' + (++this.placeholderPosition);
-    }
-}
+export const postgresSerializer = new class extends sqlSerializer.fork('postgres') {
+};

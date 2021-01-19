@@ -17,16 +17,16 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement
-} from './sql-adapter';
+    SQLStatement,
+    DefaultPlatform,
+    SqlBuilder
+} from '@deepkit/sql';
 import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
-import { PostgresPlatform } from './platform/postgres-platform';
+import { PostgresPlatform } from './postgres-platform';
 import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
-import { DefaultPlatform } from './platform/default-platform';
 import pg from 'pg';
 import type { PoolClient, PoolConfig, Pool } from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
-import { SqlBuilder } from './sql-builder';
 
 export class PostgresStatement extends SQLStatement {
     protected released = false;

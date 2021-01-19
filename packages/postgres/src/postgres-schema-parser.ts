@@ -16,8 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { DatabaseModel, ForeignKey, Table } from '../schema/table';
-import { parseType, SchemaParser } from './schema-parser';
+import { DatabaseModel, ForeignKey, Table, parseType, SchemaParser } from '@deepkit/sql';
 
 export class PostgresSchemaParser extends SchemaParser {
     protected defaultPrecisions = {

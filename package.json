@@ -49,6 +49,7 @@
       "packages/mongo",
       "packages/sql",
       "packages/mysql",
+      "packages/postgres",
       "packages/framework-integration",
       "packages/framework",
       "packages/rpc",
