@@ -1,4 +1,5 @@
-import { randomBytes } from "@deepkit/crypto";
+import * as crypto from "@deepkit/crypto";
+const { randomBytes } = crypto;
 
 let PROCESS_UNIQUE: Uint8Array | undefined = undefined;
 
