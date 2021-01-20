@@ -33,6 +33,11 @@
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
+    "globals": {
+      "ts-jest": {
+        "useESM": true
+      }
+    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {

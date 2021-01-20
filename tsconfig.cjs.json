@@ -20,6 +20,15 @@
       "path": "packages/sql/tsconfig.cjs.json"
     },
     {
+      "path": "packages/mysql/tsconfig.cjs.json"
+    },
+    {
+      "path": "packages/postgres/tsconfig.cjs.json"
+    },
+    {
+      "path": "packages/sqlite/tsconfig.cjs.json"
+    },
+    {
       "path": "packages/rpc/tsconfig.cjs.json"
     },
     {

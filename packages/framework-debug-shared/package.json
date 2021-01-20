@@ -17,6 +17,11 @@
     "@deepkit/type": "^1.0.1-alpha.12"
   },
   "jest": {
+    "globals": {
+      "ts-jest": {
+        "useESM": true
+      }
+    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

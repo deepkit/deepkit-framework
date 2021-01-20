@@ -29,6 +29,11 @@
     "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
   },
   "jest": {
+    "globals": {
+      "ts-jest": {
+        "useESM": true
+      }
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
