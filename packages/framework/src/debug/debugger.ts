@@ -23,7 +23,6 @@ import { join } from 'path';
 import { HttpRequest, HttpResponse } from '../http-model';
 import { injectable } from '../injector/injector';
 import { kernelConfig } from '../kernel.config';
-import { LoggerLevel } from '../logger';
 import { normalizeDirectory } from '../utils';
 import { Zone } from '../zone';
 import { DebugDatabase } from './db';
@@ -34,7 +33,7 @@ export class Debugger {
         return Zone.current().collector;
     }
 
-    public log(message: string, level: LoggerLevel) {
+    public log(message: string, level: number) {
         this.getCollector()?.log(message, level);
     }
 
@@ -76,7 +75,7 @@ export class HttpRequestDebugCollector {
         this.logFile = openSync(join(this.logPath, 'log.txt'), 'a');
     }
 
-    public log(message: string, level: LoggerLevel) {
+    public log(message: string, level: number) {
         if (this.logFile === undefined) return;
         this.logs++;
         appendFileSync(this.logFile, message);

@@ -19,7 +19,6 @@
 import { ApplicationServer } from '../application-server';
 import { cli, Command, flag } from '../command';
 import { InjectorContext } from '../injector/injector';
-import { KernelModule } from '../kernel';
 import { Logger, TimestampFormatter } from '../logger';
 
 @cli.controller('server:listen', {

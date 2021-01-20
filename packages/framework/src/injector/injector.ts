@@ -21,6 +21,7 @@ import { ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provide
 import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction } from '@deepkit/core';
 import { Module, ModuleOptions } from '../module';
 import { inspect } from 'util';
+import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider } from './provider';
 
 
 export class ConfigToken<T extends {}> {
@@ -187,22 +188,6 @@ export function injectable() {
     return (target: object) => {
         //don't do anything. This is just used to generate type metadata.
     };
-}
-
-export function isValueProvider(obj: any): obj is ValueProvider {
-    return obj.provide && obj.hasOwnProperty('useValue');
-}
-
-export function isClassProvider(obj: any): obj is ClassProvider {
-    return obj.provide && !isValueProvider(obj) && !isExistingProvider(obj) && !isFactoryProvider(obj);
-}
-
-export function isExistingProvider(obj: any): obj is ExistingProvider {
-    return obj.provide && obj.hasOwnProperty('useExisting');
-}
-
-export function isFactoryProvider(obj: any): obj is FactoryProvider {
-    return obj.provide && obj.hasOwnProperty('useFactory');
 }
 
 export class CircularDependencyError extends CustomError {

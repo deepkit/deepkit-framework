@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js --no-cache --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
-    "build": "tsc --build tsconfig.json && tsc --build tsconfig.cjs.json && lerna run build",
+    "build": "madge packages/framework/src/**/*.ts -c && tsc --build tsconfig.json && tsc --build tsconfig.cjs.json && lerna run build",
     "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
     "clean": "rm -rf packages/*/dist",
@@ -26,6 +26,7 @@
     "ts-jest": "^27.0.0-next.3",
     "ts-node": "^9.1.1",
     "typedoc": "^0.19.2",
+    "madge": "^4.0.0",
     "typedoc-plugin-lerna-packages": "^0.3.1",
     "typescript": "^4.1.2"
   },

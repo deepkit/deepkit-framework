@@ -16,7 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 import { ClassType, isClass } from '@deepkit/core';
-import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider } from './injector';
+
+export function isValueProvider(obj: any): obj is ValueProvider {
+    return obj.provide && obj.hasOwnProperty('useValue');
+}
+
+export function isClassProvider(obj: any): obj is ClassProvider {
+    return obj.provide && !isValueProvider(obj) && !isExistingProvider(obj) && !isFactoryProvider(obj);
+}
+
+export function isExistingProvider(obj: any): obj is ExistingProvider {
+    return obj.provide && obj.hasOwnProperty('useExisting');
+}
+
+export function isFactoryProvider(obj: any): obj is FactoryProvider {
+    return obj.provide && obj.hasOwnProperty('useFactory');
+}
 
 export interface ProviderBase {
     /**
