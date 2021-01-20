@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 function insecureRandomBytes(size: number): Uint8Array {
     const result = Buffer.alloc(size);
     for (let i = 0; i < size; ++i) result[i] = Math.floor(Math.random() * 256);

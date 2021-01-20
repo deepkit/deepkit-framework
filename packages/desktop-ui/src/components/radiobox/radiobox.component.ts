@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 import { ChangeDetectorRef, Component, HostBinding, HostListener, Injector, Input, SkipSelf } from "@angular/core";
 import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
 

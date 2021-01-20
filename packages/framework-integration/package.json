@@ -3,7 +3,7 @@
   "version": "1.0.1-alpha.0",
   "description": "Integration tests",
   "type": "module",
-  "license": "AGPL-3.0-only",
+  "license": "MIT",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "private": true,

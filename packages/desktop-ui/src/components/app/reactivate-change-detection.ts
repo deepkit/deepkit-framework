@@ -1,6 +1,11 @@
 /*
- * Copyright (c) Marc J. Schmidt <marc@marcjschmidt.de>
- * This file is part of Deepkit and licensed under GNU GPL v3. See the LICENSE file for more information.
+ * Deepkit Framework
+ * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
  */
 
 import { AfterViewInit, ApplicationRef, NgModule, OnDestroy, Type, ɵComponentDef as ComponentDef, ɵNG_COMP_DEF as NG_COMP_DEF } from "@angular/core";

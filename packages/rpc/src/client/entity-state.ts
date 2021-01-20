@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from "@deepkit/core";
 import { ClassSchema, getClassSchema, jsonSerializer } from "@deepkit/type";
 import { EntityPatch, EntitySubject, IdType, IdVersionInterface, rpcEntityPatch, rpcEntityRemove, RpcTypes } from "../model";

@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 import { BrokerChannel, BrokerClient, BrokerDirectClientAdapter, BrokerKernel } from "@deepkit/broker";
 import { asyncOperation, ClassType, ParsedHost, parseHost } from "@deepkit/core";
 import { ClientTransportAdapter, IdInterface, TransportConnectionHooks } from "@deepkit/rpc";
