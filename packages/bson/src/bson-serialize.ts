@@ -673,6 +673,12 @@ export class Writer {
             }
             this.writeNull();
             this.writeDelayedSize(this.offset - start, start);
+        } else {
+            //the sizer incldues the type and name, so we have to write that
+            if (nameWriter) {
+                this.writeByte(BSONType.UNDEFINED);
+                nameWriter();
+            }
         }
     }
 }
@@ -987,6 +993,7 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
     compiler.context.set('Writer', Writer);
     compiler.context.set('seekElementSize', seekElementSize);
     compiler.context.set('createBuffer', createBuffer);
+    compiler.context.set('schema', schema);
 
     let functionCode = '';
 
@@ -1045,7 +1052,7 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
         
         _global.unpopulatedCheck = unpopulatedCheck;
         if (size !== writer.offset - started) {
-            console.log('object to serialize', obj, Object.getOwnPropertyNames(obj));
+            console.error('Wrong size calculated. Calculated=' + size + ', but serializer wrote ' + (writer.offset - started) + ' bytes. Object: ', JSON.stringify(obj), Object.getOwnPropertyNames(obj), schema.toString());
             throw new Error('Wrong size calculated. Calculated=' + size + ', but serializer wrote ' + (writer.offset - started) + ' bytes');
         }
 

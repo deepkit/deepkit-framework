@@ -190,7 +190,16 @@ test('partial keeps explicitely undefined fields', () => {
 
     expect(roundTrip(t.partial(Purchase), { sentAt: undefined })).toEqual({ sentAt: undefined });
     expect('sentAt' in roundTrip(t.partial(Purchase), { sentAt: undefined })).toEqual(true);
+});
 
+test('any undefined', () => {
+    expect(serializeToJson(t.any, undefined)).toEqual(null);
+});
+
+test('any invalid structure', () => {
+    class SQLiteDatabase {}
+
+    expect(serializeToJson(t.any, SQLiteDatabase)).toEqual(undefined);
 });
 
 test('map removes undefined when not allowed', () => {
