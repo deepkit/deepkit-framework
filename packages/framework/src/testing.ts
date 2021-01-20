@@ -77,7 +77,7 @@ export function createTestingApp<O extends ModuleOptions<NAME>, NAME extends str
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
     module.setupProvider(Logger).addTransport(injectorReference(MemoryLoggerTransport));
 
-    const providers: Provider[] = [
+    const providers: Provider<any>[] = [
         { provide: WebWorkerFactory, useClass: WebMemoryWorkerFactory }, //don't start HTTP-server
         { provide: BrokerServer, useClass: BrokerMemoryServer }, //don't start Broker TCP-server
         MemoryLoggerTransport,

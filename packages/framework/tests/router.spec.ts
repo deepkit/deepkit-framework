@@ -1,11 +1,12 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { dotToUrlPath, Router } from '../src/router';
+import { dotToUrlPath, RouteConfig, RouteParameterResolverContext, RouteParameterResolverTag, Router } from '../src/router';
 import { HttpKernel, JSONResponse } from '../src/http';
 import { http, httpClass } from '../src/decorator';
 import { Application } from '../src/application';
 import { t } from '@deepkit/type';
-import { HttpRequest } from '../src/http-model';
+import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from '../src/http-model';
+import { ClassType } from '@deepkit/core';
 
 test('router', async () => {
     class Controller {
@@ -94,6 +95,40 @@ test('router HttpRequest', async () => {
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/req/any/path')).toEqual(['/req/any/path', 'req/any/path']);
+});
+
+test('router parameterResolver', async () => {
+    class User {
+        constructor(public username: string) {}
+    }
+
+    class Controller {
+        @http.GET('user/:username')
+        route1(user: User) {
+            return [user.username];
+        }
+
+        @http.GET('group')
+        route2(user: User) {
+            return [user.username];
+        }
+    }
+    
+    class MyRouteParameterResolver {
+        resolve(context: RouteParameterResolverContext): any | Promise<any> {
+            if (!context.parameters.username) throw new Error('No :username specified');
+            return new User(context.parameters.username);
+        }
+    }
+
+    const app = Application.create({
+        providers: [RouteParameterResolverTag.provide(MyRouteParameterResolver).forClassType(User)],
+        controllers: [Controller],
+    });
+    const httpHandler = app.get(HttpKernel);
+
+    expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
+    await expect(httpHandler.handleRequestFor('GET', '/group')).rejects.toThrow('No :username specified');
 });
 
 

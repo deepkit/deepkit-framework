@@ -83,6 +83,11 @@ export const eventDispatcher = createPropertyDecoratorContext(
             eventClass.addListener(this.t.token, property, this.t.order)(target);
         }
 
+        /**
+         * Register a new event listener for given token.
+         * 
+         * order: The lower the order, the sooner the listener is called.
+         */
         listen(eventToken: EventToken<any>, order: number = 0) {
             if (!eventToken) new Error('@eventDispatcher.listen() No event token given');
             this.t.token = eventToken;
@@ -139,6 +144,10 @@ export class EventDispatcher {
 
     public getTokens(): EventToken<any>[] {
         return [...this.listenerMap.keys()];
+    }
+
+    public hasListeners(eventToken: EventToken<any>): boolean {
+        return this.listenerMap.has(eventToken);
     }
 
     public getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {

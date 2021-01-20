@@ -54,7 +54,7 @@ class HttpController {
     }
 }
 
-class HttpActionParameter {
+export class HttpActionParameter {
     name: string = '';
     type?: 'body' | 'query';
 
@@ -65,7 +65,7 @@ class HttpActionParameter {
     optional: boolean = false;
 }
 
-class HttpAction {
+export class HttpAction {
     name: string = '';
     description: string = '';
     category: string = '';
@@ -81,10 +81,15 @@ class HttpAction {
      */
     parameters: { [name: string]: HttpActionParameter } = {};
 
+    /**
+     * An arbitrary data container the user can use to store app specific settings/values.
+     */
+    data = new Map<any, any>();
+
     throws: { errorType: ClassType, message?: string }[] = [];
 }
 
-class HttpDecorator {
+export class HttpDecorator {
     t = new HttpController;
 
     controller(baseUrl: string = '') {
@@ -102,7 +107,7 @@ class HttpDecorator {
 
 export const httpClass: ClassDecoratorResult<typeof HttpDecorator> = createClassDecoratorContext(HttpDecorator);
 
-class HttpActionDecorator {
+export class HttpActionDecorator {
     t = new HttpAction;
 
     onDecorator(target: ClassType, property: string) {
@@ -120,6 +125,45 @@ class HttpActionDecorator {
 
     description(description: string) {
         this.t.description = description;
+    }
+
+    /**
+     * Allows to change the HttpAction object and composite multiple properties into one function.
+     * 
+     * @example
+     * ```typescript
+     * const authGroup = Symbol('authGroup');
+     * 
+     * function authGroup(group: 'admin' | 'user') {
+     *    return (action: HttpAction) => {
+     *        action.data.set(authGroup, group);
+     *    };
+     * }
+     * 
+     * class My Controller {
+     *    @http.GET('/assets').use(authGroup('admin'))
+     *    assets() {}
+     * }
+     * ```
+     */
+    use(use: (action: HttpAction) => void) {
+        use(this.t);
+    }
+
+    /** 
+     * Arbitrary value container that can be read in RouterParameterResolver and all 
+     * HTTP workflow events (like authentication).
+     * 
+     * @example
+     * ```typescript
+     * class My Controller {
+     *    @http.GET('/assets').data('authGroup', 'admin')
+     *    assets() {}
+     * }
+     * ```
+    */
+    data(name: string, value) {
+        this.t.data.set(name, value);
     }
 
     category(category: string) {

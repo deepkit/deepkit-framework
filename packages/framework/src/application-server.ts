@@ -16,8 +16,7 @@ import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from './event
 import { injectable, InjectorContext } from './injector/injector';
 import { kernelConfig } from './kernel.config';
 import { Logger } from './logger';
-import { HttpControllers } from './router';
-import { RpcControllers } from './service-container';
+import { HttpControllers, RpcControllers } from './service-container';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 
 export class ServerBootstrapEvent extends BaseEvent { }

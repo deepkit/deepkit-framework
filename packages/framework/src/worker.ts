@@ -24,6 +24,7 @@ import { kernelConfig } from './kernel.config';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { Logger } from './logger';
+import { ClassType } from '@deepkit/core';
 
 export interface WebServerOptions {
     host: string;
@@ -116,11 +117,11 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
     let rpcScopedContext: RpcInjectorContext;
     let connection: RpcKernelConnection;
 
-    const providers: Provider[] = [
+    const providers: Provider<any>[] = [
         { provide: HttpRequest, useValue: request },
         { provide: RpcInjectorContext, useFactory: () => rpcScopedContext },
         { provide: RpcKernelConnection, useFactory: () => connection },
-        { provide: RpcKernelBaseConnection, useFactory: () => connection },
+        { provide: RpcKernelBaseConnection as ClassType<any>, useFactory: () => connection },
         { provide: ConnectionWriter, useValue: writer },
     ];
     const additionalInjector = new Injector(providers);

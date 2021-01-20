@@ -34,6 +34,11 @@ export class WorkflowEvent {
     public nextState?: any;
     public nextStateEvent?: any;
 
+    clearNext() {
+        this.nextState = undefined;
+        this.nextStateEvent = undefined;
+    }
+
     /**
      * @see WorkflowNextEvent.next
      */

@@ -380,7 +380,6 @@ export class PropertySchema {
 
     toString(): string {
         let affix = this.isOptional ? '?' : '';
-        if (!this.typeSet) return 'undefined';
         if (this.isNullable) affix += '|null';
 
         if (this.type === 'array') {
@@ -484,9 +483,9 @@ export class PropertySchema {
                     `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name()`);
             }
             p.classType = getClassSchema(entity).classType;
-        } else if (p.type === 'class' && !props['classType']) {
-            throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
-                `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
+        // } else if (p.type === 'class' && !props['classType']) {
+        //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
+        //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
         }
         p.classTypeName = props['classTypeName'];
 

@@ -88,7 +88,7 @@ export class AngularUniversalListener {
 
     //since angular can contain default routes (for 404 for example), we check our
     //routes after all framework controller.
-    @eventDispatcher.listen(httpWorkflow.onRoute, 10)
+    @eventDispatcher.listen(httpWorkflow.onRoute, 101)
     async onRoute(event: typeof httpWorkflow.onRoute.event) {
         if (event.response.headersSent) return;
         if (event.route) return;
@@ -116,7 +116,7 @@ export class AngularUniversalListener {
 
         event.routeFound(
             new RouteConfig('angular', 'GET', event.url, { controller: AngularUniversalListener, methodName: 'render' }),
-            [event.url]
+            () => [event.url]
         );
     }
 }

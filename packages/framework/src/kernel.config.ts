@@ -10,6 +10,7 @@
 
 import { createConfig } from './injector/injector';
 import { t } from '@deepkit/type';
+import { Session } from './session';
 
 export const kernelConfig = createConfig({
     host: t.string.default('localhost'), //binding to 127.0.0.1 is roughly 20% slower.
@@ -35,6 +36,7 @@ export const kernelConfig = createConfig({
     debugSqlitePath: t.string.default('debug/deepkit-debug.sqlite').description('Relative to {varPath} option'),
     httpLog: t.boolean.default(true),
 
+    session: t.any.default(Session).description('The session ClassType'),
     databases: t.array(t.any).optional.description('ClassType[] of Database classes'),
     migrateOnStartup: t.boolean.default(false).description('Whether all registered database should be migrated automatically on startup.'),
     migrationDir: t.string.default('migrations'),

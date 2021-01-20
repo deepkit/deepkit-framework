@@ -8,29 +8,51 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { t } from '@deepkit/type';
 import { injectable } from './injector/injector';
 
+/** 
+ * This is the default session object, that can be used in your application.
+ * 
+ * If you want to receive the Session object you can simply use this Session class as dependency injection token.
+ * However, this will always create a new session (creating a session id + store it in the session storage). 
+ * If you simply want to check whether a session exists (user has a valid authenticaton token/cookie), use
+ * SessionHandler.
+ * 
+ * If you need more fields, you can create your own Session class. Make sure to
+ * annotate all fields using `@t` of @deepkit/type, since the whole object is serialized
+ * in a session storage (either memory, local file system, or external databases like redis/mysql/etc).
+*/
 export class Session {
+    @t.map(t.any) data: { [name: string]: any } = {};
+
+    @t createdAt: Date = new Date;
+
+    @t.array(t.string) groups: string[] = [];
+
     constructor(
-        public readonly username: string,
-        public readonly token: any,
+        @t public readonly id: string,
+        @t public readonly username?: string
     ) {
     }
 
     public isAnonymous(): boolean {
-        return undefined === this.token;
+        return undefined === this.username;
     }
 }
 
+/**
+ * 
+ */
 @injectable()
-export class SessionStack {
+export class SessionHandler {
     protected session?: Session;
 
     public setSession(session: Session | undefined) {
         this.session = session;
     }
 
-    public isSet(): boolean {
+    public hasSession(): boolean {
         return this.session !== undefined;
     }
 
@@ -40,7 +62,7 @@ export class SessionStack {
 
     public getSession(): Session {
         if (!this.session) {
-            throw new Error('No session given');
+            throw new Error('No session loaded');
         }
 
         return this.session;

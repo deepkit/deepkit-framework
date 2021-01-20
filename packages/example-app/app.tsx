@@ -1,11 +1,19 @@
-#!/usr/bin/env -S node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
+#!/usr/bin/env node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
 import 'reflect-metadata';
-import { entity, sliceClass, t } from '@deepkit/type';
-import { Application, BodyValidation, http, KernelModule, Logger, Redirect } from '@deepkit/framework';
-import { Website } from './views/website';
+import {
+    Application,
+    BodyValidation,
+    http,
+    injectable,
+    KernelModule,
+    Logger,
+    Redirect,
+} from '@deepkit/framework';
 import { Database } from '@deepkit/orm';
-import { SQLiteDatabaseAdapter } from '@deepkit/sql';
-import { injectable } from '@deepkit/framework';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+import { entity, sliceClass, t } from '@deepkit/type';
+import { Website } from './views/website';
+
 
 @entity.name('user')
 class User {
@@ -90,7 +98,6 @@ class HelloWorldController {
 }
 
 Application.create({
-    providers: [],
     controllers: [HelloWorldController],
     imports: [
         KernelModule.configure({

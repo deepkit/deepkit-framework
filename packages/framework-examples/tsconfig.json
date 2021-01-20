@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "sourceMap": true,
+    "declaration": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2018",
+    "module": "es2020",
+    "esModuleInterop": true,
+    "lib": [
+      "es6",
+      "dom"
+    ],
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@deepkit/framework"
+  },
+  "include": [
+    "./src/**/*.ts"
+  ]
+}

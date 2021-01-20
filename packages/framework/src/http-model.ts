@@ -17,7 +17,15 @@ export class HttpResponse extends ServerResponse {
     }
 }
 
+export type HttpRequestQuery = {[name: string]: string};
+export type HttpRequestResolvedParameters = {[name: string]: any};
+
 export class HttpRequest extends IncomingMessage {
+    /**
+     * A store that can be used to transport data from guards/listeners to ParameterResolvers/controllers.
+     */
+    public store: {[name: string]: any} = {};
+
     getUrl(): string {
         return this.url || '/';
     }

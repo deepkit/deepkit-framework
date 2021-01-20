@@ -13,10 +13,9 @@ import { httpClass } from './decorator';
 import { EventDispatcher } from './event';
 import { Module, ModuleOptions } from './module';
 import { ConfiguredProviderRegistry, Injector, tokenLabel } from './injector/injector';
-import { ProviderWithScope } from './injector/provider';
+import { ProviderWithScope, Tag } from './injector/provider';
 import { rpcClass } from '@deepkit/rpc';
 import { cli } from './command';
-import { HttpControllers } from './router';
 import { InjectorContext, Context, ContextRegistry } from './injector/injector';
 import { WorkflowDefinition } from './workflow';
 
@@ -44,6 +43,15 @@ export class RpcControllers {
     }
 }
 
+export class HttpControllers {
+    constructor(public readonly controllers: ClassType[]) {
+    }
+
+    public add(controller: ClassType) {
+        this.controllers.push(controller);
+    }
+}
+
 export class CliControllers {
     public readonly controllers = new Map<string, ClassType>();
 }
@@ -65,6 +73,16 @@ export class WorkflowRegistry {
     }
 }
 
+export class TagProviders {
+    constructor(
+        public tags: Tag<any>[] = []
+    ) { }
+
+    getProviders<T extends ClassType<Tag<any>>>(tag: T): InstanceType<T>[] {
+        return this.tags.filter(v => v instanceof tag) as any;
+    }
+}
+
 export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>> {
     public readonly cliControllers = new CliControllers;
     public readonly rpcControllers = new RpcControllers;
@@ -80,6 +98,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     protected rootContext?: Context;
     protected moduleContexts = new Map<Module<ModuleOptions<any>>, Context[]>();
     protected moduleIdContexts = new Map<number, Context[]>();
+    protected tagProviders = new TagProviders([]);
 
     public readonly appModule: Module<C>;
 
@@ -105,6 +124,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         providers.push({ provide: CliControllers, useValue: this.cliControllers });
         providers.push({ provide: RpcControllers, useValue: this.rpcControllers });
         providers.push({ provide: InjectorContext, useValue: this.rootInjectorContext });
+        providers.push({ provide: TagProviders, useValue: this.tagProviders });
 
         this.rootContext = this.processModule(appModule, undefined, providers, imports);
         return appModule;
@@ -266,7 +286,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         for (const token of exports) {
             if (token instanceof Module) throw new Error('Should already be handled');
 
-            const provider = providers.findIndex(v => token === (isClass(v) ? v : v.provide));
+            const provider = providers.findIndex(v => !(v instanceof Tag) ? token === (isClass(v) ? v : v.provide) : false);
             if (provider === -1) {
                 throw new Error(`Export ${tokenLabel(token)}, but not provided in providers.`);
             }
@@ -275,6 +295,12 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         }
 
         context.providers.push(...providers);
+
+        for (const provider of providers) {
+            if (provider instanceof Tag) {
+                this.tagProviders.tags.push(provider);
+            }
+        }
 
         return context;
     }

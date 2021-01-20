@@ -21,8 +21,8 @@ import { HttpRequest, HttpResponse } from './http-model';
 import { inject, injectable, InjectorContext, MemoryInjector } from './injector/injector';
 import { kernelConfig } from './kernel.config';
 import { Logger } from './logger';
-import { RouteConfig, Router } from './router';
-import { isElementStruct, render } from './template/template';
+import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
+import { ElementStruct, isElementStruct, render } from './template/template';
 import { createWorkflow, WorkflowEvent } from './workflow';
 import { Zone } from './zone';
 
@@ -75,6 +75,9 @@ export class HttpNotFoundError extends HttpError(404, 'Not found') {
 export class HttpBadRequestError extends HttpError(400, 'Bad request') {
 }
 
+export class HttpAccessDeniedError extends HttpError(403, 'Access denied') {
+}
+
 export class HttpWorkflowEvent {
     stopped = false;
 
@@ -88,6 +91,11 @@ export class HttpWorkflowEvent {
 
     public nextState?: any;
     public nextStateEvent?: any;
+
+    clearNext() {
+        this.nextState = undefined;
+        this.nextStateEvent = undefined;
+    }
 
     /**
      * @see WorkflowNextEvent.next
@@ -118,9 +126,13 @@ export class HttpWorkflowEvent {
     get sent() {
         return this.response.headersSent;
     }
+
+    send(response: any) {
+        this.next('response', new HttpResponseEvent(this.injectorContext, this.request, this.response, response));
+    }
 }
+
 export const HttpRequestEvent = HttpWorkflowEvent;
-export const HttpResponseEvent = HttpWorkflowEvent;
 export const HttpRouteNotFoundEvent = HttpWorkflowEvent;
 
 export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
@@ -128,10 +140,13 @@ export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
         public injectorContext: InjectorContext,
         public request: HttpRequest,
         public response: HttpResponse,
-        public parameters: any[] = [],
         public route: RouteConfig,
     ) {
         super(injectorContext, request, response);
+    }
+
+    send(response: any) {
+        this.next('response', new HttpResponseEvent(this.injectorContext, this.request, this.response, response, this.route));
     }
 }
 
@@ -140,16 +155,15 @@ export class HttpRouteEvent extends HttpWorkflowEvent {
         public injectorContext: InjectorContext,
         public request: HttpRequest,
         public response: HttpResponse,
-        public parameters: any[] = [],
+        public parameterResolver?: RouteParameterResolverForInjector,
         public route?: RouteConfig,
     ) {
         super(injectorContext, request, response);
     }
 
-    routeFound(route: RouteConfig, parameters?: any[]) {
+    routeFound(route: RouteConfig, parameterResolver: RouteParameterResolverForInjector) {
         this.route = route;
-        if (parameters) this.parameters = parameters;
-        this.next('auth', new HttpAuthEvent(this.injectorContext, this.request, this.response, this.parameters, this.route));
+        this.next('auth', new HttpAuthEvent(this.injectorContext, this.request, this.response, this.route, parameterResolver));
     }
 
     notFound() {
@@ -158,46 +172,83 @@ export class HttpRouteEvent extends HttpWorkflowEvent {
 }
 
 export class HttpAuthEvent extends HttpWorkflowEventWithRoute {
-    accessDenied = false;
-}
-
-export class HttpAccessDeniedEvent extends HttpWorkflowEventWithRoute {
-    accessDenied = false;
-}
-
-export class HttpControllerEvent extends HttpWorkflowEventWithRoute {
-    controllerResponse(response: any) {
-        this.next('controllerResponse', new HttpControllerResponseEvent(this.injectorContext, this.request, this.response, this.parameters, this.route, response));
-    }
-
-    controllerError(error: Error) {
-        this.next('controllerError', new HttpControllerErrorEvent(this.injectorContext, this.request, this.response, this.parameters, this.route, error));
-    }
-}
-
-export class HttpControllerResponseEvent extends WorkflowEvent {
     constructor(
         public injectorContext: InjectorContext,
         public request: HttpRequest,
         public response: HttpResponse,
-        public parameters: any[],
         public route: RouteConfig,
+        public parameterResolver: RouteParameterResolverForInjector,
+    ) {
+        super(injectorContext, request, response, route);
+    }
+
+    success() {
+        this.next('resolveParameters', new HttpResolveParametersEvent(this.injectorContext, this.request, this.response, this.parameterResolver, this.route));
+    }
+
+    accessDenied() {
+        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route));
+    }
+}
+
+export class HttpAccessDeniedEvent extends HttpWorkflowEvent {
+    constructor(
+        public injectorContext: InjectorContext,
+        public request: HttpRequest,
+        public response: HttpResponse,
+        public route: RouteConfig,
+    ) {
+        super(injectorContext, request, response);
+    }
+}
+
+export class HttpResolveParametersEvent extends HttpWorkflowEvent {
+    public parameters: any[] = [];
+
+    constructor(
+        public injectorContext: InjectorContext,
+        public request: HttpRequest,
+        public response: HttpResponse,
+        public parameterResolver: RouteParameterResolverForInjector,
+        public route: RouteConfig,
+    ) {
+        super(injectorContext, request, response);
+    }
+}
+
+export class HttpControllerEvent extends HttpWorkflowEvent {
+    constructor(
+        public injectorContext: InjectorContext,
+        public request: HttpRequest,
+        public response: HttpResponse,
+        public parameters: any[] = [],
+        public route: RouteConfig,
+    ) {
+        super(injectorContext, request, response);
+    }
+}
+
+export class HttpResponseEvent extends WorkflowEvent {
+    constructor(
+        public injectorContext: InjectorContext,
+        public request: HttpRequest,
+        public response: HttpResponse,
         public result: any,
+        public route?: RouteConfig,
     ) {
         super();
     }
 }
 
-export class HttpControllerErrorEvent extends WorkflowEvent {
+export class HttpControllerErrorEvent extends HttpWorkflowEvent {
     constructor(
         public injectorContext: InjectorContext,
         public request: HttpRequest,
         public response: HttpResponse,
-        public parameters: any[],
         public route: RouteConfig,
         public error: Error,
     ) {
-        super();
+        super(injectorContext, request, response);
     }
 }
 
@@ -207,30 +258,30 @@ export const httpWorkflow = createWorkflow('http', {
     route: HttpRouteEvent,
     routeNotFound: HttpRouteNotFoundEvent,
     auth: HttpAuthEvent,
+    resolveParameters: HttpResolveParametersEvent,
     accessDenied: HttpAccessDeniedEvent,
     controller: HttpControllerEvent,
-    controllerResponse: HttpControllerResponseEvent,
     controllerError: HttpControllerErrorEvent,
     response: HttpResponseEvent,
 }, {
     start: 'request',
     request: 'route',
     route: ['auth', 'routeNotFound'],
-    auth: ['controller', 'accessDenied'],
-    controller: ['accessDenied', 'controllerResponse', 'controllerError'],
+    auth: ['resolveParameters', 'accessDenied'],
+    resolveParameters: 'controller',
+    controller: ['accessDenied', 'controllerError', 'response'],
     accessDenied: 'response',
-    controllerResponse: 'response',
     controllerError: 'response',
     routeNotFound: 'response',
 });
 
 export class HtmlResponse {
-    constructor(public html: string) {
+    constructor(public html: string, public statusCode?: number) {
     }
 }
 
 export class JSONResponse {
-    constructor(public json: any) {
+    constructor(public json: any, public statusCode?: number) {
     }
 }
 
@@ -250,7 +301,7 @@ export function serveStaticListener(path: string): ClassType {
             });
         }
 
-        @eventDispatcher.listen(httpWorkflow.onRoute, 1) //after default route listener at 0.5
+        @eventDispatcher.listen(httpWorkflow.onRoute, 101) //after default route listener at 100
         onRoute(event: typeof httpWorkflow.onRoute.event) {
             if (event.sent) return;
             if (event.route) return;
@@ -261,8 +312,8 @@ export function serveStaticListener(path: string): ClassType {
                 stat(localPath, (err, stat) => {
                     if (stat && stat.isFile()) {
                         event.routeFound(
-                            new RouteConfig('angular', 'GET', event.url, { controller: HttpRequestStaticServingListener, methodName: 'serve' }),
-                            [path, event.request, event.response]
+                            new RouteConfig('static', 'GET', event.url, { controller: HttpRequestStaticServingListener, methodName: 'serve' }),
+                            () => [path, event.request, event.response]
                         );
                     }
                     resolve(undefined);
@@ -283,72 +334,99 @@ export class HttpListener {
     ) {
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRoute)
-    async onRoute(event: typeof httpWorkflow.onRoute.event) {
-        if (event.response.finished) return;
+    @eventDispatcher.listen(httpWorkflow.onRequest, 100)
+    onRequest(event: typeof httpWorkflow.onRequest.event): void {
+        if (event.sent) return;
+        if (event.hasNext()) return;
+
+        event.next('route', new HttpRouteEvent(event.injectorContext, event.request, event.response,));
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onRoute, 100)
+    onRoute(event: typeof httpWorkflow.onRoute.event) {
+        if (event.sent) return;
         if (event.hasNext()) return;
 
         const resolved = this.router.resolveRequest(event.request);
-
-        if (!resolved) {
-            event.notFound();
-        } else {
-            event.routeFound(resolved.routeConfig, resolved.parameters ? await resolved.parameters(event.injectorContext) : []);
+        if (resolved) {
+            event.routeFound(resolved.routeConfig, resolved.parameters);
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onRouteNotFound)
+    @eventDispatcher.listen(httpWorkflow.onRoute, 1000)
+    onRouteForward(event: typeof httpWorkflow.onRoute.event) {
+        if (event.sent) return;
+        if (event.hasNext()) return;
+
+        if (!event.route) {
+            event.next('routeNotFound', new HttpRouteNotFoundEvent(event.injectorContext, event.request, event.response));
+        }
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onRouteNotFound, 100)
     async routeNotFound(event: typeof httpWorkflow.onRouteNotFound.event): Promise<void> {
-        if (event.response.finished) return;
-        event.response.writeHead(404);
-        event.response.end('Not found.');
-        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
+        if (event.sent) return;
+        if (event.hasNext()) return;
+
+        event.send(new HtmlResponse('Not found', 404));
     }
 
-    @eventDispatcher.listen(httpWorkflow.onAuth)
+    @eventDispatcher.listen(httpWorkflow.onAuth, 100)
     onAuth(event: typeof httpWorkflow.onAuth.event): void {
+        if (event.sent) return;
         if (event.hasNext()) return;
-        if (event.accessDenied) {
-            event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
-        } else {
-            event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
-        }
+
+        event.next('resolveParameters', new HttpResolveParametersEvent(event.injectorContext, event.request, event.response, event.parameterResolver, event.route));
     }
 
-    @eventDispatcher.listen(httpWorkflow.onAccessDenied)
+    @eventDispatcher.listen(httpWorkflow.onResolveParameters, 100)
+    async onResolveParameters(event: typeof httpWorkflow.onResolveParameters.event) {
+        if (event.response.finished) return;
+        // if (event.hasNext()) return;
+
+        event.parameters = await event.parameterResolver(event.injectorContext);
+
+        event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onAccessDenied, 100)
     onAccessDenied(event: typeof httpWorkflow.onAccessDenied.event): void {
+        if (event.sent) return;
         if (event.hasNext()) return;
-        if (event.response.finished) return;
-        event.response.writeHead(403);
-        event.response.end('Access denied');
-        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
+
+        event.send(new HtmlResponse('Access denied', 403));
     }
 
-    @eventDispatcher.listen(httpWorkflow.onController)
+    @eventDispatcher.listen(httpWorkflow.onController, 100)
     async onController(event: typeof httpWorkflow.onController.event) {
+        if (event.sent) return;
         if (event.hasNext()) return;
-        if (event.response.finished) return;
 
         const controllerInstance = event.injectorContext.get(event.route.action.controller);
         try {
             const method = controllerInstance[event.route.action.methodName];
-            event.controllerResponse(await method.apply(controllerInstance, event.parameters));
+            event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response, await method.apply(controllerInstance, event.parameters), event.route));
         } catch (error) {
-            event.controllerError(error);
+            if (error instanceof HttpAccessDeniedError) {
+                event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route));
+            } else {
+                event.next('controllerError', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
+            }
         }
     }
 
-    @eventDispatcher.listen(httpWorkflow.onControllerError)
+    @eventDispatcher.listen(httpWorkflow.onControllerError, 100)
     onControllerError(event: typeof httpWorkflow.onControllerError.event): void {
         if (event.response.finished) return;
+        if (event.sent) return;
+
         this.logger.error('Controller error', event.error);
-        event.response.writeHead(500);
-        event.response.end('Internal error');
-        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
+
+        event.send(new HtmlResponse('Internal error', 500));
     }
 
-    @eventDispatcher.listen(httpWorkflow.onControllerResponse)
-    async onControllerResponse(event: typeof httpWorkflow.onControllerResponse.event) {
+    @eventDispatcher.listen(httpWorkflow.onResponse, 100)
+    async onResponse(event: typeof httpWorkflow.onResponse.event) {
         const response = event.result;
 
         if (response === null || response === undefined) {
@@ -369,6 +447,7 @@ export class HttpListener {
         } else if (response instanceof ServerResponse) {
         } else if (response instanceof HtmlResponse) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
+            if (response.statusCode) event.response.writeHead(response.statusCode);
             event.response.end(response.html);
         } else if (isElementStruct(response)) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -376,22 +455,16 @@ export class HttpListener {
         } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response)));
-        } else if (response instanceof Buffer) {
+        } else if (response instanceof Uint8Array) {
             event.response.end(response);
         } else if (response instanceof JSONResponse) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
+            if (response.statusCode) event.response.writeHead(response.statusCode);
             event.response.end(JSON.stringify(response.json));
         } else {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(response));
         }
-        event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response));
-    }
-
-    @eventDispatcher.listen(httpWorkflow.onRequest)
-    onRequest(event: typeof httpWorkflow.onRequest.event): void {
-        if (event.response.finished) return;
-        event.next('route', new HttpRouteEvent(event.injectorContext, event.request, event.response));
     }
 }
 

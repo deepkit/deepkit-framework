@@ -38,7 +38,7 @@ import { ConsoleTransport, Logger } from './logger';
 import { createModule } from './module';
 import { Router } from './router';
 import { DeepkitRpcSecurity } from './rpc';
-import { SessionStack } from './session';
+import { SessionHandler } from './session';
 import { WebWorkerFactory } from './worker';
 import { Zone } from './zone';
 
@@ -47,7 +47,7 @@ class HttpLogger {
     constructor(private logger: Logger) {
     }
 
-    @eventDispatcher.listen(httpWorkflow.onResponse)
+    @eventDispatcher.listen(httpWorkflow.onResponse, 101) //101 is right after 100 default listener
     onHttpRequest(event: typeof httpWorkflow.onResponse.event) {
         this.logger.log(
             event.request.connection.remoteAddress, '-',
@@ -77,7 +77,7 @@ export const KernelModule = createModule({
         MigrationProvider,
         { provide: LiveDatabase, scope: 'rpc' },
         { provide: HttpListener },
-        { provide: SessionStack, scope: 'http' },
+        { provide: SessionHandler, scope: 'http' },
         { provide: HttpRequestDebugCollector, scope: 'http' },
     ],
     workflows: [
@@ -104,7 +104,7 @@ export const KernelModule = createModule({
     ],
 }).setup((module, config) => {
     if (config.databases) {
-        module.options.providers.push(...config.databases);
+        module.addProvider(...config.databases)
     }
 
     if (config.httpLog) {
