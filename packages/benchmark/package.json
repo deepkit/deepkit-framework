@@ -5,7 +5,7 @@
   "sideEffects": false,
   "private": true,
   "scripts": {
-    "benchmark": "node index.ts",
+    "benchmark": "../../node_modules/.bin/ts-node index.ts",
     "setup": "sh setup.sh"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
@@ -19,6 +19,9 @@
     "@deepkit/mongo": "^1.0.1-alpha.0",
     "@deepkit/orm": "^1.0.1-alpha.0",
     "@deepkit/sql": "^1.0.1-alpha.0",
+    "@deepkit/sqlite": "^1.0.1-alpha.0",
+    "@deepkit/mysql": "^1.0.1-alpha.0",
+    "@deepkit/postgres": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
     "@deepkit/rpc": "^1.0.1-alpha.0",
     "@mikro-orm/mongodb": "^4.1.0",

@@ -17,7 +17,9 @@ import {
     HttpControllers,
     HttpKernel,
     HttpListener,
+    HttpRequest,
     HttpRequestEvent,
+    HttpResponse,
     HttpWorkflowEventWithRoute,
     InjectorContext,
     KernelModule,
@@ -66,12 +68,12 @@ export async function main() {
     // dispatcher.registerListener(HttpListener);
     // const httpKernel = new HttpKernel(router, dispatcher, context, logger);
 
-    const request = new (class extends IncomingMessage {
+    const request = new (class extends HttpRequest {
         url = '/';
         method = 'GET';
     })(new Socket());
 
-    const res = new ServerResponse(request);
+    const res = new HttpResponse(request);
     await httpKernel.handleRequest(request, res);
 
     // class MyClass {
@@ -120,7 +122,7 @@ export async function main() {
     // bench.run();
 
     bench.addAsync('http', async () => {
-        const res = new ServerResponse(request);
+        const res = new HttpResponse(request);
         await httpKernel.handleRequest(request, res);
     });
 

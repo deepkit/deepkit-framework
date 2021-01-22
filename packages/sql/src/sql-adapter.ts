@@ -345,6 +345,8 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     /**
      * Creates (and re-creates already existing) tables in the database.
      * This is only for testing purposes useful.
+     *
+     * WARNING: THIS DELETES ALL AFFECTED TABLES AND ITS CONTENT.
      */
     public async createTables(classSchemas: ClassSchema[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();

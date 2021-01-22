@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import bson from 'bson';
 import {
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_BINARY_SUBTYPE_UUID,
@@ -192,7 +191,8 @@ export class BaseParser {
     parseDate() {
         const lowBits = this.eatUInt32();
         const highBits = this.eatUInt32();
-        return new Date(new bson.Long(lowBits, highBits).toNumber());
+
+        return new Date(highBits * TWO_PWR_32_DBL_N + (lowBits >>> 0));
     }
 
     peekUInt32(): number {

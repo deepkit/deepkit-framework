@@ -10,7 +10,6 @@
 
 import { ClassType, CompilerContext, getClassName, isArray, isObject, toFastProperties } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
-import bson from 'bson';
 import { seekElementSize } from './continuation';
 import { isObjectId, isUUID, ObjectId, ObjectIdSymbol, UUID, UUIDSymbol } from './model';
 import {
@@ -588,9 +587,9 @@ export class Writer {
                 this.writeByte(BSONType.DATE);
                 nameWriter();
             }
-            const long = bson.Long.fromNumber(value.valueOf());
-            this.writeUint32(long.getLowBits());
-            this.writeUint32(long.getHighBits());
+
+            this.writeUint32((value.valueOf() % TWO_PWR_32_DBL_N) | 0); //low
+            this.writeUint32((value.valueOf() / TWO_PWR_32_DBL_N) | 0); //high
         } else if (isUUID(value)) {
             if (nameWriter) {
                 this.writeByte(BSONType.BINARY);
@@ -801,7 +800,7 @@ function getPropertySerializerCode(
         }
         `;
     } else if (property.type === 'date') {
-        compiler.context.set('Long', bson.Long);
+        compiler.context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         code = `
         if (${accessor} instanceof Date) {
             writer.writeByte(${BSONType.DATE});
@@ -809,9 +808,9 @@ function getPropertySerializerCode(
             if (!(${accessor} instanceof Date)) {
                 throw new Error(${JSON.stringify(accessor)} + " not a Date object");
             }
-            const long = Long.fromNumber(${accessor}.getTime());
-            writer.writeUint32(long.getLowBits());
-            writer.writeUint32(long.getHighBits());
+            
+            writer.writeUint32((${accessor} % TWO_PWR_32_DBL_N) | 0); //low
+            writer.writeUint32((${accessor} / TWO_PWR_32_DBL_N) | 0); //high
         } else {
             ${undefinedWriter}
         }
@@ -841,7 +840,6 @@ function getPropertySerializerCode(
         }
         `;
     } else if (property.type === 'number') {
-        compiler.context.set('Long', bson.Long);
         compiler.context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         code = `
             if ('bigint' === typeof ${accessor}) {

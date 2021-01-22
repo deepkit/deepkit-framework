@@ -10,7 +10,7 @@ test('mysql custom type', async () => {
         content: t.string,
     }, { name: 'post' });
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' });
+    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
     const [postTable] = adapter.platform.createTables([post]);
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
@@ -38,5 +38,5 @@ const post = t.schema({
 }, { name: 'post' });
 
 test('mysql', async () => {
-    await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' }));
+    await schemaMigrationRoundTrip([user, post], new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW }));
 });

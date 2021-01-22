@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+
       - name: Cache ~/.npm
         uses: actions/cache@v1
         with:
@@ -48,6 +49,7 @@ jobs:
       - uses: harmon758/postgresql-action@v1
         with:
           postgresql version: '10'
+          postgresql db: postgres
 
       - name: Test
         run: npm run test

@@ -76,6 +76,11 @@ class HelloWorldController {
         return await this.database.query(User).find();
     }
 
+    @http.GET('/benchmark')
+    benchmark() {
+        return 'hi';
+    }
+
     @http.POST('/add').description('Adds a new user')
     async add(@http.body() body: AddUserDto, bodyValidation: BodyValidation) {
         if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')} />;
@@ -101,7 +106,7 @@ Application.create({
     controllers: [HelloWorldController],
     imports: [
         KernelModule.configure({
-            workers: 1, debug: true, publicDir: 'public', httpLog: true,
+            workers: 1, debug: false, publicDir: 'public', httpLog: false,
             databases: [SQLiteDatabase], migrateOnStartup: true
         }),
     ]

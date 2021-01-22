@@ -22,7 +22,6 @@
   "include": [
     "src",
     "model.ts",
-    "index2.ts",
     "index.ts"
   ],
   "references": [
