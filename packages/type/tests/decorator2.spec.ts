@@ -263,7 +263,7 @@ test('test invalid @f', () => {
             // @ts-ignore
             notDefined;
         }
-    }).toThrowError('User1::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
+    }).toThrowError('User1::notDefined type mismatch. Given any?, but declared is Object or undefined.');
 
     expect(() => {
         // @ts-ignore
@@ -275,14 +275,14 @@ test('test invalid @f', () => {
             // @ts-ignore
             notDefined;
         }
-    }).toThrowError('User2::notDefined type mismatch. Given undefined, but declared is Object or undefined.');
+    }).toThrowError('User2::notDefined type mismatch. Given any?, but declared is Object or undefined.');
 
     expect(() => {
         class User3 {
             @t
             created = new Date;
         }
-    }).toThrowError('User3::created type mismatch. Given undefined, but declared is Object or undefined.');
+    }).toThrowError('User3::created type mismatch. Given any?, but declared is Object or undefined.');
 
     expect(() => {
         class User4 {
