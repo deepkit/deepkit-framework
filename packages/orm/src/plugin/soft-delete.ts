@@ -11,7 +11,8 @@
 import { AsyncEventSubscription, ClassType } from "@deepkit/core";
 import { ClassSchema, getClassSchema } from "@deepkit/type";
 import { DatabaseSession } from "../database-session";
-import { Database, DatabaseAdapter } from "../database";
+import { Database } from "../database";
+import { DatabaseAdapter } from "../database-adapter";
 import { Query } from "../query";
 import { Entity } from "../type";
 

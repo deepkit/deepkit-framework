@@ -12,7 +12,7 @@ import { DatabaseSession } from './database-session';
 import { DatabaseQueryModel, Query, GenericQueryResolver } from './query';
 import { ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySchema } from '@deepkit/type';
 import { ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { Changes } from './changes';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { findQueryList } from './utils';

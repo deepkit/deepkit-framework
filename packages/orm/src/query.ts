@@ -13,7 +13,7 @@ import { ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields
 import { Subject } from 'rxjs';
 import { Changes, ChangesInterface } from './changes';
 import { getSimplePrimaryKeyHashGenerator } from './converter';
-import { DatabaseAdapter } from './database';
+import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
 import { DeleteResult, Entity, PatchResult } from './type';

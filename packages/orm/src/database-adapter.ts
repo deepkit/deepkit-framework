@@ -1,0 +1,61 @@
+/*
+ * Deepkit Framework
+ * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
+import { Entity } from "./type";
+import { ClassType } from "@deepkit/core";
+import { ClassSchema, PrimaryKeyFields } from "@deepkit/type";
+import { Query } from "./query";
+import { ItemChanges } from "./changes";
+import { DatabaseSession } from "./database-session";
+
+export abstract class DatabaseAdapterQueryFactory {
+    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): Query<T>;
+}
+
+export interface DatabasePersistenceChangeSet<T> {
+    changes: ItemChanges<T>;
+    item: T;
+    primaryKey: PrimaryKeyFields<T>;
+}
+
+export abstract class DatabasePersistence {
+    abstract remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+
+    abstract insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+
+    abstract update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
+
+    /**
+     * When DatabasePersistence instance is not used anymore, this function will be called.
+     * Good place to release a connection for example.
+     */
+    abstract release(): void;
+}
+
+/**
+ * A generic database adapter you can use if the API of `Query` is sufficient.
+ *
+ * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
+ */
+export abstract class DatabaseAdapter {
+    abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+
+    abstract createPersistence(): DatabasePersistence;
+
+    abstract disconnect(force?: boolean): void;
+
+    abstract migrate(classSchemas: ClassSchema[]): Promise<void>;
+
+    abstract getName(): string;
+
+    abstract getSchemaName(): string;
+
+    abstract isNativeForeignKeyConstraintSupported(): boolean;
+}

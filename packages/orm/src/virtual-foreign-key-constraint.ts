@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
-import { Database } from './database';
+import type { QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
+import type { ClassSchema, PropertySchema } from '@deepkit/type';
+import type { Database } from './database';
 
 type IncomingReference = { classSchema: ClassSchema, property: PropertySchema };
 

@@ -9,12 +9,12 @@
  */
 
 import { AsyncEmitterEvent, AsyncEventEmitter, ClassType } from '@deepkit/core';
-import { ClassSchema, ExtractPrimaryKeyType } from '@deepkit/type';
-import { Changes } from './changes';
-import { DatabasePersistenceChangeSet } from './database';
-import { DatabaseSession } from './database-session';
-import { Query } from './query';
-import { DeleteResult, PatchResult } from './type';
+import type { ClassSchema, ExtractPrimaryKeyType } from '@deepkit/type';
+import type { Changes } from './changes';
+import type { DatabasePersistenceChangeSet } from './database-adapter';
+import type { DatabaseSession } from './database-session';
+import type { Query } from './query';
+import type { DeleteResult, PatchResult } from './type';
 
 export class UnitOfWorkCommitEvent<T> extends AsyncEmitterEvent {
     constructor(

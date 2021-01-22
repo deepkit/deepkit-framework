@@ -8,18 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CustomError } from '@deepkit/core';
+import { ClassType, CustomError, getClassName } from '@deepkit/core';
 import { Query } from './query';
 import { getDatabaseSessionHydrator, isHydrated } from './formatter';
 import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
 import { DatabaseSession } from './database-session';
-import { isActiveRecordType } from './active-record';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
 import { ItemChanges } from './changes';
 import { Entity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { getNormalizedPrimaryKey } from './identity-map';
 import { getReference } from './reference';
+import { DatabaseAdapter } from './database-adapter';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -31,52 +31,7 @@ export async function hydrateEntity<T>(item: T) {
     throw new Error(`Given object is not a proxy object and thus can not be hydrated, or is already hydrated.`);
 }
 
-export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): Query<T>;
-}
-
 export class DatabaseError extends CustomError {}
-
-export interface DatabasePersistenceChangeSet<T> {
-    changes: ItemChanges<T>;
-    item: T;
-    primaryKey: PrimaryKeyFields<T>;
-}
-
-export abstract class DatabasePersistence {
-    abstract remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
-
-    abstract insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
-
-    abstract update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
-
-    /**
-     * When DatabasePersistence instance is not used anymore, this function will be called.
-     * Good place to release a connection for example.
-     */
-    abstract release(): void;
-}
-
-/**
- * A generic database adapter you can use if the API of `GenericQuery` is sufficient.
- *
- * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
- */
-export abstract class DatabaseAdapter {
-    abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
-
-    abstract createPersistence(): DatabasePersistence;
-
-    abstract disconnect(force?: boolean): void;
-
-    abstract migrate(classSchemas: ClassSchema[]): Promise<void>;
-
-    abstract getName(): string;
-
-    abstract getSchemaName(): string;
-
-    abstract isNativeForeignKeyConstraintSupported(): boolean;
-}
 
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
@@ -234,7 +189,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             this.entities.add(schema);
 
             schema.data['orm.database'] = this;
-            if (isActiveRecordType(entity)) entity.registerDatabase(this);
+            if (isActiveRecordClassType(entity)) entity.registerDatabase(this);
         }
     }
 
@@ -275,5 +230,51 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         const session = this.createSession();
         session.remove(...items);
         await session.commit();
+    }
+}
+
+export interface ActiveRecordClassType {
+    new(...args: any[]): ActiveRecord;
+
+    getDatabase(): Database<any>;
+
+    registerDatabase(database: Database<any>): void;
+
+    query(): any;
+}
+
+export function isActiveRecordClassType(entity: any): entity is ActiveRecordClassType {
+    return 'function' === entity.getDatabase || 'function' === entity.registerDatabase || 'function' === entity.query;
+}
+
+export class ActiveRecord {
+    constructor(...args: any[]) { }
+
+    public static getDatabase(): Database<any> {
+        const database = getClassSchema(this).data['orm.database'] as Database<any> | undefined;
+        if (!database) throw new Error(`No database assigned to ${getClassName(this)}. Use Database.registerEntity(${getClassName(this)}) first.`);
+        return database;
+    }
+
+    public static registerDatabase(database: Database<any>): void {
+        getClassSchema(this).data['orm.database'] = database;
+    }
+
+    public async save(): Promise<void> {
+        const db = ((this as any).constructor as ActiveRecordClassType).getDatabase();
+        await db.persist(this);
+    }
+
+    public async remove(): Promise<void> {
+        const db = ((this as any).constructor as ActiveRecordClassType).getDatabase();
+        await db.remove(this);
+    }
+
+    public static query<T extends typeof ActiveRecord>(this: T): Query<InstanceType<T>> {
+        return this.getDatabase().query(this);
+    }
+
+    public static reference<T extends typeof ActiveRecord>(this: T, primaryKey: any | PrimaryKeyFields<InstanceType<T>>): InstanceType<T> {
+        return this.getDatabase().getReference(this, primaryKey) as InstanceType<T>;
     }
 }

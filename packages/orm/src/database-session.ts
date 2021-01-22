@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database';
+import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseValidationError, Entity } from './type';
 import { ClassType, CustomError } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
