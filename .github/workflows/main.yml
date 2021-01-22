@@ -26,8 +26,6 @@ jobs:
       - name: Setup
         run: |
           node --version
-          apt-get update
-          apt-get -y install python3 libpq-dev build-essential
           npm install
 
       - name: Lerna bootstrap
