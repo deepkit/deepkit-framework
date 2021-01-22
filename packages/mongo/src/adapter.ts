@@ -29,7 +29,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         classType: ClassType<T> | ClassSchema<T>
     ): MongoDatabaseQuery<T> {
         const schema = getClassSchema(classType);
-        return new MongoDatabaseQuery(schema, this.databaseSession, new MongoQueryResolver(schema, this.databaseSession));
+        return new MongoDatabaseQuery(schema, this.databaseSession, new MongoQueryResolver(schema, this.databaseSession, this.client));
     }
 }
 

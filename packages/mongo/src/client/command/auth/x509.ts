@@ -10,9 +10,8 @@
 
 import { MongoAuth } from './auth';
 import { BaseResponse, Command } from '../command';
-import { MongoClientConfig } from '../../client';
+import { MongoClientConfig } from '../../config';
 import { t } from '@deepkit/type';
-
 
 class AuthenticateCommand extends t.class({
     authenticate: t.literal(1),

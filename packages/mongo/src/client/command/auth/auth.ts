@@ -8,9 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { MongoClientConfig } from '../../client';
+import { MongoClientConfig } from '../../config';
 import { Command } from '../command';
-
 
 export interface MongoAuth {
     auth(command: Command, config: MongoClientConfig): Promise<void>;

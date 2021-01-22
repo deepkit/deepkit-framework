@@ -8,9 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Changes, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult } from '@deepkit/orm';
+import {
+    Changes,
+    DatabaseAdapter,
+    DatabaseSession,
+    DeleteResult,
+    Entity,
+    Formatter,
+    GenericQueryResolver,
+    PatchResult
+} from '@deepkit/orm';
 import { ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
-import { MongoDatabaseAdapter } from './adapter';
+import { MongoClient } from './client/client';
 import { AggregateCommand } from './client/command/aggregate';
 import { CountCommand } from './client/command/count';
 import { DeleteCommand } from './client/command/delete';
@@ -32,7 +41,15 @@ export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQuery
     });
 }
 
-export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T, MongoDatabaseAdapter, MongoQueryModel<T>> {
+export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T, DatabaseAdapter, MongoQueryModel<T>> {
+    constructor(
+        classSchema: ClassSchema<T>,
+        databaseSession: DatabaseSession<DatabaseAdapter>,
+        protected client: MongoClient,
+    ) {
+        super(classSchema, databaseSession);
+    }
+
     protected countSchema = t.schema({
         count: t.number
     });
@@ -59,11 +76,11 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             pipeline.push({ $project: projection });
             const command = new AggregateCommand(this.classSchema, pipeline);
             command.partial = true;
-            const items = await this.databaseSession.adapter.client.execute(command);
+            const items = await this.client.execute(command);
             return items.map(v => v[primaryKeyName]);
         } else {
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
-            const items = await this.databaseSession.adapter.client.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit));
+            const items = await this.client.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit));
             return items.map(v => v[primaryKeyName]);
         }
     }
@@ -77,7 +94,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         const primaryKeyName = this.classSchema.getPrimaryField().name;
 
         const query = convertClassQueryToMongo(this.classSchema.classType, { [primaryKeyName]: { $in: primaryKeys } } as FilterQuery<T>);
-        await this.databaseSession.adapter.client.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
+        await this.client.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
     }
 
     public async patch(model: MongoQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
@@ -107,7 +124,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             );
             command.returnNew = true;
             command.fields = [primaryKeyName, ...returning];
-            const res = await this.databaseSession.adapter.client.execute(command);
+            const res = await this.client.execute(command);
             patchResult.modified = res.value ? 1 : 0;
 
             if (res.value) {
@@ -120,7 +137,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             return;
         }
 
-        patchResult.modified = await this.databaseSession.adapter.client.execute(new UpdateCommand(this.classSchema, [{
+        patchResult.modified = await this.client.execute(new UpdateCommand(this.classSchema, [{
             q: filter,
             u: u,
             multi: !model.limit
@@ -135,7 +152,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             patchResult.returning[name] = [];
         }
 
-        const items = await this.databaseSession.adapter.client.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit));
+        const items = await this.client.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit));
         for (const item of items) {
             const converted = serializer.partialDeserialize(item);
             patchResult.primaryKeys.push(converted[primaryKeyName]);
@@ -150,10 +167,10 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             const pipeline = this.buildAggregationPipeline(queryModel);
             pipeline.push({ $count: 'count' });
             const command = new AggregateCommand(this.classSchema, pipeline, this.countSchema);
-            const items = await this.databaseSession.adapter.client.execute(command);
+            const items = await this.client.execute(command);
             return items.length ? items[0].count : 0;
         } else {
-            return await this.databaseSession.adapter.client.execute(new CountCommand(
+            return await this.client.execute(new CountCommand(
                 this.classSchema,
                 getMongoFilter(this.classSchema, queryModel),
                 queryModel.limit,
@@ -168,13 +185,13 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             pipeline.push({ $limit: 1 });
             const command = new AggregateCommand(this.classSchema, pipeline);
             command.partial = model.isPartial();
-            const items = await this.databaseSession.adapter.client.execute(command);
+            const items = await this.client.execute(command);
             if (items.length) {
                 const formatter = this.createFormatter(model.withIdentityMap);
                 return formatter.hydrate(model, items[0]);
             }
         } else {
-            const items = await this.databaseSession.adapter.client.execute(new FindCommand(
+            const items = await this.client.execute(new FindCommand(
                 this.classSchema,
                 getMongoFilter(this.classSchema, model),
                 this.getProjection(this.classSchema, model.select),
@@ -209,14 +226,14 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
             const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
             command.partial = model.isPartial();
-            const items = await this.databaseSession.adapter.client.execute(command);
+            const items = await this.client.execute(command);
             if (model.isAggregate()) {
                 return items;
             }
 
             return items.map(v => formatter.hydrate(model, v));
         } else {
-            const items = await this.databaseSession.adapter.client.execute(new FindCommand(
+            const items = await this.client.execute(new FindCommand(
                 this.classSchema,
                 getMongoFilter(this.classSchema, model),
                 this.getProjection(this.classSchema, model.select),
@@ -294,7 +311,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
                         pipeline.push({
                             $lookup: {
-                                from: this.databaseSession.adapter.client.resolveCollectionName(viaClassType),
+                                from: this.client.resolveCollectionName(viaClassType),
                                 let: { localField: '$' + join.classSchema.getPrimaryField().name },
                                 pipeline: [
                                     { $match: { $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$localField'] } } }
@@ -317,7 +334,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
                         pipeline.push({
                             $lookup: {
-                                from: this.databaseSession.adapter.client.resolveCollectionName(foreignSchema),
+                                from: this.client.resolveCollectionName(foreignSchema),
                                 let: { localField: '$' + subAs },
                                 pipeline: [
                                     { $match: { $expr: { $in: ['$' + foreignSchema.getPrimaryField().name, '$$localField'] } } }
@@ -329,7 +346,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         //one-to-many
                         pipeline.push({
                             $lookup: {
-                                from: this.databaseSession.adapter.client.resolveCollectionName(foreignSchema),
+                                from: this.client.resolveCollectionName(foreignSchema),
                                 let: { foreign_id: '$' + join.classSchema.getPrimaryField().name },
                                 pipeline: joinPipeline,
                                 as: join.as,
@@ -339,7 +356,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 } else {
                     pipeline.push({
                         $lookup: {
-                            from: this.databaseSession.adapter.client.resolveCollectionName(foreignSchema),
+                            from: this.client.resolveCollectionName(foreignSchema),
                             let: { foreign_id: '$' + join.propertySchema.getForeignKeyName() },
                             pipeline: joinPipeline,
                             as: join.as,

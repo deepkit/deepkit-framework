@@ -1,5 +1,5 @@
 import {expect, test} from '@jest/globals';
-import {MongoClientConfig} from '../../src/client/client';
+import {MongoClientConfig} from '../../src/client/config';
 
 test('connection string basic', async () => {
     {

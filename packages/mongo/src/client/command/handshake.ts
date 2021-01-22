@@ -11,7 +11,7 @@
 import { t } from '@deepkit/type';
 import { Command } from './command';
 import { IsMasterResponse } from './ismaster';
-import { MongoClientConfig } from '../client';
+import { MongoClientConfig } from '../config';
 import { Host, HostType } from '../host';
 import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram';
 import { ClassType } from '@deepkit/core';

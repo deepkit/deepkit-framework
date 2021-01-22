@@ -11,7 +11,7 @@
 import { createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
 import { MongoAuth } from './auth';
 import { t } from '@deepkit/type';
-import { MongoClientConfig } from '../../client';
+import { MongoClientConfig } from '../../config';
 import { BaseResponse, Command } from '../command';
 import { MongoError } from '../../error';
 import saslprep from 'saslprep';

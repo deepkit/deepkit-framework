@@ -8,8 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { MongoConnection } from './connection';
-
 export const enum HostType {
     unknown,
     standalone,
@@ -19,6 +17,10 @@ export const enum HostType {
     arbiter,
     other,
     ghost,
+}
+
+interface ConnectionInterface {
+    close();
 }
 
 export class Host {
@@ -31,7 +33,7 @@ export class Host {
      */
     protected rrt?: number;
 
-    public readonly connections: MongoConnection[] = [];
+    public readonly connections: ConnectionInterface[] = [];
 
     constructor(
         public readonly hostname: string,

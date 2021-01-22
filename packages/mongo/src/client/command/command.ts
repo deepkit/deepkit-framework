@@ -12,7 +12,7 @@ import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type'
 import { asyncOperation, ClassType } from '@deepkit/core';
 import { getBSONDecoder } from '@deepkit/bson';
 import { MongoError } from '../error';
-import { MongoClientConfig } from '../client';
+import { MongoClientConfig } from '../config';
 import { Host } from '../host';
 import bson from 'bson';
 

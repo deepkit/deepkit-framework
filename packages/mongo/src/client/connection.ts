@@ -16,7 +16,7 @@ import { Command } from './command/command';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake';
-import { MongoClientConfig } from './client';
+import { MongoClientConfig } from './config';
 import { MongoError } from './error';
 
 export enum MongoConnectionStatus {
@@ -78,7 +78,7 @@ export class MongoConnectionPool {
         //so we don't need any interval to automatically update it.
         const hosts = await this.config.getHosts();
         for (const host of hosts) {
-            if (host.connections.length) continue;
+            if (host.connections.length > 0) continue;
             this.newConnection(host);
         }
 
