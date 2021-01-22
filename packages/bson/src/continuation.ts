@@ -31,7 +31,7 @@ import {
     BSON_DATA_STRING,
     BSON_DATA_SYMBOL,
     BSON_DATA_TIMESTAMP,
-    BSON_DATA_UNDEFINED
+    BSON_DATA_UNDEFINED, BSONType
 } from './utils';
 
 export function seekElementSize(elementType: number, parser: BaseParser): any {
@@ -90,4 +90,26 @@ export function seekElementSize(elementType: number, parser: BaseParser): any {
         default:
             throw new Error('Unknown BSON type ' + elementType);
     }
+}
+
+export function findValueInObject(parser: BaseParser, checker: (elementType: BSONType, name: string) => boolean): any {
+    const offset = parser.offset;
+    const end = parser.eatUInt32() + parser.offset;
+
+    while (parser.offset < end) {
+        const elementType = parser.eatByte();
+        if (elementType === 0) break;
+
+        const name = parser.eatObjectPropertyName();
+        if (checker(elementType, name)) {
+            const v = parser.parse(elementType);
+            parser.offset = offset;
+            return v;
+        } else {
+            seekElementSize(elementType, parser);
+        }
+    }
+
+    parser.offset = offset;
+    return undefined;
 }

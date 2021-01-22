@@ -9,18 +9,6 @@
  */
 
 import { CompilerContext } from '@deepkit/core';
-import { BaseParser } from './bson-parser';
-
-/**
- * This creates a JS string from a utf8 byte buffer. This is the fastest way possible to create
- * small strings (< 14chars). Everything else should be cached or created by Buffer.toString('utf8').
- */
-export function decodeUTF8Parser(parser: BaseParser, size: number = parser.size - parser.offset) {
-    const end = parser.offset + size;
-    let s = decodeUTF8(parser.buffer, parser.offset, end - 1);
-    parser.offset = end;
-    return s;
-}
 
 const decoder = new TextDecoder("utf-8");
 export function decodeUTF8(buffer: Uint8Array, off: number = 0, end: number) {

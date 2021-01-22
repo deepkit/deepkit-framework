@@ -10,7 +10,8 @@
 
 import { isValidEnumValue } from '@deepkit/core';
 import { PropertySchema, typedArrayNamesMap, Types, UnionGuardsTypes } from '@deepkit/type';
-import { BaseParser, findValueInObject } from './bson-parser';
+import { BaseParser } from './bson-parser';
+import { findValueInObject } from './continuation';
 import { BSONType } from './utils';
 
 export type BSONTypeGuard = (elementType: BSONType, parser: BaseParser) => boolean;

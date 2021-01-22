@@ -1,11 +1,12 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import bson from 'bson';
-import { findValueInObject, parseObject, ParserV2 } from '../src/bson-parser';
+import { parseObject, ParserV2 } from '../src/bson-parser';
 import { getClassSchema, t } from '@deepkit/type';
 import { getBSONDecoder } from '../src/bson-jit-parser';
 import { BSONType } from '../src/utils';
 import { getBSONSerializer } from '../src/bson-serialize';
+import { findValueInObject } from '../src/continuation';
 
 const { deserialize, serialize } = bson;
 

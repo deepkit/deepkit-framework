@@ -18,10 +18,20 @@ import {
 } from './utils';
 import { buildStringDecoder, decodeUTF8 } from './strings';
 import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
-import { seekElementSize } from './continuation';
 import { hexTable } from './model';
 
 declare var Buffer: any;
+
+/**
+ * This creates a JS string from a utf8 byte buffer. This is the fastest way possible to create
+ * small strings (< 14chars). Everything else should be cached or created by Buffer.toString('utf8').
+ */
+export function decodeUTF8Parser(parser: BaseParser, size: number = parser.size - parser.offset) {
+    const end = parser.offset + size;
+    let s = decodeUTF8(parser.buffer, parser.offset, end - 1);
+    parser.offset = end;
+    return s;
+}
 
 /**
  * This is the (slowest) base parser which parses all property names as utf8.
@@ -316,28 +326,6 @@ export class ParserV3 extends BaseParser {
         this.offset = end;
         return s;
     }
-}
-
-export function findValueInObject(parser: BaseParser, checker: (elementType: BSONType, name: string) => boolean): any {
-    const offset = parser.offset;
-    const end = parser.eatUInt32() + parser.offset;
-
-    while (parser.offset < end) {
-        const elementType = parser.eatByte();
-        if (elementType === 0) break;
-
-        const name = parser.eatObjectPropertyName();
-        if (checker(elementType, name)) {
-            const v = parser.parse(elementType);
-            parser.offset = offset;
-            return v;
-        } else {
-            seekElementSize(elementType, parser);
-        }
-    }
-
-    parser.offset = offset;
-    return undefined;
 }
 
 export function parseObject(parser: BaseParser): any {
