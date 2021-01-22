@@ -8,7 +8,7 @@ for (const name of packages) {
 
     const packageJsonPath = `${path}/package.json`;
     const tsConfigPath = `${path}/tsconfig.json`;
-    const tsConfigCjsPath = `${path}/tsconfig.cjs.json`;
+    const tsConfigCjsPath = `${path}/tsconfig.esm.json`;
 
     if (!fs.existsSync(packageJsonPath)) throw new Error(`package ${name} has no package.json`);
     if (!fs.existsSync(tsConfigPath)) continue;
@@ -25,12 +25,12 @@ for (const name of packages) {
                 if (fs.existsSync(tsConfigCjsPath)) {
                     const tsConfigCjs = JSON.parse(fs.readFileSync(tsConfigCjsPath, {encoding: 'utf8'}));
                     tsConfigCjs['references'] = tsConfig['references'].map(v => {
-                        return {path: v.path.replace('tsconfig.json', 'tsconfig.cjs.json')}
+                        return {path: v.path.replace('tsconfig.json', 'tsconfig.esm.json')}
                     });
                     fs.writeFileSync(tsConfigCjsPath, JSON.stringify(tsConfigCjs, undefined, 2));
                 }
             } catch (error) {
-                console.log('tsconfig.cjs.json', tsConfigString);
+                console.log('tsconfig.esm.json', tsConfigString);
                 throw error;
             }
 
