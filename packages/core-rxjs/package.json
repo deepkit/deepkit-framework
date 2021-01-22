@@ -2,9 +2,10 @@
   "name": "@deepkit/core-rxjs",
   "version": "1.0.1-alpha.12",
   "description": "Deepkit core rxjs library",
-  "type": "module",
-  "main": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
       "require": "./dist/cjs/index.js",
@@ -19,7 +20,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "scripts": {
-    "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
@@ -30,18 +31,9 @@
     "rxjs": "~6.6.0"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

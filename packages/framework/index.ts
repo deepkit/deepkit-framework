@@ -9,7 +9,7 @@
  */
 
 if ('undefined' === typeof Reflect.decorate) {
-    throw new Error('Reflect.decorate unavailble. Make sure to import `import \'reflect-metadata\';` at the very beginning, before any other imports.');
+    throw new Error('Reflect.decorate unavailable. Make sure to import `import \'reflect-metadata\';` at the very beginning, before any other imports.');
 }
 
 export * from './src/logger';

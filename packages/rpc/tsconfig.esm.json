@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/esm",
+    "module": "ES2020"
+  },
+  "references": [
+    {
+      "path": "../core/tsconfig.esm.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.esm.json"
+    },
+    {
+      "path": "../type/tsconfig.esm.json"
+    },
+    {
+      "path": "../bson/tsconfig.esm.json"
+    },
+    {
+      "path": "../type/tsconfig.esm.json"
+    }
+  ]
+}

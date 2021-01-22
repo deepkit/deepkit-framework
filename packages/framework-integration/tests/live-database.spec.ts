@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { ClassType } from '@deepkit/core';
 import { Application, createModule, createTestingApp as createTestingAppOriginal, DatabaseRegistry, LiveDatabase, Module, ModuleOptions, TestingFascade } from '@deepkit/framework';
 import { Database } from '@deepkit/orm';
@@ -5,7 +6,6 @@ import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 
 export function createTestingApp<O extends ModuleOptions<NAME>, NAME extends string>(optionsOrModule: (O & { name?: NAME } | Module<O>), entities?: (ClassType | ClassSchema)[]): TestingFascade<Application<O>> {
     const module = optionsOrModule instanceof Module ? optionsOrModule : createModule(optionsOrModule);

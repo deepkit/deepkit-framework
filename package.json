@@ -5,9 +5,9 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
-    "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js --no-cache --coverage --forceExit",
+    "test": "node node_modules/jest/bin/jest.js --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
-    "build": "madge packages/*/src/**/*.ts -c && tsc --build tsconfig.json && tsc --build tsconfig.cjs.json && lerna run build",
+    "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
     "clean": "rm -rf packages/*/dist",

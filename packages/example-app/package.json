@@ -3,7 +3,6 @@
   "private": true,
   "version": "1.0.1-alpha.0",
   "description": "",
-  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

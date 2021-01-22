@@ -1,6 +1,7 @@
 /// <reference path="./src/template/elements.d.ts" />
 
 import {Attributes, createElement, Element, html} from './src/template/template';
+export {createElement, html} from './src/template/template';
 import './src/template/optimize-tsx';
 
 export function jsx(element: Element, attributes?: Attributes | string | null) {
@@ -13,4 +14,3 @@ export function jsxs(element: Element, attributes?: Attributes | string | null) 
 
 jsx.createElement = createElement;
 jsx.html = html;
-

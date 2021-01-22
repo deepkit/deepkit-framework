@@ -1,9 +1,10 @@
 {
   "name": "@deepkit/rpc",
   "version": "1.0.1-alpha.12",
-  "type": "module",
-  "main": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
       "require": "./dist/cjs/index.js",
@@ -17,7 +18,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
     "@deepkit/type": "^1.0.1-alpha.0",

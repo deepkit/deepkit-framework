@@ -7,13 +7,13 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2018",
-    "module": "es2020",
+    "module": "CommonJS",
+    "preserveSymlinks": true,
     "esModuleInterop": true,
     "lib": [
       "es6",
       "dom"
     ],
-    "baseUrl": ".",
     "outDir": "./dist",
     "jsx": "react-jsx",
     "jsxImportSource": "@deepkit/framework"

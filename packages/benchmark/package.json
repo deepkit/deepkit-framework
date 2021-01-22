@@ -2,12 +2,10 @@
   "name": "@deepkit/benchmark",
   "version": "1.0.1-alpha.0",
   "description": "Deepkit Benchmarks",
-  "type": "module",
   "sideEffects": false,
   "private": true,
   "scripts": {
-    "benchmark": "node --no-warnings --experimental-vm-modules --experimental-specifier-resolution=node --loader @deepkit/framework/loader index.ts",
-    "benchmark-prof": "node --prof --experimental-vm-modules --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader index.ts",
+    "benchmark": "node index.ts",
     "setup": "sh setup.sh"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",

@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { schemaMigrationRoundTrip } from "@deepkit/sql/dist/esm/tests/setup";
+import { schemaMigrationRoundTrip } from "@deepkit/sql/dist/cjs/tests/setup";
 import { t } from "@deepkit/type";
 import { PostgresDatabaseAdapter } from "../src/postgres-adapter";
 

@@ -2,9 +2,10 @@
   "name": "@deepkit/core",
   "version": "1.0.1-alpha.12",
   "description": "Deepkit core library",
-  "type": "module",
-  "main": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
       "require": "./dist/cjs/index.js",
@@ -26,21 +27,12 @@
     "@types/dot-prop": "~4.2.0"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

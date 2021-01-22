@@ -1,6 +1,6 @@
 import { expect, test } from "@jest/globals";
 import { t } from "@deepkit/type";
-import { schemaMigrationRoundTrip } from "@deepkit/sql/dist/esm/tests/setup";
+import { schemaMigrationRoundTrip } from "@deepkit/sql/dist/cjs/tests/setup";
 import { MySQLDatabaseAdapter } from "../src/mysql-adapter";
 
 test('mysql custom type', async () => {

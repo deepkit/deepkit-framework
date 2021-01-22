@@ -12,7 +12,7 @@ import { getBSONDecoder, getBSONSerializer, getBSONSizer, Writer } from '@deepki
 import { ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getGlobalStore, jsonSerializer } from '@deepkit/type';
 import { rpcChunk, rpcError, RpcTypes } from './model';
-import { SingleProgress } from './writer';
+import type { SingleProgress } from './writer';
 
 export const enum RpcMessageRouteType {
     client = 0,

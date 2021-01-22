@@ -1,18 +1,24 @@
 {
   "name": "@deepkit/framework",
   "version": "1.0.1-alpha.12",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./jsx-runtime": "./dist/jsx-runtime.js",
-    "./loader": "./dist/loader.js"
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./jsx-runtime": {
+      "require": "./dist/cjs/jsx-runtime.js",
+      "default": "./dist/esm,/jsx-runtime.js"
+    }
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "license": "MIT",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "sideEffects": false,
-  "type": "module",
   "publishConfig": {
     "access": "public"
   },

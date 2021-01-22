@@ -35,14 +35,12 @@ export function getClassSchemaInstancePairs<T extends Entity>(items: Iterable<T>
 
 export function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: FilterQuery<T>): boolean {
     //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."
-    //sift can not be correctly imported, so we need to work around it.
-    return (sift as any).default(query as any, [target] as any[]).length > 0;
+    return (sift as any)(query as any, [target] as any[]).length > 0;
 }
 
 export function findQueryList<T extends { [index: string]: any }>(items: T[], query: FilterQuery<T>): T[] {
     //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."
-    //sift can not be correctly imported, so we need to work around it.
-    return (sift as any).default(query as any, items as any[]);
+    return (sift as any)(query as any, items as any[]);
 }
 
 export type Placeholder<T> = () => T;

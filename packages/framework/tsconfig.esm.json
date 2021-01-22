@@ -1,0 +1,39 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/esm",
+    "module": "ES2020"
+  },
+  "references": [
+    {
+      "path": "../broker/tsconfig.esm.json"
+    },
+    {
+      "path": "../rpc/tsconfig.esm.json"
+    },
+    {
+      "path": "../framework-debug-shared/tsconfig.esm.json"
+    },
+    {
+      "path": "../orm/tsconfig.esm.json"
+    },
+    {
+      "path": "../sql/tsconfig.esm.json"
+    },
+    {
+      "path": "../sqlite/tsconfig.esm.json"
+    },
+    {
+      "path": "../core/tsconfig.esm.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.esm.json"
+    },
+    {
+      "path": "../type/tsconfig.esm.json"
+    },
+    {
+      "path": "../mongo/tsconfig.esm.json"
+    }
+  ]
+}

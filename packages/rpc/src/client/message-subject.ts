@@ -11,7 +11,7 @@
 import { asyncOperation, CustomError } from '@deepkit/core';
 import { ClassSchema, ExtractClassType } from '@deepkit/type';
 import { RpcTypes } from '../model';
-import { RpcMessage } from '../protocol';
+import type { RpcMessage } from '../protocol';
 
 export class UnexpectedMessageType extends CustomError {
 }

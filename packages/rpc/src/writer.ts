@@ -11,7 +11,7 @@
 import { BehaviorSubject } from "rxjs";
 import { rpcChunk, RpcTypes } from "./model";
 import { createRpcMessage, readRpcMessage, RpcMessageReader } from "./protocol";
-import { RpcConnectionWriter } from "./server/kernel";
+import type { RpcConnectionWriter } from "./server/kernel";
 
 export class SingleProgress extends BehaviorSubject<number> {
     public done = false;

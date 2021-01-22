@@ -17,7 +17,7 @@ import { Collection, CollectionQueryModel, CollectionState } from '../collection
 import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
 import { ClientProgress } from '../writer';
-import { RpcBaseClient } from './client';
+import type { RpcBaseClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
 
 type ControllerStateActionTypes = {

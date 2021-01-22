@@ -9,7 +9,16 @@
  */
 
 import { addHook } from 'pirates';
-import { CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, UnaryExpression } from 'estree';
+import {
+    CallExpression,
+    Expression,
+    Literal,
+    MemberExpression,
+    ObjectExpression,
+    Property,
+    SpreadElement,
+    UnaryExpression
+} from 'estree';
 import abstractSyntaxTree from 'abstract-syntax-tree';
 import { inDebugMode } from '../utils';
 
@@ -17,7 +26,8 @@ const { parse, generate, replace } = abstractSyntaxTree;
 
 export function transform(code: string, filename: string) {
     if (inDebugMode()) return code;
-    if (code.indexOf('_jsx(') === -1 && code.indexOf('_jsxs(') === -1) return code;
+    //for CommonJs its jsx_runtime_1.jsx, for ESM its _jsx. ESM is handled in loader.ts#transformSource
+    if (code.indexOf('.jsx(') === -1 && code.indexOf('.jsxs(') === -1) return code;
     const optimized = optimizeJSX(code);
     return optimized;
 }
@@ -55,6 +65,14 @@ function optimizeAttributes(node: ObjectExpression): any {
     return { type: 'Literal', value: value.join(' ') };
 }
 
+function isCjsJSXCall(node: any): boolean {
+    return node.type === 'CallExpression' && (node.callee.property?.name === 'jsx' || node.callee.property?.name === 'jsxs');
+}
+
+function isESMJSXCall(node: any): boolean {
+    return node.type === 'CallExpression' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs');
+}
+
 /**
  *
  * We convert
@@ -74,8 +92,10 @@ function optimizeAttributes(node: ObjectExpression): any {
  */
 function optimizeNode(node: Expression): any {
     if (node.type !== 'CallExpression') return node;
-    const isCreateElementExpression = node.callee.type === 'MemberExpression' && node.callee.object.type === 'Identifier' && node.callee.object.name === '_jsx'
-        && node.callee.property.type === 'Identifier' && node.callee.property?.name === 'createElement';
+    if (node.callee.type !== 'MemberExpression') return node;
+    if (node.callee.object.type !== 'Identifier') return node;
+
+    const isCreateElementExpression = node.callee.property.type === 'Identifier' && node.callee.property?.name === 'createElement';
     if (!isCreateElementExpression) return node;
 
     //go deeper if possible
@@ -127,7 +147,9 @@ function optimizeNode(node: Expression): any {
         return {
             type: 'CallExpression', callee: {
                 type: 'MemberExpression',
-                object: { type: 'Identifier', name: '_jsx' }, computed: false, property: { type: 'Identifier', name: 'html' }
+                object: { type: 'Identifier', name: node.callee.object.name },
+                computed: false,
+                property: { type: 'Identifier', name: 'html' }
             }, arguments: [{ type: 'Literal', value: value }]
         };
     }
@@ -140,10 +162,17 @@ function extractLiteralValue(object: Literal | CallExpression) {
 }
 
 function isHtmlCall(object: Expression | SpreadElement) {
-    return object.type === 'CallExpression' && object.callee.type === 'MemberExpression'
+    if (object.type === 'CallExpression' && object.callee.type === 'MemberExpression'
         && object.callee.object.type === 'Identifier' && object.callee.object.name === '_jsx'
         && object.callee.property.type === 'Identifier' && object.callee.property.name === 'html'
-        && object.arguments[0] && object.arguments[0].type === 'Literal';
+        && object.arguments[0] && object.arguments[0].type === 'Literal') return true;
+
+    if (object.type === 'CallExpression' && object.callee.type === 'MemberExpression'
+        && object.callee.object.type === 'Identifier'
+        && object.callee.property.type === 'Identifier' && object.callee.property.name === 'html'
+        && object.arguments[0] && object.arguments[0].type === 'Literal') return true;
+
+    return object.type === 'CallExpression' && object.callee.type === 'Identifier' && object.callee.name === 'html' && object.arguments[0] && object.arguments[0].type === 'Literal';
 }
 
 function extractChildrenFromObjectExpressionProperties(props: Array<Property | SpreadElement>): Expression | undefined {
@@ -176,15 +205,22 @@ function extractChildrenFromObjectExpressionProperties(props: Array<Property | S
  */
 function convertNodeToCreateElement(node: Expression): Expression {
     if (node.type !== 'CallExpression') return node;
+    const isCJS = isCjsJSXCall(node);
+    const isESM = isESMJSXCall(node);
 
-    const isValid = node.callee.type === 'Identifier' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs');
-    if (!isValid) return node;
+    if (!isCJS && !isESM) return node;
 
-    //rewrite to _jsx.createElement
-    node.callee = {
-        type: 'MemberExpression',
-        object: { type: 'Identifier', name: '_jsx' }, computed: false, property: { type: 'Identifier', name: 'createElement' }
-    } as MemberExpression;
+    if (isESM) {
+        //rewrite to _jsx.createElement
+        node.callee = {
+            type: 'MemberExpression',
+            object: { type: 'Identifier', name: '_jsx' },
+            computed: false,
+            property: { type: 'Identifier', name: 'createElement' }
+        } as MemberExpression;
+    } else {
+        if (node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier') node.callee.property.name = 'createElement';
+    }
 
     node.arguments.splice(2); //remove void 0
 
@@ -236,7 +272,7 @@ export function optimizeJSX(code: string): string {
     const tree = parse(code);
 
     replace(tree, (node: any) => {
-        if (node.type === 'CallExpression' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs')) {
+        if (isESMJSXCall(node) || isCjsJSXCall(node)) {
             try {
                 return optimizeNode(convertNodeToCreateElement(node));
             } catch (error) {
@@ -255,7 +291,8 @@ export function convertJsxCodeToCreateElement(code: string): string {
     const tree = parse(code);
 
     replace(tree, (node: any) => {
-        if (node.type === 'CallExpression' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs')) {
+
+        if (isESMJSXCall(node) || isCjsJSXCall(node)) {
             try {
                 return convertNodeToCreateElement(node);
             } catch (error) {

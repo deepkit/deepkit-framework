@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { SQLiteDatabaseAdapter } from '../index';
 import { Entity, plainToClass, t } from '@deepkit/type';
-import { createSetup } from "@deepkit/sql/dist/esm/tests/setup";
+import { createSetup } from "@deepkit/sql/dist/cjs/tests/setup";
 
 test('sqlite basic', async () => {
     const User = t.schema({

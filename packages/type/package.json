@@ -2,9 +2,10 @@
   "name": "@deepkit/type",
   "version": "1.0.1-alpha.12",
   "description": "@deepkit/type, the fastest universal TypeScript serializer and validator with JIT engine for frontend, backend, http-transport, RPC, and database, with built-in validations, for Browser/NodeJS.",
-  "type": "module",
-  "main": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
       "require": "./dist/cjs/index.js",
@@ -16,7 +17,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"commonjs\"}' > ./dist/cjs/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",

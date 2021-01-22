@@ -1,4 +1,4 @@
-#!/usr/bin/env node --no-warnings --experimental-specifier-resolution=node --loader @deepkit/framework/loader
+#!/usr/bin/env ts-node
 import 'reflect-metadata';
 import { entity, sliceClass, t } from '@deepkit/type';
 import { Application, BodyValidation, http, KernelModule, Logger, Redirect } from '@deepkit/framework';

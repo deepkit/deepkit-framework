@@ -479,9 +479,3 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
         }
     }
 }
-
-type JSONObject<T> = Partial<T> & IdInterface;
-
-export class JSONObjectCollection<T extends JSONObject<T>> extends Collection<T> {
-
-}

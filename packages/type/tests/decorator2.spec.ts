@@ -282,7 +282,7 @@ test('test invalid @f', () => {
             @t
             created = new Date;
         }
-    }).toThrowError('User3::created type mismatch. Given any?, but declared is Object or undefined.');
+    }).toThrowError('User3::created type mismatch. Given any, but declared is Object or undefined.');
 
     expect(() => {
         class User4 {

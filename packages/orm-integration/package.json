@@ -2,8 +2,6 @@
   "name": "@deepkit/orm-integration",
   "version": "1.0.1-alpha.0",
   "description": "deepkit/type ORM integration tests",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "sideEffects": false,
   "private": true,
   "repository": "https://github.com/deepkit/deepkit-framework",

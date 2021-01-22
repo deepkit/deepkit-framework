@@ -1,0 +1,41 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/core/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/core-rxjs/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/type/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/bson/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/framework/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/mongo/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/sql/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/mysql/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/postgres/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/sqlite/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/rpc/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/broker/tsconfig.esm.json"
+    }
+  ]
+}

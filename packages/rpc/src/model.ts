@@ -13,7 +13,6 @@ import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, Entity, propertyDefinition, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
-import { CollectionQueryModel, CollectionState } from './collection';
 
 export type IdType = string | number;
 
@@ -413,13 +412,6 @@ export const rpcPeerDeregister = t.schema({
     id: t.string,
 });
 
-export const rpcResponseActionCollectionModel = t.schema({
-    model: t.type(CollectionQueryModel),
-});
-
-export const rpcResponseActionCollectionState = t.schema({
-    state: t.type(CollectionState),
-});
 
 export const rpcResponseActionCollectionRemove = t.schema({
     ids: t.array(t.union(t.string, t.number)),
