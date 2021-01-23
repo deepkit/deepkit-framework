@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/bson",
-  "version": "1.0.1-alpha.12",
+  "version": "1.0.1-alpha.13",
   "description": "Deepkit BSON parser",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -23,14 +23,14 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/crypto": "^1.0.1-alpha.12",
-    "@deepkit/core": "^1.0.1-alpha.12",
-    "@deepkit/type": "^1.0.1-alpha.12"
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13"
   },
   "devDependencies": {
     "@types/bson": "^4.0.3",
-    "bson-ext": "^2.0.5",
     "bson": "^4.0.4",
+    "bson-ext": "^2.0.5",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

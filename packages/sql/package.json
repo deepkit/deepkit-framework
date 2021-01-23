@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.1-alpha.12",
+  "version": "1.0.1-alpha.13",
   "description": "deepkit/orm base SQL",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -23,9 +23,9 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.12",
-    "@deepkit/orm": "^1.0.1-alpha.12",
-    "@deepkit/type": "^1.0.1-alpha.12",
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "sqlstring": "^2.3.2",
     "sqlstring-sqlite": "^0.1.1"
   },
