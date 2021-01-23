@@ -6,7 +6,7 @@ import {IsMasterCommand} from '../../src/client/command/ismaster';
 test('connect invalid', async () => {
     const client = new MongoClient('mongodb://invalid/');
 
-    await expect(client.connect()).rejects.toThrow('getaddrinfo ENOTFOUND invalid');
+    await expect(client.connect()).rejects.toThrow('getaddrinfo');
     client.close();
 });
 
