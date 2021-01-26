@@ -9,9 +9,9 @@
  */
 
 import { arrayRemoveItem } from '@deepkit/core';
-import { createHash } from 'crypto';
 import { PropertySchema } from '@deepkit/type';
 import { inspect } from 'util';
+import { cyrb53 } from '../hash';
 
 export class DatabaseModel {
     public schemaName: string = '';
@@ -211,10 +211,8 @@ export class Index {
         if (!this.name) {
             const hash: string[] = [];
             for (const column of this.columns) hash.push(column.name + '/' + column.size);
-            const md5 = createHash('md5');
-            md5.update(hash.join('|'), 'utf8');
             const prefix = this.isUnique ? 'u' : 'i';
-            return this.table.getName() + '_' + prefix + md5.digest('hex').substr(0, 6);
+            return this.table.getName() + '_' + prefix + cyrb53(hash.join('|'));
         }
 
         return this.name;
@@ -250,9 +248,7 @@ export class ForeignKey {
             const hash: string[] = [];
             for (const column of this.localColumns) hash.push(column.name + '/' + column.size);
             for (const column of this.foreignColumns) hash.push(column.name + '/' + column.size);
-            const md5 = createHash('md5');
-            md5.update(hash.join('|'), 'utf8');
-            return this.table.getName() + '_fk' + md5.digest('hex').substr(0, 6);
+            return this.table.getName() + '_fk' + cyrb53(hash.join('|'));
         }
 
         return this.name;
