@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "benchmark": "../../node_modules/.bin/ts-node index.ts",
+    "benchmark-inspect": "node --inspect-brk --require ts-node/register index.ts",
     "setup": "sh setup.sh"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",

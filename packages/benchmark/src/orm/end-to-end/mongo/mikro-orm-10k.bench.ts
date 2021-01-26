@@ -52,10 +52,15 @@ export async function main() {
                 user.ready = true;
                 user.priority = 5;
                 user.tags = ['a', 'b', 'c'];
-                await orm.em.persist(user);
+                orm.em.persist(user);
             }
 
             await orm.em.flush();
+        });
+
+        await bench.runAsyncFix(10, 'fetch-1', async () => {
+            orm.em.clear();
+            await orm.em.findOne(MikroModel, {id: {$gt: 0}});
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {

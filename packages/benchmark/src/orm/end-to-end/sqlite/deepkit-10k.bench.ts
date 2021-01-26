@@ -53,9 +53,13 @@ export async function main() {
 
             await session.commit();
         });
+        
+        async function doFetch() {
+            await session.query(DeepkitModel).disableIdentityMap().find();            
+        }
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            await session.query(DeepkitModel).disableIdentityMap().find();
+            await doFetch();
         });
 
         const dbItems = await session.query(DeepkitModel).find();

@@ -9,8 +9,7 @@
  */
 
 import 'reflect-metadata';
-import pkg from '@prisma/client';
-const { PrismaClient } = pkg;
+import {PrismaClient} from '@prisma/client';
 import { BenchSuite } from '../../../bench';
 
 const prisma = new PrismaClient();

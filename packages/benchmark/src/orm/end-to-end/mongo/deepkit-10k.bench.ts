@@ -52,34 +52,38 @@ export async function main() {
             await session.commit();
         });
 
+        await bench.runAsyncFix(10, 'fetch-1', async () => {
+            await session.query(Model).disableIdentityMap().findOne();
+        });
+
         await bench.runAsyncFix(10, 'fetch', async () => {
             await session.query(Model).disableIdentityMap().find();
         });
 
-        const dbItems = await session.query(Model).find();
-        for (const item of dbItems) {
-            item.priority++;
-        }
+        // const dbItems = await session.query(Model).find();
+        // for (const item of dbItems) {
+        //     item.priority++;
+        // }
 
-        await bench.runAsyncFix(1, 'update', async () => {
-            await session.commit();
-        });
+        // await bench.runAsyncFix(1, 'update', async () => {
+        //     await session.commit();
+        // });
 
-        await bench.runAsyncFix(1, 'update-query', async () => {
-            await database.query(Model).disableIdentityMap().patchMany({ $inc: { priority: 1 } });
-        });
+        // await bench.runAsyncFix(1, 'update-query', async () => {
+        //     await database.query(Model).disableIdentityMap().patchMany({ $inc: { priority: 1 } });
+        // });
 
-        await bench.runAsyncFix(1, 'remove', async () => {
-            for (const item of dbItems) {
-                session.remove(item);
-            }
+        // await bench.runAsyncFix(1, 'remove', async () => {
+        //     for (const item of dbItems) {
+        //         session.remove(item);
+        //     }
 
-            await session.commit();
-        });
+        //     await session.commit();
+        // });
 
-        await bench.runAsyncFix(1, 'remove-query', async () => {
-            await database.query(Model).deleteMany();
-        });
+        // await bench.runAsyncFix(1, 'remove-query', async () => {
+        //     await database.query(Model).deleteMany();
+        // });
     }
 
     database.disconnect();

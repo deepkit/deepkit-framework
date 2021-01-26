@@ -61,6 +61,10 @@ export async function main() {
             await typeorm.manager.save(TypeOrmModel, items);
         });
 
+        await bench.runAsyncFix(10, 'fetch-1', async () => {
+            const item = await typeorm.manager.find(TypeOrmModel, {take: 1});
+        });
+
         await bench.runAsyncFix(10, 'fetch', async () => {
             const items = await typeorm.manager.find(TypeOrmModel);
         });

@@ -36,7 +36,7 @@ export async function main() {
         for (let i = 1; i <= count; i++) {
             items.push({
                 id: i, name: 'Peter ' + i,
-                ready: true, priority: true,
+                ready: true, priority: 1,
                 tags: ['a', 'b', 'c']
             })
         }
@@ -48,6 +48,10 @@ export async function main() {
         await Model.deleteMany();
         await bench.runAsyncFix(1, 'insert (lean)', async () => {
             await Model.insertMany(items, { lean: true });
+        });
+
+        await bench.runAsyncFix(10, 'fetch-1', async () => {
+            await Model.findOne();
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
