@@ -130,10 +130,10 @@ export interface FieldDecoratorResultBase<T> {
      * 
      * The function is called after all internal serializer/deserialization templates have been applied.
      * 
-     * serializerName is the name of the serialzier. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
+     * serializerName is the name of the serializer. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
      * 
      * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
-     * So it's to use the decorator typesafe via `@t.transform((user: User) => user.id)`.
+     * So use the decorator typesafe via `@t.transform((user: User) => user.id)`.
     */
     transform<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
 
@@ -143,10 +143,10 @@ export interface FieldDecoratorResultBase<T> {
      * 
      * The function is called after all internal serializer templates have been applied.
      * 
-     * serializerName is the name of the serialzier. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
+     * serializerName is the name of the serializer. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
      * 
      * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
-     * So it's to use the decorator typesafe via `@t.transform((user: User) => user.id)`.
+     * So use the decorator typesafe via `@t.transform((user: User) => user.id)`.
     */
     serialize<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
 
@@ -156,10 +156,10 @@ export interface FieldDecoratorResultBase<T> {
      * 
      * The function is called after all internal deserializer templates have been applied.
      * 
-     * serializerName is the name of the serialzier. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
+     * serializerName is the name of the serializer. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
      * 
      * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
-     * So it's to use the decorator typesafe via `@t.transform((user: User) => user.id)`.
+     * So use the decorator typesafe via `@t.transform((user: User) => user.id)`.
     */
     deserialize<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
 
