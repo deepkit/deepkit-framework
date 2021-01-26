@@ -1,7 +1,6 @@
 import { MongoDatabaseQuery } from '@deepkit/mongo';
-import { Database, Query } from '@deepkit/orm';
+import { Query } from '@deepkit/orm';
 import { SQLiteDatabaseQuery } from '@deepkit/sqlite';
-import { MySQLDatabaseQuery } from '@deepkit/mysql';
 import { plainToClass, t } from '@deepkit/type';
 import { test } from '@jest/globals';
 import { createEnvSetup } from './setup';
@@ -27,6 +26,7 @@ test('query aggregate', async () => {
     const query = database.query(product);
 
     expect(await query.withSum('price').find()).toEqual([{price: 999+499+45549}]);
+    expect(await query.groupBy('category').withCount('id', 'amount').orderBy('category').find()).toEqual([{category: 'planets', amount: 1}, {category: 'toys', amount: 2}]);
     expect(await query.groupBy('category').withSum('price').orderBy('category').find()).toEqual([{category: 'planets', price: 45549}, {category: 'toys', price: 999+499}]);
     
     expect(await query.filter({category: 'toys'}).groupBy('category').withSum('price').find()).toEqual([{category: 'toys', price: 999+499}]);

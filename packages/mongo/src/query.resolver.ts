@@ -425,6 +425,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                     group[as] = {$max: '$' + a.property.name};
                 } else if (a.func === 'avg') {
                     group[as] = {$avg: '$' + a.property.name};
+                } else if (a.func === 'count') {
+                    group[as] = {$sum: 1};
                 } else if (a.func === 'group_concat') {
                     group[as] = {$push: '$' + a.property.name};
                 }

@@ -380,7 +380,7 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     public readonly connectionPool: SQLiteConnectionPool;
     public readonly platform = new SQLitePlatform();
 
-    constructor(protected sqlitePath: string) {
+    constructor(protected sqlitePath: string = ':memory:') {
         super();
         this.db = new sqlite3(sqlitePath);
         this.db.exec('PRAGMA foreign_keys=ON');

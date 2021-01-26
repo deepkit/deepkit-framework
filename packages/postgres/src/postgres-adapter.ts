@@ -438,7 +438,7 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
         super();
 
         pg.types.setTypeParser(1700, parseFloat);
-        pg.types.setTypeParser(20, BigInt);
+        pg.types.setTypeParser(20, parseInt);
     }
 
     getName(): string {
