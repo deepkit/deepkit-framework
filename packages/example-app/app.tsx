@@ -31,7 +31,7 @@ class SQLiteDatabase extends Database {
     }
 }
 
-class AddUserDto extends sliceClass(User).exclude('id', 'created') { };
+class AddUserDto extends sliceClass(User).exclude('id', 'created') { }
 
 @injectable()
 class UserList {
