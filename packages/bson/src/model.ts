@@ -35,7 +35,7 @@ export function isObjectId(v: any): v is ObjectId {
     return !!v && v.hasOwnProperty(ObjectIdSymbol);
 }
 
-/** 
+/**
  * Thin wrapper around the native type to allow to serialize it correctly
  * in types like t.any.
 */
@@ -52,10 +52,11 @@ export class ObjectId {
 
         const processUnique = getUnique();
 
-        return hexTable[time & 0xff]
-            + hexTable[(time >> 8) & 0xff]
+        return ''
+            + hexTable[(time >> 24) & 0xff]
             + hexTable[(time >> 16) & 0xff]
-            + hexTable[(time >> 32) & 0xff]
+            + hexTable[(time >> 8) & 0xff]
+            + hexTable[time & 0xff]
 
             + hexTable[processUnique[0]]
             + hexTable[processUnique[1]]
@@ -63,19 +64,19 @@ export class ObjectId {
             + hexTable[processUnique[3]]
             + hexTable[processUnique[4]]
 
-            + hexTable[inc & 0xff]
-            + hexTable[(inc >> 8) & 0xff]
             + hexTable[(inc >> 16) & 0xff]
+            + hexTable[(inc >> 8) & 0xff]
+            + hexTable[inc & 0xff]
             ;
     }
 }
 
-/** 
+/**
  * Thin wrapper around the native type to allow to serialize it correctly
  * in types like t.any.
 */
 export class UUID {
     [UUIDSymbol] = true;
-    
+
     constructor(public id: string) { }
 }

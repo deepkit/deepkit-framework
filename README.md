@@ -4,7 +4,8 @@
 <br/>
 
 [![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/deepkit/deepkit-framework.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/deepkit/deepkit-framework/context:javascript)
-[![Build Status](https://travis-ci.com/deepkit/deepkit-framework.svg?branch=master)](https://travis-ci.com/deepkit/deepkit-framework)
+![CI](https://github.com/deepkit/deepkit-framework/workflows/CI/badge.svg)
+
 
 Deepkit Framework the new high-performance and real-time TypeScript framework for 
 sophisticated isomorphic TypeScript applications.

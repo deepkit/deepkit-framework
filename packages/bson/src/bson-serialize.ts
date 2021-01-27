@@ -294,10 +294,6 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         writeDefaultValue = `size += getValueSize(${JSON.stringify(property.literalValue)});`;
     }
 
-    if (false) { // if (property.omitUndefined) { todo: implement that. 
-        writeDefaultValue = '';
-    }
-
     return `
     if (${accessor} === undefined) {
         ${writeDefaultValue}
@@ -634,17 +630,6 @@ export class Writer {
             }
             this.writeNull();
             this.writeDelayedSize(this.offset - start, start);
-        } else if (value instanceof RegExp) {
-            if (nameWriter) {
-                this.writeByte(BSONType.REGEXP);
-                nameWriter();
-            }
-            this.writeString(value.source);
-            this.writeNull();
-            if (value.ignoreCase) this.writeByte(0x69); // i
-            if (value.global) this.writeByte(0x73); // s
-            if (value.multiline) this.writeByte(0x6d); // m
-            this.writeNull();
         } else if (value === undefined) {
             if (nameWriter) {
                 this.writeByte(BSONType.UNDEFINED);
@@ -959,10 +944,6 @@ function getPropertySerializerCode(
         writeDefaultValue = `writer.write(${JSON.stringify(property.literalValue)}, () => {${nameWriter}});`;
     }
 
-    if (false) { // if (property.omitUndefined) { todo: implement that. 
-        writeDefaultValue = '';
-    }
-
     // Since mongodb does not support undefined as column type (or better it shouldn't be used that way)
     // we transport fields that are `undefined` and isOptional as `null`, and decode this `null` back to `undefined`.
     return `
@@ -1008,10 +989,6 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
                 setDefault = getPropertySerializerCode(schema, compiler, property, JSON.stringify(property.literalValue), jitStack);
             }
         } else if (property.isNullable) {
-            setDefault = `
-                writer.writeByte(${BSONType.NULL});
-                ${getNameWriterCode(property)}
-            `;
             setDefault = getPropertySerializerCode(schema, compiler, property, 'null', jitStack);
         }
 
