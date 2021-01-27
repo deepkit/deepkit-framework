@@ -4,8 +4,8 @@ import { Observable } from 'rxjs';
 import { createServer } from 'http';
 import { DeepkitClient, RemoteController } from '@deepkit/rpc';
 import { Database } from '@deepkit/orm';
-import { MongoDatabaseAdapter } from '@deepkit/mongo';
 import { performance } from 'perf_hooks';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 
 export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -39,7 +39,7 @@ export async function closeAllCreatedServers() {
 }
 
 export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): Module<any> {
-    const database = Database.createClass('default', new MongoDatabaseAdapter('mongodb://localhost'), entities);
+    const database = Database.createClass('default', new SQLiteDatabaseAdapter(), entities);
     return createModule({
         controllers: controllers,
         providers: [
