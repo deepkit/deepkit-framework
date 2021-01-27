@@ -117,7 +117,7 @@ jobs:
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
       - name: Test
-        run: npm run test packages/mysql/
+        run: npm run test packages/sqlite/
 
 
 #  build:
