@@ -73,7 +73,7 @@ jobs:
             packages/type/ \
             packages/type-angular/
       - name: Send coverage
-        run: codecov -f coverage/*.json
+        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-postgres:
     needs:
@@ -116,7 +116,7 @@ jobs:
       - name: Test
         run: npm run test packages/postgres/
       - name: Send coverage
-        run: codecov -f coverage/*.json
+        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-mysql:
     needs:
@@ -159,7 +159,7 @@ jobs:
       - name: Test
         run: npm run test packages/mysql/
       - name: Send coverage
-        run: codecov -f coverage/*.json
+        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-mariadb:
     needs:
@@ -203,7 +203,7 @@ jobs:
       - name: Test
         run: npm run test packages/mysql/
       - name: Send coverage
-        run: codecov -f coverage/*.json
+        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-sqlite:
     needs:
@@ -236,7 +236,7 @@ jobs:
       - name: Test
         run: npm run test packages/sqlite/
       - name: Send coverage
-        run: codecov -f coverage/*.json
+        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-mongo:
     needs:
@@ -276,4 +276,4 @@ jobs:
       - name: Test
         run: npm run test packages/mongo/
       - name: Send coverage
-        run: codecov -f coverage/*.json
+        run: ./node_modules/.bin/codecov -f coverage/*.json
