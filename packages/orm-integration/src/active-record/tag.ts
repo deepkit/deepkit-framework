@@ -1,7 +1,7 @@
 import { entity, t } from '@deepkit/type';
 import { ActiveRecord } from '@deepkit/orm';
 
-@entity.name('tag')
+@entity.name('active-record-tag')
 export class Tag extends ActiveRecord {
     @t.primary.autoIncrement public id?: number;
     @t created: Date = new Date;

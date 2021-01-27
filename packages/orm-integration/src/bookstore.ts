@@ -1,11 +1,11 @@
 import { expect } from '@jest/globals';
 import 'reflect-metadata';
 import { entity, getClassSchema, t, uuid } from '@deepkit/type';
-import { User, UserGroup } from './user';
-import { UserCredentials } from './user-credentials';
+import { User, UserGroup } from './bookstore/user';
+import { UserCredentials } from './bookstore/user-credentials';
 import { atomicChange, getInstanceState } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
-import { Group } from './group';
+import { Group } from './bookstore/group';
 import { DatabaseFactory } from './test';
 
 class BookModeration {

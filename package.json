@@ -5,7 +5,7 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
-    "test": "node node_modules/jest/bin/jest.js --coverage --forceExit",
+    "test": "node --max_old_space_size=2048 node_modules/jest/bin/jest.js --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "tsc": "tsc --build",
