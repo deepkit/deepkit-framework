@@ -158,6 +158,7 @@ jobs:
   orm-mariadb:
     needs:
       - unit-tests
+      - orm-mysql
     runs-on: self-hosted
     strategy:
       matrix:
