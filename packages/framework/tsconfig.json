@@ -64,9 +64,6 @@
     },
     {
       "path": "../type/tsconfig.json"
-    },
-    {
-      "path": "../mongo/tsconfig.json"
     }
   ]
 }
