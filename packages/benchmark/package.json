@@ -44,7 +44,6 @@
     "node-fetch": "^2.6.1",
     "quartet": "^10.1.0",
     "reflect-metadata": "^0.1.13",
-    "sqlite3": "^5.0.0",
     "typeorm": "^0.2.26"
   },
   "devDependencies": {

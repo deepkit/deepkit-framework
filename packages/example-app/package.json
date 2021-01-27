@@ -16,7 +16,6 @@
     "@deepkit/orm": "^1.0.1-alpha.0",
     "@deepkit/sql": "^1.0.1-alpha.0",
     "@deepkit/sqlite": "^1.0.1-alpha.0",
-    "sqlite3": "^5.0.0",
     "buffer": "^5.2.1",
     "rxjs": "~6.6.0",
     "sift": "^7.0.1",

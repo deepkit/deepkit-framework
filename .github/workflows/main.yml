@@ -32,6 +32,9 @@ jobs:
         run: |
           npm run bootstrap -- \
             --ignore @deepkit/mongo \
+            --ignore @deepkit/example-app \
+            --ignore @deepkit/framework-examples \
+            --ignore @deepkit/benchmark \
             --ignore @deepkit/mysql --ignore @deepkit/postgres
       - name: Build
         run: |
@@ -152,7 +155,7 @@ jobs:
     strategy:
       matrix:
         node-version: [ 14.x ]
-        mariadb-version: [ 8.0 ]
+        mariadb-version: [ 10.2 ]
     services:
       mariadb:
         image: "mariadb:${{ matrix.mariadb-version }}"
