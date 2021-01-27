@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  all-tests:
+  unit-tests:
     runs-on: self-hosted
     strategy:
       matrix:
@@ -73,6 +73,8 @@ jobs:
             packages/type-angular/
 
   orm-postgres:
+    needs:
+      - unit-tests
     runs-on: self-hosted
     strategy:
       matrix:
@@ -112,6 +114,8 @@ jobs:
         run: npm run test packages/postgres/
 
   orm-mysql:
+    needs:
+      - unit-tests
     runs-on: self-hosted
     strategy:
       matrix:
@@ -151,6 +155,8 @@ jobs:
         run: npm run test packages/mysql/
 
   orm-mariadb:
+    needs:
+      - unit-tests
     runs-on: self-hosted
     strategy:
       matrix:
@@ -190,6 +196,8 @@ jobs:
         run: npm run test packages/mysql/
 
   orm-sqlite:
+    needs:
+      - unit-tests
     runs-on: self-hosted
     strategy:
       matrix:
@@ -219,6 +227,8 @@ jobs:
         run: npm run test packages/sqlite/
 
   orm-mongo:
+    needs:
+      - unit-tests
     runs-on: self-hosted
     strategy:
       matrix:
