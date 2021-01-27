@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { schemaMigrationRoundTrip } from "@deepkit/sql/dist/cjs/tests/setup";
+import { schemaMigrationRoundTrip } from "@deepkit/sql";
 import { t } from "../../type";
 import { SQLiteDatabaseAdapter } from "../src/sqlite-adapter";
 

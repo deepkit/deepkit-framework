@@ -21,7 +21,7 @@ jobs:
         image: postgres:${{ matrix.postgres-version }}
         env:
           POSTGRES_USER: postgres
-          POSTGRES_DB: db_test
+          POSTGRES_DB: postgres
         ports:
           - "5432:5432"
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
@@ -31,11 +31,11 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache ~/.npm
+      - name: Cache node_modules
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install
       - name: Lerna bootstrap
@@ -71,11 +71,11 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache ~/.npm
+      - name: Cache node_modules
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install
       - name: Lerna bootstrap
@@ -86,6 +86,36 @@ jobs:
             --scope @deepkit/type --scope @deepkit/core
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
+      - name: Test
+        run: npm run test packages/mysql/
+
+
+  orm-sqlite:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        node-version: [ 14.x ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+      - name: npm install
+        run: npm install
+      - name: Lerna bootstrap
+        run: |
+          npm run bootstrap -- \
+            --scope @deepkit/sqlite --scope @deepkit/orm --scope @deepkit/sql \
+            --scope @deepkit/orm-integration --scope @deepkit/topsort \
+            --scope @deepkit/type --scope @deepkit/core
+      - name: Build
+        run: ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
       - name: Test
         run: npm run test packages/mysql/
 

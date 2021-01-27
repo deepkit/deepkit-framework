@@ -1,8 +1,9 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { SQLitePlatform } from '../src/sqlite-platform';
-import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 import { Entity, plainToClass, t } from '@deepkit/type';
+import { databaseFactory } from './factory';
+import { User, UserCredentials } from '@deepkit/orm-integration';
 
 test('tables', () => {
     const [user] = new SQLitePlatform().createTables([User]);
@@ -20,7 +21,7 @@ test('sqlite basic', async () => {
         created: t.date,
     }, { name: 'user' });
 
-    const database = await createSetup(new SQLiteDatabaseAdapter(':memory:'), [User]);
+    const database = await databaseFactory([User]);
 
     const user1 = plainToClass(User, { id: 1, name: 'Yes', created: new Date() });
     const user2 = plainToClass(User, { id: 2, name: 'Wow', created: new Date() });
@@ -55,7 +56,7 @@ test('sqlite basic', async () => {
 });
 
 test('sqlite autoincrement', async () => {
-    @Entity('user')
+    @Entity('sqlite-user')
     class User {
         @t.primary.autoIncrement id?: number;
         @t created: Date = new Date;
@@ -66,7 +67,7 @@ test('sqlite autoincrement', async () => {
         }
     }
 
-    const database = await createSetup(new SQLiteDatabaseAdapter(':memory:'), [User]);
+    const database = await databaseFactory([User]);
     const session = database.createSession();
 
     expect(await session.query(User).count()).toBe(0);
@@ -85,7 +86,7 @@ test('sqlite autoincrement', async () => {
 });
 
 test('sqlite relation', async () => {
-    @Entity('author')
+    @Entity('sqlite-author')
     class Author {
         @t created: Date = new Date;
 
@@ -96,7 +97,7 @@ test('sqlite relation', async () => {
         }
     }
 
-    @Entity('book')
+    @Entity('sqlite-book')
     class Book {
         constructor(
             @t.primary public id: number,
@@ -106,7 +107,7 @@ test('sqlite relation', async () => {
         }
     }
 
-    const database = await createSetup(new SQLiteDatabaseAdapter(':memory:'), [Author, Book]);
+    const database = await databaseFactory([Author, Book]);
     const session = database.createSession();
 
     expect(await session.query(Author).count()).toBe(0);

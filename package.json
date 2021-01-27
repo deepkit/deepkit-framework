@@ -45,7 +45,6 @@
       "packages/core-rxjs",
       "packages/type",
       "packages/orm",
-      "packages/orm-integration",
       "packages/bson",
       "packages/mongo",
       "packages/sql",
