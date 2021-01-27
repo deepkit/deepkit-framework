@@ -154,8 +154,8 @@ jobs:
         node-version: [ 14.x ]
         mariadb-version: [ 8.0 ]
     services:
-      mysql:
-        image: "mariadb:${{ mariadb.mariadb-version }}"
+      mariadb:
+        image: "mariadb:${{ matrix.mariadb-version }}"
         options: >-
           --health-cmd "mysqladmin ping --silent"
           -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
@@ -222,7 +222,7 @@ jobs:
         node-version: [ 14.x ]
         mongo-version: [ 4.0 ]
     services:
-      mysql:
+      mongo:
         image: "mongo:${{ matrix.mongo-version }}"
         ports:
           - "27017:27017"
