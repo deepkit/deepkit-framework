@@ -72,6 +72,8 @@ jobs:
             packages/topsort/ \
             packages/type/ \
             packages/type-angular/
+      - name: Send coverage
+        run: codecov -f coverage/*.json
 
   orm-postgres:
     needs:
@@ -113,6 +115,8 @@ jobs:
         run: ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json
       - name: Test
         run: npm run test packages/postgres/
+      - name: Send coverage
+        run: codecov -f coverage/*.json
 
   orm-mysql:
     needs:
@@ -154,6 +158,8 @@ jobs:
         run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
       - name: Test
         run: npm run test packages/mysql/
+      - name: Send coverage
+        run: codecov -f coverage/*.json
 
   orm-mariadb:
     needs:
@@ -196,6 +202,8 @@ jobs:
         run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
       - name: Test
         run: npm run test packages/mysql/
+      - name: Send coverage
+        run: codecov -f coverage/*.json
 
   orm-sqlite:
     needs:
@@ -227,6 +235,8 @@ jobs:
         run: ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
       - name: Test
         run: npm run test packages/sqlite/
+      - name: Send coverage
+        run: codecov -f coverage/*.json
 
   orm-mongo:
     needs:
@@ -265,3 +275,5 @@ jobs:
         run: ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
       - name: Test
         run: npm run test packages/mongo/
+      - name: Send coverage
+        run: codecov -f coverage/*.json
