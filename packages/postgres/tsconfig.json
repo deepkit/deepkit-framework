@@ -18,10 +18,11 @@
     "composite": true
   },
   "include": [
-    "benchmarks",
     "src",
     "tests",
-    "index.ts"
+    "index.ts",
+    "node_modules/@deepkit/sql/src/**/*.ts",
+    "node_modules/@deepkit/sql/index.ts"
   ],
   "references": [
     {
@@ -35,6 +36,9 @@
     },
     {
       "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../orm-integration/tsconfig.json"
     }
   ]
 }

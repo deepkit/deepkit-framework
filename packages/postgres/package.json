@@ -34,24 +34,16 @@
   "devDependencies": {
     "@types/pg": "^7.14.7",
     "@types/sqlstring": "^2.2.1",
+    "@deepkit/orm-integration": "^1.0.1-alpha.13",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testTimeout": 50000,
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

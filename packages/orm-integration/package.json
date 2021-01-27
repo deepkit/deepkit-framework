@@ -1,40 +1,28 @@
 {
   "name": "@deepkit/orm-integration",
-  "version": "1.0.1-alpha.0",
+  "version": "1.0.1-alpha.13",
   "description": "deepkit/type ORM integration tests",
   "sideEffects": false,
   "private": true,
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
-    "@deepkit/mongo": "^1.0.1-alpha.0",
-    "@deepkit/orm": "^1.0.1-alpha.0",
-    "@deepkit/sql": "^1.0.1-alpha.0",
-    "@deepkit/mysql": "^1.0.1-alpha.0",
-    "@deepkit/postgres": "^1.0.1-alpha.0",
-    "@deepkit/sqlite": "^1.0.1-alpha.0",
-    "better-sqlite3": "^7.1.1",
-    "mariadb": "^2.4.2",
-    "pg": "^8.5.1"
+    "@deepkit/orm": "^1.0.1-alpha.0"
   },
   "devDependencies": {
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

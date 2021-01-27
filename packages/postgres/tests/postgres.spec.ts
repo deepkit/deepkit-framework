@@ -5,6 +5,7 @@ test('count', async () => {
     const pool = new pg.Pool({
         host: 'localhost',
         database: 'postgres',
+        user: 'postgres',
     });
 
     pg.types.setTypeParser(1700, parseFloat);

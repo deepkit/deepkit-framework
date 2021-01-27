@@ -15,7 +15,7 @@ import {
     jsonSerializer,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
-    PropertySchema,
+    PropertySchema, Serializer,
     typedArrayNamesMap,
     typedArrayToBuffer
 } from '@deepkit/type';
@@ -25,7 +25,7 @@ for (let i = 0; i < 256; i++) {
     hexTable[i] = (i <= 15 ? '0' : '') + i.toString(16);
 }
 
-export const sqlSerializer = new class extends jsonSerializer.fork('sql') {
+export const sqlSerializer: Serializer = new class extends jsonSerializer.fork('sql') {
 };
 
 export function uuid4Binary(u: string): Buffer {

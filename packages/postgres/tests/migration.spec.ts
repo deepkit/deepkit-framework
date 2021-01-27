@@ -1,7 +1,7 @@
-import { expect, test } from "@jest/globals";
-import { schemaMigrationRoundTrip } from "@deepkit/sql/dist/cjs/tests/setup";
-import { t } from "@deepkit/type";
-import { PostgresDatabaseAdapter } from "../src/postgres-adapter";
+import { expect, test } from '@jest/globals';
+import { schemaMigrationRoundTrip } from '@deepkit/sql';
+import { t } from '@deepkit/type';
+import { PostgresDatabaseAdapter } from '../src/postgres-adapter';
 
 
 test('postgres custom type', async () => {
@@ -11,7 +11,7 @@ test('postgres custom type', async () => {
         content: t.string.postgres({ type: 'text' }),
     }, { name: 'post' });
 
-    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres' });
+    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres', user: 'postgres' });
     const [postTable] = adapter.platform.createTables([post]);
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
@@ -41,5 +41,5 @@ const post = t.schema({
 }, { name: 'post' });
 
 test('postgres', async () => {
-    await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres' }));
+    await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres', user: 'postgres' }));
 });

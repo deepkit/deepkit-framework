@@ -9,6 +9,8 @@
  */
 
 import {
+    DefaultPlatform,
+    SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
     SQLDatabaseAdapter,
@@ -17,15 +19,13 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement,
-    DefaultPlatform,
-    SqlBuilder
+    SQLStatement
 } from '@deepkit/sql';
 import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
 import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
+import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
-import type { PoolClient, PoolConfig, Pool } from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 
 export class PostgresStatement extends SQLStatement {

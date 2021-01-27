@@ -1,8 +1,17 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { SQLiteDatabaseAdapter } from '../index';
+import { SQLitePlatform } from '../src/sqlite-platform';
+import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 import { Entity, plainToClass, t } from '@deepkit/type';
-import { createSetup } from "@deepkit/sql/dist/cjs/tests/setup";
+
+test('tables', () => {
+    const [user] = new SQLitePlatform().createTables([User]);
+    expect(user.getColumn('birthdate').isNotNull).toBe(false);
+
+    const [userCredentials] = new SQLitePlatform().createTables([UserCredentials, User]);
+    expect(userCredentials.getColumn('user').isPrimaryKey).toBe(true);
+    expect(userCredentials.getColumn('user').type).toBe('integer');
+});
 
 test('sqlite basic', async () => {
     const User = t.schema({
