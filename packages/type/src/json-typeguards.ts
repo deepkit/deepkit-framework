@@ -10,7 +10,7 @@
 
 import { isValidEnumValue } from '@deepkit/core';
 import { PropertySchema } from './model';
-import { typedArrayNamesMap, Types } from './types';
+import { typedArrayNamesMap } from './types';
 import { UnionGuardsTypes } from "./union";
 
 export type JSONTypeGuard = (v: any) => boolean;

@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { getBSONDecoder, getBSONSerializer } from '@deepkit/bson';
 import { asyncOperation, toFastProperties } from '@deepkit/core';
 import { ClassSchema, createClassSchema, getClassSchema, propertyDefinition, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';

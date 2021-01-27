@@ -9,7 +9,7 @@
  */
 
 import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, PropertySchema, t } from '@deepkit/type';
-import { ClassProvider, ExistingProvider, FactoryProvider, getProviders, Provider, ProviderWithScope, ValueProvider } from './provider';
+import { getProviders, Provider, ProviderWithScope } from './provider';
 import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction } from '@deepkit/core';
 import { Module, ModuleOptions } from '../module';
 import { inspect } from 'util';

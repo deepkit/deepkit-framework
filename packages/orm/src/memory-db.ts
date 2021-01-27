@@ -16,7 +16,7 @@ import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, Data
 import { Changes } from './changes';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { findQueryList } from './utils';
-import { convertQueryFilter, replaceQueryFilterParameter } from './query-filter';
+import { convertQueryFilter } from './query-filter';
 import { Formatter } from './formatter';
 
 type SimpleStore<T> = { items: Map<any, T>, autoIncrement: number };

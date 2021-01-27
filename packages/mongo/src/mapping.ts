@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getClassSchema, JSONEntity, jsonSerializer, resolvePropertySchema, TypedArrays, } from '@deepkit/type';
+import { ClassSchema, getClassSchema, jsonSerializer, resolvePropertySchema } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import './mongo-serializer';
 import { mongoSerializer } from './mongo-serializer';

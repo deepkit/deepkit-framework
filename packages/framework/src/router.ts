@@ -23,7 +23,7 @@ import { join } from 'path';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './http-model';
-import { BasicInjector, injectable, InjectorContext } from './injector/injector';
+import { BasicInjector, injectable } from './injector/injector';
 import { NormalizedProvider, Tag } from './injector/provider';
 import { Logger } from './logger';
 import { HttpControllers, TagProviders } from './service-container';

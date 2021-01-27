@@ -77,7 +77,7 @@ export function buildStringDecoder(specializations: number = 10) {
 
     for (let i = 0; i < specializations; i++) {
         // midDecoding.push(`if (codesOffset === ${i + 1}) s += decodeCodes${i + 1}(codes);`)
-        endDecoding.push(`if (codesOffset === ${i + 1}) return s + decodeCodes${i + 1}(codes);`)
+        endDecoding.push(`if (codesOffset === ${i + 1}) return s + decodeCodes${i + 1}(codes);`);
     }
     compiler.context.set('codes', new Uint16Array(specializations));
     compiler.context.set('fns', fns);

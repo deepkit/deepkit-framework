@@ -22,7 +22,7 @@ import { inject, injectable, InjectorContext, MemoryInjector } from './injector/
 import { kernelConfig } from './kernel.config';
 import { Logger } from './logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
-import { ElementStruct, isElementStruct, render } from './template/template';
+import { isElementStruct, render } from './template/template';
 import { createWorkflow, WorkflowEvent } from './workflow';
 import { Zone } from './zone';
 

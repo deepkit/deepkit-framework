@@ -461,20 +461,6 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
 
 export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends ((...args: any[]) => any) ? K : never }[keyof T];
 
-// This can live anywhere in your codebase:
-function applyMixins(derivedCtor: any, constructors: any[]) {
-    constructors.forEach((baseCtor) => {
-        Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
-            Object.defineProperty(
-                derivedCtor.prototype,
-                name,
-                Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
-                Object.create(null)
-            );
-        });
-    });
-}
-
 /**
  * This a generic query abstraction which should supports most basics database interactions.
  *
@@ -511,7 +497,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         const clazz = class extends base { };
 
         let obj: any = query;
-        const wasSet: { [name: string]: true } = {}
+        const wasSet: { [name: string]: true } = {};
         const lifts: any[] = [];
         do {
             if (obj === Query) break;
@@ -524,7 +510,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
                     configurable: true,
                     writable: true,
                     value: obj.prototype[i],
-                })
+                });
                 wasSet[i] = true;
             }
         } while (obj = Object.getPrototypeOf(obj));

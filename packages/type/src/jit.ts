@@ -10,7 +10,7 @@
 
 import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck } from './model';
 import { isExcluded } from './mapper';
-import { ClassType, getClassName, toFastProperties } from '@deepkit/core';
+import { ClassType, toFastProperties } from '@deepkit/core';
 import { getDataConverterJS, reserveVariable } from './serializer-compiler';
 import { Serializer } from './serializer';
 

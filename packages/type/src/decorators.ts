@@ -36,7 +36,7 @@ import {
     PropertyValidator,
     ReferenceActions
 } from './model';
-import { PartialField, PatchField, Types } from './types';
+import { PartialField, Types } from './types';
 import { validators } from './validation-decorator';
 import {
     FieldDecoratorResult,
@@ -46,7 +46,6 @@ import {
     SqliteOptions,
     ValidatorFn
 } from './field-decorator';
-import { Serializer } from './serializer';
 
 export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
 

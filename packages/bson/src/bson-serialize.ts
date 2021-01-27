@@ -8,17 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, getClassName, isArray, isObject, toFastProperties } from '@deepkit/core';
+import { ClassType, CompilerContext, isArray, isObject, toFastProperties } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
 import { seekElementSize } from './continuation';
 import { isObjectId, isUUID, ObjectId, ObjectIdSymbol, UUID, UUIDSymbol } from './model';
-import {
-    BSONType,
-    BSON_BINARY_SUBTYPE_DEFAULT,
-    BSON_BINARY_SUBTYPE_UUID,
-    digitByteSize,
-    TWO_PWR_32_DBL_N
-} from './utils';
+import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 
 export function createBuffer(size: number): Uint8Array {
     return 'undefined' !== typeof Buffer ? Buffer.allocUnsafe(size) : new Uint8Array(size);
@@ -167,13 +161,13 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         if (typeof ${accessor} === 'number' || typeof ${accessor} === 'bigint') {
             size += getValueSize(${accessor});
         }
-        `
+        `;
     } else if (property.type === 'string') {
         code = `
         if (typeof ${accessor} === 'string') {
             size += getValueSize(${accessor});
         }
-        `
+        `;
     } else if (property.type === 'literal') {
         code = `
         if (typeof ${accessor} === 'string' || typeof ${accessor} === 'number' || typeof ${accessor} === 'boolean') {
@@ -187,7 +181,7 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         if (typeof ${accessor} === 'boolean') {
             size += 1;
         }
-        `
+        `;
     } else if (property.type === 'map') {
         compiler.context.set('stringByteLength', stringByteLength);
         const i = compiler.reserveVariable('i');
@@ -521,7 +515,7 @@ export class Writer {
                 this.writeByte(BSONType.REGEXP);
                 nameWriter();
             }
-            this.writeString(value.source)
+            this.writeString(value.source);
             this.writeNull();
             if (value.ignoreCase) this.writeString('i');
             if (value.global) this.writeString('s'); //BSON does not use the RegExp flag format

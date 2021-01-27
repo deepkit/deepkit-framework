@@ -9,14 +9,9 @@
  */
 
 import { ConnectionRequest, MongoConnection, MongoConnectionPool } from './connection';
-import { parse as parseUrl } from 'url';
-import { parse as parseQueryString } from 'querystring';
-import { ClassSchema, getClassSchema, jsonSerializer } from '@deepkit/type';
-import { resolveSrvHosts } from './dns';
-import { Host } from './host';
+import { ClassSchema } from '@deepkit/type';
 import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error';
-import { ConnectionOptions } from './options';
-import { arrayRemoveItem, ClassType, eachPair, singleStack, sleep } from '@deepkit/core';
+import { ClassType, sleep } from '@deepkit/core';
 import { Command } from './command/command';
 import { DropDatabaseCommand } from './command/drop-database';
 import { MongoClientConfig } from './config';

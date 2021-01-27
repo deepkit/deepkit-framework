@@ -61,7 +61,7 @@ export class SqlBuilder {
     protected appendHavingSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName?: string) {
         if (!model.having) return;
 
-        tableName = tableName || this.platform.getTableIdentifier(schema);
+        // tableName = tableName || this.platform.getTableIdentifier(schema);
         const filter = getSqlFilter(schema, model.having, model.parameters, this.platform.serializer);
         const builder = this.platform.createSqlFilterBuilder(schema, '');
         builder.placeholderPosition = sql.params.length;
@@ -328,7 +328,7 @@ export class SqlBuilder {
         const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
 
         if (model.groupBy.size) {
-            const groupBy: string[] = []
+            const groupBy: string[] = [];
             for (const g of model.groupBy.values()) {
                 groupBy.push(this.platform.quoteIdentifier(g));
             }

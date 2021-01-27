@@ -14,7 +14,6 @@ import { getDatabaseSessionHydrator, isHydrated } from './formatter';
 import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
-import { ItemChanges } from './changes';
 import { Entity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { getNormalizedPrimaryKey } from './identity-map';

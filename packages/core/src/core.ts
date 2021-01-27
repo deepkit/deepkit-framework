@@ -9,7 +9,6 @@
  */
 
 import dotProp from 'dot-prop';
-import { join } from 'path';
 import { eachPair } from './iterators';
 
 /**
@@ -144,7 +143,7 @@ export function stringifyValueWithType(value: any): string {
     if ('function' === typeof value) return `Function ${value.name}`;
     if (isPlainObject(value)) return `Object ${prettyPrintObject(value)}`;
     if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${prettyPrintObject(value)}`;
-    if (null === typeof value) return `null`;
+    if (null === value) return `null`;
     return 'undefined';
 }
 

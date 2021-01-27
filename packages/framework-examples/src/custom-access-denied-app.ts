@@ -3,7 +3,7 @@ import {
     Application,
     eventDispatcher,
     HtmlResponse, http,
-    HttpAccessDeniedError, httpWorkflow, Logger
+    HttpAccessDeniedError, httpWorkflow
 } from '@deepkit/framework';
 import 'reflect-metadata';
 

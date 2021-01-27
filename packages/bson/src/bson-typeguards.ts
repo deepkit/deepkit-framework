@@ -9,7 +9,7 @@
  */
 
 import { isValidEnumValue } from '@deepkit/core';
-import { PropertySchema, typedArrayNamesMap, Types, UnionGuardsTypes } from '@deepkit/type';
+import { PropertySchema, typedArrayNamesMap, UnionGuardsTypes } from '@deepkit/type';
 import { BaseParser } from './bson-parser';
 import { findValueInObject } from './continuation';
 import { BSONType } from './utils';

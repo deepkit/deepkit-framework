@@ -10,7 +10,7 @@
 
 import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, stringifyValueWithType, toFastProperties } from '@deepkit/core';
 import { isBehaviorSubject, isSubject } from '@deepkit/core-rxjs';
-import { ClassSchema, createClassSchema, getClassSchema, getClassTypeFromInstance, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
+import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
