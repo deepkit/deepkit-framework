@@ -162,7 +162,7 @@ jobs:
     strategy:
       matrix:
         node-version: [ 14.x ]
-        mariadb-version: [ 10.2 ]
+        mariadb-version: [ 10.5 ]
     services:
       mariadb:
         image: "mariadb:${{ matrix.mariadb-version }}"
