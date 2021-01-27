@@ -10,6 +10,65 @@ on:
 
 jobs:
 
+  all-tests:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        node-version: [ 14.x ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-all-node_modules-${{ hashFiles('**/package-lock.json') }}
+      - name: npm install
+        run: npm install
+      - name: Lerna bootstrap
+        run: |
+          npm run bootstrap -- \
+            --ignore @deepkit/mongo \
+            --ignore @deepkit/mysql --ignore @deepkit/postgres
+      - name: Build
+        run: |
+          ./node_modules/.bin/tsc --build \
+            packages/angular-universal/tsconfig.json \
+            packages/broker/tsconfig.json \
+            packages/bson/tsconfig.json \
+            packages/core/tsconfig.json \
+            packages/core-rxjs/tsconfig.json \
+            packages/crypto/tsconfig.json \
+            packages/framework/tsconfig.json \
+            packages/framework-debug-shared/tsconfig.json \
+            packages/framework-integration/tsconfig.json \
+            packages/rpc/tsconfig.json \
+            packages/orm/tsconfig.json \
+            packages/sql/tsconfig.json \
+            packages/sqlite/tsconfig.json \
+            packages/topsort/tsconfig.json \
+            packages/type/tsconfig.json \
+            packages/type-angular/tsconfig.json
+      - name: Test
+        run: |
+          npm run test \
+            packages/angular-universal/ \
+            packages/broker/ \
+            packages/bson/ \
+            packages/core/ \
+            packages/core-rxjs/ \
+            packages/crypto/ \
+            packages/framework/ \
+            packages/framework-debug-shared/ \
+            packages/framework-integration/ \
+            packages/rpc/ \
+            packages/topsort/ \
+            packages/type/ \
+            packages/type-angular/
+
   orm-postgres:
     runs-on: self-hosted
     strategy:
@@ -35,7 +94,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install
       - name: Lerna bootstrap
@@ -48,7 +107,6 @@ jobs:
         run: ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json
       - name: Test
         run: npm run test packages/postgres/
-
 
   orm-mysql:
     runs-on: self-hosted
@@ -75,7 +133,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install
       - name: Lerna bootstrap
@@ -89,6 +147,44 @@ jobs:
       - name: Test
         run: npm run test packages/mysql/
 
+  orm-mariadb:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        node-version: [ 14.x ]
+        mariadb-version: [ 8.0 ]
+    services:
+      mysql:
+        image: "mariadb:${{ mariadb.mysql-version }}"
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
+          -e MYSQL_DATABASE=default
+        ports:
+          - "3306:3306"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
+      - name: npm install
+        run: npm install
+      - name: Lerna bootstrap
+        run: |
+          npm run bootstrap -- \
+            --scope @deepkit/mysql --scope @deepkit/orm --scope @deepkit/sql \
+            --scope @deepkit/orm-integration --scope @deepkit/topsort \
+            --scope @deepkit/type --scope @deepkit/core
+      - name: Build
+        run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
+      - name: Test
+        run: npm run test packages/mysql/
 
   orm-sqlite:
     runs-on: self-hosted
@@ -105,7 +201,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-sqlite-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install
       - name: Lerna bootstrap
@@ -119,35 +215,38 @@ jobs:
       - name: Test
         run: npm run test packages/sqlite/
 
-
-#  build:
-#    runs-on: [ ubuntu-20.04 ]
-#
-#    steps:
-#      - uses: actions/checkout@v2
-#      - name: Use Node.js ${{ matrix.node-version }}
-#        uses: actions/setup-node@v1
-#        with:
-#          node-version: ${{ matrix.node-version }}
-#
-#      - name: Cache ~/.npm
-#        uses: actions/cache@v1
-#        with:
-#          path: ~/.npm # npm cache files are stored in `~/.npm` on Linux/macOS
-#          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
-#
-#      - name: Setup
-#        run: |
-#          node --version
-#          npm install
-#
-#      - name: Lerna bootstrap
-#        run: npm run bootstrap
-#
-#      - name: Build
-#        run: npm run build
-#
-#      - name: Test
-#        run: npm run test
-#        env:
-#          MYSQL_PW: root
+  orm-mongo:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        node-version: [ 14.x ]
+        mongo-version: [ 4.0 ]
+    services:
+      mysql:
+        image: "mongo:${{ matrix.mongo-version }}"
+        ports:
+          - "27017:27017"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-mongo-node_modules-${{ hashFiles('**/package-lock.json') }}
+      - name: npm install
+        run: npm install
+      - name: Lerna bootstrap
+        run: |
+          npm run bootstrap -- \
+            --scope @deepkit/mongo --scope @deepkit/bson \
+            --scope @deepkit/orm --scope @deepkit/sql \
+            --scope @deepkit/orm-integration --scope @deepkit/topsort \
+            --scope @deepkit/type --scope @deepkit/core
+      - name: Build
+        run: ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
+      - name: Test
+        run: npm run test packages/mongo/

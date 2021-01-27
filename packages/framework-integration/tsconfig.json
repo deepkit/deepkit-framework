@@ -16,8 +16,10 @@
     "declaration": true,
     "composite": true
   },
-  "include": [
-    "tests"
+  "files": [
+    "tests/util.ts",
+    "tests/controller-basic.spec.ts",
+    "tests/live-database.spec.ts"
   ],
   "references": [
     {

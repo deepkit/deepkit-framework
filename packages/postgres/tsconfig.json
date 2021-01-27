@@ -20,9 +20,7 @@
   "include": [
     "src",
     "tests",
-    "index.ts",
-    "node_modules/@deepkit/sql/src/**/*.ts",
-    "node_modules/@deepkit/sql/index.ts"
+    "index.ts"
   ],
   "references": [
     {

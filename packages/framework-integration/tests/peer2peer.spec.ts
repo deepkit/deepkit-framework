@@ -2,10 +2,10 @@ import { afterAll, expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { Entity, f } from '@deepkit/type';
 import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util';
-import { createModule, Session } from '@deepkit/framework';
+import { createModule } from '@deepkit/framework';
 import { Observable } from 'rxjs';
 import { sleep } from '@deepkit/core';
-import { rpc } from '@deepkit/rpc';
+import { rpc, RpcKernelSecurity,  } from '@deepkit/rpc';
 import { fail } from 'assert';
 import { DeepkitRpcSecurity } from '@deepkit/framework';
 import ws from 'ws';
@@ -57,7 +57,7 @@ test('test peer2peer', async () => {
         controllers: [TestController],
         providers: [
             {
-                provide: DeepkitRpcSecurity, useValue: new class extends DeepkitRpcSecurity {
+                provide: DeepkitRpcSecurity, useValue: new class extends RpcKernelSecurity<Session> {
                     async isAllowedToRegisterAsPeer<T>(session: Session | undefined, peerId: string): Promise<boolean> {
                         if (peerId === 'forbiddenToRegister') return false;
                         return true;

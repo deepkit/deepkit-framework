@@ -162,7 +162,7 @@ export class HttpActionDecorator {
      * }
      * ```
     */
-    data(name: string, value) {
+    data(name: string, value: any) {
         this.t.data.set(name, value);
     }
 

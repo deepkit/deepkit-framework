@@ -22,7 +22,8 @@
     "types": [
       "formidable",
       "abstract-syntax-tree",
-      "ts-node/esm"
+      "ts-node/esm",
+      "selfsigned"
     ],
     "jsx": "react-jsx",
     "jsxImportSource": ".."

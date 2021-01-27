@@ -275,10 +275,10 @@ export class Injector {
             if (token.config.hasModule()) {
                 const module = this.injectorContext.getModule(token.config.getModule().getName());
                 const config = module.getConfig();
-                return compiler.reserveVariable(token.name, config[token.name]);
+                return compiler.reserveVariable(token.name, (config as any)[token.name]);
             } else {
                 const config = token.config.getConfigOrDefaults();
-                return compiler.reserveVariable(token.name, config[token.name]);
+                return compiler.reserveVariable(token.name, (config as any)[token.name]);
             }
         } else if (isClass(token) && (Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice || Object.getPrototypeOf(token) === ConfigSlice)) {
             const value: ConfigSlice<any> = new token;
