@@ -46,14 +46,14 @@ export interface GlobalStore {
     enableForwardRefDetection: boolean;
 }
 
-const global: GlobalStore = {
+const globalStore: GlobalStore = {
     RegisteredEntities: {},
     unpopulatedCheck: UnpopulatedCheck.Throw,
     enableForwardRefDetection: true,
 };
 
 export function getGlobalStore(): GlobalStore {
-    return global;
+    return globalStore;
 }
 
 export function resolveClassTypeOrForward(type: ClassType | ForwardRefFn<ClassType>): ClassType {
