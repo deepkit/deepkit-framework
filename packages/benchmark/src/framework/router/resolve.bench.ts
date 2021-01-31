@@ -55,5 +55,5 @@ export async function main() {
         await router.resolve('GET', '/not-available');
     });
 
-    bench.run();
+    await bench.runAsync();
 }

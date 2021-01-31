@@ -11,7 +11,7 @@
 import 'reflect-metadata';
 import { Entity, t } from '@deepkit/type';
 import { atomicChange, Database } from '@deepkit/orm';
-import { MySQLDatabaseAdapter } from '@deepkit/sql';
+import { MySQLDatabaseAdapter } from '@deepkit/mysql';
 import { BenchSuite } from '../../../bench';
 
 @Entity('deepkit')

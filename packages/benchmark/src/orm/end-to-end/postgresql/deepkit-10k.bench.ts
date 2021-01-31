@@ -11,7 +11,7 @@
 import 'reflect-metadata';
 import { Entity, t } from '@deepkit/type';
 import { atomicChange, Database } from '@deepkit/orm';
-import { PostgresDatabaseAdapter } from '@deepkit/sql';
+import { PostgresDatabaseAdapter } from '@deepkit/postgres';
 import { BenchSuite } from '../../../bench';
 
 @Entity('deepkit')
