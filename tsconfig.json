@@ -54,9 +54,6 @@
     },
     {
       "path": "packages/broker/tsconfig.json"
-    },
-    {
-      "path": "packages/network/tsconfig.json"
     }
   ]
 }

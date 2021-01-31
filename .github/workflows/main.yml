@@ -217,7 +217,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-mongo-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-benchmark-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install
       - name: Lerna bootstrap
@@ -282,7 +282,26 @@ jobs:
           --ignore @deepkit/fs \
           --ignore @deepkit/framework-examples
       - name: Build
-        run: ./node_modules/.bin/tsc --build
+      - name: Build
+        run: |
+          ./node_modules/.bin/tsc --build \
+            packages/broker/tsconfig.json \
+            packages/bson/tsconfig.json \
+            packages/core/tsconfig.json \
+            packages/core-rxjs/tsconfig.json \
+            packages/crypto/tsconfig.json \
+            packages/framework/tsconfig.json \
+            packages/framework-debug-shared/tsconfig.json \
+            packages/rpc/tsconfig.json \
+            packages/mongo/tsconfig.json \
+            packages/sqlite/tsconfig.json \
+            packages/mysql/tsconfig.json \
+            packages/postgres/tsconfig.json \
+            packages/orm/tsconfig.json \
+            packages/sql/tsconfig.json \
+            packages/sqlite/tsconfig.json \
+            packages/topsort/tsconfig.json \
+            packages/type/tsconfig.json
       - name: Benchmark setup
         run: cd packages benchmark && . setup.sh
       - name: Benchmark run
