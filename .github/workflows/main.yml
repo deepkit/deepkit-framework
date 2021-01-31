@@ -161,50 +161,6 @@ jobs:
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
-#  orm-mariadb:
-#    needs:
-#      - unit-tests
-#      - orm-mysql
-#    runs-on: self-hosted
-#    strategy:
-#      matrix:
-#        node-version: [ 14.x ]
-#        mariadb-version: [ 10.5 ]
-#    services:
-#      mariadb:
-#        image: "mariadb:${{ matrix.mariadb-version }}"
-#        options: >-
-#          --health-cmd "mysqladmin ping --silent"
-#          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
-#          -e MYSQL_DATABASE=default
-#        ports:
-#          - "3306:3306"
-#    steps:
-#      - uses: actions/checkout@v2
-#      - name: Use Node.js ${{ matrix.node-version }}
-#        uses: actions/setup-node@v1
-#        with:
-#          node-version: ${{ matrix.node-version }}
-#      - name: Cache node_modules
-#        uses: actions/cache@v1
-#        with:
-#          path: "**/node_modules"
-#          key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
-#      - name: npm install
-#        run: npm install
-#      - name: Lerna bootstrap
-#        run: |
-#          npm run bootstrap -- \
-#            --scope @deepkit/mysql --scope @deepkit/orm --scope @deepkit/sql \
-#            --scope @deepkit/orm-integration --scope @deepkit/topsort \
-#            --scope @deepkit/type --scope @deepkit/core
-#      - name: Build
-#        run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
-#      - name: Test
-#        run: npm run test packages/mysql/
-#      - name: Send coverage
-#        run: ./node_modules/.bin/codecov -f coverage/*.json
-
   orm-sqlite:
     needs:
       - unit-tests
@@ -277,3 +233,49 @@ jobs:
         run: npm run test packages/mongo/
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
+
+  benchmark:
+    runs-on: self-hosted
+    needs:
+      - unit-tests
+      - orm-postgres
+      - orm-mysql
+      - orm-sqlite
+      - orm-mongo
+    services:
+      mongo:
+        image: "mongo:4.2"
+        ports:
+          - "27017:27017"
+      mysql:
+        image: "mysql:8.0"
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
+          -e MYSQL_DATABASE=default
+        ports:
+          - "3306:3306"
+      postgres:
+        image: postgres:10.10
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - "5432:5432"
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-all-node_modules-${{ hashFiles('**/package-lock.json') }}
+      - name: npm install
+        run: npm install
+      - name: Lerna bootstrap
+        run:  npm run bootstrap
+      - name: Build
+        run: ./node_modules/.bin/tsc --build
+      - name: Benchmark setup
+        run: cd packages benchmark && . setup.sh
+      - name: Benchmark run
+        run: cd packages benchmark && npm run benchmark

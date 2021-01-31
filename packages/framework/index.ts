@@ -8,10 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-if ('undefined' === typeof Reflect.decorate) {
-    throw new Error('Reflect.decorate unavailable. Make sure to import `import \'reflect-metadata\';` at the very beginning, before any other imports.');
-}
-
 export * from './src/logger';
 export * from './src/session';
 export * from './src/application';

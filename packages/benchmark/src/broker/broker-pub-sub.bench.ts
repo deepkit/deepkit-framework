@@ -9,7 +9,6 @@
  */
 
 import { BrokerDirectClient, BrokerKernel } from "@deepkit/broker";
-import { sleep } from "@deepkit/core";
 import { t } from "@deepkit/type";
 import 'reflect-metadata';
 import { BenchSuite } from "../bench";
