@@ -11,11 +11,11 @@
 import 'reflect-metadata';
 import bson from 'bson';
 const { calculateObjectSize, serialize } = bson;
-import BSON from 'bson-ext';
+// import BSON from 'bson-ext';
 import { BenchSuite } from '../bench';
 import { t } from '@deepkit/type';
 import { createBSONSizer, getBSONSerializer } from '@deepkit/bson';
-const bsonNative = new BSON([BSON.Binary, BSON.Code, BSON.DBRef, BSON.Decimal128, BSON.Double, BSON.Int32, BSON.Long, BSON.Map, BSON.MaxKey, BSON.MinKey, BSON.ObjectId, BSON.BSONRegExp, BSON.Symbol, BSON.Timestamp]);
+// const bsonNative = new BSON([BSON.Binary, BSON.Code, BSON.DBRef, BSON.Decimal128, BSON.Double, BSON.Int32, BSON.Long, BSON.Map, BSON.MaxKey, BSON.MinKey, BSON.ObjectId, BSON.BSONRegExp, BSON.Symbol, BSON.Timestamp]);
 
 export async function main() {
 
@@ -115,9 +115,9 @@ export async function main() {
         serialize(data);
     });
 
-    suite.add('BSON native serialize 10k', () => {
-        bsonNative.serialize(data);
-    });
+    // suite.add('BSON native serialize 10k', () => {
+    //     bsonNative.serialize(data);
+    // });
 
     suite.add('JSON.stringify 10k', () => {
         Buffer.from(JSON.stringify(data), 'utf8');
