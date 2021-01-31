@@ -106,7 +106,7 @@ Application.create({
     controllers: [HelloWorldController],
     imports: [
         KernelModule.configure({
-            workers: 1, debug: false, publicDir: 'public', httpLog: false,
+            workers: 1, debug: true, publicDir: 'public', httpLog: false,
             databases: [SQLiteDatabase], migrateOnStartup: true
         }),
     ]

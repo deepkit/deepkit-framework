@@ -130,6 +130,10 @@
           }
         }
       }
-    }},
-  "defaultProject": "framework-debug-gui"
+    }
+  },
+  "defaultProject": "framework-debug-gui",
+  "cli": {
+    "analytics": "aeadcaa4-36e6-4089-9ac4-f82b806a90da"
+  }
 }

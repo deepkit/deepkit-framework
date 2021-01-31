@@ -26,7 +26,7 @@ test('chunks', async () => {
     kernel.registerController('test', TestController);
 
     const client = new DirectClient(kernel);
-    const test = client.controller<TestController>('test');
+    const controller = client.controller<TestController>('test');
 
     {
         const progress = ClientProgress.track();
@@ -38,7 +38,7 @@ test('chunks', async () => {
             expect(progress.download.progress).toBeLessThanOrEqual(1);
             stats.push(progress.download.current);
         });
-        const file = await test.downloadBig();
+        const file = await controller.downloadBig();
         expect(file.length).toBe(650_000);
         expect(progress.download.done).toBe(true);
         expect(stats).toEqual([
@@ -63,7 +63,7 @@ test('chunks', async () => {
             expect(progress.upload.progress).toBeLessThanOrEqual(1);
             stats.push(progress.upload.current);
         });
-        const size = await test.uploadBig(uploadFile);
+        const size = await controller.uploadBig(uploadFile);
         expect(size).toBe(550_000);
         expect(stats).toEqual([
             100_000,

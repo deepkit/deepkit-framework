@@ -131,7 +131,9 @@ export class RpcMessage {
         if (!this.bodySize) throw new Error('Message has no body');
         if (!this.buffer) throw new Error('No buffer');
         if (this.composite) throw new Error('Composite message can not be read directly');
-        return getBSONDecoder(schema)(this.buffer, this.bodyOffset);
+        if (!schema.jit.bsonEncoder) getBSONDecoder(schema);
+
+        return schema.jit.bsonEncoder(this.buffer, this.bodyOffset);
     }
 
     getBodies(): RpcMessage[] {
@@ -192,9 +194,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
     return new RpcMessage(id, composite, type, routeType, offset, size - offset, buffer);
 }
 
-export function createBuffer(size: number): Uint8Array {
-    return 'undefined' !== typeof Buffer ? Buffer.allocUnsafe(size) : new Uint8Array(size);
-}
+export const createBuffer: (size: number) => Uint8Array = 'undefined' !== typeof Buffer ? Buffer.allocUnsafe : (size) => new Uint8Array(size);
 
 export interface RpcCreateMessageDef<T> {
     type: number;
@@ -284,7 +284,11 @@ export function createRpcMessage<T>(
     schema?: ClassSchema<T>, body?: T,
     routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
 ): Uint8Array {
-    const bodySize = schema && body ? getBSONSizer(schema)(body) : 0;
+    if (schema) {
+        if (!schema.jit.bsonSizer) getBSONSizer(schema);
+        if (!schema.jit.bsonSerializer) getBSONSerializer(schema);
+    }
+    const bodySize = schema && body ? schema.jit.bsonSizer(body) : 0;
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
     const messageSize = 4 + 1 + 4 + 1 + 1 + 1 + bodySize;
 
@@ -297,7 +301,7 @@ export function createRpcMessage<T>(
     writer.writeByte(0); //composite=false
     writer.writeByte(type);
 
-    if (schema && body) getBSONSerializer(schema)(body, writer);
+    if (schema && body) schema.jit.bsonSerializer(body, writer);
 
     return writer.buffer;
 }
@@ -383,6 +387,34 @@ export function createRpcMessageSourceDest<T>(
     return writer.buffer;
 }
 
+export function createRpcMessageSourceDestForBody<T>(
+    id: number, type: number,
+    source: Uint8Array,
+    destination: Uint8Array,
+    body: Uint8Array,
+): Uint8Array {
+    //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
+    const messageSize = 4 + 1 + 4 + 1 + (16 + 16) + 1 + 1 + body.byteLength;
+
+    const writer = new Writer(createBuffer(messageSize));
+    writer.writeUint32(messageSize);
+    writer.writeByte(1); //version
+    writer.writeUint32(id);
+
+    writer.writeByte(RpcMessageRouteType.sourceDest);
+    if (source.byteLength !== 16) throw new Error(`Source invalid byteLength of ${source.byteLength}`);
+    if (destination.byteLength !== 16) throw new Error(`Destination invalid byteLength of ${destination.byteLength}`);
+    writer.writeBuffer(source);
+    writer.writeBuffer(destination);
+
+    writer.writeByte(0); //composite=false
+    writer.writeByte(type);
+
+    writer.writeBuffer(body);
+
+    return writer.buffer;
+}
+
 export class RpcMessageReader {
     protected chunks = new Map<number, { loaded: number, buffers: Uint8Array[] }>();
     protected progress = new Map<number, SingleProgress>();
@@ -403,8 +435,8 @@ export class RpcMessageReader {
         this.progress.set(id, progress);
     }
 
-    public feed(buffer: Uint8Array) {
-        this.bufferReader.feed(buffer);
+    public feed(buffer: Uint8Array, bytes?: number) {
+        this.bufferReader.feed(buffer, bytes);
     }
 
     protected gotMessage(buffer: Uint8Array) {
@@ -447,6 +479,10 @@ export class RpcMessageReader {
     }
 }
 
+export function readUint32LE(buffer: Uint8Array, offset: number = 0): number {
+    return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24)
+}
+
 export class RpcBufferReader {
     protected currentMessage?: Uint8Array;
     protected currentMessageSize: number = 0;
@@ -460,20 +496,25 @@ export class RpcBufferReader {
         return this.currentMessage === undefined;
     }
 
-    public feed(data: Uint8Array) {
+    public feed(data: Uint8Array, bytes?: number) {
         if (!data.byteLength) return;
+        if (!bytes) bytes = data.byteLength;
 
         if (!this.currentMessage) {
-            this.currentMessage = data;
-            this.currentMessageSize = new DataView(data.buffer, this.currentMessage.byteOffset).getUint32(0, true);
+            if (data.byteLength < 4) {
+                //not enough data to read the header. Wait for next onData
+                return;
+            }
+            this.currentMessage = data.byteLength === bytes ? data : data.slice(0, bytes);
+            this.currentMessageSize = readUint32LE(data);
         } else {
-            this.currentMessage = Buffer.concat([this.currentMessage, data]);
+            this.currentMessage = Buffer.concat([this.currentMessage, data.byteLength === bytes ? data : data.slice(0, bytes)]);
             if (!this.currentMessageSize) {
                 if (this.currentMessage.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     return;
                 }
-                this.currentMessageSize = new DataView(this.currentMessage.buffer, this.currentMessage.byteOffset).getUint32(0, true);
+                this.currentMessageSize = readUint32LE(this.currentMessage);
             }
         }
 
@@ -482,7 +523,8 @@ export class RpcBufferReader {
 
         while (currentBuffer) {
             if (currentSize > currentBuffer.byteLength) {
-                this.currentMessage = currentBuffer;
+                //important to save a copy, since the original buffer might change its content
+                this.currentMessage = new Uint8Array(currentBuffer);
                 this.currentMessageSize = currentSize;
                 //message not completely loaded, wait for next onData
                 return;
@@ -500,14 +542,15 @@ export class RpcBufferReader {
                 //we have more messages in this buffer. read what is necessary and hop to next loop iteration
                 const message = currentBuffer.slice(0, currentSize);
                 this.onMessage(message);
+
                 currentBuffer = currentBuffer.slice(currentSize);
                 if (currentBuffer.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     this.currentMessage = currentBuffer;
                     return;
                 }
-                const nextCurrentSize = new DataView(currentBuffer.buffer, currentBuffer.byteOffset, currentBuffer.byteLength).getUint32(0, true);
-                // const nextCurrentSize = new DataView(currentBuffer.buffer, currentBuffer.byteOffset).getUint32(0, true);
+
+                const nextCurrentSize = readUint32LE(currentBuffer);
                 if (nextCurrentSize <= 0) throw new Error('message size wrong');
                 currentSize = nextCurrentSize;
                 //buffer and size has been set. consume this message in the next loop iteration

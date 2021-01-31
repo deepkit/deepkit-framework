@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { getBSONDecoder, getBSONSerializer } from "@deepkit/bson";
+import { BSONDecoder, BSONSerializer, getBSONDecoder, getBSONSerializer } from "@deepkit/bson";
 import { arrayRemoveItem, asyncOperation, ClassType } from "@deepkit/core";
 import { AsyncSubscription } from "@deepkit/core-rxjs";
-import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, TransportConnectionHooks } from "@deepkit/rpc";
+import { createRpcMessage, RpcBaseClient, RpcDirectClientAdapter, RpcMessage, RpcMessageRouteType } from "@deepkit/rpc";
 import { ClassSchema, FieldDecoratorResult, getClassSchema, isFieldDecorator, PropertySchema, t } from "@deepkit/type";
 import { BrokerKernel } from "./kernel";
 import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIncrement, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from "./model";
@@ -84,6 +84,44 @@ export class BrokerChannel<T> {
                     .ackThenClose();
             }
         });
+    }
+}
+
+export class BrokerKeyValue<T> {
+    protected serializer: BSONSerializer;
+    protected decoder: BSONDecoder<T>;
+
+    constructor(
+        protected key: string,
+        protected schema: ClassSchema<T>,
+        protected client: BrokerClient,
+    ) {
+        this.serializer = getBSONSerializer(schema);
+        this.decoder = getBSONDecoder(schema);
+    }
+
+    public async set(data: T): Promise<undefined> {
+        await this.client.sendMessage(BrokerType.Set, brokerSet, { n: this.key, v: this.serializer(data) }).ackThenClose();
+        return undefined;
+    }
+
+    public async get(): Promise<T> {
+        const v = await this.getOrUndefined();
+        if (v !== undefined) return v;
+        throw new Error(`No value for key ${this.key} found`);
+    }
+
+    public async delete(): Promise<boolean> {
+        await this.client.sendMessage(BrokerType.Delete, brokerGet, { n: this.key }).ackThenClose();
+        return true;
+    }
+
+    public async getOrUndefined(): Promise<T | undefined> {
+        const first: RpcMessage = await this.client.sendMessage(BrokerType.Get, brokerGet, { n: this.key }).firstThenClose(BrokerType.ResponseGet);
+        if (first.buffer && first.buffer.byteLength > first.bodyOffset) {
+            return this.decoder(first.buffer, first.bodyOffset);
+        }
+        return undefined;
     }
 }
 
@@ -211,6 +249,7 @@ export class BrokerClient extends RpcBaseClient {
         const subject = this.sendMessage(BrokerType.TryLock, brokerLock, { id, ttl });
         const message = await subject.waitNextMessage();
         if (message.type === BrokerType.ResponseLockFailed) {
+            subject.release();
             return undefined;
         }
 
@@ -237,6 +276,7 @@ export class BrokerClient extends RpcBaseClient {
 
         return new AsyncSubscription(async () => {
             await subject.send(BrokerType.Unlock).ackThenClose();
+            subject.release();
         });
     }
 
@@ -256,16 +296,13 @@ export class BrokerClient extends RpcBaseClient {
         return brokerChannel;
     }
 
-    public async getOrUndefined<T>(id: string, schema: ClassSchema<T> | ClassType<T>): Promise<T | undefined> {
-        const buffer = await this.getRawOrUndefined(id);
-        return buffer ? getBSONDecoder(schema)(buffer) : undefined;
-    }
-
     public async getRawOrUndefined<T>(id: string): Promise<Uint8Array | undefined> {
-        const response = await this.sendMessage(BrokerType.Get, brokerGet, { n: id })
-            .firstThenClose(BrokerType.ResponseGet, brokerResponseGet);
+        const first: RpcMessage = await this.sendMessage(BrokerType.Get, brokerGet, { n: id }).firstThenClose(BrokerType.ResponseGet);
+        if (first.buffer && first.buffer.byteLength > first.bodyOffset) {
+            return first.buffer.slice(first.bodyOffset);
+        }
 
-        return response.v;
+        return undefined;
     }
 
     public async getRaw<T>(id: string): Promise<Uint8Array> {
@@ -274,17 +311,21 @@ export class BrokerClient extends RpcBaseClient {
         return v;
     }
 
-    public async set<T>(id: string, schema: ClassSchema<T> | ClassType<T>, data: T): Promise<undefined> {
-        await this.sendMessage(BrokerType.Set, brokerSet, { n: id, v: getBSONSerializer(schema)(data) })
+    public async setRaw<T>(id: string, data: Uint8Array): Promise<undefined> {
+        await this.sendMessage(BrokerType.Set, brokerSet, { n: id, v: data })
             .ackThenClose();
 
         return undefined;
     }
 
+    public key<T>(key: string, schema: ClassSchema<T> | ClassType<T>) {
+        return new BrokerKeyValue(key, getClassSchema(schema), this);
+    }
+
     public async getIncrement<T>(id: string): Promise<number> {
         const v = await this.getRaw(id);
-        const float64 = new Float64Array(v.buffer, v.byteOffset, 1);
-        return float64[0];
+        const view = new DataView(v.buffer, v.byteOffset, v.byteLength);
+        return view.getFloat64(0, true);
     }
 
     public async increment<T>(id: string, value?: number): Promise<number> {
@@ -305,26 +346,6 @@ export class BrokerClient extends RpcBaseClient {
 
 export class BrokerDirectClient extends BrokerClient {
     constructor(rpcKernel: BrokerKernel) {
-        super(new BrokerDirectClientAdapter(rpcKernel));
-    }
-}
-
-export class BrokerDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: BrokerKernel) {
-    }
-
-    public async connect(connection: TransportConnectionHooks) {
-        const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onMessage(buffer) });
-
-        connection.onConnected({
-            disconnect() {
-                kernelConnection.close();
-            },
-            send(message) {
-                queueMicrotask(() => {
-                    kernelConnection.feed(message);
-                });
-            }
-        });
+        super(new RpcDirectClientAdapter(rpcKernel));
     }
 }

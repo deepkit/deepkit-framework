@@ -17,9 +17,13 @@ export class UnexpectedMessageType extends CustomError {
 }
 
 export class RpcMessageSubject {
-    protected onReplyCallback(next: RpcMessage) {
+    protected uncatchedNext?: RpcMessage;
 
+    protected onReplyCallback(next: RpcMessage) {
+        this.uncatchedNext = next;
     }
+
+    protected catchOnReplyCallback = this.onReplyCallback.bind(this);
 
     constructor(
         private continuation: <T>(type: number, schema?: ClassSchema<T>, body?: T,) => void,
@@ -38,6 +42,10 @@ export class RpcMessageSubject {
 
     public onReply(callback: (next: RpcMessage) => void): this {
         this.onReplyCallback = callback;
+        if (this.uncatchedNext) {
+            callback(this.uncatchedNext);
+            this.uncatchedNext = undefined;
+        }
         return this;
     }
 
@@ -56,7 +64,8 @@ export class RpcMessageSubject {
 
     async ackThenClose(): Promise<undefined> {
         return asyncOperation<undefined>((resolve, reject) => {
-            this.onReplyCallback = (next) => {
+            this.onReply((next) => {
+                this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
 
                 if (next.type === RpcTypes.Ack) {
@@ -68,49 +77,54 @@ export class RpcMessageSubject {
                 }
 
                 reject(new UnexpectedMessageType(`Expected message type Ack, but received ${next.type}`));
-            };
+            });
         });
     }
 
     async waitNextMessage<T extends ClassSchema>(): Promise<RpcMessage> {
         return asyncOperation<any>((resolve, reject) => {
-            this.onReplyCallback = (next) => {
+            this.onReply((next) => {
+                this.onReplyCallback = this.catchOnReplyCallback;
                 return resolve(next);
-            };
+            });
         });
     }
 
     async waitNext<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
         return asyncOperation<any>((resolve, reject) => {
-            this.onReplyCallback = (next) => {
+            this.onReply((next) => {
+                this.onReplyCallback = this.catchOnReplyCallback;
                 if (next.type === type) {
                     return resolve(schema ? next.parseBody(schema) : undefined);
                 }
 
                 if (next.isError()) {
+                    this.release();
                     return reject(next.getError());
                 }
 
                 reject(new UnexpectedMessageType(`Expected message type ${type}, but received ${next.type}`));
-            };
+            });
         });
     }
 
-    async firstThenClose<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
+    async firstThenClose<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? RpcMessage : ExtractClassType<T>> {
         return asyncOperation<any>((resolve, reject) => {
-            this.onReplyCallback = (next) => {
+            this.onReply((next) => {
+                this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
 
                 if (next.type === type) {
-                    return resolve(schema ? next.parseBody(schema) : undefined);
+                    return resolve(schema ? next.parseBody(schema) : next);
                 }
 
                 if (next.isError()) {
+                    this.release();
                     return reject(next.getError());
                 }
 
                 reject(new UnexpectedMessageType(`Expected message type ${type}, but received ${next.type}`));
-            };
+            });
         });
     }
 }

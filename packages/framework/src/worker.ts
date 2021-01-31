@@ -114,7 +114,7 @@ export class WebMemoryWorkerFactory extends WebWorkerFactory {
 
 export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, writer: RpcConnectionWriter, request?: HttpRequest) {
     let rpcScopedContext: RpcInjectorContext;
-    let connection: RpcKernelConnection;
+    let connection: RpcKernelBaseConnection;
 
     const providers: Provider<any>[] = [
         { provide: HttpRequest, useValue: request },

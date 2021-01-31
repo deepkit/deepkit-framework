@@ -16,7 +16,6 @@ import { Command } from './command/command';
 import { DropDatabaseCommand } from './command/drop-database';
 import { MongoClientConfig } from './config';
 
-
 export class MongoClient {
     protected inCloseProcedure: boolean = false;
 

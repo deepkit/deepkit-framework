@@ -408,10 +408,17 @@ export function getRawBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (pa
     return schema.jit.rawBson;
 }
 
-export function getBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): (bson: Uint8Array, offset?: number) => T {
+export type BSONDecoder<T> = (bson: Uint8Array, offset?: number) => T;
+
+export function getBSONDecoder<T>(schema: ClassSchema<T> | ClassType<T>): BSONDecoder<T> {
     const fn = getRawBSONDecoder(schema);
 
-    return (bson, offset = 0) => {
+    schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
+    if (schema.jit.bsonEncoder) return schema.jit.bsonEncoder;
+
+    schema.jit.bsonEncoder = (bson: Uint8Array, offset: number = 0) => {
         return fn(new ParserV2(bson, offset));
     };
+
+    return schema.jit.bsonEncoder;
 }

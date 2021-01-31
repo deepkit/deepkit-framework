@@ -10,7 +10,7 @@
 
 import { arrayRemoveItem, asyncOperation, ClassType, sleep } from '@deepkit/core';
 import { Host } from './host';
-import { createConnection, Socket } from 'net';
+import { Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
 import { Command } from './command/command';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
@@ -18,6 +18,9 @@ import { getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake';
 import { MongoClientConfig } from './config';
 import { MongoError } from './error';
+
+// @ts-ignore
+import * as turbo from 'turbo-net';
 
 export enum MongoConnectionStatus {
     pending = 'pending',
@@ -36,7 +39,7 @@ export class MongoConnectionPool {
     /**
      * Connections, might be in any state, not necessarily connected.
      */
-    protected connections: MongoConnection[] = [];
+    public connections: MongoConnection[] = [];
 
     protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
 
@@ -167,9 +170,14 @@ export class MongoConnectionPool {
     }
 }
 
+export function readUint32LE(buffer: Uint8Array | ArrayBuffer, offset: number = 0): number {
+    return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24)
+}
+
 export class MongoConnection {
     protected messageId: number = 0;
     status: MongoConnectionStatus = MongoConnectionStatus.pending;
+    public bufferSize: number = 2.5 * 1024 * 1024;
 
     public connectingPromise?: Promise<void>;
     public lastCommand?: { command: Command, promise?: Promise<any> };
@@ -184,6 +192,8 @@ export class MongoConnection {
 
     responseParser: ResponseParser;
 
+    protected boundSendMessage = this.sendMessage.bind(this);
+
     constructor(
         public id: number,
         public readonly host: Host,
@@ -191,6 +201,8 @@ export class MongoConnection {
         protected onClose: (connection: MongoConnection) => void,
         protected onRelease: (connection: MongoConnection) => void,
     ) {
+        const responseParser = this.responseParser = new ResponseParser(this.onResponse.bind(this));
+
         if (this.config.options.ssl === true) {
             const options: { [name: string]: any } = {
                 host: host.hostname,
@@ -213,20 +225,37 @@ export class MongoConnection {
             }
 
             this.socket = createTLSConnection(options);
+            this.socket.on('data', (data) => this.responseParser.feed(data));
         } else {
-            this.socket = createConnection({
-                host: host.hostname,
-                port: host.port,
-                timeout: config.options.connectTimeoutMS
-            });
+            // this.socket = createConnection({
+            //     host: host.hostname,
+            //     port: host.port,
+            //     timeout: config.options.connectTimeoutMS
+            // });
+            //
+            // this.socket.on('data', (data) => this.responseParser.feed(data));
+
+            const socket = this.socket = turbo.connect(host.port, host.hostname);
+            // this.socket.setNoDelay(true);
+            const buffer = Buffer.allocUnsafe(this.bufferSize);
+
+            function read() {
+                socket.read(buffer, onRead);
+            }
+
+            function onRead(err: any, buf: Buffer, bytes: number) {
+                if (!bytes) return;
+                responseParser.feed(buf, bytes);
+                read();
+            }
+
+            read();
         }
 
         this.socket.on('close', () => {
             this.status = MongoConnectionStatus.disconnected;
             onClose(this);
         });
-
-        this.responseParser = new ResponseParser(this.onResponse.bind(this), this.socket);
 
         //important to catch it, so it doesn't bubble up
         this.connect().catch(() => {
@@ -254,10 +283,9 @@ export class MongoConnection {
     /**
      * When a full message from the server was received.
      */
-    protected onResponse(response: Buffer) {
+    protected onResponse(response: Uint8Array) {
         //we remove the header for the command
-        const view = new DataView(response.buffer, response.byteOffset);
-        const size = view.getInt32(0, true);
+        const size = readUint32LE(response);
         const offset = 16 + 4 + 1; //MSG response
         // const offset = 16 + 4 + 8 + 4 + 4; //QUERY_REPLY
         const message = response.slice(offset, size);
@@ -283,7 +311,7 @@ export class MongoConnection {
         this.lastCommand = { command };
         this.activeCommands++;
         this.executedCommands++;
-        command.sender = this.sendMessage.bind(this);
+        command.sender = this.boundSendMessage;
         try {
             this.lastCommand.promise = command.execute(this.config, this.host);
             return await this.lastCommand.promise;
@@ -297,7 +325,7 @@ export class MongoConnection {
         const messageSerializer = getBSONSerializer(schema);
         const messageSizer = getBSONSizer(schema);
 
-        const buffer = Buffer.alloc(16 + 4 + 1 + messageSizer(message));
+        const buffer = Buffer.allocUnsafe(16 + 4 + 1 + messageSizer(message));
         // const buffer = Buffer.alloc(16 + 4 + 10 + 1 + 4 + 4 + calculateObjectSize(message));
 
         const writer = new Writer(buffer);
@@ -322,16 +350,16 @@ export class MongoConnection {
         // writer.writeInt32(1); //return, 4
 
         try {
-        const section = messageSerializer(message);
-        // const section = serialize(message);
-        writer.writeBuffer(section);
+            const section = messageSerializer(message);
+            // const section = serialize(message);
+            writer.writeBuffer(section);
 
-        const messageLength = writer.offset;
-        writer.offset = 0;
-        writer.writeInt32(messageLength);
+            const messageLength = writer.offset;
+            writer.offset = 0;
+            writer.writeInt32(messageLength);
 
-        //detect backPressure
-        this.socket.write(buffer);
+            //detect backPressure
+            this.socket.write(buffer);
         } catch (error) {
             console.log('failed sending message', message, 'using schema', getClassSchema(schema).toString());
             throw error;
@@ -374,32 +402,33 @@ export class MongoConnection {
 }
 
 export class ResponseParser {
-    protected currentMessage?: Buffer;
+    protected currentMessage?: Uint8Array;
     protected currentMessageSize: number = 0;
 
     constructor(
-        protected readonly onResponse: (response: Buffer) => void,
-        protected readonly socket?: Socket
+        protected readonly onMessage: (response: Uint8Array) => void
     ) {
-        if (this.socket) {
-            this.socket.on('data', this.feed.bind(this));
-        }
     }
 
-    public feed(data: Buffer) {
+    public feed(data: Uint8Array, bytes?: number) {
         if (!data.byteLength) return;
+        if (!bytes) bytes = data.byteLength;
 
         if (!this.currentMessage) {
-            this.currentMessage = data;
-            this.currentMessageSize = new DataView(data.buffer, this.currentMessage.byteOffset).getUint32(0, true);
+            if (data.byteLength < 4) {
+                //not enough data to read the header. Wait for next onData
+                return;
+            }
+            this.currentMessage = data.byteLength === bytes ? data : data.slice(0, bytes);
+            this.currentMessageSize = readUint32LE(data);
         } else {
-            this.currentMessage = Buffer.concat([this.currentMessage, data]);
+            this.currentMessage = Buffer.concat([this.currentMessage, data.byteLength === bytes ? data : data.slice(0, bytes)]);
             if (!this.currentMessageSize) {
                 if (this.currentMessage.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     return;
                 }
-                this.currentMessageSize = new DataView(this.currentMessage.buffer, this.currentMessage.byteOffset).getUint32(0, true);
+                this.currentMessageSize = readUint32LE(this.currentMessage);
             }
         }
 
@@ -408,32 +437,35 @@ export class ResponseParser {
 
         while (currentBuffer) {
             if (currentSize > currentBuffer.byteLength) {
-                //message not completely loaded, wait for next onData
-                this.currentMessage = currentBuffer;
+                //important to copy, since the incoming might change its data
+                this.currentMessage = new Uint8Array(currentBuffer);
+                // this.currentMessage = currentBuffer;
                 this.currentMessageSize = currentSize;
+                //message not completely loaded, wait for next onData
                 return;
             }
 
             if (currentSize === currentBuffer.byteLength) {
                 //current buffer is exactly the message length
-                this.onResponse(currentBuffer);
                 this.currentMessageSize = 0;
                 this.currentMessage = undefined;
+                this.onMessage(currentBuffer);
                 return;
             }
 
             if (currentSize < currentBuffer.byteLength) {
                 //we have more messages in this buffer. read what is necessary and hop to next loop iteration
                 const message = currentBuffer.slice(0, currentSize);
-                this.onResponse(message);
+                this.onMessage(message);
+
                 currentBuffer = currentBuffer.slice(currentSize);
                 if (currentBuffer.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     this.currentMessage = currentBuffer;
                     return;
                 }
-                const nextCurrentSize = currentBuffer.readUInt32LE(0);
-                // const nextCurrentSize = new DataView(currentBuffer.buffer, currentBuffer.byteOffset).getUint32(0, true);
+
+                const nextCurrentSize = readUint32LE(currentBuffer);
                 if (nextCurrentSize <= 0) throw new Error('message size wrong');
                 currentSize = nextCurrentSize;
                 //buffer and size has been set. consume this message in the next loop iteration

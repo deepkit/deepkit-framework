@@ -66,7 +66,7 @@ export abstract class Command {
 
     abstract needsWritableHost(): boolean;
 
-    handleResponse(response: Buffer) {
+    handleResponse(response: Uint8Array) {
         if (!this.current) throw new Error('Got handleResponse without active command');
         const message = this.current.response ? getBSONDecoder(this.current.response)(response) : deserialize(response);
         if (!message.ok) {

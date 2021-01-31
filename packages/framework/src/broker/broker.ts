@@ -8,75 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BrokerChannel, BrokerClient, BrokerDirectClientAdapter, BrokerKernel } from "@deepkit/broker";
-import { asyncOperation, ClassType, ParsedHost, parseHost } from "@deepkit/core";
-import { ClientTransportAdapter, IdInterface, TransportConnectionHooks } from "@deepkit/rpc";
+import { BrokerChannel, BrokerClient, BrokerKernel } from "@deepkit/broker";
+import { ClassType } from "@deepkit/core";
+import { IdInterface, RpcDirectClientAdapter } from "@deepkit/rpc";
 import { ClassSchema, FieldDecoratorResult, getClassSchema, t } from "@deepkit/type";
-import { existsSync, unlinkSync } from "fs";
-import { connect, createServer, Server, Socket } from "net";
 import { inject, injectable } from "../injector/injector";
 import { brokerConfig } from "./broker.config";
+import {TcpRpcClientAdapter, TcpRpcServer, NetTcpRpcServer, NetTcpRpcClientAdapter} from "@deepkit/rpc-tcp";
 
-class TcpWriter {
-    constructor(public socket: Socket) {
-    }
-
-    write(buffer: Uint8Array) {
-        this.socket.write(buffer);
-    }
-}
-
-const defaultPort = 8811;
-
-@injectable()
-export class BrokerServer {
-    protected host: ParsedHost = parseHost(this.listen);
-    protected server?: Server;
-    protected kernel?: BrokerKernel;
-
-    constructor(@inject(brokerConfig.token('listen')) public listen: string) {
-        if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
-            unlinkSync(this.host.unixSocket);
-        }
-    }
-
-    start() {
-        return asyncOperation((resolve, reject) => {
-            this.server = createServer();
-            this.kernel = new BrokerKernel();
-
-            this.server.on('listening', () => {
-                resolve(true);
-            });
-
-            this.server.on('error', (err) => {
-                reject(new Error('Could not start broker server: ' + err));
-            });
-
-            this.server.on('connection', (socket) => {
-                const connection = this.kernel?.createConnection(new TcpWriter(socket))
-
-                socket.on('data', (data) => {
-                    connection!.feed(data);
-                });
-
-                socket.on('close', () => {
-                    connection!.close();
-                });
-            });
-
-            if (this.host.isUnixSocket) {
-                this.server.listen(this.host.unixSocket);
-            } else {
-                this.server.listen(this.host.port || defaultPort, this.host.host);
-            }
-        });
-    }
-
-    close() {
-        this.server?.close();
-    }
-}
 
 export enum EntityChannelMessageType {
     remove,
@@ -180,51 +119,37 @@ export class BaseBroker extends BrokerClient {
 export class Broker extends BaseBroker {
     constructor(
         @inject(brokerConfig.token('host')) protected url: string) {
-        super(new BrokerTcpClientAdapter(parseHost(url)));
+        super(new TcpRpcClientAdapter(url));
+    }
+}
+
+export class NetBroker extends BaseBroker {
+    constructor(
+        @inject(brokerConfig.token('host')) protected url: string) {
+        super(new NetTcpRpcClientAdapter(url));
     }
 }
 
 export class DirectBroker extends BaseBroker {
     constructor(rpcKernel: BrokerKernel) {
-        super(new BrokerDirectClientAdapter(rpcKernel));
+        super(new RpcDirectClientAdapter(rpcKernel));
     }
 }
 
+@injectable()
+export class BrokerServer extends TcpRpcServer {
+    protected kernel: BrokerKernel = new BrokerKernel;
 
-export class BrokerTcpClientAdapter implements ClientTransportAdapter {
-    constructor(
-        public host: ParsedHost
-    ) {
+    constructor(@inject(brokerConfig.token('listen')) listen: string) {
+        super(new BrokerKernel, listen);
     }
+}
 
-    public async connect(connection: TransportConnectionHooks) {
-        const port = this.host.port || defaultPort;
-        const socket = this.host.isUnixSocket ? connect({ path: this.host.unixSocket }) : connect({
-            port: port,
-            host: this.host.host
-        });
+@injectable()
+export class NetBrokerServer extends NetTcpRpcServer {
+    protected kernel: BrokerKernel = new BrokerKernel;
 
-        socket.on('data', (data) => {
-            connection.onMessage(data);
-        });
-
-        socket.on('close', () => {
-            connection.onClose();
-        });
-
-        socket.on('error', (error: any) => {
-            connection.onError(error);
-        });
-
-        socket.on('connect', async () => {
-            connection.onConnected({
-                disconnect() {
-                    socket.end();
-                },
-                send(message) {
-                    socket.write(message);
-                }
-            });
-        });
+    constructor(@inject(brokerConfig.token('listen')) listen: string) {
+        super(new BrokerKernel, listen);
     }
 }

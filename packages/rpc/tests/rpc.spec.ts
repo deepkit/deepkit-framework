@@ -11,6 +11,7 @@ import {
     createRpcMessagePeer,
     createRpcMessageSourceDest,
     readRpcMessage,
+    readUint32LE,
     RpcBufferReader,
     RpcMessage,
     RpcMessageReader,
@@ -18,6 +19,25 @@ import {
 } from '../src/protocol';
 import { RpcKernel } from '../src/server/kernel';
 import { RpcTypes } from "../src/model";
+import { createBuffer, Writer } from '@deepkit/bson';
+
+test('readUint32LE', () => {
+    {
+        const writer = new Writer(createBuffer(8));
+        writer.writeUint32(545);
+
+        const view = new DataView(writer.buffer.buffer, writer.buffer.byteOffset);
+        expect(view.getUint32(0, true)).toBe(545);
+        
+        expect(readUint32LE(writer.buffer)).toBe(545);
+    }
+
+    {
+        const writer = new Writer(createBuffer(8));
+        writer.writeUint32(94388585);
+        expect(readUint32LE(writer.buffer)).toBe(94388585);
+    }
+});
 
 test('protocol basics', () => {
     const schema = t.schema({

@@ -7,21 +7,29 @@ import { BehaviorSubject } from 'rxjs';
 import { BrokerDirectClient } from '../src/client';
 import { BrokerKernel } from '../src/kernel';
 
+Error.stackTraceLimit = 1000;
+
 test('basics', async () => {
     const kernel = new BrokerKernel();
     const client = new BrokerDirectClient(kernel);
 
     const schema = t.schema({ v: t.number });
 
-    await client.set('id', schema, { v: 123 });
+    const keyId = client.key('id', schema);
+    await keyId.set({ v: 123 });
 
     {
-        const v = await client.getOrUndefined('id', schema);
+        const v = await keyId.get();
         expect(v).toEqual({ v: 123 });
     }
 
     {
-        const v = await client.getOrUndefined('id-unknown', schema);
+        const v = await keyId.getOrUndefined();
+        expect(v).toEqual({ v: 123 });
+    }
+
+    {
+        const v = await client.key('id-unknown', schema).getOrUndefined();
         expect(v).toBe(undefined);
     }
 
@@ -38,7 +46,7 @@ test('basics', async () => {
 
     {
         await client.delete('inc');
-        expect(await client.getOrUndefined('inc', schema)).toBe(undefined);
+        expect(await client.key('inc', schema).getOrUndefined()).toBe(undefined);
     }
 });
 
@@ -130,7 +138,7 @@ test('lock', async () => {
         await lock1.unsubscribe();
         const lock1_3 = await client.tryLock('lock1');
         expect(lock1_3).toBeInstanceOf(AsyncSubscription);
-        lock1_3!.unsubscribe();
+        await lock1_3!.unsubscribe();
     }
 });
 

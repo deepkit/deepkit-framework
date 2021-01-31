@@ -28,10 +28,10 @@ export enum BrokerType {
     Delete,
     ResponseGet,
 
-    Lock,
-    Unlock,
-    IsLocked,
-    TryLock,
+    Lock, //110
+    Unlock, //111
+    IsLocked, //112
+    TryLock, //113
     ResponseLock,
     ResponseLockFailed,
     ResponseIsLock,

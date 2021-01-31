@@ -31,7 +31,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         socket.binaryType = "arraybuffer";
 
         socket.onmessage = (event: MessageEvent) => {
-            connection.onMessage(new Uint8Array(event.data));
+            connection.onData(new Uint8Array(event.data));
         };
 
         socket.onclose = () => {

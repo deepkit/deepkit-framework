@@ -54,7 +54,7 @@ export interface TransportConnectionHooks {
 
     onClose(): void;
 
-    onMessage(buffer: Uint8Array): void;
+    onData(buffer: Uint8Array, bytes?: number): void;
 
     onError(error: any): void;
 }
@@ -209,8 +209,8 @@ export class RpcClientTransporter {
                         reject(new OfflineError(`Could not connect: ${error.message}`));
                     },
 
-                    onMessage: (buffer: Uint8Array) => {
-                        this.reader.feed(buffer);
+                    onData: (buffer: Uint8Array, bytes?: number) => {
+                        this.reader.feed(buffer, bytes);
                     },
                 });
             } catch (error) {
@@ -342,6 +342,9 @@ export class RpcBaseClient {
             this.actionClient.entityState.handle(message);
         } else {
             const callback = this.replies.get(message.id);
+            if (!callback) {
+                throw new Error('No callback for ' + message.id);
+            }
             if (callback) callback(message);
         }
     }
@@ -428,6 +431,10 @@ export class RpcClient extends RpcBaseClient {
     }
 
     protected peerKernelConnection = new Map<string, any>();
+
+    public async ping(): Promise<void> {
+        await this.sendMessage(RpcTypes.Ping).waitNext(RpcTypes.Pong);
+    }
 
     protected onMessage(message: RpcMessage) {
         if (message.routeType === RpcMessageRouteType.peer) {

@@ -21,16 +21,18 @@ export async function main() {
 
     const bench = new BenchSuite('broker');
 
+    const keyId = client.key('id', schema);
+
     bench.addAsync('set', async () => {
-        await client.set('id', schema, { v: 123 });
+        await keyId.set({ v: 123 });
     });
 
     bench.addAsync('get', async () => {
-        const v = await client.getOrUndefined('id', schema);
+        const v = await keyId.getOrUndefined();
     });
 
     bench.addAsync('get undefined', async () => {
-        const v = await client.getOrUndefined('id-unknown', schema);
+        const v = await client.key('id-unknown', schema).getOrUndefined();
     });
 
     bench.addAsync('increment', async () => {

@@ -9,7 +9,7 @@
  */
 
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
-import { createRpcMessage, RpcKernelBaseConnection, RpcConnectionWriter, RpcMessage, RpcMessageRouteType, RpcMessageBuilder, RpcKernelConnections } from '@deepkit/rpc';
+import { createRpcMessage, RpcKernelBaseConnection, RpcConnectionWriter, RpcMessage, RpcMessageRouteType, RpcMessageBuilder, RpcKernelConnections, RpcKernel } from '@deepkit/rpc';
 import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIncrement, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
 
 export class BrokerConnection extends RpcKernelBaseConnection {
@@ -150,7 +150,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             case BrokerType.Increment: {
                 const body = message.parseBody(brokerIncrement);
                 const newValue = this.state.increment(body.n, body.v);
-                response.reply(BrokerType.ResponseIncrement, brokerResponseIncrement, {v: newValue});
+                response.reply(BrokerType.ResponseIncrement, brokerResponseIncrement, { v: newValue });
                 break;
             }
             case BrokerType.Delete: {
@@ -161,7 +161,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.Get: {
                 const body = message.parseBody(brokerGet);
-                response.reply(BrokerType.ResponseGet, brokerResponseGet, { v: this.state.get(body.n) });
+                response.reply(BrokerType.ResponseGet, this.state.get(body.n));
                 break;
             }
         }
@@ -263,9 +263,8 @@ export class BrokerState {
     public increment(id: string, v?: number): number {
         const buffer = this.setStore.get(id);
         const float64 = buffer ? new Float64Array(buffer.buffer, buffer.byteOffset) : new Float64Array(1);
-        if (!buffer) this.setStore.set(id, new Uint8Array(float64.buffer));
-
         float64[0] += v || 1;
+        if (!buffer) this.setStore.set(id, new Uint8Array(float64.buffer));
         return float64[0];
     }
 
@@ -278,7 +277,7 @@ export class BrokerState {
     }
 }
 
-export class BrokerKernel {
+export class BrokerKernel extends RpcKernel {
     protected state: BrokerState = new BrokerState;
     protected connections = new RpcKernelConnections();
 

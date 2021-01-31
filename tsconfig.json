@@ -44,6 +44,9 @@
       "path": "packages/rpc/tsconfig.json"
     },
     {
+      "path": "packages/rpc-tcp/tsconfig.json"
+    },
+    {
       "path": "packages/orm-integration/tsconfig.json"
     },
     {
@@ -51,6 +54,9 @@
     },
     {
       "path": "packages/broker/tsconfig.json"
+    },
+    {
+      "path": "packages/network/tsconfig.json"
     }
   ]
 }

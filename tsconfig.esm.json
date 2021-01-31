@@ -35,6 +35,9 @@
       "path": "packages/rpc/tsconfig.esm.json"
     },
     {
+      "path": "packages/rpc-tcp/tsconfig.esm.json"
+    },
+    {
       "path": "packages/broker/tsconfig.esm.json"
     }
   ]

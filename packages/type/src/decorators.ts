@@ -56,7 +56,7 @@ export type MergeSchemaAndBase<T extends PlainSchemaProps, BASE extends ClassSch
 export type ExtractClassProperty<T> =
     T extends PlainSchemaProps ? ExtractClassDefinition<T> :
         T extends ClassSchema<infer K> ? K :
-            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T
+            T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;
 
 export type OptionalProps<T> = { [name in keyof T]: undefined extends T[name] ? name : never }[keyof T];
 export type RequiredProps<T> = { [name in keyof T]: undefined extends T[name] ? never : name }[keyof T];

@@ -33,6 +33,7 @@ export class Model {
 export async function main() {
     const count = 10_000;
     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/bench-small-deepkit'));
+    await database.adapter.client.connect();
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
@@ -52,7 +53,7 @@ export async function main() {
             await session.commit();
         });
 
-        await bench.runAsyncFix(10, 'fetch-1', async () => {
+        await bench.runAsyncFix(1000, 'fetch-1', async () => {
             await session.query(Model).disableIdentityMap().findOne();
         });
 
@@ -64,26 +65,26 @@ export async function main() {
         // for (const item of dbItems) {
         //     item.priority++;
         // }
-
+        //
         // await bench.runAsyncFix(1, 'update', async () => {
         //     await session.commit();
         // });
 
-        // await bench.runAsyncFix(1, 'update-query', async () => {
-        //     await database.query(Model).disableIdentityMap().patchMany({ $inc: { priority: 1 } });
-        // });
+        await bench.runAsyncFix(1, 'update-query', async () => {
+            await database.query(Model).disableIdentityMap().patchMany({ $inc: { priority: 1 } });
+        });
 
         // await bench.runAsyncFix(1, 'remove', async () => {
         //     for (const item of dbItems) {
         //         session.remove(item);
         //     }
-
+        //
         //     await session.commit();
         // });
 
-        // await bench.runAsyncFix(1, 'remove-query', async () => {
-        //     await database.query(Model).deleteMany();
-        // });
+        await bench.runAsyncFix(1, 'remove-query', async () => {
+            await database.query(Model).deleteMany();
+        });
     }
 
     database.disconnect();

@@ -104,6 +104,7 @@ export class RpcActionClient {
                 const subscribers: { [id: number]: Subscriber<any> } = {};
 
                 ClientProgress.nextProgress = progress;
+
                 const subject = this.client.sendMessage(RpcTypes.Action, types.parameterSchema, {
                     controller: controller.controller,
                     method: method,

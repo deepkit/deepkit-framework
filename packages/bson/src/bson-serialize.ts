@@ -1041,13 +1041,16 @@ export function serialize(data: any): Uint8Array {
     return writer.buffer;
 }
 
+export type BSONSerializer = (data: any, writer?: Writer) => Uint8Array;
+export type BSONSizer = (data: any) => number;
+
 /**
  * Serializes an schema instance to BSON.
  *
  * Note: The instances needs to be in the mongo format already since it does not resolve decorated properties.
  *       So call it with the result of classToMongo(Schema, item).
  */
-export function getBSONSerializer(schema: ClassSchema | ClassType): (data: any, writer?: Writer) => Uint8Array {
+export function getBSONSerializer(schema: ClassSchema | ClassType): BSONSerializer {
     schema = getClassSchema(schema);
 
     const jit = schema.jit;
@@ -1058,7 +1061,7 @@ export function getBSONSerializer(schema: ClassSchema | ClassType): (data: any, 
     return jit.bsonSerializer;
 }
 
-export function getBSONSizer(schema: ClassSchema | ClassType): (data: any) => number {
+export function getBSONSizer(schema: ClassSchema | ClassType): BSONSizer {
     schema = getClassSchema(schema);
 
     const jit = schema.jit;

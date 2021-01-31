@@ -26,8 +26,9 @@ import {
     createRpcCompositeMessage,
     createRpcCompositeMessageSourceDest,
     createRpcMessage,
+    createRpcMessageForBody,
     createRpcMessageSourceDest,
-
+    createRpcMessageSourceDestForBody,
     RpcCreateMessageDef,
     rpcEncodeError,
     RpcMessage,
@@ -74,12 +75,21 @@ export class RpcMessageBuilder {
     ) {
     }
 
-    protected messageFactory<T>(type: RpcTypes, schema?: ClassSchema<T>, data?: T): Uint8Array {
-        if (this.source && this.clientId) {
-            //we route back accordingly
-            return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, schema, data);
+    protected messageFactory<T>(type: RpcTypes, schemaOrBody?: ClassSchema<T> | Uint8Array, data?: T): Uint8Array {
+        if (schemaOrBody instanceof Uint8Array) {
+            if (this.source && this.clientId) {
+                //we route back accordingly
+                return createRpcMessageSourceDestForBody(this.id, type, this.clientId, this.source, schemaOrBody);
+            } else {
+                return createRpcMessageForBody(this.id, type, schemaOrBody);
+            }
         } else {
-            return createRpcMessage(this.id, type, schema, data);
+            if (this.source && this.clientId) {
+                //we route back accordingly
+                return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, schemaOrBody, data);
+            } else {
+                return createRpcMessage(this.id, type, schemaOrBody, data);
+            }
         }
     }
 
@@ -93,9 +103,9 @@ export class RpcMessageBuilder {
         this.writer.write(this.messageFactory(RpcTypes.Error, rpcError, extracted));
     }
 
-    reply<T>(type: number, schema?: ClassSchema<T>, body?: T): void {
+    reply<T>(type: number, schemaOrBody?: ClassSchema<T> | Uint8Array, body?: T): void {
 
-        this.writer.write(this.messageFactory(type, schema, body));
+        this.writer.write(this.messageFactory(type, schemaOrBody, body));
     }
 
     composite(type: number): RpcCompositeMessage {
@@ -207,8 +217,8 @@ export abstract class RpcKernelBaseConnection {
         arrayRemoveItem(this.connections.connections, this);
     }
 
-    public feed(buffer: Uint8Array): void {
-        this.reader.feed(buffer);
+    public feed(buffer: Uint8Array, bytes?: number): void {
+        this.reader.feed(buffer, bytes);
     }
 
     public handleMessage(message: RpcMessage): void {
@@ -298,6 +308,11 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
             return;
         }
 
+        if (message.type === RpcTypes.Ping) {
+            this.writer.write(createRpcMessage(message.id, RpcTypes.Pong));
+            return;
+        }
+
         //all outgoing replies need to be routed to the source via sourceDest messages.
         const response = new RpcMessageBuilder(this.writer, message.id, this.id, message.routeType === RpcMessageRouteType.peer ? message.getSource() : undefined);
 
@@ -382,7 +397,7 @@ export class RpcKernel {
         this.controllers.set(id, controller);
     }
 
-    createConnection(writer: RpcConnectionWriter, injector?: RpcInjector): RpcKernelConnection {
+    createConnection(writer: RpcConnectionWriter, injector?: RpcInjector): RpcKernelBaseConnection {
         return new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector || this.injector, this.peerExchange);
     }
 }

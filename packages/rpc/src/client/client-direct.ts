@@ -9,6 +9,7 @@
  */
 
 import { RpcInjector } from '../model';
+import { readRpcMessage } from '../protocol';
 import { RpcKernel } from '../server/kernel';
 import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
 
@@ -23,16 +24,14 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
     }
 
     public async connect(connection: TransportConnectionHooks) {
-        const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onMessage(buffer) }, this.injector);
+        const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onData(buffer) }, this.injector);
 
         connection.onConnected({
             disconnect() {
                 kernelConnection.close();
             },
-            send(message) {
-                queueMicrotask(() => {
-                    kernelConnection.feed(message);
-                });
+            send(buffer) {
+                kernelConnection.feed(buffer);
             }
         });
     }

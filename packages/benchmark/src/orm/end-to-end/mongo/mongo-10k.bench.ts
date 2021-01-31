@@ -37,7 +37,7 @@ export async function main() {
             await collection.insertMany(items);
         });
 
-        await bench.runAsyncFix(10, 'fetch-1', async () => {
+        await bench.runAsyncFix(1000, 'fetch-1', async () => {
             await collection.findOne({});
         });
         

@@ -42,7 +42,7 @@ export class BrokerListener {
 }
 
 export const BrokerModule = createModule({
-    name: 'exchange',
+    name: 'broker',
     listeners: [
         BrokerListener
     ],

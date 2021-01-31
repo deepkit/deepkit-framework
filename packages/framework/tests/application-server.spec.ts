@@ -7,6 +7,7 @@ import { InjectorContext } from '../src/injector/injector';
 import { createTestingApp, MemoryLoggerTransport } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
 import { Logger } from '../src/logger';
+import { KernelModule } from '../src/kernel';
 
 test('testing app api', async () => {
     @rpc.controller('test')
@@ -48,6 +49,11 @@ test('basic controller', async () => {
 
     const AppModule = createModule({
         controllers: [MyController],
+        imports: [
+            KernelModule.configure({
+                broker: {startOnBootstrap: false}
+            })
+        ]
     });
 
     const app = new Application(AppModule);
