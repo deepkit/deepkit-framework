@@ -247,6 +247,10 @@ jobs:
         image: "mongo:4.2"
         ports:
           - "27017:27017"
+      redis:
+        image: "redis:6.0"
+        ports:
+          - "6379:6379"
       mysql:
         image: "mysql:8.0"
         options: >-
@@ -297,6 +301,8 @@ jobs:
             packages/mysql/tsconfig.json \
             packages/postgres/tsconfig.json \
             packages/orm/tsconfig.json \
+            packages/rpc/tsconfig.json \
+            packages/rpc-tcp/tsconfig.json \
             packages/sql/tsconfig.json \
             packages/sqlite/tsconfig.json \
             packages/topsort/tsconfig.json \

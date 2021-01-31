@@ -45,6 +45,9 @@
       "path": "../rpc/tsconfig.json"
     },
     {
+      "path": "../rpc-tcp/tsconfig.json"
+    },
+    {
       "path": "../framework-debug-shared/tsconfig.json"
     },
     {
