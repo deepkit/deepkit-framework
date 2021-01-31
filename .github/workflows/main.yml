@@ -302,6 +302,6 @@ jobs:
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json
       - name: Benchmark setup
-        run: cd packages benchmark && . setup.sh
+        run: cd packages/benchmark && sh setup.sh
       - name: Benchmark run
-        run: cd packages benchmark && npm run benchmark
+        run: cd packages/benchmark && npm run benchmark
