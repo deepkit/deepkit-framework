@@ -272,11 +272,6 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 14.x
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-all-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install
       - name: Lerna bootstrap
