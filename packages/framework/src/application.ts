@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { ClassType, isArray } from '@deepkit/core';
 import { KernelModule } from './kernel';
 import { ServiceContainer } from './service-container';
 import { ProviderWithScope } from './injector/provider';
@@ -18,6 +18,7 @@ import { basename, relative } from 'path';
 import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
+import { EnvConfiguration } from './configuration';
 
 export class Application<T extends ModuleOptions<any>> {
     public readonly serviceContainer: ServiceContainer<T>;
@@ -47,19 +48,121 @@ export class Application<T extends ModuleOptions<any>> {
     }
 
     configure(config: ModuleConfigOfOptions<T>): this {
-        throw new Error('Not implemented yet.');
+        const appConfig: any = {};
+        const moduleConfigs: { [name: string]: any } = {};
+        const moduleNames = this.serviceContainer.rootInjectorContext.getModuleNames();
+
+        for (const i in config) {
+            let name = i;
+            const separator = name.indexOf('_');
+            let module = '';
+            if (separator > 0) {
+                module = name.substr(0, separator);
+                name = name.substr(separator + 1);
+            }
+            if (module) {
+                if (!moduleConfigs[module]) moduleConfigs[module] = {};
+                moduleConfigs[module][name] = config[i];
+            } else {
+                if (moduleNames.includes(name)) {
+                    moduleConfigs[name] = config[i];
+                } else {
+                    appConfig[name] = config[i];
+                }
+            }
+        }
+
+        this.serviceContainer.appModule.setConfig(appConfig);
+
+        for (const i in moduleConfigs) {
+            const module = this.serviceContainer.rootInjectorContext.getModule(i);
+            module.setConfig(moduleConfigs[i]);
+        }
+
+        return this;
     }
 
+    /**
+     * Loads a .env file and sets its configuration value.
+     * 
+     * `path` is either an absolute or relative path. For relative paths the first 
+     * folder with a package.json starting from process.cwd() upwards is picked.
+     * 
+     * So if you use 'local.env' make sure a 'local.env' file is localed beside your 'package.json'.
+     * 
+     * `path` can be an array of paths. First existing path is picked.
+     */
     loadConfigFromEnvFile(path: string | string[]): this {
-        throw new Error('Not implemented yet.');
+        const envConfiguration = new EnvConfiguration();
+        const paths = isArray(path) ? path : [path];
+        for (const path of paths) {
+            if (envConfiguration.loadEnvFile(path)) break;
+        }
+
+        this.configure(envConfiguration.getAll() as any);
+
+        return this;
     }
 
-    loadConfigFromEnvVariables(prefix: string = ''): this {
-        throw new Error('Not implemented yet.');
+    /**
+     * Load all environment variables that start with given prefix and try to
+     * find matching configuration options and set its value.
+     * 
+     * Example:
+     * 
+     * APP_databaseUrl="mongodb://localhost/mydb"
+     * 
+     * Application.run().loadConfigFromEnvVariables('APP_').run();
+     */
+    loadConfigFromEnvVariables(prefix: string = 'APP_'): this {
+        const appConfig: any = {};
+        const moduleConfigs: { [name: string]: any } = {};
+
+        for (const i in process.env) {
+            if (!i.startsWith(prefix)) continue;
+            let name = i.substr(prefix.length);
+            const separator = name.indexOf('_');
+            let module = '';
+            if (separator > 0) {
+                module = name.substr(0, separator);
+                name = name.substr(separator + 1);
+            }
+            if (module) {
+                if (!moduleConfigs[module]) moduleConfigs[module] = {};
+                moduleConfigs[module][name] = process.env[i];
+            } else {
+                appConfig[name] = process.env[i];
+            }
+        }
+
+        this.serviceContainer.appModule.setConfig(appConfig);
+
+        for (const i in moduleConfigs) {
+            const module = this.serviceContainer.rootInjectorContext.getModule(i);
+            module.setConfig(moduleConfigs[i]);
+        }
+        return this;
     }
 
-    loadConfigFromEnvVariable(variableName: string): this {
-        throw new Error('Not implemented yet.');
+    /**
+     * Loads a JSON encoded environment variable and applies its content to the configuration.
+     * 
+     * Example:
+     * 
+     * APP_CONFIG={"databaseUrl": "mongodb://localhost/mydb", "moduleA": {"foo": "bar"}}
+     * 
+     * Application.run().loadConfigFromEnvVariable('APP_CONFIG').run();
+     */
+    loadConfigFromEnvVariable(variableName: string = 'APP_CONFIG'): this {
+        let config = {};
+        try {
+            config = JSON.parse(process.env[variableName] || '');
+        } catch (error) {
+            throw new Error(`Invalid JSON in env varibale ${variableName}. Parse error: ${error}`);
+        }
+
+        this.configure(config as any);
+        return this;
     }
 
     async run(argv?: any[]) {

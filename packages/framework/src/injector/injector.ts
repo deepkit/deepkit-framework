@@ -637,6 +637,10 @@ export class InjectorContext {
         return this.modules[name];
     }
 
+    getModuleNames(): string[] {
+        return Object.keys(this.modules);
+    }
+
     static forProviders(providers: ProviderWithScope[]) {
         const registry = new ContextRegistry();
         const context = new Context(new Module({}), 0);

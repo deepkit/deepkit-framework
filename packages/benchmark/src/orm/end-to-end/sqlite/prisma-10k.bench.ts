@@ -17,7 +17,7 @@ const prisma = new PrismaClient();
 export async function main() {
     const count = 10_000;
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 1; i++) {
         console.log('round', i);
         const bench = new BenchSuite('prisma');
         await prisma.model.deleteMany({});

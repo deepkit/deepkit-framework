@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { join } from 'path';
+import { isAbsolute, join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 
 class ConfigOptionNotFound extends Error {
@@ -35,11 +35,11 @@ export class EnvConfiguration {
     /**
      * Reads a .env file from given path, based to basePath.
      */
-    public loadEnvFile(path: string) {
-        const resolvedPath = path.includes('/') ? path : findFileUntilPackageRoot(path);
+    public loadEnvFile(path: string): boolean {
+        const resolvedPath = isAbsolute(path) ? path : findFileUntilPackageRoot(path);
 
         //search up folder until package.json root reached
-        if (!resolvedPath || !existsSync(resolvedPath)) return;
+        if (!resolvedPath || !existsSync(resolvedPath)) return false;
 
         const RE_INI_KEY_VAL = /^\s*([\w.-]+)\s*=\s*(.*)?\s*$/;
 
@@ -66,6 +66,7 @@ export class EnvConfiguration {
 
             this.container[key] = value;
         }
+        return true;
     }
 
     public getKeys(): string[] {

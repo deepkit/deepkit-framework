@@ -254,7 +254,7 @@ export class Module<T extends ModuleOptions<any>> {
         } catch (e) {
             if (e instanceof ValidationFailed) {
                 const errorsMessage = e.errors.map(v => v.toString(this.getName())).join(', ');
-                throw new ConfigurationInvalidError(`Configuration for module ${this.getName()} is invalid. Make sure the module is correctly configured. Error: ` + errorsMessage);
+                throw new ConfigurationInvalidError(`Configuration for module ${this.getName() || 'root'} is invalid. Make sure the module is correctly configured. Error: ` + errorsMessage);
             }
             throw e;
         }
@@ -328,14 +328,15 @@ export class Module<T extends ModuleOptions<any>> {
         return m;
     }
     /**
-     * Overwrites given values of the current module.
+     * Overwrites configuration values of the current module.
      */
     setConfig(config: ModuleConfigOfOptions<T>): void {
         const resolvedConfig = this.getConfig();
         if (this.options.config) {
+            const configNormalized = jsonSerializer.for(this.options.config.schema).partialDeserialize(config);
             for (const option of this.options.config.schema.getClassProperties().values()) {
                 if (!(option.name in config)) continue;
-                resolvedConfig[option.name] = (config as any)[option.name];
+                resolvedConfig[option.name] = (configNormalized as any)[option.name];
             }
         }
     }
