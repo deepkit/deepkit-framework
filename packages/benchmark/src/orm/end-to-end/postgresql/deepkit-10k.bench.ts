@@ -32,7 +32,7 @@ export class DeepkitModel {
 
 export async function main() {
     const count = 10_000;
-    const database = new Database(new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres' }));
+    const database = new Database(new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres', user: 'postgres' }));
     database.registerEntity(DeepkitModel);
     await database.adapter.createTables([...database.entities]);
 
