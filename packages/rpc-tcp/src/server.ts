@@ -37,8 +37,8 @@ export class TcpRpcServer {
 
             function onRead(err: any, buf: Uint8Array, bytes: number) {
                 if (err) {
-                    console.log('read error', err);
-                    throw err;
+                    connection.close();
+                    return;
                 }
                 if (bytes) {
                     connection.feed(buf, bytes);
@@ -59,8 +59,8 @@ export class TcpRpcServer {
                 connection.close();
             });
 
-            socket.on('data', (data: Uint8Array) => {
-                console.log('data', data);
+            socket.on('error', () => {
+                connection.close();
             });
 
             read();
@@ -117,7 +117,7 @@ export class NetTcpRpcServer {
                     bufferedAmount(): number {
                         return socket.bufferedAmount || 0;
                     }
-                })
+                });
 
                 socket.on('data', (data: Uint8Array) => {
                     connection!.feed(data);

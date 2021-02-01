@@ -48,10 +48,6 @@ export async function main() {
         await client.ping();
     });
 
-    bench.addAsync('set', async () => {
-        const res = await controller.sayHello('foo');
-    });
-
     bench.addAsync('action', async () => {
         const res = await controller.sayHello('foo');
     });
