@@ -109,6 +109,8 @@ export interface PropertySchemaSerialized {
     classType?: string;
     classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
     noValidation?: boolean;
+
+    autoIncrement?: boolean;
 }
 
 export interface PropertyValidator {
@@ -378,12 +380,13 @@ export class PropertySchema {
         return undefined;
     }
 
-    toString(): string {
-        let affix = this.isOptional ? '?' : '';
+    toString(optionalAffix = true): string {
+        let affix = this.isOptional && optionalAffix ? '?' : '';
+
         if (this.isNullable) affix += '|null';
 
         if (this.type === 'array') {
-            return `Array<${this.templateArgs[0]}>${affix}`;
+            return `${this.templateArgs[0]}[]${affix}`;
         }
         if (this.type === 'map') {
             return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
@@ -401,7 +404,7 @@ export class PropertySchema {
                 if (resolved) return getClassName(resolved) + affix;
                 return 'ForwardedRef' + affix;
             } else {
-                return getClassName(this.getResolvedClassType()) + affix;
+                return this.classType ? getClassName(this.classType) + affix : '[not-loaded]' + affix;
             }
         }
         return `${this.type}${affix}`;
@@ -436,6 +439,7 @@ export class PropertySchema {
         if (this.groupNames.length) props['groupNames'] = this.groupNames;
         if (this.defaultValue) props['defaultValue'] = this.defaultValue();
         props['noValidation'] = this.noValidation;
+        if (this.isAutoIncrement) props.autoIncrement = true;
 
         if (this.templateArgs.length) {
             props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
@@ -455,7 +459,7 @@ export class PropertySchema {
         return props;
     }
 
-    static fromJSON(props: PropertySchemaSerialized, parent?: PropertySchema): PropertySchema {
+    static fromJSON(props: PropertySchemaSerialized, parent?: PropertySchema, throwForInvalidClassType: boolean = true): PropertySchema {
         const p = new PropertySchema(props['name']);
         p.type = props['type'];
         p.literalValue = props['literalValue'];
@@ -470,19 +474,22 @@ export class PropertySchema {
         if (props['methodName']) p.methodName = props['methodName'];
         if (props['groupNames']) p.groupNames = props['groupNames'];
         if (props['noValidation']) p.noValidation = props['noValidation'];
+        if (props.autoIncrement) p.isAutoIncrement = props.autoIncrement;
+
         if (props['defaultValue']) p.defaultValue = () => props['defaultValue'];
 
         if (props['templateArgs']) {
-            p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v, p));
+            p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType));
         }
 
         if (props['classType']) {
             const entity = getGlobalStore().RegisteredEntities[props['classType']];
-            if (!entity) {
+            if (entity) {
+                p.classType = getClassSchema(entity).classType;
+            } else if (throwForInvalidClassType) {
                 throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props['classType']} . ` +
-                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name()`);
+                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props['classType']}')`);
             }
-            p.classType = getClassSchema(entity).classType;
         // } else if (p.type === 'class' && !props['classType']) {
         //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
         //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
@@ -1524,6 +1531,8 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
 
     const c = clazz || class {
     };
+
+
     if (name) {
         Object.defineProperty(c, 'name', { value: name });
     }

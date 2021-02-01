@@ -29,3 +29,4 @@ export * from './src/serializer';
 export * from './src/json-typeguards';
 export * from './src/json-serializer';
 export * from './src/model-schema';
+export * from './src/schema-serializer';

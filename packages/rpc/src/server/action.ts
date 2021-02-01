@@ -405,14 +405,13 @@ export class RpcServerAction {
             } else {
                 const newProperty = createNewPropertySchemaIfNecessary(result, types.resultProperty);
                 if (newProperty) {
+                    console.warn(`The result type of method ${getClassPropertyName(classType, body.method)} changed from ${types.resultProperty.toString()} to ${newProperty.toString()}. ` +
+                    `You should add a @t annotation to improve serialization performance.`);
+
                     types.resultSchema = createClassSchema();
                     types.resultSchema.registerProperty(newProperty);
                     types.resultProperty = newProperty;
                     types.resultPropertyChanged++;
-                    if (types.resultPropertyChanged === 10) {
-                        console.warn(`The result type of method ${getClassPropertyName(classType, body.method)} changed 10 times. You should add a @t annotation to improve serialization performance.`);
-                    }
-
                     const composite = response.composite(RpcTypes.ResponseActionResult);
                     composite.add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
                     composite.add(RpcTypes.ResponseActionSimple, types.resultSchema, { v: result });

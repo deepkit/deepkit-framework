@@ -43,6 +43,11 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public name: string = 'default';
 
     /**
+     * If set, all created Database instances are registered here.
+     */
+    static registry?: Database[];
+
+    /**
      * The entity schema registry.
      */
     public readonly entities = new Set<ClassSchema>();
@@ -80,6 +85,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         public readonly adapter: ADAPTER,
         schemas: (ClassType | ClassSchema)[] = []
     ) {
+        if (Database.registry) Database.registry.push(this);
+
         this.query = (classType: ClassType | ClassSchema) => {
             const session = this.createSession();
             session.withIdentityMap = false;

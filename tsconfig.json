@@ -47,6 +47,15 @@
       "path": "packages/rpc-tcp/tsconfig.json"
     },
     {
+      "path": "packages/orm/tsconfig.json"
+    },
+    {
+      "path": "packages/orm-browser/tsconfig.json"
+    },
+    {
+      "path": "packages/orm-browser-api/tsconfig.json"
+    },
+    {
       "path": "packages/orm-integration/tsconfig.json"
     },
     {

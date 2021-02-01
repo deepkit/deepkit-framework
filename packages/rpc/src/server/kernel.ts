@@ -12,6 +12,7 @@ import { arrayRemoveItem, ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject';
 import {
+    ControllerDefinition,
     rpcAuthenticate,
     rpcClientId,
     rpcError,
@@ -393,8 +394,8 @@ export class RpcKernel {
     ) {
     }
 
-    public registerController(id: string, controller: ClassType) {
-        this.controllers.set(id, controller);
+    public registerController(id: string | ControllerDefinition<any>, controller: ClassType) {
+        this.controllers.set('string' === typeof id ? id : id.path, controller);
     }
 
     createConnection(writer: RpcConnectionWriter, injector?: RpcInjector): RpcKernelBaseConnection {
