@@ -8,12 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getClassSchema, JSONPartial, jsonSerializer, PartialEntity } from '@deepkit/type';
+import { changeSetSymbol, ClassSchema, getClassSchema, getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator, ItemChanges, JSONPartial, jsonSerializer, PartialEntity } from '@deepkit/type';
 import { Entity } from './type';
-import { getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator } from './converter';
 import { isObject, toFastProperties } from '@deepkit/core';
 import { inspect } from 'util';
-import { changeSetSymbol, ItemChanges } from './changes';
 
 export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();
@@ -51,6 +49,7 @@ class InstanceState<T extends Entity> {
     readonly item: T;
 
     fromDatabase: boolean = false;
+    protected lastPKHash?: string;
 
     constructor(item: T) {
         this.item = item;
@@ -66,7 +65,7 @@ class InstanceState<T extends Entity> {
     }
 
     getSnapshot(): JSONPartial<T> {
-        if (!this.snapshot) this.snapshot = getJITConverterForSnapshot(this.classSchema)(this.item);
+        if (!this.snapshot) this.snapshot = getConverterForSnapshot(this.classSchema)(this.item);
         return this.snapshot!;
     }
 
@@ -83,9 +82,10 @@ class InstanceState<T extends Entity> {
     }
 
     markAsPersisted() {
-        const snap = getJITConverterForSnapshot(this.classSchema);
+        const snap = getConverterForSnapshot(this.classSchema);
         this.snapshot = snap(this.item);
         this.knownInDatabase = true;
+        this.lastPKHash = undefined; //mark it for generation on-demand
         (this.item as any)[changeSetSymbol] = new ItemChanges({}, this.item);
     }
 
@@ -94,7 +94,10 @@ class InstanceState<T extends Entity> {
     }
 
     getLastKnownPKHash(): string {
-        return getPrimaryKeyHashGenerator(this.classSchema, jsonSerializer)(this.snapshot);
+        if (this.lastPKHash === undefined) {
+            this.lastPKHash = getPrimaryKeyHashGenerator(this.classSchema, jsonSerializer)(this.snapshot);
+        }
+        return this.lastPKHash;
     }
 
     markAsDeleted() {

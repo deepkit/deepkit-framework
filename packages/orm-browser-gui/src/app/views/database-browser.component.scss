@@ -1,0 +1,69 @@
+:host {
+    display: flex;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+}
+
+[hidden] { 
+    display: none !important;
+}
+
+.actions {
+    margin-bottom: 12px;
+}
+
+dui-table ::ng-deep .table-row.new > div {
+    background-color: rgba(255, 255, 0, 0.212);
+}
+
+.undefined,
+.null {
+    color: var(--text-light);
+}
+
+.cell-actions {
+    position: absolute;
+    right: 2px;
+    top: 2px;
+
+    dui-icon {
+        background-color: var(--dui-window-content-bg);
+        border-radius: 20px;
+        display: none;
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+dui-table ::ng-deep .table-row > div:hover dui-icon.active {
+    display: inline-block;
+}
+
+dui-table ::ng-deep .table-row > div.changed {
+    background-color: rgba(60, 255, 0, 0.212);
+}
+
+dui-table ::ng-deep .table-row > div.editing {
+    padding: 0;
+    padding-right: 5px;
+
+    overflow: hidden;
+    text-overflow: clip;
+
+    > ng-component {
+        display: block;
+    }
+
+    > ng-component > *,
+    > * {
+        margin-right: 3px;
+        width: 100%;
+    }
+}
+
+dui-table {
+    flex: 1;
+}

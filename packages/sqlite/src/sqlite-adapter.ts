@@ -22,9 +22,9 @@ import {
     DefaultPlatform,
     SqlBuilder
 } from '@deepkit/sql';
-import { Changes, DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { SQLitePlatform } from './sqlite-platform';
-import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
+import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
 import { ClassType, empty } from '@deepkit/core';
 
 export class SQLiteStatement extends SQLStatement {

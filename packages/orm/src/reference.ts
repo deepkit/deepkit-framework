@@ -8,10 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, classSchemaSymbol, getGlobalStore, jsonSerializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
+import { ClassSchema, classSchemaSymbol, getGlobalStore, getPrimaryKeyHashGenerator, jsonSerializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import { IdentityMap } from './identity-map';
-import { getPrimaryKeyHashGenerator } from './converter';
 
 export function createReferenceClass<T>(
     classSchema: ClassSchema<T>,

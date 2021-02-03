@@ -101,7 +101,7 @@ export class TableColumnDirective {
      * The name of the column. Needs to be unique. If no renderer (*duiTableCell) is specified, this
      * name is used to render the content T[name].
      */
-    @Input('name') name?: string;
+    @Input('name') name: string = '';
 
     /**
      * A different header name. Use dui-table-header to render HTML there.
@@ -251,7 +251,7 @@ export class TableHeaderDirective {
                 >
                     <ng-container
                         *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn.bind(this); odd as isOdd">
-                        <div class="table-row"
+                        <div class="table-row {{rowClass ? rowClass(row) : ''}}"
                              [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
                              [class.selected]="selectedMap.has(row)"
                              [class.odd]="isOdd"
@@ -261,8 +261,9 @@ export class TableHeaderDirective {
                              (dblclick)="dbclick.emit(row)"
                         >
                             <div *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn"
-                                 [class]="column.class"
+                                 [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
                                  [attr.row-column]="column.name"
+                                 (dblclick)="clickCell(row, column.name || '')"
                                  [style.width]="column.getWidth()"
                             >
                                 <ng-container *ngIf="column.cell">
@@ -361,6 +362,11 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      */
     @Input() public filter?: (item: T) => boolean;
 
+    @Input() public rowClass?: (item: T) => string | undefined;
+
+    @Input() public cellClass?: (item: T, column: string) => string | undefined;
+
+
     /**
      * Filter query.
      */
@@ -416,6 +422,10 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      */
     @Output() public dbclick: EventEmitter<T> = new EventEmitter();
 
+    @Output() public customSort: EventEmitter<{ name: string, direction: 'asc' | 'desc' | '' }> = new EventEmitter();
+
+    @Output() public cellDblClick: EventEmitter<{ item: T, column: string }> = new EventEmitter();
+
     @ViewChild('header', { static: false }) header?: ElementRef;
     @ViewChildren('th') ths?: QueryList<ElementRef<HTMLElement>>;
 
@@ -428,7 +438,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     @ViewChild(CdkVirtualScrollViewport, { static: true }) viewport!: CdkVirtualScrollViewport;
     @ViewChild('viewportElement', { static: true, read: ElementRef }) viewportElement!: ElementRef;
 
-    sortedColumnDefs: TableColumnDirective[] = [];
+    public sortedColumnDefs: TableColumnDirective[] = [];
 
     headerMapDef: { [name: string]: TableHeaderDirective } = {};
 
@@ -458,6 +468,10 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         requestAnimationFrame(() => {
             this.viewport.checkViewportSize();
         });
+    }
+
+    clickCell(item: T, column: string) {
+        if (this.cellDblClick.observers.length) this.cellDblClick.emit({ item, column });
     }
 
     /**
@@ -506,7 +520,11 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         }
 
         this.currentSort = name;
-        this.doSort();
+        if (this.customSort.observers.length) {
+            this.customSort.emit({ name, direction: this.currentSortDirection });
+        } else {
+            this.doSort();
+        }
     }
 
     /**

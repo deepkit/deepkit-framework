@@ -109,8 +109,7 @@ export interface PropertySchemaSerialized {
     classType?: string;
     classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
     noValidation?: boolean;
-
-    autoIncrement?: boolean;
+    autoIncrement?: true;
 }
 
 export interface PropertyValidator {

@@ -8,24 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ClassSchema,
-    getDataConverterJS,
-    getGlobalStore,
-    isExcluded,
-    JitStack,
-    jsonSerializer,
-    PropertySchema,
-    Serializer,
-    SerializerCompilers,
-    UnpopulatedCheck
-} from '@deepkit/type';
 import { toFastProperties } from '@deepkit/core';
+import { JitStack } from './jit';
+import { jsonSerializer } from './json-serializer';
+import { isExcluded } from './mapper';
+import { ClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck } from './model';
+import { Serializer, SerializerCompilers } from './serializer';
+import { getDataConverterJS } from './serializer-compiler';
 
 function createJITConverterForSnapshot(
     schema: ClassSchema,
     properties: Iterable<PropertySchema>,
-    serializerCompilers: SerializerCompilers
+    serializerCompilers: SerializerCompilers,
 ) {
     const context = new Map<any, any>();
     const jitStack = new JitStack();
@@ -113,7 +107,7 @@ function createJITConverterForSnapshot(
  *
  * Generated function is cached.
  */
-export function getJITConverterForSnapshot(
+export function getConverterForSnapshot(
     classSchema: ClassSchema
 ): (value: any) => any {
     const jit = classSchema.jit;
@@ -122,6 +116,13 @@ export function getJITConverterForSnapshot(
     jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values(), jsonSerializer.fromClass);
     toFastProperties(jit);
     return jit.snapshotConverter;
+}
+
+/**
+ * Creates a snapshot using getConverterForSnapshot().
+ */
+export function createSnapshot<T>(classSchema: ClassSchema<T>, item: T) {
+    return getConverterForSnapshot(classSchema)(item);
 }
 
 /**
@@ -144,7 +145,7 @@ export function getPrimaryKeyExtractor<T>(
  */
 export function getPrimaryKeyHashGenerator(
     classSchema: ClassSchema,
-    serializer: Serializer
+    serializer: Serializer = jsonSerializer
 ): (value: any) => string {
     const jit = classSchema.jit;
 

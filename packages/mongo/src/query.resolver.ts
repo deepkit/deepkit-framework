@@ -9,7 +9,6 @@
  */
 
 import {
-    Changes,
     DatabaseAdapter,
     DatabaseSession,
     DeleteResult,
@@ -18,7 +17,7 @@ import {
     GenericQueryResolver,
     PatchResult
 } from '@deepkit/orm';
-import { ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
+import { Changes, ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
 import { MongoClient } from './client/client';
 import { AggregateCommand } from './client/command/aggregate';
 import { CountCommand } from './client/command/count';

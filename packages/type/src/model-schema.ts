@@ -21,6 +21,7 @@ export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schem
     isParentReference: t.literal(true).optional,
     isOptional: t.literal(true).optional,
     isId: t.literal(true).optional,
+    autoIncrement: t.literal(true).optional,
     typeSet: t.literal(true).optional,
     isDiscriminant: t.literal(true).optional,
     allowLabelsAsValue: t.literal(true).optional,

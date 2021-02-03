@@ -13,7 +13,6 @@ import { Routes, RouterModule } from '@angular/router';
 import { DatabaseComponent } from './views/database.component';
 
 const routes: Routes = [
-  { path: 'db/:name', component: DatabaseComponent },
 ];
 
 @NgModule({

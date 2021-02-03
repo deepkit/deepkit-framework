@@ -21,9 +21,9 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
-import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
+import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';

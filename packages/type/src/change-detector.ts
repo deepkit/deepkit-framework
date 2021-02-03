@@ -8,11 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, JitStack, PropertySchema, reserveVariable } from '@deepkit/type';
-import { getInstanceState } from './identity-map';
 import { empty, getObjectKeysSize } from '@deepkit/core';
-import { getJITConverterForSnapshot } from './converter';
 import { Changes, changeSetSymbol, ItemChanges } from './changes';
+import { JitStack } from './jit';
+import { ClassSchema, PropertySchema } from './model';
+import { reserveVariable } from './serializer-compiler';
+import { getConverterForSnapshot } from './snapshot';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;
@@ -215,26 +216,11 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
 const changeDetectorSymbol = Symbol('changeDetector');
 
-export function getJitChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
+export function getChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
     return classSchema.getJit(changeDetectorSymbol, () => createJITChangeDetectorForSnapshot(classSchema));
 }
 
-export function buildChanges<T>(item: T): Changes<T> {
-    const state = getInstanceState(item);
-    const lastSnapshot = state.getSnapshot();
-    const currentSnapshot = getJITConverterForSnapshot(state.classSchema)(item);
-    return getJitChangeDetector(state.classSchema)(lastSnapshot, currentSnapshot, item) || new Changes;
-}
-
-export function buildChangeOld<T>(item: T) {
-    const state = getInstanceState(item);
-    const lastSnapshot = state.getSnapshot() as any;
-    const currentSnapshot = getJITConverterForSnapshot(state.classSchema)(item) as any;
-    const changes: { [path: string]: any } = {};
-
-    for (const i of state.classSchema.getClassProperties().keys()) {
-        if (!genericEqual(lastSnapshot[i], currentSnapshot[i])) changes[i] = (item as any)[i];
-    }
-
-    return changes;
+export function buildChanges<T>(classSchema: ClassSchema, lastSnapshot: any, item: T): Changes<T> {
+    const currentSnapshot = getConverterForSnapshot(classSchema)(item);
+    return getChangeDetector(classSchema)(lastSnapshot, currentSnapshot, item) as Changes<T> || new Changes<T>();
 }

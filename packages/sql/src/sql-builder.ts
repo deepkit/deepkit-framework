@@ -10,8 +10,8 @@
 
 import { SQLQueryModel } from './sql-adapter';
 import { DefaultPlatform } from './platform/default-platform';
-import { ClassSchema, getClassSchema, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
-import { DatabaseJoinModel, DatabaseQueryModel, getPrimaryKeyHashGenerator } from '@deepkit/orm';
+import { ClassSchema, getClassSchema, getPrimaryKeyHashGenerator, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
+import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 
 type ConvertDataToDict = (row: any) => { [name: string]: any };

@@ -22,9 +22,9 @@ import {
     DefaultPlatform,
     SqlBuilder
 } from '@deepkit/sql';
-import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
-import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
+import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 
 export class MySQLStatement extends SQLStatement {

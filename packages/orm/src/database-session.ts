@@ -11,15 +11,13 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseValidationError, Entity } from './type';
 import { ClassType, CustomError } from '@deepkit/core';
-import { ClassSchema, getClassSchema, getClassTypeFromInstance, getGlobalStore, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
+import { ClassSchema, getChangeDetector, getClassSchema, getClassTypeFromInstance, getConverterForSnapshot, getGlobalStore, getPrimaryKeyExtractor, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
 import { HydratorFn, markAsHydrated } from './formatter';
-import { getJITConverterForSnapshot, getPrimaryKeyExtractor } from './converter';
 import { getReference } from './reference';
 import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
-import { getJitChangeDetector } from './change-detector';
 
 let SESSION_IDS = 0;
 
@@ -151,8 +149,8 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             for (const group of groups) {
                 const inserts: Entity[] = [];
                 const changeSets: DatabasePersistenceChangeSet<Entity>[] = [];
-                const changeDetector = getJitChangeDetector(group.type);
-                const doSnapshot = getJITConverterForSnapshot(group.type);
+                const changeDetector = getChangeDetector(group.type);
+                const doSnapshot = getConverterForSnapshot(group.type);
 
                 for (const item of group.items) {
                     const state = getInstanceState(item);

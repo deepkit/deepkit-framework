@@ -1,0 +1,31 @@
+{
+  "name": "@deepkit/orm-browser-example",
+  "version": "1.0.1-alpha.13",
+  "description": "Deepkit ORM Data Browser example",
+  "type": "commonjs",
+  "main": "./dist/cjs/main.js",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "dependencies": {
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/sqlite": "^1.0.1-alpha.13"
+  },
+  "devDependencies": {
+    "reflect-metadata": "^0.1.13"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

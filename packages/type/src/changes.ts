@@ -9,12 +9,10 @@
  */
 
 import { empty } from '@deepkit/core';
-import { inspect } from 'util';
 
 export type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T]
 export type Expression<T> = { [P in keyof T & string]?: string; }
 export type Partial<T> = { [P in keyof T & string]?: T[P] }
-// export type Unset<T> = { [P in keyof T & string]?: number }
 
 export interface ChangesInterface<T> {
     $set?: Partial<T> | T;
@@ -35,10 +33,6 @@ export class Changes<T> {
         this.$unset = empty($unset) ? undefined : $unset;
         this.$inc = empty($inc) ? undefined : $inc;
         this.detectEmpty();
-    }
-
-    [inspect.custom]() {
-        return `Changes<empty=${this.empty}>`;
     }
 
     getReturning(): string[] {
@@ -106,7 +100,6 @@ export class ItemChanges<T> extends Changes<T> {
         (this.item as any)[property] = undefined;
     }
 }
-
 
 export const changeSetSymbol = Symbol('changeSet');
 

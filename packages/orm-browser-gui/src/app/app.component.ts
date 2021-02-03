@@ -11,6 +11,8 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { ControllerClient } from './client';
+import { BrowserState } from './browser-state';
+import { ClassSchema } from '@deepkit/type';
 
 @Component({
   selector: 'app-root',
@@ -32,21 +34,22 @@ import { ControllerClient } from './client';
         <dui-window-sidebar>
           <dui-list>
             <dui-list-title>Database</dui-list-title>
-            <dui-list-item *ngFor="let db of databases" routerLink="/db/{{db.name}}">{{db.name}} ({{db.adapter}})</dui-list-item>
+            <orm-browser-list></orm-browser-list>
+            
           </dui-list>
         </dui-window-sidebar>
-        <router-outlet></router-outlet>
+        <orm-browser-database *ngIf="state.database && !state.entity" [database]="state.database"></orm-browser-database>
+        <orm-browser-database-browser *ngIf="state.database && state.entity" [database]="state.database" [entity]="state.entity"></orm-browser-database-browser>
       </dui-window-content>
     </dui-window>
   `,
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
-  databases: DatabaseInfo[] = [];
-
   constructor(
     protected controllerClient: ControllerClient,
-    protected cd: ChangeDetectorRef
+    protected cd: ChangeDetectorRef,
+    public state: BrowserState,
   ) {
   }
 
@@ -54,7 +57,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    this.databases = await this.controllerClient.browser.getDatabases();
+    this.state.databases = await this.controllerClient.browser.getDatabases();
     this.cd.detectChanges();
   }
 }

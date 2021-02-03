@@ -97,6 +97,8 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     @Output() esc = new EventEmitter<KeyboardEvent>();
     @Output() enter = new EventEmitter<KeyboardEvent>();
+    @Output() keyDown = new EventEmitter<KeyboardEvent>();
+    @Output() keyUp = new EventEmitter<KeyboardEvent>();
 
     @ViewChild('input', { static: false }) input?: ElementRef<HTMLInputElement | HTMLTextAreaElement>;
 
@@ -178,7 +180,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         } else if (this.type === 'number') {
         } else if (dateTimeTypes.includes(this.type)) {
             if (super.innerValue instanceof Date) {
-                return this.datePipe.transform(super.innerValue, 'yyyy-MM-dd');
+                return this.datePipe.transform(super.innerValue, 'yyyy-MM-ddThh:mm:ss.SSS');
             }
         }
 
@@ -211,6 +213,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     onKeyDown(event: KeyboardEvent) {
         this.touch();
+        this.keyDown.emit(event);
     }
 
     onKeyUp(event: KeyboardEvent) {
@@ -221,6 +224,8 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         if (event.key.toLowerCase() === 'esc' || event.key.toLowerCase() === 'escape') {
             this.esc.emit(event);
         }
+
+        this.keyUp.emit(event);
     }
 
     focusInput() {

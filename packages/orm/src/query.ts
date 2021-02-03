@@ -9,10 +9,8 @@
  */
 
 import { ClassType, empty } from '@deepkit/core';
-import { ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
+import { Changes, ChangesInterface, ClassSchema, ExtractPrimaryKeyType, ExtractReferences, getSimplePrimaryKeyHashGenerator, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
 import { Subject } from 'rxjs';
-import { Changes, ChangesInterface } from './changes';
-import { getSimplePrimaryKeyHashGenerator } from './converter';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';

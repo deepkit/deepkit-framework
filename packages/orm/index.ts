@@ -16,10 +16,9 @@ export * from './src/formatter';
 export * from './src/query';
 export * from './src/query-filter';
 export * from './src/utils';
-export * from './src/converter';
-export * from './src/change-detector';
 export * from './src/memory-db';
 export * from './src/type';
 export * from './src/event';
-export * from './src/changes';
 export * from './src/plugin/soft-delete';
+
+export { atomicChange } from '@deepkit/type';

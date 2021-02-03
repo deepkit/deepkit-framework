@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../index';
+import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '@deepkit/type';
 import { getClassSchema, jsonSerializer, t } from '@deepkit/type';
 
 class Image {
@@ -25,7 +25,7 @@ test('benchmark', () => {
 
 test('getJITConverterForSnapshot', () => {
     const schema = getClassSchema(User);
-    const converter = getJITConverterForSnapshot(schema);
+    const converter = getConverterForSnapshot(schema);
 
     {
         const converted = converter({ id: 22, title: 'Peter' });

@@ -10,9 +10,8 @@
 
 import { Entity } from "./type";
 import { ClassType } from "@deepkit/core";
-import { ClassSchema, PrimaryKeyFields } from "@deepkit/type";
+import { ClassSchema, ItemChanges, PrimaryKeyFields } from "@deepkit/type";
 import { Query } from "./query";
-import { ItemChanges } from "./changes";
 import { DatabaseSession } from "./database-session";
 
 export abstract class DatabaseAdapterQueryFactory {

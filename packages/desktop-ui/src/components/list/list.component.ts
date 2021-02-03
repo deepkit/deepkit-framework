@@ -13,6 +13,7 @@ import {
     Component,
     ContentChildren,
     ElementRef,
+    EventEmitter,
     forwardRef,
     HostBinding,
     HostListener,
@@ -22,6 +23,7 @@ import {
     OnChanges,
     OnDestroy,
     Optional,
+    Output,
     QueryList,
     SimpleChanges,
     SkipSelf
@@ -113,7 +115,6 @@ export class ListComponent extends ValueAccessorBase<any> {
     }
 }
 
-
 @Component({
     selector: 'dui-list-item',
     template: `
@@ -128,6 +129,9 @@ export class ListItemComponent implements OnChanges, OnDestroy {
     @Input() value: any;
     @Input() routerLink?: string | UrlTree | any[];
     @Input() routerLinkExact?: boolean;
+    @Input() active?: boolean;
+
+    @Output() onSelect = new EventEmitter<any>();
 
     protected routerSub?: Subscription;
 
@@ -172,9 +176,12 @@ export class ListItemComponent implements OnChanges, OnDestroy {
         } else {
             this.list.innerValue = this.value;
         }
+        this.onSelect.emit(this.value);
     }
 
     public isSelected(): boolean {
+        if (this.active !== undefined) return this.active;
+
         if (this.value !== undefined) {
             return this.list.innerValue === this.value;
         }
@@ -195,5 +202,6 @@ export class ListItemComponent implements OnChanges, OnDestroy {
     @HostListener('mousedown')
     public onClick() {
         this.list.innerValue = this.value;
+        this.onSelect.emit(this.value);
     }
 }

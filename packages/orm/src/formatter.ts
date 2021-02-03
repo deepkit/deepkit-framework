@@ -8,11 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getGlobalStore, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
+import { ClassSchema, getGlobalStore, getPrimaryKeyHashGenerator, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
 import { DatabaseQueryModel } from './query';
 import { ClassType } from '@deepkit/core';
 import { getInstanceState, IdentityMap, PKHash } from './identity-map';
-import { getPrimaryKeyHashGenerator } from './converter';
 import { createReferenceClass, getReference } from './reference';
 
 const sessionHydratorSymbol = Symbol('sessionHydratorSymbol');

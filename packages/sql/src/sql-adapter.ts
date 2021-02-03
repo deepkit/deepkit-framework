@@ -9,7 +9,6 @@
  */
 
 import {
-    Changes,
     Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
@@ -25,7 +24,7 @@ import {
     DatabaseError
 } from '@deepkit/orm';
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';
+import { Changes, ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';
 import { DefaultPlatform } from './platform/default-platform';
 import { SqlBuilder } from './sql-builder';
 import { SqlFormatter } from './sql-formatter';
