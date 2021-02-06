@@ -33,3 +33,4 @@ export * from './src/schema-serializer';
 export * from './src/change-detector';
 export * from './src/changes';
 export * from './src/snapshot';
+export * from './src/reference';

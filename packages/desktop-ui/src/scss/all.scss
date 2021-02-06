@@ -69,6 +69,14 @@ body {
     }
 }
 
+.visible-for-white-mode {
+    display: unset;
+}
+
+.visible-for-dark-mode {
+    display: none;
+}
+
 .monospace {
     font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
     font-size: 12px;
@@ -110,6 +118,13 @@ body {
 
     a, a:link {
         color: #78a1bf;
+    }
+
+    .visible-for-dark-mode {
+        display: unset;
+    }
+    .visible-for-white-mode {
+        display: none;
     }
 }
 

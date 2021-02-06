@@ -81,6 +81,8 @@ test('test propertySchema serialization', () => {
         @t created: Date = new Date;
     }
 
+    class User {}
+
     class Page {
         @t.primary.uuid
         id: string = uuid();
@@ -93,6 +95,9 @@ test('test propertySchema serialization', () => {
 
         @t.map(Config).template(t.string, Config)
         map2: { [name: string]: Config } = {};
+
+        @t.reference()
+        user!: User;
     }
 
     function compare(p1: PropertySchema, p2: PropertySchema) {
@@ -104,6 +109,8 @@ test('test propertySchema serialization', () => {
             'isOptional',
             'isDecorated',
             'isParentReference',
+            'isReference',
+            'isAutoIncrement',
             'isId',
             'isPartial',
             'methodName',
@@ -124,6 +131,11 @@ test('test propertySchema serialization', () => {
         expect(p1.type).toBe('uuid');
         expect(p1.isResolvedClassTypeIsDecorated()).toBe(false);
         compare(p1, p2);
+    }
+
+    {
+        const p1 = schema.getProperty('user');
+        expect(p1.toJSON().isReference).toBe(true);
     }
 
     {

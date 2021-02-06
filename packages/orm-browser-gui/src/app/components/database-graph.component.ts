@@ -11,7 +11,6 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, ElementRef, Input, OnChanges, QueryList, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { ClassSchema, PropertySchema } from '@deepkit/type';
-import { PropertyBindingType } from '@angular/compiler';
 import { graphlib, layout, Node } from 'dagre';
 import { default as createPanZoom, PanZoom } from "panzoom";
 import { BrowserText } from "./browser-text";
@@ -31,6 +30,9 @@ import { BrowserText } from "./browser-text";
 //   @ViewChild('templateRef', { static: false }) template!: TemplateRef<any>;
 // }
 
+type EdgeNode = { d: string, class?: string };
+type DKNode = { entity: ClassSchema, properties: PropertySchema[], height: number, width: number, x: number, y: number };
+
 @Component({
   selector: 'database-graph',
   template: `
@@ -43,7 +45,7 @@ import { BrowserText } from "./browser-text";
         [style.height.px]="graphHeight">
         <path
           *ngFor="let edge of edges"
-          [attr.d]="edge"></path>
+          [attr.d]="edge.d" [class]="edge.class"></path>
       </svg>
 
      <div
@@ -74,7 +76,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
   @Input() database?: DatabaseInfo;
 
   nodes: any[] = [];
-  edges: any[] = [];
+  edges: EdgeNode[] = [];
 
   svg?: any;
   inner?: any;
@@ -117,7 +119,11 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
   // }
 
   public propertyLabel(property: PropertySchema): string {
-    return property.name + (property.isOptional ? '?' : '') + ': ' + property.toString(false);
+    let type = property.toString(false);
+    if (property.isReference) type = 'Reference<' + type + '>';
+    if (property.backReference) type = 'BackReference<' + type + '>';
+    if (property.isId) type = 'Primary<' + type + '>';
+    return property.name + (property.isOptional ? '?' : '') + ': ' + type;
   }
 
   protected loadGraph() {
@@ -125,8 +131,8 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
 
     const g = new graphlib.Graph({ directed: true, compound: true, multigraph: false });
     g.setGraph({
-      nodesep: 10,
-      ranksep: 25,
+      nodesep: 50,
+      ranksep: 50,
       rankdir: "LR",
       align: 'DL',
       // rankdir: 'LR',
@@ -138,6 +144,9 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
 
     this.nodes = [];
     this.edges = [];
+
+    const propertyHeight = 16;
+    const propertyListOffset = 28;
 
     // for (const node of this.workflow.places) {
     //   g.setNode(node, { label: node, width, height });
@@ -152,7 +161,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
         if (w > maxWidth) maxWidth = w;
       }
 
-      g.setNode(entity.getName(), { entity: entity, properties, width: maxWidth, height: 25 + (entity.getClassProperties().size * 18), });
+      g.setNode(entity.getName(), { entity: entity, properties, width: maxWidth, height: propertyListOffset + (entity.getClassProperties().size * propertyHeight), });
     }
 
     function addEdge(entity: ClassSchema, rootProperty: PropertySchema, property: PropertySchema) {
@@ -161,6 +170,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
       } else if (property.type === 'class') {
         g.setEdge(entity.getName(), property.getResolvedClassSchema().getName());
       }
+      //todo: backReference.via
     }
 
     for (const entity of this.database.getClassSchemas()) {
@@ -182,14 +192,6 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     this.graphWidth = g.graph().width || 0;
     this.graphHeight = g.graph().height || 0;
 
-    for (const edge of g.edges()) {
-      const points = g.edge(edge).points;
-      if (!points) continue;
-      for (const item of points) {
-        if (item.x < offsetX) offsetX = item.x;
-        if (item.y < offsetY) offsetY = item.y;
-      }
-    }
     offsetX = offsetX * -1;
     offsetY = offsetY * -1;
 
@@ -214,8 +216,10 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
       }
     }
 
+    const nodeMap: { [name: string]: DKNode } = {};
     for (const nodeName of g.nodes()) {
       const node = g.node(nodeName);
+      nodeMap[nodeName] = node as any;
       // if (node.width + (node.x - (width / 2)) > this.graphWidth) {
       //   this.graphWidth = node.width + (node.x - (width / 2));
       // }
@@ -225,21 +229,66 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
       this.nodes.push(node as any);
     }
 
-    for (const edge of g.edges()) {
-      const points = g.edge(edge).points;
-      const d: string[] = [];
-      d.push('M ' + (points[0].x + 0.5) + ',' + (points[0].y + 0.5));
-      if (points[0].y > this.graphHeight) this.graphHeight = points[0].y + 1;
-
-      for (let i = 1; i < points.length; i++) {
-        if (points[i].y > this.graphHeight) this.graphHeight = points[i].y + 1;
-        d.push('L ' + (points[i].x + 0.5) + ',' + (points[i].y + 0.5));
+    const extractEdges = (i: number, node: DKNode, rootProperty: PropertySchema, property: PropertySchema) => {
+      if (property.type === 'array' || property.type === 'map' || property.type === 'partial') { 
+        extractEdges(i, node, rootProperty, property.getSubType());
       }
-      this.edges.push(d.join(' '));
+      if (property.type === 'class') {
+
+        const toNode = nodeMap[property.getResolvedClassSchema().getName()];
+
+        let from = { x: node.x - Math.floor(node.width / 2), y: node.y - Math.floor(node.height / 2) };
+        let to = { x: toNode.x - Math.floor(toNode.width / 2), y: toNode.y - Math.floor(toNode.height / 2) + Math.floor(propertyListOffset / 2) };
+
+        if (to.x > from.x) {
+          from.x += node.width;
+        } else if (from.x > to.x) {
+          to.x += toNode.width;
+        }
+
+        from.y += propertyListOffset + (i * propertyHeight) + Math.floor(propertyHeight / 2);
+
+        if (from.x > to.x) {
+          const t = from;
+          from = to;
+          to = t;
+        }
+        const middleX = to.x - Math.floor(Math.abs(to.x - from.x) / 2);
+
+        const edge: EdgeNode = { d: `M ${from.x} ${from.y} C ${middleX} ${from.y} ${middleX} ${to.y} ${to.x} ${to.y}` };
+        if (rootProperty.backReference) {
+          edge.class = 'back-reference';
+        } else if (!rootProperty.isReference) {
+          edge.class = 'embedded';
+        }
+
+        this.edges.push(edge);
+      }
     }
 
+    for (const nodeName of g.nodes()) {
+      const node = nodeMap[nodeName];
+      for (let i = 0; i < node.properties.length; i++) {
+        const property = node.properties[i];
+        extractEdges(i, node, property, property);
+      }
+    }
+
+    // for (const edge of g.edges()) {
+    //   const points = g.edge(edge).points;
+    //   const d: string[] = [];
+    //   d.push('M ' + (points[0].x + 0.5) + ',' + (points[0].y + 0.5));
+    //   if (points[0].y > this.graphHeight) this.graphHeight = points[0].y + 1;
+
+    //   for (let i = 1; i < points.length; i++) {
+    //     if (points[i].y > this.graphHeight) this.graphHeight = points[i].y + 1;
+    //     d.push('L ' + (points[i].x + 0.5) + ',' + (points[i].y + 0.5));
+    //   }
+    //   this.edges.push(d.join(' '));
+    // }
+
     this.cd.detectChanges();
-    
+
     if (this.graphElement) {
       if (!this.graphPanZoom) {
         this.graphPanZoom = createPanZoom(this.graphElement.nativeElement, {

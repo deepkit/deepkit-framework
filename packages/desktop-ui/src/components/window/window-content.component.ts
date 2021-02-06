@@ -26,7 +26,7 @@ import { triggerResize } from "../../core/utils";
 @Component({
     selector: 'dui-window-content',
     template: `
-        <div class="content" #content>
+        <div class="content {{class}}" #content>
             <ng-content></ng-content>
         </div>
 
@@ -51,6 +51,8 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
     @Input() transparent: boolean | '' = false;
 
     @Input() sidebarVisible: boolean = true;
+
+    @Input() class: string = '';
 
     @Input() sidebarWidth = 250;
     @Input() sidebarMaxWidth = 550;

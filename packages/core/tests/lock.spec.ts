@@ -1,5 +1,5 @@
 import { jest, expect, test, beforeAll } from '@jest/globals';
-import { ProcessLock, ProcessLocker } from '../src/process-locker';
+import { Mutex, ProcessLock, ProcessLocker } from '../src/process-locker';
 
 jest.setTimeout(20000);
 
@@ -102,4 +102,33 @@ test('test tryLock', async () => {
             }, 1000);
         }, 1000);
     });
+});
+
+test('mutex 1', async () => {
+    const mutex1 = new Mutex;
+
+    let i = 0;
+
+    const promises: Promise<void>[] = [];
+    
+    promises.push(mutex1.lock().then(() => {
+        expect(i).toBe(0);
+        i++;
+        mutex1.unlock();
+    }));
+    
+    promises.push(mutex1.lock().then(() => {
+        expect(i).toBe(1);
+        i++;
+        mutex1.unlock();
+    }));
+    
+    promises.push(mutex1.lock().then(() => {
+        expect(i).toBe(2);
+        i++;
+        mutex1.unlock();
+    }));
+
+    await Promise.all(promises);
+    expect(i).toBe(3);
 });

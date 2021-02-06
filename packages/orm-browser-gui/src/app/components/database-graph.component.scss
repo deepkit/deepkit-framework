@@ -29,9 +29,18 @@
   // background-color: white;
 
   path {
-    fill: none;
+    fill: none;    
     stroke: var(--line-color-prominent);
+    opacity: 0.6;
     stroke-width: 1px;
+
+    &.back-reference {
+      stroke-dasharray: 5, 5;
+    }
+
+    &.embedded {
+      stroke: var(--color-orange);
+    }
   }
 
   rect {
@@ -69,7 +78,7 @@
 
 .node {
   position: absolute;
-  background-color: rgba(238, 238, 238, 0.1);
+  background-color: rgba(72, 72, 72, 0.9);
   border: 1px solid var(--line-color-light);
   font-size: 12px;
   line-height: 16px;

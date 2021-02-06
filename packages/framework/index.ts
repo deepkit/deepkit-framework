@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/logger';
 export * from './src/session';
 export * from './src/application';
 export * from './src/worker';
@@ -37,3 +36,5 @@ export * from './src/template/template';
 export * from './src/application-server';
 export * from './src/broker/broker';
 export * from './src/broker/broker.config';
+
+export * from '@deepkit/logger';

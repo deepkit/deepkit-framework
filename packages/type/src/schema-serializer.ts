@@ -31,6 +31,10 @@ export function deserializeSchemas(schemas: SerializedSchema[], registryPrefix: 
             property.classType = registryPrefix + property.classType;
         }
 
+        if (property.backReference && property.backReference.via) {
+            property.backReference.via = registryPrefix + property.backReference.via;
+        }
+
         if (property.templateArgs) for (const p of Object.values(property.templateArgs)) fixRelation(p);
     }
 

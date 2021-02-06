@@ -31,6 +31,7 @@ import {
 import { NavigationEnd, Router, UrlTree } from '@angular/router';
 import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
 import { Subscription } from "rxjs";
+import { arrayRemoveItem } from '@deepkit/core';
 
 @Component({
     selector: 'dui-list-title',
@@ -67,7 +68,7 @@ export class ListComponent extends ValueAccessorBase<any> {
 
     @HostBinding('tabindex') tabIndex: number = 1;
 
-    @ContentChildren(forwardRef(() => ListItemComponent), { descendants: true }) list!: QueryList<ListItemComponent>;
+    items: ListItemComponent[] = [];
 
     constructor(
         protected injector: Injector,
@@ -83,10 +84,10 @@ export class ListComponent extends ValueAccessorBase<any> {
             event.preventDefault();
             const selectedItem = this.getSelectedItem();
             if (selectedItem) {
-                const position = this.list.toArray().indexOf(selectedItem);
+                const position = this.items.indexOf(selectedItem);
 
-                if (this.list.toArray()[position + 1]) {
-                    await this.list.toArray()[position + 1].select();
+                if (this.items[position + 1]) {
+                    await this.items[position + 1].select();
                 }
             }
         }
@@ -95,17 +96,17 @@ export class ListComponent extends ValueAccessorBase<any> {
             event.preventDefault();
             const selectedItem = this.getSelectedItem();
             if (selectedItem) {
-                const position = this.list.toArray().indexOf(selectedItem);
+                const position = this.items.indexOf(selectedItem);
 
-                if (this.list.toArray()[position - 1]) {
-                    await this.list.toArray()[position - 1].select();
+                if (this.items[position - 1]) {
+                    await this.items[position - 1].select();
                 }
             }
         }
     }
 
     public getSelectedItem(): ListItemComponent | undefined {
-        for (const item of this.list.toArray()) {
+        for (const item of this.items) {
             if (item.isSelected()) {
                 return item;
             }
@@ -142,6 +143,7 @@ export class ListItemComponent implements OnChanges, OnDestroy {
         @Optional() public router?: Router,
     ) {
         this.element.nativeElement.removeAttribute('tabindex');
+        list.items.push(this);
         this.list.registerOnChange(() => {
             this.cd.detectChanges();
         });
@@ -155,6 +157,7 @@ export class ListItemComponent implements OnChanges, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        arrayRemoveItem(this.list.items, this);
         if (this.routerSub) {
             this.routerSub.unsubscribe();
         }

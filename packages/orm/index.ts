@@ -19,6 +19,7 @@ export * from './src/utils';
 export * from './src/memory-db';
 export * from './src/type';
 export * from './src/event';
+export * from './src/reference';
 export * from './src/plugin/soft-delete';
 
 export { atomicChange } from '@deepkit/type';

@@ -182,6 +182,9 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
     ngOnChanges(changes: SimpleChanges) {
     }
 
+    open() {
+        this.dropdown?.open();
+    }
 
     async writeValue(value?: T | NotSelected): Promise<void> {
         super.writeValue(value);

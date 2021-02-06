@@ -161,6 +161,11 @@ export function getPrimaryKeyHashGenerator(
     return jit.pkHash[serializer.name];
 }
 
+export function getForeignKeyHash(row: any, property: PropertySchema): string {
+    const foreignSchema = property.getResolvedClassSchema();
+    return getPrimaryKeyHashGenerator(foreignSchema)(row[property.name]);
+}
+
 function simplePrimaryKeyHash(value: any): string {
     return '\0' + value;
 }

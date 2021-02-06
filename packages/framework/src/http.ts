@@ -20,7 +20,7 @@ import { EventDispatcher, eventDispatcher } from './event';
 import { HttpRequest, HttpResponse } from './http-model';
 import { inject, injectable, InjectorContext, MemoryInjector } from './injector/injector';
 import { kernelConfig } from './kernel.config';
-import { Logger } from './logger';
+import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { isElementStruct, render } from './template/template';
 import { createWorkflow, WorkflowEvent } from './workflow';

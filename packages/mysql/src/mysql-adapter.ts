@@ -103,8 +103,8 @@ export class MySQLConnectionPool extends SQLConnectionPool {
 }
 
 export class MySQLPersistence extends SQLPersistence {
-    constructor(protected platform: DefaultPlatform, protected connection: MySQLConnection) {
-        super(platform, connection);
+    constructor(protected platform: DefaultPlatform, protected connection: MySQLConnection, session: DatabaseSession<any>) {
+        super(platform, connection, session);
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -311,9 +311,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimaryField();
-        const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
-        select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
@@ -352,7 +350,16 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 
         const extractSelect: string[] = [];
         const selectVars: string[] = [];
-        extractSelect.push(`@_pk := JSON_ARRAYAGG(${pkField})`);
+        let bPrimaryKey = primaryKey.name;
+        //we need a different name because primaryKeys could be updated as well
+        if (fieldsSet[primaryKey.name]) {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name) + ' as __' + primaryKey.name);
+            bPrimaryKey = '__' + primaryKey.name;
+        } else {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name));
+        }
+
+        extractSelect.push(`@_pk := JSON_ARRAYAGG(${this.platform.quoteIdentifier(primaryKey.name)})`);
         selectVars.push(`@_pk`);
         if (!empty(aggregateFields)) {
             for (const i in aggregateFields) {
@@ -375,7 +382,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
                 ${tableName} as _target, _tmp as b ${extractVarsSQL}
             SET
                 ${set.join(', ')}
-            WHERE _target.${pkField} = b.${pkField};
+            WHERE _target.${this.platform.quoteIdentifier(primaryKey.name)} = b.${this.platform.quoteIdentifier(bPrimaryKey)};
             ${selectVarsSQL}
         `;
 
@@ -428,8 +435,8 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(): SQLPersistence {
-        return new MySQLPersistence(this.platform, this.connectionPool.getConnection());
+    createPersistence(session: DatabaseSession<any>): SQLPersistence {
+        return new MySQLPersistence(this.platform, this.connectionPool.getConnection(), session);
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): MySQLDatabaseQueryFactory {

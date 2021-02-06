@@ -149,3 +149,24 @@ export class ProcessLocker {
         return !!LOCKS[id];
     }
 }
+
+export type MutexUnlock = () => void;
+
+export class Mutex {
+    protected promise?: Promise<void>;
+    protected resolver?: Function;
+
+    unlock(): void {
+        if (this.resolver) this.resolver();
+        this.promise = undefined;
+    }
+
+    async lock(): Promise<void> {
+        while (this.promise) {
+            await this.promise;
+        }
+        this.promise = new Promise((resolver) => {
+            this.resolver = resolver;
+        });
+    }
+}

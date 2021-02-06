@@ -76,13 +76,14 @@ export class PostgresConnection extends SQLConnection {
     }
 
     async prepare(sql: string) {
-        if (!this.connection) this.connection = await this.getConnection();
+        this.connection ||= await this.getConnection();
         return new PostgresStatement(sql, this.connection);
     }
 
     async run(sql: string, params: any[] = []) {
         await asyncOperation(async (resolve, reject) => {
-            if (!this.connection) this.connection = await this.getConnection();
+            this.connection ||= await this.getConnection();
+
             this.connection.query(sql, params).then((res) => {
                 this.lastReturningRows = res.rows;
                 this.changes = res.rowCount;
@@ -116,8 +117,8 @@ function typeSafeDefaultValue(property: PropertySchema): any {
 }
 
 export class PostgresPersistence extends SQLPersistence {
-    constructor(protected platform: DefaultPlatform, protected connection: PostgresConnection) {
-        super(platform, connection);
+    constructor(protected platform: DefaultPlatform, protected connection: PostgresConnection, session: DatabaseSession<any>) {
+        super(platform, connection, session);
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -333,9 +334,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimaryField();
-        const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
-        select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
@@ -375,9 +374,18 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         for (const i in fieldsSet) {
             set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
         }
+        let bPrimaryKey = primaryKey.name;
+        //we need a different name because primaryKeys could be updated as well
+        if (fieldsSet[primaryKey.name]) {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name) + ' as __' + primaryKey.name);
+            bPrimaryKey = '__' + primaryKey.name;
+        } else {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name));
+        }
 
         const returningSelect: string[] = [];
-        returningSelect.push(tableName + '.' + pkField);
+        returningSelect.push(tableName + '.' + this.platform.quoteIdentifier(primaryKey.name));
+
         if (!empty(aggregateFields)) {
             for (const i in aggregateFields) {
                 returningSelect.push(tableName + '.' + this.platform.quoteIdentifier(i));
@@ -393,7 +401,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             SET
                 ${set.join(', ')}
             FROM _b
-            WHERE ${tableName}.${pkField} = _b.${pkField}
+            WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)}
             RETURNING ${returningSelect.join(', ')}
         `;
 
@@ -450,8 +458,8 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(): SQLPersistence {
-        return new PostgresPersistence(this.platform, this.connectionPool.getConnection());
+    createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence {
+        return new PostgresPersistence(this.platform, this.connectionPool.getConnection(), databaseSession);
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {

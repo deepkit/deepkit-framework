@@ -65,4 +65,5 @@ class Review {
     }
 }
 
-const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
+const database = new Database(new SQLiteDatabaseAdapter('./example.sqlite'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
+database.logger.enableLogging();

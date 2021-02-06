@@ -47,6 +47,9 @@
       "path": "packages/rpc-tcp/tsconfig.json"
     },
     {
+      "path": "packages/logger/tsconfig.json"
+    },
+    {
       "path": "packages/orm/tsconfig.json"
     },
     {

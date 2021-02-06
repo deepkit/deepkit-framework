@@ -22,7 +22,6 @@ export class ValidationFailed extends CustomError {
     }
 }
 
-
 /**
  * Validates a set of method arguments and returns the number of errors found.
  */

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabasePersistence, DatabasePersistenceChangeSet, Entity, getInstanceState } from '@deepkit/orm';
+import { DatabasePersistence, DatabasePersistenceChangeSet, DatabaseSession, Entity, getInstanceState } from '@deepkit/orm';
 import { ClassSchema } from '@deepkit/type';
 import { convertClassQueryToMongo } from './mapping';
 import { FilterQuery } from './query.model';
@@ -24,7 +24,7 @@ import { ObjectId } from '@deepkit/bson';
 
 export class MongoPersistence extends DatabasePersistence {
 
-    constructor(protected client: MongoClient, protected ormSequences: ClassSchema) {
+    constructor(protected client: MongoClient, protected ormSequences: ClassSchema, protected session: DatabaseSession<any>) {
         super();
     }
 

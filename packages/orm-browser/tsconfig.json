@@ -32,6 +32,9 @@
       "path": "../topsort/tsconfig.json"
     },
     {
+      "path": "../orm/tsconfig.json"
+    },
+    {
       "path": "../orm-browser-api/tsconfig.json"
     }
   ]

@@ -144,37 +144,37 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
             return `
                 if (!${has(changedName)}) {
-                if (!${current} && !${last}) {
-                
-                } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                    changes.${changedName} = item.${changedName};
-                    ${onChanged}
-                } else {
-                    const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, item);
-                    if (!empty(thisChanged)) {
+                    if (!${current} && !${last}) {
+                    
+                    } else if ((${current} && !${last}) || (!${current} && ${last})) {
                         changes.${changedName} = item.${changedName};
-                        ${onChanged}    
+                        ${onChanged}
+                    } else {
+                        const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, item.${property.name});
+                        if (!empty(thisChanged)) {
+                            changes.${changedName} = item.${changedName};
+                            ${onChanged}    
+                        }
                     }
                 }
-                }
             `;
-        } else if (property.type === 'any' || property.type === 'union') {
+        } else if (property.isBinary || property.type === 'any' || property.type === 'union') {
             return `
                 if (!${has(changedName)}) {
-                if (!genericEqual(${last}, ${current})) {
-                    changes.${changedName} = item.${changedName};
-                    ${onChanged}
-                }
+                    if (!genericEqual(${last}, ${current})) {
+                        changes.${changedName} = item.${changedName};
+                        ${onChanged}
+                    }
                 }
             `;
         } else {
             //binary, date, boolean, etc are encoded as simple JSON objects (number, boolean, or string) primitives
             return `
             if (!${has(changedName)}) {
-            if (${last} !== ${current}) {
-                changes.${changedName} = item.${changedName};
-                ${onChanged}
-            }
+                if (${last} !== ${current}) {
+                    changes.${changedName} = item.${changedName};
+                    ${onChanged}
+                }
             }
             `;
         }
@@ -195,7 +195,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             var changeSet = item[changeSetSymbol] || new ItemChanges(item);
             var changes = {};
             ${props.join('\n')}
-            changeSet.replaceSet(changes);
+            changeSet.mergeSet(changes);
             return changeSet.empty ? undefined : changeSet;
         }
         `;

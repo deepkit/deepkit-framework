@@ -61,6 +61,7 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
         '[class.is-textarea]': 'type === "textarea"',
         '[class.light-focus]': 'lightFocus !== false',
         '[class.semi-transparent]': 'semiTransparent !== false',
+        '[class.no-controls]': 'noControls !== false',
     },
     providers: [ngValueAccessor(InputComponent)]
 })
@@ -89,6 +90,11 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
      * Uses a more decent focus border.
      */
     @Input() lightFocus: boolean | '' = false;
+
+    /**
+     * Disables input controls (like for type=number the arrow buttons)
+     */
+    @Input() noControls: boolean | '' = false;
 
     /**
      * Appears a little bit transparent. Perfect for blurry background.

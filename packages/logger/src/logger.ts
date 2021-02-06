@@ -9,12 +9,11 @@
  */
 
 import style from 'ansi-styles';
-import util from 'util';
+import format from 'format-util';
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
-import { inject } from './injector/injector';
-import { Debugger } from './debug/debugger';
 
 export enum LoggerLevel {
+    none,
     alert,
     error,
     warning,
@@ -22,7 +21,6 @@ export enum LoggerLevel {
     info,
     debug,
 }
-
 
 export class ConsoleTransport implements LoggerTransport {
     write(message: string, level: LoggerLevel) {
@@ -66,6 +64,7 @@ export class ColorFormatter implements LoggerFormatter {
         if (level === LoggerLevel.error || level === LoggerLevel.alert) {
             message = `<red>${message}</red>`;
         }
+
         if (message.includes('<')) {
             message = message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
                 if (!(style as any)[color]) return a;
@@ -94,17 +93,89 @@ export class TimestampFormatter implements LoggerFormatter {
     }
 }
 
-export class Logger {
+export interface LoggerInterface {
+    level: LoggerLevel;
+
+    scoped(name: string): LoggerInterface;
+
+    is(level: LoggerLevel): boolean;
+
+    alert(...message: any[]): void;
+
+    error(...message: any[]): void;
+
+    warning(...message: any[]): void;
+
+    log(...message: any[]): void;
+
+    info(...message: any[]): void;
+
+    debug(...message: any[]): void;
+}
+
+export class ScopedLogger implements LoggerInterface {
+    constructor(protected parent: Logger, protected scope: string) {
+    }
+
+    scoped(name: string): LoggerInterface {
+        return this.parent.scoped(name);
+    }
+
+    get level() {
+        if (this.parent.scopedLevel[this.scope] !== undefined) return this.parent.scopedLevel[this.scope];
+
+        return this.parent.level;
+    }
+
+    set level(level: LoggerLevel) {
+        this.parent.scopedLevel[this.scope] = level;
+    }
+
+    is(level: LoggerLevel): boolean {
+        return level <= this.level;
+    }
+
+    alert(...message: any[]) {
+        this.parent.alert(`<yellow>${this.scope}</yellow>`, ...message);
+    }
+
+    error(...message: any[]) {
+        this.parent.error(`<yellow>${this.scope}</yellow>`, ...message);
+    }
+
+    warning(...message: any[]) {
+        this.parent.warning(`<yellow>${this.scope}</yellow>`, ...message);
+    }
+
+    log(...message: any[]) {
+        this.parent.log(`<yellow>${this.scope}</yellow>`, ...message);
+    }
+
+    info(...message: any[]) {
+        this.parent.info(`<yellow>${this.scope}</yellow>`, ...message);
+    }
+
+    debug(...message: any[]) {
+        this.parent.debug(`<yellow>${this.scope}</yellow>`, ...message);
+    }
+}
+
+export class Logger implements LoggerInterface {
     protected colorFormatter = new ColorFormatter;
     protected removeColorFormatter = new RemoveColorFormatter;
 
-    @inject().optional
-    protected debugger?: Debugger;
+    level: LoggerLevel = LoggerLevel.info;
+    scopedLevel: { [scope: string]: LoggerLevel } = {};
+    protected scopes: { [scope: string]: LoggerInterface } = {};
 
     constructor(
         protected transport: LoggerTransport[] = [],
         protected formatter: LoggerFormatter[] = [],
     ) {
+    }
+
+    scoped(name: string): LoggerInterface {
+        return this.scopes[name] ||= new ScopedLogger(this, name);
     }
 
     addTransport(transport: LoggerTransport) {
@@ -133,9 +204,14 @@ export class Logger {
         return message;
     }
 
+    is(level: LoggerLevel): boolean {
+        return level <= this.level;
+    }
+
     protected send(messages: any[], level: LoggerLevel) {
-        let message = this.format((util.format as any)(...messages), level);
-        this.debugger?.log(this.colorFormatter.format(message, level), level);
+        if (!this.is(level)) return;
+
+        let message = this.format((format as any)(...messages), level);
 
         for (const transport of this.transport) {
             if (transport.supportsColor()) {

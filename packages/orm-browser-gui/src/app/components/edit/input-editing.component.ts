@@ -1,10 +1,8 @@
 import { Component, ComponentFactoryResolver, ComponentRef, EventEmitter, Input, OnChanges, OnDestroy, Output, ViewContainerRef } from "@angular/core";
-import { ClassType } from "@deepkit/core";
 import { TableComponent } from "@deepkit/desktop-ui";
 import { PropertySchema } from "@deepkit/type";
 import { Subscription } from "rxjs";
-import { InputDateComponent } from "./input-date.component";
-import { InputStringComponent } from "./input-string.component";
+import { Registry } from "src/app/registry";
 
 @Component({
     selector: 'field-editing',
@@ -16,12 +14,6 @@ import { InputStringComponent } from "./input-string.component";
     `]
 })
 export class InputEditing implements OnDestroy, OnChanges {
-    components: { [name: string]: ClassType } = {
-        'string': InputStringComponent,
-        'number': InputStringComponent,
-        'date': InputDateComponent,
-    };
-
     @Input() property!: PropertySchema;
     @Input() row!: any
 
@@ -32,6 +24,7 @@ export class InputEditing implements OnDestroy, OnChanges {
     protected subKey?: Subscription;
 
     constructor(
+        private registry: Registry,
         private table: TableComponent<any>,
         private containerRef: ViewContainerRef,
         private resolver: ComponentFactoryResolver,
@@ -55,12 +48,12 @@ export class InputEditing implements OnDestroy, OnChanges {
     protected link() {
         this.unlink();
 
-        if (!this.components[this.property.type]) {
-            throw new Error(`No editing for property type ${this.property.type}`);
+        const component = this.registry.inputComponents[this.property.type];
+        if (!component) {
+            return;
         }
-        this.componentRef?.destroy();
 
-        const componentFactory = this.resolver.resolveComponentFactory(this.components[this.property.type]);
+        const componentFactory = this.resolver.resolveComponentFactory(component);
         this.componentRef = this.containerRef.createComponent(componentFactory);
         this.componentRef.instance.property = this.property;
         this.componentRef.instance.row = this.row;

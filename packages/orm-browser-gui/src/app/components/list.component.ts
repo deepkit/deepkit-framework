@@ -15,7 +15,7 @@ import { BrowserState } from "../browser-state";
             *ngFor="let entity of filterEntitiesToList(db.getClassSchemas())">
                 <div style="margin-left: 15px">
                     {{entity.getClassName()}} 
-                    <ng-container *ngIf="state.addedItems[entity.name!] && state.addedItems[entity.name!].length">({{state.addedItems[entity.name!].length}})</ng-container>
+                    <ng-container *ngIf="state.hasAddedItems(db.name, entity.getName()) as items">({{state.getAddedItems(db.name, entity.getName()).length}})</ng-container>
                 </div>
             </dui-list-item>
         </ng-container>

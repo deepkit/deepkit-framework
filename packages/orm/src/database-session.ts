@@ -10,14 +10,15 @@
 
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseValidationError, Entity } from './type';
-import { ClassType, CustomError } from '@deepkit/core';
-import { ClassSchema, getChangeDetector, getClassSchema, getClassTypeFromInstance, getConverterForSnapshot, getGlobalStore, getPrimaryKeyExtractor, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
+import { ClassType, CustomError, isArray } from '@deepkit/core';
+import { isReference, ClassSchema, getChangeDetector, getClassSchema, getClassTypeFromInstance, getConverterForSnapshot, getGlobalStore, getPrimaryKeyExtractor, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
 import { HydratorFn, markAsHydrated } from './formatter';
 import { getReference } from './reference';
 import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
+import { DatabaseLogger } from './logger';
 
 let SESSION_IDS = 0;
 
@@ -29,11 +30,12 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     protected committed: boolean = false;
     protected global: GlobalStore = getGlobalStore();
 
-
+    
     constructor(
         protected session: DatabaseSession<any>,
         protected identityMap: IdentityMap,
         protected emitter: UnitOfWorkDatabaseEmitter,
+        public logger: DatabaseLogger,
     ) {
 
     }
@@ -73,11 +75,17 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
                 //todo, check if join was populated. will throw otherwise
                 const v = item[reference.name as keyof T] as any;
-                if (!v) continue;
+                if (v === undefined) continue;
+
                 if (reference.isArray) {
-                    result.push(...v);
+                    if (isArray(v)) {
+                        for (const i of v) {
+                            if (isReference(v)) continue;
+                            if (i instanceof reference.getResolvedClassType()) result.push(i);
+                        }
+                    }
                 } else {
-                    result.push(v);
+                    if (v instanceof reference.getResolvedClassType() && !isReference(v)) result.push(v);
                 }
             }
         } finally {
@@ -249,6 +257,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         public readonly adapter: ADAPTER,
         public readonly unitOfWorkEmitter: UnitOfWorkDatabaseEmitter = new UnitOfWorkDatabaseEmitter,
         public readonly queryEmitter: QueryDatabaseEmitter = new QueryDatabaseEmitter(),
+        public logger: DatabaseLogger = new DatabaseLogger,
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);
@@ -283,7 +292,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this, this.identityMap, this.unitOfWorkEmitter));
+        this.rounds.push(new DatabaseSessionRound(this, this.identityMap, this.unitOfWorkEmitter, this.logger));
     }
 
     /**
@@ -350,7 +359,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
     public async commit<T>() {
         if (!this.currentPersistence) {
-            this.currentPersistence = this.adapter.createPersistence();
+            this.currentPersistence = this.adapter.createPersistence(this);
         }
 
         if (!this.rounds.length) {

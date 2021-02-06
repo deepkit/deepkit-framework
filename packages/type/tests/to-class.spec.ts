@@ -10,7 +10,6 @@ import { getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } fro
 test('test simple model', () => {
     const schema = getClassSchema(SimpleModel);
     expect(schema.name).toBe('SimpleModel');
-    expect(schema.idField).toBe('id');
 
     const instance = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
@@ -87,8 +86,6 @@ test('test simple model all fields', () => {
 });
 
 test('test simple model all fields plainToMongo', () => {
-    expect(getClassSchema(SubModel).idField).toBe(undefined);
-
     const item = jsonSerializer.for(SimpleModel).deserialize({
         name: 'myName',
         type: 5,

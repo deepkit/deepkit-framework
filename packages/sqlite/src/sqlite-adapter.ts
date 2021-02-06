@@ -8,9 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import sqlite3 from 'better-sqlite3';
+import { ClassType, empty, Mutex } from '@deepkit/core';
+import { DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import {
-    SQLConnection,
+    DefaultPlatform,
+    SqlBuilder, SQLConnection,
     SQLConnectionPool,
     SQLDatabaseAdapter,
     SQLDatabaseQuery,
@@ -18,14 +20,11 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement,
-    DefaultPlatform,
-    SqlBuilder
+    SQLStatement
 } from '@deepkit/sql';
-import { DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
-import { SQLitePlatform } from './sqlite-platform';
 import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
-import { ClassType, empty } from '@deepkit/core';
+import sqlite3 from 'better-sqlite3';
+import { SQLitePlatform } from './sqlite-platform';
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected stmt: sqlite3.Statement) {
@@ -48,23 +47,28 @@ export class SQLiteConnection extends SQLConnection {
     public platform = new SQLitePlatform();
     protected changes: number = 0;
 
-    constructor(connectionPool: SQLConnectionPool, public readonly db: sqlite3.Database) {
+    constructor(connectionPool: SQLConnectionPool, public readonly db: () => Promise<sqlite3.Database>) {
         super(connectionPool);
     }
 
     async prepare(sql: string) {
-        return new SQLiteStatement(this.db.prepare(sql));
+        return new SQLiteStatement((await this.db()).prepare(sql));
     }
 
     async run(sql: string, params: any[] = []) {
-        const stmt = this.db.prepare(sql);
-        const result = stmt.run(...params);
-        this.changes = result.changes;
+        try {
+            const stmt = (await this.db()).prepare(sql);
+            const result = stmt.run(...params);
+            this.changes = result.changes;
+        } catch (error) {
+            console.warn('sql', sql);
+            throw error;
+        }
     }
 
     async exec(sql: string) {
         try {
-            this.db.exec(sql);
+            (await this.db()).exec(sql);
         } catch (error) {
             console.warn('sql', sql);
             throw error;
@@ -77,13 +81,29 @@ export class SQLiteConnection extends SQLConnection {
 }
 
 export class SQLiteConnectionPool extends SQLConnectionPool {
+    protected connectionMutex = new Mutex();
+    protected connectionBusyResolve?: Function;
+
     constructor(protected db: sqlite3.Database) {
         super();
     }
 
     getConnection(): SQLiteConnection {
         this.activeConnections++;
-        return new SQLiteConnection(this, this.db);
+        let locked = false;
+        return new SQLiteConnection(this, async () => {
+            //only one connection at a time can use the database
+            if (!locked) {
+                await this.connectionMutex.lock();
+                locked = true;
+            }
+            return this.db;
+        });
+    }
+
+    release(connection: SQLConnection) {
+        this.connectionMutex.unlock();
+        super.release(connection);
     }
 }
 
@@ -91,8 +111,9 @@ export class SQLitePersistence extends SQLPersistence {
     constructor(
         protected platform: DefaultPlatform,
         protected connection: SQLiteConnection,
+        database: DatabaseSession<any>,
     ) {
-        super(platform, connection);
+        super(platform, connection, database);
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -124,6 +145,8 @@ export class SQLitePersistence extends SQLPersistence {
 
             const fieldAddedToValues: { [name: string]: 1 } = {};
             const id = changeSet.primaryKey[pkName];
+
+            //todo: handle changes.$unset
 
             if (changeSet.changes.$set) {
                 const value = scopeSerializer.partialSerialize(changeSet.changes.$set);
@@ -210,6 +233,7 @@ export class SQLitePersistence extends SQLPersistence {
               WHERE ${tableName}.${pkField} = _b.${pkField};
         `;
 
+        this.session.logger.logQuery(sql, []);
         await this.connection.exec(sql);
 
         if (!empty(setReturning)) {
@@ -261,9 +285,12 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const connection = this.connectionPool.getConnection();
         try {
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d;`);
-            await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
+            const tempSql = `CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`;
+            await connection.run(tempSql, select.params);
+            this.session.logger.logQuery(tempSql, select.params);
 
             const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (SELECT * FROM _tmp_d)`;
+            this.session.logger.logQuery(sql, []);
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
             deleteResult.modified = await connection.getChanges();
@@ -279,9 +306,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select: string[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimaryField();
-        const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
-        select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
@@ -318,6 +343,15 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
         }
 
+        let bPrimaryKey = primaryKey.name;
+        //we need a different name because primaryKeys could be updated as well
+        if (fieldsSet[primaryKey.name]) {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name) + ' as __' + primaryKey.name);
+            bPrimaryKey = '__' + primaryKey.name;
+        } else {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name));
+        }
+
         const sqlBuilder = new SqlBuilder(this.platform);
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
@@ -328,30 +362,32 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
                 ${set.join(', ')}
               FROM 
                 _b
-              WHERE ${tableName}.${pkField} = _b.${pkField};
+              WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)};
         `;
 
         const connection = this.connectionPool.getConnection();
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
-            await connection.run(`CREATE TEMPORARY TABLE _b AS ${selectSQL.sql};`, selectSQL.params);
 
+            const createBSQL = `CREATE TEMPORARY TABLE _b AS ${selectSQL.sql};`;
+            this.session.logger.logQuery(createBSQL, selectSQL.params);
+            await connection.run(createBSQL, selectSQL.params);
+
+            this.session.logger.logQuery(sql, []);
             await connection.run(sql);
             patchResult.modified = await connection.getChanges();
 
-            const pkName = this.classSchema.getPrimaryField().name;
             const returnings = await connection.execAndReturnAll('SELECT * FROM _b');
             for (const i in aggregateFields) {
                 patchResult.returning[i] = [];
             }
 
             for (const returning of returnings) {
-                patchResult.primaryKeys.push(primaryKeyConverted(returning[pkName]));
+                patchResult.primaryKeys.push(primaryKeyConverted(returning[primaryKey.name]));
                 for (const i in aggregateFields) {
                     patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
-
         } finally {
             connection.release();
         }
@@ -396,8 +432,8 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(): SQLPersistence {
-        return new SQLitePersistence(this.platform, this.connectionPool.getConnection());
+    createPersistence(session: DatabaseSession<any>): SQLPersistence {
+        return new SQLitePersistence(this.platform, this.connectionPool.getConnection(), session);
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {

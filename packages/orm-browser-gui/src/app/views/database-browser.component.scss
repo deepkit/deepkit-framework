@@ -1,9 +1,7 @@
 :host {
     display: flex;
-    display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 12px;
 }
 
 [hidden] { 
@@ -12,6 +10,8 @@
 
 .actions {
     margin-bottom: 12px;
+    padding: 12px;
+    padding-bottom: 0;
 }
 
 dui-table ::ng-deep .table-row.new > div {
@@ -42,28 +42,45 @@ dui-table ::ng-deep .table-row > div:hover dui-icon.active {
     display: inline-block;
 }
 
-dui-table ::ng-deep .table-row > div.changed {
-    background-color: rgba(60, 255, 0, 0.212);
+.cell-body {
+    border: 1px solid transparent;
+    padding: 2px 5px;
+    height: 100%;
+
+    &.changed {
+        border-radius: 24px;
+        background-color: rgba(60, 255, 0, 0.212);
+    }
+
+    &.invalid {
+        border-radius: 24px;
+        border: 1px solid var(--color-red);
+    }
+
+    &.editing {
+        padding: 0;
+        padding-right: 5px;
+    
+        overflow: hidden;
+        text-overflow: clip;
+    
+        > ng-component {
+            display: block;
+        }
+    
+        > ng-component > *,
+        > * {
+            margin-right: 3px;
+            width: 100%;
+        }
+    }
 }
 
-dui-table ::ng-deep .table-row > div.editing {
-    padding: 0;
-    padding-right: 5px;
-
-    overflow: hidden;
-    text-overflow: clip;
-
-    > ng-component {
-        display: block;
-    }
-
-    > ng-component > *,
-    > * {
-        margin-right: 3px;
-        width: 100%;
-    }
+dui-table ::ng-deep .table-row > div {
+    padding: 0 !important;
 }
 
 dui-table {
     flex: 1;
+    border-top: 1px solid var(--line-color-light) !important;
 }

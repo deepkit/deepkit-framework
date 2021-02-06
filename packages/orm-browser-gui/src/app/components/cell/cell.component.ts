@@ -1,9 +1,6 @@
 import { Component, ComponentFactoryResolver, ComponentRef, EventEmitter, Input, OnChanges, OnDestroy, Output, ViewContainerRef } from "@angular/core";
-import { ClassType } from "@deepkit/core";
 import { PropertySchema } from "@deepkit/type";
-import { Subscription } from "rxjs";
-import { DateCellComponent } from "./date-cell.component";
-import { StringCellComponent } from "./string-cell.component";
+import { Registry } from "src/app/registry";
 
 @Component({
     selector: 'cell',
@@ -15,12 +12,6 @@ import { StringCellComponent } from "./string-cell.component";
     `]
 })
 export class CellComponent implements OnDestroy, OnChanges {
-    components: { [name: string]: ClassType } = {
-        'string': StringCellComponent,
-        'number': StringCellComponent,
-        'date': DateCellComponent,
-    };
-
     @Input() property!: PropertySchema;
     @Input() row!: any
 
@@ -28,7 +19,11 @@ export class CellComponent implements OnDestroy, OnChanges {
 
     protected componentRef?: ComponentRef<any>;
 
-    constructor(private containerRef: ViewContainerRef, private resolver: ComponentFactoryResolver) {
+    constructor(
+        private containerRef: ViewContainerRef, 
+        private resolver: ComponentFactoryResolver,
+        private registry: Registry,
+        ) {
     }
 
     ngOnDestroy() {
@@ -44,14 +39,16 @@ export class CellComponent implements OnDestroy, OnChanges {
     }
 
     link() {
-        if (!this.components[this.property.type]) {
+        const component = this.registry.cellComponents[this.property.type];
+        if (!component) {
             return;
         }
         this.componentRef?.destroy();
 
-        const componentFactory = this.resolver.resolveComponentFactory(this.components[this.property.type]);
+        const componentFactory = this.resolver.resolveComponentFactory(component);
         this.componentRef = this.containerRef.createComponent(componentFactory);
         this.componentRef.instance.property = this.property;
         this.componentRef.instance.row = this.row;
+        this.componentRef.changeDetectorRef.detectChanges();
     }
 }

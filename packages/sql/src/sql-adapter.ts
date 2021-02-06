@@ -138,17 +138,17 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ClassSchema<T>,
-        databaseSession: DatabaseSession<DatabaseAdapter>
+        session: DatabaseSession<DatabaseAdapter>
     ) {
-        super(classSchema, databaseSession);
+        super(classSchema, session);
     }
 
     protected createFormatter(withIdentityMap: boolean = false) {
         return new SqlFormatter(
             this.classSchema,
             sqlSerializer,
-            this.databaseSession.getHydrator(),
-            withIdentityMap ? this.databaseSession.identityMap : undefined
+            this.session.getHydrator(),
+            withIdentityMap ? this.session.identityMap : undefined
         );
     }
 
@@ -161,6 +161,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
         const connection = this.connectionPool.getConnection();
         try {
+            this.session.logger.logQuery(sql.sql, sql.params);
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             //postgres has bigint as return type of COUNT, so we need to convert always
             return Number(row.count);
@@ -175,6 +176,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
         const connection = this.connectionPool.getConnection();
         try {
+            this.session.logger.logQuery(sql.sql, sql.params);
             await connection.run(sql.sql, sql.params);
             deleteResult.modified = await connection.getChanges();
             //todo, implement deleteResult.primaryKeys
@@ -188,6 +190,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.select(this.classSchema, model);
         const connection = this.connectionPool.getConnection();
         try {
+            this.session.logger.logQuery(sql.sql, sql.params);
             const rows = await connection.execAndReturnAll(sql.sql, sql.params);
             const results: T[] = [];
             if (model.isAggregate()) {
@@ -216,6 +219,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
 
         const connection = this.connectionPool.getConnection();
         try {
+            this.session.logger.logQuery(sql.sql, sql.params);
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             if (!row) return;
 
@@ -333,7 +337,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     abstract queryFactory(databaseSession: DatabaseSession<this>): SQLDatabaseQueryFactory;
 
-    abstract createPersistence(): SQLPersistence;
+    abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
 
     abstract getSchemaName(): string;
 
@@ -402,6 +406,7 @@ export class SQLPersistence extends DatabasePersistence {
     constructor(
         protected platform: DefaultPlatform,
         protected connection: SQLConnection,
+        protected session: DatabaseSession<any>,
     ) {
         super();
     }
@@ -447,7 +452,9 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         //try bulk update via https://stackoverflow.com/questions/11563869/update-multiple-rows-with-different-values-in-a-single-sql-query
-        await this.connection.run(updates.join(';\n'));
+        const sql = updates.join(';\n');
+        this.session.logger.logQuery(sql, []);
+        await this.connection.run(sql);
     }
 
     protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
@@ -469,6 +476,7 @@ export class SQLPersistence extends DatabasePersistence {
 
         const sql = this.getInsertSQL(classSchema, fields.map(v => this.platform.quoteIdentifier(v)), insert);
         try {
+            this.session.logger.logQuery(sql, params);
             await this.connection.run(sql, params);
         } catch (error) {
             console.warn('Insert failed', sql, params, error);
@@ -495,6 +503,8 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         const inValues = pks.map(v => this.platform.quoteValue(v)).join(', ');
-        await this.connection.run(`DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`);
+        const sql = `DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`;
+        this.session.logger.logQuery(sql, []);
+        await this.connection.run(sql);
     }
 }

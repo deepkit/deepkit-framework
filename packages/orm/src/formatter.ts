@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getGlobalStore, getPrimaryKeyHashGenerator, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
+import { createReferenceClass, ClassSchema, getGlobalStore, getPrimaryKeyHashGenerator, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
 import { DatabaseQueryModel } from './query';
-import { ClassType } from '@deepkit/core';
+import { capitalize, ClassType } from '@deepkit/core';
 import { getInstanceState, IdentityMap, PKHash } from './identity-map';
-import { createReferenceClass, getReference } from './reference';
+import { getReference } from './reference';
 
 const sessionHydratorSymbol = Symbol('sessionHydratorSymbol');
 
@@ -124,24 +124,25 @@ export class Formatter {
         propertySchema: PropertySchema,
         isPartial: boolean
     ): object | undefined | null {
-        const fkName = propertySchema.getForeignKeyName();
-
-        if (undefined === dbRecord[fkName] || null === dbRecord[fkName]) {
-            if (propertySchema.isNullable) return null;
-            return;
-        }
-
         const foreignSchema = propertySchema.getResolvedClassSchema();
         const pool = this.getInstancePoolForClass(foreignSchema.classType);
 
-        //note: foreign keys only support currently a single foreign key ...
         const foreignPrimaryFields = foreignSchema.getPrimaryFields();
-        const foreignPrimaryKey = { [foreignPrimaryFields[0].name]: dbRecord[fkName] };
-        const foreignPrimaryKeyAsClass = this.serializer.for(classSchema).partialDeserialize(foreignPrimaryKey);
+        const foreignPrimaryKey: { [name: string]: any } = {};
+
+        for (const property of foreignPrimaryFields) {
+            const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.name : propertySchema.name + capitalize(property.name);
+            //todo: apply namingstrategy
+            if (property.isReference) {
+                foreignPrimaryKey[property.name] = this.getReference(property.getResolvedClassSchema(), dbRecord, propertySchema, isPartial);
+            } else {
+                foreignPrimaryKey[property.name] = this.serializer.deserializeProperty(property, dbRecord[foreignKey]);
+            }
+        }
 
         const ref = getReference(
             foreignSchema,
-            foreignPrimaryKeyAsClass,
+            foreignPrimaryKey,
             isPartial ? undefined : this.identityMap,
             isPartial ? undefined : pool,
             this.getReferenceClass(foreignSchema)
@@ -181,7 +182,7 @@ export class Formatter {
                     const converted = this.serializer.for(classSchema).deserialize(dbRecord);
 
                     for (const propName of classSchema.propertyNames) {
-                        if (propName === classSchema.idField) continue;
+                        if (classSchema.getProperty(propName).isId) continue;
 
                         const prop = classSchema.getClassProperties().get(propName)!;
                         if (propName in item) continue;

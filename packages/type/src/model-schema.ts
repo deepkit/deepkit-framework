@@ -19,6 +19,7 @@ export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schem
     literalValue: t.union(t.string, t.number, t.boolean).optional,
     isDecorated: t.literal(true).optional,
     isParentReference: t.literal(true).optional,
+    isReference: t.literal(true).optional,
     isOptional: t.literal(true).optional,
     isId: t.literal(true).optional,
     autoIncrement: t.literal(true).optional,
@@ -30,6 +31,8 @@ export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schem
     classTypeName: t.string.optional,
     noValidation: t.boolean.optional,
     methodName: t.string.optional,
+    enum: t.map(t.any).optional,
     groupNames: t.array(t.string).optional,
+    backReference: t.type({mappedBy: t.string.optional, via: t.string.optional},).optional,
     templateArgs: t.array((): any => propertyDefinition).optional,
 });

@@ -3,14 +3,14 @@ import { PropertySchema } from "@deepkit/type";
 
 @Component({
     template: `
-    <dui-input textured lightFocus [type]="getType()" focus 
+    <dui-input textured lightFocus [type]="getType()" focus  style="width: 100%"
         (focusChange)="$event ? false : done.emit()" 
         (enter)="done.emit()" (esc)="done.emit()"
         (keyDown)="keyDown.emit($event)"
         [(ngModel)]="row[property.name]"></dui-input>
     `
 })
-export class InputStringComponent {
+export class StringInputComponent {
     @Input() row: any;
     @Input() property!: PropertySchema;
 

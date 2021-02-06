@@ -34,5 +34,8 @@ test('changes', () => {
 
         changes.replaceSet({});
         expect(changes.empty).toBe(true);
+
+        changes.mergeSet({b: true});
+        expect(changes.empty).toBe(false);
     }
 });

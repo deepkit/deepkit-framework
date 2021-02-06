@@ -440,7 +440,7 @@ export class BaseQuery<T extends Entity> {
 export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ClassSchema<T>,
-        protected databaseSession: DatabaseSession<ADAPTER>,
+        protected session: DatabaseSession<ADAPTER>,
     ) {
     }
 
@@ -628,11 +628,14 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             }
         }
 
+        
         const patchResult: PatchResult<T> = {
             modified: 0,
             returning: {},
             primaryKeys: []
         };
+
+        if (changes.empty) return patchResult;
 
         const hasEvents = this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions() || this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions();
         if (!hasEvents) {

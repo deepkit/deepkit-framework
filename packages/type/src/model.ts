@@ -22,10 +22,12 @@ import {
     isFunction,
     isObject,
     isPlainObject,
-    toFastProperties
+    toFastProperties,
+    capitalize
 } from '@deepkit/core';
 import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
 import { FieldDecoratorResult } from './field-decorator';
+import { propertyDefinition } from './model-schema';
 import { typedArrayMap, typedArrayNamesMap, Types } from './types';
 import { isArray } from './utils';
 
@@ -109,6 +111,9 @@ export interface PropertySchemaSerialized {
     classType?: string;
     classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
     noValidation?: boolean;
+    isReference?: true;
+    enum?: { [name: string]: any };
+    backReference?: { via?: string, mappedBy?: string };
     autoIncrement?: true;
 }
 
@@ -247,6 +252,10 @@ export class PropertySchema {
 
     get isTypedArray(): boolean {
         return typedArrayNamesMap.has(this.type);
+    }
+
+    get isBinary(): boolean {
+        return this.type === 'arrayBuffer' || this.isTypedArray;
     }
 
     groupNames: string[] = [];
@@ -396,6 +405,9 @@ export class PropertySchema {
         if (this.type === 'union') {
             return this.templateArgs.map(v => v.toString()).join(' | ') + affix;
         }
+        if (this.type === 'enum') {
+            return 'enum' + affix;
+        }
         if (this.type === 'class') {
             if (this.classTypeName) return this.classTypeName + affix;
             if (this.classTypeForwardRef) {
@@ -426,32 +438,43 @@ export class PropertySchema {
             type: this.type
         };
 
-        if (this.literalValue !== undefined) props['literalValue'] = this.literalValue;
-        if (this.isDecorated) props['isDecorated'] = true;
-        if (this.isDiscriminant) props['isDiscriminant'] = true;
-        if (this.isParentReference) props['isParentReference'] = true;
-        if (this.isOptional) props['isOptional'] = true;
-        if (this.isId) props['isId'] = true;
-        if (this.allowLabelsAsValue) props['allowLabelsAsValue'] = true;
-        if (this.typeSet) props['typeSet'] = true;
-        if (this.methodName) props['methodName'] = this.methodName;
-        if (this.groupNames.length) props['groupNames'] = this.groupNames;
-        if (this.defaultValue) props['defaultValue'] = this.defaultValue();
-        props['noValidation'] = this.noValidation;
-        if (this.isAutoIncrement) props.autoIncrement = true;
+        if (this.literalValue !== undefined) props.literalValue = this.literalValue;
+        if (this.isDecorated) props.isDecorated = true;
+        if (this.isDiscriminant) props.isDiscriminant = true;
+        if (this.isParentReference) props.isParentReference = true;
+        if (this.isOptional) props.isOptional = true;
+        if (this.isId) props.isId = true;
+        if (this.allowLabelsAsValue) props.allowLabelsAsValue = true;
+        if (this.typeSet) props.typeSet = true;
+        if (this.methodName) props.methodName = this.methodName;
+        if (this.groupNames.length) props.groupNames = this.groupNames;
+        if (this.defaultValue) props.defaultValue = this.defaultValue();
+        if (this.isReference) props.isReference = this.isReference;
+        if (this.type === 'enum') props.enum = this.getResolvedClassType();
 
-        if (this.templateArgs.length) {
-            props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
+        if (this.isAutoIncrement) props.autoIncrement = true;
+        props.noValidation = this.noValidation;
+
+        if (this.templateArgs.length) props.templateArgs = this.templateArgs.map(v => v.toJSON());
+
+        if (this.backReference) {
+            let via = '';
+
+            if (this.backReference.via) {
+                const classType = resolveClassTypeOrForward(this.backReference.via);
+                via = getClassSchema(classType).getName();
+            }
+
+            props.backReference = { mappedBy: this.backReference.mappedBy, via };
         }
 
         const resolved = this.getResolvedClassTypeForValidType();
         if (resolved) {
             const name = getClassSchema(resolved).name;
             if (!name) {
-                props['classTypeName'] = getClassName(resolved);
+                props.classTypeName = getClassName(resolved);
             } else {
-                props['classType'] = name;
-
+                props.classType = name;
             }
         }
 
@@ -463,37 +486,51 @@ export class PropertySchema {
         p.type = props['type'];
         p.literalValue = props['literalValue'];
 
-        if (props['isDecorated']) p.isDecorated = true;
-        if (props['isParentReference']) p.isParentReference = true;
-        if (props['isDiscriminant']) p.isDiscriminant = true;
-        if (props['isOptional']) p.isOptional = true;
-        if (props['isId']) p.isId = true;
-        if (props['allowLabelsAsValue']) p.allowLabelsAsValue = true;
-        if (props['typeSet']) p.typeSet = true;
-        if (props['methodName']) p.methodName = props['methodName'];
-        if (props['groupNames']) p.groupNames = props['groupNames'];
-        if (props['noValidation']) p.noValidation = props['noValidation'];
+        if (props.isDecorated) p.isDecorated = true;
+        if (props.isParentReference) p.isParentReference = true;
+        if (props.isDiscriminant) p.isDiscriminant = true;
+        if (props.isOptional) p.isOptional = true;
+        if (props.isId) p.isId = true;
+        if (props.allowLabelsAsValue) p.allowLabelsAsValue = true;
+        if (props.typeSet) p.typeSet = true;
+        if (props.methodName) p.methodName = props.methodName;
+        if (props.groupNames) p.groupNames = props.groupNames;
+        if (props.noValidation) p.noValidation = props.noValidation;
+        if (props.isReference) p.isReference = props.isReference;
         if (props.autoIncrement) p.isAutoIncrement = props.autoIncrement;
+        if (props.enum) p.classType = props.enum as ClassType;
 
-        if (props['defaultValue']) p.defaultValue = () => props['defaultValue'];
+        if (props.defaultValue) p.defaultValue = () => props.defaultValue;
 
-        if (props['templateArgs']) {
-            p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType));
+        if (props.templateArgs) {
+            p.templateArgs = props.templateArgs.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType));
         }
 
-        if (props['classType']) {
-            const entity = getGlobalStore().RegisteredEntities[props['classType']];
+        if (props.backReference) {
+            p.backReference = { mappedBy: props.backReference.mappedBy };
+            if (props.backReference.via) {
+                const entity = getGlobalStore().RegisteredEntities[props.backReference.via];
+                if (entity) {
+                    p.backReference.via = getClassSchema(entity).classType;
+                } else if (throwForInvalidClassType) {
+                    throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.backReference.via} . ` +
+                        `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props.backReference.via}')`);
+                }
+            }
+        }
+        if (props.classType) {
+            const entity = getGlobalStore().RegisteredEntities[props.classType];
             if (entity) {
                 p.classType = getClassSchema(entity).classType;
             } else if (throwForInvalidClassType) {
-                throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props['classType']} . ` +
-                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props['classType']}')`);
+                throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.classType} . ` +
+                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props.classType}')`);
             }
-        // } else if (p.type === 'class' && !props['classType']) {
-        //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
-        //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
+            // } else if (p.type === 'class' && !props['classType']) {
+            //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
+            //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
         }
-        p.classTypeName = props['classTypeName'];
+        p.classTypeName = props.classTypeName;
 
         return p;
     }
@@ -531,7 +568,7 @@ export class PropertySchema {
             && type !== 'any'
             && type !== Array
             && type !== Object
-        ;
+            ;
 
         if (isCustomObject) {
             this.type = 'class';
@@ -683,8 +720,6 @@ export class ClassSchema<T = any> {
     protected initializedMethods = new Set<string>();
 
     protected classProperties = new Map<string, PropertySchema>();
-
-    idField?: keyof T & string;
 
     propertyNames: string[] = [];
 
@@ -853,7 +888,6 @@ export class ClassSchema<T = any> {
             s.methodProperties.set(i, obj);
         }
 
-        s.idField = this.idField;
         s.propertyNames = this.propertyNames.slice(0);
         s.methodsParamNames = new Map<string, string[]>();
         s.methodsParamNamesAutoResolved = new Map<string, string[]>();
@@ -978,28 +1012,56 @@ export class ClassSchema<T = any> {
         return this.methods[name];
     }
 
-    /**
-     * Internal note: for multi pk support, this will return a PropertySchema[] in the future.
-     */
-    public getPrimaryField(): PropertySchema {
-        if (!this.idField) {
-            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @t.primary to define one.`);
+    public extractForeignKeyToPrimaryKey(property: PropertySchema, item: object): Partial<T> {
+        const primaryKey: Partial<T> = {};
+        const pks = this.getPrimaryFields();
+
+        if (pks.length === 1) {
+            (primaryKey as any)[pks[0].name] = (item as any)[property.name];
+        } else {
+            for (const pk of pks) {
+                (primaryKey as any)[pk.name] = (item as any)[property.name + capitalize(pk.name)];
+            }
         }
 
-        return this.getProperty(this.idField);
+        return primaryKey;
+    }
+
+    public extractPrimaryKey(item: object): Partial<T> {
+        const primaryKey: Partial<T> = {};
+        for (const pk of this.getPrimaryFields()) {
+            (primaryKey as any)[pk.name] = (item as any)[pk.name];
+        }
+
+        return primaryKey;
+    }
+
+    /**
+     * Internal note: for multi pk support, this will be removed.
+     */
+    public getPrimaryField(): PropertySchema {
+        const pks = this.getPrimaryFields();
+        if (pks.length === 0) {
+            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @t.primary to define one.`);
+        }
+        if (pks.length > 1) {
+            throw new Error(`Class ${getClassName(this.classType)} has multiple primary fields. This is not supported.`);
+        }
+
+        return pks[0];
     }
 
     public hasCircularReference(stack: ClassSchema[] = []): boolean {
         if (stack.includes(this)) return true;
         stack.push(this);
-        
+
         for (const property of this.getClassProperties().values()) {
             if (property.type === 'partial' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'map' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'array' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'class' && property.getResolvedClassSchema().hasCircularReference(stack)) return true;
         }
-        
+
         stack.pop();
         return false;
     }

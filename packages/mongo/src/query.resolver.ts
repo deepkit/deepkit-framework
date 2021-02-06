@@ -478,8 +478,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return new Formatter(
             this.classSchema,
             mongoSerializer,
-            this.databaseSession.getHydrator(),
-            withIdentityMap ? this.databaseSession.identityMap : undefined
+            this.session.getHydrator(),
+            withIdentityMap ? this.session.identityMap : undefined
         );
     }
 

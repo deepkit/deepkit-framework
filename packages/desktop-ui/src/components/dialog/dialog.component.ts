@@ -40,7 +40,7 @@ import { IN_DIALOG } from "../app/token";
 @Component({
     template: `
         <dui-window>
-            <dui-window-content>
+            <dui-window-content class="{{class}}">
                 <ng-container *ngIf="component"
                               #renderComponentDirective
                               [renderComponent]="component" [renderComponentInputs]="componentInputs">
@@ -74,6 +74,7 @@ export class DialogWrapperComponent {
     actions?: TemplateRef<any> | undefined;
     container?: TemplateRef<any> | undefined;
     content?: TemplateRef<any> | undefined;
+    class: string = '';
 
     @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
@@ -108,6 +109,10 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
 
     @Input() visible: boolean = false;
     @Output() visibleChange = new EventEmitter<boolean>();
+
+    @Input() class: string = '';
+
+    @Input() noPadding: boolean | '' = false;
 
     @Input() minWidth?: number | string;
     @Input() minHeight?: number | string;
@@ -222,7 +227,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
             maxWidth: this.maxWidth || '90%',
             maxHeight: this.maxHeight || '90%',
             hasBackdrop: true,
-            panelClass: (this.center ? 'dialog-overlay' : 'dialog-overlay-with-animation'),
+            panelClass: [this.class, (this.center ? 'dialog-overlay' : 'dialog-overlay-with-animation'), this.noPadding !== false ? 'dialog-overlay-no-padding' : ''],
             scrollStrategy: overlay.scrollStrategies.reposition(),
             positionStrategy: positionStrategy,
         });
@@ -248,6 +253,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         this.wrapperComponentRef.instance.component = this.component!;
         this.wrapperComponentRef.instance.componentInputs = this.componentInputs;
         this.wrapperComponentRef.instance.content = this.template!;
+        this.wrapperComponentRef.instance.class = this.class!;
 
         if (this.actions) {
             this.wrapperComponentRef!.instance.setActions(this.actions);

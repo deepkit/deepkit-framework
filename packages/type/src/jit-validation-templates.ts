@@ -14,6 +14,7 @@ import { getDataCheckerJS, jitValidate } from './jit-validation';
 import { getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } from '@deepkit/core';
 import { getSortedUnionTypes } from './union';
 import { jsonTypeGuards } from './json-typeguards';
+import { referenceSymbol } from './reference';
 
 registerCheckerCompiler('number', (accessor: string, property: PropertySchema, utils) => {
     return `
@@ -117,11 +118,12 @@ registerCheckerCompiler('date', (accessor: string, property: PropertySchema, uti
 registerCheckerCompiler('class', (accessor: string, property: PropertySchema, utils, jitStack) => {
     const jitValidateThis = utils.reserveVariable('jitValidate');
     const classSchema = getClassSchema(property.resolveClassType!);
+    utils.context.set('referenceSymbol', referenceSymbol);
 
     return {
         template: `
             if ('object' === typeof ${accessor} && 'function' !== typeof ${accessor}.slice) {
-                if (!_stack || _stack.length === 0 || !_stack.includes(${accessor})) {
+                if ((!_stack || _stack.length === 0 || !_stack.includes(${accessor})) && !(referenceSymbol in ${accessor})) {
                     ${jitValidateThis}.fn(${accessor}, ${utils.path}, _errors, _stack);
                 }
             } else {

@@ -24,7 +24,7 @@ export class User {
     groups: Group[] = [];
 
     constructor(
-        @t public name: string,
+        @t.minLength(3) public username: string,
     ) {
     }
 }

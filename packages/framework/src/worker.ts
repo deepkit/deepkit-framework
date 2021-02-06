@@ -22,7 +22,7 @@ import { SecureContextOptions, TlsOptions } from 'tls';
 import selfsigned from 'selfsigned';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { Logger } from './logger';
+import { Logger } from '@deepkit/logger';
 import { ClassType } from '@deepkit/core';
 
 export interface WebServerOptions {

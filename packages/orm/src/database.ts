@@ -9,16 +9,18 @@
  */
 
 import { ClassType, CustomError, getClassName } from '@deepkit/core';
-import { Query } from './query';
-import { getDatabaseSessionHydrator, isHydrated } from './formatter';
+import { ConsoleTransport, Logger, LoggerInterface } from '@deepkit/logger';
 import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
+import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
+import { getDatabaseSessionHydrator, isHydrated } from './formatter';
+import { getNormalizedPrimaryKey } from './identity-map';
+import { DatabaseLogger } from './logger';
+import { Query } from './query';
+import { getReference } from './reference';
 import { Entity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
-import { getNormalizedPrimaryKey } from './identity-map';
-import { getReference } from './reference';
-import { DatabaseAdapter } from './database-adapter';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -30,7 +32,7 @@ export async function hydrateEntity<T>(item: T) {
     throw new Error(`Given object is not a proxy object and thus can not be hydrated, or is already hydrated.`);
 }
 
-export class DatabaseError extends CustomError {}
+export class DatabaseError extends CustomError { }
 
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
@@ -80,6 +82,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
 
     protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
+
+    public logger: DatabaseLogger = new DatabaseLogger();
 
     constructor(
         public readonly adapter: ADAPTER,
@@ -153,7 +157,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents);
+        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.logger);
     }
 
     /**
@@ -197,6 +201,14 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             schema.data['orm.database'] = this;
             if (isActiveRecordClassType(entity)) entity.registerDatabase(this);
         }
+    }
+
+    getEntity(name: string): ClassSchema {
+        for (const entity of this.entities.values()) {
+            if (entity.getName() === name) return entity;
+        }
+
+        throw new Error(`No entity with name ${name} registered in database ${this.name}`);
     }
 
     /**

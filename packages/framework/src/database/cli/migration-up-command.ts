@@ -11,7 +11,7 @@
 import { SQLDatabaseAdapter, SqlMigrationHandler } from '@deepkit/sql';
 import { indent } from '@deepkit/core';
 import { cli, flag } from '../../command';
-import { Logger } from '../../logger';
+import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration-provider';
 
 @cli.controller('migration:up', {

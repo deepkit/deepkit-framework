@@ -11,7 +11,7 @@
 import { ApplicationServer } from '../application-server';
 import { cli, Command, flag } from '../command';
 import { InjectorContext } from '../injector/injector';
-import { Logger, TimestampFormatter } from '../logger';
+import { Logger, TimestampFormatter } from '@deepkit/logger';
 
 @cli.controller('server:listen', {
     description: 'Starts the HTTP server'

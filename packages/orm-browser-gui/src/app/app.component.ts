@@ -19,18 +19,26 @@ import { ClassSchema } from '@deepkit/type';
   template: `
     <dui-window>
       <dui-window-header size="small">
+        {{state.entity ? state.entity.getClassName() : ''}}
         <dui-window-toolbar>
           <dui-button-group>
-            <div style="position: relative; top: -2px;">
-              <img style="width: 16px; vertical-align: text-bottom; margin-left: 4px;" src="assets/deepkit_white.svg"/>
-              <span style="margin-left: 8px; display: inline-block; color: var(--text-grey)">ORM Browser</span>
-            </div>
+                <div style="position: relative; top: 0px;">
+                  <img class="logo visible-for-dark-mode" src="assets/deepkit_white.svg"/>
+                  <img class="logo visible-for-white-mode" theme-white src="assets/deepkit_black.svg"/>
+
+                  <span style="margin-left: 8px; display: inline-block; color: var(--text-grey)">ORM Browser</span>
+                </div>
+            </dui-button-group>
+
+          <dui-button-group float="sidebar">
+              <dui-button textured (click)="sidebarVisible = !sidebarVisible;"
+                          icon="toggle_sidebar"></dui-button>
           </dui-button-group>
 
           <dui-window-toolbar-container name="browser"></dui-window-toolbar-container>
         </dui-window-toolbar>
       </dui-window-header>
-      <dui-window-content>
+      <dui-window-content [sidebarVisible]="sidebarVisible">
         <dui-window-sidebar>
           <dui-list>
             <dui-list-title>Database</dui-list-title>
@@ -46,6 +54,9 @@ import { ClassSchema } from '@deepkit/type';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
+
+  sidebarVisible: boolean = true;
+
   constructor(
     protected controllerClient: ControllerClient,
     protected cd: ChangeDetectorRef,

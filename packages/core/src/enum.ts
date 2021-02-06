@@ -33,7 +33,7 @@ export function getEnumLabel(enumType: { [field: string]: any }, id: any): any {
 export function getEnumLabels(enumDefinition: any) {
     let value = cacheEnumLabels.get(enumDefinition);
     if (!value) {
-        value = Object.keys(enumDefinition).filter(v => !Number.isFinite(parseInt(v)));
+        value = Object.keys(enumDefinition).filter(v => !Number.isFinite(parseInt(v, 10)));
         cacheEnumLabels.set(enumDefinition, value);
     }
 
@@ -59,6 +59,16 @@ export function getEnumValues(enumDefinition: any): any[] {
     }
 
     return value;
+}
+
+export function getEnumKeyLabelMap(enumDefinition: any): Map<any, string> {
+    const map = new Map<any, string>();
+    const keys = getEnumValues(enumDefinition);
+    const labels = getEnumLabels(enumDefinition);
+    for (let i = 0; i < keys.length; i++) {
+        map.set(keys[i], labels[i]);
+    }
+    return map;
 }
 
 /**

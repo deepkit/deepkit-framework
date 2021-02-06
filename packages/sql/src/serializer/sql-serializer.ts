@@ -8,6 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { isObject } from '@deepkit/core';
 import {
     CompilerState,
     getClassSchema,
@@ -127,10 +128,11 @@ sqlSerializer.fromClass.prepend('class', (property: PropertySchema, state: Compi
 
     if (property.isReference) {
         const classType = state.setVariable('classType', property.resolveClassType);
+        state.rootContext.set('isObject', isObject);
         const primary = classSchema.getPrimaryField();
 
         state.addCodeForSetter(`
-            if (${state.accessor} instanceof ${classType}) {
+            if (isObject(${state.accessor})) {
                 ${getDataConverterJS(state.setter, `${state.accessor}.${primary.name}`, primary, state.serializerCompilers, state.rootContext, state.jitStack)}
             } else {
                 //we treat the input as if the user gave the primary key directly

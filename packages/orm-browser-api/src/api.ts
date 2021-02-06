@@ -9,7 +9,21 @@
  */
 
 import { ControllerSymbol } from '@deepkit/rpc';
-import { ClassSchema, entity, getGlobalStore, propertyDefinition, PropertySchema, PropertySchemaSerialized, t, SerializedSchema, serializedSchemaDefinition, deserializeSchemas } from '@deepkit/type';
+import { ChangesInterface, ClassSchema, deserializeSchemas, entity, SerializedSchema, serializedSchemaDefinition, t } from '@deepkit/type';
+
+export type DatabaseCommit = {
+    [dbName: string]: {
+        addedIds: { [entityName: string]: number[] },
+        added: { [entityName: string]: any[] },
+        removed: { [entityName: string]: { [pkName: string]: any }[] },
+        changed: {
+            [entityName: string]: {
+                pk: { [pkName: string]: any },
+                changes: ChangesInterface<any>
+            }[]
+        }
+    }
+}
 
 @entity.name('orm-browser/database')
 export class DatabaseInfo {
@@ -55,7 +69,8 @@ export interface BrowserControllerInterface {
     migrate(name: string): Promise<void>;
     getDatabase(name: string): DatabaseInfo;
     // getMigration(name: string): MigrationInfo;
-    getItems(dbName: string, entityName: string): Promise<any[]>;
+    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, limit: number, skip: number): Promise<any[]>;
+    getCount(dbName: string, entityName: string, filter: { [name: string]: any }): Promise<number>;
     create(dbName: string, entityName: string): Promise<any>;
-    add(dbName: string, entityName: string, items: any[]): Promise<any>;
+    commit(commit: DatabaseCommit): Promise<any>;
 }

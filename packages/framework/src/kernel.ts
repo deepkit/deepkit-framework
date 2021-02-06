@@ -34,7 +34,7 @@ import { eventDispatcher } from './event';
 import { HttpKernel, HttpListener, httpWorkflow, serveStaticListener } from './http';
 import { injectable, injectorReference } from './injector/injector';
 import { kernelConfig } from './kernel.config';
-import { ConsoleTransport, Logger } from './logger';
+import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { createModule } from './module';
 import { Router } from './router';
 import { DeepkitRpcSecurity } from './rpc';

@@ -9,6 +9,7 @@
  */
 
 import {
+    AfterViewInit,
     ChangeDetectorRef,
     Component,
     Directive,
@@ -29,6 +30,7 @@ import { Subscription } from "rxjs";
 import { WindowRegistry } from "../window/window-state";
 import { focusWatcher } from "../../core/utils";
 import { isArray } from "@deepkit/core";
+import { ReactiveChangeDetectionModule } from "../app";
 
 
 @Component({
@@ -48,7 +50,7 @@ import { isArray } from "@deepkit/core";
     },
     styleUrls: ['./dropdow.component.scss']
 })
-export class DropdownComponent implements OnChanges, OnDestroy {
+export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public isOpen = false;
     public overlayRef?: OverlayRef;
     protected lastFocusWatcher?: Subscription;
@@ -93,8 +95,8 @@ export class DropdownComponent implements OnChanges, OnDestroy {
 
     @Output() hidden = new EventEmitter();
 
-    @ViewChild('dropdownTemplate', { static: false }) dropdownTemplate!: TemplateRef<any>;
-    @ViewChild('dropdown', { static: false }) dropdown!: ElementRef<HTMLElement>;
+    @ViewChild('dropdownTemplate', { static: false, read: TemplateRef }) dropdownTemplate!: TemplateRef<any>;
+    @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown!: ElementRef<HTMLElement>;
 
     constructor(
         protected overlayService: Overlay,
@@ -107,10 +109,15 @@ export class DropdownComponent implements OnChanges, OnDestroy {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes.show) {
+        if (changes.show && this.dropdownTemplate) {
             if (this.show === true) this.open();
             if (this.show === false) this.close();
         }
+    }
+
+    ngAfterViewInit() {
+        if (this.show === true) this.open();
+        if (this.show === false) this.close();
     }
 
     ngOnDestroy(): void {
@@ -132,7 +139,7 @@ export class DropdownComponent implements OnChanges, OnDestroy {
         }
     }
 
-    public open(target?: HTMLElement | ElementRef | MouseEvent) {
+    public open(target?: HTMLElement | ElementRef | MouseEvent | 'center') {
         if (this.lastFocusWatcher) {
             this.lastFocusWatcher.unsubscribe();
         }
@@ -189,6 +196,11 @@ export class DropdownComponent implements OnChanges, OnDestroy {
                     }
                 ]);
             ;
+        } else if (target === 'center') {
+
+            position = overlay
+                .position()
+                .global().centerHorizontally().centerVertically();
         } else {
             position = overlay
                 .position()
@@ -242,6 +254,7 @@ export class DropdownComponent implements OnChanges, OnDestroy {
 
             this.overlayRef = overlay.create(options);
 
+            if (!this.dropdownTemplate) throw new Error('No dropdownTemplate set');
             const portal = new TemplatePortal(this.dropdownTemplate, this.viewContainerRef);
 
             this.overlayRef!.attach(portal);
@@ -253,10 +266,12 @@ export class DropdownComponent implements OnChanges, OnDestroy {
             this.showChange.emit(true);
 
             setTimeout(() => {
-                if (this.overlayRef) {
-                    this.overlayRef.updatePosition();
-                }
-            }, 250);
+                if (this.overlayRef) this.overlayRef.updatePosition();
+            }, 0);
+
+            setTimeout(() => {
+                if (this.overlayRef) this.overlayRef.updatePosition();
+            }, 50);
         }
 
         const normalizedAllowedFocus = isArray(this.allowedFocus) ? this.allowedFocus : (this.allowedFocus ? [this.allowedFocus] : []);
@@ -267,12 +282,14 @@ export class DropdownComponent implements OnChanges, OnDestroy {
             this.lastFocusWatcher = focusWatcher(this.dropdown.nativeElement, [...allowedFocus, target as any]).subscribe(() => {
                 if (!this.keepOpen) {
                     this.close();
+                    ReactiveChangeDetectionModule.tick();
                 }
             });
         }
     }
 
     public focus() {
+        if (!this.dropdown) return;
         this.dropdown.nativeElement.focus();
     }
 

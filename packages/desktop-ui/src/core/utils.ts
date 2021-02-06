@@ -106,6 +106,18 @@ export function isTargetChildOf(target: HTMLElement | EventTarget | null, parent
 
     return false;
 }
+/**
+ * Checks if `target` is children of `parent` or if `target` is `parent`.
+ */
+export function findParentWithClass(start: HTMLElement, className: string): HTMLElement | undefined {
+    let current: HTMLElement | null = start;
+    do {
+        if (current.classList.contains(className)) return current;
+        current = current.parentElement;
+    } while(current);
+
+    return undefined;
+}
 
 export function triggerResize() {
     requestAnimationFrame(() => {

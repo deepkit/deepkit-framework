@@ -4,9 +4,9 @@ import 'reflect-metadata';
 import { Application } from '../src/application';
 import { createModule } from '../src/module';
 import { InjectorContext } from '../src/injector/injector';
-import { createTestingApp, MemoryLoggerTransport } from '../src/testing';
+import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
-import { Logger } from '../src/logger';
+import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { KernelModule } from '../src/kernel';
 
 test('testing app api', async () => {

@@ -24,7 +24,7 @@ import { detectChangesNextFrame } from "../app";
 @Component({
     selector: 'dui-form-row',
     template: `
-        <div>{{label}}</div>
+        <div class="label" [style.width.px]="labelWidth">{{label}}</div>
         <div class="field">
             <ng-content></ng-content>
 
@@ -38,6 +38,8 @@ import { detectChangesNextFrame } from "../app";
 })
 export class FormRowComponent {
     @Input() label: string = '';
+
+    @Input() labelWidth?: number;
 
     @ContentChild(NgControl, { static: false }) ngControl?: NgControl;
 

@@ -87,9 +87,9 @@ export function detectChangesNextFrame(cd?: ChangeDetectorRef) {
     lastFrameRequest = requestAnimationFrame(() => {
         lastFrameRequest = undefined;
         for (const i of lastFrameRequestStack) {
-            i.markForCheck();
+            i.detectChanges();
         }
-        //since ivy we have to use tick() instead of and can not use i.detectChanges().
+        //since ivy we have to use tick() and can not use i.detectChanges().
         ZonelessChangeDetector.getApp().tick();
         lastFrameRequestStack.clear();
     });

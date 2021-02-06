@@ -289,7 +289,7 @@ export class SqlBuilder {
         this.appendWhereSQL(sql, schema, model);
 
         if (model.limit !== undefined) sql.append('LIMIT ' + this.platform.quoteValue(model.limit));
-        if (model.skip !== undefined) sql.append('SKIP ' + this.platform.quoteValue(model.skip));
+        if (model.skip !== undefined) sql.append('OFFSET ' + this.platform.quoteValue(model.skip));
 
         return sql;
     }

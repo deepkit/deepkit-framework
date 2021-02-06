@@ -44,9 +44,9 @@ export abstract class DatabasePersistence {
  * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
  */
 export abstract class DatabaseAdapter {
-    abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+    abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
 
-    abstract createPersistence(): DatabasePersistence;
+    abstract createPersistence(session: DatabaseSession<this>): DatabasePersistence;
 
     abstract disconnect(force?: boolean): void;
 

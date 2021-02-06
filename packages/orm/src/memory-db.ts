@@ -139,8 +139,8 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
                 return new Formatter(
                     this.classSchema,
                     memorySerializer,
-                    this.databaseSession.getHydrator(),
-                    withIdentityMap ? this.databaseSession.identityMap : undefined
+                    this.session.getHydrator(),
+                    withIdentityMap ? this.session.identityMap : undefined
                 );
             }
 

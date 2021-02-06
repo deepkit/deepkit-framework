@@ -36,13 +36,19 @@ import { OverlayModule } from '@angular/cdk/overlay';
 import { DatabaseComponent } from './views/database.component';
 import { DatabaseGraphComponent } from './components/database-graph.component';
 import { InputEditing } from './components/edit/input-editing.component';
-import { InputStringComponent } from './components/edit/input-string.component';
-import { InputDateComponent } from './components/edit/input-date.component';
+import { StringInputComponent } from './components/edit/string-input.component';
+import { DateInputComponent } from './components/edit/date-input.component';
 import { CellComponent } from './components/cell/cell.component';
 import { StringCellComponent } from './components/cell/string-cell.component';
 import { DateCellComponent } from './components/cell/date-cell.component';
 import { DatabaseBrowserComponent } from './views/database-browser.component';
 import { DatabaseBrowserListComponent } from './components/list.component';
+import { ClassCellComponent } from './components/cell/class-cell.component';
+import { ClassInputComponent } from './components/edit/class-input.component';
+import { Registry } from './registry';
+import { EnumCellComponent } from './components/cell/enum-cell.component';
+import { EnumInputComponent } from './components/edit/enum-input.component';
+import { DatabaseCommitComponent } from './views/database-commit.component';
 
 @NgModule({
   declarations: [
@@ -51,12 +57,17 @@ import { DatabaseBrowserListComponent } from './components/list.component';
     DatabaseBrowserComponent,
     DatabaseGraphComponent,
     InputEditing,
-    InputStringComponent,
-    InputDateComponent,
+    StringInputComponent,
+    DateInputComponent,
     CellComponent,
     StringCellComponent,
     DateCellComponent,
     DatabaseBrowserListComponent,
+    ClassCellComponent,
+    ClassInputComponent,
+    EnumCellComponent,
+    EnumInputComponent,
+    DatabaseCommitComponent,
   ],
   imports: [
     BrowserModule,
@@ -79,6 +90,7 @@ import { DatabaseBrowserListComponent } from './components/list.component';
   ],
   providers: [
     BrowserState,
+    Registry,
     ControllerClient,
     { provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + (location.port === "4200" ? location.hostname + ":9090" : location.host)) },
   ],

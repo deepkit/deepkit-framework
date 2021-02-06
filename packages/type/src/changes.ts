@@ -54,6 +54,16 @@ export class Changes<T> {
         this.detectEmpty();
     }
 
+    mergeSet($set: Partial<T> | T) {
+        if (empty($set)) return;
+
+        if (!this.$set) this.$set = {};
+        for (const i in $set as any) {
+            (this.$set as any)[i] = ($set as any)[i];
+        }
+        this.detectEmpty();
+    }
+
     increase(property: NumberFields<T>, increase: number = 1) {
         if (!this.$inc) this.$inc = {};
         (this.$inc as any)[property] = increase;
@@ -114,6 +124,7 @@ export class AtomicChangeInstance<T> {
     increase(property: NumberFields<T>, increase: number = 1) {
         this.object[property] += increase;
         (this.changeSet.$inc as any)[property] = increase as any;
+        this.changeSet.empty = false;
     }
 }
 

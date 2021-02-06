@@ -411,7 +411,6 @@ function createFieldDecoratorResult<T>(
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
                 property.isAutoIncrement = true;
-                property.isOptional = true;
             }]);
         }
     });
@@ -643,7 +642,6 @@ function Decorated() {
 function IDField() {
     return (target: object, property: PropertySchema) => {
         const schema = getOrCreateEntitySchema(target);
-        schema.idField = property.name;
         property.isId = true;
         // Index({unique: true}, '_pk')(target, property);
     };
