@@ -156,7 +156,9 @@ select {
 }
 
 :host-context(.dark):not(.split) {
-    @include box-textured-dark;
+    background-image: linear-gradient(-180deg, #787878 1px, #696969 1px, #696969 95%);
+    border-left: 1px solid #303030;
+    border-right: 1px solid #303030;
 
     &.active,
     &:active {

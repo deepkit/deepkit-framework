@@ -19,33 +19,34 @@ import {
     NgModule,
     Optional,
     Directive
-} from "@angular/core";
+} from '@angular/core';
 import {
     MenuCheckboxDirective,
     MenuDirective,
     MenuItemDirective,
     MenuRadioDirective,
     MenuSeparatorDirective
-} from "./menu.component";
-import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from "./utils";
-import { ViewDirective } from "./dui-view.directive";
-import { CdCounterComponent } from "./cd-counter.component";
-import { DuiResponsiveDirective } from "./dui-responsive.directive";
-import { CommonModule, DOCUMENT } from "@angular/common";
-import { Electron } from "../../core/utils";
-import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from "@angular/router";
-import { WindowRegistry } from "../window/window-state";
-import { ELECTRON_WINDOW, IN_DIALOG } from "./token";
-import { AsyncRenderPipe } from "./pipes";
-import { ReactiveChangeDetectionModule } from "./reactivate-change-detection";
+} from './menu.component';
+import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
+import { ViewDirective } from './dui-view.directive';
+import { CdCounterComponent } from './cd-counter.component';
+import { DuiResponsiveDirective } from './dui-responsive.directive';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { Electron } from '../../core/utils';
+import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from '@angular/router';
+import { WindowRegistry } from '../window/window-state';
+import { ELECTRON_WINDOW, IN_DIALOG } from './token';
+import { AsyncRenderPipe } from './pipes';
+import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
+import { arrayRemoveItem } from '@deepkit/core';
 
-export * from "./reactivate-change-detection";
-export * from "./cd-counter.component";
-export * from "./dui-view.directive";
-export * from "./dui-responsive.directive";
-export * from "./utils";
-export * from "./menu.component";
-export * from "./pipes";
+export * from './reactivate-change-detection';
+export * from './cd-counter.component';
+export * from './dui-view.directive';
+export * from './dui-responsive.directive';
+export * from './utils';
+export * from './menu.component';
+export * from './pipes';
 
 if ('undefined' !== typeof window && 'undefined' === typeof (window as any)['global']) {
     (window as any).global = window;
@@ -81,6 +82,44 @@ export class BaseComponent {
 })
 export class UiComponentComponent extends BaseComponent {
     @Input() name: string = '';
+}
+
+export class OverlayStackItem {
+    constructor(public host: HTMLElement, protected stack: OverlayStackItem[], public release: () => void) {
+    }
+
+    getAllAfter(): OverlayStackItem[] {
+        const result: OverlayStackItem[] = [];
+
+        let flip = false;
+        for (let i = 0; i < this.stack.length; i++) {
+            if (flip) result.push(this.stack[i]);
+            if (this.stack[i] === this) flip = true;
+        }
+        return result;
+    }
+
+    getAllBefore(): OverlayStackItem[] {
+        const result: OverlayStackItem[] = [];
+
+        for (let i = 0; i < this.stack.length; i++) {
+            if (this.stack[i] === this) return result;
+            result.push(this.stack[i]);
+        }
+        return result;
+    }
+}
+
+export class OverlayStack {
+    public stack: OverlayStackItem[] = [];
+
+    public register(host: HTMLElement): OverlayStackItem {
+        const item = new OverlayStackItem(host, this.stack, () => {
+            arrayRemoveItem(this.stack, item);
+        });
+        this.stack.push(item);
+        return item;
+    }
 }
 
 @Injectable()
@@ -263,6 +302,7 @@ export class DuiApp {
         DuiResponsiveDirective,
         AsyncRenderPipe,
     ],
+    providers: [OverlayStack],
     imports: [
         CommonModule,
         ReactiveChangeDetectionModule,
@@ -296,6 +336,6 @@ export class DuiAppModule {
                     useValue: Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined
                 },
             ]
-        }
+        };
     }
 }

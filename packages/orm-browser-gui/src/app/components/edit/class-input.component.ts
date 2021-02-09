@@ -1,43 +1,91 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output, SkipSelf, ViewChild } from "@angular/core";
-import { arrayRemoveItem } from "@deepkit/core";
-import { DialogComponent, DropdownComponent, ReactiveChangeDetectionModule } from "@deepkit/desktop-ui";
-import { ClassSchema, getForeignKeyHash, PropertySchema } from "@deepkit/type";
-import { BrowserState } from "src/app/browser-state";
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnChanges,
+    OnDestroy,
+    Optional,
+    Output,
+    SkipSelf,
+    ViewChild
+} from '@angular/core';
+import { arrayRemoveItem } from '@deepkit/core';
+import { DuiDialog, ReactiveChangeDetectionModule } from '@deepkit/desktop-ui';
+import { ClassSchema, getForeignKeyHash, jsonSerializer, PropertySchema } from '@deepkit/type';
+import { BrowserState } from 'src/app/browser-state';
+import { getPrimaryKeyHashGenerator } from '@deepkit/type';
 
 @Component({
     template: `
-    <dui-dialog *ngIf="!parent" class="class-field-dialog" noPadding [backDropCloses]="true" [visible]="browserStack.length > 0" (closed)="done.emit()" minWidth="80%" minHeight="60%">
-        <div class="layout">
-        <div class="header" *ngIf="state.database && foreignSchema">
+        <ng-container *ngIf="!open">
+            Undefined
+        </ng-container>
+        <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" [backDropCloses]="true"
+                    [minWidth]="450" [minHeight]="350">
+            <div class="json-editor">
+                <h3>JSON</h3>
+                <dui-input type="textarea" [(ngModel)]="jsonContent"></dui-input>
+            </div>
+            <dui-dialog-actions>
+                <dui-button closeDialog>Cancel</dui-button>
+                <dui-button (click)="jsonDone()">Ok</dui-button>
+            </dui-dialog-actions>
+        </dui-dialog>
+        <dui-dialog *ngIf="!parent && open" class="class-field-dialog" noPadding [backDropCloses]="true"
+                    [visible]="browserStack.length > 0" (closed)="done.emit(); open = false" minWidth="80%"
+                    minHeight="60%">
+            <div class="layout">
+                <div class="header" *ngIf="state.database && foreignSchema">
             <span *ngFor="let browser of browserStack">
                  &raquo; {{browser.foreignSchema?.getClassName()}}
             </span>
-        </div>
+                </div>
 
-        <!-- <ng-container *ngIf="state.database && entity && browserStack.length === 0">
-            <orm-browser-database-browser 
-            [dialog]="true"
-            [selectedPkHashes]="selectedPkHashes" 
-            [multiSelect]="property.isArray" 
-            (select)="onSelect($event)"
-            [database]="state.database" [entity]="entity"></orm-browser-database-browser>
-        </ng-container> -->
+                <!-- <ng-container *ngIf="state.database && entity && browserStack.length === 0">
+                    <orm-browser-database-browser
+                    [dialog]="true"
+                    [selectedPkHashes]="selectedPkHashes"
+                    [multiSelect]="property.isArray"
+                    (select)="onSelect($event)"
+                    [database]="state.database" [entity]="entity"></orm-browser-database-browser>
+                </ng-container> -->
 
-        <ng-container *ngFor="let browser of browserStack">
-            <orm-browser-database-browser *ngIf="state.database && browser.foreignSchema" 
-            [class.hidden]="browserStack.length > 0 && browser !== browserStack[browserStack.length - 1]"
-            [dialog]="true"
-            [withBack]="browser !== browserStack[0]"
-            (back)="popBrowser()"
-            [selectedPkHashes]="browser.selectedPkHashes" 
-            [multiSelect]="browser.property.isArray" 
-            (select)="browser.onSelect($event)"
-            [database]="state.database" [entity]="browser.foreignSchema"></orm-browser-database-browser>
-        </ng-container>
-        </div>
-    </dui-dialog>
+                <ng-container *ngFor="let browser of browserStack">
+                    <orm-browser-database-browser *ngIf="state.database && browser.foreignSchema"
+                                                  [class.hidden]="browserStack.length > 0 && browser !== browserStack[browserStack.length - 1]"
+                                                  [dialog]="true"
+                                                  [withBack]="browser !== browserStack[0]"
+                                                  (back)="popBrowser()"
+                                                  [selectedPkHashes]="browser.selectedPkHashes"
+                                                  [multiSelect]="browser.property.isArray"
+                                                  (select)="browser.onSelect($event)"
+                                                  [database]="state.database"
+                                                  [entity]="browser.foreignSchema"></orm-browser-database-browser>
+                </ng-container>
+            </div>
+        </dui-dialog>
     `,
+    host: {
+        '(click)': 'open = true',
+        '[attr.tabIndex]': '1',
+    },
     styles: [`
+        .json-editor {
+            height: 100%;
+            padding: 0 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .json-editor dui-input {
+            margin-top: 15px;
+            width: 100%;
+            flex: 1;
+        }
+
         .layout {
             height: 100%;
             display: flex;
@@ -46,7 +94,7 @@ import { BrowserState } from "src/app/browser-state";
 
         ::ng-deep dui-window-content > div.class-field-dialog {
             padding: 0 !important;
-            padding-top: 15px !important;
+            padding-top: 10px !important;
         }
 
         .header {
@@ -59,12 +107,22 @@ import { BrowserState } from "src/app/browser-state";
             flex: 1;
         }
 
-        .hidden { display: none; }
+        .hidden {
+            display: none;
+        }
     `]
 })
 export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy {
+    @Input() model: any;
+    @Output() modelChange = new EventEmitter();
     @Input() row: any;
+
     @Input() property!: PropertySchema;
+    @Input() autoOpen: boolean = true;
+
+    open = false;
+    jsonEditor = false;
+    jsonContent = '';
 
     selectedPkHashes: string[] = [];
 
@@ -81,12 +139,26 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     constructor(
+        protected duiDialog: DuiDialog,
         public host: ElementRef,
         public state: BrowserState,
         public cd: ChangeDetectorRef,
         @Optional() @SkipSelf() public parent: ClassInputComponent,
     ) {
         this.browserStack.push(this);
+    }
+
+    jsonDone() {
+        try {
+            const obj = JSON.parse(this.jsonContent);
+            this.model = jsonSerializer.deserializeProperty(this.property, obj);
+            this.modelChange.emit(this.model);
+
+            this.jsonEditor = false;
+            this.done.emit();
+        } catch (error) {
+            this.duiDialog.alert('Invalid JSON');
+        }
     }
 
     popBrowser() {
@@ -117,9 +189,22 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     ngOnChanges() {
+        this.load();
+    }
+
+    load() {
         this.foreignSchema = this.property.getResolvedClassSchema();
         if (this.property.isReference) {
+            this.open = this.autoOpen;
             this.loadSelection();
+        } else {
+            this.jsonEditor = true;
+            if (this.model !== undefined) {
+                this.jsonContent = JSON.stringify(jsonSerializer.serializeProperty(this.property, this.model));
+            } else {
+                this.jsonContent = '';
+            }
+            this.cd.detectChanges();
         }
     }
 
@@ -127,15 +212,11 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
         if (!this.foreignSchema) return;
         this.selectedPkHashes = [];
 
-        const value = this.row[this.property.name];
-        if (value) {
-            if (this.property.isArray) {
+        if (this.model !== undefined) {
+            if (this.state.isIdWrapper(this.model)) {
+                this.selectedPkHashes.push(this.state.extractHashFromIdWrapper(this.model));
             } else {
-                if (this.state.isIdWrapper(value)) {
-                    this.selectedPkHashes.push(this.state.extractHashFromIdWrapper(value));
-                } else {
-                    this.selectedPkHashes.push(getForeignKeyHash(this.row, this.property));
-                }
+                this.selectedPkHashes.push(getPrimaryKeyHashGenerator(this.foreignSchema)(this.model));
             }
         }
     }
@@ -143,28 +224,27 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     onSelect(event: { items: any[], pkHashes: string[] }) {
         if (!this.foreignSchema) return;
 
-        if (this.property.isArray) {
-            // this.row[this.property.name] = this.selection;
-        } else {
-            const selected = event.items[0];
-            if (selected) {
-                if (this.state.isNew(selected)) {
-                    this.state.connectNewItem(selected, this.row, this.property);
-                    this.row[this.property.name] = this.state.getNewItemIdWrapper(selected);
-                } else {
-                    this.row[this.property.name] = this.foreignSchema.extractPrimaryKey(selected);
-                }
-            } else if (this.property.isOptional || this.property.isNullable) {
-                this.row[this.property.name] = this.property.isNullable ? null : undefined;
+        const selected = event.items[0];
+        if (selected) {
+            if (this.state.isNew(selected)) {
+                this.state.connectNewItem(selected, this.row, this.property);
+                this.model = this.state.getNewItemIdWrapper(selected);
+            } else {
+                this.model = this.foreignSchema.extractPrimaryKey(selected);
             }
-            setTimeout(() => {
-                this.popBrowser();
-                ReactiveChangeDetectionModule.tick();
-            }, 60);
+        } else if (this.property.isOptional || this.property.isNullable) {
+            this.model = this.property.isNullable ? null : undefined;
         }
+        this.modelChange.emit(this.model);
+
+        setTimeout(() => {
+            this.popBrowser();
+            ReactiveChangeDetectionModule.tick();
+        }, 60);
     }
 
     ngAfterViewInit() {
+        this.load();
         if (this.property.isReference) {
             this.foreignSchema = this.property.getResolvedClassSchema();
             this.loadSelection();

@@ -72,7 +72,7 @@ export class BrowserController implements BrowserControllerInterface {
     async getCount(dbName: string, entityName: string, @t.map(t.any) filter: { [name: string]: any }): Promise<number> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
 
-        return await db.query(entity).count();
+        return await db.query(entity).filter(filter).count();
     }
 
     @rpc.action()
@@ -80,8 +80,7 @@ export class BrowserController implements BrowserControllerInterface {
     async getItems(dbName: string, entityName: string, @t.map(t.any) filter: { [name: string]: any }, limit: number, skip: number): Promise<any[]> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
 
-        console.log('limit', limit, skip);
-        return await db.query(entity).limit(limit).skip(skip).find();
+        return await db.query(entity).filter(filter).limit(limit).skip(skip).find();
     }
 
     @rpc.action()

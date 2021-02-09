@@ -1,9 +1,9 @@
-import { Injectable } from "@angular/core";
-import { empty, isObject } from "@deepkit/core";
-import { getInstanceState } from "@deepkit/orm";
-import { DatabaseCommit, DatabaseInfo } from "@deepkit/orm-browser-api";
-import { Changes, changeSetSymbol, ClassSchema, classToPlain, getChangeDetector, getConverterForSnapshot, PropertySchema, PropertyValidatorError } from "@deepkit/type";
-import { ControllerClient } from "./client";
+import { Injectable } from '@angular/core';
+import { empty, isObject } from '@deepkit/core';
+import { getInstanceState } from '@deepkit/orm';
+import { DatabaseCommit, DatabaseInfo } from '@deepkit/orm-browser-api';
+import { Changes, changeSetSymbol, ClassSchema, classToPlain, getChangeDetector, getConverterForSnapshot, PropertySchema, PropertyValidatorError } from '@deepkit/type';
+import { ControllerClient } from './client';
 
 export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
 export type ValidationErrors = { [fieldName: string]: PropertyValidatorError };
@@ -13,12 +13,15 @@ export type IdWrapper = { $___newId: any };
 
 const storeKeySeparator = '\0t\0';
 
+export type FilterItem = { name: string, comparator: string, value: any };
+
+
 export class BrowserEntityState {
     properties: PropertySchema[] = [];
 
     loading: boolean = false;
 
-    filter: {[name: string]: any} = {};
+    filter: FilterItem[] = [];
 
     count: number = 0;
     page: number = 1;
@@ -30,7 +33,7 @@ export class BrowserEntityState {
     itemsPerPage: number = 100;
     dbItems: any[] = []; //items from the db
     items: any[] = []; //items visible in table
-    
+
     selection: any[] = [];
 
     changes?: ChangesStore;
@@ -60,7 +63,7 @@ export class BrowserState {
 
     connectedNewItems = new Map<any, { row: any, property: PropertySchema }[]>();
 
-    constructor(protected controllerClient: ControllerClient) { 
+    constructor(protected controllerClient: ControllerClient) {
         (window as any).state = this;
     }
 
@@ -110,7 +113,7 @@ export class BrowserState {
 
     hasAddedItems(dbName: string, entityName: string): boolean {
         const items = this.addedItems[this.getStoreKey(dbName, entityName)];
-        return items && items.length > 0 ? true : false;;
+        return items && items.length > 0 ? true : false;
     }
 
     getAddedItems(dbName: string, entityName: string): any[] {
@@ -175,7 +178,7 @@ export class BrowserState {
             }
         }
 
-        throw new Error(`No entity ${name} in db ${dbName} found`)
+        throw new Error(`No entity ${name} in db ${dbName} found`);
     }
 
     connectNewItem(newItem: any, row: any, property: PropertySchema) {

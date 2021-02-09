@@ -1,12 +1,34 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output } from "@angular/core";
-import { DuiDialog } from "@deepkit/desktop-ui";
-import { Changes, ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, plainToClass, PropertySchema, validate } from "@deepkit/type";
-import { Subscription } from "rxjs";
-import { BrowserEntityState, BrowserState, ChangesStore, IdWrapper, ValidationErrors, ValidationErrorStore } from '../browser-state';
-import { DatabaseInfo } from "@deepkit/orm-browser-api";
-import { getInstanceState } from "@deepkit/orm";
-import { ControllerClient } from "../client";
-import { arrayRemoveItem } from "@deepkit/core";
+import {
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnChanges,
+    OnDestroy,
+    Output
+} from '@angular/core';
+import { DuiDialog } from '@deepkit/desktop-ui';
+import {
+    Changes,
+    ClassSchema,
+    getPrimaryKeyHashGenerator,
+    jsonSerializer,
+    plainToClass,
+    PropertySchema,
+    validate
+} from '@deepkit/type';
+import { Subscription } from 'rxjs';
+import {
+    BrowserEntityState,
+    BrowserState,
+    ValidationErrors,
+} from '../browser-state';
+import { DatabaseInfo } from '@deepkit/orm-browser-api';
+import { getInstanceState } from '@deepkit/orm';
+import { ControllerClient } from '../client';
+import { arrayRemoveItem } from '@deepkit/core';
+import { trackByIndex } from '../utils';
 
 @Component({
     selector: 'orm-browser-database-browser',
@@ -14,7 +36,8 @@ import { arrayRemoveItem } from "@deepkit/core";
         <ng-container *ngIf="database && entity && entityState">
             <dui-window-toolbar *ngIf="!dialog" for="browser">
                 <dui-button-group padding="none">
-                    <dui-button textured [disabled]="!state.hasChanges()" (click)="resetAll()" title="Reset all changes" icon="clear"></dui-button>
+                    <dui-button textured [disabled]="!state.hasChanges()" (click)="resetAll()" title="Reset all changes"
+                                icon="clear"></dui-button>
                     <dui-button textured [disabled]="!state.hasChanges()" (click)="commit()">Commit</dui-button>
                 </dui-button-group>
             </dui-window-toolbar>
@@ -24,31 +47,59 @@ import { arrayRemoveItem } from "@deepkit/core";
                     <dui-button textured icon="arrow-small-left" (click)="back.emit()"></dui-button>
                 </dui-button-group>
                 <dui-button-group padding="none">
-                    <dui-button textured [disabled]="!entityState.selection.length" icon="garbage" (click)="remove()"></dui-button>
+                    <dui-button textured [disabled]="!entityState.selection.length" icon="garbage"
+                                (click)="remove()"></dui-button>
                     <dui-button textured icon="add" (click)="add()"></dui-button>
                 </dui-button-group>
-                
+
                 <dui-button-group padding="none">
-                    <dui-button textured tight [disabled]="entityState.loading" icon="reload" (click)="loadEntity(true)"></dui-button>
-                    <dui-button textured tight [disabled]="entityState.loading" (click)="goPage(entityState.page - 1)" icon="arrow_left"></dui-button>
-                    <dui-input textured noControls [disabled]="entityState.loading" lightFocus type="number" (ngModelChange)="goPage($event)" [(ngModel)]="entityState.page" style="width: 50px;"></dui-input>
-                    <dui-button textured tight [disabled]="entityState.loading" (click)="goPage(entityState.page + 1)" icon="arrow_right"></dui-button>
-                    <dui-button textured tight [openDropdown]="paginationDropdown" [disabled]="entityState.loading" icon="arrow_down"></dui-button>
+                    <dui-button textured icon="search" [openDropdown]="filterDropdown">
+                        <ng-container *ngIf="entityState.filter.length">
+                            {{entityState.filter.length}} filter
+                        </ng-container>
+                        <ng-container *ngIf="!entityState.filter.length">
+                            No filter
+                        </ng-container>
+                    </dui-button>
                 </dui-button-group>
-                
-                <dui-dropdown #paginationDropdown [minWidth]="150">
+
+                <dui-button-group padding="none">
+                    <dui-button textured tight [disabled]="entityState.loading" icon="reload"
+                                (click)="loadEntity(true)"></dui-button>
+                    <dui-button textured tight [disabled]="entityState.loading" (click)="goPage(entityState.page - 1)"
+                                icon="arrow_left"></dui-button>
+                    <dui-input textured noControls [disabled]="entityState.loading" lightFocus type="number"
+                               (ngModelChange)="goPage($event)" [(ngModel)]="entityState.page"
+                               style="width: 50px;"></dui-input>
+                    <dui-button textured tight [disabled]="entityState.loading" (click)="goPage(entityState.page + 1)"
+                                icon="arrow_right"></dui-button>
+                    <dui-button textured tight [openDropdown]="paginationDropdown" [disabled]="entityState.loading"
+                                icon="arrow_down"></dui-button>
+                </dui-button-group>
+
+                <dui-dropdown #paginationDropdown [width]="230">
                     <div style="padding: 12px;">
-                        <dui-form-row label="Records per page" [labelWidth]="120">
-                            <dui-input textured type="number" (ngModelChange)="loadEntity(true)" [(ngModel)]="entityState.itemsPerPage"></dui-input>
+                        <dui-form-row left label="Records per page" [labelWidth]="120">
+                            <dui-input textured type="number" (ngModelChange)="loadEntity(true)"
+                                       [(ngModel)]="entityState.itemsPerPage"></dui-input>
                         </dui-form-row>
                     </div>
                 </dui-dropdown>
                 <span style="color: var(--text-light); line-height: 19px;">
-                    of {{entityState.totalPages}} page{{entityState.totalPages === 1 ? '' : 's'}} ({{entityState.count}} records)
+                    of {{entityState.totalPages}} page{{entityState.totalPages === 1 ? '' : 's'}} ({{entityState.count}}
+                    records)
                 </span>
             </div>
+            <dui-dropdown #filterDropdown [width]="450">
+                <div class="search">
+                    <orm-browser-filter [entity]="entity" [(items)]="entityState.filter"
+                                        (itemsChange)="loadEntity(true)"></orm-browser-filter>
+                </div>
+            </dui-dropdown>
             <ng-container *ngIf="entity">
-                <dui-table noFocusOutline borderless [items]="entityState.items" [rowClass]="rowClass" (customSort)="onSort($event)" (cellClick)="cellClick($event)">
+                <dui-table noFocusOutline borderless [items]="entityState.items" [rowClass]="rowClass"
+                           [preferenceKey]="'browser/' + entity.getName()"
+                           (customSort)="onSort($event)" (cellClick)="cellClick($event)">
 
                     <dui-table-column name="__select" header="✓" [width]="40" [hideable]="false" [sortable]="false">
                         <ng-container *duiTableHeader>
@@ -56,49 +107,58 @@ import { arrayRemoveItem } from "@deepkit/core";
                         </ng-container>
                         <ng-container *duiTableCell="let row">
                             <div class="cell-body">
-                                <dui-checkbox [ngModel]="entityState.selection.includes(row)" (ngModelChange)="changeSelection(row)"></dui-checkbox>
+                                <dui-checkbox [ngModel]="entityState.selection.includes(row)"
+                                              (ngModelChange)="changeSelection(row)"></dui-checkbox>
                             </div>
                         </ng-container>
                     </dui-table-column>
 
-                    <dui-table-column *ngFor="let property of entityState.properties" [name]="property.name" [width]="150">
+                    <dui-table-column *ngFor="let property of entityState.properties; trackBy: trackByIndex" [name]="property.name"
+                                      [width]="150">
                         <ng-container *duiTableHeader>
                             {{property.name}} <span style="color: var(--text-light)">{{property.toString()}}</span>
                         </ng-container>
 
                         <ng-container *duiTableCell="let row">
                             <div class="cell-body {{cellClass(row, property.name)}}">
-                            <ng-container [ngSwitch]="true">
-                                <!-- <ng-container *ngSwitchCase="isNew(row) && property.isAutoIncrement">
-                                    [auto]
-                                </ng-container> -->
-                                <ng-container *ngSwitchCase="row.$__activeColumn === property.name && !property.isAutoIncrement">
-                                    <field-editing [property]="property" [row]="row" (done)="changed(row)"></field-editing>
-                                </ng-container>
-                                <ng-container *ngSwitchDefault>
-                                    <ng-container *ngIf="row[property.name] === undefined">
-                                        <div class="undefined">undefined</div>
+                                <ng-container [ngSwitch]="true">
+                                    <!-- <ng-container *ngSwitchCase="isNew(row) && property.isAutoIncrement">
+                                        [auto]
+                                    </ng-container> -->
+                                    <ng-container
+                                        *ngSwitchCase="row.$__activeColumn === property.name && !property.isAutoIncrement">
+                                        <field-editing [property]="property" [row]="row"
+                                                       [(model)]="row[property.name]"
+                                                       (done)="changed(row)"></field-editing>
                                     </ng-container>
-                                    <ng-container *ngIf="row[property.name] === null">
-                                        <div class="null">null</div>
+                                    <ng-container *ngSwitchDefault>
+                                        <ng-container *ngIf="row[property.name] === undefined">
+                                            <div class="undefined">undefined</div>
+                                        </ng-container>
+                                        <ng-container *ngIf="row[property.name] === null">
+                                            <div class="null">null</div>
+                                        </ng-container>
+                                        <ng-container *ngIf="property.isAutoIncrement">
+                                            <div
+                                                class="null">{{state.isNew(row) ? 'auto, #new-' + state.getNewItemId(row) : row[property.name]}}</div>
+                                        </ng-container>
+                                        <ng-container
+                                            *ngIf="!property.isAutoIncrement && row[property.name] !== undefined && row[property.name] !== null">
+                                            <cell [property]="property" [model]="row[property.name]"></cell>
+                                        </ng-container>
                                     </ng-container>
-                                    <ng-container *ngIf="property.isAutoIncrement">
-                                        <div class="null">{{state.isNew(row) ? 'auto, #new-' + state.getNewItemId(row) : row[property.name]}}</div>
-                                    </ng-container>
-                                    <ng-container *ngIf="!property.isAutoIncrement && row[property.name] !== undefined && row[property.name] !== null">
-                                        <cell [property]="property" [row]="row"></cell>
-                                        <div class="cell-actions">
-                                            <dui-icon name="arrow-small-left" clickable
-                                            (click)="reset(row, property.name)" title="Reset to original value"
-                                            [class.active]="true"></dui-icon>
 
-                                            <dui-icon name="clear" clickable title="Unset"
-                                            (click)="row[property.name] = property.isNullable ? null : undefined; changed(row)" 
-                                            [class.active]="property.isOptional ||property.isNullable"></dui-icon>
-                                        </div>
-                                    </ng-container>
+                                    <div class="cell-actions"
+                                         *ngIf="!property.isAutoIncrement && row.$__activeColumn !== property.name">
+                                        <dui-icon name="arrow-small-left" clickable
+                                                  (click)="reset(row, property.name)" title="Reset to original value"
+                                                  [class.active]="true"></dui-icon>
+
+                                        <dui-icon name="clear" clickable title="Unset"
+                                                  (click)="unset(row, property)"
+                                                  [class.active]="property.isOptional ||property.isNullable"></dui-icon>
+                                    </div>
                                 </ng-container>
-                            </ng-container>
                             </div>
                         </ng-container>
                     </dui-table-column>
@@ -109,6 +169,8 @@ import { arrayRemoveItem } from "@deepkit/core";
     styleUrls: ['./database-browser.component.scss']
 })
 export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
+    trackByIndex = trackByIndex;
+
     entityState?: BrowserEntityState;
 
     @Input() database!: DatabaseInfo;
@@ -129,6 +191,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
 
     selectedAll: boolean = false;
 
+    protected ignoreNextCellClick = false;
+
     protected pkHasher: (value: any) => string = () => '';
 
     rowClass = (item: any) => {
@@ -138,8 +202,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
     cellClass = (item: any, column: string) => {
         if (!this.entityState) return '';
 
-        let changes: Changes<any> | undefined = undefined;
-        let errors: ValidationErrors | undefined = this.entityState.validationStore ? this.entityState.validationStore.get(item) : undefined;
+        let changes: Changes<any> | undefined;
+        const errors: ValidationErrors | undefined = this.entityState.validationStore ? this.entityState.validationStore.get(item) : undefined;
 
         if (!this.isNew(item)) {
             const pkHash = getInstanceState(item).getLastKnownPKHash();
@@ -148,10 +212,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         const property = this.entity.getProperty(column);
         if (property.isAutoIncrement) return '';
 
-        return item.$__activeColumn === column ? 'editing' : (changes && changes.$set && changes.$set[column] ? 'changed' : (errors && errors[column] ? 'invalid' : ''));
+        return item.$__activeColumn === column ? 'editing' : (changes && changes.$set && column in changes.$set ? 'changed' : (errors && errors[column] ? 'invalid' : ''));
     };
-
-    protected ignoreNextCellClick = false;
 
     constructor(
         protected controllerClient: ControllerClient,
@@ -166,8 +228,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         this.paramsSub?.unsubscribe();
     }
 
-    ngOnChanges() {
-        this.loadEntity();
+    async ngOnChanges() {
+        await this.loadEntity();
     }
 
     toggleAll() {
@@ -191,9 +253,12 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             if (!this.multiSelect) this.entityState.selection = [];
             this.entityState.selection.push(row);
         }
-        this.selectedAll = this.entityState.selection.length === this.entityState.items.length;
+        this.selectedAll = this.entityState.selection.length === this.entityState.items.length && this.entityState.items.length > 0;
         this.entityState.selection = this.entityState.selection.slice();
-        this.select.emit({ items: this.entityState.selection, pkHashes: this.entityState.selection.map(v => this.pkHasher(v)) });
+        this.select.emit({
+            items: this.entityState.selection,
+            pkHashes: this.entityState.selection.map(v => this.pkHasher(v))
+        });
     }
 
     cellClick(event: { item: any, column: string }) {
@@ -205,19 +270,11 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         event.item.$__activeColumn = event.column;
     }
 
-    // pageKeyUp(event: KeyboardEvent) {
-    //     if (!this.entityState) return;
-        
-    //     console.log('event.key', event.key);
-    //     if (event.key.toLowerCase() === 'arrowleft') this.goPage(this.entityState.page - 1);
-    //     if (event.key.toLowerCase() === 'arrowright') this.goPage(this.entityState.page + 1);
-    // }
-
     goPage(page: number) {
         if (!this.entityState) return;
 
         if (page <= 0) return;
-
+        if (page > this.entityState.totalPages) return;
         this.entityState.page = page;
         this.loadEntity(true);
     }
@@ -225,6 +282,12 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
     onSort(event: { name: string, direction: 'asc' | 'desc' | '' }) {
         //load data from db
         //add not yet stored items back to the beginning
+    }
+
+    unset(row: any, property: PropertySchema) {
+        this.ignoreNextCellClick = true;
+        row[property.name] = property.isNullable ? null : undefined;
+        this.changed(row);
     }
 
     reset(item: any, column: string) {
@@ -255,7 +318,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
 
         this.entityState.items = this.entityState.items.slice();
         this.state.resetAll();
-        this.softReload();
+        this.loadEntity(true);
     }
 
     async commit() {
@@ -328,7 +391,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
 
         try {
             const jsonItem = await this.controllerClient.browser.create(this.database.name, this.entity.getName());
-            const item = plainToClass(this.entity, jsonItem)
+            const item = plainToClass(this.entity, jsonItem);
             const state = getInstanceState(item);
             state.markAsPersisted();
             state.markAsFromDatabase();
@@ -354,8 +417,19 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         this.pkHasher = getPrimaryKeyHashGenerator(this.entity);
 
         this.entityState.properties = [...this.entity.getClassProperties().values()].filter(v => !v.backReference);
+        this.entityState.properties.sort((a, b) => {
+            if (a.isId && !b.isId) return -1;
+            if (!a.isId && b.isId) return +1;
+            if (!a.isId && !b.isId) {
+                if (a.methodName === 'constructor' && b.methodName !== 'constructor') return -1;
+                if (a.methodName !== 'constructor' && b.methodName === 'constructor') return +1;
+            }
+            return 0;
+        });
+
+
         this.cd.detectChanges();
-        const entityName = this.entity.name!;
+        const entityName = this.entity.getName();
         this.entityState.deletions = this.state.getDeletions(this.database.name, entityName);
 
         if (withItems) {
@@ -392,9 +466,20 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         if (!this.database) return;
         if (!this.entityState) return;
 
-        this.entityState.count = await this.controllerClient.browser.getCount(this.database.name, this.entity.getName(), this.entityState.filter);
+        this.entityState.count = await this.controllerClient.browser.getCount(this.database.name, this.entity.getName(), this.getFilter());
     }
 
+    protected getFilter(): { [name: string]: any } {
+        if (!this.entityState) return {};
+
+        const filter: { [name: string]: any }[] = [];
+
+        for (const item of this.entityState.filter) {
+            filter.push({ [item.name]: { [item.comparator]: item.value } });
+        }
+
+        return filter.length ? { $and: filter } : {};
+    }
 
     async loadEntity(reload: boolean = false) {
         if (!this.entity) return;
@@ -413,7 +498,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             return;
         }
 
-        const entityName = this.entity.name!;
+        const entityName = this.entity.getName();
         const changeStore = this.entityState.changes;
         const oldChangedPkHashes = new Set(changeStore ? Object.keys(changeStore) : []);
 
@@ -424,7 +509,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             await this.loadCount();
             const items = await this.controllerClient.browser.getItems(
                 this.database.name, this.entity.getName(),
-                this.entityState.filter,
+                this.getFilter(),
                 this.entityState.itemsPerPage,
                 (this.entityState.page - 1) * this.entityState.itemsPerPage,
             );
@@ -454,6 +539,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
                     const changes = changeStore[pkHash];
                     if (changes && changes.changes.$set) {
                         for (const i in changes.changes.$set) {
+                            if (!changes.changes.$set.hasOwnProperty(i)) continue;
                             item[i] = changes.changes.$set[i];
                         }
                     }
@@ -463,13 +549,6 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
                     this.entityState.items.push(item);
                 }
                 this.entityState.dbItems.push(item);
-            }
-
-            //when we have changesets from (meanwhile) deleted items, we remove them from state
-            if (changeStore) {
-                for (const pkHash of oldChangedPkHashes.values()) {
-                    delete changeStore[pkHash];
-                }
             }
 
             if (this.state.hasAddedItems(this.database.name, entityName)) {
@@ -482,9 +561,10 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
                 }
             }
 
-            this.selectedAll = this.entityState.selection.length === this.entityState.items.length;
+            this.selectedAll = this.entityState.selection.length === this.entityState.items.length && this.entityState.items.length > 0;
         } catch (error) {
             this.duiDialog.alert('Error fetching data', error.message);
+            console.log(error);
         }
 
         this.cd.detectChanges();

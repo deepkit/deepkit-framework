@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Observable, Subscription } from "rxjs";
-import { ChangeDetectorRef, EventEmitter } from "@angular/core";
+import { Observable, Subscription } from 'rxjs';
+import { ChangeDetectorRef, EventEmitter } from '@angular/core';
 
 const electron = (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
@@ -106,6 +106,7 @@ export function isTargetChildOf(target: HTMLElement | EventTarget | null, parent
 
     return false;
 }
+
 /**
  * Checks if `target` is children of `parent` or if `target` is `parent`.
  */
@@ -114,7 +115,7 @@ export function findParentWithClass(start: HTMLElement, className: string): HTML
     do {
         if (current.classList.contains(className)) return current;
         current = current.parentElement;
-    } while(current);
+    } while (current);
 
     return undefined;
 }
@@ -125,7 +126,9 @@ export function triggerResize() {
     });
 }
 
-export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] = []): Observable<void> {
+export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] = [], customChecker?: (currentlyFocused: HTMLElement | null) => boolean): Observable<void> {
+    if (target.ownerDocument.body.tabIndex === -1) target.ownerDocument.body.tabIndex = 1;
+
     return new Observable<void>((observer) => {
         let currentlyFocused: HTMLElement | null = target;
 
@@ -144,10 +147,15 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
                 }
             }
 
-            return false;
+            return customChecker ? customChecker(currentlyFocused) : false;
         }
 
         function check() {
+            if (!currentlyFocused) {
+                //shouldn't be possible to have no element at all with focus.
+                //this means usually that the item that had previously focus was deleted.
+                currentlyFocused = target;
+            }
             if (!isFocusAllowed()) {
                 observer.next();
                 observer.complete();

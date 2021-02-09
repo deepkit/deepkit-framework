@@ -36,6 +36,7 @@ import { WindowRegistry } from "../window/window-state";
 import { WindowComponent } from "../window/window.component";
 import { RenderComponentDirective } from "../core/render-component.directive";
 import { IN_DIALOG } from "../app/token";
+import { OverlayStack, OverlayStackItem } from '../app';
 
 @Component({
     template: `
@@ -141,8 +142,11 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     public overlayRef?: OverlayRef;
     public wrapperComponentRef?: ComponentRef<DialogWrapperComponent>;
 
+    protected lastOverlayStackItem?: OverlayStackItem;
+
     constructor(
         protected applicationRef: ApplicationRef,
+        protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
         protected cd: ChangeDetectorRef,
         protected overlay: Overlay,
@@ -255,6 +259,9 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         this.wrapperComponentRef.instance.content = this.template!;
         this.wrapperComponentRef.instance.class = this.class!;
 
+        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
+        this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement);
+
         if (this.actions) {
             this.wrapperComponentRef!.instance.setActions(this.actions);
         }
@@ -297,6 +304,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     }
 
     ngOnDestroy(): void {
+        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.beforeUnload();
     }
 }

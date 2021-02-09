@@ -71,13 +71,13 @@ textarea, input {
     border: 0;
     min-width: 20px;
     color: var(--dui-input-text);
+    font: normal 13px system-ui, sans-serif;
     background-color: transparent;
     height: 17px;
     line-height: 17px;
     padding: 0 4px;
     vertical-align: top;
     resize: none;
-    font-weight: 500;
     width: 100%;
 
     &::placeholder {

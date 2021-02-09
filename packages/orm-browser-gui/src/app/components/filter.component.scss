@@ -1,0 +1,11 @@
+:host {
+    display: inline-block;
+}
+
+.item {
+    display: flex;
+}
+
+.item + .item {
+    margin-top: 5px;
+}

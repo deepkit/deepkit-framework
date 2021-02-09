@@ -75,6 +75,7 @@ export class SQLFilterBuilder {
         let cmpSign: string;
 
         if (comparison === 'eq') cmpSign = '=';
+        else if (comparison === 'neq') cmpSign = '!=';
         else if (comparison === 'gt') cmpSign = '>';
         else if (comparison === 'gte') cmpSign = '>=';
         else if (comparison === 'lt') cmpSign = '<';

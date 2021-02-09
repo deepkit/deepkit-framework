@@ -4,6 +4,7 @@
     "codelyzer"
   ],
   "rules": {
+    "comment-format": false,
     "align": {
       "options": [
         "parameters",
@@ -30,7 +31,7 @@
     "max-classes-per-file": false,
     "max-line-length": [
       true,
-      140
+      240
     ],
     "member-ordering": [
       true,
@@ -43,6 +44,7 @@
         ]
       }
     ],
+    "no-trailing-whitespace": false,
     "only-arrow-functions": false,
     "no-string-literal": false,
     "no-any": false,
@@ -69,11 +71,6 @@
       true,
       "single"
     ],
-    "semicolon": {
-      "options": [
-        "always"
-      ]
-    },
     "space-before-function-paren": {
       "options": {
         "anonymous": "never",
@@ -119,14 +116,14 @@
         "check-typecast"
       ]
     },
-    "component-class-suffix": true,
+    "component-class-suffix": false,
     "contextual-lifecycle": true,
     "directive-class-suffix": true,
     "no-conflicting-lifecycle": true,
-    "no-host-metadata-property": true,
+    "no-host-metadata-property": false,
     "no-input-rename": true,
     "no-inputs-metadata-property": true,
-    "no-output-native": true,
+    "no-output-native": false,
     "no-output-on-prefix": true,
     "no-output-rename": true,
     "no-outputs-metadata-property": true,
@@ -139,12 +136,6 @@
       "attribute",
       "app",
       "camelCase"
-    ],
-    "component-selector": [
-      true,
-      "element",
-      "app",
-      "kebab-case"
     ]
   }
 }

@@ -41,13 +41,12 @@ import {
     indexOf,
     isArray,
     isNumber
-} from "@deepkit/core";
-import Hammer from "hammerjs";
-import { isObservable, Observable, Subscription } from "rxjs";
-import { CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
-import { DropdownComponent } from "../button";
-import { detectChangesNextFrame } from "../app/utils";
-import { unsubscribe } from '../app/reactivate-change-detection';
+} from '@deepkit/core';
+import Hammer from 'hammerjs';
+import { isObservable, Observable } from 'rxjs';
+import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
+import { DropdownComponent } from '../button';
+import { detectChangesNextFrame } from '../app/utils';
 import { findParentWithClass } from '../../core/utils';
 
 /**
@@ -152,13 +151,11 @@ export class TableColumnDirective {
      */
     @Input('position') position?: number;
 
-    //todo, write/read from localStorage
-
     /**
      * This is the new position when the user moved it manually.
      * @hidden
      */
-    ovewrittenPosition?: number;
+    overwrittenPosition?: number;
 
     @ContentChild(TableCellDirective, { static: false }) cell?: TableCellDirective;
     @ContentChild(TableHeaderDirective, { static: false }) headerDirective?: TableHeaderDirective;
@@ -188,8 +185,8 @@ export class TableColumnDirective {
      * @hidden
      */
     public getPosition() {
-        if (this.ovewrittenPosition !== undefined) {
-            return this.ovewrittenPosition
+        if (this.overwrittenPosition !== undefined) {
+            return this.overwrittenPosition;
         }
 
         return this.position;
@@ -202,20 +199,22 @@ export class TableColumnDirective {
     template: `
         <dui-dropdown #headerDropdown>
             <dui-dropdown-item
-                *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
-                [selected]="!column.isHidden()"
-                (mousedown)="column.toggleHidden(); sortColumnDefs(); headerDropdown.close()"
+                    *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
+                    [selected]="!column.isHidden()"
+                    (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
             >
-            <div *ngIf="column.hideable">
-                <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
-                    {{column.header || column.name}}
-                </ng-container>
-                <ng-container
-                    *ngIf="column.name !== undefined && column.headerDirective"
-                    [ngTemplateOutlet]="column.headerDirective.template"
-                    [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
-            </div>
+                <div *ngIf="column.hideable">
+                    <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
+                        {{column.header || column.name}}
+                    </ng-container>
+                    <ng-container
+                            *ngIf="column.name !== undefined && column.headerDirective"
+                            [ngTemplateOutlet]="column.headerDirective.template"
+                            [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                </div>
             </dui-dropdown-item>
+            <dui-dropdown-separator></dui-dropdown-separator>
+            <dui-dropdown-item (click)="resetAll()">Reset all</dui-dropdown-item>
         </dui-dropdown>
 
         <div [style.height]="autoHeight !== false ? height + 'px' : '100%'" [style.minHeight.px]="itemHeight">
@@ -229,9 +228,9 @@ export class TableColumnDirective {
                      [style.top]="scrollTop + 'px'"
                      #th>
                     <ng-container
-                        *ngIf="column.headerDirective"
-                        [ngTemplateOutlet]="column.headerDirective.template"
-                        [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                            *ngIf="column.headerDirective"
+                            [ngTemplateOutlet]="column.headerDirective.template"
+                            [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
 
                     <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
                         {{column.header || column.name}}
@@ -247,13 +246,14 @@ export class TableColumnDirective {
                 </div>
             </div>
 
-            <div class="body" [class.with-header]="showHeader" (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
+            <div class="body" [class.with-header]="showHeader" (click)="clickCell($event)"
+                 (dblclick)="dblClickCell($event)">
                 <cdk-virtual-scroll-viewport #viewportElement
                                              class="overlay-scrollbar-small"
                                              [itemSize]="itemHeight"
                 >
                     <ng-container
-                        *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
+                            *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
                         <div class="table-row {{rowClass ? rowClass(row) : ''}}"
                              [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
                              [class.selected]="selectedMap.has(row)"
@@ -263,7 +263,8 @@ export class TableColumnDirective {
                              (contextmenu)="select(row, $event)"
                              (dblclick)="dbclick.emit(row)"
                         >
-                            <div class="table-cell" *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn"
+                            <div class="table-cell"
+                                 *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn"
                                  [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
                                  [attr.row-column]="column.name"
                                  [attr.row-i]="i"
@@ -369,6 +370,11 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
 
     @Input() public cellClass?: (item: T, column: string) => string | undefined;
 
+    /**
+     * When the user changes the order or width of the columns, the information is stored
+     * in localStorage using this key, prefixed with `@dui/table/`.
+     */
+    @Input() public preferenceKey: string = 'root';
 
     /**
      * Filter query.
@@ -460,7 +466,9 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
 
     public setColumnWidth(column: TableColumnDirective, width: number) {
         column.width = width;
-        detectChangesNextFrame(this.cd);
+        detectChangesNextFrame(this.cd, () => {
+            this.storePreference();
+        });
     }
 
     ngOnDestroy(): void {
@@ -472,6 +480,43 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         requestAnimationFrame(() => {
             this.viewport.checkViewportSize();
         });
+    }
+
+    resetAll() {
+        localStorage.removeItem('@dui/table/preferences-' + this.preferenceKey);
+        if (!this.columnDefs) return;
+        for (const column of this.columnDefs.toArray()) {
+            column.width = 100;
+            column.hidden = false;
+            column.overwrittenPosition = undefined;
+        }
+    }
+
+    storePreference() {
+        const preferences: { [name: string]: { hidden: boolean | '', width?: number | string, order?: number } } = {};
+        if (!this.columnDefs) return;
+
+        for (const column of this.columnDefs.toArray()) {
+            preferences[column.name] = {
+                width: column.width,
+                order: column.overwrittenPosition,
+                hidden: column.hidden
+            };
+        }
+        localStorage.setItem('@dui/table/preferences-' + this.preferenceKey, JSON.stringify(preferences));
+    }
+
+    loadPreference() {
+        const preferencesJSON = localStorage.getItem('@dui/table/preferences-' + this.preferenceKey);
+        if (!preferencesJSON) return;
+        const preferences = JSON.parse(preferencesJSON);
+        for (const i in preferences) {
+            if (!preferences.hasOwnProperty(i)) continue;
+            if (!this.columnMap[i]) continue;
+            if (preferences[i].width !== undefined) this.columnMap[i].width = preferences[i].width;
+            if (preferences[i].order !== undefined) this.columnMap[i].overwrittenPosition = preferences[i].order;
+            if (preferences[i].hidden !== undefined) this.columnMap[i].hidden = preferences[i].hidden;
+        }
     }
 
     dblClickCell(event: MouseEvent) {
@@ -555,7 +600,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      */
     trackByFn = (index: number, item: any) => {
         return this.trackFn ? this.trackFn(index, item) : index;
-    }
+    };
 
     /**
      * @hidden
@@ -679,13 +724,14 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
                             this.sortedColumnDefs.splice(newPosition, 0, directive);
 
                             for (let [i, v] of eachPair(this.sortedColumnDefs)) {
-                                v.ovewrittenPosition = i;
+                                v.overwrittenPosition = i;
                             }
 
                             this.sortColumnDefs();
                         }
                     }
 
+                    this.storePreference();
                     element = undefined;
                 }
             });
@@ -764,9 +810,11 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
             setTimeout(() => {
                 this.columnDefs!.changes.subscribe(() => {
                     this.updateDisplayColumns();
+                    this.loadPreference();
                     this.sortColumnDefs();
                 });
                 this.updateDisplayColumns();
+                this.loadPreference();
                 this.sortColumnDefs();
             });
         }
@@ -816,13 +864,17 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
+        if (changes.preferenceKey) {
+            this.loadPreference();
+        }
+
         if (changes.items) {
             if (isObservable(this.items)) {
                 this.items.subscribe((items: T[]) => {
                     this.sorted = items;
                     this.doSort();
                     this.viewport.checkViewportSize();
-                })
+                });
             } else if (isArray(this.items)) {
                 this.sorted = this.items;
                 this.doSort();

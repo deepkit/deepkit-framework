@@ -55,9 +55,7 @@ export class DynamicOptionDirective {
 
 @Component({
     selector: 'dui-option',
-    template: `
-        <ng-content></ng-content>
-    `
+    template: `<ng-content></ng-content>`
 })
 export class OptionDirective {
     @Input() value: any;
@@ -65,6 +63,14 @@ export class OptionDirective {
 
     constructor(public readonly element: ElementRef) {
     }
+}
+
+@Directive({
+    selector: 'dui-option-separator',
+    providers: [{ provide: OptionDirective, useExisting: OptionSeparatorDirective }],
+})
+export class OptionSeparatorDirective {
+    constructor() { }
 }
 
 class NotSelected { }
@@ -99,16 +105,20 @@ class NotSelected { }
 
         <dui-dropdown #dropdown [host]="element.nativeElement">
             <ng-container *ngIf="options">
-                <dui-dropdown-item
-                     *ngFor="let option of options.toArray()"
-                     (click)="select(option.value)"
-                     [selected]="innerValue === option.value"
-                >
-                    <ng-container *ngIf="option.dynamic" [ngTemplateOutlet]="option.dynamic.template"></ng-container>
-                    <div *ngIf="!option.dynamic">
-                        <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
-                    </div>
-                </dui-dropdown-item>
+
+                <ng-container *ngFor="let option of options.toArray()">
+                    <dui-dropdown-separator *ngIf="isSeparator(option)"></dui-dropdown-separator>
+                    <dui-dropdown-item
+                        *ngIf="!isSeparator(option)"
+                        (click)="select(option.value)"
+                        [selected]="innerValue === option.value"
+                    >
+                        <ng-container *ngIf="option.dynamic" [ngTemplateOutlet]="option.dynamic.template"></ng-container>
+                        <div *ngIf="!option.dynamic">
+                            <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
+                        </div>
+                    </dui-dropdown-item>
+                </ng-container>
             </ng-container>
         </dui-dropdown>
     `,
@@ -153,6 +163,10 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
     ) {
         super(injector, cd, cdParent);
         this.innerValue = new NotSelected;
+    }
+
+    isSeparator(item: any): boolean {
+        return item instanceof OptionSeparatorDirective;
     }
 
     ngAfterViewInit(): void {

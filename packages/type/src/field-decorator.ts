@@ -9,20 +9,36 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { validators } from './validation-decorator';
 import { BackReferenceOptions, ClassSchema, ForwardRefFn, IndexOptions, PropertySchema, PropertyValidator, ReferenceActions } from './model';
 import { BackReference, PrimaryKey, Reference } from './types';
 import { FlattenIfArray } from './utils';
 import { PlainSchemaProps } from './decorators';
+import validator from "validator";
 
 /**
  * @throws PropertyValidatorError when validation invalid
  */
 export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType) => void;
 
-type ValidatorsToDecorator<T> = { [K in keyof typeof validators]: (typeof validators)[K] extends (...args: infer A) => any ? (...args: A) => FieldDecoratorResult<T> : never };
-
-export type FieldDecoratorResult<T> = FieldDecoratorResultBase<T> & ValidatorsToDecorator<T>;
+export interface FieldDecoratorResult<T> extends FieldDecoratorResultBase<T> {
+    pattern(regex: RegExp): this;
+    alpha(locale?: validator.AlphaLocale): this;
+    alphanumeric(locale?: validator.AlphanumericLocale): this;
+    ascii(): this;
+    dataURI(): this;
+    decimal(options?: validator.IsDecimalOptions): this;
+    multipleOf(num: any): this;
+    minLength(length: number): this;
+    maxLength(length: number): this;
+    includes(include: any): this;
+    excludes(excludes: any): this;
+    minimum(min: number): this;
+    exclusiveMinimum(min: number): this;
+    maximum(max: number): this;
+    exclusiveMaximum(max: number): this;
+    positive(includingZero?: boolean): this;
+    negative(includingZero?: boolean): this;
+}
 
 export interface FieldDecoratorResultBase<T> {
     (target: object, property?: string, parameterIndexOrDescriptor?: any): void;
@@ -97,8 +113,8 @@ export interface FieldDecoratorResultBase<T> {
      */
     optional: FieldDecoratorResult<T | undefined>;
 
-    /** 
-     * Marks the field as required. This is the default, however in cases were you use ! you have to manually specify 
+    /**
+     * Marks the field as required. This is the default, however in cases were you use ! you have to manually specify
      * that this property is required.
     */
     required: FieldDecoratorResult<T>;
@@ -124,40 +140,40 @@ export interface FieldDecoratorResultBase<T> {
      */
     default(v: (() => any) | T): FieldDecoratorResult<T>;
 
-    /** 
+    /**
      * Changes the value after serializing and deserialization to another value,
      * optionally for a particular serializer.
-     * 
+     *
      * The function is called after all internal serializer/deserialization templates have been applied.
-     * 
+     *
      * serializerName is the name of the serializer. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
-     * 
+     *
      * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
      * So use the decorator typesafe via `@t.transform((user: User) => user.id)`.
     */
     transform<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
 
-    /** 
-     * Changes the value after serializing (class to x) to another value, 
+    /**
+     * Changes the value after serializing (class to x) to another value,
      * optionally for a particular serializer.
-     * 
+     *
      * The function is called after all internal serializer templates have been applied.
-     * 
+     *
      * serializerName is the name of the serializer. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
-     * 
+     *
      * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
      * So use the decorator typesafe via `@t.transform((user: User) => user.id)`.
     */
     serialize<V extends T>(t: (v: V) => any, serializerName?: string): FieldDecoratorResult<T>;
 
-    /** 
-     * Changes the value after deserializing (x to class) to another value, 
+    /**
+     * Changes the value after deserializing (x to class) to another value,
      * optionally for a particular serializer.
-     * 
+     *
      * The function is called after all internal deserializer templates have been applied.
-     * 
+     *
      * serializerName is the name of the serializer. e.g. jsonSerializer has as name `json`. You can read the serializer's name in `jsonSerializer.name`;
-     * 
+     *
      * Internal note: Unfortunately we can't annotate via `t: (v: T) => any` because that triggers a infinite circular type.
      * So use the decorator typesafe via `@t.transform((user: User) => user.id)`.
     */
@@ -179,9 +195,9 @@ export interface FieldDecoratorResultBase<T> {
      * Serializing is not effected by this.
      * The given serializerName is the name of your serializer. `jsonSerializer` (classToPlain) has as name 'json'.
      * You find the name of the serializer using its `.name` attribute.
-     * 
+     *
      * A special name of 'all' excludes this field for all serializers.
-     * 
+     *
      * This exclusion is during compile time and can not be changed at runtime.
      * If you need a runtime exclude/include mechanism, use @t.group('groupName') and use in serialize method
      * the options to filter, e.g. serialize(item, {groupsExclude: ['groupName']}).
@@ -208,7 +224,7 @@ export interface FieldDecoratorResultBase<T> {
      */
     template(...templateArgs: (ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]): this;
 
-    /** 
+    /**
      * Defines template arguments of a generic class. Very handy for types like Observables.
      *
      * ```typescript

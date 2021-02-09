@@ -36,6 +36,8 @@ class Image {
 
     @t downloads: number = 0;
 
+    @t.array(t.string) tags: string[] = [];
+
     @t.uuid privateToken: string = uuid();
 
     @t image: Uint8Array = new Uint8Array([128, 255]);

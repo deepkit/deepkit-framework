@@ -1,6 +1,16 @@
-import { Component, ComponentFactoryResolver, ComponentRef, EventEmitter, Input, OnChanges, OnDestroy, Output, ViewContainerRef } from "@angular/core";
-import { PropertySchema } from "@deepkit/type";
-import { Registry } from "src/app/registry";
+import {
+    Component,
+    ComponentFactoryResolver,
+    ComponentRef,
+    EventEmitter,
+    Input,
+    OnChanges,
+    OnDestroy,
+    Output,
+    ViewContainerRef
+} from '@angular/core';
+import {PropertySchema} from '@deepkit/type';
+import {Registry} from 'src/app/registry';
 
 @Component({
     selector: 'cell',
@@ -13,17 +23,17 @@ import { Registry } from "src/app/registry";
 })
 export class CellComponent implements OnDestroy, OnChanges {
     @Input() property!: PropertySchema;
-    @Input() row!: any
+    @Input() model!: any;
 
     @Output() done = new EventEmitter<void>();
 
     protected componentRef?: ComponentRef<any>;
 
     constructor(
-        private containerRef: ViewContainerRef, 
+        private containerRef: ViewContainerRef,
         private resolver: ComponentFactoryResolver,
         private registry: Registry,
-        ) {
+    ) {
     }
 
     ngOnDestroy() {
@@ -48,7 +58,7 @@ export class CellComponent implements OnDestroy, OnChanges {
         const componentFactory = this.resolver.resolveComponentFactory(component);
         this.componentRef = this.containerRef.createComponent(componentFactory);
         this.componentRef.instance.property = this.property;
-        this.componentRef.instance.row = this.row;
+        this.componentRef.instance.model = this.model;
         this.componentRef.changeDetectorRef.detectChanges();
     }
 }

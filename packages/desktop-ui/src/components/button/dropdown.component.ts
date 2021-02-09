@@ -17,20 +17,21 @@ import {
     EventEmitter,
     HostListener,
     Injector,
-    Input, OnChanges, OnDestroy,
+    Input, OnChanges, OnDestroy, Optional,
     Output, SimpleChanges,
     SkipSelf,
     TemplateRef,
     ViewChild,
     ViewContainerRef
-} from "@angular/core";
-import { TemplatePortal } from "@angular/cdk/portal";
-import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from "@angular/cdk/overlay";
-import { Subscription } from "rxjs";
-import { WindowRegistry } from "../window/window-state";
-import { focusWatcher } from "../../core/utils";
-import { isArray } from "@deepkit/core";
-import { ReactiveChangeDetectionModule } from "../app";
+} from '@angular/core';
+import { TemplatePortal } from '@angular/cdk/portal';
+import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
+import { Subscription } from 'rxjs';
+import { WindowRegistry } from '../window/window-state';
+import { focusWatcher, isTargetChildOf } from '../../core/utils';
+import { isArray } from '@deepkit/core';
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { ButtonComponent } from './button.component';
 
 
 @Component({
@@ -98,10 +99,13 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     @ViewChild('dropdownTemplate', { static: false, read: TemplateRef }) dropdownTemplate!: TemplateRef<any>;
     @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown!: ElementRef<HTMLElement>;
 
+    protected lastOverlayStackItem?: OverlayStackItem;
+
     constructor(
         protected overlayService: Overlay,
         protected injector: Injector,
         protected registry: WindowRegistry,
+        protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
         protected cd: ChangeDetectorRef,
         @SkipSelf() protected cdParent: ChangeDetectorRef,
@@ -121,6 +125,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     }
 
     ngOnDestroy(): void {
+        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.close();
     }
 
@@ -272,6 +277,9 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             setTimeout(() => {
                 if (this.overlayRef) this.overlayRef.updatePosition();
             }, 50);
+
+            if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
+            this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement);
         }
 
         const normalizedAllowedFocus = isArray(this.allowedFocus) ? this.allowedFocus : (this.allowedFocus ? [this.allowedFocus] : []);
@@ -279,7 +287,21 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
         if (this.show === undefined) {
             this.dropdown.nativeElement.focus();
-            this.lastFocusWatcher = focusWatcher(this.dropdown.nativeElement, [...allowedFocus, target as any]).subscribe(() => {
+            this.lastFocusWatcher = focusWatcher(this.dropdown.nativeElement, [...allowedFocus, target as any], (element) => {
+                //if the element is a dialog as well, we don't close
+
+                if (!element) return false;
+
+                //if this pane is after our pane, we ignore the focus-out.
+                if (this.lastOverlayStackItem) {
+                    const allAfter = this.lastOverlayStackItem.getAllAfter();
+                    for (const after of allAfter) {
+                        if (isTargetChildOf(element, after.host)) return true;
+                    }
+                }
+
+                return false;
+            }).subscribe(() => {
                 if (!this.keepOpen) {
                     this.close();
                     ReactiveChangeDetectionModule.tick();
@@ -317,10 +339,33 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 @Directive({
     'selector': '[openDropdown]',
 })
-export class OpenDropdownDirective {
+export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     @Input() openDropdown?: DropdownComponent;
 
-    constructor(protected elementRef: ElementRef) {
+    @unsubscribe()
+    openSub?: Subscription;
+
+    @unsubscribe()
+    hiddenSub?: Subscription;
+
+    constructor(
+        protected elementRef: ElementRef,
+        @Optional() protected button?: ButtonComponent,
+    ) {
+    }
+
+    ngOnDestroy() {
+    }
+
+    ngAfterViewInit() {
+        if (this.button && this.openDropdown) {
+            this.openSub = this.openDropdown.shown.subscribe(() => {
+                if (this.button) this.button.active = true;
+            });
+            this.hiddenSub = this.openDropdown.hidden.subscribe(() => {
+                if (this.button) this.button.active = false;
+            });
+        }
     }
 
     @HostListener('click')
@@ -352,7 +397,7 @@ export class ContextDropdownDirective {
 }
 
 @Component({
-    selector: 'dui-dropdown-splitter',
+    selector: 'dui-dropdown-splitter,dui-dropdown-separator',
     template: `
         <div></div>
     `,

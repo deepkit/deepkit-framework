@@ -31,6 +31,7 @@ import { WindowComponent } from "../window/window.component";
 import { WindowState } from "../window/window-state";
 import { FormComponent } from "../form/form.component";
 import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
+import {detectChangesNextFrame} from '../app';
 
 @Component({
     selector: 'dui-button',
@@ -49,10 +50,11 @@ import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
         '[class.primary]': 'primary !== false',
         '[class.icon-left]': 'iconRight === false',
         '[class.icon-right]': 'iconRight !== false',
+        '[class.with-text]': 'hasText()',
     },
     styleUrls: ['./button.component.scss'],
 })
-export class ButtonComponent implements OnInit {
+export class ButtonComponent implements OnInit, AfterViewInit {
 
     /**
      * The icon for this button. Either a icon name same as for dui-icon, or an image path.
@@ -103,6 +105,13 @@ export class ButtonComponent implements OnInit {
      */
     @Input() submitForm?: FormComponent;
 
+    /**
+     * Auto-detected but could be set manually as well.
+     * Necessary for correct icon placement.
+     */
+    withText?: boolean;
+    protected detectedText: boolean = false;
+
     constructor(
         public element: ElementRef,
         @SkipSelf() public cdParent: ChangeDetectorRef,
@@ -111,7 +120,11 @@ export class ButtonComponent implements OnInit {
         this.element.nativeElement.removeAttribute('tabindex');
     }
 
-    @Input() disabled: boolean = false;
+    hasText() {
+        return this.withText === undefined ? this.detectedText : this.withText;
+    }
+
+    @Input() disabled: boolean | '' = false;
 
     @HostBinding('class.disabled')
     get isDisabled() {
@@ -142,6 +155,17 @@ export class ButtonComponent implements OnInit {
             setTimeout(() => {
                 this.element.nativeElement.focus();
             }, 10);
+        }
+    }
+
+    ngAfterViewInit() {
+        if (this.icon) {
+            const content = this.element.nativeElement.innerText.trim();
+            const hasText = content !== this.icon && content.length > 0;
+            if (hasText) {
+                this.detectedText = true;
+                this.cdParent.detectChanges()
+            }
         }
     }
 

@@ -4,7 +4,7 @@
     height: 100%;
 }
 
-[hidden] { 
+[hidden] {
     display: none !important;
 }
 
@@ -60,14 +60,14 @@ dui-table ::ng-deep .table-row > div:hover dui-icon.active {
     &.editing {
         padding: 0;
         padding-right: 5px;
-    
+
         overflow: hidden;
         text-overflow: clip;
-    
+
         > ng-component {
             display: block;
         }
-    
+
         > ng-component > *,
         > * {
             margin-right: 3px;
@@ -78,6 +78,12 @@ dui-table ::ng-deep .table-row > div:hover dui-icon.active {
 
 dui-table ::ng-deep .table-row > div {
     padding: 0 !important;
+}
+
+.search {
+    flex: 0;
+    max-height: 40%;
+    padding: 12px;
 }
 
 dui-table {

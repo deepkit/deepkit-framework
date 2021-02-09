@@ -17,9 +17,9 @@ import {
     OnChanges,
     Output, SimpleChanges,
     SkipSelf
-} from "@angular/core";
-import { FormGroup, NgControl } from "@angular/forms";
-import { detectChangesNextFrame } from "../app";
+} from '@angular/core';
+import {FormGroup, NgControl} from '@angular/forms';
+import {detectChangesNextFrame} from '../app';
 
 @Component({
     selector: 'dui-form-row',
@@ -34,14 +34,18 @@ import { detectChangesNextFrame } from "../app";
                 </div>
             </div>
         </div>`,
+    host: {
+        '[class.left-aligned]': 'left !== false'
+    },
     styleUrls: ['./form-row.component.scss']
 })
 export class FormRowComponent {
     @Input() label: string = '';
 
     @Input() labelWidth?: number;
+    @Input() left?: boolean | '' = false;
 
-    @ContentChild(NgControl, { static: false }) ngControl?: NgControl;
+    @ContentChild(NgControl, {static: false}) ngControl?: NgControl;
 
     isString(v: any) {
         return 'string' === typeof v;

@@ -9,7 +9,7 @@
  */
 
 import { NgModule } from "@angular/core";
-import { DynamicOptionDirective, OptionDirective, SelectboxComponent } from "./selectbox.component";
+import { DynamicOptionDirective, OptionDirective, OptionSeparatorDirective, SelectboxComponent } from "./selectbox.component";
 import { FormsModule } from "@angular/forms";
 import { CommonModule } from "@angular/common";
 import { DuiIconModule } from "../icon";
@@ -22,11 +22,13 @@ export * from "./selectbox.component";
         SelectboxComponent,
         OptionDirective,
         DynamicOptionDirective,
+        OptionSeparatorDirective,
     ],
     exports: [
         SelectboxComponent,
         OptionDirective,
         DynamicOptionDirective,
+        OptionSeparatorDirective,
     ],
     imports: [
         FormsModule,

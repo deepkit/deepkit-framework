@@ -1,39 +1,54 @@
-import { Component, Input, OnChanges } from "@angular/core";
-import { ClassSchema, PropertySchema } from "@deepkit/type";
-import { BrowserState } from "src/app/browser-state";
+import {ChangeDetectorRef, Component, Input, OnChanges, OnInit} from '@angular/core';
+import {isArray} from '@deepkit/core';
+import {ClassSchema, PropertySchema} from '@deepkit/type';
+import {BrowserState} from 'src/app/browser-state';
 
 @Component({
-    template: `{{label()}}`
+    template: `{{label}}`
 })
-export class ClassCellComponent implements OnChanges {
-    @Input() row: any;
+export class ClassCellComponent implements OnChanges, OnInit {
+    @Input() model: any;
     @Input() property!: PropertySchema;
 
     foreignSchema?: ClassSchema;
 
-    constructor(public state: BrowserState) { }
+    label: string = '';
+
+    constructor(public state: BrowserState, protected cd: ChangeDetectorRef) {
+    }
 
     ngOnChanges() {
         this.foreignSchema = this.property.getResolvedClassSchema();
+        this.setLabel();
     }
 
-    label(): string {
-        if (!this.foreignSchema) this.foreignSchema = this.property.getResolvedClassSchema();;
+    ngOnInit() {
+        this.setLabel();
+    }
 
-        const value = this.row[this.property.name];
+    setLabel(): void {
+        if (!this.foreignSchema) this.foreignSchema = this.property.getResolvedClassSchema();
 
-        if (value !== undefined && this.property.isReference) {
-            if (this.property.isArray) {
+        this.label = '';
+        const value = this.model;
 
+        if (this.property.isReference) {
+            if (value === undefined) return;
+            if (this.state.isIdWrapper(value)) {
+                this.label = '#new-' + this.state.extractIdWrapper(value);
             } else {
-                if (this.state.isIdWrapper(value)) {
-                    return '#new-' + this.state.extractIdWrapper(value);
-                } else {
-                    return value[this.foreignSchema.getPrimaryFields()[0].name];
-                }
+                this.label = this.foreignSchema.getClassName() + '#' + value[this.foreignSchema.getPrimaryFields()[0].name];
             }
-        }
+        } else {
+            const fields: string[] = [];
+            for (const property of this.foreignSchema.getClassProperties().values()) {
+                const v = value[property.name];
 
-        return JSON.stringify(value);
+                fields.push(property.name + ': ' + (
+                    property.isArray && isArray(v) ? '[' + v.join(',') + ']' : v
+                ));
+            }
+            this.label = fields.join(', ');
+        }
     }
 }

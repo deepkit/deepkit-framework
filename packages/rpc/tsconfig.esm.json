@@ -16,9 +16,6 @@
     },
     {
       "path": "../bson/tsconfig.esm.json"
-    },
-    {
-      "path": "../type/tsconfig.esm.json"
     }
   ]
 }
