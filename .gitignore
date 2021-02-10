@@ -10,3 +10,4 @@ packages/benchmark/src/orm/end-to-end/sqlite/prisma.sqlite-journal
 packages/benchmark/results
 packages/example-app/var/debug
 packages/example-app/migration
+.vs

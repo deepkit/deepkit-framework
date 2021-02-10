@@ -24,7 +24,14 @@ import {
 } from '@deepkit/sql';
 import { DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
-import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
+import {
+    Changes,
+    ClassSchema,
+    getClassSchema,
+    getPropertyXtoClassFunction,
+    isArray,
+    resolvePropertySchema
+} from '@deepkit/type';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 
 export class MySQLStatement extends SQLStatement {
@@ -56,7 +63,8 @@ export class MySQLStatement extends SQLStatement {
 export class MySQLConnection extends SQLConnection {
     protected changes: number = 0;
     public lastExecResult?: UpsertResult[];
-    protected connection?: PoolConnection = undefined;
+    protected connector?: Promise<PoolConnection>;
+    protected connection?: PoolConnection;
 
     constructor(
         connectionPool: SQLConnectionPool,
@@ -67,23 +75,39 @@ export class MySQLConnection extends SQLConnection {
 
     release() {
         super.release();
+        if (this.connector && !this.connection) throw new Error('Could not release while in connecting');
+        this.connector = undefined;
         if (this.connection) {
             this.connection.release();
             this.connection = undefined;
         }
     }
 
+    protected connect(): Promise<PoolConnection> {
+        if (this.connection) return Promise.resolve(this.connection);
+
+        return asyncOperation<PoolConnection>((resolve, reject) => {
+            if (!this.connector) {
+                this.connector = this.getConnection();
+            }
+            this.connector.then((connection) => {
+                this.connection = connection;
+                resolve(connection);
+            }, (err) => {
+                this.connector = undefined;
+                reject(err);
+            });
+        });
+    }
+
     async prepare(sql: string) {
-        if (!this.connection) this.connection = await this.getConnection();
-        return new MySQLStatement(sql, this.connection);
+        return new MySQLStatement(sql, await this.connect());
     }
 
     async run(sql: string, params: any[] = []) {
-        if (!this.connection) this.connection = await this.getConnection();
         //batch returns in reality a single UpsertResult if only one query is given
-        const res = (await this.connection.query(sql, params)) as UpsertResult[] | UpsertResult;
-        if (isArray(res)) this.lastExecResult = res;
-        else this.lastExecResult = [res];
+        const res = (await (await this.connect()).query(sql, params)) as UpsertResult[] | UpsertResult;
+        this.lastExecResult = isArray(res) ? res : [res];
     }
 
     async getChanges(): Promise<number> {
@@ -98,7 +122,7 @@ export class MySQLConnectionPool extends SQLConnectionPool {
 
     getConnection(): MySQLConnection {
         this.activeConnections++;
-        return new MySQLConnection(this, () => this.pool.getConnection());
+        return new MySQLConnection(this, this.pool.getConnection.bind(this.pool));
     }
 }
 
@@ -169,7 +193,10 @@ export class MySQLPersistence extends SQLPersistence {
                     assignReturning[id].names.push(i);
                     setReturning[i] = 1;
 
-                    aggregateSelects[i].push({ id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}` });
+                    aggregateSelects[i].push({
+                        id: changeSet.primaryKey[pkName],
+                        sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`
+                    });
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
@@ -309,6 +336,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
+        const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimaryField();
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
@@ -322,7 +350,8 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            select.push(`${this.platform.quoteValue($set[i])} as ${this.platform.quoteIdentifier(i)}`);
+            select.push(`? as ${this.platform.quoteIdentifier(i)}`);
+            selectParams.push($set[i]);
         }
 
         if (changes.$unset) for (const i in changes.$unset) {
@@ -373,7 +402,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const selectVarsSQL = `SELECT ${selectVars.join(', ')};`;
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
 
         const params = selectSQL.params;
         const sql = `

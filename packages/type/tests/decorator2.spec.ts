@@ -308,7 +308,7 @@ test('test invalid @f', () => {
             @t.array(Config).required
             config!: Config;
         }
-    }).toThrowError('User5::config type mismatch. Given Array<Config>, but declared is Config.');
+    }).toThrowError('User5::config type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
         class Model {
@@ -316,7 +316,7 @@ test('test invalid @f', () => {
             sub!: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Array<Config>, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
         class Model {
@@ -324,7 +324,7 @@ test('test invalid @f', () => {
             sub?: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Array<ForwardedRef>?, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[]?, but declared is Config.');
 
     expect(() => {
         class Model {

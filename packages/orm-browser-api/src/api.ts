@@ -66,10 +66,12 @@ export class MigrationInfo {
 export const BrowserControllerInterface = ControllerSymbol<BrowserControllerInterface>('orm-browser/controller', [DatabaseInfo]);
 export interface BrowserControllerInterface {
     getDatabases(): DatabaseInfo[];
+    resetAllTables(name: string): Promise<void>;
     migrate(name: string): Promise<void>;
+    getMigrations(name: string): Promise<{ [name: string]: {sql: string[], diff: string} }>;
     getDatabase(name: string): DatabaseInfo;
     // getMigration(name: string): MigrationInfo;
-    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, limit: number, skip: number): Promise<any[]>;
+    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, sort: { [name: string]: any }, limit: number, skip: number): Promise<any[]>;
     getCount(dbName: string, entityName: string, filter: { [name: string]: any }): Promise<number>;
     create(dbName: string, entityName: string): Promise<any>;
     commit(commit: DatabaseCommit): Promise<any>;

@@ -122,6 +122,8 @@ export class SQLitePlatform extends DefaultPlatform {
         lines.push(`DROP TABLE ${this.getIdentifier(diff.from)}`);
         lines.push(`ALTER TABLE ${this.quoteIdentifier(tempToName)} RENAME TO ${this.getIdentifier(diff.to)}`);
 
+        lines.push(...this.getAddIndicesDDL(diff.to));
+
         return lines.filter(isSet);
     }
 
@@ -154,6 +156,8 @@ export class SQLitePlatform extends DefaultPlatform {
                 column.size = undefined;
             }
         }
+
+        //the default platform creates for each foreign key an index.
 
         //todo, support composite pks where one is AUTOINCREMENT
 

@@ -50,6 +50,10 @@ import { FilterComponent, FilterItemComponent } from './components/filter.compom
 import { JsonEditDialogComponent } from './components/dialog/json-edit-dialog.component';
 import { ArrayInputComponent } from './components/edit/array-input.component';
 import { ArrayCellComponent } from './components/cell/array-cell.component';
+import { JsonInputComponent } from './components/edit/json-input.component';
+import { JsonCellComponent } from './components/cell/json-cell.component';
+import { BinaryInputComponent } from './components/edit/binary-input.component';
+import { BinaryCellComponent } from './components/cell/binary-cell.component';
 
 @NgModule({
     declarations: [
@@ -74,6 +78,10 @@ import { ArrayCellComponent } from './components/cell/array-cell.component';
         JsonEditDialogComponent,
         ArrayInputComponent,
         ArrayCellComponent,
+        JsonInputComponent,
+        JsonCellComponent,
+        BinaryInputComponent,
+        BinaryCellComponent,
     ],
     imports: [
         BrowserModule,

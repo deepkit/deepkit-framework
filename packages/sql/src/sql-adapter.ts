@@ -366,6 +366,43 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         }
     }
 
+    public async getMigrations(classSchemas: ClassSchema[]): Promise<{ [name: string]: {sql: string[], diff: string} }> {
+        const migrations: { [name: string]: {sql: string[], diff: string} } = {};
+
+        const connection = await this.connectionPool.getConnection();
+
+        try {
+            for (const entity of classSchemas) {
+                const databaseModel = new DatabaseModel();
+                databaseModel.schemaName = this.getSchemaName();
+                this.platform.createTables(classSchemas, databaseModel);
+
+                const schemaParser = new this.platform.schemaParserType(connection, this.platform);
+
+                const parsedDatabaseModel = new DatabaseModel();
+                parsedDatabaseModel.schemaName = this.getSchemaName();
+                await schemaParser.parse(parsedDatabaseModel);
+
+                const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
+                if (databaseDiff) {
+                    const table = databaseModel.getTableForSchema(entity);
+                    databaseDiff.forTable(table);
+                    const diff = databaseDiff.getDiff(table);
+
+                    const upSql = this.platform.getModifyDatabaseDDL(databaseDiff);
+                    if (upSql.length) {
+                        migrations[entity.getName()] = {sql: upSql, diff: diff ? diff.toString() : ''};
+                    }
+                }
+            }
+        } finally {
+            connection.release();
+        }
+
+
+        return migrations;
+    }
+
     public async migrate(classSchemas: ClassSchema[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();
 
@@ -392,7 +429,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
                 try {
                     await connection.run(sql);
                 } catch (error) {
-                    console.error('Could not execute migration SQL', sql);
+                    console.error('Could not execute migration SQL', sql, error);
                     throw error;
                 }
             }

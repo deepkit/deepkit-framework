@@ -1,8 +1,9 @@
-import { ChangeDetectorRef, Component, Input, OnDestroy } from "@angular/core";
-import { DuiDialog } from "@deepkit/desktop-ui";
-import { DatabaseInfo } from "@deepkit/orm-browser-api";
+import { ChangeDetectorRef, Component, Input, OnDestroy } from '@angular/core';
+import { DuiDialog } from '@deepkit/desktop-ui';
+import { DatabaseInfo } from '@deepkit/orm-browser-api';
+import { empty } from '@deepkit/core';
 import { BrowserState } from '../browser-state';
-import { ControllerClient } from "../client";
+import { ControllerClient } from '../client';
 
 @Component({
     selector: 'orm-browser-database',
@@ -20,10 +21,28 @@ import { ControllerClient } from "../client";
         </ng-container>
     </div>
 
-    <div class="layout" [hidden]="tab !== 'migration'">
+    <div class="layout migration-container" [hidden]="tab !== 'migration'">
         <ng-container *ngIf="database">
-            Load migration
-            <dui-button (click)="migrate()">Migrate all</dui-button>
+            <div *ngIf="loadingMigrations">
+                Load migration
+            </div>
+            <div *ngIf="!loadingMigrations">
+                <dui-button (click)="resetAll()">Reset all</dui-button>
+                <dui-button (click)="migrate()">Migrate all</dui-button>
+
+                <div class="migrations" *ngIf="empty(migrations)">
+                    No migrations available. Your models are in sync with the database schema.
+                </div>
+                <div class="migrations" *ngIf="!empty(migrations)">
+                    <div *ngFor="let kv of migrations|keyvalue">
+                        <h3>{{kv.key}}</h3>
+                        <div class="diff">{{kv.value.diff}}</div>
+                        <div class="sql" *ngFor="let sql of kv.value.sql">
+                            {{sql}}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </ng-container>
     </div>
     `,
@@ -31,6 +50,10 @@ import { ControllerClient } from "../client";
 })
 export class DatabaseComponent implements OnDestroy {
     tab: string = 'model';
+    empty = empty;
+
+    migrations: { [name: string]: {sql: string[], diff: string} } = {};
+    loadingMigrations: boolean = false;
 
     @Input() database!: DatabaseInfo;
 
@@ -45,11 +68,23 @@ export class DatabaseComponent implements OnDestroy {
     ngOnDestroy(): void {
     }
 
-    setTab(tab: string) {
+    async setTab(tab: string) {
         this.tab = tab;
         if (tab === 'migration') {
-            this.loadMigration();
+            await this.loadMigration();
         }
+    }
+
+    async resetAll() {
+        if (!this.database) return;
+        if (!await this.duiDialog.confirm('Reset all?', 'All database tables will be reset. All content deleted.')) return;
+
+        try {
+            await this.controllerClient.browser.resetAllTables(this.database.name);
+        } catch (error) {
+            await this.duiDialog.alert('Error resetting all', error.message);
+        }
+        await this.loadMigration();
     }
 
     async migrate() {
@@ -58,11 +93,19 @@ export class DatabaseComponent implements OnDestroy {
         try {
             await this.controllerClient.browser.migrate(this.database.name);
         } catch (error) {
-            this.duiDialog.alert('Error migrating', error.message);
+            await this.duiDialog.alert('Error migrating', error.message);
         }
+        await this.loadMigration();
     }
 
     async loadMigration() {
-
+        this.loadingMigrations = true;
+        this.cd.detectChanges();
+        try {
+            this.migrations = await this.controllerClient.browser.getMigrations(this.database.name);
+        } finally {
+            this.loadingMigrations = false;
+            this.cd.detectChanges();
+        }
     }
 }

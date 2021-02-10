@@ -25,8 +25,6 @@ export class CellComponent implements OnDestroy, OnChanges {
     @Input() property!: PropertySchema;
     @Input() model!: any;
 
-    @Output() done = new EventEmitter<void>();
-
     protected componentRef?: ComponentRef<any>;
 
     constructor(

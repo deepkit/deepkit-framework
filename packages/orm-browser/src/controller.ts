@@ -4,9 +4,11 @@ import { BrowserControllerInterface, DatabaseCommit, DatabaseInfo } from '@deepk
 import { rpc } from '@deepkit/rpc';
 import { ClassSchema, plainToClass, serializeSchemas, t } from '@deepkit/type';
 import { inspect } from 'util';
+import { SQLDatabaseAdapter } from '@deepkit/sql';
 
 export class BrowserController implements BrowserControllerInterface {
-    constructor(protected databases: Database[]) { }
+    constructor(protected databases: Database[]) {
+    }
 
     protected extractDatabaseInfo(db: Database): DatabaseInfo {
         return new DatabaseInfo(db.name, (db.adapter as DatabaseAdapter).getName(), serializeSchemas([...db.entities]));
@@ -68,6 +70,24 @@ export class BrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
+    async resetAllTables(name: string): Promise<void> {
+        const db = this.findDatabase(name);
+        if (db.adapter instanceof SQLDatabaseAdapter) {
+            await db.adapter.createTables([...db.entities.values()]);
+        }
+    }
+
+    @rpc.action()
+    @t.any
+    async getMigrations(name: string): Promise<{ [name: string]: {sql: string[], diff: string} }> {
+        const db = this.findDatabase(name);
+        if (db.adapter instanceof SQLDatabaseAdapter) {
+            return db.adapter.getMigrations([...db.entities.values()]);
+        }
+        return {};
+    }
+
+    @rpc.action()
     @t.number
     async getCount(dbName: string, entityName: string, @t.map(t.any) filter: { [name: string]: any }): Promise<number> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
@@ -77,10 +97,17 @@ export class BrowserController implements BrowserControllerInterface {
 
     @rpc.action()
     @t.array(t.any)
-    async getItems(dbName: string, entityName: string, @t.map(t.any) filter: { [name: string]: any }, limit: number, skip: number): Promise<any[]> {
+    async getItems(
+        dbName: string,
+        entityName: string,
+        @t.map(t.any) filter: { [name: string]: any },
+        @t.map(t.any) sort: { [name: string]: any },
+        limit: number,
+        skip: number
+    ): Promise<any[]> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
 
-        return await db.query(entity).filter(filter).limit(limit).skip(skip).find();
+        return await db.query(entity).filter(filter).sort(sort).limit(limit).skip(skip).find();
     }
 
     @rpc.action()
@@ -154,7 +181,6 @@ export class BrowserController implements BrowserControllerInterface {
                                 }
                             }
                         }
-                        console.log('add', item);
                         session.add(item);
                     }
                 }
@@ -180,6 +206,7 @@ export class BrowserController implements BrowserControllerInterface {
                                 $set[reference.name] = db.getReference(reference.getResolvedClassSchema(), $set[reference.name]);
                             }
                         }
+                        console.log('change', change);
                         updates.push(query.filter(db.getReference(entity, change.pk)).patchOne(change.changes));
                     }
                 }

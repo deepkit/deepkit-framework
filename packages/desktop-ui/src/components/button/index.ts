@@ -22,8 +22,8 @@ import {
     DropdownItemComponent,
     DropdownSplitterComponent,
     OpenDropdownDirective,
-    ContextDropdownDirective,
-} from "./dropdown.component";
+    ContextDropdownDirective, OpenDropdownHoverDirective,
+} from './dropdown.component';
 import { FormsModule } from "@angular/forms";
 import { TabButtonComponent } from './tab-button.component'
 
@@ -40,6 +40,7 @@ export * from './tab-button.component'
         DropdownItemComponent,
         DropdownSplitterComponent,
         OpenDropdownDirective,
+        OpenDropdownHoverDirective,
         ContextDropdownDirective,
         FileChooserDirective,
         TabButtonComponent,
@@ -54,6 +55,7 @@ export * from './tab-button.component'
         DropdownItemComponent,
         DropdownSplitterComponent,
         OpenDropdownDirective,
+        OpenDropdownHoverDirective,
         ContextDropdownDirective,
         FileChooserDirective,
         TabButtonComponent,

@@ -411,6 +411,7 @@ function createFieldDecoratorResult<T>(
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
                 property.isAutoIncrement = true;
+                property.defaultValue = () => 0;
             }]);
         }
     });

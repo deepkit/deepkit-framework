@@ -2,6 +2,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    position: relative;
 }
 
 [hidden] {
@@ -16,6 +17,37 @@
 
 dui-table ::ng-deep .table-row.new > div {
     background-color: rgba(255, 255, 0, 0.212);
+}
+
+.table {
+    position: relative;
+    flex: 1;
+    border-top: 1px solid var(--line-color-light) !important;
+}
+
+dui-table {
+    height: 100%;
+}
+
+.error {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--dui-window-content-bg-trans);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+
+    .text {
+        margin-top: 30px;
+        color: var(--color-red);
+        white-space: pre;
+        user-select: text;
+    }
 }
 
 .undefined,
@@ -84,9 +116,4 @@ dui-table ::ng-deep .table-row > div {
     flex: 0;
     max-height: 40%;
     padding: 12px;
-}
-
-dui-table {
-    flex: 1;
-    border-top: 1px solid var(--line-color-light) !important;
 }

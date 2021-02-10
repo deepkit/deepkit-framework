@@ -9,14 +9,21 @@
  */
 
 import { arrayRemoveItem } from '@deepkit/core';
-import { PropertySchema } from '@deepkit/type';
-import { inspect } from 'util';
+import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { cyrb53 } from '../hash';
 
 export class DatabaseModel {
     public schemaName: string = '';
 
+    public schemaMap = new Map<ClassSchema, Table>();
+
     constructor(public tables: Table[] = []) {
+    }
+
+    getTableForSchema(schema: ClassSchema): Table {
+        const table = this.schemaMap.get(schema);
+        if (!table) throw new Error(`No table for entity ${schema.getName()}`);
+        return table;
     }
 
     addTable(name: string) {
@@ -349,7 +356,7 @@ export class TableDiff {
     public modifiedColumns: ColumnDiff[] = [];
     public renamedColumns: [from: Column, to: Column][] = [];
 
-    public addedPKColumns: Column[] = []
+    public addedPKColumns: Column[] = [];
     public removedPKColumns: Column[] = [];
     public renamedPKColumns: [from: Column, to: Column][] = [];
 
@@ -368,7 +375,7 @@ export class TableDiff {
         return this.addedPKColumns.length > 0 || this.renamedPKColumns.length > 0 || this.removedPKColumns.length > 0;
     }
 
-    [inspect.custom]() {
+    toString() {
         let lines: string[] = [];
         lines.push(`  ${this.from.getName()}:`);
 
@@ -407,7 +414,6 @@ export class TableDiff {
             lines.push('   renamedPKColumns:');
             for (const [from, to] of this.renamedPKColumns) lines.push(`     ${from.getName()} -> ${to.getName()}`);
         }
-
 
         if (this.addedFKs.length) {
             lines.push('   addedFKs:');
@@ -628,7 +634,6 @@ export class TableComparator {
     }
 }
 
-
 export class DatabaseDiff {
     public addedTables: Table[] = [];
     public removedTables: Table[] = [];
@@ -638,6 +643,17 @@ export class DatabaseDiff {
     constructor(
         public from: DatabaseModel, public to: DatabaseModel
     ) {
+    }
+
+    forTable(table: Table) {
+        this.addedTables = this.addedTables.filter(v => v.name === table.name);
+        this.removedTables = this.removedTables.filter(v => v.name === table.name);
+        this.modifiedTables = this.modifiedTables.filter(v => v.to.name === table.name);
+        this.renamedTables = this.renamedTables.filter(([from, to]) => to.name === table.name);
+    }
+
+    getDiff(table: Table): TableDiff | undefined {
+        return this.modifiedTables.find(v => v.to.name === table.name);
     }
 }
 

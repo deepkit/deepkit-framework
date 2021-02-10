@@ -49,7 +49,7 @@ import { ButtonComponent } from './button.component';
     host: {
         '[class.overlay]': 'overlay !== false',
     },
-    styleUrls: ['./dropdow.component.scss']
+    styleUrls: ['./dropdown.component.scss']
 })
 export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public isOpen = false;
@@ -125,13 +125,12 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     }
 
     ngOnDestroy(): void {
-        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.close();
     }
 
     @HostListener('window:keyup', ['$event'])
     public key(event: KeyboardEvent) {
-        if (this.isOpen && event.key.toLowerCase() === 'escape') {
+        if (this.isOpen && event.key.toLowerCase() === 'escape' && this.lastOverlayStackItem && this.lastOverlayStackItem.isLast()) {
             this.close();
         }
     }
@@ -284,20 +283,19 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
         const normalizedAllowedFocus = isArray(this.allowedFocus) ? this.allowedFocus : (this.allowedFocus ? [this.allowedFocus] : []);
         const allowedFocus = normalizedAllowedFocus.map(v => v instanceof ElementRef ? v.nativeElement : v) as HTMLElement[];
+        allowedFocus.push(this.overlayRef.hostElement);
 
         if (this.show === undefined) {
-            this.dropdown.nativeElement.focus();
+            this.overlayRef.hostElement.focus();
+
             this.lastFocusWatcher = focusWatcher(this.dropdown.nativeElement, [...allowedFocus, target as any], (element) => {
                 //if the element is a dialog as well, we don't close
 
                 if (!element) return false;
 
-                //if this pane is after our pane, we ignore the focus-out.
                 if (this.lastOverlayStackItem) {
-                    const allAfter = this.lastOverlayStackItem.getAllAfter();
-                    for (const after of allAfter) {
-                        if (isTargetChildOf(element, after.host)) return true;
-                    }
+                    //when there's a overlay above ours we keep it open
+                    if (!this.lastOverlayStackItem.isLast()) return true;
                 }
 
                 return false;
@@ -316,15 +314,15 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     }
 
     public close() {
-        if (!this.isOpen) {
-            return;
-        }
+        if (!this.isOpen) return;
+
+        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
 
         this.isOpen = false;
 
         if (this.overlayRef) {
             this.overlayRef.dispose();
-            delete this.overlayRef;
+            this.overlayRef = undefined;
         }
 
         this.cd.detectChanges();
@@ -373,6 +371,63 @@ export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
         if (this.openDropdown) {
             this.openDropdown.toggle(this.elementRef);
         }
+    }
+}
+
+/**
+ * A directive to open the given dropdown on mouseenter, and closes automatically on mouseleave.
+ * Dropdown keeps open when mouse enters the dropdown
+ */
+@Directive({
+    'selector': '[openDropdownHover]',
+})
+export class OpenDropdownHoverDirective implements OnDestroy {
+    @Input() openDropdownHover?: DropdownComponent;
+
+    /**
+     * In milliseconds.
+     */
+    @Input() openDropdownHoverCloseTimeout: number = 80;
+
+    @unsubscribe()
+    openSub?: Subscription;
+
+    @unsubscribe()
+    hiddenSub?: Subscription;
+
+    lastHide?: any;
+
+    constructor(
+        protected elementRef: ElementRef,
+    ) {
+    }
+
+    ngOnDestroy() {
+    }
+
+    @HostListener('mouseenter')
+    onHover() {
+        clearTimeout(this.lastHide);
+        this.lastHide = undefined;
+
+        if (this.openDropdownHover && !this.openDropdownHover.isOpen) {
+            this.openDropdownHover.open(this.elementRef);
+            if (this.openDropdownHover.overlayRef) {
+                this.openDropdownHover.overlayRef.hostElement.addEventListener('mouseenter', () => {
+                    this.onHover();
+                });
+                this.openDropdownHover.overlayRef.hostElement.addEventListener('mouseleave', () => {
+                    this.onLeave();
+                });
+            }
+        }
+    }
+
+    @HostListener('mouseleave')
+    onLeave() {
+        this.lastHide = setTimeout(() => {
+            if (this.openDropdownHover && this.lastHide) this.openDropdownHover.close();
+        }, this.openDropdownHoverCloseTimeout);
     }
 }
 

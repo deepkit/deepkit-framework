@@ -1,7 +1,7 @@
-import {ChangeDetectorRef, Component, Input, OnChanges, OnInit} from '@angular/core';
-import {isArray} from '@deepkit/core';
-import {ClassSchema, PropertySchema} from '@deepkit/type';
-import {BrowserState} from 'src/app/browser-state';
+import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
+import { isArray } from '@deepkit/core';
+import { ClassSchema, PropertySchema } from '@deepkit/type';
+import { BrowserState } from 'src/app/browser-state';
 
 @Component({
     template: `{{label}}`
@@ -42,6 +42,7 @@ export class ClassCellComponent implements OnChanges, OnInit {
         } else {
             const fields: string[] = [];
             for (const property of this.foreignSchema.getClassProperties().values()) {
+                if (!(property.name in value)) continue;
                 const v = value[property.name];
 
                 fields.push(property.name + ': ' + (

@@ -21,6 +21,8 @@ class BookModeration {
 class Book {
     @t.primary.autoIncrement id: number = 0;
 
+    @t.optional created: Date = new Date;
+
     @t moderation: BookModeration = new BookModeration;
 
     constructor(

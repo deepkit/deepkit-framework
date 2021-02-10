@@ -36,7 +36,7 @@ import { WindowRegistry } from "../window/window-state";
 import { WindowComponent } from "../window/window.component";
 import { RenderComponentDirective } from "../core/render-component.directive";
 import { IN_DIALOG } from "../app/token";
-import { OverlayStack, OverlayStackItem } from '../app';
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule } from '../app';
 
 @Component({
     template: `
@@ -283,9 +283,11 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     }
 
     protected beforeUnload() {
+        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
+
         if (this.overlayRef) {
             this.overlayRef.dispose();
-            delete this.overlayRef;
+            this.overlayRef = undefined;
         }
     }
 
@@ -293,18 +295,15 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     }
 
     public close(v?: any) {
+        this.beforeUnload();
         this.visible = false;
         this.visibleChange.emit(false);
-        this.beforeUnload();
 
         this.closed.emit(v);
-        requestAnimationFrame(() => {
-            this.applicationRef.tick();
-        });
+        ReactiveChangeDetectionModule.tick();
     }
 
     ngOnDestroy(): void {
-        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.beforeUnload();
     }
 }

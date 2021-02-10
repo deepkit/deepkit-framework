@@ -43,7 +43,7 @@ import { ClassSchema } from '@deepkit/type';
           <dui-list>
             <dui-list-title>Database</dui-list-title>
             <orm-browser-list></orm-browser-list>
-            
+
           </dui-list>
         </dui-window-sidebar>
         <orm-browser-database *ngIf="state.database && !state.entity" [database]="state.database"></orm-browser-database>
@@ -68,7 +68,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    this.state.databases = await this.controllerClient.browser.getDatabases();
     this.cd.detectChanges();
   }
 }

@@ -1,10 +1,9 @@
 :host {
     display: flex;
-    display: flex;
     flex-direction: column;
     height: 100%;
 }
-    
+
 .header {
     flex: 0 0 50px;
     display: flex;
@@ -13,7 +12,7 @@
     align-items: center;
 }
 
-[hidden] { 
+[hidden] {
     display: none !important;
 }
 
@@ -21,4 +20,20 @@
     display: flex;
     height: 100%;
     overflow: hidden;
+}
+
+.migration-container {
+    padding: 20px;
+    overflow: auto;
+}
+
+.migrations {
+    margin: 15px 0;
+}
+
+.sql, .diff {
+    user-select: text;
+    white-space: pre;
+    margin-bottom: 5px;
+    margin-left: 15px;
 }

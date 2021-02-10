@@ -9,7 +9,14 @@
  */
 
 import { ClassType, empty, Mutex } from '@deepkit/core';
-import { DatabaseAdapter, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import {
+    DatabaseAdapter,
+    DatabasePersistenceChangeSet,
+    DatabaseSession,
+    DeleteResult,
+    Entity,
+    PatchResult
+} from '@deepkit/orm';
 import {
     DefaultPlatform,
     SqlBuilder, SQLConnection,
@@ -22,7 +29,13 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
+import {
+    Changes,
+    ClassSchema,
+    getClassSchema,
+    getPropertyXtoClassFunction,
+    resolvePropertySchema
+} from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
 
@@ -82,7 +95,6 @@ export class SQLiteConnection extends SQLConnection {
 
 export class SQLiteConnectionPool extends SQLConnectionPool {
     protected connectionMutex = new Mutex();
-    protected connectionBusyResolve?: Function;
 
     constructor(protected db: sqlite3.Database) {
         super();
@@ -180,7 +192,10 @@ export class SQLitePersistence extends SQLPersistence {
                     assignReturning[id].names.push(i);
                     setReturning[i] = 1;
 
-                    aggregateSelects[i].push({ id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}` });
+                    aggregateSelects[i].push({
+                        id: changeSet.primaryKey[pkName],
+                        sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`
+                    });
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
@@ -304,6 +319,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
 
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
+        const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimaryField();
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
@@ -317,7 +333,8 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            select.push(`${this.platform.quoteValue($set[i])} as ${this.platform.quoteIdentifier(i)}`);
+            select.push(`? as ${this.platform.quoteIdentifier(i)}`);
+            selectParams.push($set[i]);
         }
 
         if (changes.$unset) for (const i in changes.$unset) {
@@ -353,7 +370,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         }
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
 
         const sql = `
               UPDATE 

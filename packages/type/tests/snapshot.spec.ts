@@ -1,7 +1,9 @@
-import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '@deepkit/type';
-import { getClassSchema, jsonSerializer, t } from '@deepkit/type';
+import { expect, test } from '@jest/globals';
+import { t } from '../src/decorators';
+import { jsonSerializer } from '../src/json-serializer';
+import { getClassSchema } from '../src/model';
+import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../src/snapshot';
 
 class Image {
     @t title: string = '';

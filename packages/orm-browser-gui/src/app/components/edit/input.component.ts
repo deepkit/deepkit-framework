@@ -11,7 +11,7 @@ import {
     ViewContainerRef
 } from '@angular/core';
 import { TableComponent, unsubscribe } from '@deepkit/desktop-ui';
-import { PropertySchema } from '@deepkit/type';
+import { PropertySchema, Types } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 import { Registry } from 'src/app/registry';
 
@@ -32,6 +32,11 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     @Input() property!: PropertySchema;
 
     @Input() autoOpen: boolean = true;
+
+    /**
+     * To force a different component input type than the one in property
+     */
+    @Input() type?: Types;
 
     @Output() done = new EventEmitter<any>();
 
@@ -56,7 +61,7 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     }
 
     ngOnChanges(changes: SimpleChanges) {
-        if (changes.property) this.link();
+        if (changes.property || changes.type) this.link();
     }
 
     protected unlink() {
@@ -68,7 +73,7 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     protected link() {
         this.unlink();
 
-        const component = this.registry.inputComponents[this.property.type];
+        const component = this.registry.inputComponents[this.type || this.property.type];
         if (!component) {
             return;
         }

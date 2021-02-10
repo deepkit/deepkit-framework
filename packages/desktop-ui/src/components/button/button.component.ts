@@ -26,12 +26,12 @@ import {
     Optional,
     Output,
     SkipSelf
-} from "@angular/core";
-import { WindowComponent } from "../window/window.component";
-import { WindowState } from "../window/window-state";
-import { FormComponent } from "../form/form.component";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import {detectChangesNextFrame} from '../app';
+} from '@angular/core';
+import { WindowComponent } from '../window/window.component';
+import { WindowState } from '../window/window-state';
+import { FormComponent } from '../form/form.component';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { detectChangesNextFrame } from '../app';
 
 @Component({
     selector: 'dui-button',
@@ -164,7 +164,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
             const hasText = content !== this.icon && content.length > 0;
             if (hasText) {
                 this.detectedText = true;
-                this.cdParent.detectChanges()
+                this.cdParent.detectChanges();
             }
         }
     }
@@ -186,7 +186,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     selector: 'dui-button-group',
     template: '<ng-content></ng-content>',
     host: {
-        '[class.float-right]': "float==='right'",
+        '[class.float-right]': 'float===\'right\'',
         '(transitionend)': 'transitionEnded()'
     },
     styleUrls: ['./button-group.component.scss']
@@ -315,7 +315,7 @@ export class FileChooserDirective extends ValueAccessorBase<any> implements OnDe
                 this.duiFileChooserChange.emit(this.innerValue);
                 this.app.tick();
             }
-        })
+        });
     }
 
     ngOnDestroy() {
@@ -362,8 +362,9 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
     selector: '[duiFilePicker]',
     providers: [ngValueAccessor(FileChooserDirective)]
 })
-export class FilePickerDirective extends ValueAccessorBase<any> implements OnDestroy {
+export class FilePickerDirective extends ValueAccessorBase<any> implements OnDestroy, AfterViewInit {
     @Input() duiFileMultiple?: boolean | '' = false;
+    @Input() duiFileAutoOpen: boolean = false;
 
     @Output() duiFilePickerChange = new EventEmitter<FilePickerItem | FilePickerItem[]>();
 
@@ -404,10 +405,14 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
                 this.duiFilePickerChange.emit(this.innerValue);
                 this.app.tick();
             }
-        })
+        });
     }
 
     ngOnDestroy() {
+    }
+
+    ngAfterViewInit() {
+        if (this.duiFileAutoOpen) this.onClick();
     }
 
     @HostListener('click')

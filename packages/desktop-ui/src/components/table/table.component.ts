@@ -23,7 +23,7 @@ import {
     Input,
     NgZone,
     OnChanges,
-    OnDestroy,
+    OnDestroy, OnInit,
     Output,
     QueryList,
     SimpleChanges, SkipSelf,
@@ -236,9 +236,9 @@ export class TableColumnDirective {
                         {{column.header || column.name}}
                     </ng-container>
 
-                    <ng-container *ngIf="(currentSort || defaultSort) === column.name">
-                        <dui-icon *ngIf="!isAsc()" [size]="12" name="arrow_down"></dui-icon>
-                        <dui-icon *ngIf="isAsc()" [size]="12" name="arrow_up"></dui-icon>
+                    <ng-container *ngIf="sort[column.name]">
+                        <dui-icon *ngIf="sort[column.name] === 'desc'" [size]="12" name="arrow_down"></dui-icon>
+                        <dui-icon *ngIf="sort[column.name] === 'asc'" [size]="12" name="arrow_up"></dui-icon>
                     </ng-container>
 
                     <dui-splitter (modelChange)="setColumnWidth(column, $event)"
@@ -292,7 +292,7 @@ export class TableColumnDirective {
         '[class.auto-height]': 'autoHeight !== false',
     },
 })
-export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
+export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDestroy {
     /**
      * @hidden
      */
@@ -400,14 +400,13 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     /**
      * A hook to provide custom sorting behavior for certain columns.
      */
-    @Input() public sortFunction?: (path: string, dir: 'asc' | 'desc') => (((a: T, b: T) => number) | undefined);
+    @Input() public sortFunction?: (sort: { [name: string]: 'asc' | 'desc' }) => (((a: T, b: T) => number) | undefined);
 
     @Input() noFocusOutline: boolean | '' = false;
 
-    public currentSort: string = '';
+    public sort: { [column: string]: 'asc' | 'desc' } = {};
 
-    public currentSortDirection: 'asc' | 'desc' | '' = '';
-
+    public rawItems: T[] = [];
     public sorted: T[] = [];
 
     public selectedMap = new Map<T, boolean>();
@@ -431,7 +430,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      */
     @Output() public dbclick: EventEmitter<T> = new EventEmitter();
 
-    @Output() public customSort: EventEmitter<{ name: string, direction: 'asc' | 'desc' | '' }> = new EventEmitter();
+    @Output() public customSort: EventEmitter<{ [column: string]: 'asc' | 'desc' }> = new EventEmitter();
 
     @Output() public cellDblClick: EventEmitter<{ item: T, column: string }> = new EventEmitter();
     @Output() public cellClick: EventEmitter<{ item: T, column: string }> = new EventEmitter();
@@ -469,6 +468,12 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         detectChangesNextFrame(this.cd, () => {
             this.storePreference();
         });
+    }
+
+    ngOnInit() {
+        if (this.defaultSort) {
+            this.sort[this.defaultSort] = this.defaultSortDirection;
+        }
     }
 
     ngOnDestroy(): void {
@@ -543,13 +548,6 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     /**
-     * @hidden
-     */
-    public isAsc(): boolean {
-        return (this.currentSortDirection || this.defaultSortDirection) === 'asc';
-    }
-
-    /**
      * Toggles the sort by the given column name.
      */
     public sortBy(name: string, $event?: MouseEvent) {
@@ -567,29 +565,15 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
             }
         }
 
-        if (!this.currentSort && this.defaultSort === name) {
-            this.currentSort = this.defaultSort;
-            this.currentSortDirection = this.defaultSortDirection;
-
-            if (this.currentSortDirection === 'asc') {
-                this.currentSortDirection = 'desc';
-            } else {
-                this.currentSortDirection = 'asc';
-            }
-        } else if (this.currentSort === name) {
-            if (this.currentSortDirection === 'asc') {
-                this.currentSortDirection = 'desc';
-            } else {
-                this.currentSortDirection = 'asc';
-            }
-        } else if (!this.currentSort && this.defaultSort !== name) {
-            this.currentSort = this.defaultSort;
-            this.currentSortDirection = this.defaultSortDirection;
+        if (!this.sort[name]) {
+            this.sort[name] = 'asc';
+        } else {
+            if (this.sort[name] === 'asc') this.sort[name] = 'desc';
+            else if (this.sort[name] === 'desc') delete this.sort[name];
         }
 
-        this.currentSort = name;
         if (this.customSort.observers.length) {
-            this.customSort.emit({ name, direction: this.currentSortDirection });
+            this.customSort.emit(this.sort);
         } else {
             this.doSort();
         }
@@ -871,15 +855,18 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         if (changes.items) {
             if (isObservable(this.items)) {
                 this.items.subscribe((items: T[]) => {
+                    this.rawItems = items;
                     this.sorted = items;
                     this.doSort();
                     this.viewport.checkViewportSize();
                 });
             } else if (isArray(this.items)) {
+                this.rawItems = this.items;
                 this.sorted = this.items;
                 this.doSort();
                 this.viewport.checkViewportSize();
             } else {
+                this.rawItems = [];
                 this.sorted = [];
                 this.doSort();
                 this.viewport.checkViewportSize();
@@ -911,35 +898,21 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     private doSort() {
-        if (!this.sorted) {
-            return;
+        if (this.customSort.observers.length) return;
+        if (empty(this.sorted)) {
+            this.sorted = this.rawItems;
         }
 
-        const sortField = this.currentSort || this.defaultSort;
-        const dir = this.currentSortDirection || this.defaultSortDirection;
-        const customSortFunction = this.sortFunction ? this.sortFunction(sortField, dir) : undefined;
-
-        if (customSortFunction) {
-            this.sorted.sort(customSortFunction);
+        if (this.sortFunction) {
+            this.sorted.sort(this.sortFunction(this.sort));
         } else {
-            this.sorted.sort((a: T, b: T) => {
-                const aV = this.valueFetcher(a, sortField);
-                const bV = this.valueFetcher(b, sortField);
-
-                if (aV === undefined && bV === undefined) return 0;
-                if (aV === undefined && bV !== undefined) return +1;
-                if (aV !== undefined && bV === undefined) return -1;
-
-                if (dir === 'asc') {
-                    if (aV > bV) return 1;
-                    if (aV < bV) return -1;
-                } else {
-                    if (aV > bV) return -1;
-                    if (aV < bV) return 1;
-                }
-
-                return 0;
-            });
+            const sort = Object.entries(this.sort);
+            sort.reverse(); //we start from bottom
+            let sortRoot = (a: any, b: any) => 0;
+            for (const [name, dir] of sort) {
+                sortRoot = this.createSortFunction(name, dir, sortRoot);
+            }
+            this.sorted.sort(sortRoot);
         }
 
         this.sortedChange.emit(this.sorted);
@@ -947,6 +920,27 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
 
         this.sorted = this.sorted.slice(0);
         detectChangesNextFrame(this.parentCd);
+    }
+
+    protected createSortFunction(sortField: string, dir: 'asc' | 'desc', next?: (a: any, b: any) => number) {
+        return (a: T, b: T) => {
+            const aV = this.valueFetcher(a, sortField);
+            const bV = this.valueFetcher(b, sortField);
+
+            if (aV === undefined && bV === undefined) return next ? next(a, b) : 0;
+            if (aV === undefined && bV !== undefined) return +1;
+            if (aV !== undefined && bV === undefined) return -1;
+
+            if (dir === 'asc') {
+                if (aV > bV) return 1;
+                if (aV < bV) return -1;
+            } else {
+                if (aV > bV) return -1;
+                if (aV < bV) return 1;
+            }
+
+            return next ? next(a, b) : 0;
+        };
     }
 
     /**

@@ -56,7 +56,7 @@ test('default value is not optional', () => {
     expect(schema.getProperty('id').isOptional).toBe(false);
 
     expect(schema.getProperty('type').type).toBe('number');
-    expect(schema.getProperty('ityped').isOptional).toBe(false);
+    expect(schema.getProperty('type').isOptional).toBe(false);
 });
 
 test('nested types correctly converted', async () => {

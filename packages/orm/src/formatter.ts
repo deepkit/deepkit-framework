@@ -130,15 +130,20 @@ export class Formatter {
         const foreignPrimaryFields = foreignSchema.getPrimaryFields();
         const foreignPrimaryKey: { [name: string]: any } = {};
 
+        let allFilled = foreignPrimaryFields.length;
         for (const property of foreignPrimaryFields) {
             const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.name : propertySchema.name + capitalize(property.name);
-            //todo: apply namingstrategy
             if (property.isReference) {
                 foreignPrimaryKey[property.name] = this.getReference(property.getResolvedClassSchema(), dbRecord, propertySchema, isPartial);
             } else {
-                foreignPrimaryKey[property.name] = this.serializer.deserializeProperty(property, dbRecord[foreignKey]);
+                const v = this.serializer.deserializeProperty(property, dbRecord[foreignKey]);
+                if (v === undefined || v === null) allFilled--;
+                foreignPrimaryKey[property.name] = v;
             }
         }
+
+        //empty reference
+        if (allFilled === 0) return undefined;
 
         const ref = getReference(
             foreignSchema,

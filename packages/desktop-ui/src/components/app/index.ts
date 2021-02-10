@@ -36,7 +36,7 @@ import { Electron } from '../../core/utils';
 import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from '@angular/router';
 import { WindowRegistry } from '../window/window-state';
 import { ELECTRON_WINDOW, IN_DIALOG } from './token';
-import { AsyncRenderPipe } from './pipes';
+import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
 import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
 import { arrayRemoveItem } from '@deepkit/core';
 
@@ -99,6 +99,15 @@ export class OverlayStackItem {
         return result;
     }
 
+    getPrevious(): OverlayStackItem | undefined {
+        const before = this.getAllBefore();
+        return before.length ? before[before.length - 1] : undefined;
+    }
+
+    isLast(): boolean {
+        return this.getAllAfter().length === 0;
+    }
+
     getAllBefore(): OverlayStackItem[] {
         const result: OverlayStackItem[] = [];
 
@@ -115,6 +124,8 @@ export class OverlayStack {
 
     public register(host: HTMLElement): OverlayStackItem {
         const item = new OverlayStackItem(host, this.stack, () => {
+            const before = item.getPrevious();
+            if (before) before.host.focus();
             arrayRemoveItem(this.stack, item);
         });
         this.stack.push(item);
@@ -288,6 +299,8 @@ export class DuiApp {
         CdCounterComponent,
         DuiResponsiveDirective,
         AsyncRenderPipe,
+        ObjectURLPipe,
+        HumanFileSizePipe,
     ],
     exports: [
         UiComponentComponent,
@@ -301,6 +314,8 @@ export class DuiApp {
         CdCounterComponent,
         DuiResponsiveDirective,
         AsyncRenderPipe,
+        ObjectURLPipe,
+        HumanFileSizePipe,
     ],
     providers: [OverlayStack],
     imports: [

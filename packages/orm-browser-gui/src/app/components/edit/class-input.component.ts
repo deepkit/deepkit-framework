@@ -23,7 +23,7 @@ import { getPrimaryKeyHashGenerator } from '@deepkit/type';
         <ng-container *ngIf="!open">
             Undefined
         </ng-container>
-        <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" [backDropCloses]="true"
+        <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()" [backDropCloses]="true"
                     [minWidth]="450" [minHeight]="350">
             <div class="json-editor">
                 <h3>JSON</h3>

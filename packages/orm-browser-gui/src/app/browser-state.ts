@@ -1,8 +1,17 @@
-import { Injectable } from '@angular/core';
+import { EventEmitter, Injectable } from '@angular/core';
 import { empty, isObject } from '@deepkit/core';
 import { getInstanceState } from '@deepkit/orm';
 import { DatabaseCommit, DatabaseInfo } from '@deepkit/orm-browser-api';
-import { Changes, changeSetSymbol, ClassSchema, classToPlain, getChangeDetector, getConverterForSnapshot, PropertySchema, PropertyValidatorError } from '@deepkit/type';
+import {
+    Changes,
+    changeSetSymbol,
+    ClassSchema,
+    classToPlain,
+    getChangeDetector,
+    getConverterForSnapshot,
+    PropertySchema,
+    PropertyValidatorError
+} from '@deepkit/type';
 import { ControllerClient } from './client';
 
 export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
@@ -63,6 +72,8 @@ export class BrowserState {
 
     connectedNewItems = new Map<any, { row: any, property: PropertySchema }[]>();
 
+    onDataChange = new EventEmitter();
+
     constructor(protected controllerClient: ControllerClient) {
         (window as any).state = this;
     }
@@ -105,6 +116,7 @@ export class BrowserState {
 
     hasChanges(): boolean {
         for (const i in this.changes) {
+            if (!this.changes.hasOwnProperty(i)) continue;
             if (!empty(this.changes[i])) return true;
             if (!empty(this.deletions[i])) return true;
         }
@@ -113,7 +125,7 @@ export class BrowserState {
 
     hasAddedItems(dbName: string, entityName: string): boolean {
         const items = this.addedItems[this.getStoreKey(dbName, entityName)];
-        return items && items.length > 0 ? true : false;
+        return items && items.length > 0;
     }
 
     getAddedItems(dbName: string, entityName: string): any[] {
@@ -134,11 +146,13 @@ export class BrowserState {
         }
 
         for (const storeKey in this.deletions) {
+            if (!this.deletions.hasOwnProperty(storeKey)) continue;
             const [dbName, entityName] = storeKey.split(storeKeySeparator) as [string, string];
             commit[dbName].removed[entityName] = Object.values(this.deletions[storeKey]);
         }
 
         for (const storeKey in this.changes) {
+            if (!this.changes.hasOwnProperty(storeKey)) continue;
             const [dbName, entityName] = storeKey.split(storeKeySeparator) as [string, string];
             const database = commit[dbName];
             const changed = database.changed[entityName] ||= [];
@@ -152,6 +166,7 @@ export class BrowserState {
         }
 
         for (const storeKey in this.addedItems) {
+            if (!this.addedItems.hasOwnProperty(storeKey)) continue;
             const [dbName, entityName] = storeKey.split(storeKeySeparator) as [string, string];
             const database = commit[dbName];
             // const entity = this.getEntity(dbName, entityName);
@@ -161,6 +176,7 @@ export class BrowserState {
         }
 
         await this.controllerClient.browser.commit(commit);
+        this.onDataChange.emit();
         for (const entityState of Object.values(this.browserEntityState)) {
             entityState.items = [];
         }

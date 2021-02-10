@@ -214,8 +214,8 @@ sqlSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state: 
     state.setContext({ nodeBufferToArrayBuffer });
     state.addSetter(`nodeBufferToArrayBuffer(${state.accessor})`);
 });
-
-sqlSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({ Buffer });
-    state.addSetter(`Buffer.from(${state.accessor})`);
-});
+//
+// sqlSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
+//     state.setContext({ Buffer });
+//     state.addSetter(`Buffer.from(${state.accessor})`);
+// });

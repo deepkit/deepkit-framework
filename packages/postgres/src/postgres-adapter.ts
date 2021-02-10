@@ -23,7 +23,14 @@ import {
 } from '@deepkit/sql';
 import { DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
-import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
+import {
+    Changes,
+    ClassSchema,
+    getClassSchema,
+    getPropertyXtoClassFunction,
+    PropertySchema,
+    resolvePropertySchema
+} from '@deepkit/type';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
@@ -58,7 +65,8 @@ export class PostgresStatement extends SQLStatement {
 export class PostgresConnection extends SQLConnection {
     protected changes: number = 0;
     public lastReturningRows: any[] = [];
-    protected connection?: PoolClient = undefined;
+    protected connector?: Promise<PoolClient>;
+    protected connection?: PoolClient;
 
     constructor(
         connectionPool: PostgresConnectionPool,
@@ -69,22 +77,38 @@ export class PostgresConnection extends SQLConnection {
 
     release() {
         super.release();
+        if (this.connector && !this.connection) throw new Error('Could not release while in connecting');
+        this.connector = undefined;
         if (this.connection) {
             this.connection.release();
             this.connection = undefined;
         }
     }
 
+    protected connect(): Promise<PoolClient> {
+        if (this.connection) return Promise.resolve(this.connection);
+
+        return asyncOperation<PoolClient>((resolve, reject) => {
+            if (!this.connector) {
+                this.connector = this.getConnection();
+            }
+            this.connector.then((connection) => {
+                this.connection = connection;
+                resolve(connection);
+            }, (err) => {
+                this.connector = undefined;
+                reject(err);
+            });
+        });
+    }
+
     async prepare(sql: string) {
-        this.connection ||= await this.getConnection();
-        return new PostgresStatement(sql, this.connection);
+        return new PostgresStatement(sql, await this.connect());
     }
 
     async run(sql: string, params: any[] = []) {
         await asyncOperation(async (resolve, reject) => {
-            this.connection ||= await this.getConnection();
-
-            this.connection.query(sql, params).then((res) => {
+            (await this.connect()).query(sql, params).then((res) => {
                 this.lastReturningRows = res.rows;
                 this.changes = res.rowCount;
                 resolve(undefined);
@@ -166,11 +190,7 @@ export class PostgresPersistence extends SQLPersistence {
                     //special postgres check to avoid an error like:
                     /// column "deletedAt" is of type timestamp without time zone but expression is of type text
                     if (v === undefined || v === null) {
-                        if (classSchema.getProperty(i).type === 'date') {
-                            values[i].push('null::timestamp');
-                        } else {
-                            values[i].push('null');
-                        }
+                        values[i].push('null' + this.platform.typeCast(classSchema, i));
                     } else {
                         values[i].push(this.platform.quoteValue(v));
                     }
@@ -195,7 +215,10 @@ export class PostgresPersistence extends SQLPersistence {
                     assignReturning[id].names.push(i);
                     setReturning[i] = 1;
 
-                    aggregateSelects[i].push({ id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}` });
+                    aggregateSelects[i].push({
+                        id: changeSet.primaryKey[pkName],
+                        sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`
+                    });
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
@@ -329,9 +352,9 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         }
     }
 
-
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
+        const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimaryField();
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
@@ -349,7 +372,9 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
                 set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
             } else {
                 fieldsSet[i] = 1;
-                select.push(`${this.platform.quoteValue($set[i])} as ${this.platform.quoteIdentifier(i)}`);
+
+                select.push(`$${selectParams.length + 1}${this.platform.typeCast(this.classSchema, i)} as ${this.platform.quoteIdentifier(i)}`);
+                selectParams.push($set[i]);
             }
         }
 
@@ -393,7 +418,8 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         }
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
+
         const sql = `
             WITH _b AS (${selectSQL.sql})
             UPDATE
@@ -420,6 +446,9 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
                     patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
+        } catch (error) {
+            console.log('changes', changes);
+            throw new Error(`Could not patch ${this.classSchema.getName()}: ${error.message}\nSQL: ${sql}\nParams: ${JSON.stringify(selectSQL.params)}`);
         } finally {
             connection.release();
         }

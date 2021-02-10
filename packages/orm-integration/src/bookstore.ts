@@ -81,6 +81,70 @@ export const bookstoreTests = {
         expect(user.getProperty('birthdate').isOptional).toBe(true);
     },
 
+    async filterIn(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+
+        const groupA = new Group('a');
+        const groupB = new Group('b');
+        const groupC = new Group('c');
+        await database.persist(groupA, groupB, groupC);
+
+        {
+            const items = await database.query(Group).filter({id: groupA.id}).find();
+            expect(items.length).toBe(1);
+            expect(items[0].name).toBe('a');
+        }
+
+        {
+            const items = await database.query(Group).filter({id: {$in: [groupA.id]}}).find();
+            expect(items.length).toBe(1);
+            expect(items[0].name).toBe('a');
+        }
+
+        {
+            const items = await database.query(Group).filter({id: {$in: [groupA.id, groupB.id]}}).find();
+            expect(items.length).toBe(2);
+            expect(items[0].name).toBe('a');
+            expect(items[1].name).toBe('b');
+        }
+
+        {
+            const items = await database.query(Group).filter({$and: [{id: {$in: [groupA.id, groupB.id]}}]}).find();
+            expect(items.length).toBe(2);
+            expect(items[0].name).toBe('a');
+            expect(items[1].name).toBe('b');
+        }
+
+        {
+            const items = await database.query(Group).filter({id: {$nin: [groupA.id, groupB.id]}}).find();
+            expect(items.length).toBe(1);
+            expect(items[0].name).toBe('c');
+        }
+    },
+
+    async binary(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+
+        const image = new Image('/foo.jpg');
+        image.image = Buffer.from('t');
+        await database.persist(image);
+
+        {
+            const imageDB = await database.query(Image).filter({ id: image.id }).findOne();
+            expect(imageDB.id).toBe(image.id);
+            expect(imageDB.privateToken).toBe(image.privateToken);
+            expect(imageDB.downloads).toBe(0);
+            expect(imageDB.image).toEqual(new Uint8Array(['t'.charCodeAt(0)]));
+        }
+
+        await database.query(Image).filter({ id: image.id }).patchOne({image: Buffer.from('s')});
+
+        {
+            const imageDB = await database.query(Image).filter({ id: image.id }).findOne();
+            expect(imageDB.image).toEqual(new Uint8Array(['s'.charCodeAt(0)]));
+        }
+    },
+
     async uuid(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 

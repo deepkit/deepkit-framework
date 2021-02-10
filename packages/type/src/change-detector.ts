@@ -70,7 +70,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
         return `(changeSet.$inc && '${accessor}' in changeSet.$inc) || (changeSet.$unset && '${accessor}' in changeSet.$unset)`;
     }
 
-    function getComparator(property: PropertySchema, last: string, current: string, changedName: string, onChanged: string, jitStack: JitStack): string {
+    function getComparator(property: PropertySchema, last: string, current: string, accessor: string, changedName: string, onChanged: string, jitStack: JitStack): string {
         if (property.isArray) {
             const l = reserveVariable(context, 'l');
             return `
@@ -87,7 +87,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                     let ${l} = ${last}.length;
                     ${onChanged ? '' : 'root:'}
                     while (${l}--) {
-                         ${getComparator(property.getSubType(), `${last}[${l}]`, `${current}[${l}]`, changedName, 'break root;', jitStack)}
+                         ${getComparator(property.getSubType(), `${last}[${l}]`, `${current}[${l}]`, `${accessor}[${l}]`, changedName, 'break root;', jitStack)}
                     }
                 }
                 }
@@ -110,7 +110,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                     ${onChanged ? '' : 'root:'}
                     for (let ${i} in ${last}) {
                         if (!${last}.hasOwnProperty(${i})) continue;
-                         ${getComparator(property.getSubType(), `${last}[${i}]`, `${current}[${i}]`, changedName, 'break root;', jitStack)}
+                         ${getComparator(property.getSubType(), `${last}[${i}]`, `${current}[${i}]`, `${accessor}[${i}]`, changedName, 'break root;', jitStack)}
                     }
                 }
                 }
@@ -121,7 +121,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
                 for (const primaryField of property.getResolvedClassSchema().getPrimaryFields()) {
                     checks.push(`
-                         ${getComparator(primaryField, `${last}.${primaryField.name}`, `${current}.${primaryField.name}`, changedName, onChanged, jitStack)}
+                         ${getComparator(primaryField, `${last}.${primaryField.name}`, `${current}.${primaryField.name}`, `${accessor}.${primaryField.name}`, changedName, onChanged, jitStack)}
                     `);
                 }
                 return `
@@ -150,7 +150,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                         changes.${changedName} = item.${changedName};
                         ${onChanged}
                     } else {
-                        const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, item.${property.name});
+                        const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, ${accessor});
                         if (!empty(thisChanged)) {
                             changes.${changedName} = item.${changedName};
                             ${onChanged}    
@@ -184,7 +184,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
         if (property.isParentReference) continue;
         if (property.backReference) continue;
 
-        props.push(getComparator(property, `last.${property.name}`, `current.${property.name}`, property.name, '', jitStack));
+        props.push(getComparator(property, `last.${property.name}`, `current.${property.name}`, 'item.' + property.name, property.name, '', jitStack));
     }
 
     context.set('changeSetSymbol', changeSetSymbol);
