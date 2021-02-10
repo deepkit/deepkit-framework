@@ -29,17 +29,21 @@ import { triggerResize } from '../../core/utils';
 @Component({
     selector: 'dui-window-content',
     template: `
+        <div class="top-line"></div>
+        
         <div class="content {{class}}" #content>
             <ng-content></ng-content>
         </div>
 
         <div class="sidebar"
              (transitionend)="transitionEnded()"
-             #sidebar *ngIf="toolbar" [class.hidden]="!sidebarVisible "[class.with-animation]="withAnimation"
+             #sidebar *ngIf="toolbar" [class.hidden]="!sidebarVisible " [class.with-animation]="withAnimation"
              [style.width.px]="getSidebarWidth()">
             <div class="hider">
-                <div class="sidebar-container overlay-scrollbar-small" [style.width.px]="getSidebarWidth()" #sidebarContainer>
-                    <ng-container [ngTemplateOutlet]="toolbar!.template" [ngTemplateOutletContext]="{}"></ng-container>
+                <div class="sidebar-container overlay-scrollbar-small" [style.width.px]="getSidebarWidth()"
+                     #sidebarContainer>
+                    <ng-container [ngTemplateOutlet]="toolbar!.template"
+                                  [ngTemplateOutletContext]="{}"></ng-container>
                 </div>
             </div>
             <dui-splitter position="right" (modelChange)="sidebarWidth = $event; sidebarMoved()"></dui-splitter>

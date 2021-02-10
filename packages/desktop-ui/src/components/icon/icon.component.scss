@@ -1,0 +1,46 @@
+:host {
+  display: inline-block;
+  vertical-align: middle;
+  text-align: center;
+  font-size: 17px;
+  height: 17px;
+  width: 17px;
+  cursor: default;
+}
+
+:host:focus {
+  outline: 0;
+}
+
+:host.disabled {
+  opacity: 0.6;
+}
+
+:host.clickable:hover {
+  opacity: 0.7;
+}
+
+:host-context(.dui-theme-dark).clickable {
+  border-radius: 2px;
+
+  &:hover {
+    background-color: #4a4a4a;
+  }
+
+  &:active {
+    background-color: #69696a;
+    color: white;
+  }
+}
+:host-context(.dui-theme-light).clickable {
+  border-radius: 2px;
+
+  &:hover {
+    background-color: #c4c4c4;
+    color: #161616 !important;
+  }
+
+  &:active {
+    background-color: #aaabab;
+  }
+}

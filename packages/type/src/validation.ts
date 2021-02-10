@@ -20,6 +20,10 @@ export class ValidationFailed extends CustomError {
     constructor(public readonly errors: ValidationFailedItem[]) {
         super('Validation failed: ' + (errors.map(e => e.toString()).join(', ')));
     }
+
+    static from(errors: { path: string, message: string, code?: string }[]) {
+        return new ValidationFailed(errors.map(v => new ValidationFailedItem(v.path, v.message, v.code || '')));
+    }
 }
 
 /**

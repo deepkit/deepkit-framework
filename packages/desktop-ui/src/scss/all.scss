@@ -21,8 +21,7 @@ body {
     -webkit-font-smoothing: antialiased;
     text-rendering: geometricPrecision;
 
-    -webkit-user-select: none;
-    user-select: none;
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
     --dui-selection: #016dea;
     --dui-selection-hover: #016dea80;
@@ -43,21 +42,24 @@ body {
     --line-color-light: #d3d3d3;
     --line-color: #979797;
     --line-color-prominent: #9fa4a9;
-    --line-sidebar: #c3c2c3;
+    --line-sidebar: #d9d9d9;
+    --line-sidebar-light: #c7c7c7;
 
-    --dui-window-content-bg: #ececec;
+    --dui-window-content-bg: white;
 
     --dui-background-vibrancy: none;
 
+    --dui-window-header-bg: #f6f6f6;
+
     &.platform-darwin {
         --dui-background-vibrancy: blur(10px);
-        --dui-window-content-bg-trans: #dcdcdcee;
-        --dui-toolbar-bg-trans: #dcdcdcde;
+        --dui-window-content-bg-trans: #f6f6f6ee;
+        --dui-toolbar-bg-trans: #f6f6f6de;
     }
 
     &:not(.platform-darwin) {
-        --dui-window-content-bg-trans: #dcdcdc;
-        --dui-toolbar-bg-trans: #dcdcdc;
+        --dui-window-content-bg-trans: #f6f6f6;
+        --dui-toolbar-bg-trans: #f6f6f6;
         background: var(--dui-window-content-bg-trans);
     }
 
@@ -66,23 +68,6 @@ body {
     a, a:link {
         color: #255273;
     }
-}
-
-.visible-for-white-mode {
-    display: unset;
-}
-
-.visible-for-dark-mode {
-    display: none;
-}
-
-.monospace {
-    font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
-    font-size: 12px;
-}
-
-*:focus {
-    outline: 0;
 }
 
 .dark {
@@ -100,9 +85,11 @@ body {
     --line-color-light: rgba(232, 232, 232, 0.16);
     --line-color: rgba(232, 232, 232, 0.32);
     --line-color-prominent: rgba(220, 225, 230, 0.8);
+    --line-sidebar-light: #111;
     --line-sidebar: black;
 
     --dui-window-content-bg: #323232;
+    --dui-window-header-bg: #2d2d2d;
 
     &.platform-darwin {
         --dui-window-content-bg-trans: #323232f2;
@@ -127,13 +114,34 @@ body {
     }
 }
 
-
-body {
-    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+*:not(input,textarea) {
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
 }
 
-.text-selection {
+.visible-for-white-mode {
+    display: unset;
+}
+
+.visible-for-dark-mode {
+    display: none;
+}
+
+.monospace {
+    font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
+    font-size: 12px;
+}
+
+*:focus {
+    outline: 0;
+}
+
+.text-selection,
+.text-selection * {
+    cursor: text;
     user-select: text;
+    -webkit-user-select: text;
 }
 
 ::-webkit-scrollbar {

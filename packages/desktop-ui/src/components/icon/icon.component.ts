@@ -20,32 +20,7 @@ import { Component, HostBinding, Input, OnChanges, OnInit } from '@angular/core'
         '[style.width.px]': 'usedSize',
         '[style.color]': 'color',
     },
-    styles: [`
-        :host {
-            display: inline-block;
-            vertical-align: middle;
-            text-align: center;
-            font-size: 17px;
-            height: 17px;
-            width: 17px;
-        }
-
-        :host:focus {
-            outline: 0;
-        }
-
-        :host.disabled {
-            opacity: 0.6;
-        }
-
-        :host.clickable:hover {
-            opacity: 0.7;
-        }
-
-        :host.clickable:active {
-            color: var(--dui-selection);
-        }
-    `]
+    styleUrls: ['./icon.component.scss']
 })
 export class IconComponent implements OnInit, OnChanges {
     /**

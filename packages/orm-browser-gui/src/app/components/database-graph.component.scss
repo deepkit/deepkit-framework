@@ -29,7 +29,7 @@
   // background-color: white;
 
   path {
-    fill: none;    
+    fill: none;
     stroke: var(--line-color-prominent);
     opacity: 0.6;
     stroke-width: 1px;
@@ -98,4 +98,11 @@
     line-height: 16px;
     padding: 1px 0px;
   }
+}
+
+:host-context(.dui-theme-light) {
+    .node {
+        background-color: rgba(189, 189, 189, 0.75);
+        border: 1px solid var(--line-color);
+    }
 }

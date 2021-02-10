@@ -1,5 +1,5 @@
 import { EventEmitter, Injectable } from '@angular/core';
-import { empty, isObject } from '@deepkit/core';
+import { arrayRemoveItem, empty, isObject } from '@deepkit/core';
 import { getInstanceState } from '@deepkit/orm';
 import { DatabaseCommit, DatabaseInfo } from '@deepkit/orm-browser-api';
 import {
@@ -12,6 +12,7 @@ import {
     PropertyValidatorError
 } from '@deepkit/type';
 import { ControllerClient } from './client';
+import { Progress } from '@deepkit/rpc';
 
 export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
 export type ValidationErrors = { [fieldName: string]: PropertyValidatorError };
@@ -23,13 +24,63 @@ const storeKeySeparator = '\0t\0';
 
 export type FilterItem = { name: string, comparator: string, value: any };
 
+export class BrowserQuery {
+    id: number = 0;
+    javascript: string = '';
+    placeholder: string = '';
+
+    tab: string = 'result';
+
+    progress?: Progress;
+    executionTime: number = 0;
+    downloadTime: number = 0;
+    downloadBytes: number = 0;
+
+    result: any;
+    error?: string;
+    log: string[] = [];
+
+    executed: boolean = false;
+    inputHeight: number = 40;
+    javascriptError: string = '';
+
+    protected lastJson?: string;
+
+    setValue(v: any) {
+        this.result = v;
+    }
+
+    eval() {
+        this.javascriptError = '';
+        try {
+            const a = new Function(this.javascript);
+        } catch (error) {
+            //new Function does not return helpful error message on syntax errors, but eval does.
+            //we can not use eval at the beginning since it tries to actually execute the code.
+            try {
+                eval(this.javascript)
+            } catch (error) {
+                this.javascriptError = error;
+            }
+        }
+    }
+}
 
 export class BrowserEntityState {
     properties: PropertySchema[] = [];
+    queryId: number = 0;
 
     loading: boolean = false;
 
     filter: FilterItem[] = [];
+
+    activeQuery: number = -1;
+    queries: BrowserQuery[] = [];
+
+    progress?: Progress;
+    executionTime: number = 0;
+    downloadTime: number = 0;
+    downloadBytes: number = 0;
 
     count: number = 0;
     page: number = 1;
@@ -48,6 +99,23 @@ export class BrowserEntityState {
 
     validationStore?: ValidationErrorStore;
     deletions: { [pkHash: string]: any } = {};
+
+    constructor(public schema: ClassSchema) {
+    }
+
+    addQuery() {
+        const query = new BrowserQuery();
+        query.placeholder = query.javascript = `database.query(${this.schema.getClassName()}).find()`;
+        query.id = ++this.queryId;
+        this.queries.push(query);
+        this.activeQuery = this.queries.length - 1;
+    }
+
+    removeQuery(query: BrowserQuery) {
+        arrayRemoveItem(this.queries, query);
+        this.queries = this.queries.slice(0);
+        this.activeQuery--;
+    }
 }
 
 @Injectable()
@@ -90,7 +158,7 @@ export class BrowserState {
 
     getBrowserEntityState(dbName: string, entityName: string) {
         const storeKey = this.getStoreKey(dbName, entityName);
-        return this.browserEntityState[storeKey] ||= new BrowserEntityState();
+        return this.browserEntityState[storeKey] ||= new BrowserEntityState(this.getEntity(dbName, entityName));
     }
 
     getDeletions(dbName: string, entityName: string) {

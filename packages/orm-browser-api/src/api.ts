@@ -71,6 +71,8 @@ export class MigrationInfo {
     @t.map(MigrationEntityInfo) entites: { [name: string]: MigrationEntityInfo } = {};
 }
 
+export type QueryResult = {error?: string, log: string[], executionTime: number, result: any};
+
 export const BrowserControllerInterface = ControllerSymbol<BrowserControllerInterface>('orm-browser/controller', [DatabaseInfo]);
 export interface BrowserControllerInterface {
     getDatabases(): DatabaseInfo[];
@@ -78,8 +80,8 @@ export interface BrowserControllerInterface {
     migrate(name: string): Promise<void>;
     getMigrations(name: string): Promise<{ [name: string]: {sql: string[], diff: string} }>;
     getDatabase(name: string): DatabaseInfo;
-    // getMigration(name: string): MigrationInfo;
-    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, sort: { [name: string]: any }, limit: number, skip: number): Promise<any[]>;
+    query(dbName: string, entityName: string, query: string): Promise<QueryResult>;
+    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, sort: { [name: string]: any }, limit: number, skip: number): Promise<{items: any[], executionTime: number}>;
     getCount(dbName: string, entityName: string, filter: { [name: string]: any }): Promise<number>;
     create(dbName: string, entityName: string): Promise<any>;
     commit(commit: DatabaseCommit): Promise<any>;

@@ -19,4 +19,8 @@ export class ControllerClient {
 
   constructor(protected client: DeepkitClient) {
   }
+
+  static getServerHost(): string {
+      return (location.port === '4200' ? location.hostname + ':9090' : location.host);
+  }
 }

@@ -1,7 +1,7 @@
 import { ConsoleTransport, Logger, LoggerInterface, TimestampFormatter } from '@deepkit/logger';
 
 export class DatabaseLogger {
-    protected logger?: LoggerInterface;
+    public logger?: LoggerInterface;
 
     public active: boolean = false;
     public: boolean = false;

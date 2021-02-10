@@ -441,7 +441,7 @@ export class RpcMessageReader {
 
     protected gotMessage(buffer: Uint8Array) {
         const message = readRpcMessage(buffer);
-        // console.log('reader got', message.id, RpcTypes[message.type]);
+        // console.log('reader got', message.id, RpcTypes[message.type], message.bodySize, buffer.byteLength);
 
         if (message.type === RpcTypes.ChunkAck) {
             const ack = this.chunkAcks.get(message.id);
@@ -474,6 +474,11 @@ export class RpcMessageReader {
                 this.onMessage(readRpcMessage(newBuffer));
             }
         } else {
+            const progress = this.progress.get(message.id);
+            if (progress) {
+                progress.set(buffer.byteLength, buffer.byteLength);
+                this.progress.delete(message.id);
+            }
             this.onMessage(message);
         }
     }

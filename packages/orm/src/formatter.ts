@@ -307,6 +307,7 @@ export class Formatter {
 
             //all non-populated owning references will be just proxy references
             for (const propertySchema of classSchema.references.values()) {
+                if (model.select.size && !model.select.has(propertySchema.name)) continue;
                 if (handledRelation && handledRelation[propertySchema.name]) continue;
                 if (propertySchema.isReference) {
                     converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, model.isPartial());

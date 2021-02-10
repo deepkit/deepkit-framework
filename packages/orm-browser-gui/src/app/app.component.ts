@@ -17,7 +17,6 @@ import { BrowserState } from './browser-state';
   template: `
     <dui-window>
       <dui-window-header size="small">
-        {{state.entity ? state.entity.getClassName() : ''}}
         <dui-window-toolbar>
           <dui-button-group>
                 <div style="position: relative; top: 0px;">

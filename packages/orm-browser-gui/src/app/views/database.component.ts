@@ -36,8 +36,8 @@ import { ControllerClient } from '../client';
                 <div class="migrations" *ngIf="!empty(migrations)">
                     <div *ngFor="let kv of migrations|keyvalue">
                         <h3>{{kv.key}}</h3>
-                        <div class="diff">{{kv.value.diff}}</div>
-                        <div class="sql" *ngFor="let sql of kv.value.sql">
+                        <div class="diff text-selection">{{kv.value.diff}}</div>
+                        <div class="sql text-selection" *ngFor="let sql of kv.value.sql">
                             {{sql}}
                         </div>
                     </div>
@@ -85,6 +85,7 @@ export class DatabaseComponent implements OnDestroy {
             await this.duiDialog.alert('Error resetting all', error.message);
         }
         await this.loadMigration();
+        this.state.onDataChange.emit();
     }
 
     async migrate() {
@@ -96,6 +97,7 @@ export class DatabaseComponent implements OnDestroy {
             await this.duiDialog.alert('Error migrating', error.message);
         }
         await this.loadMigration();
+        this.state.onDataChange.emit();
     }
 
     async loadMigration() {

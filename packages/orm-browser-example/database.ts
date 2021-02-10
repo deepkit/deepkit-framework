@@ -1,7 +1,8 @@
 import 'reflect-metadata';
 import { entity, t, uuid } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
-import { MongoDatabaseAdapter } from '@deepkit/mongo';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+//import { MongoDatabaseAdapter } from '@deepkit/mongo';
 import { User, UserGroup } from './bookstore/user';
 import { Group } from './bookstore/group';
 import { UserCredentials } from './bookstore/user-credentials';
@@ -69,8 +70,8 @@ class Review {
     }
 }
 
-// const database = new Database(new SQLiteDatabaseAdapter('./example.sqlite'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
+const database = new Database(new SQLiteDatabaseAdapter('./example.sqlite'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
 // const database = new Database(new MySQLDatabaseAdapter({database: 'orm-example', user: 'root'}), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
 // const database = new Database(new PostgresDatabaseAdapter({database: 'orm-example', user: 'postgres'}), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
-const database = new Database(new MongoDatabaseAdapter('mongodb://localhost'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
+//const database = new Database(new MongoDatabaseAdapter('mongodb://localhost'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
 database.logger.enableLogging();

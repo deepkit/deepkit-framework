@@ -4,6 +4,7 @@ import { fromBuffer } from 'file-type/browser';
 import * as FileSaver from 'file-saver';
 
 @Component({
+    selector: 'orm-browser-binary-cell',
     template: `
         <ng-container *ngIf="image">
             <img [src]="image|objectURL"
@@ -37,7 +38,8 @@ import * as FileSaver from 'file-saver';
 })
 export class BinaryCellComponent implements OnInit, OnChanges {
     @Input() model: any;
-    @Input() property!: PropertySchema;
+    @Input() property?: PropertySchema;
+    @Input() fileName: string = 'untitled';
 
     image?: Uint8Array;
     ext: string = 'bin';
@@ -58,7 +60,7 @@ export class BinaryCellComponent implements OnInit, OnChanges {
 
     download() {
         const blob = new Blob([this.model]);
-        FileSaver.saveAs(blob, this.property.name + '.' + this.ext);
+        FileSaver.saveAs(blob, (this.property?.name || this.fileName) + '.' + this.ext);
     }
 
     ngOnChanges(): void {

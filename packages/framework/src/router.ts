@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation, ClassType, CompilerContext } from '@deepkit/core';
-import { ValidationError, ValidationErrorItem } from '@deepkit/rpc';
+import { ValidationFailed, ValidationFailedItem } from '@deepkit/type';
 import {
     getClassSchema,
     getPropertyXtoClassFunction,
@@ -100,7 +100,7 @@ export class RouteConfig {
  */
 export class BodyValidation {
     constructor(
-        public readonly errors: ValidationErrorItem[] = []
+        public readonly errors: ValidationFailedItem[] = []
     ) {
     }
 
@@ -108,13 +108,13 @@ export class BodyValidation {
         return this.getErrors(prefix).length > 0;
     }
 
-    getErrors(prefix?: string): ValidationErrorItem[] {
+    getErrors(prefix?: string): ValidationFailedItem[] {
         if (prefix) return this.errors.filter(v => v.path.startsWith(prefix));
 
         return this.errors;
     }
 
-    getErrorsForPath(path: string): ValidationErrorItem[] {
+    getErrorsForPath(path: string): ValidationFailedItem[] {
         return this.errors.filter(v => v.path === path);
     }
 
@@ -298,7 +298,7 @@ export class Router {
         const setParameters: string[] = [];
         const parameterNames: string[] = [];
         const parameterValidator: string[] = [];
-        let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
+        let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationFailed.from(bodyErrors);`;
 
         let enableParseBody = false;
         const hasParameters = parsedRoute.getParameters().length > 0;
@@ -398,7 +398,7 @@ export class Router {
                 ${parameterValidator.join('\n')}
                 ${bodyValidationErrorHandling}
                 ${setParameters.join('\n')}
-                if (validationErrors.length) throw ValidationError.from(validationErrors);
+                if (validationErrors.length) throw ValidationFailed.from(validationErrors);
                 return [${parameterNames.join(',')}];
             }`;
         }
@@ -476,7 +476,7 @@ export class Router {
     protected build(): any {
         const compiler = new CompilerContext;
         compiler.context.set('_match', null);
-        compiler.context.set('ValidationError', ValidationError);
+        compiler.context.set('ValidationFailed', ValidationFailed);
         compiler.context.set('parseQueryString', querystring.parse);
 
         const code: string[] = [];

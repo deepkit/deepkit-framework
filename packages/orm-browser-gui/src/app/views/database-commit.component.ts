@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { empty, size } from '@deepkit/core';
 import { DialogComponent, DuiDialog } from '@deepkit/desktop-ui';
-import { Changes } from '../../../../rpc/node_modules/@deepkit/type';
+import { Changes } from '@deepkit/type';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
 

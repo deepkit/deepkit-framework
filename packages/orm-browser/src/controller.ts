@@ -1,11 +1,15 @@
 import { isObject } from '@deepkit/core';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
-import { BrowserControllerInterface, DatabaseCommit, DatabaseInfo } from '@deepkit/orm-browser-api';
+import { BrowserControllerInterface, DatabaseCommit, DatabaseInfo, QueryResult } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { ClassSchema, plainToClass, serializeSchemas, t } from '@deepkit/type';
 // import { inspect } from 'util';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
+import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
+import { performance } from 'perf_hooks';
+import { http } from '@deepkit/framework';
 
+@rpc.controller(BrowserControllerInterface)
 export class BrowserController implements BrowserControllerInterface {
     constructor(protected databases: Database[]) {
     }
@@ -79,12 +83,48 @@ export class BrowserController implements BrowserControllerInterface {
 
     @rpc.action()
     @t.any
-    async getMigrations(name: string): Promise<{ [name: string]: {sql: string[], diff: string} }> {
+    async getMigrations(name: string): Promise<{ [name: string]: { sql: string[], diff: string } }> {
         const db = this.findDatabase(name);
         if (db.adapter instanceof SQLDatabaseAdapter) {
             return db.adapter.getMigrations([...db.entities.values()]);
         }
         return {};
+    }
+
+    @http.GET('_orm-browser/query')
+    @t.any
+    async httpQuery(@http.query() dbName: string, @http.query() entityName: string, @http.query() query: string): Promise<QueryResult> {
+        const res = await this.query(dbName, entityName, query);
+        return res;
+    }
+
+    @rpc.action()
+    @t.any
+    async query(dbName: string, entityName: string, query: string): Promise<QueryResult> {
+        const res: QueryResult = {
+            executionTime: 0,
+            log: [],
+            result: undefined
+        };
+
+        const [db, entity] = this.getDbEntity(dbName, entityName);
+        const oldLogger = db.logger.logger;
+        const loggerTransport = new MemoryLoggerTransport;
+        db.logger.setLogger(new Logger([loggerTransport]));
+
+        try {
+            const fn = new Function(`return function(database, ${entity.getClassName()}) {return ${query}}`)();
+            const start = performance.now();
+            res.result = await fn(db, entity);
+            res.executionTime = performance.now() - start;
+        } catch (error) {
+            res.error = String(error);
+        } finally {
+            res.log = loggerTransport.messageStrings;
+            if (oldLogger) db.logger.setLogger(oldLogger);
+        }
+
+        return res;
     }
 
     @rpc.action()
@@ -96,7 +136,7 @@ export class BrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
-    @t.array(t.any)
+    @t.any
     async getItems(
         dbName: string,
         entityName: string,
@@ -104,10 +144,11 @@ export class BrowserController implements BrowserControllerInterface {
         @t.map(t.any) sort: { [name: string]: any },
         limit: number,
         skip: number
-    ): Promise<any[]> {
+    ): Promise<{ items: any[], executionTime: number }> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
-
-        return await db.query(entity).filter(filter).sort(sort).limit(limit).skip(skip).find();
+        const start = performance.now();
+        const items = await db.query(entity).filter(filter).sort(sort).limit(limit).skip(skip).find();
+        return { items, executionTime: performance.now() - start };
     }
 
     @rpc.action()

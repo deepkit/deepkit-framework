@@ -25,8 +25,8 @@ import { FilterItem } from '../browser-state';
             <dui-option value="$in">IN</dui-option>
             <dui-option value="$nin">NOT IN</dui-option>
         </dui-select>
-        <div *ngIf="property && propertyToShow" class="editing">
-            <div class="cell" (click)="editing=true" [class.inactive]="!editing" >
+        <div *ngIf="property && propertyToShow" >
+            <div class="cell" (click)="editing=true" [class.editing]="editing" [class.inactive]="!editing" >
                 <cell *ngIf="!editing" [model]="value" [property]="propertyToShow"></cell>
                 <field-editing *ngIf="editing" (modelChange)="value = $event; changed()"
                                (done)="editing=false"
@@ -44,13 +44,16 @@ import { FilterItem } from '../browser-state';
             margin-right: 4px;
         }
 
-        .editing {
+        .cell {
             width: 200px;
+            min-height: 21px;
+            padding: 0 4px;
         }
 
-        .cell {
-            min-height: 21px;
+        .cell.editing {
+            padding: 0;
         }
+
         .cell.inactive {
             border: 1px solid var(--line-color-light);
             border-radius: 2px;
@@ -154,7 +157,7 @@ export class FilterItemComponent implements OnChanges, OnInit {
             No filter added yet.
         </div>
         <div style="padding-top: 8px;">
-            <dui-button textured icon="add" (click)="add()">Add filter</dui-button>
+            <dui-button textured icon="add" (click)="add()">Filter</dui-button>
         </div>
     `,
     styleUrls: ['./filter.component.scss']

@@ -9,7 +9,13 @@
  */
 
 import { ClassType, CustomError } from '@deepkit/core';
-import { getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer } from '@deepkit/type';
+import {
+    getClassTypeFromInstance,
+    isClassInstance,
+    isRegisteredEntity,
+    jsonSerializer,
+    ValidationFailed
+} from '@deepkit/type';
 import { stat } from 'fs';
 import { ServerResponse } from 'http';
 import { Socket } from 'net';
@@ -261,6 +267,7 @@ export const httpWorkflow = createWorkflow('http', {
     resolveParameters: HttpResolveParametersEvent,
     accessDenied: HttpAccessDeniedEvent,
     controller: HttpControllerEvent,
+    parametersFailed: HttpControllerErrorEvent,
     controllerError: HttpControllerErrorEvent,
     response: HttpResponseEvent,
 }, {
@@ -268,7 +275,8 @@ export const httpWorkflow = createWorkflow('http', {
     request: 'route',
     route: ['auth', 'routeNotFound'],
     auth: ['resolveParameters', 'accessDenied'],
-    resolveParameters: 'controller',
+    resolveParameters: ['controller', 'parametersFailed'],
+    parametersFailed: 'response',
     controller: ['accessDenied', 'controllerError', 'response'],
     accessDenied: 'response',
     controllerError: 'response',
@@ -312,7 +320,10 @@ export function serveStaticListener(path: string): ClassType {
                 stat(localPath, (err, stat) => {
                     if (stat && stat.isFile()) {
                         event.routeFound(
-                            new RouteConfig('static', 'GET', event.url, { controller: HttpRequestStaticServingListener, methodName: 'serve' }),
+                            new RouteConfig('static', 'GET', event.url, {
+                                controller: HttpRequestStaticServingListener,
+                                methodName: 'serve'
+                            }),
                             () => [path, event.request, event.response]
                         );
                     }
@@ -382,11 +393,14 @@ export class HttpListener {
     @eventDispatcher.listen(httpWorkflow.onResolveParameters, 100)
     async onResolveParameters(event: typeof httpWorkflow.onResolveParameters.event) {
         if (event.response.finished) return;
-        // if (event.hasNext()) return;
+        if (event.hasNext()) return;
 
-        event.parameters = await event.parameterResolver(event.injectorContext);
-
-        event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
+        try {
+            event.parameters = await event.parameterResolver(event.injectorContext);
+            event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
+        } catch (error) {
+            event.next('parametersFailed', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
+        }
     }
 
     @eventDispatcher.listen(httpWorkflow.onAccessDenied, 100)
@@ -412,6 +426,23 @@ export class HttpListener {
             } else {
                 event.next('controllerError', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
             }
+        }
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onParametersFailed, 100)
+    onParametersFailed(event: typeof httpWorkflow.onParametersFailed.event): void {
+        if (event.response.finished) return;
+        if (event.sent) return;
+
+        this.logger.error('Controller parameter resolving error:', event.error);
+
+        if (event.error instanceof ValidationFailed) {
+            event.send(new JSONResponse({
+                message: event.error.message,
+                errors: event.error.errors
+            }, 500));
+        } else {
+            event.send(new HtmlResponse('Internal error', 500));
         }
     }
 
@@ -522,8 +553,7 @@ export class HttpKernel {
         try {
             return JSON.parse(result);
         } catch (error) {
-            console.error('Could not parse JSON:' + result);
-            return undefined;
+            return result;
         }
     }
 

@@ -204,16 +204,26 @@ export class DuiApp {
 
     setPlatform(platform: 'web' | 'darwin' | 'linux' | 'win32') {
         this.platform = platform;
+        //deprecate these
         document.body.classList.remove('platform-linux');
         document.body.classList.remove('platform-darwin');
         document.body.classList.remove('platform-win32');
         document.body.classList.remove('platform-native');
         document.body.classList.remove('platform-web');
 
+        document.body.classList.remove('dui-platform-linux');
+        document.body.classList.remove('dui-platform-darwin');
+        document.body.classList.remove('dui-platform-win32');
+        document.body.classList.remove('dui-platform-native');
+        document.body.classList.remove('dui-platform-web');
+
         if (this.platform !== 'web') {
-            document.body.classList.add('platform-native');
+            document.body.classList.add('platform-native'); //todo: deprecate
+            document.body.classList.add('dui-platform-native');
+
         }
-        document.body.classList.add('platform-' + platform);
+        document.body.classList.add('platform-' + platform);//todo: deprecate
+        document.body.classList.add('dui-platform-' + platform);
     }
 
     getPlatform(): string {
@@ -275,9 +285,15 @@ export class DuiApp {
             win.setVibrancy(this.getVibrancy());
         }
 
+        //todo: deprecate these
         document.body.classList.remove('dark');
         document.body.classList.remove('light');
         document.body.classList.add(this.darkMode ? 'dark' : 'light');
+
+        document.body.classList.remove('dui-theme-dark');
+        document.body.classList.remove('dui-theme-light');
+        document.body.classList.add(this.darkMode ? 'dui-theme-dark' : 'dui-theme-light');
+
         window.dispatchEvent(new Event('theme-changed'));
     }
 

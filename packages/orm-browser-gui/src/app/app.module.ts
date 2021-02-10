@@ -23,7 +23,9 @@ import {
     DuiRadioboxModule,
     DuiSelectModule,
     DuiTableModule,
-    DuiWindowModule,
+    DuiTabsModule,
+    DuiSplitterModule,
+    DuiWindowModule, DuiIndicatorModule,
 } from '@deepkit/desktop-ui';
 import { ControllerClient } from './client';
 import { BrowserState } from './browser-state';
@@ -54,6 +56,8 @@ import { JsonInputComponent } from './components/edit/json-input.component';
 import { JsonCellComponent } from './components/cell/json-cell.component';
 import { BinaryInputComponent } from './components/edit/binary-input.component';
 import { BinaryCellComponent } from './components/cell/binary-cell.component';
+import { BrowserCellComponent } from './components/browser-cell.component';
+import { CommonModule } from '@angular/common';
 
 @NgModule({
     declarations: [
@@ -82,8 +86,10 @@ import { BinaryCellComponent } from './components/cell/binary-cell.component';
         JsonCellComponent,
         BinaryInputComponent,
         BinaryCellComponent,
+        BrowserCellComponent,
     ],
     imports: [
+        CommonModule,
         BrowserModule,
         FormsModule,
 
@@ -101,6 +107,9 @@ import { BinaryCellComponent } from './components/cell/binary-cell.component';
         DuiIconModule,
         DuiListModule,
         DuiTableModule,
+        DuiTabsModule,
+        DuiSplitterModule,
+        DuiIndicatorModule,
     ],
     providers: [
         BrowserState,
@@ -108,7 +117,7 @@ import { BinaryCellComponent } from './components/cell/binary-cell.component';
         ControllerClient,
         {
             provide: DeepkitClient,
-            useFactory: () => new DeepkitClient('ws://' + (location.port === '4200' ? location.hostname + ':9090' : location.host))
+            useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost())
         },
     ],
     bootstrap: [AppComponent]

@@ -8,7 +8,7 @@ import {
     ViewContainerRef
 } from '@angular/core';
 import { PropertySchema } from '@deepkit/type';
-import { isArray } from '../../../../../core';
+import { isArray } from '@deepkit/core';
 import { Registry } from '../../registry';
 
 @Component({
